@@ -10,7 +10,7 @@ pool:
   vmImage: 'windows-latest'
 
 variables:
-  solution: 'nopCommerce/src/Presentation/Nop.Web/Nop.Web.csproj'
+  solution: '**\Nop.Web.csproj'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
