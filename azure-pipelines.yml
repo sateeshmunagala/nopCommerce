@@ -40,4 +40,4 @@ steps:
     azureSubscription: 'Pay-As-You-Go (bf830477-1171-42d8-b916-fcaf0772a87e)'
     appType: 'webApp'
     WebAppName: 'jobsupport'
-    packageForLinux: '$(System.DefaultWorkingDirectory)/**/*.zip'
+    packageForLinux: '$(System.DefaultWorkingDirectory)/**/WebApp.zip'
