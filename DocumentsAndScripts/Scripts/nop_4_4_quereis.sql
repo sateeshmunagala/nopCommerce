@@ -29,8 +29,11 @@ SELECT * FROM [UrlRecord] Where EntityName='Product'
 SELECT * FROM [UrlRecord] Where EntityName='Category' AND EntityId in (1,2,3)
 -- DELETE [UrlRecord] Where EntityName='Product' AND Id in (103)
 
---DELETE FROM [Category] Where Id in (1,2,3)
+-- UPDATE [Category] SET PageSizeOptions='2,4,5,20,50' Where Id in (2)
 --DELETE FROM [product] Where Id in (1,2,3)
+
+
+NULL
 
 SELECT * FROM [CustomerRole]
 SELECT * FROM [UrlRecord] Where EntityName='Product'
@@ -112,6 +115,10 @@ Update [UrlRecord] SET [slug]='sateesh-um' where Id=104
 SELECT * From Customer Where VendorId=10
 DELETE From Customer Where Id=1495
 
+SELECT * From [dbo].[Forums_Forum]
+SELECT * From [dbo].[Forums_Group]
+SELECT * From [dbo].[Forums_Post]
+SELECT * From [dbo].[Forums_PostVote]
 
 SELECT * From Forums_PrivateMessage
 -- DELETE Forums_PrivateMessage
@@ -121,7 +128,15 @@ SELECT * From [dbo].[MessageTemplate] Where Name like '%OrderPlaced.StoreOwnerNo
 select * from [dbo].[GenericAttribute] WHERE [KEY]='NotifiedAboutNewPrivateMessages'
 And EntityId=263
 
+select * from [dbo].[GenericAttribute] WHERE [KEYGROUP]='Customer' AND  [KEY] LIKE '%new%'
+
 SELECT *FROM [dbo].[ShoppingCartItem] where CustomerId=263 and ProductId=14
+
+SELECT STRING_AGG(sao.Name, ',') AS 'Primary Technology'
+                FROM [Product_SpecificationAttribute_Mapping] PS
+				JOIN [SpecificationAttributeOption] sao on sao.id=ps.SpecificationAttributeOptionId
+				JOIN [SpecificationAttribute] sa on sa.id=sao.SpecificationAttributeId
+				WHERE sa.Id=7 
 
 
 -- DELETE From Forums_PrivateMessage Where ToCustomerId=1495
@@ -228,7 +243,8 @@ SELECT * FROM [Category]
 SELECT * FROM [CategoryTemplate]
 SELECT * FROM [dbo].[ProductTemplate]
 
-update [product] SET showonhomepage=1 WHERE Id in (8)
+update [product] SET VendorId=14 WHERE Id in (4)
+update [Customer] SET VendorId=4 WHERE Id in (14)
 
 SELECT * FROM [dbo].[Product_Picture_Mapping]
 WHERE ProductId=49
@@ -237,7 +253,8 @@ INSERT INTO [dbo].[Product_Picture_Mapping]([PictureId],[ProductId],[DisplayOrde
   VALUES (78,49,1)
 
 SELECT * FROM [product] WHERE Id=14
-SELECT * FROM [product] WHERE VendorId=273
+SELECT  * FROM [dbo].[Customer] 
+SELECT * FROM [product] WHERE VendorId=14
 
 SELECT * FROM [dbo].[Product_SpecificationAttribute_Mapping]
 WHERE ProductId=8
@@ -279,19 +296,11 @@ where resourcename like '%wishlist.cartisempty%';
 SELECT * FROM .[dbo].[LocaleStringResource]
 where ResourceValue like '%options%';
 
-UPDATE [dbo].[Setting]
-SET Value='False' 
-where Name = 'catalogsettings.allowproductviewmodechanging';
+select * FROM [dbo].[Setting]
+--SET Value='False' 
+where Name like '%breadcrumb%';
 -- org: Recently viewed products
 
-
----------------------------------------------------------
--- ***  Local String update queries ****
----------------------------------------------------------
-UPDATE [dbo].[LocaleStringResource]
-SET ResourceValue='Recently viewed profiles' 
-where resourcename = 'products.recentlyviewedproducts';
--- org: Recently viewed products
 ---------------------------------------------------------
 
 SELECT * FROM [itjobsupport].[dbo].[Forums_PrivateMessage]
@@ -587,5 +596,5 @@ select * from  [dbo].[Product] Where VendorId=1
 
 UPDATE [dbo].[Product] SET VendorId=1 Where Id=56 
 UPDATE [dbo].[Customer] SET VendorId=56 where Id in (1)
-
+UPDATE [dbo].[Product] SET [IsTaxExempt]=0 Where Id in (1,2,3)
 

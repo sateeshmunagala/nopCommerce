@@ -56,7 +56,7 @@ SELECT * FROM [dbo].[LocaleStringResource] WHERE [ResourceName] like 'Products.T
 
 ------------------ Start: [Setting] Table Scripts---------------------------------------------------------------------
 
-SELECT * FROM [dbo].[Setting] WHERE [Name] like '%catalogsettings%';
+SELECT * FROM [dbo].[Setting] WHERE [Name] like 'catalogsettings.%allowcustomerstoselectpagesize%';
 SELECT * FROM [dbo].[Setting] WHERE [Value] like '%20%';
 
 UPDATE [dbo].[Setting] SET Value='<p>Mail Personal or Business Check, Cashiers Check or money order to:</p><p><br /><b>On Job Support</b> <br /><b>Hitech City,</b> <br /><b>Hyderabad,500018 </b> <br /><b>INDIA</b></p><p>Notice that if you pay by Personal or Business Check, your order may be held for up to 10 days after we receive your check to allow enough time for the check to clear. If you want us to server faster upon receipt of your payment, then we recommend your send a money order or Cashiers check.</p>' WHERE Name = 'checkmoneyorderpaymentsettings.descriptiontext';
@@ -198,3 +198,13 @@ UPDATE [dbo].[Store] SET HomepageTitle='On Job support Help |Job support | Proxy
 -- Topics Settings
 UPDATE [dbo].[Topic] SET [Body] = '<p>Please contact us for any queries you have. We will be happy to assist you.</p>' WHERE Id=4 -- Contact us page
 UPDATE [dbo].[Topic] SET [Body] = '<p></p>', Title='' WHERE Id=7 -- Login Page Info
+
+
+-- nop 4.6 missing things correction
+
+-- update pricing products
+
+UPDATE [dbo].[Product] SET [IsTaxExempt]=0 Where Id in (1,2,3)
+
+--set pagesizeoptions for all categories
+UPDATE [Category] SET PageSizeOptions='2,4,5,20,50'
