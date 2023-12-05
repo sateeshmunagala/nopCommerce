@@ -22,7 +22,7 @@ namespace Nop.Web.Framework.TagHelpers.Admin
         protected const string POSTFIX_ATTRIBUTE_NAME = "asp-postfix";
 
         #endregion
-        
+
         #region Fields
 
         protected readonly IHtmlHelper _htmlHelper;
@@ -48,11 +48,9 @@ namespace Nop.Web.Framework.TagHelpers.Admin
         /// <returns>A task that represents the asynchronous operation</returns>
         public override Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
         {
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
+            ArgumentNullException.ThrowIfNull(context);
 
-            if (output == null)
-                throw new ArgumentNullException(nameof(output));
+            ArgumentNullException.ThrowIfNull(output);
 
             //clear the output
             output.SuppressOutput();
@@ -87,7 +85,7 @@ namespace Nop.Web.Framework.TagHelpers.Admin
                 htmlAttributes.Add("class", "form-control");
 
             //generate editor
-            var pattern = $"{nameof(ILocalizedModel<object>.Locales)}" + @"(?=\[\w+\]\.)";
+            var pattern = @"(?=\[\w+\]\.)";
             if (!_htmlHelper.ViewData.ContainsKey(For.Name) && Regex.IsMatch(For.Name, pattern))
             {
                 var prefix = _htmlHelper.ViewData.TemplateInfo.HtmlFieldPrefix;

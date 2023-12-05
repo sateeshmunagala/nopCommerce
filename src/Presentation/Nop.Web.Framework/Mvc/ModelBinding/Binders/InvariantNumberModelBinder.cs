@@ -27,7 +27,7 @@ namespace Nop.Web.Framework.Mvc.ModelBinding.Binders
 
         #endregion
 
-        #region Utils
+        #region Utilities
 
         protected virtual T? TryParse<T>(string value, TryParseNumber<T> handler) where T : struct
         {
@@ -47,8 +47,7 @@ namespace Nop.Web.Framework.Mvc.ModelBinding.Binders
         /// <param name="bindingContext">Model binding context</param>
         public Task BindModelAsync(ModelBindingContext bindingContext)
         {
-            if (bindingContext is null)
-                throw new ArgumentNullException(nameof(bindingContext));
+            ArgumentNullException.ThrowIfNull(bindingContext);
 
             var modelName = bindingContext.ModelName;
             var valueProviderResult = bindingContext.ValueProvider.GetValue(modelName);

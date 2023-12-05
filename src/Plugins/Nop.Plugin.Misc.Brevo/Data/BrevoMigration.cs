@@ -1,8 +1,10 @@
 ﻿using FluentMigrator;
+using Nop.Core.Domain.Cms;
 using Nop.Core.Domain.Configuration;
 using Nop.Core.Domain.ScheduleTasks;
 using Nop.Data;
 using Nop.Data.Migrations;
+using Nop.Services.Configuration;
 using Nop.Services.Localization;
 using Nop.Web.Framework.Extensions;
 
@@ -15,6 +17,8 @@ namespace Nop.Plugin.Misc.Brevo.Data
 
         protected readonly ILocalizationService _localizationService;
         protected readonly INopDataProvider _dataProvider;
+        protected readonly ISettingService _settingService;
+        protected readonly WidgetSettings _widgetSettings;
 
         #endregion
 
@@ -22,11 +26,15 @@ namespace Nop.Plugin.Misc.Brevo.Data
 
         public BrevoMigration(
             ILocalizationService localizationService,
-            INopDataProvider dataProvider
+            INopDataProvider dataProvider,
+            ISettingService settingService,
+            WidgetSettings widgetSettings
             )
         {
             _localizationService = localizationService;
             _dataProvider = dataProvider;
+            _settingService = settingService;
+            _widgetSettings = widgetSettings;
         }
 
         #endregion
@@ -49,13 +57,11 @@ namespace Nop.Plugin.Misc.Brevo.Data
             this.RenameLocales(new Dictionary<string, string>
             {
                 ["Plugins.Misc.Sendinblue.AccountInfo"] = "Plugins.Misc.Brevo.AccountInfo",
-                ["Plugins.Misc.Sendinblue.AccountInfo"] = "Plugins.Misc.Brevo.AccountInfo",
                 ["Plugins.Misc.Sendinblue.AccountInfo.Hint"] = "Plugins.Misc.Brevo.AccountInfo.Hint",
                 ["Plugins.Misc.Sendinblue.ActivateSMTP"] = "Plugins.Misc.Brevo.ActivateSMTP",
                 ["Plugins.Misc.Sendinblue.AddNewSMSNotification"] = "Plugins.Misc.Brevo.AddNewSMSNotification",
                 ["Plugins.Misc.Sendinblue.BillingAddressPhone"] = "Plugins.Misc.Brevo.BillingAddressPhone",
                 ["Plugins.Misc.Sendinblue.CustomerPhone"] = "Plugins.Misc.Brevo.CustomerPhone",
-                ["Plugins.Misc.Sendinblue.EditTemplate"] = "Plugins.Misc.Brevo.EditTemplate",
                 ["Plugins.Misc.Sendinblue.EditTemplate"] = "Plugins.Misc.Brevo.EditTemplate",
                 ["Plugins.Misc.Sendinblue.Fields.AllowedTokens.Hint"] = "Plugins.Misc.Brevo.Fields.AllowedTokens.Hint",
                 ["Plugins.Misc.Sendinblue.Fields.ApiKey"] = "Plugins.Misc.Brevo.Fields.ApiKey",
@@ -123,13 +129,19 @@ namespace Nop.Plugin.Misc.Brevo.Data
             #region settings
 
             var sendinblueSettings = _dataProvider.GetTable<Setting>().Where(x => x.Name.StartsWith("sendinbluesettings.")).ToList();
-            if (sendinblueSettings.Any())
+            if (sendinblueSettings.Count != 0)
             { 
                 foreach (var setting in sendinblueSettings)
                 {
                     setting.Name = setting.Name.Replace("sendinbluesettings", "brevosettings");
                 }
                 _dataProvider.UpdateEntities(sendinblueSettings);
+            }
+
+            if (!_widgetSettings.ActiveWidgetSystemNames.Contains(BrevoDefaults.SystemName))
+            {
+                _widgetSettings.ActiveWidgetSystemNames.Add(BrevoDefaults.SystemName);
+                _settingService.SaveSetting(_widgetSettings);
             }
 
             #endregion

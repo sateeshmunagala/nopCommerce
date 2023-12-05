@@ -116,7 +116,7 @@ namespace Nop.Services.Catalog
         /// </returns>
         public virtual async Task<BackInStockSubscription> GetSubscriptionByIdAsync(int subscriptionId)
         {
-            return await _backInStockSubscriptionRepository.GetByIdAsync(subscriptionId, cache => default);
+            return await _backInStockSubscriptionRepository.GetByIdAsync(subscriptionId, cache => default, useShortTermCache: true);
         }
 
         /// <summary>
@@ -139,8 +139,7 @@ namespace Nop.Services.Catalog
         /// </returns>
         public virtual async Task<int> SendNotificationsToSubscribersAsync(Product product)
         {
-            if (product == null)
-                throw new ArgumentNullException(nameof(product));
+            ArgumentNullException.ThrowIfNull(product);
 
             var result = 0;
             var subscriptions = await GetAllSubscriptionsByProductIdAsync(product.Id);

@@ -75,6 +75,7 @@ namespace Nop.Web.Factories
         protected readonly IProductService _productService;
         protected readonly IShippingService _shippingService;
         protected readonly IShoppingCartService _shoppingCartService;
+        protected readonly IShortTermCacheManager _shortTermCacheManager;
         protected readonly IStateProvinceService _stateProvinceService;
         protected readonly IStaticCacheManager _staticCacheManager;
         protected readonly IStoreContext _storeContext;
@@ -91,6 +92,7 @@ namespace Nop.Web.Factories
         protected readonly ShoppingCartSettings _shoppingCartSettings;
         protected readonly TaxSettings _taxSettings;
         protected readonly VendorSettings _vendorSettings;
+        private static readonly char[] _separator = [','];
 
         #endregion
 
@@ -127,6 +129,7 @@ namespace Nop.Web.Factories
             IProductService productService,
             IShippingService shippingService,
             IShoppingCartService shoppingCartService,
+            IShortTermCacheManager shortTermCacheManager,
             IStateProvinceService stateProvinceService,
             IStaticCacheManager staticCacheManager,
             IStoreContext storeContext,
@@ -175,6 +178,7 @@ namespace Nop.Web.Factories
             _productService = productService;
             _shippingService = shippingService;
             _shoppingCartService = shoppingCartService;
+            _shortTermCacheManager = shortTermCacheManager;
             _stateProvinceService = stateProvinceService;
             _staticCacheManager = staticCacheManager;
             _storeContext = storeContext;
@@ -208,8 +212,7 @@ namespace Nop.Web.Factories
         protected virtual async Task<IList<ShoppingCartModel.CheckoutAttributeModel>> PrepareCheckoutAttributeModelsAsync(
             IList<ShoppingCartItem> cart)
         {
-            if (cart == null)
-                throw new ArgumentNullException(nameof(cart));
+            ArgumentNullException.ThrowIfNull(cart);
 
             var model = new List<ShoppingCartModel.CheckoutAttributeModel>();
             var store = await _storeContext.GetCurrentStoreAsync();
@@ -230,7 +233,7 @@ namespace Nop.Web.Factories
                 if (!string.IsNullOrEmpty(attribute.ValidationFileAllowedExtensions))
                 {
                     attributeModel.AllowedFileExtensions = attribute.ValidationFileAllowedExtensions
-                        .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Split(_separator, StringSplitOptions.RemoveEmptyEntries)
                         .ToList();
                 }
 
@@ -369,11 +372,9 @@ namespace Nop.Web.Factories
         /// </returns>
         protected virtual async Task<ShoppingCartModel.ShoppingCartItemModel> PrepareShoppingCartItemModelAsync(IList<ShoppingCartItem> cart, ShoppingCartItem sci)
         {
-            if (cart == null)
-                throw new ArgumentNullException(nameof(cart));
+            ArgumentNullException.ThrowIfNull(cart);
 
-            if (sci == null)
-                throw new ArgumentNullException(nameof(sci));
+            ArgumentNullException.ThrowIfNull(sci);
 
             var product = await _productService.GetProductByIdAsync(sci.ProductId);
 
@@ -518,8 +519,7 @@ namespace Nop.Web.Factories
         /// </returns>
         protected virtual async Task<WishlistModel.ShoppingCartItemModel> PrepareWishlistItemModelAsync(ShoppingCartItem sci)
         {
-            if (sci == null)
-                throw new ArgumentNullException(nameof(sci));
+            ArgumentNullException.ThrowIfNull(sci);
 
             var product = await _productService.GetProductByIdAsync(sci.ProductId);
 
@@ -659,8 +659,7 @@ namespace Nop.Web.Factories
         /// </returns>
         protected virtual async Task<ShoppingCartModel.OrderReviewDataModel> PrepareOrderReviewDataModelAsync(IList<ShoppingCartItem> cart)
         {
-            if (cart == null)
-                throw new ArgumentNullException(nameof(cart));
+            ArgumentNullException.ThrowIfNull(cart);
 
             var model = new ShoppingCartModel.OrderReviewDataModel
             {
@@ -768,8 +767,7 @@ namespace Nop.Web.Factories
         /// </returns>
         public virtual async Task<EstimateShippingModel> PrepareEstimateShippingModelAsync(IList<ShoppingCartItem> cart, bool setEstimateShippingDefaultAddress = true)
         {
-            if (cart == null)
-                throw new ArgumentNullException(nameof(cart));
+            ArgumentNullException.ThrowIfNull(cart);
 
             var model = new EstimateShippingModel
             {
@@ -780,13 +778,9 @@ namespace Nop.Web.Factories
             if (model.Enabled)
             {
                 var customer = await _workContext.GetCurrentCustomerAsync();
-                var shippingAddress = await _customerService.GetCustomerShippingAddressAsync(customer);
-                if (shippingAddress == null)
-                {
-                    shippingAddress = await (await _customerService.GetAddressesByCustomerIdAsync(customer.Id))
+                var shippingAddress = await _customerService.GetCustomerShippingAddressAsync(customer) ?? await (await _customerService.GetAddressesByCustomerIdAsync(customer.Id))
                     //enabled for the current store
                     .FirstOrDefaultAwaitAsync(async a => a.CountryId == null || await _storeMappingService.AuthorizeAsync(await _countryService.GetCountryByAddressAsync(a)));
-                }
 
                 //countries
                 var defaultEstimateCountryId = (setEstimateShippingDefaultAddress && shippingAddress != null)
@@ -813,8 +807,8 @@ namespace Nop.Web.Factories
                     : model.StateProvinceId;
                 var states = defaultEstimateCountryId.HasValue
                     ? (await _stateProvinceService.GetStateProvincesByCountryIdAsync(defaultEstimateCountryId.Value, currentLanguage.Id)).ToList()
-                    : new List<StateProvince>();
-                if (states.Any())
+                    : [];
+                if (states.Count != 0)
                 {
                     foreach (var s in states)
                     {
@@ -864,11 +858,9 @@ namespace Nop.Web.Factories
             bool validateCheckoutAttributes = false,
             bool prepareAndDisplayOrderReviewData = false)
         {
-            if (cart == null)
-                throw new ArgumentNullException(nameof(cart));
+            ArgumentNullException.ThrowIfNull(cart);
 
-            if (model == null)
-                throw new ArgumentNullException(nameof(model));
+            ArgumentNullException.ThrowIfNull(model);
 
             //simple properties
             model.OnePageCheckoutEnabled = _orderSettings.OnePageCheckoutEnabled;
@@ -899,10 +891,11 @@ namespace Nop.Web.Factories
             //discount and gift card boxes
             model.DiscountBox.Display = _shoppingCartSettings.ShowDiscountBox;
             var discountCouponCodes = await _customerService.ParseAppliedDiscountCouponCodesAsync(customer);
+
             foreach (var couponCode in discountCouponCodes)
             {
                 var discount = await (await _discountService.GetAllDiscountsAsync(couponCode: couponCode))
-                    .FirstOrDefaultAwaitAsync(async d => d.RequiresCouponCode && (await _discountService.ValidateDiscountAsync(d, customer)).IsValid);
+                    .FirstOrDefaultAwaitAsync(async d => d.RequiresCouponCode && (await _discountService.ValidateDiscountAsync(d, customer, discountCouponCodes)).IsValid);
 
                 if (discount != null)
                 {
@@ -953,7 +946,7 @@ namespace Nop.Web.Factories
                 model.ButtonPaymentMethodViewComponents.Add(viewComponent);
             }
             //hide "Checkout" button if we have only "Button" payment methods
-            model.HideCheckoutButton = !nonButtonPaymentMethods.Any() && model.ButtonPaymentMethodViewComponents.Any();
+            model.HideCheckoutButton = nonButtonPaymentMethods.Count == 0 && model.ButtonPaymentMethodViewComponents.Any();
 
             //order review data
             if (prepareAndDisplayOrderReviewData)
@@ -976,11 +969,9 @@ namespace Nop.Web.Factories
         /// </returns>
         public virtual async Task<WishlistModel> PrepareWishlistModelAsync(WishlistModel model, IList<ShoppingCartItem> cart, bool isEditable = true)
         {
-            if (cart == null)
-                throw new ArgumentNullException(nameof(cart));
+            ArgumentNullException.ThrowIfNull(cart);
 
-            if (model == null)
-                throw new ArgumentNullException(nameof(model));
+            ArgumentNullException.ThrowIfNull(model);
 
             model.EmailWishlistEnabled = _shoppingCartSettings.EmailWishlistEnabled;
             model.IsEditable = isEditable;
@@ -1226,7 +1217,7 @@ namespace Nop.Web.Factories
                     }
                     else
                     {
-                        displayTaxRates = _taxSettings.DisplayTaxRates && taxRates.Any();
+                        displayTaxRates = _taxSettings.DisplayTaxRates && taxRates.Count != 0;
                         displayTax = !displayTaxRates;
 
                         model.Tax = await _priceFormatter.FormatPriceAsync(shoppingCartTax, true, false);
@@ -1260,7 +1251,7 @@ namespace Nop.Web.Factories
                 }
 
                 //gift cards
-                if (appliedGiftCards != null && appliedGiftCards.Any())
+                if (appliedGiftCards != null && appliedGiftCards.Count != 0)
                 {
                     foreach (var appliedGiftCard in appliedGiftCards)
                     {
@@ -1317,8 +1308,7 @@ namespace Nop.Web.Factories
         /// </returns>
         public virtual async Task<EstimateShippingResultModel> PrepareEstimateShippingResultModelAsync(IList<ShoppingCartItem> cart, EstimateShippingModel request, bool cacheShippingOptions)
         {
-            if (request is null)
-                throw new ArgumentNullException(nameof(request));
+            ArgumentNullException.ThrowIfNull(request);
 
             var model = new EstimateShippingResultModel();
 
@@ -1404,7 +1394,7 @@ namespace Nop.Web.Factories
                             NopCustomerDefaults.SelectedShippingOptionAttribute, store.Id);
                 }
 
-                if (rawShippingOptions.Any())
+                if (rawShippingOptions.Count != 0)
                 {
                     foreach (var option in rawShippingOptions)
                     {
@@ -1474,8 +1464,7 @@ namespace Nop.Web.Factories
         /// </returns>
         public virtual async Task<WishlistEmailAFriendModel> PrepareWishlistEmailAFriendModelAsync(WishlistEmailAFriendModel model, bool excludeProperties)
         {
-            if (model == null)
-                throw new ArgumentNullException(nameof(model));
+            ArgumentNullException.ThrowIfNull(model);
 
             model.DisplayCaptcha = _captchaSettings.Enabled && _captchaSettings.ShowOnEmailWishlistToFriendPage;
             if (!excludeProperties)
@@ -1500,10 +1489,7 @@ namespace Nop.Web.Factories
         /// </returns>
         public virtual async Task<PictureModel> PrepareCartItemPictureModelAsync(ShoppingCartItem sci, int pictureSize, bool showDefaultPicture, string productName)
         {
-            var pictureCacheKey = _staticCacheManager.PrepareKeyForShortTermCache(NopModelCacheDefaults.CartPictureModelKey
-                , sci, pictureSize, true, await _workContext.GetWorkingLanguageAsync(), _webHelper.IsCurrentConnectionSecured(), await _storeContext.GetCurrentStoreAsync());
-
-            var model = await _staticCacheManager.GetAsync(pictureCacheKey, async () =>
+            var model = await _shortTermCacheManager.GetAsync(async () =>
             {
                 var product = await _productService.GetProductByIdAsync(sci.ProductId);
 
@@ -1517,7 +1503,7 @@ namespace Nop.Web.Factories
                     Title = string.Format(await _localizationService.GetResourceAsync("Media.Product.ImageLinkTitleFormat"), productName),
                     AlternateText = string.Format(await _localizationService.GetResourceAsync("Media.Product.ImageAlternateTextFormat"), productName),
                 };
-            });
+            }, NopModelCacheDefaults.CartPictureModelKey, sci, pictureSize, true, await _workContext.GetWorkingLanguageAsync(), _webHelper.IsCurrentConnectionSecured(), await _storeContext.GetCurrentStoreAsync());
 
             return model;
         }

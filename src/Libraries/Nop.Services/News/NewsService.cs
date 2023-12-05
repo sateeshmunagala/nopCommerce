@@ -136,8 +136,7 @@ namespace Nop.Services.News
         /// <returns>Result</returns>
         public virtual bool IsNewsAvailable(NewsItem newsItem, DateTime? dateTime = null)
         {
-            if (newsItem == null)
-                throw new ArgumentNullException(nameof(newsItem));
+            ArgumentNullException.ThrowIfNull(newsItem);
 
             if (newsItem.StartDateUtc.HasValue && newsItem.StartDateUtc.Value >= dateTime)
                 return false;
@@ -208,7 +207,7 @@ namespace Nop.Services.News
         /// </returns>
         public virtual async Task<NewsComment> GetNewsCommentByIdAsync(int newsCommentId)
         {
-            return await _newsCommentRepository.GetByIdAsync(newsCommentId, cache => default);
+            return await _newsCommentRepository.GetByIdAsync(newsCommentId, cache => default, useShortTermCache: true);
         }
 
         /// <summary>
@@ -266,8 +265,7 @@ namespace Nop.Services.News
         /// <returns>A task that represents the asynchronous operation</returns>
         public virtual async Task DeleteNewsCommentsAsync(IList<NewsComment> newsComments)
         {
-            if (newsComments == null)
-                throw new ArgumentNullException(nameof(newsComments));
+            ArgumentNullException.ThrowIfNull(newsComments);
 
             foreach (var newsComment in newsComments)
                 await DeleteNewsCommentAsync(newsComment);

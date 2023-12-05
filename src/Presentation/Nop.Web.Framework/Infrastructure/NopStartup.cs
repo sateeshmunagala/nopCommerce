@@ -51,6 +51,7 @@ using Nop.Services.Tax;
 using Nop.Services.Themes;
 using Nop.Services.Topics;
 using Nop.Services.Vendors;
+using Nop.Web.Framework.Factories;
 using Nop.Web.Framework.Menu;
 using Nop.Web.Framework.Mvc.Routing;
 using Nop.Web.Framework.Themes;
@@ -91,6 +92,7 @@ namespace Nop.Web.Framework.Infrastructure
             services.AddTransient(typeof(IConcurrentCollection<>), typeof(ConcurrentTrie<>));
 
             services.AddSingleton<ICacheKeyManager, CacheKeyManager>();
+            services.AddScoped<IShortTermCacheManager, PerRequestCacheManager>();
 
             if (distributedCacheConfig.Enabled)
             {
@@ -98,18 +100,22 @@ namespace Nop.Web.Framework.Infrastructure
                 {
                     case DistributedCacheType.Memory:
                         services.AddScoped<IStaticCacheManager, MemoryDistributedCacheManager>();
+                        services.AddScoped<ICacheKeyService, MemoryDistributedCacheManager>();
                         break;
                     case DistributedCacheType.SqlServer:
                         services.AddScoped<IStaticCacheManager, MsSqlServerCacheManager>();
+                        services.AddScoped<ICacheKeyService, MsSqlServerCacheManager>();
                         break;
                     case DistributedCacheType.Redis:
                         services.AddSingleton<IRedisConnectionWrapper, RedisConnectionWrapper>();
                         services.AddScoped<IStaticCacheManager, RedisCacheManager>();
+                        services.AddScoped<ICacheKeyService, RedisCacheManager>();
                         break;
                     case DistributedCacheType.RedisSynchronizedMemory:
                         services.AddSingleton<IRedisConnectionWrapper, RedisConnectionWrapper>();
                         services.AddSingleton<ISynchronizedMemoryCache, RedisSynchronizedMemoryCache>();
                         services.AddSingleton<IStaticCacheManager, SynchronizedMemoryCacheManager>();
+                        services.AddScoped<ICacheKeyService, SynchronizedMemoryCacheManager>();
                         break;
                 }
 
@@ -119,6 +125,7 @@ namespace Nop.Web.Framework.Infrastructure
             {
                 services.AddSingleton<ILocker, MemoryCacheLocker>();
                 services.AddSingleton<IStaticCacheManager, MemoryCacheManager>();
+                services.AddScoped<ICacheKeyService, MemoryCacheManager>();
             }
 
             //work context
@@ -198,6 +205,7 @@ namespace Nop.Web.Framework.Infrastructure
             services.AddScoped<IShippingService, ShippingService>();
             services.AddScoped<IDateRangeService, DateRangeService>();
             services.AddScoped<ITaxCategoryService, TaxCategoryService>();
+            services.AddScoped<ICheckVatService, CheckVatService>();
             services.AddScoped<ITaxService, TaxService>();
             services.AddScoped<ILogger, DefaultLogger>();
             services.AddScoped<ICustomerActivityService, CustomerActivityService>();
@@ -225,6 +233,7 @@ namespace Nop.Web.Framework.Infrastructure
             services.AddScoped<IHtmlFormatter, HtmlFormatter>();
             services.AddScoped<IVideoService, VideoService>();
             services.AddScoped<INopUrlHelper, NopUrlHelper>();
+            services.AddScoped<IWidgetModelFactory, WidgetModelFactory>();
 
             //attribute services
             services.AddScoped(typeof(IAttributeService<,>), typeof(AttributeService<,>));

@@ -104,16 +104,10 @@ namespace Nop.Core
         /// <returns>String of IP address</returns>
         public virtual string GetCurrentIpAddress()
         {
-            if (!IsRequestAvailable())
+            if (!IsRequestAvailable() || _httpContextAccessor.HttpContext!.Connection.RemoteIpAddress is not { } remoteIp)
                 return string.Empty;
 
-            if (_httpContextAccessor.HttpContext.Connection?.RemoteIpAddress is not IPAddress remoteIp)
-                return "";
-
-            if (remoteIp.Equals(IPAddress.IPv6Loopback))
-                return IPAddress.Loopback.ToString();
-
-            return remoteIp.MapToIPv4().ToString();
+            return (remoteIp.Equals(IPAddress.IPv6Loopback) ? IPAddress.Loopback : remoteIp).ToString();
         }
 
         /// <summary>
@@ -354,7 +348,7 @@ namespace Nop.Core
             {
                 var response = _httpContextAccessor.HttpContext.Response;
                 //ASP.NET 4 style - return response.IsRequestBeingRedirected;
-                int[] redirectionStatusCodes = { StatusCodes.Status301MovedPermanently, StatusCodes.Status302Found };
+                int[] redirectionStatusCodes = [StatusCodes.Status301MovedPermanently, StatusCodes.Status302Found];
 
                 return redirectionStatusCodes.Contains(response.StatusCode);
             }
@@ -431,13 +425,12 @@ namespace Nop.Core
         /// <returns>Result</returns>
         public virtual bool IsAjaxRequest(HttpRequest request)
         {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
+            ArgumentNullException.ThrowIfNull(request);
 
             if (request.Headers == null)
                 return false;
 
-            return request.Headers["X-Requested-With"] == "XMLHttpRequest";
+            return request.Headers.XRequestedWith == "XMLHttpRequest";
         }
 
         #endregion

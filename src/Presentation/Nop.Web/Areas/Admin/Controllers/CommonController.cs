@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
 using Nop.Core.Caching;
+using Nop.Core.Http.Extensions;
 using Nop.Core.Infrastructure;
 using Nop.Data;
 using Nop.Services.Common;
@@ -286,9 +287,9 @@ namespace Nop.Web.Areas.Admin.Controllers
             if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManageMaintenance))
                 return AccessDeniedView();
 
-            var action = Request.Form["action"];
+            var action = await Request.GetFormValueAsync("action");
 
-            var fileName = Request.Form["backupFileName"];
+            var fileName = await Request.GetFormValueAsync("backupFileName");
             fileName = _fileProvider.GetFileName(_fileProvider.GetAbsolutePath(fileName));
 
             var backupPath = _maintenanceService.GetBackupPath(fileName);
@@ -348,11 +349,11 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             //home page
             if (string.IsNullOrEmpty(returnUrl))
-                returnUrl = Url.Action("Index", "Home", new { area = AreaNames.Admin });
+                returnUrl = Url.Action("Index", "Home", new { area = AreaNames.ADMIN });
 
             //prevent open redirection attack
             if (!Url.IsLocalUrl(returnUrl))
-                return RedirectToAction("Index", "Home", new { area = AreaNames.Admin });
+                return RedirectToAction("Index", "Home", new { area = AreaNames.ADMIN });
 
             return Redirect(returnUrl);
         }
@@ -367,11 +368,11 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             //home page
             if (string.IsNullOrEmpty(returnUrl))
-                return RedirectToAction("Index", "Home", new { area = AreaNames.Admin });
+                return RedirectToAction("Index", "Home", new { area = AreaNames.ADMIN });
 
             //prevent open redirection attack
             if (!Url.IsLocalUrl(returnUrl))
-                return RedirectToAction("Index", "Home", new { area = AreaNames.Admin });
+                return RedirectToAction("Index", "Home", new { area = AreaNames.ADMIN });
 
             return Redirect(returnUrl);
         }
@@ -384,11 +385,11 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             //home page
             if (string.IsNullOrEmpty(returnUrl))
-                returnUrl = Url.Action("Index", "Home", new { area = AreaNames.Admin });
+                returnUrl = Url.Action("Index", "Home", new { area = AreaNames.ADMIN });
 
             //prevent open redirection attack
             if (!Url.IsLocalUrl(returnUrl))
-                returnUrl = Url.Action("Index", "Home", new { area = AreaNames.Admin });
+                returnUrl = Url.Action("Index", "Home", new { area = AreaNames.ADMIN });
 
             return View("RestartApplication", returnUrl);
         }
@@ -440,7 +441,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             if (selectedIds == null || selectedIds.Count == 0)
                 return NoContent();
 
-            await _urlRecordService.DeleteUrlRecordsAsync(await _urlRecordService.GetUrlRecordsByIdsAsync(selectedIds.ToArray()));
+            await _urlRecordService.DeleteUrlRecordsAsync(await _urlRecordService.GetUrlRecordsByIdsAsync([.. selectedIds]));
 
             return Json(new { Result = true });
         }

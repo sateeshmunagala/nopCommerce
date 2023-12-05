@@ -96,6 +96,20 @@ namespace Nop.Web.Framework.Migrations.UpgradeTo470
             }
 
             settingService.SaveSetting(robotsTxtSettings, settings => settings.DisallowPaths);
+
+            //#6853
+            if (!settingService.SettingExists(customerSettings, settings => settings.NeutralGenderEnabled))
+            {
+                customerSettings.NeutralGenderEnabled = false;
+                settingService.SaveSetting(customerSettings, settings => settings.NeutralGenderEnabled);
+            }
+
+            //#6891
+            if (!settingService.SettingExists(customerSettings, settings => settings.RequiredReLoginAfterPasswordChange))
+            {
+                customerSettings.RequiredReLoginAfterPasswordChange = false;
+                settingService.SaveSetting(customerSettings, settings => settings.RequiredReLoginAfterPasswordChange);
+            }
         }
 
         public override void Down()

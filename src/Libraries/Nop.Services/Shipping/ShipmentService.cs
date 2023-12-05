@@ -221,7 +221,7 @@ namespace Nop.Services.Shipping
         /// </returns>
         public virtual async Task<Shipment> GetShipmentByIdAsync(int shipmentId)
         {
-            return await _shipmentRepository.GetByIdAsync(shipmentId);
+            return await _shipmentRepository.GetByIdAsync(shipmentId, cache => default, useShortTermCache: true);
         }
 
         /// <summary>
@@ -327,7 +327,7 @@ namespace Nop.Services.Shipping
         /// </returns>
         public virtual async Task<ShipmentItem> GetShipmentItemByIdAsync(int shipmentItemId)
         {
-            return await _siRepository.GetByIdAsync(shipmentItemId);
+            return await _siRepository.GetByIdAsync(shipmentItemId, cache => default, useShortTermCache: true);
         }
 
         /// <summary>
@@ -344,8 +344,7 @@ namespace Nop.Services.Shipping
         public virtual async Task<int> GetQuantityInShipmentsAsync(Product product, int warehouseId,
             bool ignoreShipped, bool ignoreDelivered)
         {
-            if (product == null)
-                throw new ArgumentNullException(nameof(product));
+            ArgumentNullException.ThrowIfNull(product);
 
             //only products with "use multiple warehouses" are handled this way
             if (product.ManageInventoryMethod != ManageInventoryMethod.ManageStock)
@@ -405,7 +404,7 @@ namespace Nop.Services.Shipping
         /// </returns>
         public virtual async Task<IShipmentTracker> GetShipmentTrackerAsync(Shipment shipment)
         {
-            var order = await _orderRepository.GetByIdAsync(shipment.OrderId, cache => default);
+            var order = await _orderRepository.GetByIdAsync(shipment.OrderId, cache => default, useShortTermCache: true);
             IShipmentTracker shipmentTracker = null;
 
             if (order.PickupInStore)

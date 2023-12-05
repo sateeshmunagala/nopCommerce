@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Primitives;
 using Nop.Core;
 using Nop.Core.Domain.Security;
+using Nop.Core.Http.Extensions;
 using Nop.Data;
 using Nop.Services.Logging;
 using Nop.Web.Framework.Security.Captcha;
@@ -22,7 +23,7 @@ namespace Nop.Web.Framework.Mvc.Filters
         /// <param name="actionParameterName">The name of the action parameter to which the result will be passed</param>
         public ValidateCaptchaAttribute(string actionParameterName = "captchaValid") : base(typeof(ValidateCaptchaFilter))
         {
-            Arguments = new object[] { actionParameterName };
+            Arguments = [actionParameterName];
         }
 
         #endregion
@@ -77,21 +78,20 @@ namespace Nop.Web.Framework.Mvc.Filters
             /// <returns>A task that represents the asynchronous operation</returns>
             private async Task ValidateCaptchaAsync(ActionExecutingContext context)
             {
-                if (context == null)
-                    throw new ArgumentNullException(nameof(context));
+                ArgumentNullException.ThrowIfNull(context);
 
                 if (!DataSettingsManager.IsDatabaseInstalled())
                     return;
 
                 //whether CAPTCHA is enabled
-                if (_captchaSettings.Enabled && context.HttpContext?.Request != null)
+                if (_captchaSettings.Enabled)
                 {
                     //push the validation result as an action parameter
                     var isValid = false;
 
                     //get form values
-                    var captchaResponseValue = context.HttpContext.Request.Form[RESPONSE_FIELD_KEY];
-                    var gCaptchaResponseValue = context.HttpContext.Request.Form[G_RESPONSE_FIELD_KEY];
+                    var captchaResponseValue = await context.HttpContext.Request.GetFormValueAsync(RESPONSE_FIELD_KEY);
+                    var gCaptchaResponseValue = await context.HttpContext.Request.GetFormValueAsync(G_RESPONSE_FIELD_KEY);
 
                     if (!StringValues.IsNullOrEmpty(captchaResponseValue) || !StringValues.IsNullOrEmpty(gCaptchaResponseValue))
                     {

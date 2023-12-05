@@ -186,7 +186,7 @@ namespace Nop.Tests
 
             var rootPath =
                 new DirectoryInfo(
-                        $"{Directory.GetCurrentDirectory().Split("bin")[0]}{Path.Combine(@"\..\..\Presentation\Nop.Web".Split('\\', '/').ToArray())}")
+                        $"{Directory.GetCurrentDirectory().Split("bin")[0]}{Path.Combine([.. @"\..\..\Presentation\Nop.Web".Split('\\', '/')])}")
                     .FullName;
 
             //Presentation\Nop.Web\wwwroot
@@ -199,10 +199,8 @@ namespace Nop.Tests
 
             services.AddWebEncoders();
 
-            var httpContext = new DefaultHttpContext
-            {
-                Request = { Headers = { { HeaderNames.Host, NopTestsDefaults.HostIpAddress } } }
-            };
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers.Append(HeaderNames.Host, NopTestsDefaults.HostIpAddress);
 
             var httpContextAccessor = new Mock<IHttpContextAccessor>();
             httpContextAccessor.Setup(p => p.HttpContext).Returns(httpContext);
@@ -255,6 +253,8 @@ namespace Nop.Tests
 
             //plugins
             services.AddTransient<IPluginService, PluginService>();
+
+            services.AddScoped<IShortTermCacheManager, PerRequestCacheManager>();
 
             services.AddSingleton<ICacheKeyManager, CacheKeyManager>();
             services.AddSingleton<IMemoryCache>(memoryCache);
@@ -352,6 +352,7 @@ namespace Nop.Tests
             services.AddTransient<IShippingService, ShippingService>();
             services.AddTransient<IDateRangeService, DateRangeService>();
             services.AddTransient<ITaxCategoryService, TaxCategoryService>();
+            services.AddTransient<ICheckVatService, CheckVatService>();
             services.AddTransient<ITaxService, TaxService>();
             services.AddTransient<ILogger, DefaultLogger>();
             services.AddTransient<ICustomerActivityService, CustomerActivityService>();
@@ -432,7 +433,7 @@ namespace Nop.Tests
             services.AddTransient<Lazy<IStoreContext>>();
             services.AddTransient<IWorkContext, WebWorkContext>();
             services.AddTransient<IThemeContext, ThemeContext>();
-
+            services.AddTransient<Lazy<ILocalizationService>>();
             services.AddTransient<INopHtmlHelper, NopHtmlHelper>();
 
             //schedule tasks
@@ -501,7 +502,7 @@ namespace Nop.Tests
             services.AddTransient<ITopicModelFactory, TopicModelFactory>();
             services.AddTransient<IVendorAttributeModelFactory, VendorAttributeModelFactory>();
             services.AddTransient<IVendorModelFactory, VendorModelFactory>();
-            services.AddTransient<IWidgetModelFactory, WidgetModelFactory>();
+            services.AddTransient<Web.Framework.Factories.IWidgetModelFactory, Web.Framework.Factories.WidgetModelFactory>();
 
             //factories
             services.AddTransient<Web.Factories.IAddressModelFactory, Web.Factories.AddressModelFactory>();
@@ -529,7 +530,6 @@ namespace Nop.Tests
             services.AddTransient<Web.Factories.ISitemapModelFactory, Web.Factories.SitemapModelFactory>();
             services.AddTransient<Web.Factories.ITopicModelFactory, Web.Factories.TopicModelFactory>();
             services.AddTransient<Web.Factories.IVendorModelFactory, Web.Factories.VendorModelFactory>();
-            services.AddTransient<Web.Factories.IWidgetModelFactory, Web.Factories.WidgetModelFactory>();
 
             _serviceProvider = services.BuildServiceProvider();
 

@@ -33,7 +33,7 @@ namespace Nop.Web.Areas.Admin.Models.Catalog
             AvailableDeliveryDates = new List<SelectListItem>();
             AvailableProductAvailabilityRanges = new List<SelectListItem>();
             AvailableWarehouses = new List<SelectListItem>();
-            ProductsTypesSupportedByProductTemplates = new Dictionary<int, IList<SelectListItem>>();
+            ProductsTypesSupportedByProductTemplates = [];
 
             AvailableVendors = new List<SelectListItem>();
 
@@ -237,9 +237,6 @@ namespace Nop.Web.Areas.Admin.Models.Catalog
         [NopResourceDisplayName("Admin.Catalog.Products.Fields.TaxCategory")]
         public int TaxCategoryId { get; set; }
         public IList<SelectListItem> AvailableTaxCategories { get; set; }
-
-        [NopResourceDisplayName("Admin.Catalog.Products.Fields.IsTelecommunicationsOrBroadcastingOrElectronicServices")]
-        public bool IsTelecommunicationsOrBroadcastingOrElectronicServices { get; set; }
 
         [NopResourceDisplayName("Admin.Catalog.Products.Fields.ManageInventoryMethod")]
         public int ManageInventoryMethodId { get; set; }

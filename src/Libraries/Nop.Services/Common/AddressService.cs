@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Text.RegularExpressions;
-using Nop.Core.Caching;
 using Nop.Core.Domain.Common;
 using Nop.Data;
 using Nop.Services.Attributes;
@@ -109,8 +108,7 @@ namespace Nop.Services.Common
         /// </returns>
         public virtual async Task<Address> GetAddressByIdAsync(int addressId)
         {
-            return await _addressRepository.GetByIdAsync(addressId,
-                cache => cache.PrepareKeyForShortTermCache(NopEntityCacheDefaults<Address>.ByIdCacheKey, addressId));
+            return await _addressRepository.GetByIdAsync(addressId, cache => default, useShortTermCache: true);
         }
 
         /// <summary>
@@ -120,8 +118,7 @@ namespace Nop.Services.Common
         /// <returns>A task that represents the asynchronous operation</returns>
         public virtual async Task InsertAddressAsync(Address address)
         {
-            if (address == null)
-                throw new ArgumentNullException(nameof(address));
+            ArgumentNullException.ThrowIfNull(address);
 
             address.CreatedOnUtc = DateTime.UtcNow;
 
@@ -141,8 +138,7 @@ namespace Nop.Services.Common
         /// <returns>A task that represents the asynchronous operation</returns>
         public virtual async Task UpdateAddressAsync(Address address)
         {
-            if (address == null)
-                throw new ArgumentNullException(nameof(address));
+            ArgumentNullException.ThrowIfNull(address);
 
             //some validation
             if (address.CountryId == 0)
@@ -163,8 +159,7 @@ namespace Nop.Services.Common
         /// </returns>
         public virtual async Task<bool> IsAddressValidAsync(Address address)
         {
-            if (address == null)
-                throw new ArgumentNullException(nameof(address));
+            ArgumentNullException.ThrowIfNull(address);
 
             if (string.IsNullOrWhiteSpace(address.FirstName))
                 return false;
@@ -403,7 +398,7 @@ namespace Nop.Services.Common
             }
 
             var formatString = string.Format(format, fieldsList.Select(x => !string.IsNullOrEmpty(x.Value) ? $"{x.Value}{separator}" : x.Value).ToArray())
-                .TrimEnd(separator.ToArray());
+                .TrimEnd([.. separator]);
 
             return (formatString, fieldsList);
         }

@@ -128,7 +128,7 @@ namespace Nop.Web.Areas.Admin.Infrastructure.Mapper
                 //exclude some properties from mapping configuration and models
                 if (typeof(IConfig).IsAssignableFrom(mapConfiguration.DestinationType))
                     map.ForMember(nameof(IConfig.Name), options => options.Ignore());
-
+               
                 //exclude Locales from mapping ILocalizedModel
                 if (typeof(ILocalizedModel).IsAssignableFrom(mapConfiguration.DestinationType))
                     map.ForMember(nameof(ILocalizedModel<ILocalizedModel>.Locales), options => options.Ignore());
@@ -211,7 +211,8 @@ namespace Nop.Web.Areas.Admin.Infrastructure.Mapper
 
             CreateMap<DataConfig, DataConfigModel>()
                 .ForMember(model => model.DataProviderTypeValues, options => options.Ignore());
-            CreateMap<DataConfigModel, DataConfig>();
+            CreateMap<DataConfigModel, DataConfig>()
+                .ForMember(entity => entity.WithNoLock, options => options.Ignore());
 
             CreateMap<WebOptimizerConfig, WebOptimizerConfigModel>();
             CreateMap<WebOptimizerConfigModel, WebOptimizerConfig>()
@@ -536,7 +537,9 @@ namespace Nop.Web.Areas.Admin.Infrastructure.Mapper
                 .ForMember(model => model.StockQuantityHistory, options => options.Ignore())
                 .ForMember(model => model.StockQuantityHistorySearchModel, options => options.Ignore())
                 .ForMember(model => model.StockQuantityStr, options => options.Ignore())
-                .ForMember(model => model.TierPriceSearchModel, options => options.Ignore());
+                .ForMember(model => model.TierPriceSearchModel, options => options.Ignore())
+                .ForMember(model => model.SelectedProductTags, options => options.Ignore())
+                .ForMember(model => model.AvailableProductTags, options => options.Ignore());
             CreateMap<ProductModel, Product>()
                 .ForMember(entity => entity.ApprovedRatingSum, options => options.Ignore())
                 .ForMember(entity => entity.ApprovedTotalReviews, options => options.Ignore())
@@ -783,7 +786,8 @@ namespace Nop.Web.Areas.Admin.Infrastructure.Mapper
                 .ForMember(settings => settings.HashedPasswordFormat, options => options.Ignore())
                 .ForMember(settings => settings.OnlineCustomerMinutes, options => options.Ignore())
                 .ForMember(settings => settings.SuffixDeletedCustomers, options => options.Ignore())
-                .ForMember(settings => settings.LastActivityMinutes, options => options.Ignore());
+                .ForMember(settings => settings.LastActivityMinutes, options => options.Ignore())
+                .ForMember(settings => settings.RequiredReLoginAfterPasswordChange, options => options.Ignore());
 
             CreateMap<MultiFactorAuthenticationSettings, MultiFactorAuthenticationSettingsModel>();
             CreateMap<MultiFactorAuthenticationSettingsModel, MultiFactorAuthenticationSettings>()
@@ -831,6 +835,7 @@ namespace Nop.Web.Areas.Admin.Infrastructure.Mapper
                 .ForMember(model => model.Password, options => options.Ignore())
                 .ForMember(model => model.AvailableVendors, options => options.Ignore())
                 .ForMember(model => model.GenderEnabled, options => options.Ignore())
+                .ForMember(model => model.NeutralGenderEnabled, options => options.Ignore())
                 .ForMember(model => model.Gender, options => options.Ignore())
                 .ForMember(model => model.FirstNameEnabled, options => options.Ignore())
                 .ForMember(model => model.FirstName, options => options.Ignore())
@@ -1084,7 +1089,8 @@ namespace Nop.Web.Areas.Admin.Infrastructure.Mapper
         {
             CreateMap<Language, LanguageModel>()
                 .ForMember(model => model.AvailableCurrencies, options => options.Ignore())
-                .ForMember(model => model.LocaleResourceSearchModel, options => options.Ignore());
+                .ForMember(model => model.LocaleResourceSearchModel, options => options.Ignore())
+                .ForMember(model => model.AvailableFlagImages, options => options.Ignore());
             CreateMap<LanguageModel, Language>();
 
             CreateMap<LocaleResourceModel, LocaleStringResource>()

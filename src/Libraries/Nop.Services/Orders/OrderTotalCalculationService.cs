@@ -115,24 +115,26 @@ namespace Nop.Services.Orders
         protected virtual async Task<(decimal orderDiscount, List<Discount> appliedDiscounts)> GetOrderSubtotalDiscountAsync(Customer customer,
             decimal orderSubTotal)
         {
-            var appliedDiscounts = new List<Discount>();
             var discountAmount = decimal.Zero;
             if (_catalogSettings.IgnoreDiscounts)
-                return (discountAmount, appliedDiscounts);
+                return (discountAmount, new List<Discount>());
 
             var allDiscounts = await _discountService.GetAllDiscountsAsync(DiscountType.AssignedToOrderSubTotal);
             var allowedDiscounts = new List<Discount>();
             if (allDiscounts != null)
             {
+                var couponCodesToValidate = await _customerService.ParseAppliedDiscountCouponCodesAsync(customer);
                 foreach (var discount in allDiscounts)
+                {
                     if (!_discountService.ContainsDiscount(allowedDiscounts, discount) &&
-                        (await _discountService.ValidateDiscountAsync(discount, customer)).IsValid)
+                        (await _discountService.ValidateDiscountAsync(discount, customer, couponCodesToValidate)).IsValid)
                     {
                         allowedDiscounts.Add(discount);
                     }
+                }
             }
 
-            appliedDiscounts = _discountService.GetPreferredDiscount(allowedDiscounts, orderSubTotal, out discountAmount);
+            var appliedDiscounts = _discountService.GetPreferredDiscount(allowedDiscounts, orderSubTotal, out discountAmount);
 
             if (discountAmount < decimal.Zero)
                 discountAmount = decimal.Zero;
@@ -159,12 +161,14 @@ namespace Nop.Services.Orders
             var allDiscounts = await _discountService.GetAllDiscountsAsync(DiscountType.AssignedToShipping);
             var allowedDiscounts = new List<Discount>();
             if (allDiscounts != null)
+            {
+                var couponCodesToValidate = await _customerService.ParseAppliedDiscountCouponCodesAsync(customer);
+
                 foreach (var discount in allDiscounts)
                     if (!_discountService.ContainsDiscount(allowedDiscounts, discount) &&
-                        (await _discountService.ValidateDiscountAsync(discount, customer)).IsValid)
-                    {
+                        (await _discountService.ValidateDiscountAsync(discount, customer, couponCodesToValidate)).IsValid)
                         allowedDiscounts.Add(discount);
-                    }
+            }
 
             appliedDiscounts = _discountService.GetPreferredDiscount(allowedDiscounts, shippingTotal, out shippingDiscountAmount);
 
@@ -188,22 +192,26 @@ namespace Nop.Services.Orders
         /// </returns>
         protected virtual async Task<(decimal orderDiscount, List<Discount> appliedDiscounts)> GetOrderTotalDiscountAsync(Customer customer, decimal orderTotal)
         {
-            var appliedDiscounts = new List<Discount>();
             var discountAmount = decimal.Zero;
             if (_catalogSettings.IgnoreDiscounts)
-                return (discountAmount, appliedDiscounts);
+                return (discountAmount, new List<Discount>());
 
             var allDiscounts = await _discountService.GetAllDiscountsAsync(DiscountType.AssignedToOrderTotal);
             var allowedDiscounts = new List<Discount>();
             if (allDiscounts != null)
+            {
+                var couponCodesToValidate = await _customerService.ParseAppliedDiscountCouponCodesAsync(customer);
                 foreach (var discount in allDiscounts)
+                {
                     if (!_discountService.ContainsDiscount(allowedDiscounts, discount) &&
-                        (await _discountService.ValidateDiscountAsync(discount, customer)).IsValid)
+                        (await _discountService.ValidateDiscountAsync(discount, customer, couponCodesToValidate)).IsValid)
                     {
                         allowedDiscounts.Add(discount);
                     }
+                }
+            }
 
-            appliedDiscounts = _discountService.GetPreferredDiscount(allowedDiscounts, orderTotal, out discountAmount);
+            var appliedDiscounts = _discountService.GetPreferredDiscount(allowedDiscounts, orderTotal, out discountAmount);
 
             if (discountAmount < decimal.Zero)
                 discountAmount = decimal.Zero;
@@ -315,10 +323,10 @@ namespace Nop.Services.Orders
                 if (kvp.Key <= decimal.Zero || kvp.Value <= decimal.Zero)
                     continue;
 
-                if (!taxRates.ContainsKey(kvp.Key))
+                if (!taxRates.TryGetValue(kvp.Key, out var value))
                     taxRates.Add(kvp.Key, kvp.Value);
                 else
-                    taxRates[kvp.Key] = taxRates[kvp.Key] + kvp.Value;
+                    taxRates[kvp.Key] = value + kvp.Value;
             }
 
             //shipping taxes
@@ -331,10 +339,10 @@ namespace Nop.Services.Orders
 
                 if (shippingTaxRate > decimal.Zero && shippingTax > decimal.Zero)
                 {
-                    if (!taxRates.ContainsKey(shippingTaxRate))
+                    if (!taxRates.TryGetValue(shippingTaxRate, out var value))
                         taxRates.Add(shippingTaxRate, shippingTax);
                     else
-                        taxRates[shippingTaxRate] = taxRates[shippingTaxRate] + shippingTax;
+                        taxRates[shippingTaxRate] = value + shippingTax;
                 }
             }
 
@@ -351,16 +359,16 @@ namespace Nop.Services.Orders
                     var paymentTaxRate = Math.Round(100 * paymentMethodAdditionalFeeTax / updatedOrder.PaymentMethodAdditionalFeeExclTax, 3);
                     if (paymentTaxRate > decimal.Zero && paymentMethodAdditionalFeeTax > decimal.Zero)
                     {
-                        if (!taxRates.ContainsKey(paymentTaxRate))
+                        if (!taxRates.TryGetValue(paymentTaxRate, out var value))
                             taxRates.Add(paymentTaxRate, paymentMethodAdditionalFeeTax);
                         else
-                            taxRates[paymentTaxRate] = taxRates[paymentTaxRate] + paymentMethodAdditionalFeeTax;
+                            taxRates[paymentTaxRate] = value + paymentMethodAdditionalFeeTax;
                     }
                 }
             }
 
             //add at least one tax rate (0%)
-            if (!taxRates.Any())
+            if (taxRates.Count == 0)
                 taxRates.Add(decimal.Zero, decimal.Zero);
 
             //summarize taxes
@@ -602,10 +610,10 @@ namespace Nop.Services.Orders
                 if (taxRate <= decimal.Zero || itemTaxValue <= decimal.Zero)
                     continue;
 
-                if (!subTotalTaxRates.ContainsKey(taxRate))
+                if (!subTotalTaxRates.TryGetValue(taxRate, out var value))
                     subTotalTaxRates.Add(taxRate, itemTaxValue);
                 else
-                    subTotalTaxRates[taxRate] = subTotalTaxRates[taxRate] + itemTaxValue;
+                    subTotalTaxRates[taxRate] = value + itemTaxValue;
             }
 
             if (subTotalExclTax < decimal.Zero)
@@ -1280,11 +1288,10 @@ namespace Nop.Services.Orders
         /// </returns>
         public virtual async Task<(decimal taxTotal, SortedDictionary<decimal, decimal> taxRates)> GetTaxTotalAsync(IList<ShoppingCartItem> cart, bool usePaymentMethodAdditionalFee = true)
         {
-            if (cart == null)
-                throw new ArgumentNullException(nameof(cart));
+            ArgumentNullException.ThrowIfNull(cart);
 
             var taxTotalResult = await _taxService.GetTaxTotalAsync(cart, usePaymentMethodAdditionalFee);
-            var taxRates = taxTotalResult?.TaxRates ?? new SortedDictionary<decimal, decimal>();
+            var taxRates = taxTotalResult?.TaxRates ?? [];
             var taxTotal = taxTotalResult?.TaxTotal ?? decimal.Zero;
 
             if (_shoppingCartSettings.RoundPricesDuringCalculation)
