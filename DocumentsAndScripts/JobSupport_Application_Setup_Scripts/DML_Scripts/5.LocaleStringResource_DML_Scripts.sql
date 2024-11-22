@@ -112,6 +112,7 @@ IF NOT EXISTS (SELECT * FROM [LocaleStringResource] WHERE [ResourceName]='admin.
    END
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 UPDATE [dbo].[LocaleStringResource] 
 SET [ResourceValue]='<div class="panel panel-danger"><div class="panel-heading"><h3 class="panel-title">No Results!</h3></div><div class="panel-body">No profiles were found that matched your criteria. Please adjust your filter criteria to see more profiles. </br> (OR) </br> Send an email using Contact us form, our team will try best to get the relavent profiles.</div></div>' 
@@ -212,5 +213,7 @@ BEGIN
 END
 
 
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes

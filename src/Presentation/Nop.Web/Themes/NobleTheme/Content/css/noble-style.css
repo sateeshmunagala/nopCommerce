@@ -8822,6 +8822,9 @@ div.block.product-filters.product-filters-wrapper div.product-filter.product-spe
   margin: 0px 4px 4px 4px !important;
 =======
   margin:0px 4px 4px 4px !important;
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 }
 
@@ -8858,6 +8861,7 @@ div.block.product-filters.product-filters-wrapper div.product-filter.product-spe
   font-size: medium;
 }
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 .profile-viewmore {
 }
@@ -8922,6 +8926,8 @@ a {
 .navbar-nav .nav-item .nav-link:hover {
   background: #65c178;
 =======
+=======
+>>>>>>> Stashed changes
 .profile-viewmore{
 
 }
@@ -8929,5 +8935,8 @@ a {
 /*hide search icon on large screen*/ 
 .header-links.header-top-right .my-search {
   display: none
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 }

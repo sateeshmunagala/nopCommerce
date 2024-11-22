@@ -47,8 +47,11 @@ namespace Nop.CustomExtensions.Services
         IConsumer<CustomerRegisteredEvent>,
         IConsumer<CustomerActivatedEvent>,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         IConsumer<EntityInsertedEvent<Category>>,
         IConsumer<EntityUpdatedEvent<Category>>,
+=======
+>>>>>>> Stashed changes
         IConsumer<EntityInsertedEvent<GenericAttribute>>,
         IConsumer<EntityUpdatedEvent<GenericAttribute>>,
         IConsumer<EntityDeletedEvent<GenericAttribute>>,
@@ -210,6 +213,26 @@ namespace Nop.CustomExtensions.Services
             //create customer as customer affliate so that he can refer his friends.
             //await CreateCustomerAffliateAsync(customer);
 >>>>>>> Stashed changes
+
+            //notify other customers who match registered customer's specification attributes
+            await NotifyOtherCustomersWhenNewCustomerRegistersAsync(customer);
+        }
+
+        public async Task HandleEventAsync(CustomerActivatedEvent eventMessage)
+        {
+            var customer = eventMessage.Customer;
+
+            //update assocated product published to true
+            //await UpdateCustomerCustomerProfileTypeIdAsync(customer);
+
+            //add customer to givesupport/take support roles
+            //await AddCustomerToJobSupportRoleAsync(customer);
+
+            //create product immediatly after customer registered
+            //await CreateProductAsync(customer, customer.CustomCustomerAttributesXML, customer.FirstName, customer.LastName, customer.Gender);
+
+            //create customer as customer affliate so that he can refer his friends.
+            //await CreateCustomerAffliateAsync(customer);
 
             //notify other customers who match registered customer's specification attributes
             await NotifyOtherCustomersWhenNewCustomerRegistersAsync(customer);

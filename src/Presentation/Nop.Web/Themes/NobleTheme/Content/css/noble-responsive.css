@@ -1339,11 +1339,15 @@
 
   .header-links.header-top-right .login span {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     /*display: none*/
   }
 
   .header-links.header-top-right ul li {
     margin-top: 5px;
+=======
+    display: none
+>>>>>>> Stashed changes
 =======
     display: none
 >>>>>>> Stashed changes
