@@ -286,6 +286,7 @@ public partial record CustomerModel : BaseNopEntityModel, IAclSupportedModel
         public CustomerAttributeModel()
         {
             Values = new List<CustomerAttributeValueModel>();
+            AvailableSkills = new List<SelectListItem>();
         }
 
         public string Name { get; set; }
@@ -300,6 +301,8 @@ public partial record CustomerModel : BaseNopEntityModel, IAclSupportedModel
         public AttributeControlType AttributeControlType { get; set; }
 
         public IList<CustomerAttributeValueModel> Values { get; set; }
+
+        public IList<SelectListItem> AvailableSkills { get; set; }
     }
 
     public partial record CustomerAttributeValueModel : BaseNopEntityModel

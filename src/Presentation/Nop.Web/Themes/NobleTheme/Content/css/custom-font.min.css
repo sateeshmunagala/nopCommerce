@@ -1,0 +1,10 @@
+
+/*@font-face {
+  font-family: 'MyWebFont';
+  src: url('../fonts/fontawesome-webfont.eot?v=4.7.0');
+}*/
+
+@font-face {
+  font-family: 'edosz';
+  src: url('../fonts/edosz.ttf') format('truetype');
+}

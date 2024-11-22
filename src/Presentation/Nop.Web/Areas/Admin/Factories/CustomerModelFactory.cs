@@ -248,7 +248,8 @@ public partial class CustomerModelFactory : ICustomerModelFactory
             if (attribute.ShouldHaveValues)
             {
                 //values
-                var attributeValues = await _customerAttributeService.GetCustomCustomerAttributeValuesAsync(attribute.Id);
+                var attributeValues = await _customerAttributeService.GetAttributeValuesAsync(attribute.Id);
+                //var attributeValues = await GetCustomCustomerAttributeValuesAsync(attribute.Id);
                 foreach (var attributeValue in attributeValues)
                 {
                     var attributeValueModel = new CustomerModel.CustomerAttributeValueModel
@@ -256,6 +257,7 @@ public partial class CustomerModelFactory : ICustomerModelFactory
                         Id = attributeValue.Id,
                         Name = attributeValue.Name,
                         IsPreSelected = attributeValue.IsPreSelected
+                        //IsPreSelected = false
                     };
                     attributeModel.Values.Add(attributeValueModel);
                 }
@@ -270,38 +272,38 @@ public partial class CustomerModelFactory : ICustomerModelFactory
                     case AttributeControlType.DropdownList:
                     case AttributeControlType.RadioList:
                     case AttributeControlType.Checkboxes:
-                    {
-                        if (!string.IsNullOrEmpty(selectedCustomerAttributes))
                         {
-                            //clear default selection
-                            foreach (var item in attributeModel.Values)
-                                item.IsPreSelected = false;
+                            if (!string.IsNullOrEmpty(selectedCustomerAttributes))
+                            {
+                                //clear default selection
+                                foreach (var item in attributeModel.Values)
+                                    item.IsPreSelected = false;
 
-                            //select new values
-                            var selectedValues = await _customerAttributeParser.ParseAttributeValuesAsync(selectedCustomerAttributes);
-                            foreach (var attributeValue in selectedValues)
-                            foreach (var item in attributeModel.Values)
-                                if (attributeValue.Id == item.Id)
-                                    item.IsPreSelected = true;
+                                //select new values
+                                var selectedValues = await _customerAttributeParser.ParseAttributeValuesAsync(selectedCustomerAttributes);
+                                foreach (var attributeValue in selectedValues)
+                                    foreach (var item in attributeModel.Values)
+                                        if (attributeValue.Id == item.Id)
+                                            item.IsPreSelected = true;
+                            }
                         }
-                    }
                         break;
                     case AttributeControlType.ReadonlyCheckboxes:
-                    {
-                        //do nothing
-                        //values are already pre-set
-                    }
+                        {
+                            //do nothing
+                            //values are already pre-set
+                        }
                         break;
                     case AttributeControlType.TextBox:
                     case AttributeControlType.MultilineTextbox:
-                    {
-                        if (!string.IsNullOrEmpty(selectedCustomerAttributes))
                         {
-                            var enteredText = _customerAttributeParser.ParseValues(selectedCustomerAttributes, attribute.Id);
-                            if (enteredText.Any())
-                                attributeModel.DefaultValue = enteredText[0];
+                            if (!string.IsNullOrEmpty(selectedCustomerAttributes))
+                            {
+                                var enteredText = _customerAttributeParser.ParseValues(selectedCustomerAttributes, attribute.Id);
+                                if (enteredText.Any())
+                                    attributeModel.DefaultValue = enteredText[0];
+                            }
                         }
-                    }
                         break;
                     case AttributeControlType.Datepicker:
                     case AttributeControlType.ColorSquares:
@@ -641,7 +643,7 @@ public partial class CustomerModelFactory : ICustomerModelFactory
                 customerModel.LastActivityDate = await _dateTimeHelper.ConvertToUserTimeAsync(customer.LastActivityDateUtc, DateTimeKind.Utc);
 
                 // admin customization
-                customerModel.VendorId= customer.VendorId;
+                customerModel.VendorId = customer.VendorId;
 
                 //fill in additional values (not existing in the entity)
                 customerModel.CustomerRoleNames = string.Join(", ",

@@ -1,0 +1,95 @@
+﻿@model CustomerInfoModel
+
+@{
+    //title
+    NopHtml.AddTitleParts(T("PageTitle.OrderDetails").Text);
+    //page class
+    //Html.AppendPageCssClassParts("html-order-details-page");
+}
+
+@if (Model.IsPaidCustomer)
+{
+    <div class="page-body panel-body from-panel" style="margin-top:10px;">
+        <div class="order-list">
+            <div class="section order-item clearfix">
+                <div class="title">
+                    <strong>Active Subscription</strong>
+                </div>
+                <div class="order-details-page">
+                    <div class="page-body panel-body from-panel" style="border: 2px solid darkgreen !important; background-color: #AFE1AF; margin-top: 10px;">
+                        <div class="section clearfix">
+                            <ul class="list-group">
+                                <li class="order-date">
+                                </li>
+                                <li class="order-date">
+                                </li>
+                                <li class="order-status">
+                                </li>
+                                <li class="order-total">
+                                </li>
+                                <li class="order-total">
+                                </li>
+                                <li class="order-total">
+                                    @* Subscription Valid Upto: <strong> @Model.SubscriptionExpiryDate</strong> *@
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    if (@Model.CustomerProfileTypeId == 1)
+    {
+        //give support profile
+        <div class="page-body panel-body from-panel" style="margin-top:10px;">
+            <div class="panel panel-warning">
+                <div class="panel-heading">
+                    <h2 class="panel-title">Benefits of Upgrading ?</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="order-details-page">
+                        <div class="page-body panel-body from-panel" style="border: 2px solid orange !important; background-color: #FFE5B4; ">
+                            <div class="section clearfix">
+                                <h5> <span>You do not have any active subscriptions. Please  <a href="/pricing"> upgrade </a></span></h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        //take support profile
+    }
+    <div class="card p-2 mb-2">
+        @if (!string.IsNullOrEmpty(Model.CustomerAvatarUrl))
+        {
+            <img class="rounded-circle border mx-auto d-block" src="@(Model.CustomerAvatarUrl)" alt="avatar" style="max-width:100px;max-height:100px;" />
+        }
+        <div class="card-body">
+            <h5 class="card-title">@Model.FirstName @Model.LastName</h5>
+            <span>@Model.Phone</span><br />
+            <span>@Model.Email</span><br />
+            <span>@Model.CountryId</span><br />
+            @if (Model.Gender == "M")
+            {
+                <span>Male</span><br />
+            }
+            else
+            {
+                <span>Fe Male</span><br />
+            }
+            <span>@Model.Company</span> <br />
+            <span>@Model.Country</span><br />
+            <span>Profile last updated - @Model.LastActivityDateUtc</span><br />
+            <span>JoinedDate : @Model.JoinedDate</span><br />
+        </div>
+    </div>
+}
+

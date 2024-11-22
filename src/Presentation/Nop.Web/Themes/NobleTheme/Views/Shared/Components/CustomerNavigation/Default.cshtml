@@ -1,5 +1,10 @@
 ﻿@model CustomerNavigationModel
 
+
+@*customization*@
+@await Component.InvokeAsync(typeof(CustomerInfoViewComponent), new { orderId = 0 })
+
+
 <div class="block block-account-navigation well box-shadow-wrapper">
     <div class="title main-title" id="myAccountMenu">
         <strong>@T("Account.Navigation")</strong>
@@ -61,7 +66,7 @@
                 });
 
             if (matchMedia) {
-                var mq = window.matchMedia("(min-width: 824px)");
+                var mq = window.matchMedia("(min-width: 624px)");
                 mq.addListener(WidthChange);
                 WidthChange(mq);
             }
@@ -69,13 +74,13 @@
             // media query change
             function WidthChange(mq) {
                 if (mq.matches) {
-                    // window width is at least 824px
+                    // window width is at least 624px
                     //navigator.close();
                     drawerAccount.close();
                     console.log("window width is at least 824px");
 
                 } else {
-                    // window width is less than 824px
+                    // window width is less than 624px
                     console.log("window width is less than 824px");
                     //navigator.preventDefault();
                     //drawerAccount.preventDefault();
@@ -94,17 +99,17 @@
         }
     }
 
-   /*  @@media (min-width: 480px) {
-        #myAccountMenu {
-            display: none !important;
-        }
-    } */
+    /*  @@media (min-width: 480px) {
+                    #myAccountMenu {
+                        display: none !important;
+                    }
+                } */
 
-   /*  @@media (min-width: 1024px) {
-        #myAccountMenu {
-            display: none !important;
-        }
-    } */
+    /*  @@media (min-width: 1024px) {
+                    #myAccountMenu {
+                        display: none !important;
+                    }
+                } */
 
     .close-icon-account {
         float: right;

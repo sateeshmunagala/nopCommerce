@@ -5,8 +5,8 @@
 }
 else
 {
-    <li>
-        <a href="@Url.RouteUrl("Category", new { SeName = Model.Category.SeName })">
+    <li class="nav-item">
+        <a class="nav-link" href="@Url.RouteUrl("Category", new { SeName = Model.Category.SeName })">
             @Model.Category.Name
             @if (Model.Category.NumberOfProducts.HasValue)
             {

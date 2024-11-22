@@ -11,5 +11,7 @@ public partial record SpecificationAttributeOptionSearchModel : BaseSearchModel
 
     public int SpecificationAttributeId { get; set; }
 
+    public string SearchSpecificationAttributeOptionName { get; set; }
+
     #endregion
 }

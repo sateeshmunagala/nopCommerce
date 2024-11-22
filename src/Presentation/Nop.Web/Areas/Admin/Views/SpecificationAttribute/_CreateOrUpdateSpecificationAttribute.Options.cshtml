@@ -2,14 +2,47 @@
 
 @if (Model.Id > 0)
 {
+    <div class="card card-default card-search card-popup">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-group row">
+                        <div class="col-sm-5">
+                            <nop-label asp-for="@Model.SpecificationAttributeOptionSearchModel.SearchSpecificationAttributeOptionName" />
+                        </div>
+                        <div class="col-sm-7">
+                            <nop-editor asp-for="@Model.SpecificationAttributeOptionSearchModel.SearchSpecificationAttributeOptionName" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-12">
+                    <button type="button" id="search-specs" class="btn btn-primary btn-search" onclick="setParameterValue();">
+                        <i class="fas fa-search"></i>
+                        @T("Admin.Common.Search")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card-body">
         @await Html.PartialAsync("Table", new DataTablesModel
         {
             Name = "specificationattributeoptions-grid",
-            UrlRead = new DataUrl("OptionList", "SpecificationAttribute", new RouteValueDictionary { [nameof(Model.SpecificationAttributeOptionSearchModel.SpecificationAttributeId)] = Model.SpecificationAttributeOptionSearchModel.SpecificationAttributeId }),
+            //UrlRead = new DataUrl("OptionList", "SpecificationAttribute", null),
+            UrlRead = new DataUrl("OptionList", "SpecificationAttribute", new RouteValueDictionary { [nameof(Model.SpecificationAttributeOptionSearchModel.SpecificationAttributeId)] = Model.SpecificationAttributeOptionSearchModel.SpecificationAttributeId,
+                      [nameof(Model.SpecificationAttributeOptionSearchModel.SearchSpecificationAttributeOptionName)] = Model.SpecificationAttributeOptionSearchModel.SearchSpecificationAttributeOptionName }),
+            //UrlRead = new DataUrl("OptionList", "SpecificationAttribute", new RouteValueDictionary { [nameof(Model.SpecificationAttributeOptionSearchModel)] = Model.SpecificationAttributeOptionSearchModel }),
             UrlDelete = new DataUrl("OptionDelete", "SpecificationAttribute", null),
+            SearchButtonId = "search-specs",
             Length = Model.SpecificationAttributeOptionSearchModel.PageSize,
             LengthMenu = Model.SpecificationAttributeOptionSearchModel.AvailablePageSizes,
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter(nameof(Model.SpecificationAttributeOptionSearchModel.SearchSpecificationAttributeOptionName))
+            },
             ColumnCollection = new List<ColumnProperty>
             {
                 new ColumnProperty(nameof(SpecificationAttributeOptionModel.Name))
@@ -48,6 +81,13 @@
         <script>
             function renderColumnEdit(data, type, row, meta) {
                 return '<button onclick=\"javascript:OpenWindow(\'@Url.Content("~/Admin/SpecificationAttribute/OptionEditPopup/")' + data + '?btnId=btnRefresh&formId=specificationattribute-form\', 800, 400, true); return false;\" class="btn btn-default"><i class="fas fa-pencil-alt"></i>@T("Admin.Common.Edit").Text</button>';
+            }
+            function setParameterValue() {
+                var data = $("#SpecificationAttributeOptionSearchModel_SearchSpecificationAttributeOptionName").val();
+                console.log(data);
+                $("#SpecificationAttributeOptionSearchModel_SearchSpecificationAttributeOptionName").val(data);
+                console.log(data);
+                debugger;
             }
         </script>
     </div>

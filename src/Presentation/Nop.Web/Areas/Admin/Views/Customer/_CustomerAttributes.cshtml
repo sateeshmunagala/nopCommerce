@@ -2,17 +2,37 @@
 @using Nop.Core.Domain.Catalog;
 @using Nop.Services.Customers
 
+@{
+    var profileType = string.Empty;
+}
+
 @foreach (var customerAttribute in Model)
 {
+    var primaryTechnology = new List<SelectListItem>();
     var controlId = $"{NopCustomerServicesDefaults.CustomerAttributePrefix}{customerAttribute.Id}";
     var textPrompt = customerAttribute.Name;
+
+    //hide secondary technology attribute as we are not using this right now
+    @if (customerAttribute.Id == 8)
+    {
+        continue;
+    }
+
     <div class="form-group row">
         <div class="col-md-3">
-            <div class="label-wrapper">
-                <label class="col-form-label">
-                    @textPrompt
-                </label>
-            </div>
+            @if (customerAttribute.AttributeControlType == AttributeControlType.KendoMultiSelect)
+            {
+                <nop-label asp-for="@customerAttribute.AvailableSkills" />
+            }
+            else
+            {
+                <div class="label-wrapper">
+                    <label class="col-form-label">
+                        @textPrompt
+                    </label>
+                </div>
+            }
+          
         </div>
         <div class="col-md-9">
             @switch (customerAttribute.AttributeControlType)
@@ -36,7 +56,7 @@
                         foreach (var attributeValue in customerAttribute.Values)
                         {
                             <div class="form-check">
-                                <input type="radio" class="form-check-input" name="@(controlId)" id="@(controlId)_@(attributeValue.Id)" value="@attributeValue.Id" checked="@attributeValue.IsPreSelected" >
+                                <input type="radio" class="form-check-input" name="@(controlId)" id="@(controlId)_@(attributeValue.Id)" value="@attributeValue.Id" checked="@attributeValue.IsPreSelected">
                                 <label class="form-check-label" for="@(controlId)_@(attributeValue.Id)">
                                     @attributeValue.Name
                                 </label>
@@ -60,7 +80,7 @@
                     break;
                 case AttributeControlType.TextBox:
                     {
-                        <input name="@(controlId)" type="text" id="@(controlId)" value="@(customerAttribute.DefaultValue)" class="form-control"/>
+                        <input name="@(controlId)" type="text" id="@(controlId)" value="@(customerAttribute.DefaultValue)" class="form-control" />
                     }
                     break;
                 case AttributeControlType.MultilineTextbox:
@@ -74,6 +94,33 @@
                 case AttributeControlType.ImageSquares:
                     {
                         //not support attribute type
+                    }
+                    break;
+                case AttributeControlType.KendoMultiSelect:
+                    {
+                        <div class="">
+                            <div class="" style="min-height:60px;">
+                                @foreach (var attributeValue in customerAttribute.Values)
+                                {
+                                    primaryTechnology.Add(new SelectListItem() { Text = attributeValue.Name, Value = attributeValue.Id.ToString() });
+                                }
+                                <nop-select asp-for="@customerAttribute.AvailableSkills" asp-items="primaryTechnology" asp-multiple="true" />
+                            </div>
+                        </div>
+                        <script>
+                            $(function () {
+                                var storesIdsInput = $('#@Html.IdFor(model => @customerAttribute.AvailableSkills)').select2({
+                                    closeOnSelect: false,
+                            @if (!primaryTechnology.Any())
+                            {
+                                <text>
+                                    disabled: true,
+                                    placeholder: 'No skills available',
+                                </text>
+                            }
+                            });
+                            });
+                        </script>
                     }
                     break;
             }

@@ -40,5 +40,7 @@ public partial record SpecificationAttributeModel : BaseNopEntityModel, ILocaliz
 
     public SpecificationAttributeProductSearchModel SpecificationAttributeProductSearchModel { get; set; }
 
+    public string SearchSpecificationAttributeOptionName { get; set; }
+
     #endregion
 }
