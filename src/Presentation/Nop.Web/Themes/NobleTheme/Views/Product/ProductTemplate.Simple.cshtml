@@ -333,12 +333,16 @@
                 </div>
             </div>
         </form>
+<<<<<<< Updated upstream
         @* @await Html.PartialAsync("_ProductReviews", Model.ProductReviews) *@
         <!--product reviews-->
         @if (Model.ProductReviewOverview.AllowCustomerReviews)
         {
             @await Html.PartialAsync("_ProductReviews", Model.ProductReviews)
         }
+=======
+        @await Html.PartialAsync("_ProductReviews", Model.ProductReviews)
+>>>>>>> Stashed changes
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsBottom, additionalData = Model })
     </div>
 </div>
