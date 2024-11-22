@@ -178,24 +178,20 @@ public partial class DiscountService : IDiscountService
     /// <param name="startDateUtc">Discount start date; pass null to load all records</param>
     /// <param name="endDateUtc">Discount end date; pass null to load all records</param>
     /// <param name="isActive">A value indicating whether to get active discounts; "null" to load all discounts; "false" to load only inactive discounts; "true" to load only active discounts</param>
+    /// <param name="vendorId">Vendor identifier; 0 to load all records</param>
     /// <returns>
     /// A task that represents the asynchronous operation
     /// The task result contains the discounts
     /// </returns>
     public virtual async Task<IList<Discount>> GetAllDiscountsAsync(DiscountType? discountType = null,
         string couponCode = null, string discountName = null, bool showHidden = false,
-        DateTime? startDateUtc = null, DateTime? endDateUtc = null, bool? isActive = true)
+        DateTime? startDateUtc = null, DateTime? endDateUtc = null, bool? isActive = true, int vendorId = 0)
     {
-        //we load all discounts, and filter them using "discountType" parameter later (in memory)
-        //we do it because we know that this method is invoked several times per HTTP request with distinct "discountType" parameter
+        //we load all discounts, and filter them using "discountType" and dates later (in memory)
+        //we do it because we know that this method is invoked several times per HTTP request with distinct "discountType" parameter and date filters
         //that's why let's access the database only once
         var discounts = (await _discountRepository.GetAllAsync(query =>
             {
-                if (!showHidden)
-                    query = query.Where(discount =>
-                        (!discount.StartDateUtc.HasValue || discount.StartDateUtc <= DateTime.UtcNow) &&
-                        (!discount.EndDateUtc.HasValue || discount.EndDateUtc >= DateTime.UtcNow));
-
                 //filter by coupon code
                 if (!string.IsNullOrEmpty(couponCode))
                     query = query.Where(discount => discount.CouponCode == couponCode);
@@ -212,15 +208,18 @@ public partial class DiscountService : IDiscountService
 
                 return query;
             }, cache => cache.PrepareKeyForDefaultCache(NopDiscountDefaults.DiscountAllCacheKey,
-                showHidden, couponCode ?? string.Empty, discountName ?? string.Empty, isActive)))
+                couponCode ?? string.Empty, discountName ?? string.Empty, isActive)))
             .AsQueryable();
-
-        //we know that this method is usually invoked multiple times
-        //that's why we filter discounts by type and dates on the application layer
+        
         if (discountType.HasValue)
             discounts = discounts.Where(discount => discount.DiscountType == discountType.Value);
 
         //filter by dates
+        if (!showHidden)
+            discounts = discounts.Where(discount =>
+                (!discount.StartDateUtc.HasValue || discount.StartDateUtc <= DateTime.UtcNow) &&
+                (!discount.EndDateUtc.HasValue || discount.EndDateUtc >= DateTime.UtcNow));
+
         if (startDateUtc.HasValue)
             discounts = discounts.Where(discount =>
                 !discount.StartDateUtc.HasValue || discount.StartDateUtc >= startDateUtc.Value);
@@ -228,7 +227,10 @@ public partial class DiscountService : IDiscountService
             discounts = discounts.Where(discount =>
                 !discount.EndDateUtc.HasValue || discount.EndDateUtc <= endDateUtc.Value);
 
-        return discounts.ToList();
+        if (vendorId > 0)
+            discounts = discounts.Where(discount => discount.VendorId == vendorId);
+
+        return await discounts.ToListAsync();
     }
 
     /// <summary>

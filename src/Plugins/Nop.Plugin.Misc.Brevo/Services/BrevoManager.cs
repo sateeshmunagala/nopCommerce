@@ -1,13 +1,18 @@
 ﻿using System.Net;
+using System.Text;
 using System.Text.RegularExpressions;
+using brevo_csharp.Api;
+using brevo_csharp.Client;
+using brevo_csharp.Model;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Nop.Core;
 using Nop.Core.Domain.Localization;
 using Nop.Core.Domain.Messages;
-using Nop.Core.Domain.Orders;
 using Nop.Plugin.Misc.Brevo.Domain;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
@@ -18,10 +23,7 @@ using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Messages;
 using Nop.Services.Stores;
-using sib_api_v3_sdk.Api;
-using sib_api_v3_sdk.Client;
-using sib_api_v3_sdk.Model;
-using static sib_api_v3_sdk.Model.GetAttributesAttributes;
+using static brevo_csharp.Model.GetAttributesAttributes;
 
 namespace Nop.Plugin.Misc.Brevo.Services;
 
@@ -422,7 +424,7 @@ public partial class BrevoManager
         try
         {
             //create API client
-            var client = await CreateApiClientAsync(config => new AttributesApi(config));
+            var client = await CreateApiClientAsync(config => new ContactsApi(config));
 
             foreach (var attribute in attributes)
             {
@@ -780,7 +782,7 @@ public partial class BrevoManager
     /// </summary>
     /// <param name="order">Order</param>
     /// <returns>A task that represents the asynchronous operation</returns>
-    public async System.Threading.Tasks.Task UpdateContactAfterCompletingOrderAsync(Order order)
+    public async System.Threading.Tasks.Task UpdateContactAfterCompletingOrderAsync(Core.Domain.Orders.Order order)
     {
         try
         {
@@ -873,6 +875,79 @@ public partial class BrevoManager
     }
 
     /// <summary>
+    /// Set partner value
+    /// </summary>
+    /// <returns>True if partner successfully set; otherwise false</returns>
+    public async Task<bool> SetPartnerAsync()
+    {
+        try
+        {
+            var stores = (await _storeService.GetAllStoresAsync()).ToList();
+            var storeCredentials = new Dictionary<string, string>();
+            foreach (var store in stores)
+            {
+                var bSettings = await _settingService.LoadSettingAsync<BrevoSettings>(store.Id);
+                var apiKey = bSettings.ApiKey;
+                if (!string.IsNullOrEmpty(apiKey) && !storeCredentials.Where(s => s.Value == apiKey).Any())
+                    storeCredentials.Add(store.Url, apiKey);
+            }
+
+            //whether plugin is configured
+            if (!storeCredentials.Any())
+                return false;
+
+            foreach (var storeCredential in storeCredentials)
+            {
+                await HttpBrevoClientAsync(storeCredential.Key, storeCredential.Value);
+            }
+        }
+        catch (Exception exception)
+        {
+            //log full error
+            _logger.Error($"Brevo error: {exception.Message}.", exception, await _workContext.GetCurrentCustomerAsync());
+            return false;
+        }
+
+        return true;
+
+        async System.Threading.Tasks.Task HttpBrevoClientAsync(string storeUrl, string apiKey)
+        {
+            //create API client
+            var httpClient = new HttpClient
+            {
+                //configure client
+                BaseAddress = new Uri(BrevoDefaults.AccountApiUrl),
+                Timeout = TimeSpan.FromSeconds(10),
+            };
+
+            //Default Request Headers needed to be added in the HttpClient Object
+            httpClient.DefaultRequestHeaders.Add(BrevoDefaults.ApiKeyHeader, apiKey);
+            httpClient.DefaultRequestHeaders.Add(BrevoDefaults.SibPluginHeader, BrevoDefaults.PluginVersion);
+            httpClient.DefaultRequestHeaders.Add(HeaderNames.UserAgent, BrevoDefaults.UserAgentAccountAPI);
+            httpClient.DefaultRequestHeaders.Add(HeaderNames.Accept, MimeTypes.ApplicationJson);
+
+            var requestObject = new JObject
+            {
+                { "partnerName", BrevoDefaults.PartnerName },
+                { "active", true },
+                { "plugin_version", "1.0.0" },
+                { "shop_version", NopVersion.FULL_VERSION },
+                { "shop_url", storeUrl },
+                { "created_at", DateTime.UtcNow },
+                { "activated_at", DateTime.UtcNow },
+                { "type", "sib" }
+            };
+
+            var requestString = JsonConvert.SerializeObject(requestObject);
+            var requestContent = new StringContent(requestString, Encoding.Default, MimeTypes.ApplicationJson);
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, "partner/information") { Content = requestContent };
+
+            var httpResponse = await httpClient.SendAsync(requestMessage);
+            httpResponse.EnsureSuccessStatusCode();
+        }
+    }
+
+    /// <summary>
     /// Get available lists to synchronize contacts
     /// </summary>
     /// <returns>
@@ -960,7 +1035,7 @@ public partial class BrevoManager
         try
         {
             //create API client
-            var client = await CreateApiClientAsync(config => new AttributesApi(config));
+            var client = await CreateApiClientAsync(config => new ContactsApi(config));
 
             var attributes = await client.GetAttributesAsync();
             var allAttribytes = attributes.Attributes.Select(s => s.Name).ToList();
@@ -1051,7 +1126,7 @@ public partial class BrevoManager
         try
         {
             //create API client
-            var client = await CreateApiClientAsync(config => new AttributesApi(config));
+            var client = await CreateApiClientAsync(config => new ContactsApi(config));
 
             var attributes = await client.GetAttributesAsync();
             var attributeNames = attributes.Attributes.Select(s => s.Name).ToList();
@@ -1116,7 +1191,7 @@ public partial class BrevoManager
         try
         {
             //create API client
-            var client = await CreateApiClientAsync(config => new AttributesApi(config));
+            var client = await CreateApiClientAsync(config => new ContactsApi(config));
 
             //get already existing transactional attributes
             var attributes = await client.GetAttributesAsync();
