@@ -1,13 +1,21 @@
+<<<<<<< Updated upstream
 ﻿
+=======
+﻿using DocumentFormat.OpenXml.EMMA;
+>>>>>>> Stashed changes
 using Nop.Core;
 using Nop.Core.Domain.Affiliates;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Localization;
+<<<<<<< Updated upstream
 using Nop.Core.Domain.Messages;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
+=======
+using Nop.Core.Domain.Orders;
+>>>>>>> Stashed changes
 using Nop.Core.Events;
 using Nop.Services.Affiliates;
 using Nop.Services.Attributes;
@@ -38,6 +46,7 @@ namespace Nop.CustomExtensions.Services
     public class EventConsumer : IConsumer<OrderPaidEvent>,
         IConsumer<CustomerRegisteredEvent>,
         IConsumer<CustomerActivatedEvent>,
+<<<<<<< Updated upstream
         IConsumer<EntityInsertedEvent<Category>>,
         IConsumer<EntityUpdatedEvent<Category>>,
         IConsumer<EntityInsertedEvent<GenericAttribute>>,
@@ -45,6 +54,11 @@ namespace Nop.CustomExtensions.Services
         IConsumer<EntityDeletedEvent<GenericAttribute>>,
         IConsumer<EntityTokensAddedEvent<Customer, Token>>,
         IConsumer<MessageTokensAddedEvent<Token>>,
+=======
+        IConsumer<EntityInsertedEvent<GenericAttribute>>,
+        IConsumer<EntityUpdatedEvent<GenericAttribute>>,
+        IConsumer<EntityDeletedEvent<GenericAttribute>>,
+>>>>>>> Stashed changes
         IConsumer<ModelPreparedEvent<BaseNopModel>>
     {
         #region Fields
@@ -70,7 +84,10 @@ namespace Nop.CustomExtensions.Services
         protected readonly IWebHelper _webHelper;
         private readonly IWorkflowMessageService _workflowMessageService;
         private readonly LocalizationSettings _localizationSettings;
+<<<<<<< Updated upstream
         private readonly IRewardPointService _rewardPointService;
+=======
+>>>>>>> Stashed changes
 
         #endregion
 
@@ -96,8 +113,12 @@ namespace Nop.CustomExtensions.Services
              IWorkContext workContext,
              IWebHelper webHelper,
              IWorkflowMessageService workflowMessageService,
+<<<<<<< Updated upstream
              LocalizationSettings localizationSettings,
              IRewardPointService rewardPointService
+=======
+             LocalizationSettings localizationSettings
+>>>>>>> Stashed changes
             )
         {
             _genericAttributeService = genericAttributeService;
@@ -121,7 +142,10 @@ namespace Nop.CustomExtensions.Services
             _webHelper = webHelper;
             _workflowMessageService = workflowMessageService;
             _localizationSettings = localizationSettings;
+<<<<<<< Updated upstream
             _rewardPointService = rewardPointService;
+=======
+>>>>>>> Stashed changes
         }
 
         #endregion
@@ -131,12 +155,16 @@ namespace Nop.CustomExtensions.Services
         public async Task HandleEventAsync(OrderPaidEvent eventMessage)
         {
             await AddCustomerToPaidCustomerRole(eventMessage.Order.CustomerId);
+<<<<<<< Updated upstream
 
             //await AddCustomerSubscriptionInfoToGenericAttributes(eventMessage.Order);
             await AddCustomerSubscriptionInfoToOrderAsync(eventMessage.Order);
 
             //new method to use reward (credit) point system for credits
             await AddCustomerSubscriptionInfoToRewardPointsAsync(eventMessage.Order);
+=======
+            await AddCustomerSubscriptionInfoToGenericAttributes(eventMessage.Order);
+>>>>>>> Stashed changes
         }
 
         public async Task HandleEventAsync(CustomerRegisteredEvent eventMessage)
@@ -155,14 +183,33 @@ namespace Nop.CustomExtensions.Services
             //create customer as customer affliate so that he can refer his friends.
             await CreateCustomerAffliateAsync(customer);
 
+<<<<<<< Updated upstream
+=======
+            //notify other customers who match registered customer's specification attributes
+            await NotifyOtherCustomersWhenNewCustomerRegistersAsync(customer);
+>>>>>>> Stashed changes
         }
 
         public async Task HandleEventAsync(CustomerActivatedEvent eventMessage)
         {
             var customer = eventMessage.Customer;
 
+<<<<<<< Updated upstream
             //publish the customer associated product
             await PublishCustomerAssociatedProductAsync(customer);
+=======
+            //update assocated product published to true
+            //await UpdateCustomerCustomerProfileTypeIdAsync(customer);
+
+            //add customer to givesupport/take support roles
+            //await AddCustomerToJobSupportRoleAsync(customer);
+
+            //create product immediatly after customer registered
+            //await CreateProductAsync(customer, customer.CustomCustomerAttributesXML, customer.FirstName, customer.LastName, customer.Gender);
+
+            //create customer as customer affliate so that he can refer his friends.
+            //await CreateCustomerAffliateAsync(customer);
+>>>>>>> Stashed changes
 
             //notify other customers who match registered customer's specification attributes
             await NotifyOtherCustomersWhenNewCustomerRegistersAsync(customer);
@@ -188,6 +235,15 @@ namespace Nop.CustomExtensions.Services
             await Task.FromResult(0);
         }
 
+<<<<<<< Updated upstream
+=======
+        /// <summary>
+        /// This method is used to modify the model and its properties via events
+        /// -- Adding custom navigation items to My Account page with out modifying customermodelfactory class
+        /// </summary>
+        /// <param name="eventMessage"></param>
+        /// <returns></returns>
+>>>>>>> Stashed changes
         public async Task HandleEventAsync(ModelPreparedEvent<BaseNopModel> eventMessage)
         {
             if (eventMessage.Model is CustomerNavigationModel model)
@@ -196,7 +252,11 @@ namespace Nop.CustomExtensions.Services
                 model.CustomerNavigationItems.Insert(1, new CustomerNavigationItemModel
                 {
                     RouteName = "PrivateMessages",
+<<<<<<< Updated upstream
                     Title = "Mails & Messages ",
+=======
+                    Title = "Mails and Messages ",
+>>>>>>> Stashed changes
                     Tab = (int)CustomerNavigationEnum.PrivateMessages,
                     ItemClass = "customer-PrivateMessages"
                 });
@@ -213,6 +273,7 @@ namespace Nop.CustomExtensions.Services
                 //remove address item
                 model.CustomerNavigationItems.RemoveAt(3);
 
+<<<<<<< Updated upstream
                 //add customer affiliations
                 model.CustomerNavigationItems.Add(new CustomerNavigationItemModel
                 {
@@ -222,6 +283,8 @@ namespace Nop.CustomExtensions.Services
                     ItemClass = "customer-affiliations"
                 });
 
+=======
+>>>>>>> Stashed changes
                 //sort by name
                 //model.CustomerNavigationItems = model.CustomerNavigationItems.OrderBy(x => x.Title).ToList();
             }
@@ -269,14 +332,24 @@ namespace Nop.CustomExtensions.Services
 
             }
 
+<<<<<<< Updated upstream
             //show shopping cart in pricing, onepagecheckout & cart page and hide in all other categories
+=======
+            //this is for header links model .
+            //Can be used to hide and show shopping cart link based on catogory
+            //show shopping cart in pricing page and hide in all other categories
+>>>>>>> Stashed changes
             if (eventMessage.Model is HeaderLinksModel headerLinksModel)
             {
                 var currentPageUrl = _webHelper.GetThisPageUrl(false);
 
+<<<<<<< Updated upstream
                 if (currentPageUrl.Contains("pricing", StringComparison.InvariantCultureIgnoreCase)
                     || currentPageUrl.Contains("cart", StringComparison.InvariantCultureIgnoreCase)
                     || currentPageUrl.Contains("onepagecheckout", StringComparison.InvariantCultureIgnoreCase))
+=======
+                if (currentPageUrl.Contains("pricing", StringComparison.InvariantCultureIgnoreCase))
+>>>>>>> Stashed changes
                     headerLinksModel.ShoppingCartEnabled = true;
                 else
                     headerLinksModel.ShoppingCartEnabled = false;
@@ -288,6 +361,7 @@ namespace Nop.CustomExtensions.Services
 
             }
 
+<<<<<<< Updated upstream
             //account activation model
             if (eventMessage.Model is AccountActivationModel accountActivationModel)
             {
@@ -393,6 +467,11 @@ namespace Nop.CustomExtensions.Services
             await Task.CompletedTask;
         }
 
+=======
+            //return Task.FromResult(0);
+        }
+
+>>>>>>> Stashed changes
         #endregion
 
         #region Methods for supporting events
@@ -420,7 +499,11 @@ namespace Nop.CustomExtensions.Services
         {
             var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
 
+<<<<<<< Updated upstream
             //get order product id
+=======
+            //get ordered product id
+>>>>>>> Stashed changes
             var activeOrderItems = await _orderService.GetOrderItemsAsync(order.Id);
             var customerSubscribedProductId = activeOrderItems.FirstOrDefault().ProductId;
 
@@ -448,21 +531,33 @@ namespace Nop.CustomExtensions.Services
             var subscriptionId = await _genericAttributeService.GetAttributeAsync<string>(customer, NopCustomerDefaults.SubscriptionId, storeId);
             var subscriptionAllottedCount = await _genericAttributeService.GetAttributeAsync<int>(customer, NopCustomerDefaults.SubscriptionAllottedCount, storeId);
             var subscriptionDate = await _genericAttributeService.GetAttributeAsync<string>(customer, NopCustomerDefaults.SubscriptionDate, storeId);
+<<<<<<< Updated upstream
             var oldSubscriptionExpiryDate = await _genericAttributeService.GetAttributeAsync<string>(customer, NopCustomerDefaults.SubscriptionExpiryDate, storeId);
+=======
+>>>>>>> Stashed changes
 
             // carry forward previous credits
             allottedCount += subscriptionAllottedCount;
 
+<<<<<<< Updated upstream
             var oldSubscriptionInfo = string.Format("Old Subscription Info - Customer Email:{0} ; SubscriptionId: {1} ; Credits: {2} ; SubscriptionDate: {3} ; SubscriptionExpiryDate: {4}",
                                         customer.Email,
                                         subscriptionId,
                                         subscriptionAllottedCount,
                                         order.CreatedOnUtc.ToString(),
                                         oldSubscriptionExpiryDate);
+=======
+            var oldSubscriptionInfo = string.Format("Old Subscription Info - Customer Email:{0} ; SubscriptionId: {1} ; Credits: {2} ; SubscriptionDate: {3}",
+                                        customer.Email,
+                                        subscriptionId,
+                                        subscriptionAllottedCount,
+                                        subscriptionDate);
+>>>>>>> Stashed changes
 
             //customer activity : Before updating the new subscription , save the old subscription details
             await _customerActivityService.InsertActivityAsync(customer, "PublicStore.CustomerSubscriptionInfo", oldSubscriptionInfo, customer);
 
+<<<<<<< Updated upstream
             DateTime? subscriptionExpiryDate;
 
             //subscription expiry date
@@ -501,12 +596,26 @@ namespace Nop.CustomExtensions.Services
                                         allottedCount,
                                         order.CreatedOnUtc.ToString(),
                                         subscriptionExpiryDate);
+=======
+            //save SubscriptionId, credits , subscription date 
+            await _genericAttributeService.SaveAttributeAsync(customer, NopCustomerDefaults.SubscriptionId, customerSubscribedProductId, storeId);
+            await _genericAttributeService.SaveAttributeAsync(customer, NopCustomerDefaults.SubscriptionAllottedCount, allottedCount, storeId);
+            await _genericAttributeService.SaveAttributeAsync(customer, NopCustomerDefaults.SubscriptionDate, order.CreatedOnUtc, storeId);
+
+
+            var newSubscriptionInfo = string.Format("New Subscription Info - Customer Email:{0} ; SubscriptionId: {1} ; Credits: {2} ; SubscriptionDate: {3}",
+                                        customer.Email,
+                                        customerSubscribedProductId,
+                                        allottedCount,
+                                        order.CreatedOnUtc.ToString());
+>>>>>>> Stashed changes
 
             //customer activity
             await _customerActivityService.InsertActivityAsync(customer, "PublicStore.CustomerSubscriptionInfo", newSubscriptionInfo, customer);
 
         }
 
+<<<<<<< Updated upstream
         public async Task AddCustomerSubscriptionInfoToOrderAsync(Order order)
         {
             var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
@@ -628,6 +737,8 @@ namespace Nop.CustomExtensions.Services
 
         }
 
+=======
+>>>>>>> Stashed changes
         private async Task CreateProductAsync(Customer customer, string customerAttributesXml, string firstName, string lastName, string gender)
         {
             var customerProfileTypeId = GetCustomerProfileTypeId(customerAttributesXml);
@@ -659,7 +770,11 @@ namespace Nop.CustomExtensions.Services
             var productModel = new Nop.Web.Areas.Admin.Models.Catalog.ProductModel()
             {
                 Name = firstName + " " + lastName,
+<<<<<<< Updated upstream
                 Published = false, //activate the product when customer account is activated
+=======
+                Published = true,
+>>>>>>> Stashed changes
                 ShortDescription = _customerAttributeParser.ParseValues(customerAttributesXml, shortDescriptionId).FirstOrDefault(),
                 FullDescription = _customerAttributeParser.ParseValues(customerAttributesXml, fullDescriptionId).FirstOrDefault(),
                 ShowOnHomepage = false,
@@ -922,10 +1037,13 @@ namespace Nop.CustomExtensions.Services
 
             await _affiliateService.InsertAffiliateAsync(affiliate);
 
+<<<<<<< Updated upstream
             //update logged-in customer with newly created affiliate id
             customer.VatNumberStatusId = affiliate.Id;
             await _customerService.UpdateCustomerAsync(customer);
 
+=======
+>>>>>>> Stashed changes
             //activity log
             await _customerActivityService.InsertActivityAsync("AddNewAffiliate",
                 string.Format(await _localizationService.GetResourceAsync("ActivityLog.AddNewAffiliate"), affiliate.Id), affiliate);
@@ -971,6 +1089,7 @@ namespace Nop.CustomExtensions.Services
             await Task.FromResult(0);
         }
 
+<<<<<<< Updated upstream
         private async Task PublishCustomerAssociatedProductAsync(Customer customer)
         {
             //get product associted to customer
@@ -1004,6 +1123,8 @@ namespace Nop.CustomExtensions.Services
 
             return result;
         }
+=======
+>>>>>>> Stashed changes
 
         #endregion
     }

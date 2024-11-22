@@ -1,10 +1,13 @@
 ﻿@model CustomerNavigationModel
 
+<<<<<<< Updated upstream
 
 @*customization*@
 @await Component.InvokeAsync(typeof(CustomerInfoViewComponent), new { orderId = 0 })
 
 
+=======
+>>>>>>> Stashed changes
 <div class="block block-account-navigation well box-shadow-wrapper">
     <div class="title main-title" id="myAccountMenu">
         <strong>@T("Account.Navigation")</strong>
@@ -99,6 +102,7 @@
         }
     }
 
+<<<<<<< Updated upstream
     /*  @@media (min-width: 480px) {
                     #myAccountMenu {
                         display: none !important;
@@ -110,6 +114,19 @@
                         display: none !important;
                     }
                 } */
+=======
+   /*  @@media (min-width: 480px) {
+        #myAccountMenu {
+            display: none !important;
+        }
+    } */
+
+   /*  @@media (min-width: 1024px) {
+        #myAccountMenu {
+            display: none !important;
+        }
+    } */
+>>>>>>> Stashed changes
 
     .close-icon-account {
         float: right;

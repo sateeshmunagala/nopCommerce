@@ -1,8 +1,11 @@
 
 -- use onjobsupport47
 
+<<<<<<< Updated upstream
 -- use  [qaonjobsupport47]
 
+=======
+>>>>>>> Stashed changes
 
 -- SELECT * FROM [dbo].[LocaleStringResource] WHERE ResourceValue like '%options%'
 -- SELECT * FROM [dbo].[LocaleStringResource] WHERE ResourceName like '%ContactUs.YourEnquiryHasBeenSent'
@@ -108,6 +111,7 @@ IF NOT EXISTS (SELECT * FROM [LocaleStringResource] WHERE [ResourceName]='admin.
 		VALUES('admin.contentmanagement.messagetemplates.description.newcustomer.notifytargetcustomers','This message template is used to notify give support users when a new take support customer is registered.',1)
    END
 
+<<<<<<< Updated upstream
 
 UPDATE [dbo].[LocaleStringResource] 
 SET [ResourceValue]='<div class="panel panel-danger"><div class="panel-heading"><h3 class="panel-title">No Results!</h3></div><div class="panel-body">No profiles were found that matched your criteria. Please adjust your filter criteria to see more profiles. </br> (OR) </br> Send an email using Contact us form, our team will try best to get the relavent profiles.</div></div>' 
@@ -208,3 +212,5 @@ BEGIN
 END
 
 
+=======
+>>>>>>> Stashed changes

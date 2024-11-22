@@ -648,7 +648,11 @@ ul.nav.navbar-nav li {
 
 .slider-wrapper.theme-custom {
   margin-top: 0px;
+<<<<<<< Updated upstream
   display: block;
+=======
+  display:block;
+>>>>>>> Stashed changes
 }
 
 .html-home-page .slider-wrapper.theme-custom {
@@ -1018,11 +1022,18 @@ ul.nav.navbar-nav li {
   }
 
     .footer-upper .column ul li a:hover, .footer-upper .column ul li a:focus {
+<<<<<<< Updated upstream
       margin-left: 2px;
       background-color: transparent;
       color: #65c178;
       outline: none;
       text-decoration: underline;
+=======
+      margin-left: 5px;
+      background-color: transparent;
+      color: #65c178;
+      outline: none;
+>>>>>>> Stashed changes
     }
 
 .block.block-newsletter span {
@@ -2654,7 +2665,11 @@ a:focus {
 
   .product-details-page .product-reviews-overview .product-review-box, .product-details-page .product-reviews-overview .product-no-reviews {
     margin-right: 30px;
+<<<<<<< Updated upstream
     /*float: left;*/
+=======
+    float: left;
+>>>>>>> Stashed changes
   }
 
 .rating {
@@ -3507,7 +3522,10 @@ a:focus {
   margin-bottom: 5px;
   clear: both;
   float: left;
+<<<<<<< Updated upstream
   width: 100%;
+=======
+>>>>>>> Stashed changes
 }
 
 .product-review-item .reply-header {
@@ -3588,9 +3606,13 @@ a:focus {
   border: 1px solid #000;
   padding: 10px;
   display: inline-block;
+<<<<<<< Updated upstream
   /*width: 75%;*/
   display: table-cell;
   vertical-align: top;
+=======
+  width: 75%;
+>>>>>>> Stashed changes
 }
 
   .product-review-item .avatar img {
@@ -8762,7 +8784,11 @@ div.block.product-filters.product-filters-wrapper div.product-filter.product-spe
     margin-bottom: 12px;
   }
 
+<<<<<<< Updated upstream
 /*customization*/
+=======
+  /*customization*/
+>>>>>>> Stashed changes
 .custom-attributes .option-list li {
   display: inline-block;
   margin: 5px 5px 5px 5px;
@@ -8772,11 +8798,19 @@ div.block.product-filters.product-filters-wrapper div.product-filter.product-spe
 }
 
 .tooltip-inner {
+<<<<<<< Updated upstream
   /* width: 200px;
   height: 100px;*/
   padding: 10px;
   background-color: yellow;
   color: red;
+=======
+ /* width: 200px;
+  height: 100px;*/
+  padding: 10px;
+  background-color: yellow;
+  color:red;
+>>>>>>> Stashed changes
 }
 
 .no-result .alert-danger {
@@ -8784,7 +8818,11 @@ div.block.product-filters.product-filters-wrapper div.product-filter.product-spe
 }
 
 .page-body .category-description {
+<<<<<<< Updated upstream
   margin: 0px 4px 4px 4px !important;
+=======
+  margin:0px 4px 4px 4px !important;
+>>>>>>> Stashed changes
 }
 
 .topic-html-content .topic-html-content-body {
@@ -8820,6 +8858,7 @@ div.block.product-filters.product-filters-wrapper div.product-filter.product-spe
   font-size: medium;
 }
 
+<<<<<<< Updated upstream
 .profile-viewmore {
 }
 
@@ -8882,4 +8921,13 @@ a {
 
 .navbar-nav .nav-item .nav-link:hover {
   background: #65c178;
+=======
+.profile-viewmore{
+
+}
+
+/*hide search icon on large screen*/ 
+.header-links.header-top-right .my-search {
+  display: none
+>>>>>>> Stashed changes
 }

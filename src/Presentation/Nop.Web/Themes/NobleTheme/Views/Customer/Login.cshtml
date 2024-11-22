@@ -19,7 +19,10 @@
     </div>*@
     @await Html.PartialAsync("_ExternalAuthentication.Errors")
     <div class="page-body">
+<<<<<<< Updated upstream
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.LoginTop, additionalData = Model })
+=======
+>>>>>>> Stashed changes
         <div class="customer-blocks">
             <div class="row">
                 @if (Model.RegistrationType == UserRegistrationType.Disabled)
@@ -104,7 +107,11 @@
                                     <div class="form-group">
                                         <label asp-for="Password" class="col-md-2 control-label" asp-postfix=":"></label>
                                         <div class="col-md-12">
+<<<<<<< Updated upstream
                                             <input asp-for="Password" class="password form-control" autocomplete="on" />
+=======
+                                            <input asp-for="Password" class="password form-control" />
+>>>>>>> Stashed changes
                                             <span asp-validation-for="Password"></span>
                                         </div>
                                     </div>
