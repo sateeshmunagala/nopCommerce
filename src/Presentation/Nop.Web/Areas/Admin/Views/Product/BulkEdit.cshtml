@@ -178,7 +178,7 @@
                                             <button onclick="search('last');return false;" class="btn btn-light" id="move-last">@T("Admin.DT.Paginate.Last")</button>
                                         </td>
                                         <td colspan="4" style="text-align:right">
-                                            <a class="btn btn-success" id="move-first" onclick="addNewRow()">
+                                            <a class="btn btn-success" onclick="addNewRow()">
                                                 <i class="fas fa-plus-square"></i>
                                                 @T("Admin.Common.AddNew")
                                             </a>
@@ -230,6 +230,7 @@
         var vendor = $("#@Html.IdFor(model => model.SearchVendorId)").val();
         var warehouse = $("#@Html.IdFor(model => model.SearchWarehouseId)").val();
         var published = $("#@Html.IdFor(model => model.SearchPublishedId)").val();
+        var productType = $("#@Html.IdFor(model => model.SearchProductTypeId)").val();
                                         
         if (next == undefined)                                        
             start = @Model.Start;
@@ -257,6 +258,7 @@
             SearchVendorId: vendor,
             SearchWarehouseId: warehouse,
             SearchPublishedId: published,
+            SearchProductTypeId: productType,
             Start: start,
             PageSize: @Model.PageSize,
             Length: @Model.Length
