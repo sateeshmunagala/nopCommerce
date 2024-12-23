@@ -1,0 +1,35 @@
+﻿<div class="header">
+    <div class="container">
+        <a class="skip" href="#main">@T("Header.SkipNavigation.Text")</a>
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderBefore })
+        <div class="header-upper">
+            <div class="row">
+                <div class="header-selectors-wrapper col-sm-12 col-md-12 col-lg-6 col-xl-4">
+                    @await Component.InvokeAsync(typeof(TaxTypeSelectorViewComponent))
+                    @await Component.InvokeAsync(typeof(CurrencySelectorViewComponent))
+                    @await Component.InvokeAsync(typeof(LanguageSelectorViewComponent))
+                    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderSelectors })
+                </div>
+                <div class="header-links-wrapper col-sm-12 col-md-12 col-lg-6 col-xl-8 pull-right">
+                    @await Component.InvokeAsync(typeof(HeaderLinksViewComponent))
+                    @await Component.InvokeAsync(typeof(FlyoutShoppingCartViewComponent))
+                </div>
+            </div>
+        </div>
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderMiddle })
+        <div class="header-lower">
+            <div class="row">
+                <div class="header-logo col-sm-12 col-md-12 col-lg-6 col-xl-4">
+                    @await Component.InvokeAsync(typeof(Nop.Web.Components.LogoViewComponent))
+                </div>
+                <div class="search-box store-search-box col-sm-12 col-md-12 col-lg-6 col-xl-8 pull-right">
+                    @await Component.InvokeAsync(typeof(SearchBoxViewComponent))
+                </div>
+            </div>
+        </div>
+        <div class="header-menu">
+            @await Component.InvokeAsync("TopMenu")
+        </div>
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderAfter })
+    </div>    
+</div>

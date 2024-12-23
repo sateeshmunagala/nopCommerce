@@ -1,0 +1,47 @@
+﻿@model CatalogProductsModel
+
+@if (!string.IsNullOrEmpty(Model.WarningMessage))
+{
+    <div class="warning">
+        @Model.WarningMessage
+    </div>
+}
+
+@if (Model.Products.Count > 0)
+{
+    <div class="item-grid @(Model.ViewMode == "list" ? "product-list" : "product-grid")">
+        <div class="row">
+            @foreach (var product in Model.Products)
+            {
+                <div class="item-box @(Model.ViewMode == "list" ? "product-list col-xs-12 col-sm-12 col-md-12 col-lg-12 col-xl-12" : "product-grid col-xs-12 col-sm-6 col-md-4 col-lg-4 col-xl-4")">
+                    <div class="card">
+                        <div class="card-body">
+                            @await Html.PartialAsync("_ProductBox", product)
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    var pager = Html.Pager(Model)
+        .QueryParam("pagenumber")
+        // for search page
+        .BooleanParameterName("advs")
+        .BooleanParameterName("isc")
+        .BooleanParameterName("sid")
+        .RenderEmptyParameters(true);
+
+    @if (!await pager.IsEmpty())
+    {
+        <div class="pagination justify-content-center">
+            @pager
+        </div>
+    }
+}
+else if (!string.IsNullOrEmpty(Model.NoResultMessage))
+{
+    <div class="no-result">
+        @Model.NoResultMessage
+    </div>
+}

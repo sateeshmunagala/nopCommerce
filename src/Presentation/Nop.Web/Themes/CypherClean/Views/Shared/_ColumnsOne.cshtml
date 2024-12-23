@@ -1,0 +1,17 @@
+﻿@{
+    Layout = "_Root";
+}
+
+
+
+@if (IsSectionDefined("Breadcrumb"))
+{
+    @section Breadcrumb {
+        @await RenderSectionAsync("Breadcrumb", false)
+    }
+}
+<div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 col-xl-12 full-wrapper">
+    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.MainColumnBefore })
+    @RenderBody()
+    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.MainColumnAfter })
+</div>
