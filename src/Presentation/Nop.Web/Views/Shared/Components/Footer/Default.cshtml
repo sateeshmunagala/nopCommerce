@@ -128,10 +128,13 @@
         </div>
         @if (!Model.HidePoweredByNopCommerce)
         {
-            <div class="footer-powered-by">
+            <div class="footer-powered-by" style="font-size:12px;">
                 @*Would you like to remove the "Powered by nopCommerce" link in the bottom of the footer?
                     Please find more info at https://www.nopcommerce.com/nopcommerce-copyright-removal-key*@
                 Powered by <a href="@(OfficialSite.Main)" target="_blank" @(Model.IsHomePage ? string.Empty : "rel=nofollow")>nopCommerce</a>
+            </div>
+            <div class="footer-powered-by" style="margin-left:30px;">
+                Developed & Managed by  <a href="https://jalaacademy.com/" target="_blank" )>JALA Academy</a>
             </div>
         }
         @await Component.InvokeAsync(typeof(StoreThemeSelectorViewComponent))
