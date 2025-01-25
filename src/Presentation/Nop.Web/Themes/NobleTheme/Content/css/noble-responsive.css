@@ -1939,7 +1939,7 @@
 
 @media (max-width:767px) {
   .master-wrapper-content {
-    margin-top: -20px;
+    margin-top: 0px;
   }
 
   .theme-custom .nivoSlider img {
