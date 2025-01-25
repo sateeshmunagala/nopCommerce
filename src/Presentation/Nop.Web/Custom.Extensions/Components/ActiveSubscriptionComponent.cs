@@ -93,6 +93,11 @@ namespace Nop.Web.Components
 
             var subscription = await _rewardPointService.GetCustomerSubscriptionAsync(customer.Id, storeId);
 
+            if (subscription == null)
+            {
+                return View(new SubscriptionModel());
+            }
+
             var modelNew = new SubscriptionModel
             {
                 //SubscriptionId = subscriptionProductId,
