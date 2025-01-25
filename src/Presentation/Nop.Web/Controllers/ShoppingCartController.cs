@@ -647,10 +647,17 @@ public partial class ShoppingCartController : BasePublicController
         if (toCustomer == null && !pricingProductIds.Contains(productId))
         {
             //no target customer found
+            var errorMessage = string.Empty;
+
+            if (cartType == ShoppingCartType.Wishlist)
+                errorMessage = "Unable to shortist the profile.Please login and try again.";
+            if (cartType == ShoppingCartType.InterestSent)
+                errorMessage = "Unable to send interest to the profile.Please login and try again.";
+
             return Json(new
             {
                 success = false,
-                message = "Unable to send interest to this profile. Please try after some time."
+                message = errorMessage
             });
         }
 

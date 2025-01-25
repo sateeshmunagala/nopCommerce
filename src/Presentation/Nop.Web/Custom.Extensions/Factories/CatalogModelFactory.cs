@@ -18,8 +18,8 @@ namespace Nop.Web.Factories
             if (await _customerService.IsGuestAsync(customer))
             {
                 //do not show any profiles to guest customers. show message to login to view the profiles
-                model.NoResultMessage = await _localizationService.GetResourceAsync("Catalog.Products.GuestCustomerResult");
-                return;
+                //model.NoResultMessage = await _localizationService.GetResourceAsync("Catalog.Products.GuestCustomerResult");
+                //return;
             }
 
             if (!products.Any() && isFiltering)

@@ -1416,9 +1416,6 @@ public partial class ProductModelFactory : IProductModelFactory
                             (!product.MarkAsNewEndDateTimeUtc.HasValue || product.MarkAsNewEndDateTimeUtc.Value > DateTime.UtcNow)
             };
 
-            //customization
-            await CustomizeProductModel(model, product);
-
             //price
             if (preparePriceModel)
             {
@@ -1439,6 +1436,9 @@ public partial class ProductModelFactory : IProductModelFactory
 
             //reviews
             model.ReviewOverviewModel = await PrepareProductReviewOverviewModelAsync(product);
+
+            //customization
+            await CustomizeProductModel(model, product);
 
             models.Add(model);
         }

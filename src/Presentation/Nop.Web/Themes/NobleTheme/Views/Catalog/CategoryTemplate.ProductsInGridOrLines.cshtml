@@ -36,27 +36,27 @@
                 {
                     var isLastCategory = cat.Id == Model.Id;
                 <li itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem">
-                    @if (isLastCategory)
-                    {
+                        @if (isLastCategory)
+                        {
                         <strong class="current-item active" itemprop="name">@cat.Name</strong>
                         <span itemprop="item" itemscope itemtype="http://schema.org/Thing"
                               id="@Url.RouteUrl("Category", new {SeName = cat.SeName})">
                         </span>
-                    }
-                    else
-                    {
+                        }
+                        else
+                        {
                         <a href="@Url.RouteUrl("Category", new { SeName = cat.SeName })" title="@cat.Name" itemprop="item">
                             <span itemprop="name">@cat.Name</span>
                         </a>
-                        @*<span class="delimiter">@breadcrumbDelimiter</span>*@
-                    }
+                            @*<span class="delimiter">@breadcrumbDelimiter</span>*@
+                        }
                     <meta itemprop="position" content="@position" />
                 </li>
-                position++;
-            }
-            </ul>
-        </div>
-    }
+                    position++;
+                }
+        </ul>
+    </div>
+}
 @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsAfterBreadcrumb, additionalData = Model })
 @section CatalogFilters {
     @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsBeforeFilters, additionalData = Model })
@@ -71,9 +71,51 @@
         @*description*@
         @if (!string.IsNullOrWhiteSpace(Model.Description))
         {
-            <div class="category-description">
-                @Html.Raw(Model.Description)
-            </div>
+            //customization 
+            if (Model.Id == 1)
+            {
+                <div class="category-description">
+                    <table style="margin-top:5px;border-collapse: collapse; width: 99.9%; height: 100px; background-color: #f9f9f9; border-color: #ffa500; border-style: solid;" border="1" cellspacing="5" cellpadding="5">
+                        <tbody>
+                            <tr>
+                                <td style="width: 100%;">
+                                    <ul>
+                                        <li><span style="font-size: 10pt;">Below Profiles are interested to provide support to you.</span></li>
+                                        <li><span style="font-size: 10pt;">You can filter further by using left filter to match your skillset.</span></li>
+                                        <li><span style="font-size: 10pt;">You can shortlist the profiles that you like. Shortlisted profiles will appear in My Account page for easy access in future.</span></li>
+                                        <li><span style="font-size: 10pt;">You can send interest to the profiles that you like. If they also interested about your profile they may contact you.</span></li>
+                                    </ul>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else if (Model.Id == 2)
+            {
+                <div class="category-description">
+                    <table style="margin-top:5px;border-collapse: collapse; width: 99.9%; height: 100px; background-color: #f9f9f9; border-color: #ffa500; border-style: solid;" border="1" cellspacing="5" cellpadding="5">
+                        <tbody>
+                            <tr>
+                                <td style="width: 100%;">
+                                    <ul>
+                                        <li><span style="font-size: 10pt;">Below Profiles are interested to take support from you.</span></li>
+                                        <li><span style="font-size: 10pt;">You can filter further by using left filter to match your skillset.</span></li>
+                                        <li><span style="font-size: 10pt;">You can shortlist the profiles that you like. Shortlisted profiles will appear in My Account page for easy access in future.</span></li>
+                                        <li><span style="font-size: 10pt;">You can send interest to the profiles that you like. If they also interested about your profile they may contact you.</span></li>
+                                    </ul>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="category-description">
+                    @Html.Raw(Model.Description)
+                </div>
+            }
         }
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsBeforeSubcategories, additionalData = Model })
         @*subcategories*@

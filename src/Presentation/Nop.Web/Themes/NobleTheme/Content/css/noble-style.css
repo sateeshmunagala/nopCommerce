@@ -2000,6 +2000,7 @@ a.eu-cookie-privacyinfo-tag {
   position: absolute;
   right: 15px;
   top: 1px;
+  margin-top: -5px;
 }
 
 .owl-next {
@@ -8823,4 +8824,9 @@ div.block.product-filters.product-filters-wrapper div.product-filter.product-spe
 /*hide search icon on large screen*/ 
 .header-links.header-top-right .my-search {
   display: none
+}
+
+/*category custom description design issue fix*/
+.category-description table ul {
+  padding-left: 30px;
 }
