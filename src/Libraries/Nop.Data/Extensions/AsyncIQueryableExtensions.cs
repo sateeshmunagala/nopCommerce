@@ -681,7 +681,7 @@ public static class AsyncIQueryableExtensions
         var data = new List<T>();
 
         if (!getOnlyTotalCount)
-            data.AddRange(await source.Skip(pageIndex * pageSize).Take(pageSize).ToListAsync());
+            data.AddRange(await source.ToListAsync());
 
         return new PagedList<T>(data, pageIndex, pageSize, count);
     }

@@ -1,0 +1,153 @@
+﻿@model ProductOverviewModel
+
+@using Nop.Core
+@using Nop.Core.Domain.Catalog
+@using Nop.Core.Domain.Orders
+@using Nop.Core.Domain.Tax
+
+@inject CatalogSettings catalogSettings
+@inject IWorkContext workContext
+@{
+    //prepare "Add to cart" AJAX link
+    var addtocartlink = "";
+    var shoppingCartTypeId = (int)ShoppingCartType.ShoppingCart;
+    var quantity = 1;
+    if (Model.ProductPrice.ForceRedirectionAfterAddingToCart)
+    {
+        addtocartlink = Url.RouteUrl("AddProductToCart-Catalog", new { productId = Model.Id, shoppingCartTypeId = shoppingCartTypeId, quantity = quantity, forceredirection = Model.ProductPrice.ForceRedirectionAfterAddingToCart });
+    }
+    else
+    {
+        addtocartlink = Url.RouteUrl("AddProductToCart-Catalog", new { productId = Model.Id, shoppingCartTypeId = shoppingCartTypeId, quantity = quantity });
+    }
+
+    var addtowishlistlink = Url.RouteUrl("AddProductToCart-Catalog", new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.Wishlist, quantity = quantity });
+    var sendinterestlink = Url.RouteUrl("AddProductToCart-Catalog", new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.InterestSent, quantity = 1 });
+    var addtocomparelink = Url.RouteUrl("AddProductToCompare", new { productId = Model.Id });
+}
+
+<div class="parent product-item">
+    <div class="div1">
+        <div class="" style="">
+            <a href="@(Url.RouteUrl<Product>(new { SeName = Model.SeName }))" title="@Model.PictureModels[0].Title" style="">
+                <img style="" class="lazyOwl" alt="@Model.PictureModels[0].AlternateText" data-src="@Model.PictureModels[0].ImageUrl" src="@Model.PictureModels[0].ImageUrl" title="@Model.PictureModels[0].Title" />
+            </a>
+        </div>
+    </div>
+    <div class="div2">
+        <div class="product-item-footer">
+            <div id="product-@Model.Id" class="">
+                <i class="fa fa-heart fa-lg @(Model.ProfileShortListed ? Html.Raw(" icon-selected-color") : Html.Raw("icon-color"))"></i>
+                <a class="product-item-links" href="#" onclick="AjaxCart.addproducttocart_catalog('@addtowishlistlink');return false;">
+                    @(Model.ProfileShortListed ? "ShortListed" : "ShortList")
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="div3">
+        <div class="product-item-footer">
+            <div id="product-interest-@Model.Id" class="produt-footer-alignment-right">
+                <i class="fa fa-eye fa-lg icon-color"></i>
+                <a class="product-item-links" href="@(Url.RouteUrl<Product>(new { SeName = Model.SeName }))" role="button">
+                    View
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="div4">
+        <a href="@(Url.RouteUrl<Product>(new { SeName = Model.SeName }))" class="productbox-link" style="">
+            <h5><strong>@Model.Name</strong></h5>
+        </a>
+    </div>
+    <div class="div5">
+        <span>@Model.ShortDescription</span>
+        <div class="description" style="margin:2px;">
+            <span>
+                Skills:
+                @Html.Raw(Model.PrimaryTechnology)
+            </span>
+        </div>
+        <div class="description" style="margin:2px;">
+            <i class="fa fa-map-marker fa-lg icon-color"></i>
+            @Html.Raw(Model.Location)
+        </div>
+    </div>
+</div>
+
+<style>
+
+
+    .parent {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: 0.1fr auto 0.25fr;
+        gap: 0px;
+        height: 180px;
+    }
+
+    .div1 {
+        grid-row: span 2 / span 2;
+    }
+
+    .div2 {
+        grid-column: span 2 / span 2;
+        grid-column-start: 1;
+        grid-row-start: 3;
+        /* margin-top: 14px; */
+    }
+
+    .div3 {
+        grid-column: span 2 / span 2;
+        grid-column-start: 3;
+        grid-row-start: 3;
+        /* margin-top: 14px; */
+    }
+
+    .div4 {
+        grid-column: span 3 / span 3;
+        grid-column-start: 2;
+        grid-row-start: 1;
+    }
+
+    .div5 {
+        grid-column: span 3 / span 3;
+        grid-column-start: 2;
+        grid-row-start: 2;
+    }
+
+    .product-item-footer {
+        border-width: 1px 1px 1px 1px;
+        padding-left: 10px;
+        padding-right: 40px;
+        text-align: center;
+    }
+
+    .div1 > div {
+        border: 1px solid lightgray;
+        padding: 3px;
+        margin-top: 3px;
+        margin-left: 3px;
+    }
+
+    .div4 {
+        margin-left: 5px;
+    }
+
+    .div5 {
+        margin-left: 5px;
+    }
+
+        .div5 p {
+            overflow: hidden;
+            font-size: 12px;
+        }
+
+    .parent div {
+        /* min-height: 20px; */
+        /* background-color: grey; */
+    }
+
+    .parent .div4 {
+        /* background-color: yellow; */
+    }
+</style>

@@ -122,7 +122,7 @@ namespace Nop.Web.Factories
 
             var defaultPictureModel = await _staticCacheManager.GetAsync(cacheKey, async () =>
             {
-                Picture picture = null;
+                Nop.Core.Domain.Media.Picture picture = null;
 
                 if (product.AvatarPictureId > 0)
                     picture = await _pictureService.GetPictureByIdAsync(product.AvatarPictureId);
@@ -172,12 +172,15 @@ namespace Nop.Web.Factories
         {
             foreach (var group in specModel.Groups)
             {
-                var ptList = group.Attributes
+                if (group.Attributes.Count > 0)
+                {
+                    var ptList = group.Attributes
                                  .Where(x => x.Name.Replace(" ", "") == psEnum.ToString())
                                  .Select(o => o.Values.Select(a => a.ValueRaw))
                                  .FirstOrDefault();
 
-                return ptList != null ? string.Join<string>(" , ", ptList) : string.Empty;
+                    return ptList != null ? string.Join<string>(" , ", ptList) : string.Empty;
+                }
             }
 
             return string.Empty;
@@ -338,7 +341,7 @@ namespace Nop.Web.Factories
 
             var defaultPictureModel = await _staticCacheManager.GetAsync(cacheKey, async () =>
             {
-                Picture picture = null;
+                Nop.Core.Domain.Media.Picture picture = null;
 
                 int avatarPictureAttributeId = 0;
                 var customer = (await _customerService.GetAllCustomersAsync(vendorId: product.Id)).FirstOrDefault();
@@ -443,6 +446,16 @@ namespace Nop.Web.Factories
                 model.AvatarPictureId = await _genericAttributeService.GetAttributeAsync<string>(customer, NopCustomerDefaults.AvatarPictureIdAttribute);
 
                 model.CustomerProfileTypeId = customer.CustomerProfileTypeId;
+                model.Location = await GetCustomerLocation(customer);
+
+                //customer specification attributes
+                model.PrimaryTechnology = GetSpecificationAttributeValues(model.ProductSpecificationModel, ProductAndCustomerAttributeEnum.PrimaryTechnology);
+                model.SecondaryTechnology = GetSpecificationAttributeValues(model.ProductSpecificationModel, ProductAndCustomerAttributeEnum.SecondaryTechnology);
+                model.CurrentAvalibility = GetSpecificationAttributeValues(model.ProductSpecificationModel, ProductAndCustomerAttributeEnum.CurrentAvalibility);
+                model.ProfileType = GetSpecificationAttributeValues(model.ProductSpecificationModel, ProductAndCustomerAttributeEnum.ProfileType);
+                model.WorkExperience = GetSpecificationAttributeValues(model.ProductSpecificationModel, ProductAndCustomerAttributeEnum.RelaventExperiance);
+                model.LanguageId = GetSpecificationAttributeValues(model.ProductSpecificationModel, ProductAndCustomerAttributeEnum.MotherTongue);
+                model.Gender = GetSpecificationAttributeValues(model.ProductSpecificationModel, ProductAndCustomerAttributeEnum.Gender);
             }
 
         }
