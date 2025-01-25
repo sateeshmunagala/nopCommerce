@@ -2811,6 +2811,15 @@
   <LocaleResource Name="Admin.Catalog.Products.Fields.AdminComment.Hint">
     <Value>This comment is for internal use only, not visible for customers.</Value>
   </LocaleResource>
+  <LocaleResource Name="Admin.Catalog.Products.Fields.AgeVerification">
+    <Value>Age verification</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Catalog.Products.Fields.AgeVerification.Hint">
+    <Value>Check to require customer registration with date of birth before placing an order.</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Catalog.Products.Fields.AgeVerification.DateOfBirthDisabled">
+    <Value><![CDATA[It looks like you have <a href="{0}" target="_blank">Date of Birth</a> setting disabled.]]></Value>
+  </LocaleResource>
   <LocaleResource Name="Admin.Catalog.Products.Fields.AllowAddingOnlyExistingAttributeCombinations">
     <Value>Allow only existing attribute combinations</Value>
   </LocaleResource>
@@ -3158,6 +3167,15 @@
   </LocaleResource>
   <LocaleResource Name="Admin.Catalog.Products.Fields.MetaTitle.Hint">
     <Value>Override the page title. The default is the name of the product.</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Catalog.Products.Fields.MinimumAgeToPurchase">
+    <Value>Minimum age to purchase</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Catalog.Products.Fields.MinimumAgeToPurchase.Hint">
+    <Value>Enter the minimum age for purchasing this product.</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Catalog.Products.Fields.MinimumAgeToPurchase.ShouldBeGreaterThanZero">
+    <Value>The minimum age for purchasing should be greater 0</Value>
   </LocaleResource>
   <LocaleResource Name="Admin.Catalog.Products.Fields.MinimumCustomerEnteredPrice">
     <Value>Minimum amount</Value>
@@ -3551,6 +3569,9 @@
   </LocaleResource>
   <LocaleResource Name="Admin.Catalog.Products.Multimedia.Pictures.Alert.PictureAdd">
     <Value>Failed to add product picture.</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Catalog.Products.Multimedia.Pictures.Alert.VendorNumberPicturesLimit">
+    <Value>The maximum number of product pictures has been reached.</Value>
   </LocaleResource>
   <LocaleResource Name="Admin.Catalog.Products.Multimedia.Pictures.Fields.DisplayOrder">
     <Value>Display order</Value>
@@ -7320,6 +7341,12 @@
   <LocaleResource Name="Admin.Configuration.Settings.GeneralCommon.AdminArea.UseRichEditorInMessageTemplates.Hint">
     <Value>Indicates whether to use rich editor on message templates and campaigns details pages.</Value>
   </LocaleResource>
+  <LocaleResource Name="Admin.Configuration.Settings.GeneralCommon.AdminArea.UseStickyHeaderLayout">
+    <Value>Use sticky header</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Configuration.Settings.GeneralCommon.AdminArea.UseStickyHeaderLayout.Hint">
+    <Value>The content header (containing the action buttons) will stick to the top when you reach its scroll position.</Value>
+  </LocaleResource>
   <LocaleResource Name="Admin.Configuration.Settings.GeneralCommon.AdminAreaAllowedIpAddresses">
     <Value>Admin area allowed IP</Value>
   </LocaleResource>
@@ -8528,6 +8555,9 @@
   </LocaleResource>
   <LocaleResource Name="Admin.Configuration.Settings.ProductEditor.AdminComment">
     <Value>Admin comment</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Configuration.Settings.ProductEditor.AgeVerification">
+    <Value>Age verification</Value>
   </LocaleResource>
   <LocaleResource Name="Admin.Configuration.Settings.ProductEditor.AllowAddingOnlyExistingAttributeCombinations">
     <Value>Allow only existing attribute combinations</Value>
@@ -10054,7 +10084,7 @@
     <Value>Configure PayPal Commerce</Value>
   </LocaleResource>
   <LocaleResource Name="Admin.ConfigurationSteps.PaymentPayPal.ApiCredentials.Text">
-    <Value><![CDATA[If you already have an app created in your PayPal account or would like to test it in the sandbox mode, follow these steps.]]></Value>
+    <Value><![CDATA[If you already have an app created in your PayPal account, follow these steps.]]></Value>
   </LocaleResource>
   <LocaleResource Name="Admin.ConfigurationSteps.PaymentPayPal.ApiCredentials.Title">
     <Value>Specify API credentials</Value>
@@ -10144,7 +10174,7 @@
     <Value>“Powered by” link</Value>
   </LocaleResource>
   <LocaleResource Name="Admin.ConfigurationSteps.Product.Details.Text">
-    <Value><![CDATA[Enter the relevant product details in these fields. The screenshot below shows how they will be displayed on the product page with the default nopCommerce theme: <div><img src="js/admintour/images/product-page.jpg"/></div>]]></Value>
+    <Value><![CDATA[Enter the relevant product details in these fields. The screenshot below shows how they will be displayed on the product page with the default nopCommerce theme: <div class="row row-cols-1"><img class="img-thumbnail mt-3" src="/js/admintour/images/product-page.jpg"/></div>]]></Value>
   </LocaleResource>
   <LocaleResource Name="Admin.ConfigurationSteps.Product.Details.Title">
     <Value>Product details</Value>
@@ -10736,6 +10766,9 @@
   </LocaleResource>
   <LocaleResource Name="Admin.ContentManagement.MessageTemplates.Description.OrderCompleted.CustomerNotification">
     <Value>This message template is used to notify a customer that the certain order was completed. The order gets the order status Complete when it's paid and delivered, or it can be changed manually to Complete in Sales - Orders.</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.ContentManagement.MessageTemplates.Description.OrderCompleted.StoreOwnerNotification">
+    <Value>This message template is used to notify a store owner that the certain order was completed. The order gets the order status Complete when it's paid and delivered, or it can be changed manually to Complete in Sales - Orders.</Value>
   </LocaleResource>
   <LocaleResource Name="Admin.ContentManagement.MessageTemplates.Description.OrderPaid.AffiliateNotification">
     <Value>This message template is used to notify an affiliate that the certain order was paid. The order gets the status Paid when the amount was charged.</Value>
@@ -19911,6 +19944,9 @@
   <LocaleResource Name="ShoppingCart.CustomerEnteredPrice.RangeError">
     <Value>The price must be from {0} to {1}</Value>
   </LocaleResource>
+  <LocaleResource Name="ShoppingCart.DateOfBirthRequired">
+    <Value>This product has age restrictions. Please specify your age in the account details</Value>
+  </LocaleResource>
   <LocaleResource Name="ShoppingCart.Discount.CannotBeUsed">
     <Value>You cannot use this discount coupon because the validation conditions are not met</Value>
   </LocaleResource>
@@ -20033,6 +20069,9 @@
   </LocaleResource>
   <LocaleResource Name="ShoppingCart.Mini.ViewCart">
     <Value>Go to cart</Value>
+  </LocaleResource>
+  <LocaleResource Name="ShoppingCart.MinimumAgeToPurchase">
+    <Value>This product is available to customers who are {0} years of age or older</Value>
   </LocaleResource>
   <LocaleResource Name="ShoppingCart.MinimumQuantity">
     <Value>The minimum quantity allowed for purchase is {0}.</Value>

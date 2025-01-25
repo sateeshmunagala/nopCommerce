@@ -1332,21 +1332,10 @@ public partial class SettingController : BaseAdminController
     #endregion
 
     [CheckPermission(StandardPermission.Configuration.MANAGE_SETTINGS)]
-    public virtual async Task<IActionResult> GeneralCommon(bool showtour = false)
+    public virtual async Task<IActionResult> GeneralCommon()
     {
         //prepare model
         var model = await _settingModelFactory.PrepareGeneralCommonSettingsModelAsync();
-
-        //show configuration tour
-        if (showtour)
-        {
-            var customer = await _workContext.GetCurrentCustomerAsync();
-            var hideCard = await _genericAttributeService.GetAttributeAsync<bool>(customer, NopCustomerDefaults.HideConfigurationStepsAttribute);
-            var closeCard = await _genericAttributeService.GetAttributeAsync<bool>(customer, NopCustomerDefaults.CloseConfigurationStepsAttribute);
-
-            if (!hideCard && !closeCard)
-                ViewBag.ShowTour = true;
-        }
 
         return View(model);
     }
@@ -1655,8 +1644,10 @@ public partial class SettingController : BaseAdminController
             //this behavior can increase performance because cached settings will not be cleared 
             //and loaded from database after each update
             adminAreaSettings.UseRichEditorInMessageTemplates = model.AdminAreaSettings.UseRichEditorInMessageTemplates;
+            adminAreaSettings.UseStickyHeaderLayout = model.AdminAreaSettings.UseStickyHeaderLayout;
 
             await _settingService.SaveSettingOverridablePerStoreAsync(adminAreaSettings, x => x.UseRichEditorInMessageTemplates, model.AdminAreaSettings.UseRichEditorInMessageTemplates_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingAsync(adminAreaSettings, x => x.UseStickyHeaderLayout, clearCache: false);
 
             //now clear settings cache
             await _settingService.ClearCacheAsync();
