@@ -1,0 +1,193 @@
+﻿@model int
+
+@if (Model == 1)
+{
+    <div class="swiper-grid" style="margin-top:10px;height:300px;width:100%">
+        <div class="swiper-start" style="min-height:300px">
+            Can you provide ?
+        </div>
+
+        <div class="swiper mySwiper">
+            <div class="swiper-wrapper">
+                <div class="swiper-slide">Resume Review ?</div>
+                <div class="swiper-slide">1:1 Mentorship ?</div>
+                <div class="swiper-slide">Job Support</div>
+                <div class="swiper-slide">Mock Interview</div>
+                <div class="swiper-slide">Interview Support</div>
+                <div class="swiper-slide">Freelancing</div>
+            </div>
+            <div class="swiper-pagination"></div>
+        </div>
+    </div>
+}
+
+@if (Model == 2)
+{
+    <div class="u-wrapper item-box category-grid home-page-category-grid">
+        <div class="c-carousel">
+            <div class="c-carousel__wrapper swiper swiperxyz">
+                <div class="c-carousel__inner-wrapper swiper-wrapper">
+                    <div class="c-carousel__item swiper-slide"><img src="https://img.logoipsum.com/331.svg" alt=""></div>
+                    <div class="c-carousel__item swiper-slide"><img src="https://img.logoipsum.com/257.svg" alt=""></div>
+                    <div class="c-carousel__item swiper-slide"><img src="https://img.logoipsum.com/289.svg" alt=""></div>
+                    <div class="c-carousel__item swiper-slide"><img src="https://img.logoipsum.com/242.svg" alt=""></div>
+                    <div class="c-carousel__item swiper-slide"><img src="https://img.logoipsum.com/330.svg" alt=""></div>
+                    <div class="c-carousel__item swiper-slide"><img src="https://img.logoipsum.com/321.svg" alt=""></div>
+                    <div class="c-carousel__item swiper-slide"><img src="https://img.logoipsum.com/216.svg" alt=""></div>
+                    <div class="c-carousel__item swiper-slide"><img src="https://img.logoipsum.com/288.svg" alt=""></div>
+                    <div class="c-carousel__item swiper-slide"><img src="https://img.logoipsum.com/237.svg" alt=""></div>
+                    <div class="c-carousel__item swiper-slide"><img src="https://img.logoipsum.com/265.svg" alt=""></div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+<!-- Swiper JS -->
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+
+
+<!-- Initialize Swiper -->
+<script>
+var swiper = new Swiper(".mySwiper", {
+      spaceBetween: 10,
+      centeredSlides: true,
+      autoplay: {
+        delay: 2500,
+        disableOnInteraction: false,
+      },
+      pagination: {
+        el: ".swiper-pagination",
+        clickable: true,
+      },
+      // navigation: {
+      //   nextEl: ".swiper-button-next",
+      //   prevEl: ".swiper-button-prev",
+      // },
+    });
+
+</script>
+
+<script>
+    new Swiper('.swiperxyz', {
+      spaceBetween: 0,
+      speed:5000,
+        direction: 'horizontal',
+      autoplay: {delay: 0},
+      loop: true,
+      slidesPerView: 1,
+      freeMode: true,
+
+      breakpoints: {
+        640: {
+          slidesPerView: 2,
+        },
+        768: {
+          slidesPerView: 3,
+        },
+        1024: {
+          slidesPerView: 5,
+        },
+      }
+
+    });
+</script>
+
+<style>
+
+    .swiper {
+        width: 100%;
+        height: 100%;
+    }
+
+    .swiper-slide {
+        text-align: center;
+        font-size: 18px;
+        background: #fff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+        /* .swiper-slide img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        } */
+</style>
+
+<style>
+    .swiper-grid {
+        display: grid;
+        grid-template-columns: 1fr 3fr;
+        grid-template-rows: repeat(1, 5fr);
+        gap: 8px;
+    }
+</style>
+
+<style>
+    /* Very important for having a smooth transitions. */
+    .swiper-free-mode > .swiper-wrapper {
+        transition-timing-function: linear;
+    }
+
+
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+        margin: 0;
+    }
+
+    /* body {
+            min-height: 100vh;
+            line-height: 1.5;
+            display: flex;
+            align-items: stretch;
+            font-family: system-ui, sans-serif;
+            padding: 0 1rem;
+        } */
+
+    img,
+    picture {
+        max-width: 100%;
+        display: block;
+    }
+
+    .u-wrapper {
+        max-width: 1440px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-around;
+        width: 100%;
+    }
+
+    .c-carousel {
+        overflow-x: hidden;
+        position: relative;
+        width: 100%;
+    }
+
+    .c-carousel__wrapper.swiper {
+        margin: 0 48px;
+        position: static;
+    }
+
+    .c-carousel__inner-wrapper.swiper-wrapper {
+        display: flex;
+        align-items: center;
+    }
+
+    .c-carousel img {
+        margin: 0 auto;
+    }
+
+</style>

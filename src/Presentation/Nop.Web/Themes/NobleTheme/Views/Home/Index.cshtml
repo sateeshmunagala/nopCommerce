@@ -27,6 +27,7 @@
 }
 <div class="page home-page">
     <div class="page-body">
+        @await Html.PartialAsync("_Swiper.HomePage", 1)
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop })
         @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageText" })
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories })
@@ -41,5 +42,6 @@
         @await Component.InvokeAsync(typeof(HomepagePollsViewComponent))
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBottom })
         @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomePageFAQModule" })
+        @await Html.PartialAsync("_Swiper.HomePage", 2)
     </div>
 </div>
