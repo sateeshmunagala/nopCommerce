@@ -69,11 +69,10 @@
             @Html.Raw(Model.ShortDescription)
             </div>*@
             <div class="description col-xs-12 col-sm-12 col-md-12">
-                <i class="fa fa-map-marker fa-lg icon-color"></i>
-                @Html.Raw(Model.Location)
-            </div>
-            <div class="description col-xs-12 col-sm-12 col-md-12">
-                <span style="" title="Primary Technology" class="">Skills :</span>
+                <span style="" title="Primary Technology" class="">
+                    <i class="fa fa-cog fa-sm icon-color"></i>
+                    Skills :
+                </span>
                 @Html.Raw(Model.PrimaryTechnology)
             </div>
             @if (customerSettings.ShowSecondaryTechnologySpecificationAttribute)
@@ -100,6 +99,10 @@
             <div class="description col-xs-12 col-sm-12 col-md-12">
                 <span style="width:20px;" title="Mother Tounge" class="">Last Online :</span>
                 @Html.Raw(Model.LastLoginDateTime)
+            </div>
+            <div class="description col-xs-12 col-sm-12 col-md-12">
+                <i class="fa fa-map-marker fa-sm icon-color"></i>
+                @Html.Raw(Model.Location)
             </div>
         </div>
     </a>

@@ -545,6 +545,16 @@ public partial class ShoppingCartController : BasePublicController
 
         var redirectUrl = await _nopUrlHelper.RouteGenericUrlAsync<Product>(new { SeName = await _urlRecordService.GetSeNameAsync(product) });
 
+        //customization: send interest or shortlist if the customer is logged in
+        if (await _customerService.IsGuestAsync(await _workContext.GetCurrentCustomerAsync()))
+        {
+            return Json(new
+            {
+                success = false,
+                message = "Please login to send Interest or shortlist profiles."
+            });
+        }
+
         //we can add only simple products
         if (product.ProductType != ProductType.SimpleProduct)
             return Json(new { redirect = redirectUrl });

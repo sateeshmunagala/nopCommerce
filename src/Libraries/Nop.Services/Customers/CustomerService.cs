@@ -51,6 +51,7 @@ public partial class CustomerService : ICustomerService
     protected readonly IStoreContext _storeContext;
     protected readonly ShoppingCartSettings _shoppingCartSettings;
     protected readonly TaxSettings _taxSettings;
+    protected readonly IRepository<PrivateMessage> _forumPrivateMessageRepository;
 
     #endregion
 
@@ -80,7 +81,8 @@ public partial class CustomerService : ICustomerService
         IStaticCacheManager staticCacheManager,
         IStoreContext storeContext,
         ShoppingCartSettings shoppingCartSettings,
-        TaxSettings taxSettings)
+        TaxSettings taxSettings,
+        IRepository<PrivateMessage> forumPrivateMessageRepository)
     {
         _customerSettings = customerSettings;
         _eventPublisher = eventPublisher;
@@ -107,6 +109,7 @@ public partial class CustomerService : ICustomerService
         _storeContext = storeContext;
         _shoppingCartSettings = shoppingCartSettings;
         _taxSettings = taxSettings;
+        _forumPrivateMessageRepository = forumPrivateMessageRepository;
     }
 
     #endregion
@@ -707,6 +710,9 @@ public partial class CustomerService : ICustomerService
             _customerAddressMappingRepository.Table
                 .Where(ca => tmpGuests.Any(c => c.CustomerId == ca.CustomerId))
                 .Select(ca => new { AddressId = ca.AddressId }));
+
+        //customization : delete private messages
+        await _forumPrivateMessageRepository.DeleteAsync(pm => tmpGuests.Any(c => c.CustomerId == pm.FromCustomerId));
 
         //delete guests
         var totalRecordsDeleted = await _customerRepository.DeleteAsync(c => tmpGuests.Any(tmp => tmp.CustomerId == c.Id));

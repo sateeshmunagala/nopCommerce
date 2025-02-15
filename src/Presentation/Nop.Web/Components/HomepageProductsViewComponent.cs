@@ -38,7 +38,9 @@ public partial class HomepageProductsViewComponent : NopViewComponent
         if (!products.Any())
             return Content("");
 
-        var model = (await _productModelFactory.PrepareProductOverviewModelsAsync(products, false, true, productThumbPictureSize,true,false)).ToList();
+        var productsCustom = await _productService.SearchProductsSimpleCustomAsync(productIds: products.Select(x => x.Id).ToList());
+
+        var model = (await _productModelFactory.PrepareProductOverviewModelsAsync(productsCustom, false, true, productThumbPictureSize, true, false)).ToList();
 
         return View(model);
     }

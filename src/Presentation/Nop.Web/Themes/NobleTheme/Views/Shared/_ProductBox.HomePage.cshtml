@@ -28,8 +28,8 @@
 
 <div class="parent product-item">
     <div class="div1">
-        <div class="" style="">
-            <a href="@(Url.RouteUrl<Product>(new { SeName = Model.SeName }))" title="@Model.PictureModels[0].Title" style="">
+        <div class="">
+            <a href="@(Url.RouteUrl<Product>(new { SeName = Model.SeName }))" title="@Model.PictureModels[0].Title">
                 <img style="" class="lazyOwl" alt="@Model.PictureModels[0].AlternateText" data-src="@Model.PictureModels[0].ImageUrl" src="@Model.PictureModels[0].ImageUrl" title="@Model.PictureModels[0].Title" />
             </a>
         </div>
@@ -60,15 +60,20 @@
         </a>
     </div>
     <div class="div5">
-        <span>@Model.ShortDescription</span>
-        <div class="description" style="margin:2px;">
+        <div class="div5-description">@Model.ShortDescription</div>
+        <div class="description" style="margin-top:6px;">
             <span>
+                <i class="fa fa-cog fa-sm icon-color"></i>
                 Skills:
                 @Html.Raw(Model.PrimaryTechnology)
             </span>
         </div>
-        <div class="description" style="margin:2px;">
-            <i class="fa fa-map-marker fa-lg icon-color"></i>
+        @* <div class="description" style="margin-top:4px;">
+            Languages:
+            @Html.Raw(Model.MotherTounge)
+        </div> *@
+        <div class="description" style="margin-top:6px;">
+            <i class="fa fa-map-marker fa-sm icon-color"></i>
             @Html.Raw(Model.Location)
         </div>
     </div>
@@ -150,4 +155,13 @@
     .parent .div4 {
         /* background-color: yellow; */
     }
+
+    .div5-description {
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* number of lines to show */
+        -webkit-box-orient: vertical;
+        font-size: 12px;
+    }
+
 </style>
