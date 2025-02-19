@@ -1,0 +1,62 @@
+﻿@model CustomerInfoModel
+
+<div class="profile-info-box">
+    <div class="user-details">
+        @if (!string.IsNullOrEmpty(Model.CustomerAvatarUrl))
+        {
+            <div class="avatar">
+                <img src="@(Model.CustomerAvatarUrl)" class="avatar-img" alt="Avatar" />
+            </div>
+        }
+
+        <ul class="user-stats">
+            <li class="location">              
+                <span>@Model.FirstName</span>
+            </li>
+            <li class="location">
+                <span>@Model.LastName</span>
+            </li>
+            <li class="location">
+                <span>@Model.Country</span>
+            </li>
+            <li class="location">
+                <a href="" target="_blank">My Profile</a>
+            </li>
+        </ul>
+
+        @* <div class="send-pm-box">
+            <i class="fa fa-user"></i>@Html.RouteLink(T("Forum.PrivateMessages.PM").Text, "SendPM", new { toCustomerId = Model.CustomerProfileTypeId }, new { @class = "pm-link-button" })
+        </div> *@
+
+        @*@await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProfilePageInfoUserdetails, additionalData = Model })*@
+    </div>
+    <div class="profile-stats">
+        @* <div class="title">
+            @T("Profile.Statistics")
+        </div> *@
+        <ul>
+            @* @if (Model.TotalPostsEnabled)
+        {
+            <li>
+                <label>@T("Profile.TotalPosts"):</label>
+                <span>@Model.TotalPosts</span>
+            </li>          
+        }
+        @if (Model.JoinDateEnabled)
+        {        
+            <li>
+                <label>@T("Profile.JoinDate"):</label>
+                <span>@Model.JoinDate</span>
+            </li>
+        }
+        @if (Model.DateOfBirthEnabled)
+        {
+            <li>
+                <label>@T("Profile.DateOfBirth"):</label>
+                <span>@Model.DateOfBirth</span>
+            </li>
+        } *@
+        </ul>
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProfilePageInfoUserstats, additionalData = Model })
+    </div>
+</div>

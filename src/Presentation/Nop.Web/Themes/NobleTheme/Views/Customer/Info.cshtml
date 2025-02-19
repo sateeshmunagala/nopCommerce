@@ -18,8 +18,12 @@
     <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/js/intlTelInput.min.js"></script>
 
 }
+<div>
+    @await Component.InvokeAsync("CustomerInfo")
+</div>
 @section left
 {
+    @* @await Component.InvokeAsync("ProfileInfo", new { customerProfileId = 3 }) *@
     @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = CustomerNavigationEnum.Info })
 }
 <div class="page account-page customer-info-page">

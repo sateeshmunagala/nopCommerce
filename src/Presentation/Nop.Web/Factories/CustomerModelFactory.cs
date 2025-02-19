@@ -242,6 +242,10 @@ public partial class CustomerModelFactory : ICustomerModelFactory
 
             model.Email = customer.Email;
             model.Username = customer.Username;
+
+            model.VendorId = (await _customerService.GetCustomerByIdAsync(customer.Id)).VendorId;
+            //model.CustomerProfileTypeId=await _productService.GetProductByIdAsync(model.VendorId);
+
         }
         else
         {
@@ -991,7 +995,7 @@ public partial class CustomerModelFactory : ICustomerModelFactory
                 AttributeControlType = attribute.AttributeControlType,
                 //customization
                 HelpText = attribute.HelpText,
-                ShowOnRegisterPage= attribute.ShowOnRegisterPage
+                ShowOnRegisterPage = attribute.ShowOnRegisterPage
             };
 
             if (attribute.ShouldHaveValues)
@@ -1021,42 +1025,42 @@ public partial class CustomerModelFactory : ICustomerModelFactory
                 case AttributeControlType.DropdownList:
                 case AttributeControlType.RadioList:
                 case AttributeControlType.Checkboxes:
-                {
-                    if (!string.IsNullOrEmpty(selectedAttributesXml))
                     {
-                        if (!_customerAttributeParser.ParseValues(selectedAttributesXml, attribute.Id).Any())
-                            break;
+                        if (!string.IsNullOrEmpty(selectedAttributesXml))
+                        {
+                            if (!_customerAttributeParser.ParseValues(selectedAttributesXml, attribute.Id).Any())
+                                break;
 
-                        //clear default selection                                
-                        foreach (var item in attributeModel.Values)
-                            item.IsPreSelected = false;
+                            //clear default selection                                
+                            foreach (var item in attributeModel.Values)
+                                item.IsPreSelected = false;
 
-                        //select new values
-                        //customization
-                        var selectedValues = await _customerAttributeParser.ParseCustomerAttributeValuesCustomAsync(selectedAttributesXml);
-                        foreach (var attributeValue in selectedValues)
-                        foreach (var item in attributeModel.Values)
-                            if (attributeValue.Id == item.Id)
-                                item.IsPreSelected = true;
+                            //select new values
+                            //customization
+                            var selectedValues = await _customerAttributeParser.ParseCustomerAttributeValuesCustomAsync(selectedAttributesXml);
+                            foreach (var attributeValue in selectedValues)
+                                foreach (var item in attributeModel.Values)
+                                    if (attributeValue.Id == item.Id)
+                                        item.IsPreSelected = true;
+                        }
                     }
-                }
                     break;
                 case AttributeControlType.ReadonlyCheckboxes:
-                {
-                    //do nothing
-                    //values are already pre-set
-                }
+                    {
+                        //do nothing
+                        //values are already pre-set
+                    }
                     break;
                 case AttributeControlType.TextBox:
                 case AttributeControlType.MultilineTextbox:
-                {
-                    if (!string.IsNullOrEmpty(selectedAttributesXml))
                     {
-                        var enteredText = _customerAttributeParser.ParseValues(selectedAttributesXml, attribute.Id);
-                        if (enteredText.Any())
-                            attributeModel.DefaultValue = enteredText[0];
+                        if (!string.IsNullOrEmpty(selectedAttributesXml))
+                        {
+                            var enteredText = _customerAttributeParser.ParseValues(selectedAttributesXml, attribute.Id);
+                            if (enteredText.Any())
+                                attributeModel.DefaultValue = enteredText[0];
+                        }
                     }
-                }
                     break;
                 //customization
                 case AttributeControlType.KendoMultiSelect:

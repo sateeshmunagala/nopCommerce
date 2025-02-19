@@ -15,4 +15,5 @@ public partial record CustomerInfoModel
 
     public string CustomerAvatarUrl { get; set; }
     public string Country { get; set; }
+    public int VendorId { get; set; }
 }
