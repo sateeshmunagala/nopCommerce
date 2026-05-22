@@ -111,6 +111,10 @@ public partial class NopStartup : INopStartup
 
         //helpers classes
         services.AddScoped<ISummernoteHelper, SummernoteHelper>();
+        // booking
+        services.AddScoped<Nop.Services.Booking.IBookingService, Nop.Services.Booking.BookingService>();
+        services.AddScoped<Nop.Services.Booking.IGoogleCalendarService, Nop.Services.Booking.GoogleCalendarService>();
+        services.AddHttpClient();
     }
 
     /// <summary>

@@ -1,0 +1,13 @@
+@model Nop.Core.Domain.Booking.BookingIntegrationToken
+
+<div class="vendor-google-booking">
+    @if (Model != null)
+    {
+        <a class="button-1" href="@Url.Action("Start","Google", new { area = "Booking" })">Reconnect Google Calendar</a>
+        <a class="button-2" href="@Url.Action("Disconnect","Google", new { area = "Booking" })">Disconnect Google Calendar</a>
+    }
+    else
+    {
+        <a class="button-1" href="@Url.Action("Start","Google", new { area = "Booking" })">Connect Google Calendar</a>
+    }
+</div>

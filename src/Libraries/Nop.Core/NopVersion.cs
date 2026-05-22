@@ -18,5 +18,7 @@ public static class NopVersion
     /// <summary>
     /// Gets the full store version
     /// </summary>
-    public const string FULL_VERSION = CURRENT_VERSION + "." + MINOR_VERSION;
+    //public const string FULL_VERSION = CURRENT_VERSION + "." + MINOR_VERSION;
+	
+	public const string FULL_VERSION = CURRENT_VERSION ;
 }
