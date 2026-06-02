@@ -5,4 +5,6 @@ namespace Nop.Plugin.Misc.AIInterview.Models;
 public record PublicInfoModel : BaseNopModel
 {
     public string Message { get; set; }
+    public bool InterviewRequired { get; set; }
+    public decimal MinimumScore { get; set; }
 }

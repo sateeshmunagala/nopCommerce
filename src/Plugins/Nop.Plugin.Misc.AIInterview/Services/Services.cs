@@ -108,10 +108,19 @@ public class ApplicationService : IApplicationService
 public class InterviewSessionService : IInterviewSessionService
 {
     private readonly IRepository<InterviewSession> _sessionRepository;
+    private readonly ICustomerService _customerService;
+    private readonly IApplicationService _applicationService;
+    private readonly Nop.Services.Catalog.IProductService _productService;
 
-    public InterviewSessionService(IRepository<InterviewSession> sessionRepository)
+    public InterviewSessionService(IRepository<InterviewSession> sessionRepository,
+        ICustomerService customerService,
+        IApplicationService applicationService,
+        Nop.Services.Catalog.IProductService productService)
     {
         _sessionRepository = sessionRepository;
+        _customerService = customerService;
+        _applicationService = applicationService;
+        _productService = productService;
     }
 
     public async Task InsertInterviewSessionAsync(InterviewSession session)
@@ -130,6 +139,64 @@ public class InterviewSessionService : IInterviewSessionService
             .Where(s => s.CustomerId == customerId && s.CompletedOnUtc.HasValue)
             .OrderByDescending(s => s.CompletedOnUtc)))
             .FirstOrDefault();
+    }
+
+    public async Task<InterviewSession> GetSessionBySessionKeyAsync(string sessionKey)
+    {
+        if (string.IsNullOrEmpty(sessionKey))
+            return null;
+
+        return (await _sessionRepository.GetAllAsync(query => query.Where(s => s.SessionKey == sessionKey))).FirstOrDefault();
+    }
+
+    public async Task<InterviewSession> GetSessionByTokenAsync(string token)
+    {
+        if (string.IsNullOrEmpty(token))
+            return null;
+
+        return (await _sessionRepository.GetAllAsync(query => query.Where(s => s.Token == token))).FirstOrDefault();
+    }
+
+    public async Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId)
+    {
+        return await _sessionRepository.GetAllAsync(query => query
+            .Where(s => s.CustomerId == customerId)
+            .OrderByDescending(s => s.CreatedOnUtc));
+    }
+
+    public async Task UpdateInterviewSessionAsync(InterviewSession session)
+    {
+        await _sessionRepository.UpdateAsync(session);
+    }
+
+    public async Task<bool> CanAccessReportAsync(int customerId, int sessionId)
+    {
+        var session = await GetInterviewSessionByIdAsync(sessionId);
+        if (session == null)
+            return false;
+
+        var customer = await _customerService.GetCustomerByIdAsync(customerId);
+        if (customer == null)
+            return false;
+
+        if (session.CustomerId == customerId)
+            return true;
+
+        if (await _customerService.IsAdminAsync(customer))
+            return true;
+
+        if (customer.VendorId > 0)
+        {
+            var application = await _applicationService.GetJobApplicationByIdAsync(session.JobApplicationId);
+            if (application != null)
+            {
+                var product = await _productService.GetProductByIdAsync(application.ProductId);
+                if (product != null && product.VendorId == customer.VendorId)
+                    return true;
+            }
+        }
+
+        return false;
     }
 }
 

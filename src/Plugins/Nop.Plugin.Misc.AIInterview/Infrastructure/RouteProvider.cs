@@ -29,6 +29,18 @@ public class RouteProvider : IRouteProvider
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.ApplyRouteName,
             pattern: "aiinterview/apply",
             defaults: new { controller = "AIInterview", action = "Apply" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.HistoryRouteName,
+            pattern: "aiinterview/history",
+            defaults: new { controller = "AIInterview", action = "History" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.ReportRouteName,
+            pattern: "aiinterview/report/{sessionId}",
+            defaults: new { controller = "AIInterview", action = "Report" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.InterviewRouteName,
+            pattern: "aiinterview/interview/{sessionKey}",
+            defaults: new { controller = "AIInterview", action = "Interview" });
     }
 
     /// <summary>

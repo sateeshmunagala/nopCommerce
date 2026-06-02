@@ -112,6 +112,6 @@ public class EmployerTests
         var fileResult = (FileContentResult)result;
         var csv = System.Text.Encoding.UTF8.GetString(fileResult.FileContents);
         Assert.That(csv, Does.Contain("ID,Candidate,Email,Status,Score,Date"));
-        Assert.That(csv, Does.Contain("1,John Doe,john@example.com"));
+        Assert.That(csv, Does.Contain("1,\"John Doe\",\"john@example.com\""));
     }
 }

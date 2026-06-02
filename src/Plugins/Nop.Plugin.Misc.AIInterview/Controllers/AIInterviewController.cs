@@ -40,7 +40,90 @@ public class AIInterviewController : BasePluginController
 
     public async Task<IActionResult> Index()
     {
-        return View("~/Plugins/Misc.AIInterview/Views/Index.cshtml");
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null)
+            return Challenge();
+
+        var model = new PublicInfoModel
+        {
+            InterviewRequired = _aiInterviewSettings.InterviewRequired,
+            MinimumScore = _aiInterviewSettings.MinimumScore
+        };
+
+        return View("~/Plugins/Misc.AIInterview/Views/Index.cshtml", model);
+    }
+
+    public async Task<IActionResult> History()
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null)
+            return Challenge();
+
+        var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id);
+        var model = sessions.Select(s => new ApplicationModel
+        {
+            Id = s.Id,
+            InterviewScore = s.Score,
+            Status = s.CompletedOnUtc.HasValue ? "Completed" : (s.IsActive ? "In Progress" : "Started"),
+            CreatedOn = s.CreatedOnUtc
+        }).ToList();
+
+        return View("~/Plugins/Misc.AIInterview/Views/History.cshtml", model);
+    }
+
+    public async Task<IActionResult> Report(int sessionId)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null)
+            return Challenge();
+
+        if (!await _interviewSessionService.CanAccessReportAsync(customer.Id, sessionId))
+            return Challenge();
+
+        var session = await _interviewSessionService.GetInterviewSessionByIdAsync(sessionId);
+        if (session == null || string.IsNullOrEmpty(session.ReportData))
+        {
+            _notificationService.ErrorNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Report.NotFound"));
+            return RedirectToRoute(AIInterviewDefaults.HistoryRouteName);
+        }
+
+        var model = new ApplicationModel
+        {
+            Id = session.Id,
+            InterviewScore = session.Score,
+            StatusComment = session.ReportData, // Simplified for mock
+            CreatedOn = session.CreatedOnUtc
+        };
+
+        return View("~/Plugins/Misc.AIInterview/Views/Report.cshtml", model);
+    }
+
+    public async Task<IActionResult> Interview(string sessionKey)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null)
+            return Challenge();
+
+        var session = await _interviewSessionService.GetSessionBySessionKeyAsync(sessionKey);
+        if (session == null || session.CustomerId != customer.Id || session.CompletedOnUtc.HasValue)
+            return RedirectToRoute(AIInterviewDefaults.IndexRouteName);
+
+        ViewBag.SessionKey = sessionKey;
+        ViewBag.Difficulty = session.Difficulty;
+
+        return View("~/Plugins/Misc.AIInterview/Views/Interview.cshtml");
     }
 
     public async Task<IActionResult> Apply()
@@ -75,7 +158,7 @@ public class AIInterviewController : BasePluginController
 
         // 1. Already applied check
         var applications = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id);
-        if (applications.Any())
+        if (applications.Any(a => !string.IsNullOrEmpty(a.JobTitle) && a.JobTitle.Equals(model.JobTitle, StringComparison.InvariantCultureIgnoreCase)))
         {
             _notificationService.WarningNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.AlreadyApplied"));
             return RedirectToRoute(AIInterviewDefaults.IndexRouteName);
@@ -84,8 +167,20 @@ public class AIInterviewController : BasePluginController
         // 2. Localized validation via ModelState (ApplyModelValidator handles JobTitle and ResumeRequired)
         if (!ModelState.IsValid)
         {
-            return View("~/Plugins/Misc.AIInterview/Views/Apply.cshtml", model);
+            // If it's a resume error, check if we can reuse
+            if (ModelState.ContainsKey(nameof(model.ResumeFile)) && ModelState[nameof(model.ResumeFile)].Errors.Any())
+            {
+                var lastWithResume = applications.OrderByDescending(a => a.CreatedOnUtc).FirstOrDefault(a => a.ResumeDownloadId > 0);
+                if (lastWithResume != null)
+                {
+                    // Can reuse, so clear this error
+                    ModelState.Remove(nameof(model.ResumeFile));
+                }
+            }
         }
+
+        if (!ModelState.IsValid)
+            return View("~/Plugins/Misc.AIInterview/Views/Apply.cshtml", model);
 
         // 3. Interview gating rules
         if (_aiInterviewSettings.InterviewRequired)
@@ -104,7 +199,7 @@ public class AIInterviewController : BasePluginController
             }
         }
 
-        // 4. Handle Resume Upload
+        // 4. Handle Resume Upload and Reuse
         int resumeDownloadId = 0;
         if (model.ResumeFile != null)
         {
@@ -120,6 +215,15 @@ public class AIInterviewController : BasePluginController
             };
             await _downloadService.InsertDownloadAsync(download);
             resumeDownloadId = download.Id;
+        }
+        else
+        {
+            // Try to reuse resume from previous applications
+            var lastWithResume = applications.OrderByDescending(a => a.CreatedOnUtc).FirstOrDefault(a => a.ResumeDownloadId > 0);
+            if (lastWithResume != null)
+            {
+                resumeDownloadId = lastWithResume.ResumeDownloadId;
+            }
         }
 
         // 5. Save application

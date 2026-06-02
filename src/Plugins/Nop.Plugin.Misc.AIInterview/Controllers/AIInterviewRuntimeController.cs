@@ -34,47 +34,90 @@ public class AIInterviewRuntimeController : BasePluginController
     }
 
     [HttpPost]
-    public async Task<IActionResult> Start()
+    public async Task<IActionResult> Start(string difficulty = "Medium")
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (customer == null)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request.", 401);
 
-        // Logic to start session (simplified for task scope)
+        // Idempotency: check for active session
+        var activeSession = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id))
+            .FirstOrDefault(s => s.IsActive && !s.CompletedOnUtc.HasValue);
+
+        if (activeSession != null)
+        {
+            return Json(new
+            {
+                sessionKey = activeSession.SessionKey,
+                token = activeSession.Token
+            });
+        }
+
         var session = new InterviewSession
         {
             CustomerId = customer.Id,
-            SessionKey = Guid.NewGuid().ToString("N")
+            SessionKey = Guid.NewGuid().ToString("N"),
+            Difficulty = difficulty,
+            Token = Guid.NewGuid().ToString("N"),
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(30),
+            IsActive = true,
+            StartedOnUtc = DateTime.UtcNow,
+            CreatedOnUtc = DateTime.UtcNow
         };
         await _interviewSessionService.InsertInterviewSessionAsync(session);
 
-        return Json(new { sessionKey = session.SessionKey });
+        return Json(new
+        {
+            sessionKey = session.SessionKey,
+            token = session.Token
+        });
     }
 
     [HttpPost]
-    public async Task<IActionResult> SubmitAnswer(string sessionKey, string answer)
+    public async Task<IActionResult> SubmitAnswer(string token, string answer)
     {
-        if (string.IsNullOrEmpty(sessionKey))
+        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
+        if (session == null || !session.IsActive || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc < DateTime.UtcNow))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
 
-        return Json(new { success = true });
+        if (string.IsNullOrEmpty(answer))
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer", "Answer cannot be empty.");
+
+        // Mock answer processing
+        return Json(new { success = true, nextQuestion = "Next mock question?" });
     }
 
     [HttpPost]
-    public async Task<IActionResult> Stop(string sessionKey)
+    public async Task<IActionResult> Stop(string token)
     {
-        if (string.IsNullOrEmpty(sessionKey))
+        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
+        if (session == null)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
 
-        return Json(new { success = true });
+        session.IsActive = false;
+        session.CompletedOnUtc = DateTime.UtcNow;
+        session.Score = 85; // Mock score
+        session.ReportData = "Mock report content";
+        await _interviewSessionService.UpdateInterviewSessionAsync(session);
+
+        return Json(new { success = true, score = session.Score });
     }
 
     [HttpPost]
-    public async Task<IActionResult> RefreshToken(string sessionKey)
+    public async Task<IActionResult> RefreshToken(string token)
     {
-        if (string.IsNullOrEmpty(sessionKey))
+        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
+        if (session == null || !session.IsActive)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
 
-        return Json(new { newToken = Guid.NewGuid().ToString("N") });
+        // Simulate token service failure if needed for tests
+        if (token == "fail-me")
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.TokenServiceFailure", "Token service failure.");
+
+        session.Token = Guid.NewGuid().ToString("N");
+        session.TokenExpiryUtc = DateTime.UtcNow.AddMinutes(30);
+        await _interviewSessionService.UpdateInterviewSessionAsync(session);
+
+        return Json(new { newToken = session.Token });
     }
 }

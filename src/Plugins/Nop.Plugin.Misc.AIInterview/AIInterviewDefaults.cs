@@ -26,6 +26,21 @@ public static class AIInterviewDefaults
     public static string ApplyRouteName => "Plugin.Misc.AIInterview.Apply";
 
     /// <summary>
+    /// Gets the history route name
+    /// </summary>
+    public static string HistoryRouteName => "Plugin.Misc.AIInterview.History";
+
+    /// <summary>
+    /// Gets the report route name
+    /// </summary>
+    public static string ReportRouteName => "Plugin.Misc.AIInterview.Report";
+
+    /// <summary>
+    /// Gets the interview route name
+    /// </summary>
+    public static string InterviewRouteName => "Plugin.Misc.AIInterview.Interview";
+
+    /// <summary>
     /// Gets the prefix for locale resources
     /// </summary>
     public static string LocalizationPrefix => "Plugins.Misc.AIInterview";

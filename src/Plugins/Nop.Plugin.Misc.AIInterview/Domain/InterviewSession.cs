@@ -7,7 +7,13 @@ public class InterviewSession : BaseEntity
     public int CustomerId { get; set; }
     public int JobApplicationId { get; set; }
     public string SessionKey { get; set; }
+    public string Difficulty { get; set; }
+    public string Token { get; set; }
+    public DateTime? TokenExpiryUtc { get; set; }
+    public bool IsActive { get; set; }
     public string ReportData { get; set; }
     public decimal Score { get; set; }
+    public DateTime CreatedOnUtc { get; set; }
+    public DateTime? StartedOnUtc { get; set; }
     public DateTime? CompletedOnUtc { get; set; }
 }

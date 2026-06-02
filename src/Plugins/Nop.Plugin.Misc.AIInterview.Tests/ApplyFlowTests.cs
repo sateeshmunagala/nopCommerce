@@ -65,10 +65,10 @@ public class ApplyFlowTests
     {
         // Arrange
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
-            .ReturnsAsync(new List<JobApplication> { new JobApplication() });
+            .ReturnsAsync(new List<JobApplication> { new JobApplication { JobTitle = "Dev" } });
 
         // Act
-        var result = await _controller.Apply(new ApplyModel());
+        var result = await _controller.Apply(new ApplyModel { JobTitle = "Dev" });
 
         // Assert
         Assert.That(result, Is.TypeOf<RedirectToRouteResult>());

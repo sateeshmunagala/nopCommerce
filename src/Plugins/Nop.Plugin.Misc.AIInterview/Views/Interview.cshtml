@@ -1,0 +1,63 @@
+@{
+    Layout = "_ColumnsOne";
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.Interview.Title").Text);
+    var sessionKey = ViewBag.SessionKey as string;
+    var difficulty = ViewBag.Difficulty as string;
+}
+
+<div class="page ai-interview-page">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Interview.Title")</h1>
+    </div>
+    <div class="page-body">
+        <div id="interview-container">
+            <div class="interview-info">
+                <p>@T("Plugins.Misc.AIInterview.Interview.Difficulty"): @difficulty</p>
+            </div>
+            <div id="question-box">
+                <p>@T("Plugins.Misc.AIInterview.Interview.InitialQuestion")</p>
+            </div>
+            <div class="answer-box">
+                <textarea id="answer-text" placeholder="@T("Plugins.Misc.AIInterview.Interview.AnswerPlaceholder")"></textarea>
+                <button type="button" id="submit-answer" class="button-1">@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</button>
+            </div>
+            <div class="actions">
+                <button type="button" id="stop-interview" class="button-2">@T("Plugins.Misc.AIInterview.Interview.StopInterview")</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script asp-location="Footer">
+    $(document).ready(function () {
+        var token = '';
+
+        // Initial start to get token (idempotent)
+        $.post("@Url.Action("Start", "AIInterviewRuntime")", { difficulty: "@difficulty" }, function(data) {
+            token = data.token;
+        });
+
+        $('#submit-answer').click(function () {
+            var answer = $('#answer-text').val();
+            $.post("@Url.Action("SubmitAnswer", "AIInterviewRuntime")", { token: token, answer: answer }, function(data) {
+                if (data.success) {
+                    $('#question-box').html('<p>' + data.nextQuestion + '</p>');
+                    $('#answer-text').val('');
+                } else {
+                    alert(data.error);
+                }
+            });
+        });
+
+        $('#stop-interview').click(function () {
+            $.post("@Url.Action("Stop", "AIInterviewRuntime")", { token: token }, function(data) {
+                if (data.success) {
+                    alert('@T("Plugins.Misc.AIInterview.Interview.CompletedScore"): ' + data.score);
+                    window.location.href = '@Url.RouteUrl(AIInterviewDefaults.HistoryRouteName)';
+                } else {
+                    alert(data.error);
+                }
+            });
+        });
+    });
+</script>

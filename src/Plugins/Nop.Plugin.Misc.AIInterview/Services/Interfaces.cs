@@ -17,6 +17,11 @@ public interface IInterviewSessionService
     Task InsertInterviewSessionAsync(InterviewSession session);
     Task<InterviewSession> GetInterviewSessionByIdAsync(int sessionId);
     Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAsync(int customerId);
+    Task<InterviewSession> GetSessionBySessionKeyAsync(string sessionKey);
+    Task<InterviewSession> GetSessionByTokenAsync(string token);
+    Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId);
+    Task UpdateInterviewSessionAsync(InterviewSession session);
+    Task<bool> CanAccessReportAsync(int customerId, int sessionId);
 }
 
 public interface ICreditService

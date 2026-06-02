@@ -87,6 +87,44 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.Success"] = "Your application has been submitted successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.Title"] = "Apply for a Position",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.Submit"] = "Submit Application",
+
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Index.Title"] = "AI Interview Dashboard",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Index.ApplyNow"] = "Apply Now",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Index.ViewHistory"] = "View History",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Index.StartInterview.Title"] = "Start a Mock Interview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Index.StartInterview.Description"] = "Practice your skills with our AI interviewer.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Index.StartInterview"] = "Start Interview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Index.Difficulty"] = "Difficulty",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Difficulty.Easy"] = "Easy",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Difficulty.Medium"] = "Medium",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Difficulty.Hard"] = "Hard",
+
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.Title"] = "Your Interview History",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.Date"] = "Date",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.Status"] = "Status",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.Score"] = "Score",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.Actions"] = "Actions",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.ViewReport"] = "View Report",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.NoSessions"] = "You have no interview sessions yet.",
+
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Report.Title"] = "Interview Report",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Report.Date"] = "Date",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Report.Score"] = "Score",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Report.Details"] = "Report Details",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Report.NotFound"] = "Report not found or access denied.",
+
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.Title"] = "Mock AI Interview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.Difficulty"] = "Difficulty",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.InitialQuestion"] = "Hello! Please introduce yourself and tell me about your background.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.AnswerPlaceholder"] = "Type your answer here...",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.SubmitAnswer"] = "Submit Answer",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.StopInterview"] = "Finish Interview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.CompletedScore"] = "Interview completed! Your score is",
+
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.Unauthorized"] = "Unauthorized runtime request.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.InvalidToken"] = "Invalid or expired session token.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.InvalidAnswer"] = "Answer cannot be empty.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.TokenServiceFailure"] = "Token service failure.",
         });
 
         await base.InstallAsync();

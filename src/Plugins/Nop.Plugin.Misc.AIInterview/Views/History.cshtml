@@ -1,0 +1,47 @@
+@model IList<ApplicationModel>
+
+@{
+    Layout = "_ColumnsOne";
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.History.Title").Text);
+}
+
+<div class="page ai-interview-history-page">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.History.Title")</h1>
+    </div>
+    <div class="page-body">
+        @if (Model.Any())
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
+                        <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
+                        <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
+                        <th>@T("Plugins.Misc.AIInterview.History.Actions")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var session in Model)
+                    {
+                        <tr>
+                            <td>@session.CreatedOn.ToString("g")</td>
+                            <td>@session.Status</td>
+                            <td>@(session.InterviewScore.HasValue ? session.InterviewScore.Value.ToString("N2") : "-")</td>
+                            <td>
+                                @if (session.Status == "Completed")
+                                {
+                                    <a href="@Url.RouteUrl(AIInterviewDefaults.ReportRouteName, new { sessionId = session.Id })">@T("Plugins.Misc.AIInterview.History.ViewReport")</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>@T("Plugins.Misc.AIInterview.History.NoSessions")</p>
+        }
+    </div>
+</div>
