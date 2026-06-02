@@ -6,5 +6,14 @@ public record ConfigurationModel : BaseNopModel
 {
     public bool Enabled { get; set; }
     public string ApiKey { get; set; }
+    public bool ResumeRequired { get; set; }
+    public bool InterviewRequired { get; set; }
+    public decimal MinimumScore { get; set; }
     public bool UseMockResponses { get; set; }
+    public string Provider { get; set; }
+    public string Model { get; set; }
+    public string Prompt { get; set; }
+    public string ServiceSettings { get; set; }
+    public decimal CreditPackAmount { get; set; }
+    public decimal CreditPackPrice { get; set; }
 }

@@ -24,6 +24,8 @@ public class EmployerTests
     private Mock<INotificationService> _notificationService;
     private Mock<ILocalizationService> _localizationService;
     private Mock<IProductService> _productService;
+    private Mock<ISponsorInviteService> _inviteService;
+    private Mock<ICreditService> _creditService;
     private AIInterviewEmployerController _controller;
     private Customer _employer;
 
@@ -37,11 +39,15 @@ public class EmployerTests
         _notificationService = new Mock<INotificationService>();
         _localizationService = new Mock<ILocalizationService>();
         _productService = new Mock<IProductService>();
+        _inviteService = new Mock<ISponsorInviteService>();
+        _creditService = new Mock<ICreditService>();
 
         _employer = new Customer { Id = 123, VendorId = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_employer);
 
         _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>(), It.IsAny<bool>())).ReturnsAsync(false);
+
+        _creditService.Setup(x => x.GetOrCreateWalletAsync(It.IsAny<int>())).ReturnsAsync(new CreditWallet { Balance = 500 });
 
         _controller = new AIInterviewEmployerController(
             _applicationService.Object,
@@ -50,7 +56,9 @@ public class EmployerTests
             _workContext.Object,
             _notificationService.Object,
             _localizationService.Object,
-            _productService.Object);
+            _productService.Object,
+            _inviteService.Object,
+            _creditService.Object);
     }
 
     [Test]
@@ -113,5 +121,45 @@ public class EmployerTests
         var csv = System.Text.Encoding.UTF8.GetString(fileResult.FileContents);
         Assert.That(csv, Does.Contain("ID,Candidate,Email,Status,Score,Date"));
         Assert.That(csv, Does.Contain("1,\"John Doe\",\"john@example.com\""));
+    }
+
+    [Test]
+    public async Task SponsorInvites_ReturnsViewWithBalance()
+    {
+        var invites = new List<SponsorInvite> { new SponsorInvite { Id = 1, Email = "invited@test.com" } };
+        _inviteService.Setup(x => x.GetSponsorInvitesAsync(123)).ReturnsAsync(invites);
+
+        var result = await _controller.SponsorInvites();
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        Assert.That(viewResult.ViewData["CreditBalance"], Is.EqualTo(500m));
+        Assert.That(viewResult.Model, Is.EqualTo(invites));
+    }
+
+    [Test]
+    public async Task CreateInvite_Flow_Success()
+    {
+        var result = await _controller.CreateInvite("invited@test.com", 10, 1, null);
+
+        _inviteService.Verify(x => x.CreateInviteAsync(123, "invited@test.com", 10, 1, null), Times.Once);
+        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
+    }
+
+    [Test]
+    public async Task DeactivateInvite_Flow_Success()
+    {
+        var result = await _controller.DeactivateInvite(1);
+
+        _inviteService.Verify(x => x.DeactivateInviteAsync(1, 123), Times.Once);
+        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
+    }
+
+    [Test]
+    public async Task CreateInvite_Unauthorized_ReturnsChallenge()
+    {
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(new Customer { Id = 456, VendorId = 0 });
+        var result = await _controller.CreateInvite("invited@test.com", 10, 1, null);
+        Assert.That(result, Is.TypeOf<ChallengeResult>());
     }
 }

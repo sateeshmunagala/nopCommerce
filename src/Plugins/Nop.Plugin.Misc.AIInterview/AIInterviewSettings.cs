@@ -31,4 +31,34 @@ public class AIInterviewSettings : ISettings
     /// Gets or sets the minimum score required in an interview to apply
     /// </summary>
     public decimal MinimumScore { get; set; }
+
+    /// <summary>
+    /// Gets or sets the AI provider
+    /// </summary>
+    public string Provider { get; set; }
+
+    /// <summary>
+    /// Gets or sets the AI model
+    /// </summary>
+    public string Model { get; set; }
+
+    /// <summary>
+    /// Gets or sets the system prompt
+    /// </summary>
+    public string Prompt { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional service settings
+    /// </summary>
+    public string ServiceSettings { get; set; }
+
+    /// <summary>
+    /// Gets or sets the credit pack amount
+    /// </summary>
+    public decimal CreditPackAmount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the credit pack price
+    /// </summary>
+    public decimal CreditPackPrice { get; set; }
 }

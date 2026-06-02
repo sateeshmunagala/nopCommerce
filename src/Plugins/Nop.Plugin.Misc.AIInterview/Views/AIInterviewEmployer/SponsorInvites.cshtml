@@ -1,0 +1,103 @@
+@model IList<Nop.Plugin.Misc.AIInterview.Domain.SponsorInvite>
+@using Nop.Core
+@using Nop.Plugin.Misc.AIInterview
+@inject IWebHelper webHelper
+
+@{
+    Layout = "_ColumnsTwo";
+}
+
+@section left {
+    @await Component.InvokeAsync("VendorNavigation", new { selectedTabId = 0 })
+}
+
+<div class="page vendor-account-page">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Employer.Invite.Title")</h1>
+    </div>
+    <div class="page-body">
+        <div class="credit-balance">
+            <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Balance"):</strong> @ViewBag.CreditBalance
+        </div>
+
+        <div class="section create-invite">
+            <div class="title">
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateNew")</strong>
+            </div>
+            <form asp-controller="AIInterviewEmployer" asp-action="CreateInvite" method="post">
+                <div class="fieldset">
+                    <div class="form-fields">
+                        <div class="inputs">
+                            <label>@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
+                            <input type="email" name="email" required class="form-control" />
+                        </div>
+                        <div class="inputs">
+                            <label>@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
+                            <input type="number" name="productId" required class="form-control" />
+                        </div>
+                        <div class="inputs">
+                            <label>@T("Plugins.Misc.AIInterview.Employer.Invite.MaxAttempts"):</label>
+                            <input type="number" name="maxAttempts" value="1" required class="form-control" />
+                        </div>
+                        <div class="inputs">
+                            <label>@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
+                            <input type="datetime-local" name="expiryDateUtc" class="form-control" />
+                        </div>
+                    </div>
+                </div>
+                <div class="buttons">
+                    <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="section invite-list">
+            <div class="title">
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.ExistingInvites")</strong>
+            </div>
+            @if (Model.Any())
+            {
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Email")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Code")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Link")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Status")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Actions")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var invite in Model)
+                            {
+                                var inviteUrl = $"{webHelper.GetStoreLocation()}ai-interview/accept?code={invite.InviteCode}";
+                                <tr>
+                                    <td>@invite.Email</td>
+                                    <td>@invite.InviteCode</td>
+                                    <td><a href="@inviteUrl">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</a></td>
+                                    <td>
+                                        @(invite.IsAccepted ? T("Plugins.Misc.AIInterview.Employer.Invite.Accepted") :
+                                          (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc < DateTime.UtcNow ? T("Plugins.Misc.AIInterview.Employer.Invite.Expired") : T("Plugins.Misc.AIInterview.Employer.Invite.Active")))
+                                    </td>
+                                    <td>
+                                        @if (!invite.IsAccepted && (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow))
+                                        {
+                                            <form asp-controller="AIInterviewEmployer" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post">
+                                                <button type="submit" class="button-2">@T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate")</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p>@T("Plugins.Misc.AIInterview.Employer.Invite.NoInvites")</p>
+            }
+        </div>
+    </div>
+</div>

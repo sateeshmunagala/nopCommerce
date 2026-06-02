@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
+using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
+using Nop.Services.Configuration;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Web.Framework;
@@ -19,23 +21,89 @@ public class AIInterviewAdminController : BasePluginController
     private readonly ILocalizationService _localizationService;
     private readonly INotificationService _notificationService;
     private readonly IWorkContext _workContext;
+    private readonly ISettingService _settingService;
+    private readonly AIInterviewSettings _aiInterviewSettings;
+    private readonly MockAIInterviewSettings _mockAIInterviewSettings;
 
     public AIInterviewAdminController(ICreditService creditService,
         ISponsorInviteService inviteService,
         ILocalizationService localizationService,
         INotificationService notificationService,
-        IWorkContext workContext)
+        IWorkContext workContext,
+        ISettingService settingService,
+        AIInterviewSettings aiInterviewSettings,
+        MockAIInterviewSettings mockAIInterviewSettings)
     {
         _creditService = creditService;
         _inviteService = inviteService;
         _localizationService = localizationService;
         _notificationService = notificationService;
         _workContext = workContext;
+        _settingService = settingService;
+        _aiInterviewSettings = aiInterviewSettings;
+        _mockAIInterviewSettings = mockAIInterviewSettings;
+    }
+
+    protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
+    {
+        var text = await _localizationService.GetResourceAsync(resourceKey);
+        return string.IsNullOrEmpty(text) ? defaultValue : text;
+    }
+
+    protected async Task<IActionResult> LocalizedErrorAsync(string resourceKey, string defaultValue, int statusCode = 400)
+    {
+        return new JsonResult(new { error = await GetLocalizedTextAsync(resourceKey, defaultValue) })
+        {
+            StatusCode = statusCode
+        };
     }
 
     public IActionResult Configure()
     {
-        return View("~/Plugins/Misc.AIInterview/Views/Configure.cshtml");
+        var model = new ConfigurationModel
+        {
+            Enabled = _aiInterviewSettings.Enabled,
+            ApiKey = _aiInterviewSettings.ApiKey,
+            ResumeRequired = _aiInterviewSettings.ResumeRequired,
+            InterviewRequired = _aiInterviewSettings.InterviewRequired,
+            MinimumScore = _aiInterviewSettings.MinimumScore,
+            UseMockResponses = _mockAIInterviewSettings.UseMockResponses,
+            Provider = _aiInterviewSettings.Provider,
+            Model = _aiInterviewSettings.Model,
+            Prompt = _aiInterviewSettings.Prompt,
+            ServiceSettings = _aiInterviewSettings.ServiceSettings,
+            CreditPackAmount = _aiInterviewSettings.CreditPackAmount,
+            CreditPackPrice = _aiInterviewSettings.CreditPackPrice
+        };
+
+        return View("~/Plugins/Misc.AIInterview/Views/Configure.cshtml", model);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Configure(ConfigurationModel model)
+    {
+        if (!ModelState.IsValid)
+            return View("~/Plugins/Misc.AIInterview/Views/Configure.cshtml", model);
+
+        _aiInterviewSettings.Enabled = model.Enabled;
+        _aiInterviewSettings.ApiKey = model.ApiKey;
+        _aiInterviewSettings.ResumeRequired = model.ResumeRequired;
+        _aiInterviewSettings.InterviewRequired = model.InterviewRequired;
+        _aiInterviewSettings.MinimumScore = model.MinimumScore;
+        _aiInterviewSettings.Provider = model.Provider;
+        _aiInterviewSettings.Model = model.Model;
+        _aiInterviewSettings.Prompt = model.Prompt;
+        _aiInterviewSettings.ServiceSettings = model.ServiceSettings;
+        _aiInterviewSettings.CreditPackAmount = model.CreditPackAmount;
+        _aiInterviewSettings.CreditPackPrice = model.CreditPackPrice;
+        await _settingService.SaveSettingAsync(_aiInterviewSettings);
+
+        _mockAIInterviewSettings.UseMockResponses = model.UseMockResponses;
+        await _settingService.SaveSettingAsync(_mockAIInterviewSettings);
+
+        _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
+
+        return Configure();
     }
 
     [HttpPost]
@@ -43,7 +111,7 @@ public class AIInterviewAdminController : BasePluginController
     {
         if (amount <= 0)
         {
-            return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.InvalidAmount") });
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Admin.TopUp.InvalidAmount", "Invalid top-up amount.");
         }
 
         await _creditService.AddCreditAsync(customerId, amount, "Admin top-up");
@@ -52,12 +120,13 @@ public class AIInterviewAdminController : BasePluginController
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateSponsorInvite(string email, int productId, int maxAttempts, DateTime? expiryDateUtc)
+    public async Task<IActionResult> CreateSponsorInvite(string email, int productId, int maxAttempts, DateTime? expiryDateUtc, int? sponsorId)
     {
         try
         {
             var customer = await _workContext.GetCurrentCustomerAsync();
-            await _inviteService.CreateInviteAsync(customer.Id, email, productId, maxAttempts, expiryDateUtc);
+            var effectiveSponsorId = sponsorId ?? customer.Id;
+            await _inviteService.CreateInviteAsync(effectiveSponsorId, email, productId, maxAttempts, expiryDateUtc);
 
             return Json(new { success = true, message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.Success") });
         }
@@ -67,7 +136,7 @@ public class AIInterviewAdminController : BasePluginController
         }
         catch (Exception)
         {
-            return Json(new { error = "An unexpected error occurred." });
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Admin.Invite.UnexpectedError", "An unexpected error occurred.");
         }
     }
 }

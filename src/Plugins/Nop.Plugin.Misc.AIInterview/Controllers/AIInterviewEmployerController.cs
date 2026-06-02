@@ -20,6 +20,8 @@ public class AIInterviewEmployerController : BasePluginController
     private readonly INotificationService _notificationService;
     private readonly ILocalizationService _localizationService;
     private readonly IProductService _productService;
+    private readonly ISponsorInviteService _inviteService;
+    private readonly ICreditService _creditService;
 
     public AIInterviewEmployerController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -27,7 +29,9 @@ public class AIInterviewEmployerController : BasePluginController
         IWorkContext workContext,
         INotificationService notificationService,
         ILocalizationService localizationService,
-        IProductService productService)
+        IProductService productService,
+        ISponsorInviteService inviteService,
+        ICreditService creditService)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -36,6 +40,8 @@ public class AIInterviewEmployerController : BasePluginController
         _notificationService = notificationService;
         _localizationService = localizationService;
         _productService = productService;
+        _inviteService = inviteService;
+        _creditService = creditService;
     }
 
     protected async Task<bool> IsAuthorizedAsync()
@@ -152,5 +158,56 @@ public class AIInterviewEmployerController : BasePluginController
         }
 
         return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "applications.csv");
+    }
+
+    public async Task<IActionResult> SponsorInvites()
+    {
+        if (!await IsAuthorizedAsync())
+            return Challenge();
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        var invites = await _inviteService.GetSponsorInvitesAsync(customer.Id);
+        var wallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
+
+        ViewBag.CreditBalance = wallet.Balance;
+
+        return View("~/Plugins/Misc.AIInterview/Views/AIInterviewEmployer/SponsorInvites.cshtml", invites);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateInvite(string email, int productId, int maxAttempts, DateTime? expiryDateUtc)
+    {
+        if (!await IsAuthorizedAsync())
+            return Challenge();
+
+        try
+        {
+            var customer = await _workContext.GetCurrentCustomerAsync();
+            await _inviteService.CreateInviteAsync(customer.Id, email, productId, maxAttempts, expiryDateUtc);
+            _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Success"));
+        }
+        catch (NopException ex)
+        {
+            _notificationService.ErrorNotification(ex.Message);
+        }
+        catch (Exception)
+        {
+            _notificationService.ErrorNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Error"));
+        }
+
+        return RedirectToAction("SponsorInvites");
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> DeactivateInvite(int id)
+    {
+        if (!await IsAuthorizedAsync())
+            return Challenge();
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        await _inviteService.DeactivateInviteAsync(id, customer.Id);
+        _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Deactivated"));
+
+        return RedirectToAction("SponsorInvites");
     }
 }

@@ -300,4 +300,22 @@ public class SponsorInviteService : ISponsorInviteService
 
         await InsertSponsorInviteAsync(invite);
     }
+
+    public async Task<IList<SponsorInvite>> GetSponsorInvitesAsync(int sponsorId)
+    {
+        return await _inviteRepository.GetAllAsync(query => query
+            .Where(i => i.SponsorId == sponsorId)
+            .OrderByDescending(i => i.CreatedOnUtc));
+    }
+
+    public async Task DeactivateInviteAsync(int inviteId, int sponsorId)
+    {
+        var invite = await _inviteRepository.GetByIdAsync(inviteId);
+        if (invite != null && invite.SponsorId == sponsorId)
+        {
+            // For deactivation, we can set expiry to past
+            invite.ExpiryDateUtc = DateTime.UtcNow.AddMinutes(-1);
+            await _inviteRepository.UpdateAsync(invite);
+        }
+    }
 }

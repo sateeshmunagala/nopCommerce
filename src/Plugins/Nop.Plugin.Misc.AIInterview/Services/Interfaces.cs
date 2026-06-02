@@ -35,4 +35,6 @@ public interface ISponsorInviteService
     Task InsertSponsorInviteAsync(SponsorInvite invite);
     Task<SponsorInvite> GetSponsorInviteByCodeAsync(string code);
     Task CreateInviteAsync(int sponsorId, string email, int productId, int maxAttempts, DateTime? expiryDateUtc);
+    Task<IList<SponsorInvite>> GetSponsorInvitesAsync(int sponsorId);
+    Task DeactivateInviteAsync(int inviteId, int sponsorId);
 }
