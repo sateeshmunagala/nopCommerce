@@ -1,0 +1,37 @@
+@model ApplyModel
+
+@{
+    Layout = "_ColumnsOne";
+
+    //title
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.Apply.Title").Text);
+}
+
+<div class="page apply-job-page">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Apply.Title")</h1>
+    </div>
+    <div class="page-body">
+        <form asp-route="Plugin.Misc.AIInterview.Apply" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="message-error"></div>
+            <div class="fieldset">
+                <div class="form-fields">
+                    <div class="inputs">
+                        <label asp-for="JobTitle" asp-postfix=":"></label>
+                        <input asp-for="JobTitle" class="job-title" />
+                        <nop-required />
+                        <span asp-validation-for="JobTitle"></span>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="ResumeFile" asp-postfix=":"></label>
+                        <input asp-for="ResumeFile" type="file" class="resume-file" />
+                        <span asp-validation-for="ResumeFile"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="buttons">
+                <button type="submit" name="apply-job" class="button-1 apply-job-button">@T("Plugins.Misc.AIInterview.Apply.Submit")</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -69,7 +69,7 @@ public class AIInterviewAdminController : BasePluginController
             MinimumScore = _aiInterviewSettings.MinimumScore,
             UseMockResponses = _mockAIInterviewSettings.UseMockResponses,
             Provider = _aiInterviewSettings.Provider,
-            Model = _aiInterviewSettings.Model,
+            AiModel = _aiInterviewSettings.Model,
             Prompt = _aiInterviewSettings.Prompt,
             ServiceSettings = _aiInterviewSettings.ServiceSettings,
             CreditPackAmount = _aiInterviewSettings.CreditPackAmount,
@@ -91,7 +91,7 @@ public class AIInterviewAdminController : BasePluginController
         _aiInterviewSettings.InterviewRequired = model.InterviewRequired;
         _aiInterviewSettings.MinimumScore = model.MinimumScore;
         _aiInterviewSettings.Provider = model.Provider;
-        _aiInterviewSettings.Model = model.Model;
+        _aiInterviewSettings.Model = model.AiModel;
         _aiInterviewSettings.Prompt = model.Prompt;
         _aiInterviewSettings.ServiceSettings = model.ServiceSettings;
         _aiInterviewSettings.CreditPackAmount = model.CreditPackAmount;

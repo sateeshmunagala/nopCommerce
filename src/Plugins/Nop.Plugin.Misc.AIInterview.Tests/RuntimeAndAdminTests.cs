@@ -125,7 +125,7 @@ public class RuntimeAndAdminTests
             Enabled = true,
             ApiKey = "new-key",
             Provider = "OpenAI",
-            Model = "gpt-4",
+            AiModel = "gpt-4",
             Prompt = "Be a helpful assistant",
             CreditPackAmount = 100,
             CreditPackPrice = 50

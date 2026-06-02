@@ -9,7 +9,7 @@
     <PackageProjectUrl>https://www.nopcommerce.com/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/nopSolutions/nopCommerce</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
-    <OutputPath>$(SolutionDir)\Presentation\Nop.Web\Plugins\Misc.AIInterview</OutputPath>
+    <OutputPath>$(MSBuildThisFileDirectory)..\..\Presentation\Nop.Web\Plugins\Misc.AIInterview</OutputPath>
     <OutDir>$(OutputPath)</OutDir>
     <!--Set this parameter to true to get the dlls copied from the NuGet cache to the output of your project.
     You need to set this parameter to true if your plugin has a nuget package
@@ -49,8 +49,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="$(SolutionDir)\Presentation\Nop.Web.Framework\Nop.Web.Framework.csproj" />
-    <ClearPluginAssemblies Include="$(SolutionDir)\Build\ClearPluginAssemblies.proj" />
+    <ProjectReference Include="..\..\Presentation\Nop.Web.Framework\Nop.Web.Framework.csproj" />
+    <ClearPluginAssemblies Include="..\..\Build\ClearPluginAssemblies.proj" />
   </ItemGroup>
 
   <!-- This target execute after "Build" target -->

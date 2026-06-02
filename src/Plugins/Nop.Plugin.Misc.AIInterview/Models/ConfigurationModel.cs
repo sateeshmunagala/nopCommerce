@@ -11,7 +11,7 @@ public record ConfigurationModel : BaseNopModel
     public decimal MinimumScore { get; set; }
     public bool UseMockResponses { get; set; }
     public string Provider { get; set; }
-    public string Model { get; set; }
+    public string AiModel { get; set; }
     public string Prompt { get; set; }
     public string ServiceSettings { get; set; }
     public decimal CreditPackAmount { get; set; }
