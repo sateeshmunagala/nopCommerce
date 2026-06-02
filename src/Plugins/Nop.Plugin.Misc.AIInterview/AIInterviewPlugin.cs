@@ -125,6 +125,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.InvalidToken"] = "Invalid or expired session token.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.InvalidAnswer"] = "Answer cannot be empty.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.TokenServiceFailure"] = "Token service failure.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.NextQuestionMock"] = "Next mock question?",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.ReportContentMock"] = "Mock report content",
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.Provider"] = "AI Provider",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Model"] = "AI Model",
@@ -135,6 +137,11 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.TopUp.InvalidAmount"] = "Invalid top-up amount.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.TopUp.Success"] = "Credits topped up successfully.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.TopUp.Remarks"] = "Admin top-up",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Configure.Title"] = "AI Interview Configuration",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Configure.General"] = "General Settings",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Configure.Service"] = "AI Service Settings",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Configure.CreditPack"] = "Credit Pack Settings",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.Success"] = "Sponsor invite created successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.EmailRequired"] = "Email is required.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.ProductNotFound"] = "Product not found.",
@@ -165,6 +172,20 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Success"] = "Invite created successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Error"] = "Error creating invite.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Deactivated"] = "Invite deactivated successfully.",
+
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Title"] = "Applications",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Candidate"] = "Candidate",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.UpdateStatus.Success"] = "Application status updated successfully.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.ID"] = "ID",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Email"] = "Email",
+
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Completed"] = "Completed",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Status.InProgress"] = "In Progress",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Started"] = "Started",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Applied"] = "Applied",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Common.Unknown"] = "Unknown",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Common.None"] = "N/A",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Index.Welcome"] = "Welcome to AI Interview.",
         });
 
         await base.InstallAsync();

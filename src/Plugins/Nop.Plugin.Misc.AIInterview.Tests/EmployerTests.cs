@@ -114,6 +114,13 @@ public class EmployerTests
             .ReturnsAsync(applications);
         _customerService.Setup(x => x.GetCustomerByIdAsync(789)).ReturnsAsync(new Customer { FirstName = "John", LastName = "Doe", Email = "john@example.com" });
 
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ID")).ReturnsAsync("ID");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Candidate")).ReturnsAsync("Candidate");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Email")).ReturnsAsync("Email");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.History.Status")).ReturnsAsync("Status");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.History.Score")).ReturnsAsync("Score");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.History.Date")).ReturnsAsync("Date");
+
         var result = await _controller.ExportCsv(new ApplicationListModel());
 
         Assert.That(result, Is.TypeOf<FileContentResult>());

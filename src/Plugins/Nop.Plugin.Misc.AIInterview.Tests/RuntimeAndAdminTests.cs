@@ -3,6 +3,7 @@ using Moq;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
+using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
@@ -139,11 +140,14 @@ public class RuntimeAndAdminTests
     [Test]
     public async Task Admin_TopUp_Successful()
     {
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Remarks"))
+            .ReturnsAsync("Admin top-up localized");
+
         var result = await _adminController.TopUpCredits(1, 100);
         var json = (JsonResult)result;
         var success = (bool)json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
 
-        _creditService.Verify(x => x.AddCreditAsync(1, 100, "Admin top-up"), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(1, 100, "Admin top-up localized"), Times.Once);
         Assert.That(success, Is.True);
     }
 
@@ -153,6 +157,53 @@ public class RuntimeAndAdminTests
         _productService.Setup(x => x.GetProductByIdAsync(It.IsAny<int>())).ReturnsAsync((Product)null);
         var ex = Assert.ThrowsAsync<NopException>(async () => await _inviteServiceImplementation.CreateInviteAsync(1, "test@test.com", 999, 1, null));
         Assert.That(ex.Message, Is.EqualTo("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound"));
+    }
+
+    [Test]
+    public async Task Runtime_RefreshToken_Successful()
+    {
+        var session = new InterviewSession { Token = "old-token", IsActive = true };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("old-token")).ReturnsAsync(session);
+
+        var result = await _runtimeController.RefreshToken("old-token");
+        var json = (JsonResult)result;
+        var newToken = json.Value.GetType().GetProperty("newToken").GetValue(json.Value, null);
+
+        Assert.That(newToken, Is.Not.EqualTo("old-token"));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Token == (string)newToken)), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_RefreshToken_Failure_ReturnsError()
+    {
+        var session = new InterviewSession { Token = "fail-me", IsActive = true };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("fail-me")).ReturnsAsync(session);
+
+        var result = await _runtimeController.RefreshToken("fail-me");
+        var json = (JsonResult)result;
+        var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
+
+        Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.TokenServiceFailure"));
+    }
+
+    [Test]
+    public async Task Admin_Invite_Validation_InvalidAttempts()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(1)).ReturnsAsync(new Customer { Id = 1, VendorId = 1 });
+        _productService.Setup(x => x.GetProductByIdAsync(10)).ReturnsAsync(new Product { Id = 10, VendorId = 1 });
+
+        var ex = Assert.ThrowsAsync<NopException>(async () => await _inviteServiceImplementation.CreateInviteAsync(1, "test@test.com", 10, 0, null));
+        Assert.That(ex.Message, Is.EqualTo("Plugins.Misc.AIInterview.Admin.Invite.InvalidAttempts"));
+    }
+
+    [Test]
+    public async Task Admin_Invite_Validation_InvalidExpiry()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(1)).ReturnsAsync(new Customer { Id = 1, VendorId = 1 });
+        _productService.Setup(x => x.GetProductByIdAsync(10)).ReturnsAsync(new Product { Id = 10, VendorId = 1 });
+
+        var ex = Assert.ThrowsAsync<NopException>(async () => await _inviteServiceImplementation.CreateInviteAsync(1, "test@test.com", 10, 1, DateTime.UtcNow.AddMinutes(-1)));
+        Assert.That(ex.Message, Is.EqualTo("Plugins.Misc.AIInterview.Admin.Invite.InvalidExpiry"));
     }
 
     private class TestRuntimeController : AIInterviewRuntimeController

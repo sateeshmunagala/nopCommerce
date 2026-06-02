@@ -78,9 +78,9 @@ public class AIInterviewEmployerController : BasePluginController
             return new ApplicationModel
             {
                 Id = a.Id,
-                CandidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : "Unknown",
-                CandidateEmail = appCustomer?.Email ?? "Unknown",
-                Status = a.Status,
+                CandidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown"),
+                CandidateEmail = appCustomer?.Email ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown"),
+                Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{a.Status?.Replace(" ", "")}") ?? a.Status,
                 StatusComment = a.StatusComment,
                 InterviewScore = session?.Score,
                 InterviewReportUrl = session != null ? Url.Action("Report", "AIInterview", new { sessionId = session.Id }) : null,
@@ -138,21 +138,28 @@ public class AIInterviewEmployerController : BasePluginController
             sortByScore: model.SortByScore);
 
         var sb = new StringBuilder();
-        sb.AppendLine("ID,Candidate,Email,Status,Score,Date");
+        var idHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ID");
+        var candidateHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Candidate");
+        var emailHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Email");
+        var statusHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.History.Status");
+        var scoreHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.History.Score");
+        var dateHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.History.Date");
+        sb.AppendLine($"{idHeader},{candidateHeader},{emailHeader},{statusHeader},{scoreHeader},{dateHeader}");
 
         foreach (var a in applications)
         {
             var appCustomer = await _customerService.GetCustomerByIdAsync(a.CustomerId);
             var session = await _interviewSessionService.GetLatestCompletedSessionByCustomerIdAsync(a.CustomerId);
 
-            var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : "Unknown";
-            var email = appCustomer?.Email ?? "Unknown";
-            var score = session?.Score.ToString() ?? "N/A";
+            var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
+            var email = appCustomer?.Email ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
+            var status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{a.Status?.Replace(" ", "")}") ?? a.Status;
+            var score = session?.Score.ToString() ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.None");
 
             // Simple CSV escaping: wrap in quotes and escape existing quotes
             var candidateNameCsv = $"\"{candidateName.Replace("\"", "\"\"")}\"";
             var emailCsv = $"\"{email.Replace("\"", "\"\"")}\"";
-            var statusCsv = $"\"{a.Status?.Replace("\"", "\"\"")}\"";
+            var statusCsv = $"\"{status?.Replace("\"", "\"\"")}\"";
 
             sb.AppendLine($"{a.Id},{candidateNameCsv},{emailCsv},{statusCsv},{score},{a.CreatedOnUtc:yyyy-MM-dd HH:mm:ss}");
         }

@@ -66,15 +66,15 @@ public class AIInterviewController : BasePluginController
             return Challenge();
 
         var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id);
-        var model = sessions.Select(s => new ApplicationModel
+        var model = await Task.WhenAll(sessions.Select(async s => new ApplicationModel
         {
             Id = s.Id,
             InterviewScore = s.Score,
-            Status = s.CompletedOnUtc.HasValue ? "Completed" : (s.IsActive ? "In Progress" : "Started"),
+            Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{(s.CompletedOnUtc.HasValue ? "Completed" : (s.IsActive ? "InProgress" : "Started"))}"),
             CreatedOn = s.CreatedOnUtc
-        }).ToList();
+        }));
 
-        return View("~/Plugins/Misc.AIInterview/Views/History.cshtml", model);
+        return View("~/Plugins/Misc.AIInterview/Views/History.cshtml", model.ToList());
     }
 
     public async Task<IActionResult> Report(int sessionId)

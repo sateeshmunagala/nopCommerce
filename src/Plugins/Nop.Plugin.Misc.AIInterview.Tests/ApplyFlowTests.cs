@@ -172,4 +172,29 @@ public class ApplyFlowTests
             a.Status == "Applied")), Times.Once);
         _notificationService.Verify(x => x.SuccessNotification(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<int>()), Times.Once);
     }
+
+    [Test]
+    public async Task Apply_Post_ResumeReuse_Successful()
+    {
+        // Arrange
+        _aiInterviewSettings.ResumeRequired = true;
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<JobApplication> {
+                new JobApplication { JobTitle = "Old Job", ResumeDownloadId = 789, CreatedOnUtc = DateTime.UtcNow.AddDays(-1) }
+            });
+
+        // Simulate validation error for missing resume
+        _controller.ModelState.AddModelError("ResumeFile", "Required");
+
+        var model = new ApplyModel { JobTitle = "New Job", ResumeFile = null };
+
+        // Act
+        var result = await _controller.Apply(model);
+
+        // Assert
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        _applicationService.Verify(x => x.InsertJobApplicationAsync(It.Is<JobApplication>(a =>
+            a.JobTitle == "New Job" &&
+            a.ResumeDownloadId == 789)), Times.Once);
+    }
 }

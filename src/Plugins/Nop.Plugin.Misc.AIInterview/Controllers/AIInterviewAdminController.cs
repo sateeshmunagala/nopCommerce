@@ -114,7 +114,7 @@ public class AIInterviewAdminController : BasePluginController
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Admin.TopUp.InvalidAmount", "Invalid top-up amount.");
         }
 
-        await _creditService.AddCreditAsync(customerId, amount, "Admin top-up");
+        await _creditService.AddCreditAsync(customerId, amount, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Remarks"));
 
         return Json(new { success = true, message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Success") });
     }

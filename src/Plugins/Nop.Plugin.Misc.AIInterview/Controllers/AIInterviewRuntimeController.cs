@@ -84,7 +84,7 @@ public class AIInterviewRuntimeController : BasePluginController
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer", "Answer cannot be empty.");
 
         // Mock answer processing
-        return Json(new { success = true, nextQuestion = "Next mock question?" });
+        return Json(new { success = true, nextQuestion = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.NextQuestionMock") });
     }
 
     [HttpPost]
@@ -97,7 +97,7 @@ public class AIInterviewRuntimeController : BasePluginController
         session.IsActive = false;
         session.CompletedOnUtc = DateTime.UtcNow;
         session.Score = 85; // Mock score
-        session.ReportData = "Mock report content";
+        session.ReportData = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.ReportContentMock");
         await _interviewSessionService.UpdateInterviewSessionAsync(session);
 
         return Json(new { success = true, score = session.Score });
