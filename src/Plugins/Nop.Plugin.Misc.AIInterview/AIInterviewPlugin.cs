@@ -52,7 +52,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
         var settings = new AIInterviewSettings
         {
             Enabled = false,
-            ApiKey = string.Empty
+            ApiKey = string.Empty,
+            ResumeRequired = false,
+            InterviewRequired = false,
+            MinimumScore = 0
         };
         await _settingService.SaveSettingAsync(settings);
 
@@ -71,6 +74,19 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.ApiKey.Hint"] = "Specify the API key for AI service.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.UseMockResponses"] = "Use Mock Responses",
             [$"{AIInterviewDefaults.LocalizationPrefix}.UseMockResponses.Hint"] = "Enable to use mock responses instead of calling actual AI service.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.ResumeRequired"] = "Resume Required",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.InterviewRequired"] = "Interview Required",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MinimumScore"] = "Minimum Score",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.JobTitle"] = "Job Title",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile"] = "Resume File",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.JobTitle.Required"] = "Job Title is required.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile.Required"] = "Resume file is required.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.AlreadyApplied"] = "You have already applied for a position.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.InterviewRequired"] = "An interview is required before you can apply.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.MinimumScoreNotReached"] = "You must achieve a minimum score of {0} in your interview to apply. Your latest score was {1}.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.Success"] = "Your application has been submitted successfully.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.Title"] = "Apply for a Position",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.Submit"] = "Submit Application",
         });
 
         await base.InstallAsync();

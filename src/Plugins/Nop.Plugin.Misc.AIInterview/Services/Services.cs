@@ -21,6 +21,11 @@ public class ApplicationService : IApplicationService
     {
         return await _applicationRepository.GetByIdAsync(applicationId);
     }
+
+    public async Task<IList<JobApplication>> GetJobApplicationsByCustomerIdAsync(int customerId)
+    {
+        return await _applicationRepository.GetAllAsync(query => query.Where(a => a.CustomerId == customerId));
+    }
 }
 
 public class InterviewSessionService : IInterviewSessionService
@@ -40,6 +45,14 @@ public class InterviewSessionService : IInterviewSessionService
     public async Task<InterviewSession> GetInterviewSessionByIdAsync(int sessionId)
     {
         return await _sessionRepository.GetByIdAsync(sessionId);
+    }
+
+    public async Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAsync(int customerId)
+    {
+        return (await _sessionRepository.GetAllAsync(query => query
+            .Where(s => s.CustomerId == customerId && s.CompletedOnUtc.HasValue)
+            .OrderByDescending(s => s.CompletedOnUtc)))
+            .FirstOrDefault();
     }
 }
 

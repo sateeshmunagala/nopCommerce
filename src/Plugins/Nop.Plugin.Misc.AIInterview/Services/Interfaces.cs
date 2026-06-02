@@ -6,12 +6,14 @@ public interface IApplicationService
 {
     Task InsertJobApplicationAsync(JobApplication application);
     Task<JobApplication> GetJobApplicationByIdAsync(int applicationId);
+    Task<IList<JobApplication>> GetJobApplicationsByCustomerIdAsync(int customerId);
 }
 
 public interface IInterviewSessionService
 {
     Task InsertInterviewSessionAsync(InterviewSession session);
     Task<InterviewSession> GetInterviewSessionByIdAsync(int sessionId);
+    Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAsync(int customerId);
 }
 
 public interface ICreditService

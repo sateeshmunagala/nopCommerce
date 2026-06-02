@@ -6,6 +6,7 @@ public class JobApplication : BaseEntity
 {
     public int CustomerId { get; set; }
     public string JobTitle { get; set; }
+    public int ResumeDownloadId { get; set; }
     public string Status { get; set; }
     public DateTime CreatedOnUtc { get; set; }
 }
