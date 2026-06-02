@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Presentation\Nop.Web\Nop.Web.csproj" />
+    <ProjectReference Include="..\..\Plugins\Nop.Plugin.Misc.AIInterview\Nop.Plugin.Misc.AIInterview.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,11 @@
+{
+  "Group": "Misc",
+  "FriendlyName": "AI Interview",
+  "SystemName": "Misc.AIInterview",
+  "Version": "1.00",
+  "SupportedVersions": [ "5.00" ],
+  "Author": "nopCommerce team",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.Misc.AIInterview.dll",
+  "Description": "AI Interview plugin"
+}
