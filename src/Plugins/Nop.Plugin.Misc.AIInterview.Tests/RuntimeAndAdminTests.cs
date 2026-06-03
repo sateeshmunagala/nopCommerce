@@ -22,7 +22,8 @@ public class RuntimeAndAdminTests
     private Mock<IInterviewSessionService> _sessionService;
     private Mock<ILocalizationService> _localizationService;
     private Mock<IWorkContext> _workContext;
-    private AIInterviewRuntimeController _runtimeController;
+    private Mock<ICustomerService> _customerService;
+    private MockAiInterviewController _runtimeController;
 
     private Mock<ICreditService> _creditService;
     private Mock<ISponsorInviteService> _inviteService;
@@ -30,10 +31,9 @@ public class RuntimeAndAdminTests
     private Mock<ISettingService> _settingService;
     private AIInterviewSettings _aiInterviewSettings;
     private MockAIInterviewSettings _mockAIInterviewSettings;
-    private AIInterviewAdminController _adminController;
+    private MockAiInterviewAdminController _adminController;
 
     private Mock<IProductService> _productService;
-    private Mock<ICustomerService> _customerService;
     private SponsorInviteService _inviteServiceImplementation;
 
     [SetUp]
@@ -42,18 +42,18 @@ public class RuntimeAndAdminTests
         _sessionService = new Mock<IInterviewSessionService>();
         _localizationService = new Mock<ILocalizationService>();
         _workContext = new Mock<IWorkContext>();
-        _runtimeController = new AIInterviewRuntimeController(_sessionService.Object, _localizationService.Object, _workContext.Object);
-
+        _customerService = new Mock<ICustomerService>();
         _creditService = new Mock<ICreditService>();
         _inviteService = new Mock<ISponsorInviteService>();
+        _runtimeController = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object);
+
         _notificationService = new Mock<INotificationService>();
         _settingService = new Mock<ISettingService>();
         _aiInterviewSettings = new AIInterviewSettings();
         _mockAIInterviewSettings = new MockAIInterviewSettings();
-        _adminController = new AIInterviewAdminController(_creditService.Object, _inviteService.Object, _localizationService.Object, _notificationService.Object, _workContext.Object, _settingService.Object, _aiInterviewSettings, _mockAIInterviewSettings);
+        _adminController = new MockAiInterviewAdminController(_creditService.Object, _inviteService.Object, _localizationService.Object, _notificationService.Object, _workContext.Object, _settingService.Object, _aiInterviewSettings, _mockAIInterviewSettings);
 
         _productService = new Mock<IProductService>();
-        _customerService = new Mock<ICustomerService>();
         _inviteServiceImplementation = new SponsorInviteService(null, _productService.Object, _customerService.Object, _localizationService.Object);
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
@@ -64,7 +64,7 @@ public class RuntimeAndAdminTests
     public async Task Runtime_Start_Unauthorized_ReturnsError()
     {
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync((Customer)null);
-        var result = await _runtimeController.Start();
+        var result = await _runtimeController.StartPost();
         var json = (JsonResult)result;
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
         Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized"));
@@ -84,7 +84,7 @@ public class RuntimeAndAdminTests
     {
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync((Customer)null);
         // Using a trick here by mocking the controller to use a missing resource
-        var controller = new TestRuntimeController(_sessionService.Object, _localizationService.Object, _workContext.Object);
+        var controller = new TestRuntimeController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object);
         var result = await controller.TestFallback();
         var json = (JsonResult)result;
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
@@ -206,10 +206,10 @@ public class RuntimeAndAdminTests
         Assert.That(ex.Message, Is.EqualTo("Plugins.Misc.AIInterview.Admin.Invite.InvalidExpiry"));
     }
 
-    private class TestRuntimeController : AIInterviewRuntimeController
+    private class TestRuntimeController : MockAiInterviewController
     {
-        public TestRuntimeController(IInterviewSessionService sessionService, ILocalizationService localizationService, IWorkContext workContext)
-            : base(sessionService, localizationService, workContext) { }
+        public TestRuntimeController(IInterviewSessionService sessionService, ILocalizationService localizationService, IWorkContext workContext, ISponsorInviteService inviteService, ICreditService creditService, ICustomerService customerService)
+            : base(sessionService, localizationService, workContext, inviteService, creditService, customerService) { }
 
         public async Task<IActionResult> TestFallback()
         {

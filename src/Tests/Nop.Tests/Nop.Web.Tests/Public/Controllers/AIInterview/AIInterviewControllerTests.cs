@@ -47,6 +47,9 @@ public class AIInterviewControllerTests
         _customer = new Customer { Id = 123 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_customer);
 
+        _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
+            .ReturnsAsync((string key) => key);
+
         _controller = new AIInterviewController(
             _applicationService.Object,
             _interviewSessionService.Object,
@@ -80,6 +83,27 @@ public class AIInterviewControllerTests
     }
 
     [Test]
+    public async Task Apply_Post_MinimumScoreNotReached_ReturnsError()
+    {
+        // Arrange
+        _aiInterviewSettings.InterviewRequired = true;
+        _aiInterviewSettings.MinimumScore = 80;
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<JobApplication>());
+        _interviewSessionService.Setup(x => x.GetLatestCompletedSessionByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new InterviewSession { Score = 70, CompletedOnUtc = DateTime.UtcNow });
+
+        var model = new ApplyModel { JobTitle = "Dev" };
+
+        // Act
+        var result = await _controller.Apply(model);
+
+        // Assert
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        _notificationService.Verify(x => x.ErrorNotification(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<int>()), Times.Once);
+    }
+
+    [Test]
     public async Task EmployerApplications_Returns_Challenge_When_Not_Authorized()
     {
         // Arrange
@@ -91,5 +115,66 @@ public class AIInterviewControllerTests
 
         // Assert
         Assert.That(result, Is.TypeOf<ChallengeResult>());
+    }
+
+    [Test]
+    public async Task EmployerApplications_FiltersCorrectly()
+    {
+        // Arrange
+        _customerService.Setup(x => x.IsAdminAsync(_customer)).ReturnsAsync(true);
+        var model = new ApplicationListModel { CandidateNameOrEmail = "John", Status = "Applied" };
+        var applications = new PagedList<JobApplication>(new List<JobApplication> { new JobApplication { Id = 1, CustomerId = 123 } }, 0, 10);
+
+        _applicationService.Setup(x => x.GetApplicationsAsync(
+            "John", "Applied", null, null, null, null, 0, 0, 0, 10, false))
+            .ReturnsAsync(applications);
+
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>())).ReturnsAsync(new List<Customer> { _customer });
+
+        // Act
+        var result = await _controller.EmployerApplications(model);
+
+        // Assert
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        var resultModel = (ApplicationListModel)viewResult.Model;
+        Assert.That(resultModel.Applications.Count(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task UpdateStatus_SavesCorrectly()
+    {
+        // Arrange
+        _customerService.Setup(x => x.IsAdminAsync(_customer)).ReturnsAsync(true);
+        var application = new JobApplication { Id = 1, Status = "Applied" };
+        _applicationService.Setup(x => x.GetJobApplicationByIdAsync(1)).ReturnsAsync(application);
+
+        var model = new UpdateStatusModel { Id = 1, Status = "Shortlisted", StatusComment = "Good" };
+
+        // Act
+        var result = await _controller.UpdateStatus(model);
+
+        // Assert
+        _applicationService.Verify(x => x.UpdateJobApplicationAsync(It.Is<JobApplication>(a => a.Status == "Shortlisted" && a.StatusComment == "Good")), Times.Once);
+        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
+    }
+
+    [Test]
+    public async Task ExportCsv_ReturnsFile()
+    {
+        // Arrange
+        _customerService.Setup(x => x.IsAdminAsync(_customer)).ReturnsAsync(true);
+        var applications = new List<JobApplication> { new JobApplication { Id = 1, CustomerId = 123 } };
+        _applicationService.Setup(x => x.GetApplicationsAsync(null, null, null, null, null, null, 0, 0, 0, int.MaxValue, false))
+            .ReturnsAsync(new PagedList<JobApplication>(applications, 0, int.MaxValue));
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>())).ReturnsAsync(new List<Customer> { _customer });
+
+        // Act
+        var result = await _controller.ExportCsv(new ApplicationListModel());
+
+        // Assert
+        Assert.That(result, Is.TypeOf<FileContentResult>());
+        var fileResult = (FileContentResult)result;
+        Assert.That(fileResult.ContentType, Is.EqualTo("text/csv"));
     }
 }

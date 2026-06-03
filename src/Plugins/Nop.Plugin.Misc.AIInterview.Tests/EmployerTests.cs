@@ -9,6 +9,7 @@ using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
+using Nop.Services.Media;
 using Nop.Services.Messages;
 using NUnit.Framework;
 
@@ -26,7 +27,9 @@ public class EmployerTests
     private Mock<IProductService> _productService;
     private Mock<ISponsorInviteService> _inviteService;
     private Mock<ICreditService> _creditService;
-    private AIInterviewEmployerController _controller;
+    private Mock<IDownloadService> _downloadService;
+    private AIInterviewController _controller;
+    private MockAiInterviewController _mockAiController;
     private Customer _employer;
 
     [SetUp]
@@ -41,31 +44,42 @@ public class EmployerTests
         _productService = new Mock<IProductService>();
         _inviteService = new Mock<ISponsorInviteService>();
         _creditService = new Mock<ICreditService>();
+        _downloadService = new Mock<IDownloadService>();
 
         _employer = new Customer { Id = 123, VendorId = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_employer);
 
         _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>(), It.IsAny<bool>())).ReturnsAsync(false);
+        _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>())).ReturnsAsync(false);
 
         _creditService.Setup(x => x.GetOrCreateWalletAsync(It.IsAny<int>())).ReturnsAsync(new CreditWallet { Balance = 500 });
 
-        _controller = new AIInterviewEmployerController(
+        _controller = new AIInterviewController(
             _applicationService.Object,
             _interviewSessionService.Object,
-            _customerService.Object,
+            new AIInterviewSettings { Enabled = true },
             _workContext.Object,
             _notificationService.Object,
             _localizationService.Object,
-            _productService.Object,
+            _downloadService.Object,
+            _customerService.Object,
+            _productService.Object);
+
+        _mockAiController = new MockAiInterviewController(
+            _interviewSessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
             _inviteService.Object,
-            _creditService.Object);
+            _creditService.Object,
+            _customerService.Object);
     }
 
     [Test]
     public async Task List_Unauthorized_ReturnsChallenge()
     {
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(new Customer { Id = 456, VendorId = 0 });
-        var result = await _controller.List(new ApplicationListModel());
+        _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>())).ReturnsAsync(false);
+        var result = await _controller.EmployerApplications(new ApplicationListModel());
         Assert.That(result, Is.TypeOf<ChallengeResult>());
     }
 
@@ -79,14 +93,14 @@ public class EmployerTests
             "John", "Pending", null, null, null, null, 0, 1, 0, 10, false))
             .ReturnsAsync(applications);
 
-        _customerService.Setup(x => x.GetCustomerByIdAsync(789)).ReturnsAsync(new Customer { Email = "john@example.com" });
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>())).ReturnsAsync(new List<Customer> { new Customer { Id = 789, Email = "john@example.com" } });
 
-        var result = await _controller.List(model);
+        var result = await _controller.EmployerApplications(model);
 
         Assert.That(result, Is.TypeOf<ViewResult>());
         var viewResult = (ViewResult)result;
         var resultModel = (ApplicationListModel)viewResult.Model;
-        Assert.That(resultModel.Applications.Count, Is.EqualTo(1));
+        Assert.That(resultModel.Applications.Count(), Is.EqualTo(1));
     }
 
     [Test]
@@ -112,7 +126,7 @@ public class EmployerTests
 
         _applicationService.Setup(x => x.GetApplicationsAsync(null, null, null, null, null, null, 0, 1, 0, int.MaxValue, false))
             .ReturnsAsync(applications);
-        _customerService.Setup(x => x.GetCustomerByIdAsync(789)).ReturnsAsync(new Customer { FirstName = "John", LastName = "Doe", Email = "john@example.com" });
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>())).ReturnsAsync(new List<Customer> { new Customer { Id = 789, FirstName = "John", LastName = "Doe", Email = "john@example.com" } });
 
         _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ID")).ReturnsAsync("ID");
         _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Candidate")).ReturnsAsync("Candidate");
@@ -136,7 +150,7 @@ public class EmployerTests
         var invites = new List<SponsorInvite> { new SponsorInvite { Id = 1, Email = "invited@test.com" } };
         _inviteService.Setup(x => x.GetSponsorInvitesAsync(123)).ReturnsAsync(invites);
 
-        var result = await _controller.SponsorInvites();
+        var result = await _mockAiController.EmployerManage();
 
         Assert.That(result, Is.TypeOf<ViewResult>());
         var viewResult = (ViewResult)result;
@@ -147,26 +161,27 @@ public class EmployerTests
     [Test]
     public async Task CreateInvite_Flow_Success()
     {
-        var result = await _controller.CreateInvite("invited@test.com", 10, 1, null);
+        var result = await _mockAiController.CreateInvite("invited@test.com", 10, 1, null);
 
         _inviteService.Verify(x => x.CreateInviteAsync(123, "invited@test.com", 10, 1, null), Times.Once);
-        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
+        Assert.That(result, Is.TypeOf<JsonResult>());
     }
 
     [Test]
     public async Task DeactivateInvite_Flow_Success()
     {
-        var result = await _controller.DeactivateInvite(1);
+        var result = await _mockAiController.DeactivateInvite(1);
 
         _inviteService.Verify(x => x.DeactivateInviteAsync(1, 123), Times.Once);
-        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
+        Assert.That(result, Is.TypeOf<JsonResult>());
     }
 
     [Test]
     public async Task CreateInvite_Unauthorized_ReturnsChallenge()
     {
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(new Customer { Id = 456, VendorId = 0 });
-        var result = await _controller.CreateInvite("invited@test.com", 10, 1, null);
+        _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>())).ReturnsAsync(false);
+        var result = await _mockAiController.CreateInvite("invited@test.com", 10, 1, null);
         Assert.That(result, Is.TypeOf<ChallengeResult>());
     }
 }

@@ -7,6 +7,8 @@ using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
+using Nop.Services.Catalog;
+using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Messages;
@@ -24,8 +26,12 @@ public class CandidateFlowTests
     private Mock<INotificationService> _notificationService;
     private Mock<ILocalizationService> _localizationService;
     private Mock<IDownloadService> _downloadService;
+    private Mock<ICustomerService> _customerService;
+    private Mock<IProductService> _productService;
+    private Mock<ISponsorInviteService> _inviteService;
+    private Mock<ICreditService> _creditService;
     private AIInterviewController _controller;
-    private AIInterviewRuntimeController _runtimeController;
+    private MockAiInterviewController _runtimeController;
 
     [SetUp]
     public void SetUp()
@@ -37,6 +43,10 @@ public class CandidateFlowTests
         _notificationService = new Mock<INotificationService>();
         _localizationService = new Mock<ILocalizationService>();
         _downloadService = new Mock<IDownloadService>();
+        _customerService = new Mock<ICustomerService>();
+        _productService = new Mock<IProductService>();
+        _inviteService = new Mock<ISponsorInviteService>();
+        _creditService = new Mock<ICreditService>();
 
         _controller = new AIInterviewController(
             _applicationService.Object,
@@ -45,12 +55,17 @@ public class CandidateFlowTests
             _workContext.Object,
             _notificationService.Object,
             _localizationService.Object,
-            _downloadService.Object);
+            _downloadService.Object,
+            _customerService.Object,
+            _productService.Object);
 
-        _runtimeController = new AIInterviewRuntimeController(
+        _runtimeController = new MockAiInterviewController(
             _sessionService.Object,
             _localizationService.Object,
-            _workContext.Object);
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object);
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
@@ -104,7 +119,7 @@ public class CandidateFlowTests
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession>());
 
-        var result = await _runtimeController.Start("Hard");
+        var result = await _runtimeController.StartPost("Hard");
         var json = (JsonResult)result;
 
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.Difficulty == "Hard")), Times.Once);
@@ -120,7 +135,7 @@ public class CandidateFlowTests
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession> { activeSession });
 
-        var result = await _runtimeController.Start();
+        var result = await _runtimeController.StartPost();
         var json = (JsonResult)result;
 
         var sessionKey = json.Value.GetType().GetProperty("sessionKey").GetValue(json.Value, null);
@@ -186,7 +201,7 @@ public class CandidateFlowTests
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession> { new InterviewSession { Id = 1, CustomerId = 1 } });
 
-        var result = await _controller.History();
+        var result = await _runtimeController.History();
         Assert.That(result, Is.InstanceOf<ViewResult>());
     }
 

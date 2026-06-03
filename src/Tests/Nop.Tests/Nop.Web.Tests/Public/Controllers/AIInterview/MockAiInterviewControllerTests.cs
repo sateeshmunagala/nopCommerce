@@ -64,4 +64,56 @@ public class MockAiInterviewControllerTests
         var errorProp = jsonResult.Value.GetType().GetProperty("error");
         Assert.That(errorProp.GetValue(jsonResult.Value), Is.Not.Null);
     }
+
+    [Test]
+    public async Task SubmitAnswer_ReturnsError_WhenTokenInvalid()
+    {
+        // Arrange
+        _interviewSessionService.Setup(x => x.GetSessionByTokenAsync(It.IsAny<string>())).ReturnsAsync((InterviewSession)null);
+
+        // Act
+        var result = await _controller.SubmitAnswer("invalid", "answer");
+
+        // Assert
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var jsonResult = (JsonResult)result;
+        var errorProp = jsonResult.Value.GetType().GetProperty("error");
+        Assert.That(errorProp.GetValue(jsonResult.Value), Is.Not.Null);
+    }
+
+    [Test]
+    public async Task SubmitAnswer_ReturnsError_WhenAnswerEmpty()
+    {
+        // Arrange
+        var session = new InterviewSession { IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        _interviewSessionService.Setup(x => x.GetSessionByTokenAsync("valid")).ReturnsAsync(session);
+
+        // Act
+        var result = await _controller.SubmitAnswer("valid", "");
+
+        // Assert
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var jsonResult = (JsonResult)result;
+        var errorProp = jsonResult.Value.GetType().GetProperty("error");
+        Assert.That(errorProp.GetValue(jsonResult.Value), Is.Not.Null);
+    }
+
+    [Test]
+    public async Task Start_Post_ReturnsExistingSession_WhenActive()
+    {
+        // Arrange
+        var activeSession = new InterviewSession { SessionKey = "existing", IsActive = true, CustomerId = 123 };
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(123))
+            .ReturnsAsync(new List<InterviewSession> { activeSession });
+
+        // Act
+        var result = await _controller.StartPost();
+
+        // Assert
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var jsonResult = (JsonResult)result;
+        var sessionKeyProp = jsonResult.Value.GetType().GetProperty("sessionKey");
+        Assert.That(sessionKeyProp.GetValue(jsonResult.Value), Is.EqualTo("existing"));
+        _interviewSessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
 }

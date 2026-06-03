@@ -10,6 +10,8 @@ using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Plugin.Misc.AIInterview.Validators;
+using Nop.Services.Catalog;
+using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Messages;
@@ -27,6 +29,8 @@ public class ApplyFlowTests
     private Mock<INotificationService> _notificationService;
     private Mock<ILocalizationService> _localizationService;
     private Mock<IDownloadService> _downloadService;
+    private Mock<ICustomerService> _customerService;
+    private Mock<IProductService> _productService;
     private AIInterviewController _controller;
     private Customer _customer;
 
@@ -40,6 +44,8 @@ public class ApplyFlowTests
         _notificationService = new Mock<INotificationService>();
         _localizationService = new Mock<ILocalizationService>();
         _downloadService = new Mock<IDownloadService>();
+        _customerService = new Mock<ICustomerService>();
+        _productService = new Mock<IProductService>();
 
         _customer = new Customer { Id = 123 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_customer);
@@ -54,7 +60,9 @@ public class ApplyFlowTests
             _workContext.Object,
             _notificationService.Object,
             _localizationService.Object,
-            _downloadService.Object);
+            _downloadService.Object,
+            _customerService.Object,
+            _productService.Object);
 
         var tempData = new Mock<ITempDataDictionary>();
         _controller.TempData = tempData.Object;
