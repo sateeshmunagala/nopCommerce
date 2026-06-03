@@ -29,6 +29,7 @@ public record ApplicationListModel : BaseNopModel
 public record ApplicationModel : BaseNopModel
 {
     public int Id { get; set; }
+    public string JobTitle { get; set; }
     public string CandidateName { get; set; }
     public string CandidateEmail { get; set; }
     public string Status { get; set; }

@@ -25,6 +25,17 @@
     <None Remove="Views\Apply.cshtml" />
     <None Remove="Views\Configure.cshtml" />
     <None Remove="Views\Index.cshtml" />
+    <None Remove="Views\Interview.cshtml" />
+    <None Remove="Views\MyApplications.cshtml" />
+    <None Remove="Views\EmployerApplications.cshtml" />
+    <None Remove="Views\Report.cshtml" />
+    <None Remove="Views\MockAiInterview\Start.cshtml" />
+    <None Remove="Views\MockAiInterview\Runtime.cshtml" />
+    <None Remove="Views\MockAiInterview\History.cshtml" />
+    <None Remove="Views\MockAiInterview\Report.cshtml" />
+    <None Remove="Views\MockAiInterview\EmployerManage.cshtml" />
+    <None Remove="Views\MockAiInterviewAdmin\Configure.cshtml" />
+    <None Remove="Views\MockAiInterviewAdmin\Report.cshtml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,6 +52,39 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Index.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Interview.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MyApplications.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\EmployerApplications.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Report.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\Start.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\Runtime.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\History.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\Report.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\EmployerManage.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterviewAdmin\Configure.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterviewAdmin\Report.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\_ViewImports.cshtml">

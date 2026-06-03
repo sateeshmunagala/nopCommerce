@@ -186,6 +186,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.Unknown"] = "Unknown",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.None"] = "N/A",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Index.Welcome"] = "Welcome to AI Interview.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.Title"] = "My Applications",
         });
 
         await base.InstallAsync();

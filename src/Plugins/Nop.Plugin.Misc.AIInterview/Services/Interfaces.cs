@@ -28,6 +28,7 @@ public interface ICreditService
 {
     Task<CreditWallet> GetOrCreateWalletAsync(int customerId);
     Task AddCreditAsync(int customerId, decimal amount, string remarks);
+    Task<bool> AuthorizeAndChargeAsync(int customerId, decimal amount, string remarks);
 }
 
 public interface ISponsorInviteService
@@ -37,4 +38,5 @@ public interface ISponsorInviteService
     Task CreateInviteAsync(int sponsorId, string email, int productId, int maxAttempts, DateTime? expiryDateUtc);
     Task<IList<SponsorInvite>> GetSponsorInvitesAsync(int sponsorId);
     Task DeactivateInviteAsync(int inviteId, int sponsorId);
+    Task<bool> ValidateInviteAsync(string code, string email);
 }

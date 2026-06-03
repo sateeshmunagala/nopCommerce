@@ -237,6 +237,27 @@ public class CreditService : ICreditService
             CreatedOnUtc = DateTime.UtcNow
         });
     }
+
+    public async Task<bool> AuthorizeAndChargeAsync(int customerId, decimal amount, string remarks)
+    {
+        var wallet = await GetOrCreateWalletAsync(customerId);
+        if (wallet.Balance < amount)
+            return false;
+
+        wallet.Balance -= amount;
+        await _walletRepository.UpdateAsync(wallet);
+
+        await _ledgerRepository.InsertAsync(new CreditLedgerEntry
+        {
+            CreditWalletId = wallet.Id,
+            Amount = -amount,
+            TransactionType = "Withdrawal",
+            Remarks = remarks,
+            CreatedOnUtc = DateTime.UtcNow
+        });
+
+        return true;
+    }
 }
 
 public class SponsorInviteService : ISponsorInviteService
@@ -264,6 +285,9 @@ public class SponsorInviteService : ISponsorInviteService
 
     public async Task<SponsorInvite> GetSponsorInviteByCodeAsync(string code)
     {
+        if (string.IsNullOrEmpty(code))
+            return null;
+
         return (await _inviteRepository.GetAllAsync(query => query.Where(i => i.InviteCode == code))).FirstOrDefault();
     }
 
@@ -277,8 +301,11 @@ public class SponsorInviteService : ISponsorInviteService
             throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound"));
 
         var sponsor = await _customerService.GetCustomerByIdAsync(sponsorId);
-        if (product.VendorId == 0 || product.VendorId != sponsor.VendorId)
-            throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidOwnership"));
+        if (!await _customerService.IsAdminAsync(sponsor))
+        {
+            if (product.VendorId == 0 || product.VendorId != sponsor.VendorId)
+                throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidOwnership"));
+        }
 
         if (maxAttempts <= 0)
             throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidAttempts"));
@@ -313,9 +340,19 @@ public class SponsorInviteService : ISponsorInviteService
         var invite = await _inviteRepository.GetByIdAsync(inviteId);
         if (invite != null && invite.SponsorId == sponsorId)
         {
-            // For deactivation, we can set expiry to past
-            invite.ExpiryDateUtc = DateTime.UtcNow.AddMinutes(-1);
+            invite.ExpiryDateUtc = DateTime.UtcNow;
             await _inviteRepository.UpdateAsync(invite);
         }
+    }
+
+    public async Task<bool> ValidateInviteAsync(string code, string email)
+    {
+        var invite = await GetSponsorInviteByCodeAsync(code);
+        if (invite == null) return false;
+        if (invite.IsAccepted) return false;
+        if (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value < DateTime.UtcNow) return false;
+        if (!string.Equals(invite.Email, email, StringComparison.OrdinalIgnoreCase)) return false;
+
+        return true;
     }
 }

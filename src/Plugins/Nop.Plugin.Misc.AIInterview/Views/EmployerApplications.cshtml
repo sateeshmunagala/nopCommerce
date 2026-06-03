@@ -1,0 +1,52 @@
+@model ApplicationListModel
+@{
+    Layout = "_ColumnsTwo";
+}
+<div class="page employer-applications">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Employer.Applications.Title")</h1>
+        <div class="export-csv">
+            <a href="@Url.RouteUrl("Plugin.Misc.AIInterview.ExportCsv")" class="button-2">Export to CSV</a>
+        </div>
+    </div>
+    <div class="page-body">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>@T("Plugins.Misc.AIInterview.Employer.Applications.Candidate")</th>
+                    <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
+                    <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
+                    <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var app in Model.Applications)
+                {
+                    <tr>
+                        <td>@app.CandidateName (@app.CandidateEmail)</td>
+                        <td>
+                            <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post">
+                                <input type="hidden" name="Id" value="@app.Id" />
+                                <select name="Status">
+                                    <option value="Applied" selected="@(app.Status == "Applied")">Applied</option>
+                                    <option value="InProgress" selected="@(app.Status == "InProgress")">In Progress</option>
+                                    <option value="Completed" selected="@(app.Status == "Completed")">Completed</option>
+                                </select>
+                                <button type="submit" class="button-2">Update</button>
+                            </form>
+                        </td>
+                        <td>@app.InterviewScore</td>
+                        <td>@app.CreatedOn.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
+                            {
+                                <a href="@app.InterviewReportUrl">View Report</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

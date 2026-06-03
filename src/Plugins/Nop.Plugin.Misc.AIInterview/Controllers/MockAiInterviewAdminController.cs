@@ -14,7 +14,7 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 [Area(AreaNames.ADMIN)]
 [AuthorizeAdmin]
 [AutoValidateAntiforgeryToken]
-public class AIInterviewAdminController : BasePluginController
+public class MockAiInterviewAdminController : BasePluginController
 {
     private readonly ICreditService _creditService;
     private readonly ISponsorInviteService _inviteService;
@@ -25,7 +25,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly AIInterviewSettings _aiInterviewSettings;
     private readonly MockAIInterviewSettings _mockAIInterviewSettings;
 
-    public AIInterviewAdminController(ICreditService creditService,
+    public MockAiInterviewAdminController(ICreditService creditService,
         ISponsorInviteService inviteService,
         ILocalizationService localizationService,
         INotificationService notificationService,
@@ -104,6 +104,16 @@ public class AIInterviewAdminController : BasePluginController
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
 
         return Configure();
+    }
+
+    public IActionResult MockConfigure()
+    {
+        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml");
+    }
+
+    public IActionResult Report()
+    {
+        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Report.cshtml");
     }
 
     [HttpPost]

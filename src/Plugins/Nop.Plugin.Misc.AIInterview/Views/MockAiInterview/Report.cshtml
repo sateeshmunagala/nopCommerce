@@ -1,0 +1,16 @@
+@model Nop.Plugin.Misc.AIInterview.Domain.InterviewSession
+@{
+    Layout = "_ColumnsTwo";
+}
+<div class="page mock-report">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Report.Title")</h1>
+    </div>
+    <div class="page-body">
+        <p><strong>@T("Plugins.Misc.AIInterview.Report.Date"):</strong> @Model.CreatedOnUtc.ToString("f")</p>
+        <p><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @Model.Score</p>
+        <div class="report-details">
+            @Model.ReportData
+        </div>
+    </div>
+</div>
