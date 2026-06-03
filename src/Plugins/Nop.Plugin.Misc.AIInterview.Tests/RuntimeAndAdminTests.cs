@@ -206,6 +206,22 @@ public class RuntimeAndAdminTests
         Assert.That(ex.Message, Is.EqualTo("Plugins.Misc.AIInterview.Admin.Invite.InvalidExpiry"));
     }
 
+    [Test]
+    public void AdminController_Has_ConfigureAction()
+    {
+        var method = typeof(MockAiInterviewAdminController).GetMethod("Configure", new[] { typeof(ConfigurationModel) });
+        Assert.That(method, Is.Not.Null);
+    }
+
+    [Test]
+    public void MockAiInterviewController_Has_EmployerActions()
+    {
+        var createMethod = typeof(MockAiInterviewController).GetMethod("CreateInvite");
+        var deactivateMethod = typeof(MockAiInterviewController).GetMethod("DeactivateInvite");
+        Assert.That(createMethod, Is.Not.Null);
+        Assert.That(deactivateMethod, Is.Not.Null);
+    }
+
     private class TestRuntimeController : MockAiInterviewController
     {
         public TestRuntimeController(IInterviewSessionService sessionService, ILocalizationService localizationService, IWorkContext workContext, ISponsorInviteService inviteService, ICreditService creditService, ICustomerService customerService)

@@ -24,7 +24,7 @@
             <div class="title">
                 <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateNew")</strong>
             </div>
-            <form asp-controller="AIInterviewEmployer" asp-action="CreateInvite" method="post">
+            <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post">
                 <div class="fieldset">
                     <div class="form-fields">
                         <div class="inputs">
@@ -83,7 +83,7 @@
                                     <td>
                                         @if (!invite.IsAccepted && (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow))
                                         {
-                                            <form asp-controller="AIInterviewEmployer" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post">
+                                            <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post">
                                                 <button type="submit" class="button-2">@T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate")</button>
                                             </form>
                                         }
