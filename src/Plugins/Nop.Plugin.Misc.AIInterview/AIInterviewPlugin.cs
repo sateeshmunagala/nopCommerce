@@ -77,15 +77,47 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     /// Install plugin
     /// </summary>
     /// <returns>A task that represents the asynchronous operation</returns>
+
+
+    /// <summary>
+    /// Update plugin
+    /// </summary>
+    /// <param name="currentVersion">Current version of the plugin</param>
+    /// <param name="targetVersion">Target version of the plugin</param>
+    /// <returns>A task that represents the asynchronous operation</returns>
+    public override async Task UpdateAsync(string currentVersion, string targetVersion)
+    {
+        var settings = await _settingService.LoadSettingAsync<AIInterviewSettings>();
+
+        // NopCommerce setting service loads default values from the type if they haven't been saved yet.
+        // But for booleans default is false. If it's false, and we want it to be true by default on upgrade...
+        // Actually, NopCommerce settings are stored as Key/Value pairs. We can check if the key exists to see if it was explicitly set.
+        var enabledSetting = await _settingService.GetSettingAsync("aiinterviewsettings.enabled");
+        if (enabledSetting == null)
+            settings.Enabled = true;
+
+        var resumeRequiredSetting = await _settingService.GetSettingAsync("aiinterviewsettings.resumerequired");
+        if (resumeRequiredSetting == null)
+            settings.ResumeRequired = true;
+
+        var interviewRequiredSetting = await _settingService.GetSettingAsync("aiinterviewsettings.interviewrequired");
+        if (interviewRequiredSetting == null)
+            settings.InterviewRequired = true;
+
+        await _settingService.SaveSettingAsync(settings);
+
+        await base.UpdateAsync(currentVersion, targetVersion);
+    }
+
     public override async Task InstallAsync()
     {
         //settings
         var settings = new AIInterviewSettings
         {
-            Enabled = false,
+            Enabled = true,
             ApiKey = string.Empty,
-            ResumeRequired = false,
-            InterviewRequired = false,
+            ResumeRequired = true,
+            InterviewRequired = true,
             MinimumScore = 0
         };
         await _settingService.SaveSettingAsync(settings);

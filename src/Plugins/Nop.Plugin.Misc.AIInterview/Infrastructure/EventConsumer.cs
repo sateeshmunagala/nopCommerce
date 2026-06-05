@@ -10,38 +10,33 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
     private readonly ILocalizationService _localizationService;
     private readonly Services.ICreditService _creditService;
     private readonly Nop.Core.IWorkContext _workContext;
+    private readonly AIInterviewSettings _aiInterviewSettings;
 
     public EventConsumer(ILocalizationService localizationService,
         Services.ICreditService creditService,
-        Nop.Core.IWorkContext workContext)
+        Nop.Core.IWorkContext workContext,
+        AIInterviewSettings aiInterviewSettings)
     {
         _localizationService = localizationService;
         _creditService = creditService;
         _workContext = workContext;
+        _aiInterviewSettings = aiInterviewSettings;
     }
 
     public async Task HandleEventAsync(ModelPreparedEvent<BaseNopModel> eventMessage)
     {
         // Add "My Applications" link to customer account navigation
-        if (eventMessage.Model.GetType().Name == "CustomerNavigationModel")
+        if (eventMessage.Model is Nop.Web.Models.Customer.CustomerNavigationModel navigationModel)
         {
-            var model = eventMessage.Model;
-            var itemsProperty = model.GetType().GetProperty("CustomerNavigationItems");
-            if (itemsProperty != null)
+            if (_aiInterviewSettings.Enabled)
             {
-                var items = itemsProperty.GetValue(model) as System.Collections.IList;
-                if (items != null)
+                navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
                 {
-                    var itemType = model.GetType().Assembly.GetType("Nop.Web.Models.Customer.CustomerNavigationItemModel");
-                    if (itemType != null)
-                    {
-                        var newItem = System.Activator.CreateInstance(itemType);
-                        itemType.GetProperty("RouteName")?.SetValue(newItem, AIInterviewDefaults.MyApplicationsRouteName);
-                        itemType.GetProperty("Title")?.SetValue(newItem, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.MyApplications.Title"));
-                        itemType.GetProperty("ItemClass")?.SetValue(newItem, "customer-applications");
-                        items.Add(newItem);
-                    }
-                }
+                    RouteName = AIInterviewDefaults.MyApplicationsRouteName,
+                    Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.MyApplications.Title"),
+                    Tab = (int)Nop.Web.Models.Customer.CustomerNavigationEnum.Info + 100, // Custom tab enum
+                    ItemClass = "customer-applications"
+                });
             }
         }
 
