@@ -22,6 +22,7 @@ public record ApplicationListModel : BaseNopModel
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public bool SortByScore { get; set; }
+    public string SortOrder { get; set; }
 
     public IList<ApplicationModel> Applications { get; set; }
 }
@@ -37,6 +38,8 @@ public record ApplicationModel : BaseNopModel
     public decimal? InterviewScore { get; set; }
     public string InterviewReportUrl { get; set; }
     public DateTime CreatedOn { get; set; }
+    public int AttemptCount { get; set; }
+    public DateTime? LatestScoreDate { get; set; }
 }
 
 public record UpdateStatusModel : BaseNopModel

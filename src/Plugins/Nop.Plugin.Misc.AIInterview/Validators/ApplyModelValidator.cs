@@ -14,5 +14,10 @@ public class ApplyModelValidator : BaseNopValidator<ApplyModel>
         RuleFor(x => x.ResumeFile).NotEmpty()
             .WithMessageAwait(localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Required"))
             .When(x => aiInterviewSettings.ResumeRequired);
+
+        RuleFor(x => x.ResumeFile)
+            .Must(x => x == null || (x.Length <= 5 * 1024 * 1024 && (x.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) || x.FileName.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))))
+            .WithMessage("Allowed resume file types: PDF, DOCX. Maximum size: 5 MB.")
+            .When(x => x.ResumeFile != null);
     }
 }

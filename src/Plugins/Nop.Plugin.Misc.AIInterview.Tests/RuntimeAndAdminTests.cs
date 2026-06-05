@@ -45,7 +45,8 @@ public class RuntimeAndAdminTests
         _customerService = new Mock<ICustomerService>();
         _creditService = new Mock<ICreditService>();
         _inviteService = new Mock<ISponsorInviteService>();
-        _runtimeController = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object);
+        _productService = new Mock<IProductService>();
+        _runtimeController = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object);
 
         _notificationService = new Mock<INotificationService>();
         _settingService = new Mock<ISettingService>();
@@ -84,7 +85,7 @@ public class RuntimeAndAdminTests
     {
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync((Customer)null);
         // Using a trick here by mocking the controller to use a missing resource
-        var controller = new TestRuntimeController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object);
+        var controller = new TestRuntimeController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object);
         var result = await controller.TestFallback();
         var json = (JsonResult)result;
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
@@ -224,8 +225,8 @@ public class RuntimeAndAdminTests
 
     private class TestRuntimeController : MockAiInterviewController
     {
-        public TestRuntimeController(IInterviewSessionService sessionService, ILocalizationService localizationService, IWorkContext workContext, ISponsorInviteService inviteService, ICreditService creditService, ICustomerService customerService)
-            : base(sessionService, localizationService, workContext, inviteService, creditService, customerService) { }
+        public TestRuntimeController(IInterviewSessionService sessionService, ILocalizationService localizationService, IWorkContext workContext, ISponsorInviteService inviteService, ICreditService creditService, ICustomerService customerService, IProductService productService, global::Nop.Services.Vendors.IVendorService vendorService)
+            : base(sessionService, localizationService, workContext, inviteService, creditService, customerService, productService, vendorService) { }
 
         public async Task<IActionResult> TestFallback()
         {

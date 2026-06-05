@@ -5,18 +5,23 @@ namespace Nop.Plugin.Misc.AIInterview.Services;
 
 public interface IApplicationService
 {
+    Task SendApplicationSubmittedNotificationAsync(JobApplication application, int languageId);
+    Task SendApplicationStatusUpdateNotificationAsync(JobApplication application, int languageId);
     Task InsertJobApplicationAsync(JobApplication application);
     Task<JobApplication> GetJobApplicationByIdAsync(int applicationId);
     Task<IList<JobApplication>> GetJobApplicationsByCustomerIdAsync(int customerId);
+    Task<IList<JobApplication>> GetJobApplicationsByCustomerIdAndJobTitleAsync(int customerId, string jobTitle);
     Task<IPagedList<JobApplication>> GetApplicationsAsync(string candidateNameOrEmail = null, string status = null, decimal? minScore = null, decimal? maxScore = null, DateTime? startDate = null, DateTime? endDate = null, int productId = 0, int vendorId = 0, int pageIndex = 0, int pageSize = int.MaxValue, bool sortByScore = false);
     Task UpdateJobApplicationAsync(JobApplication application);
 }
 
 public interface IInterviewSessionService
 {
+    Task SendInterviewCompletionNotificationAsync(InterviewSession session, int languageId);
     Task InsertInterviewSessionAsync(InterviewSession session);
     Task<InterviewSession> GetInterviewSessionByIdAsync(int sessionId);
     Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAsync(int customerId);
+    Task<decimal> GetHighestScoreByCustomerIdAsync(int customerId);
     Task<InterviewSession> GetSessionBySessionKeyAsync(string sessionKey);
     Task<InterviewSession> GetSessionByTokenAsync(string token);
     Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId);

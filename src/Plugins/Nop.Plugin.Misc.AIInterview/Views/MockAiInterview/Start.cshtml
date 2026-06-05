@@ -1,12 +1,19 @@
 @{
     Layout = "_ColumnsTwo";
+    var sponsorToken = Context.Request.Query["sponsorToken"].ToString();
 }
 <div class="page mock-start">
     <div class="page-title">
         <h1>@T("Plugins.Misc.AIInterview.Index.StartInterview.Title")</h1>
     </div>
     <div class="page-body">
+        @if (!string.IsNullOrEmpty(sponsorToken))
+        {
+            <div class="message-error" style="background-color: #dff0d8; color: #3c763d; border-color: #d6e9c6; padding: 15px; margin-bottom: 20px;">
+                @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
+            </div>
+        }
         <p>@T("Plugins.Misc.AIInterview.Index.StartInterview.Description")</p>
-        <button id="start-mock-btn" class="button-1">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+        <button id="start-mock-btn" class="button-1" data-sponsor-token="@sponsorToken">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
     </div>
 </div>

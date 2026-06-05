@@ -49,6 +49,7 @@ public class ApplyFlowTests
 
         _customer = new Customer { Id = 123 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_customer);
+        _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
@@ -72,8 +73,8 @@ public class ApplyFlowTests
     public async Task Apply_Post_AlreadyApplied_ReturnsWarning()
     {
         // Arrange
-        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
-            .ReturnsAsync(new List<JobApplication> { new JobApplication { JobTitle = "Dev" } });
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
+            .ReturnsAsync(new List<JobApplication> { new JobApplication { JobTitle = "Dev", Status = "Applied" } });
 
         // Act
         var result = await _controller.Apply(new ApplyModel { JobTitle = "Dev" });
@@ -110,10 +111,12 @@ public class ApplyFlowTests
     {
         // Arrange
         _aiInterviewSettings.InterviewRequired = true;
-        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
-        _interviewSessionService.Setup(x => x.GetLatestCompletedSessionByCustomerIdAsync(_customer.Id))
-            .ReturnsAsync((InterviewSession)null);
+        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(0);
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<InterviewSession>());
 
         var model = new ApplyModel { JobTitle = "Dev" };
 
@@ -131,10 +134,10 @@ public class ApplyFlowTests
         // Arrange
         _aiInterviewSettings.InterviewRequired = true;
         _aiInterviewSettings.MinimumScore = 80;
-        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
-        _interviewSessionService.Setup(x => x.GetLatestCompletedSessionByCustomerIdAsync(_customer.Id))
-            .ReturnsAsync(new InterviewSession { Score = 70, CompletedOnUtc = DateTime.UtcNow });
+        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(70);
 
         var model = new ApplyModel { JobTitle = "Dev" };
 
@@ -152,10 +155,10 @@ public class ApplyFlowTests
         // Arrange
         _aiInterviewSettings.InterviewRequired = true;
         _aiInterviewSettings.MinimumScore = 60;
-        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
-        _interviewSessionService.Setup(x => x.GetLatestCompletedSessionByCustomerIdAsync(_customer.Id))
-            .ReturnsAsync(new InterviewSession { Score = 70, CompletedOnUtc = DateTime.UtcNow });
+        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(70);
 
         var fileMock = new Mock<IFormFile>();
         fileMock.Setup(f => f.FileName).Returns("resume.pdf");
@@ -186,6 +189,8 @@ public class ApplyFlowTests
     {
         // Arrange
         _aiInterviewSettings.ResumeRequired = true;
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "New Job"))
+            .ReturnsAsync(new List<JobApplication>());
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
             .ReturnsAsync(new List<JobApplication> {
                 new JobApplication { JobTitle = "Old Job", ResumeDownloadId = 789, CreatedOnUtc = DateTime.UtcNow.AddDays(-1) }

@@ -8,8 +8,29 @@
     </div>
     <div class="page-body">
         <p><strong>@T("Plugins.Misc.AIInterview.Report.Date"):</strong> @Model.CreatedOnUtc.ToString("f")</p>
-        <p><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @Model.Score</p>
+        <p><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @Model.Score.ToString("N2")</p>
+
+        @if (!string.IsNullOrEmpty(Model.QuestionScores))
+        {
+            <div class="question-scores">
+                <h3>Question Scores</h3>
+                <ul>
+                    @{
+                        var scores = System.Text.Json.JsonSerializer.Deserialize<int[]>(Model.QuestionScores);
+                        if (scores != null)
+                        {
+                            for (int i = 0; i < scores.Length; i++)
+                            {
+                                <li>Question @(i + 1): @scores[i]</li>
+                            }
+                        }
+                    }
+                </ul>
+            </div>
+        }
+
         <div class="report-details">
+            <h3>@T("Plugins.Misc.AIInterview.Report.Details")</h3>
             @Model.ReportData
         </div>
     </div>

@@ -14,11 +14,15 @@
             <p><strong>@T("Plugins.Misc.AIInterview.Report.Date"):</strong> @Model.CreatedOn.ToString("g")</p>
             <p><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @(Model.InterviewScore.HasValue ? Model.InterviewScore.Value.ToString("N2") : "-")</p>
         </div>
-        <div class="report-content">
-            <h3>@T("Plugins.Misc.AIInterview.Report.Details")</h3>
-            <div class="report-data">
-                @Model.StatusComment
+
+        @if (!string.IsNullOrEmpty(Model.StatusComment))
+        {
+            <div class="report-content">
+                <h3>@T("Plugins.Misc.AIInterview.Report.Details")</h3>
+                <div class="report-data">
+                    @Model.StatusComment
+                </div>
             </div>
-        </div>
+        }
     </div>
 </div>

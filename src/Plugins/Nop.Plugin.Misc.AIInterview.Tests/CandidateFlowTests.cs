@@ -65,7 +65,9 @@ public class CandidateFlowTests
             _workContext.Object,
             _inviteService.Object,
             _creditService.Object,
-            _customerService.Object);
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object);
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
@@ -75,8 +77,11 @@ public class CandidateFlowTests
     public async Task Apply_ResumeRequired_Validation_Fails()
     {
         _settings.ResumeRequired = true;
-        var customer = new Customer { Id = 1 };
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(customer.Id, "Software Engineer"))
+            .ReturnsAsync(new List<JobApplication>());
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<JobApplication>());
 
@@ -92,13 +97,16 @@ public class CandidateFlowTests
     public async Task Apply_ResumeReuse_Path_Works()
     {
         _settings.ResumeRequired = true;
-        var customer = new Customer { Id = 1 };
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
 
         var previousApps = new List<JobApplication>
         {
             new JobApplication { CustomerId = 1, JobTitle = "Old Job", ResumeDownloadId = 123, CreatedOnUtc = DateTime.UtcNow.AddDays(-1) }
         };
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(customer.Id, "Senior Dev"))
+            .ReturnsAsync(new List<JobApplication>());
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(previousApps);
 
@@ -118,6 +126,7 @@ public class CandidateFlowTests
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession>());
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
 
         var result = await _runtimeController.StartPost("Hard");
         var json = (JsonResult)result;

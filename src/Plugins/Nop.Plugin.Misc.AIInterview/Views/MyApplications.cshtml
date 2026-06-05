@@ -1,37 +1,54 @@
-@model IList<ApplicationModel>
+@model ApplicationListModel
 
 @{
     Layout = "_ColumnsOne";
-    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.History.Title").Text);
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.MyApplications.Title").Text);
 }
 
 <div class="page ai-interview-history-page">
     <div class="page-title">
-        <h1>@T("Plugins.Misc.AIInterview.History.Title")</h1>
+        <h1>@T("Plugins.Misc.AIInterview.MyApplications.Title")</h1>
     </div>
     <div class="page-body">
-        @if (Model.Any())
+        <div class="sort-options" style="margin-bottom: 20px;">
+            <span>Sort by: </span>
+            <select id="sortOrder" onchange="location.href='@Url.Action("MyApplications")?sortOrder=' + this.value;">
+                <option value="LatestApplied" selected="@(Model.SortOrder == "LatestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.LatestApplied")</option>
+                <option value="OldestApplied" selected="@(Model.SortOrder == "OldestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.OldestApplied")</option>
+                <option value="HighestScore" selected="@(Model.SortOrder == "HighestScore")">@T("Plugins.Misc.AIInterview.History.Sort.HighestScore")</option>
+                <option value="LowestScore" selected="@(Model.SortOrder == "LowestScore")">@T("Plugins.Misc.AIInterview.History.Sort.LowestScore")</option>
+                <option value="LatestInterviewDate" selected="@(Model.SortOrder == "LatestInterviewDate")">@T("Plugins.Misc.AIInterview.History.Sort.LatestInterviewDate")</option>
+            </select>
+        </div>
+
+        @if (Model.Applications.Any())
         {
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
+                        <th>@T("Plugins.Misc.AIInterview.MyApplications.JobTitle")</th>
+                        <th>@T("Plugins.Misc.AIInterview.MyApplications.AppliedDate")</th>
+                        <th>@T("Plugins.Misc.AIInterview.MyApplications.AttemptCount")</th>
+                        <th>@T("Plugins.Misc.AIInterview.MyApplications.LatestScoreDate")</th>
+                        <th>@T("Plugins.Misc.AIInterview.MyApplications.Score")</th>
                         <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
-                        <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
                         <th>@T("Plugins.Misc.AIInterview.History.Actions")</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var session in Model)
+                    @foreach (var app in Model.Applications)
                     {
                         <tr>
-                            <td>@session.CreatedOn.ToString("g")</td>
-                            <td>@session.Status</td>
-                            <td>@(session.InterviewScore.HasValue ? session.InterviewScore.Value.ToString("N2") : "-")</td>
+                            <td>@app.JobTitle</td>
+                            <td>@app.CreatedOn.ToString("g")</td>
+                            <td>@app.AttemptCount</td>
+                            <td>@(app.LatestScoreDate.HasValue ? app.LatestScoreDate.Value.ToString("g") : "-")</td>
+                            <td>@(app.InterviewScore.HasValue ? app.InterviewScore.Value.ToString("N2") : "-")</td>
+                            <td>@app.Status</td>
                             <td>
-                                @if (session.Status == "Completed")
+                                @if (app.InterviewScore.HasValue)
                                 {
-                                    <a href="@Url.RouteUrl(AIInterviewDefaults.ReportRouteName, new { sessionId = session.Id })">@T("Plugins.Misc.AIInterview.History.ViewReport")</a>
+                                    <a href="@Url.Action("Report", new { sessionId = app.Id })">@T("Plugins.Misc.AIInterview.History.ViewReport")</a>
                                 }
                             </td>
                         </tr>

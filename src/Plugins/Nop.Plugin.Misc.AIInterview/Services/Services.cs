@@ -1,12 +1,16 @@
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
+using Nop.Core.Domain.Messages;
+using Nop.Core.Domain.Vendors;
 using Nop.Data;
 using Nop.Data.Extensions;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
+using Nop.Services.Vendors;
+using Nop.Services.Helpers;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
@@ -16,16 +20,85 @@ public class ApplicationService : IApplicationService
     private readonly IRepository<Customer> _customerRepository;
     private readonly IRepository<InterviewSession> _sessionRepository;
     private readonly IRepository<Product> _productRepository;
+    private readonly Nop.Services.Messages.IWorkflowMessageService _workflowMessageService;
+    private readonly Nop.Services.Messages.IMessageTemplateService _messageTemplateService;
+    private readonly Nop.Services.Messages.IEmailAccountService _emailAccountService;
+    private readonly Nop.Services.Messages.IMessageTokenProvider _messageTokenProvider;
+    private readonly EmailAccountSettings _emailAccountSettings;
+    private readonly IStoreContext _storeContext;
+    private readonly IWebHelper _webHelper;
 
     public ApplicationService(IRepository<JobApplication> applicationRepository,
         IRepository<Customer> customerRepository,
         IRepository<InterviewSession> sessionRepository,
-        IRepository<Product> productRepository)
+        IRepository<Product> productRepository,
+        Nop.Services.Messages.IWorkflowMessageService workflowMessageService,
+        Nop.Services.Messages.IMessageTemplateService messageTemplateService,
+        Nop.Services.Messages.IEmailAccountService emailAccountService,
+        Nop.Services.Messages.IMessageTokenProvider messageTokenProvider,
+        EmailAccountSettings emailAccountSettings,
+        IStoreContext storeContext,
+        IWebHelper webHelper)
     {
         _applicationRepository = applicationRepository;
         _customerRepository = customerRepository;
         _sessionRepository = sessionRepository;
         _productRepository = productRepository;
+        _workflowMessageService = workflowMessageService;
+        _messageTemplateService = messageTemplateService;
+        _emailAccountService = emailAccountService;
+        _messageTokenProvider = messageTokenProvider;
+        _emailAccountSettings = emailAccountSettings;
+        _storeContext = storeContext;
+        _webHelper = webHelper;
+    }
+
+    public async Task SendApplicationSubmittedNotificationAsync(JobApplication application, int languageId)
+    {
+        var store = await _storeContext.GetCurrentStoreAsync();
+        if (store == null) return;
+        var templates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationSubmitted", store.Id);
+        var template = templates.FirstOrDefault();
+        if (template == null) return;
+
+        var customer = await _customerRepository.GetByIdAsync(application.CustomerId);
+        if (customer == null) return;
+
+        var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(template.EmailAccountId > 0 ? template.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId);
+        if (emailAccount == null) emailAccount = (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
+        if (emailAccount == null) return;
+
+        var tokens = new List<Nop.Services.Messages.Token>();
+        await _messageTokenProvider.AddCustomerTokensAsync(tokens, customer);
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.JobTitle", application.JobTitle));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.MyApplicationsUrl", $"{_webHelper.GetStoreLocation()}aiinterview/my-applications"));
+
+        await _workflowMessageService.SendNotificationAsync(template, emailAccount, languageId, tokens, customer.Email, customer.FirstName + " " + customer.LastName);
+    }
+
+    public async Task SendApplicationStatusUpdateNotificationAsync(JobApplication application, int languageId)
+    {
+        var store = await _storeContext.GetCurrentStoreAsync();
+        if (store == null) return;
+        var templates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationStatusUpdate", store.Id);
+        var template = templates.FirstOrDefault();
+        if (template == null) return;
+
+        var customer = await _customerRepository.GetByIdAsync(application.CustomerId);
+        if (customer == null) return;
+
+        var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(template.EmailAccountId > 0 ? template.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId);
+        if (emailAccount == null) emailAccount = (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
+        if (emailAccount == null) return;
+
+        var tokens = new List<Nop.Services.Messages.Token>();
+        await _messageTokenProvider.AddCustomerTokensAsync(tokens, customer);
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.JobTitle", application.JobTitle));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.NewStatus", application.Status));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.UpdateTimestamp", DateTime.UtcNow.ToString("g")));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.MyApplicationsUrl", $"{_webHelper.GetStoreLocation()}aiinterview/my-applications"));
+
+        await _workflowMessageService.SendNotificationAsync(template, emailAccount, languageId, tokens, customer.Email, customer.FirstName + " " + customer.LastName);
     }
 
     public async Task InsertJobApplicationAsync(JobApplication application)
@@ -41,6 +114,11 @@ public class ApplicationService : IApplicationService
     public async Task<IList<JobApplication>> GetJobApplicationsByCustomerIdAsync(int customerId)
     {
         return await _applicationRepository.GetAllAsync(query => query.Where(a => a.CustomerId == customerId));
+    }
+
+    public async Task<IList<JobApplication>> GetJobApplicationsByCustomerIdAndJobTitleAsync(int customerId, string jobTitle)
+    {
+        return await _applicationRepository.GetAllAsync(query => query.Where(a => a.CustomerId == customerId && a.JobTitle == jobTitle));
     }
 
     public async Task<IPagedList<JobApplication>> GetApplicationsAsync(string candidateNameOrEmail = null, string status = null, decimal? minScore = null, decimal? maxScore = null, DateTime? startDate = null, DateTime? endDate = null, int productId = 0, int vendorId = 0, int pageIndex = 0, int pageSize = int.MaxValue, bool sortByScore = false)
@@ -111,16 +189,111 @@ public class InterviewSessionService : IInterviewSessionService
     private readonly ICustomerService _customerService;
     private readonly IApplicationService _applicationService;
     private readonly Nop.Services.Catalog.IProductService _productService;
+    private readonly Nop.Services.Messages.IWorkflowMessageService _workflowMessageService;
+    private readonly Nop.Services.Messages.IMessageTemplateService _messageTemplateService;
+    private readonly Nop.Services.Messages.IEmailAccountService _emailAccountService;
+    private readonly Nop.Services.Messages.IMessageTokenProvider _messageTokenProvider;
+    private readonly EmailAccountSettings _emailAccountSettings;
+    private readonly IStoreContext _storeContext;
+    private readonly IWebHelper _webHelper;
+    private readonly IVendorService _vendorService;
 
     public InterviewSessionService(IRepository<InterviewSession> sessionRepository,
         ICustomerService customerService,
         IApplicationService applicationService,
-        Nop.Services.Catalog.IProductService productService)
+        Nop.Services.Catalog.IProductService productService,
+        Nop.Services.Messages.IWorkflowMessageService workflowMessageService,
+        Nop.Services.Messages.IMessageTemplateService messageTemplateService,
+        Nop.Services.Messages.IEmailAccountService emailAccountService,
+        Nop.Services.Messages.IMessageTokenProvider messageTokenProvider,
+        EmailAccountSettings emailAccountSettings,
+        IStoreContext storeContext,
+        IWebHelper webHelper,
+        IVendorService vendorService)
     {
         _sessionRepository = sessionRepository;
         _customerService = customerService;
         _applicationService = applicationService;
         _productService = productService;
+        _workflowMessageService = workflowMessageService;
+        _messageTemplateService = messageTemplateService;
+        _emailAccountService = emailAccountService;
+        _messageTokenProvider = messageTokenProvider;
+        _emailAccountSettings = emailAccountSettings;
+        _storeContext = storeContext;
+        _webHelper = webHelper;
+        _vendorService = vendorService;
+    }
+
+    public async Task SendInterviewCompletionNotificationAsync(InterviewSession session, int languageId)
+    {
+        var store = await _storeContext.GetCurrentStoreAsync();
+        if (store == null) return;
+        var customer = await _customerService.GetCustomerByIdAsync(session.CustomerId);
+        if (customer == null) return;
+
+        var jobTitle = "Practice Interview";
+        Vendor vendor = null;
+        if (session.JobApplicationId > 0)
+        {
+            var app = await _applicationService.GetJobApplicationByIdAsync(session.JobApplicationId);
+            if (app != null)
+            {
+                jobTitle = app.JobTitle;
+                var product = await _productService.GetProductByIdAsync(app.ProductId);
+                if (product != null && product.VendorId > 0)
+                {
+                    vendor = await _vendorService.GetVendorByIdAsync(product.VendorId);
+                }
+            }
+        }
+
+        // Applicant Notification
+        var applicantTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicantInterviewCompletion", store.Id);
+        var applicantTemplate = applicantTemplates.FirstOrDefault();
+        if (applicantTemplate != null)
+        {
+            var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(applicantTemplate.EmailAccountId > 0 ? applicantTemplate.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId);
+            if (emailAccount == null) emailAccount = (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
+            if (emailAccount != null)
+            {
+                var tokens = new List<Nop.Services.Messages.Token>();
+                await _messageTokenProvider.AddCustomerTokensAsync(tokens, customer);
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.JobTitle", jobTitle));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.OverallScore", session.Score.ToString("N2")));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionDate", session.CompletedOnUtc?.ToString("g")));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.QuestionSummary", session.QuestionScores ?? ""));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.ReportUrl", $"{_webHelper.GetStoreLocation()}aiinterview/report/{session.Id}"));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.MyApplicationsUrl", $"{_webHelper.GetStoreLocation()}aiinterview/my-applications"));
+
+                await _workflowMessageService.SendNotificationAsync(applicantTemplate, emailAccount, languageId, tokens, customer.Email, customer.FirstName + " " + customer.LastName);
+            }
+        }
+
+        // Vendor Notification
+        if (vendor != null)
+        {
+            var vendorTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.VendorInterviewCompletion", store.Id);
+            var vendorTemplate = vendorTemplates.FirstOrDefault();
+            if (vendorTemplate != null)
+            {
+                var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(vendorTemplate.EmailAccountId > 0 ? vendorTemplate.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId);
+                if (emailAccount == null) emailAccount = (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
+                if (emailAccount != null)
+                {
+                    var tokens = new List<Nop.Services.Messages.Token>();
+                    await _messageTokenProvider.AddCustomerTokensAsync(tokens, customer);
+                    tokens.Add(new Nop.Services.Messages.Token("Vendor.Name", vendor.Name));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.JobTitle", jobTitle));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.OverallScore", session.Score.ToString("N2")));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionDate", session.CompletedOnUtc?.ToString("g")));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.QuestionSummary", session.QuestionScores ?? ""));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.CandidateReportUrl", $"{_webHelper.GetStoreLocation()}aiinterview/report/{session.Id}"));
+
+                    await _workflowMessageService.SendNotificationAsync(vendorTemplate, emailAccount, languageId, tokens, vendor.Email, vendor.Name);
+                }
+            }
+        }
     }
 
     public async Task InsertInterviewSessionAsync(InterviewSession session)
@@ -139,6 +312,15 @@ public class InterviewSessionService : IInterviewSessionService
             .Where(s => s.CustomerId == customerId && s.CompletedOnUtc.HasValue)
             .OrderByDescending(s => s.CompletedOnUtc)))
             .FirstOrDefault();
+    }
+
+    public async Task<decimal> GetHighestScoreByCustomerIdAsync(int customerId)
+    {
+        var sessions = await _sessionRepository.Table.Where(s => s.CustomerId == customerId && s.CompletedOnUtc.HasValue).ToListAsync();
+        if (!sessions.Any())
+            return 0;
+
+        return sessions.Max(s => s.Score);
     }
 
     public async Task<InterviewSession> GetSessionBySessionKeyAsync(string sessionKey)
@@ -263,12 +445,12 @@ public class CreditService : ICreditService
 public class SponsorInviteService : ISponsorInviteService
 {
     private readonly IRepository<SponsorInvite> _inviteRepository;
-    private readonly IProductService _productService;
+    private readonly Nop.Services.Catalog.IProductService _productService;
     private readonly ICustomerService _customerService;
     private readonly ILocalizationService _localizationService;
 
     public SponsorInviteService(IRepository<SponsorInvite> inviteRepository,
-        IProductService productService,
+        Nop.Services.Catalog.IProductService productService,
         ICustomerService customerService,
         ILocalizationService localizationService)
     {

@@ -3,19 +3,21 @@ using Nop.Services.Configuration;
 using Nop.Services.Localization;
 using Nop.Services.Plugins;
 using Nop.Services.Helpers;
+using Nop.Services.Cms;
 
 namespace Nop.Plugin.Misc.AIInterview;
 
 /// <summary>
 /// Represents AI Interview plugin
 /// </summary>
-public class AIInterviewPlugin : BasePlugin, IMiscPlugin
+public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 {
     #region Fields
 
     private readonly ILocalizationService _localizationService;
     private readonly ISettingService _settingService;
     private readonly IWebHelper _webHelper;
+    private readonly Nop.Services.Messages.IMessageTemplateService _messageTemplateService;
 
     #endregion
 
@@ -23,16 +25,45 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
 
     public AIInterviewPlugin(ILocalizationService localizationService,
         ISettingService settingService,
-        IWebHelper webHelper)
+        IWebHelper webHelper,
+        Nop.Services.Messages.IMessageTemplateService messageTemplateService)
     {
         _localizationService = localizationService;
         _settingService = settingService;
         _webHelper = webHelper;
+        _messageTemplateService = messageTemplateService;
     }
 
     #endregion
 
     #region Methods
+
+    /// <summary>
+    /// Gets a value indicating whether to hide this plugin on the widget list page in the admin area
+    /// </summary>
+    public bool HideInWidgetList => false;
+
+    /// <summary>
+    /// Gets widget zones where this widget should be rendered
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation
+    /// The task result contains the widget zones
+    /// </returns>
+    public Task<IList<string>> GetWidgetZonesAsync()
+    {
+        return Task.FromResult<IList<string>>(new List<string> { "productdetails_before_collateral" });
+    }
+
+    /// <summary>
+    /// Gets a type of a view component for displaying widget
+    /// </summary>
+    /// <param name="widgetZone">Name of the widget zone</param>
+    /// <returns>View component type</returns>
+    public Type GetWidgetViewComponent(string widgetZone)
+    {
+        return typeof(Components.AIInterviewProductDetailsViewComponent);
+    }
 
     /// <summary>
     /// Gets a configuration page URL
@@ -65,6 +96,48 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
         };
         await _settingService.SaveSettingAsync(mockSettings);
 
+        //message templates
+        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicantInterviewCompletion", 0)).Any())
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.ApplicantInterviewCompletion",
+                Subject = "Interview Completion: %AIInterview.JobTitle%",
+                Body = "<p>Hello %Customer.FullName%,</p><p>You have completed the interview for %AIInterview.JobTitle% on %AIInterview.CompletionDate%.</p><p>Overall Score: %AIInterview.OverallScore%</p><p>Question-level Summary: %AIInterview.QuestionSummary%</p><p><a href=\"%AIInterview.ReportUrl%\">View Full Report</a></p><p><a href=\"%AIInterview.MyApplicationsUrl%\">View My Applications</a></p>",
+                IsActive = true
+            });
+        }
+        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.VendorInterviewCompletion", 0)).Any())
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.VendorInterviewCompletion",
+                Subject = "Candidate Interview Completion: %AIInterview.JobTitle%",
+                Body = "<p>Hello %Vendor.Name%,</p><p>Candidate %Customer.FullName% (%Customer.Email%) has completed the interview for %AIInterview.JobTitle% on %AIInterview.CompletionDate%.</p><p>Overall Score: %AIInterview.OverallScore%</p><p>Question-level Summary: %AIInterview.QuestionSummary%</p><p><a href=\"%AIInterview.CandidateReportUrl%\">View Candidate Report</a></p>",
+                IsActive = true
+            });
+        }
+        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationStatusUpdate", 0)).Any())
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.ApplicationStatusUpdate",
+                Subject = "Application Status Update: %AIInterview.JobTitle%",
+                Body = "<p>Hello %Customer.FullName%,</p><p>The status of your application for %AIInterview.JobTitle% has been updated to %AIInterview.NewStatus%.</p><p>Updated on: %AIInterview.UpdateTimestamp%</p><p><a href=\"%AIInterview.MyApplicationsUrl%\">View My Applications</a></p>",
+                IsActive = true
+            });
+        }
+        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationSubmitted", 0)).Any())
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.ApplicationSubmitted",
+                Subject = "Application Submitted: %AIInterview.JobTitle%",
+                Body = "<p>Hello %Customer.FullName%,</p><p>Your application for %AIInterview.JobTitle% has been successfully submitted.</p><p><a href=\"%AIInterview.MyApplicationsUrl%\">View My Applications</a></p>",
+                IsActive = true
+            });
+        }
+
         //locales
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
         {
@@ -81,9 +154,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile"] = "Resume File",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.JobTitle.Required"] = "Job Title is required.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile.Required"] = "Resume file is required.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.AlreadyApplied"] = "You have already applied for a position.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile.Invalid"] = "Allowed resume file types: PDF, DOCX. Maximum size: 5 MB.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.AlreadyApplied"] = "You have already applied for this job.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.InterviewRequired"] = "An interview is required before you can apply.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.MinimumScoreNotReached"] = "You must achieve a minimum score of {0} in your interview to apply. Your latest score was {1}.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.MinimumScoreNotReached"] = "A minimum score of {0} is required to apply for this job. Please retake the AI interview to improve your chances.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.Success"] = "Your application has been submitted successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.Title"] = "Apply for a Position",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.Submit"] = "Submit Application",
@@ -106,6 +180,11 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.Actions"] = "Actions",
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.ViewReport"] = "View Report",
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.NoSessions"] = "You have no interview sessions yet.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.Sort.LatestApplied"] = "Latest Applied",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.Sort.OldestApplied"] = "Oldest Applied",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.Sort.HighestScore"] = "Highest Score",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.Sort.LowestScore"] = "Lowest Score",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.Sort.LatestInterviewDate"] = "Latest Interview Date",
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.Title"] = "Interview Report",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.Date"] = "Date",
@@ -183,10 +262,20 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.InProgress"] = "In Progress",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Started"] = "Started",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Applied"] = "Applied",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Rejected"] = "Rejected",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Withdrawn"] = "Withdrawn",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.Unknown"] = "Unknown",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.None"] = "N/A",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Index.Welcome"] = "Welcome to AI Interview.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.Title"] = "My Applications",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.JobTitle"] = "Job Title",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.AppliedDate"] = "Applied Date",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.AttemptCount"] = "Attempt Count",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.LatestScoreDate"] = "Latest Score Date",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.Score"] = "Score",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.NoCredits"] = "Insufficient credits. Please purchase credits to start the interview.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.NoCredits.Link"] = "View Pricing",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.SponsorMessage"] = "This interview is company-sponsored.",
         });
 
         await base.InstallAsync();

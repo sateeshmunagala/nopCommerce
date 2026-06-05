@@ -51,6 +51,7 @@ public class EmployerTests
 
         _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>(), It.IsAny<bool>())).ReturnsAsync(false);
         _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>())).ReturnsAsync(false);
+        _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
 
         _creditService.Setup(x => x.GetOrCreateWalletAsync(It.IsAny<int>())).ReturnsAsync(new CreditWallet { Balance = 500 });
 
@@ -71,7 +72,9 @@ public class EmployerTests
             _workContext.Object,
             _inviteService.Object,
             _creditService.Object,
-            _customerService.Object);
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object);
     }
 
     [Test]

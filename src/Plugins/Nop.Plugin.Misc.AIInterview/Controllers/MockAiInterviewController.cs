@@ -5,6 +5,8 @@ using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
+using Nop.Services.Messages;
+using Nop.Services.Vendors;
 using Nop.Web.Framework.Controllers;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
@@ -17,13 +19,17 @@ public class MockAiInterviewController : BasePluginController
     private readonly ISponsorInviteService _inviteService;
     private readonly ICreditService _creditService;
     private readonly ICustomerService _customerService;
+    private readonly IProductService _productService;
+    private readonly IVendorService _vendorService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
         IWorkContext workContext,
         ISponsorInviteService inviteService,
         ICreditService creditService,
-        ICustomerService customerService)
+        ICustomerService customerService,
+        IProductService productService,
+        IVendorService vendorService)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -31,6 +37,8 @@ public class MockAiInterviewController : BasePluginController
         _inviteService = inviteService;
         _creditService = creditService;
         _customerService = customerService;
+        _productService = productService;
+        _vendorService = vendorService;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -51,7 +59,7 @@ public class MockAiInterviewController : BasePluginController
 
     [HttpPost]
     [ActionName("Start")]
-    public async Task<IActionResult> StartPost(string difficulty = "Medium")
+    public async Task<IActionResult> StartPost(string difficulty = "Medium", string sponsorToken = null)
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (customer == null)
@@ -70,6 +78,23 @@ public class MockAiInterviewController : BasePluginController
             });
         }
 
+        int sponsorInviteId = 0;
+        if (!string.IsNullOrEmpty(sponsorToken))
+        {
+            var invite = await _inviteService.GetSponsorInviteByCodeAsync(sponsorToken);
+            if (invite != null && !invite.IsAccepted && (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) && invite.Email.Equals(customer.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                sponsorInviteId = invite.Id;
+            }
+        }
+
+        if (sponsorInviteId == 0)
+        {
+            var charged = await _creditService.AuthorizeAndChargeAsync(customer.Id, 1, "Interview Start Charge");
+            if (!charged)
+                return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.NoCredits", "Insufficient credits. Please purchase credits to start the interview.");
+        }
+
         var session = new InterviewSession
         {
             CustomerId = customer.Id,
@@ -78,6 +103,7 @@ public class MockAiInterviewController : BasePluginController
             Token = Guid.NewGuid().ToString("N"),
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(30),
             IsActive = true,
+            SponsorInviteId = sponsorInviteId,
             StartedOnUtc = DateTime.UtcNow,
             CreatedOnUtc = DateTime.UtcNow
         };
@@ -118,9 +144,27 @@ public class MockAiInterviewController : BasePluginController
 
         session.IsActive = false;
         session.CompletedOnUtc = DateTime.UtcNow;
-        session.Score = 85; // Mock score
+
+        // Mock question scores
+        var questionScores = new[] { 80, 90, 85 };
+        session.QuestionScores = System.Text.Json.JsonSerializer.Serialize(questionScores);
+        session.Score = (decimal)questionScores.Average();
+
         session.ReportData = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.ReportContentMock");
         await _interviewSessionService.UpdateInterviewSessionAsync(session);
+
+        // Notifications
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer != null)
+        {
+            // Applicant notification
+            await _interviewSessionService.SendInterviewCompletionNotificationAsync(session, (await _workContext.GetWorkingLanguageAsync()).Id);
+
+            // Vendor notification
+            // We need a job title for the token, but InterviewSession doesn't have it directly.
+            // Usually it's linked to a JobApplication or Product.
+            // For now, let's try to find a JobApplication or just send if we can.
+        }
 
         return Json(new { success = true, score = session.Score });
     }
