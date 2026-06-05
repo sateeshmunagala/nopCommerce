@@ -82,7 +82,7 @@ public class SinglePageCheckoutController : BasePluginController
     {
         var settings = await _settingService.LoadSettingAsync<SinglePageCheckoutSettings>();
         if (!settings.Enabled)
-            return Content(""); // Disabled-state sidebar blocking behavior
+            return RedirectToRoute("Checkout"); // Disabled-state sidebar blocking behavior
 
         var customer = await _workContext.GetCurrentCustomerAsync();
         var store = await _storeContext.GetCurrentStoreAsync();

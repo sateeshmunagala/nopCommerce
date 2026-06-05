@@ -412,7 +412,7 @@ public partial class ShoppingCartController : BasePublicController
                 {
                     if (customWishlistId != null)
                         wishlistRouteUrl = Url.RouteUrl(NopRouteNames.General.WISHLIST, new { list = customWishlistId });
-                    
+
                     return Json(new
                     {
                         success = true,
@@ -825,7 +825,7 @@ public partial class ShoppingCartController : BasePublicController
         {
             var store = await _storeContext.GetCurrentStoreAsync();
             //search with the same cart type as specified
-            var cart = await _shoppingCartService.GetShoppingCartAsync(await _workContext.GetCurrentCustomerAsync(), 
+            var cart = await _shoppingCartService.GetShoppingCartAsync(await _workContext.GetCurrentCustomerAsync(),
                 (ShoppingCartType)shoppingCartTypeId, store.Id, customWishlistId: customwishlistid);
 
             updatecartitem = cart.FirstOrDefault(x => x.Id == updatecartitemid);
@@ -1376,7 +1376,20 @@ public partial class ShoppingCartController : BasePublicController
                                  && _customerSettings.UserRegistrationType == UserRegistrationType.Disabled;
 
         if (anonymousPermissed || !await _customerService.IsGuestAsync(customer))
+        {
+            var settingService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Nop.Services.Configuration.ISettingService>(HttpContext.RequestServices);
+
+            // To avoid hard dependency on plugin DLL from core Nop.Web:
+            var bypassCart = await settingService.GetSettingByKeyAsync<bool>("singlepagecheckoutsettings.bypasscart", storeId: store.Id, loadSharedValueIfNotFound: true);
+            var spcEnabled = await settingService.GetSettingByKeyAsync<bool>("singlepagecheckoutsettings.enabled", storeId: store.Id, loadSharedValueIfNotFound: true);
+
+            if (spcEnabled && bypassCart)
+            {
+                return RedirectToRoute("Plugin.Misc.SinglePageCheckout.Index");
+            }
+
             return RedirectToRoute(NopRouteNames.Standard.CHECKOUT);
+        }
 
         var cartProductIds = cart.Select(ci => ci.ProductId).ToArray();
         var downloadableProductsRequireRegistration =
@@ -1849,7 +1862,7 @@ public partial class ShoppingCartController : BasePublicController
         }
 
         // Check if customer has reached the maximum number of custom wishlists allowed
-        var maximumNumberOfCustomWishlist = _shoppingCartSettings.MaximumNumberOfCustomWishlist;        
+        var maximumNumberOfCustomWishlist = _shoppingCartSettings.MaximumNumberOfCustomWishlist;
         if (currentWishlists.Count >= maximumNumberOfCustomWishlist)
         {
             return Json(new
@@ -1999,7 +2012,7 @@ public partial class ShoppingCartController : BasePublicController
             redirect = Url.RouteUrl(NopRouteNames.General.WISHLIST, new { list = wishlistId })
         });
     }
-    
+
     [HttpPost]
     public virtual async Task<IActionResult> DeleteWishlist(int wishlistId)
     {
