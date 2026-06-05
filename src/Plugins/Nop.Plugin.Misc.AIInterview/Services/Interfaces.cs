@@ -20,8 +20,8 @@ public interface IInterviewSessionService
     Task SendInterviewCompletionNotificationAsync(InterviewSession session, int languageId);
     Task InsertInterviewSessionAsync(InterviewSession session);
     Task<InterviewSession> GetInterviewSessionByIdAsync(int sessionId);
-    Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAsync(int customerId);
-    Task<decimal> GetHighestScoreByCustomerIdAsync(int customerId);
+    Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAndProductIdAsync(int customerId, int productId);
+    Task<decimal> GetHighestScoreByCustomerIdAndProductIdAsync(int customerId, int productId);
     Task<InterviewSession> GetSessionBySessionKeyAsync(string sessionKey);
     Task<InterviewSession> GetSessionByTokenAsync(string token);
     Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId);

@@ -46,9 +46,9 @@
                             <td>@(app.InterviewScore.HasValue ? app.InterviewScore.Value.ToString("N2") : "-")</td>
                             <td>@app.Status</td>
                             <td>
-                                @if (app.InterviewScore.HasValue)
+                                @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
                                 {
-                                    <a href="@Url.Action("Report", new { sessionId = app.Id })">@T("Plugins.Misc.AIInterview.History.ViewReport")</a>
+                                    <a href="@app.InterviewReportUrl">@T("Plugins.Misc.AIInterview.History.ViewReport")</a>
                                 }
                             </td>
                         </tr>

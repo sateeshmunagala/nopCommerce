@@ -1,0 +1,42 @@
+@model dynamic
+@{
+    bool hasCredits = ViewBag.HasCredits != null && (bool)ViewBag.HasCredits;
+    bool hasSponsorCredits = ViewBag.HasSponsorCredits != null && (bool)ViewBag.HasSponsorCredits;
+    int productId = ViewBag.ProductId != null ? (int)ViewBag.ProductId : 0;
+    string sponsorToken = ViewBag.SponsorToken as string;
+}
+
+<div class="ai-interview-product-details">
+    <h3>@T("Plugins.Misc.AIInterview.Interview.Title")</h3>
+
+    @if (hasSponsorCredits)
+    {
+        <div class="sponsor-message alert alert-info">
+            @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
+        </div>
+    }
+    else if (!hasCredits)
+    {
+        <div class="no-credits-message alert alert-warning">
+            @T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits")
+            <a href="@Url.RouteUrl("Topic", new { SeName = "pricing" })">@T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits.Link")</a>
+        </div>
+    }
+
+    <div class="actions" style="margin-top: 15px;">
+        <a href="@Url.Action("Apply", "AIInterview", new { jobTitle = "Product_" + productId, productId = productId })" class="btn btn-primary apply-btn">
+            @T("Plugins.Misc.AIInterview.Apply.Submit")
+        </a>
+
+        @if (hasCredits || hasSponsorCredits)
+        {
+            <form action="@Url.Action("Start", "MockAiInterview")" method="post" style="display:inline-block; margin-left:10px;">
+                <input type="hidden" name="productId" value="@productId" />
+                <input type="hidden" name="sponsorToken" value="@sponsorToken" />
+                <button type="submit" class="btn btn-secondary start-interview-btn">
+                    Start Interview
+                </button>
+            </form>
+        }
+    </div>
+</div>

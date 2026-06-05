@@ -74,10 +74,10 @@ public class ApplyFlowTests
     {
         // Arrange
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
-            .ReturnsAsync(new List<JobApplication> { new JobApplication { JobTitle = "Dev", Status = "Applied" } });
+            .ReturnsAsync(new List<JobApplication> { new JobApplication { JobTitle = "Dev", Status = "Applied", ProductId = 1 } });
 
         // Act
-        var result = await _controller.Apply(new ApplyModel { JobTitle = "Dev" });
+        var result = await _controller.Apply(new ApplyModel { JobTitle = "Dev", ProductId = 1 });
 
         // Assert
         Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
@@ -113,12 +113,12 @@ public class ApplyFlowTests
         _aiInterviewSettings.InterviewRequired = true;
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
-        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAsync(_customer.Id))
+        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
             .ReturnsAsync(0);
         _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
             .ReturnsAsync(new List<InterviewSession>());
 
-        var model = new ApplyModel { JobTitle = "Dev" };
+        var model = new ApplyModel { JobTitle = "Dev", ProductId = 1 };
 
         // Act
         var result = await _controller.Apply(model);
@@ -129,17 +129,17 @@ public class ApplyFlowTests
     }
 
     [Test]
-    public async Task Apply_Post_MinimumScoreNotReached_ReturnsError()
+    public async Task Apply_Post_InterviewRequired_ScoreBelowMin_ReturnsError()
     {
         // Arrange
         _aiInterviewSettings.InterviewRequired = true;
         _aiInterviewSettings.MinimumScore = 80;
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
-        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAsync(_customer.Id))
-            .ReturnsAsync(70);
+        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
+            .ReturnsAsync(75);
 
-        var model = new ApplyModel { JobTitle = "Dev" };
+        var model = new ApplyModel { JobTitle = "Dev", ProductId = 1 };
 
         // Act
         var result = await _controller.Apply(model);
@@ -157,14 +157,14 @@ public class ApplyFlowTests
         _aiInterviewSettings.MinimumScore = 60;
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
-        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAsync(_customer.Id))
+        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
             .ReturnsAsync(70);
 
         var fileMock = new Mock<IFormFile>();
         fileMock.Setup(f => f.FileName).Returns("resume.pdf");
         fileMock.Setup(f => f.ContentType).Returns("application/pdf");
 
-        var model = new ApplyModel { JobTitle = "Dev", ResumeFile = fileMock.Object };
+        var model = new ApplyModel { JobTitle = "Dev", ProductId = 1, ResumeFile = fileMock.Object };
 
         _downloadService.Setup(x => x.GetDownloadBitsAsync(fileMock.Object)).ReturnsAsync(new byte[] { 1, 2, 3 });
         _downloadService.Setup(x => x.InsertDownloadAsync(It.IsAny<Download>()))
@@ -179,6 +179,7 @@ public class ApplyFlowTests
         _applicationService.Verify(x => x.InsertJobApplicationAsync(It.Is<JobApplication>(a =>
             a.CustomerId == _customer.Id &&
             a.JobTitle == "Dev" &&
+            a.ProductId == 1 &&
             a.ResumeDownloadId == 456 &&
             a.Status == "Applied")), Times.Once);
         _notificationService.Verify(x => x.SuccessNotification(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<int>()), Times.Once);
@@ -199,7 +200,7 @@ public class ApplyFlowTests
         // Simulate validation error for missing resume
         _controller.ModelState.AddModelError("ResumeFile", "Required");
 
-        var model = new ApplyModel { JobTitle = "New Job", ResumeFile = null };
+        var model = new ApplyModel { JobTitle = "New Job", ProductId = 2, ResumeFile = null };
 
         // Act
         var result = await _controller.Apply(model);
@@ -208,6 +209,7 @@ public class ApplyFlowTests
         Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
         _applicationService.Verify(x => x.InsertJobApplicationAsync(It.Is<JobApplication>(a =>
             a.JobTitle == "New Job" &&
+            a.ProductId == 2 &&
             a.ResumeDownloadId == 789)), Times.Once);
     }
 }

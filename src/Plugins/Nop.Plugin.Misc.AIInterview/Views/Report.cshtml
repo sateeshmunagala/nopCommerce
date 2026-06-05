@@ -15,6 +15,25 @@
             <p><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @(Model.InterviewScore.HasValue ? Model.InterviewScore.Value.ToString("N2") : "-")</p>
         </div>
 
+        @if (!string.IsNullOrEmpty(Model.QuestionScores))
+        {
+            <div class="question-scores">
+                <h3>Question Scores</h3>
+                <ul>
+                    @{
+                        var scores = System.Text.Json.JsonSerializer.Deserialize<int[]>(Model.QuestionScores);
+                        if (scores != null)
+                        {
+                            for (int i = 0; i < scores.Length; i++)
+                            {
+                                <li>Question @(i + 1): @scores[i]</li>
+                            }
+                        }
+                    }
+                </ul>
+            </div>
+        }
+
         @if (!string.IsNullOrEmpty(Model.StatusComment))
         {
             <div class="report-content">

@@ -6,6 +6,8 @@ namespace Nop.Plugin.Misc.AIInterview.Models;
 
 public record ApplyModel : BaseNopModel
 {
+    public int ProductId { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Apply.JobTitle")]
     public string JobTitle { get; set; }
 

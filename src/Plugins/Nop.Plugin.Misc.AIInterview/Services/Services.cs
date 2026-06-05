@@ -234,7 +234,19 @@ public class InterviewSessionService : IInterviewSessionService
 
         var jobTitle = "Practice Interview";
         Vendor vendor = null;
-        if (session.JobApplicationId > 0)
+        if (session.ProductId > 0)
+        {
+            var product = await _productService.GetProductByIdAsync(session.ProductId);
+            if (product != null)
+            {
+                jobTitle = product.Name;
+                if (product.VendorId > 0)
+                {
+                    vendor = await _vendorService.GetVendorByIdAsync(product.VendorId);
+                }
+            }
+        }
+        else if (session.JobApplicationId > 0)
         {
             var app = await _applicationService.GetJobApplicationByIdAsync(session.JobApplicationId);
             if (app != null)
@@ -306,17 +318,17 @@ public class InterviewSessionService : IInterviewSessionService
         return await _sessionRepository.GetByIdAsync(sessionId);
     }
 
-    public async Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAsync(int customerId)
+    public async Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAndProductIdAsync(int customerId, int productId)
     {
         return (await _sessionRepository.GetAllAsync(query => query
-            .Where(s => s.CustomerId == customerId && s.CompletedOnUtc.HasValue)
+            .Where(s => s.CustomerId == customerId && s.ProductId == productId && s.CompletedOnUtc.HasValue)
             .OrderByDescending(s => s.CompletedOnUtc)))
             .FirstOrDefault();
     }
 
-    public async Task<decimal> GetHighestScoreByCustomerIdAsync(int customerId)
+    public async Task<decimal> GetHighestScoreByCustomerIdAndProductIdAsync(int customerId, int productId)
     {
-        var sessions = await _sessionRepository.Table.Where(s => s.CustomerId == customerId && s.CompletedOnUtc.HasValue).ToListAsync();
+        var sessions = await _sessionRepository.Table.Where(s => s.CustomerId == customerId && s.ProductId == productId && s.CompletedOnUtc.HasValue).ToListAsync();
         if (!sessions.Any())
             return 0;
 

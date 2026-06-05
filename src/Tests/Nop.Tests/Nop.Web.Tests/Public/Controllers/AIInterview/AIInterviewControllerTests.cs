@@ -70,12 +70,12 @@ public class AIInterviewControllerTests
         _aiInterviewSettings.InterviewRequired = true;
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
-        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAsync(_customer.Id))
+        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
             .ReturnsAsync(0);
         _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
             .ReturnsAsync(new List<InterviewSession>());
 
-        var model = new ApplyModel { JobTitle = "Dev" };
+        var model = new ApplyModel { JobTitle = "Dev", ProductId = 1 };
 
         // Act
         var result = await _controller.Apply(model);
@@ -93,10 +93,10 @@ public class AIInterviewControllerTests
         _aiInterviewSettings.MinimumScore = 80;
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
-        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAsync(_customer.Id))
+        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
             .ReturnsAsync(70);
 
-        var model = new ApplyModel { JobTitle = "Dev" };
+        var model = new ApplyModel { JobTitle = "Dev", ProductId = 1 };
 
         // Act
         var result = await _controller.Apply(model);

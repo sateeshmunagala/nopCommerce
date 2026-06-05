@@ -36,6 +36,7 @@ public record ApplicationModel : BaseNopModel
     public string Status { get; set; }
     public string StatusComment { get; set; }
     public decimal? InterviewScore { get; set; }
+    public string QuestionScores { get; set; }
     public string InterviewReportUrl { get; set; }
     public DateTime CreatedOn { get; set; }
     public int AttemptCount { get; set; }

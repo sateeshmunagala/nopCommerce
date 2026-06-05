@@ -79,7 +79,7 @@ public class AIInterviewController : BasePluginController
 
         var applicationModels = await Task.WhenAll(applications.Select(async a =>
         {
-            var appSessions = sessions.Where(s => s.CompletedOnUtc.HasValue).ToList();
+            var appSessions = sessions.Where(s => s.CompletedOnUtc.HasValue && s.ProductId == a.ProductId).ToList();
             var latestSession = appSessions.OrderByDescending(s => s.CompletedOnUtc).FirstOrDefault();
 
             return new ApplicationModel
@@ -87,6 +87,7 @@ public class AIInterviewController : BasePluginController
                 Id = a.Id,
                 JobTitle = a.JobTitle,
                 InterviewScore = latestSession?.Score,
+                InterviewReportUrl = latestSession != null ? Url.Action("Report", "AIInterview", new { sessionId = latestSession.Id }) : null,
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{a.Status?.Replace(" ", "")}") ?? a.Status,
                 CreatedOn = a.CreatedOnUtc,
                 AttemptCount = appSessions.Count,
@@ -137,6 +138,7 @@ public class AIInterviewController : BasePluginController
         {
             Id = session.Id,
             InterviewScore = session.Score,
+            QuestionScores = session.QuestionScores,
             StatusComment = session.ReportData,
             CreatedOn = session.CreatedOnUtc
         };
@@ -221,7 +223,7 @@ public class AIInterviewController : BasePluginController
 
         if (_aiInterviewSettings.InterviewRequired)
         {
-            var highestScore = await _interviewSessionService.GetHighestScoreByCustomerIdAsync(customer.Id);
+            var highestScore = await _interviewSessionService.GetHighestScoreByCustomerIdAndProductIdAsync(customer.Id, model.ProductId);
             if (highestScore == 0)
             {
                 var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id);
@@ -268,6 +270,7 @@ public class AIInterviewController : BasePluginController
         var jobApplication = new JobApplication
         {
             CustomerId = customer.Id,
+            ProductId = model.ProductId,
             JobTitle = model.JobTitle,
             ResumeDownloadId = resumeDownloadId,
             Status = "Applied",
@@ -320,7 +323,7 @@ public class AIInterviewController : BasePluginController
         model.Applications = await Task.WhenAll(applications.Select(async a =>
         {
             var appCustomer = customers.FirstOrDefault(c => c.Id == a.CustomerId);
-            var session = await _interviewSessionService.GetLatestCompletedSessionByCustomerIdAsync(a.CustomerId);
+            var session = await _interviewSessionService.GetLatestCompletedSessionByCustomerIdAndProductIdAsync(a.CustomerId, a.ProductId);
 
             return new ApplicationModel
             {
@@ -402,7 +405,7 @@ public class AIInterviewController : BasePluginController
         foreach (var a in applications)
         {
             var appCustomer = customers.FirstOrDefault(c => c.Id == a.CustomerId);
-            var session = await _interviewSessionService.GetLatestCompletedSessionByCustomerIdAsync(a.CustomerId);
+            var session = await _interviewSessionService.GetLatestCompletedSessionByCustomerIdAndProductIdAsync(a.CustomerId, a.ProductId);
 
             var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
             var email = appCustomer?.Email ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");

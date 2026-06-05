@@ -59,7 +59,7 @@ public class MockAiInterviewController : BasePluginController
 
     [HttpPost]
     [ActionName("Start")]
-    public async Task<IActionResult> StartPost(string difficulty = "Medium", string sponsorToken = null)
+    public async Task<IActionResult> StartPost(int productId = 0, string difficulty = "Medium", string sponsorToken = null)
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (customer == null)
@@ -67,7 +67,7 @@ public class MockAiInterviewController : BasePluginController
 
         // Idempotency: check for active session
         var activeSession = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id))
-            .FirstOrDefault(s => s.IsActive && !s.CompletedOnUtc.HasValue);
+            .FirstOrDefault(s => s.IsActive && !s.CompletedOnUtc.HasValue && s.ProductId == productId);
 
         if (activeSession != null)
         {
@@ -79,16 +79,27 @@ public class MockAiInterviewController : BasePluginController
         }
 
         int sponsorInviteId = 0;
+        bool validSponsorInvite = false;
         if (!string.IsNullOrEmpty(sponsorToken))
         {
             var invite = await _inviteService.GetSponsorInviteByCodeAsync(sponsorToken);
             if (invite != null && !invite.IsAccepted && (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) && invite.Email.Equals(customer.Email, StringComparison.OrdinalIgnoreCase))
             {
-                sponsorInviteId = invite.Id;
+                // Sponsor validation logic: check if sponsor wallet has credits
+                var sponsorWallet = await _creditService.GetOrCreateWalletAsync(invite.SponsorId);
+                if (sponsorWallet.Balance >= 1)
+                {
+                    var chargedSponsor = await _creditService.AuthorizeAndChargeAsync(invite.SponsorId, 1, $"Sponsored Interview Start Charge for {customer.Email}");
+                    if (chargedSponsor)
+                    {
+                        validSponsorInvite = true;
+                        sponsorInviteId = invite.Id;
+                    }
+                }
             }
         }
 
-        if (sponsorInviteId == 0)
+        if (!validSponsorInvite)
         {
             var charged = await _creditService.AuthorizeAndChargeAsync(customer.Id, 1, "Interview Start Charge");
             if (!charged)
@@ -98,6 +109,7 @@ public class MockAiInterviewController : BasePluginController
         var session = new InterviewSession
         {
             CustomerId = customer.Id,
+            ProductId = productId,
             SessionKey = Guid.NewGuid().ToString("N"),
             Difficulty = difficulty,
             Token = Guid.NewGuid().ToString("N"),

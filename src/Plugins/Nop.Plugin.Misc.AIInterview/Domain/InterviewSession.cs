@@ -7,6 +7,7 @@ public class InterviewSession : BaseEntity
     public int CustomerId { get; set; }
     public int JobApplicationId { get; set; }
     public string SessionKey { get; set; }
+    public int ProductId { get; set; }
     public string Difficulty { get; set; }
     public string Token { get; set; }
     public DateTime? TokenExpiryUtc { get; set; }

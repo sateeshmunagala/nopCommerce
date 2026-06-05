@@ -13,6 +13,7 @@
     </div>
     <div class="page-body">
         <form asp-route="Plugin.Misc.AIInterview.Apply" method="post" enctype="multipart/form-data">
+            <input type="hidden" asp-for="ProductId" />
             <div asp-validation-summary="ModelOnly" class="message-error"></div>
             <div class="fieldset">
                 <div class="form-fields">
