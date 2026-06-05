@@ -1,0 +1,179 @@
+﻿@model LoginModel
+@using Nop.Core.Domain.Customers
+@using Nop.Services.Helpers
+
+@inject IWebHelper webHelper
+@{
+    Layout = "_ColumnsOne";
+
+    //title
+    NopHtml.AddTitleParts(T("PageTitle.Login").Text);
+    //page class
+    NopHtml.AppendPageCssClassParts("html-login-page");
+
+    //register URL with return URL (if specified)
+    var registerUrl = Url.RouteUrl(NopRouteNames.Standard.REGISTER, new { returnUrl = this.Context.Request.Query["returnUrl"] }, webHelper.GetCurrentRequestProtocol());
+}
+<div class="page login-page my-5 container">
+    <div class="page-title mb-4 border-bottom pb-2">
+        <h1>@T("Account.Login.Welcome")</h1>
+    </div>
+    @await Html.PartialAsync("_ExternalAuthentication.Errors")
+    <div class="page-body">
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.LoginTop, additionalData = Model })
+        <div class="row customer-blocks">
+            <div class="col-md-6 mb-4">
+                @if (Model.RegistrationType == UserRegistrationType.Disabled)
+                {
+                    <div class="new-wrapper card h-100">
+                        <div class="card-body">
+                            <h2 class="title card-title h5 mb-3">
+                                @T("Account.Register")
+                            </h2>
+                            <div class="text text-muted mb-4">
+                                @T("Account.Register.Result.Disabled")
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (Model.CheckoutAsGuest)
+                {
+                    <div class="new-wrapper checkout-as-guest-or-register-block card h-100">
+                        <div class="card-body">
+                            <h2 class="title card-title h5 mb-3">
+                                @T("Account.Login.CheckoutAsGuestOrRegister")
+                            </h2>
+                            <div class="text text-muted mb-4">
+                                @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "CheckoutAsGuestOrRegister" })
+                            </div>
+                            <div class="d-grid mt-4 gap-2">
+                                <button type="button" class="btn btn-secondary checkout-as-guest-button" onclick="location.href='@Url.RouteUrl(NopRouteNames.Standard.CHECKOUT)'">@T("Account.Login.CheckoutAsGuest")</button>
+                                <button type="button" class="btn btn-primary register-button" onclick="location.href='@registerUrl'">@T("Account.Register")</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="new-wrapper register-block card h-100">
+                        <div class="card-body">
+                            <h2 class="title card-title h5 mb-3">
+                                @T("Account.Login.NewCustomer")
+                            </h2>
+                            <div class="text text-muted mb-4">
+                                @T("Account.Login.NewCustomerText")
+                            </div>
+                            <div class="d-grid mt-4 gap-2">
+                                <button type="button" class="btn btn-primary register-button" onclick="location.href='@registerUrl'">@T("Account.Register")</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="returning-wrapper fieldset card h-100">
+                    <div class="card-body">
+                <form asp-route="@NopRouteNames.General.LOGIN" asp-route-returnurl="@Context.Request.Query["ReturnUrl"]" method="post" autocomplete="off">
+                    <div asp-validation-summary="ModelOnly" class="message-error">@T("Account.Login.Unsuccessful")</div>
+                    <h2 class="title card-title h5 mb-3">
+                        @T("Account.Login.ReturningCustomer")
+                    </h2>
+                    <div class="form-fields">
+                        <div class="mb-3" data-mode="email">
+                            @if (Model.UsernamesEnabled)
+                            {
+                                <label class="form-label" asp-for="Username" asp-postfix=":"></label>
+                                <input class="form-control" asp-for="Username" class="username" autofocus="autofocus" />
+                                <span class="text-danger" asp-validation-for="Username"></span>
+                            }
+                            else
+                            {
+                                <label class="form-label" asp-for="Email" asp-postfix=":"></label>
+                                <input class="form-control" asp-for="Email" class="email" autofocus="autofocus" />
+                                <span class="text-danger" asp-validation-for="Email"></span>
+                            }
+                        </div>
+                        <div class="mb-3" data-mode="phone">
+                            <label class="form-label" asp-for="Phone" asp-postfix=":"></label>
+                            <input class="form-control" asp-for="Phone" class="phone" placeholder="@T("PhoneVerification.Placeholder")" />
+                            <span class="text-danger" asp-validation-for="Phone"></span>
+                        </div>
+                        <div class="mb-3" data-mode="email">
+                            <label class="form-label" asp-for="Password" asp-postfix=":"></label>
+                            <div class="login-password">
+                                <input class="form-control" asp-for="Password" class="password" />
+                                <span class="password-eye"></span>
+                            </div>
+                            <span class="text-danger" asp-validation-for="Password"></span>
+                        </div>
+                        <div class="inputs form-check mb-3 d-flex justify-content-between align-items-center" data-mode="email"><div>
+                            <input asp-for="RememberMe" class="form-check-input" />
+                            <label asp-for="RememberMe" class="form-check-label"></label>
+                            </div><span class="forgot-password">
+                                <a asp-route="@NopRouteNames.Standard.PASSWORD_RECOVERY">@T("Account.Login.ForgotPassword")</a>
+                            </span>
+                        </div>
+                        @if (Model.DisplayCaptcha)
+                        {
+                            <nop-captcha />
+                        }
+
+                    </div>
+
+                    <div class="d-grid mt-4 gap-2">
+                        <button type="submit" class="btn btn-primary login-button">@T("Account.Login.LoginButton")</button>
+                        @* Mode switcher *@
+                        <div class="mode-switcher" data-mode-root>
+                            <button type="button" data-set-mode="email" class="mode-button" id="emailModeBtn">@T("Account.Login.EmailMode")</button>
+                            <button type="button" data-set-mode="phone" class="mode-button" id="phoneModeBtn">@T("Account.Login.PhoneMode")</button>
+                            <input asp-for="LoginByPhone" id="LoginByPhone" class="mode-checkbox" style="display: none;" />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="external-authentication">
+            @await Component.InvokeAsync(typeof(ExternalMethodsViewComponent), "ExternalAuthentication")
+        </div>
+        @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "LoginRegistrationInfo" })
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.LoginBottom, additionalData = Model })
+    </div>
+</div>
+
+<script asp-location="Footer">
+    $(function() {
+
+        const checkbox = $("#LoginByPhone");
+        const root = $("[data-mode-root]");
+
+        function applyMode() {
+            const isPhone = checkbox.prop("checked");
+            const mode = isPhone ? "phone" : "email";
+
+            $("[data-mode]").hide();
+            $(`[data-mode="${mode}"]`).show();
+
+            $("#emailModeBtn").toggle(isPhone);
+            $("#phoneModeBtn").toggle(!isPhone);
+
+            const firstInput = $(`[data-mode="${mode}"]`).find("input").first();
+            firstInput.focus();
+        }
+
+        root.on("click", "[data-set-mode]", function() {
+            const mode = $(this).data("set-mode");
+            checkbox.prop("checked", mode === "phone");
+            applyMode();
+        });
+
+        // password toggle
+        $(".password-eye").on("click", function() {
+            const password = $("#@Html.IdFor(m => m.Password)");
+            const type = password.attr("type") === "password" ? "text" : "password";
+            password.attr("type", type);
+            $(this).toggleClass("password-eye-open");
+        });
+
+        applyMode();
+    });
+</script>
