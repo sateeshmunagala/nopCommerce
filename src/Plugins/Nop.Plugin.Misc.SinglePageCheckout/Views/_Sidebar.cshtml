@@ -1,0 +1,15 @@
+@model SinglePageCheckoutPageModel
+
+@if (Model.Settings.ShowCartOnCheckout && Model.ShoppingCartModel != null)
+{
+    @if (Model.Settings.ShowEstimateShipping)
+    {
+        <div class="spc-sidebar-card spc-estimate-shipping">
+            @await Component.InvokeAsync("ShoppingCartEstimateShipping", new { cart = Model.ShoppingCartModel.Items })
+        </div>
+    }
+
+    <div class="spc-sidebar-card spc-order-summary" id="spc-order-summary">
+        @await Component.InvokeAsync("OrderSummary", new { prepareAndDisplayOrderReviewData = Model.Settings.ShowOrderReviewData })
+    </div>
+}

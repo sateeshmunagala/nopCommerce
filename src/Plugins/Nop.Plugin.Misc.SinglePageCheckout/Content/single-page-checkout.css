@@ -1,0 +1,48 @@
+.html-single-page-checkout .spc-container {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -15px;
+}
+
+.html-single-page-checkout .spc-main-column {
+    flex: 0 0 100%;
+    max-width: 100%;
+    padding: 0 15px;
+    min-width: 0;
+}
+
+.html-single-page-checkout .spc-sidebar-column {
+    flex: 0 0 100%;
+    max-width: 100%;
+    padding: 0 15px;
+    margin-top: 30px;
+}
+
+.spc-sidebar-card {
+    background: #fff;
+    border: 1px solid #e1e1e1;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.spc-sidebar-card .title {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 18px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+@media (min-width: 1200px) {
+    .html-single-page-checkout .spc-main-column {
+        flex: 0 0 65%;
+        max-width: 65%;
+    }
+
+    .html-single-page-checkout .spc-sidebar-column {
+        flex: 0 0 35%;
+        max-width: 35%;
+        margin-top: 0;
+    }
+}
