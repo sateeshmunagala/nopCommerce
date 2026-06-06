@@ -26,6 +26,7 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<ISponsorInviteService, SponsorInviteService>();
 
         services.AddScoped<IConsumer<Nop.Web.Framework.Events.ModelPreparedEvent<Nop.Web.Framework.Models.BaseNopModel>>, EventConsumer>();
+        services.AddScoped<IConsumer<Nop.Plugin.Misc.AIInterview.Events.MockAiInterviewCompletedEvent>, Nop.Plugin.Misc.AIInterview.Services.Events.MockAiInterviewCompletedEventConsumer>();
     }
 
     /// <summary>

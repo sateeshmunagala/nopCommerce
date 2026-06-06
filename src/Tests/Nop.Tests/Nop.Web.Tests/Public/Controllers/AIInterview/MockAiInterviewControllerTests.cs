@@ -24,6 +24,7 @@ public class MockAiInterviewControllerTests
     private Mock<global::Nop.Services.Catalog.IProductService> _productService;
     private Mock<global::Nop.Services.Vendors.IVendorService> _vendorService;
     private Mock<IApplicationService> _applicationService;
+    private Mock<global::Nop.Core.Events.IEventPublisher> _eventPublisher;
     private MockAiInterviewController _controller;
     private Customer _customer;
 
@@ -39,6 +40,7 @@ public class MockAiInterviewControllerTests
         _productService = new Mock<global::Nop.Services.Catalog.IProductService>();
         _vendorService = new Mock<global::Nop.Services.Vendors.IVendorService>();
         _applicationService = new Mock<IApplicationService>();
+        _eventPublisher = new Mock<global::Nop.Core.Events.IEventPublisher>();
 
         _customer = new Customer { Id = 123 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_customer);
@@ -52,7 +54,8 @@ public class MockAiInterviewControllerTests
             _customerService.Object,
             _productService.Object,
             _vendorService.Object,
-            _applicationService.Object);
+            _applicationService.Object,
+            _eventPublisher.Object);
     }
 
     [Test]

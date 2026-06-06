@@ -13,10 +13,14 @@
         <table class="admin-table">
             <thead>
                 <tr>
+                    <th>@T("Plugins.Misc.AIInterview.Employer.Applications.JobTitle")</th>
                     <th>@T("Plugins.Misc.AIInterview.Employer.Applications.Candidate")</th>
                     <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
                     <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
                     <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
+                    <th>@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</th>
+                    <th>@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>
+                    <th>@T("Plugins.Misc.AIInterview.Employer.Applications.PromptSource")</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -24,24 +28,28 @@
                 @foreach (var app in Model.Applications)
                 {
                     <tr>
+                        <td>@app.JobTitle</td>
                         <td>@app.CandidateName (@app.CandidateEmail)</td>
                         <td>
                             <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post">
                                 <input type="hidden" name="Id" value="@app.Id" />
                                 <select name="Status">
-                                    <option value="Applied" selected="@(app.Status == "Applied")">@T("Plugins.Misc.AIInterview.Status.Applied")</option>
-                                    <option value="InProgress" selected="@(app.Status == "InProgress")">@T("Plugins.Misc.AIInterview.Status.InProgress")</option>
-                                    <option value="Completed" selected="@(app.Status == "Completed")">@T("Plugins.Misc.AIInterview.Status.Completed")</option>
-                                    <option value="Reviewed" selected="@(app.Status == "Reviewed")">@T("Plugins.Misc.AIInterview.Status.Reviewed")</option>
-                                    <option value="Shortlisted" selected="@(app.Status == "Shortlisted")">@T("Plugins.Misc.AIInterview.Status.Shortlisted")</option>
-                                    <option value="Rejected" selected="@(app.Status == "Rejected")">@T("Plugins.Misc.AIInterview.Status.Rejected")</option>
-                                    <option value="Withdrawn" selected="@(app.Status == "Withdrawn")">@T("Plugins.Misc.AIInterview.Status.Withdrawn")</option>
+                                    <option value="Applied" selected="@(app.RawStatus == "Applied")">@T("Plugins.Misc.AIInterview.Status.Applied")</option>
+                                    <option value="InProgress" selected="@(app.RawStatus == "InProgress")">@T("Plugins.Misc.AIInterview.Status.InProgress")</option>
+                                    <option value="Completed" selected="@(app.RawStatus == "Completed")">@T("Plugins.Misc.AIInterview.Status.Completed")</option>
+                                    <option value="Reviewed" selected="@(app.RawStatus == "Reviewed")">@T("Plugins.Misc.AIInterview.Status.Reviewed")</option>
+                                    <option value="Shortlisted" selected="@(app.RawStatus == "Shortlisted")">@T("Plugins.Misc.AIInterview.Status.Shortlisted")</option>
+                                    <option value="Rejected" selected="@(app.RawStatus == "Rejected")">@T("Plugins.Misc.AIInterview.Status.Rejected")</option>
+                                    <option value="Withdrawn" selected="@(app.RawStatus == "Withdrawn")">@T("Plugins.Misc.AIInterview.Status.Withdrawn")</option>
                                 </select>
                                 <button type="submit" class="button-2">Update</button>
                             </form>
                         </td>
                         <td>@app.InterviewScore</td>
                         <td>@app.CreatedOn.ToString("yyyy-MM-dd")</td>
+                        <td>@app.ChargeMode</td>
+                        <td>@app.AttemptCount</td>
+                        <td>@app.PromptSource</td>
                         <td>
                             @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
                             {

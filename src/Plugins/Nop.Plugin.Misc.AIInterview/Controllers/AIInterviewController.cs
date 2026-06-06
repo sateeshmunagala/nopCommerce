@@ -325,16 +325,24 @@ public class AIInterviewController : BasePluginController
             var appCustomer = customers.FirstOrDefault(c => c.Id == a.CustomerId);
             var session = await _interviewSessionService.GetLatestCompletedSessionByCustomerIdAndProductIdAsync(a.CustomerId, a.ProductId);
 
+            var attempts = (await _interviewSessionService.GetSessionsByCustomerIdAsync(a.CustomerId))
+                .Count(s => s.ProductId == a.ProductId);
+
             return new ApplicationModel
             {
                 Id = a.Id,
+                JobTitle = a.JobTitle,
                 CandidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown"),
                 CandidateEmail = appCustomer?.Email ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown"),
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{a.Status?.Replace(" ", "")}") ?? a.Status,
+                RawStatus = a.Status,
                 StatusComment = a.StatusComment,
                 InterviewScore = session?.Score,
                 InterviewReportUrl = session != null ? Url.Action("Report", "AIInterview", new { sessionId = session.Id }) : null,
-                CreatedOn = a.CreatedOnUtc
+                CreatedOn = a.CreatedOnUtc,
+                AttemptCount = attempts,
+                ChargeMode = session != null && session.SponsorInviteId > 0 ? "Sponsor" : "Self-Paid",
+                PromptSource = $"Provider: {_aiInterviewSettings.Provider}, Model: {_aiInterviewSettings.Model}"
             };
         }));
 

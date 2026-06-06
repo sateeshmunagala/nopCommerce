@@ -41,6 +41,9 @@ public record ApplicationModel : BaseNopModel
     public DateTime CreatedOn { get; set; }
     public int AttemptCount { get; set; }
     public DateTime? LatestScoreDate { get; set; }
+    public string ChargeMode { get; set; }
+    public string PromptSource { get; set; }
+    public string RawStatus { get; set; }
 }
 
 public record UpdateStatusModel : BaseNopModel

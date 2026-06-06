@@ -133,6 +133,7 @@ public class AIInterviewControllerTests
             .ReturnsAsync(applications);
 
         _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>())).ReturnsAsync(new List<Customer> { _customer });
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<InterviewSession>());
 
         // Act
         var result = await _controller.EmployerApplications(model);
@@ -171,6 +172,7 @@ public class AIInterviewControllerTests
         _applicationService.Setup(x => x.GetApplicationsAsync(null, null, null, null, null, null, 0, 0, 0, int.MaxValue, false))
             .ReturnsAsync(new PagedList<JobApplication>(applications, 0, int.MaxValue));
         _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>())).ReturnsAsync(new List<Customer> { _customer });
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<InterviewSession>());
 
         // Act
         var result = await _controller.ExportCsv(new ApplicationListModel());

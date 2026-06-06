@@ -98,6 +98,14 @@ public class RouteProvider : IRouteProvider
         endpointRouteBuilder.MapControllerRoute(name: "Plugin.Misc.AIInterview.Mock.DeactivateInvite",
             pattern: "mockaiinterview/deactivate-invite",
             defaults: new { controller = "MockAiInterview", action = "DeactivateInvite" });
+
+        endpointRouteBuilder.MapControllerRoute(name: "Plugin.Misc.AIInterview.VendorScoreboard",
+            pattern: "aiinterview/vendor-scoreboard",
+            defaults: new { controller = "AIInterview", action = "VendorScoreboard" });
+
+        endpointRouteBuilder.MapControllerRoute(name: "Plugin.Misc.AIInterview.VendorJobCreation",
+            pattern: "aiinterview/vendor-job-creation",
+            defaults: new { controller = "AIInterview", action = "VendorJobCreation" });
     }
 
     /// <summary>

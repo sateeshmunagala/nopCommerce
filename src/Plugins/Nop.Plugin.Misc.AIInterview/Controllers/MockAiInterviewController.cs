@@ -6,6 +6,8 @@ using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
+using Nop.Core.Events;
+using Nop.Plugin.Misc.AIInterview.Events;
 using Nop.Services.Vendors;
 using Nop.Web.Framework.Controllers;
 
@@ -22,6 +24,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IProductService _productService;
     private readonly IVendorService _vendorService;
     private readonly IApplicationService _applicationService;
+    private readonly IEventPublisher _eventPublisher;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -31,7 +34,8 @@ public class MockAiInterviewController : BasePluginController
         ICustomerService customerService,
         IProductService productService,
         IVendorService vendorService,
-        IApplicationService applicationService)
+        IApplicationService applicationService,
+        IEventPublisher eventPublisher)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -42,6 +46,7 @@ public class MockAiInterviewController : BasePluginController
         _productService = productService;
         _vendorService = vendorService;
         _applicationService = applicationService;
+        _eventPublisher = eventPublisher;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -176,13 +181,7 @@ public class MockAiInterviewController : BasePluginController
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (customer != null)
         {
-            // Applicant notification
-            await _interviewSessionService.SendInterviewCompletionNotificationAsync(session, (await _workContext.GetWorkingLanguageAsync()).Id);
-
-            // Vendor notification
-            // We need a job title for the token, but InterviewSession doesn't have it directly.
-            // Usually it's linked to a JobApplication or Product.
-            // For now, let's try to find a JobApplication or just send if we can.
+            await _eventPublisher.PublishAsync(new MockAiInterviewCompletedEvent(session));
         }
 
         return Json(new { success = true, score = session.Score });
