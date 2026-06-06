@@ -1,48 +1,176 @@
-.html-single-page-checkout .spc-container {
+.spc-two-columns-page .spc-container {
     display: flex;
     flex-wrap: wrap;
     margin: 0 -15px;
 }
 
-.html-single-page-checkout .spc-main-column {
-    flex: 0 0 100%;
-    max-width: 100%;
+.spc-two-columns-page .spc-left-column {
+    flex: 0 0 40%;
+    max-width: 40%;
     padding: 0 15px;
-    min-width: 0;
+    box-sizing: border-box;
 }
 
-.html-single-page-checkout .spc-sidebar-column {
-    flex: 0 0 100%;
-    max-width: 100%;
+.spc-two-columns-page .spc-right-column {
+    flex: 0 0 60%;
+    max-width: 60%;
     padding: 0 15px;
-    margin-top: 30px;
+    box-sizing: border-box;
 }
 
-.spc-sidebar-card {
-    background: #fff;
-    border: 1px solid #e1e1e1;
-    border-radius: 4px;
-    padding: 20px;
+@media (max-width: 991px) {
+    .spc-two-columns-page .spc-left-column,
+    .spc-two-columns-page .spc-right-column {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+.spc-two-columns-page .spc-section {
     margin-bottom: 20px;
+    background: #fff;
+    border: 1px solid #ddd;
 }
 
-.spc-sidebar-card .title {
-    margin-top: 0;
-    margin-bottom: 15px;
+.spc-two-columns-page .spc-section-title {
+    background: #4ab2f1;
+    color: #fff;
+    padding: 10px 15px;
+}
+
+.spc-two-columns-page .spc-section-title h2 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.spc-two-columns-page .spc-section-content {
+    padding: 15px;
+}
+
+.spc-two-columns-page .shipping-method-blocks,
+.spc-two-columns-page .payment-method-blocks {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -10px;
+}
+
+.spc-two-columns-page .method-card {
+    flex: 0 0 calc(50% - 20px);
+    margin: 10px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.spc-two-columns-page .method-card input[type="radio"] {
+    display: none;
+}
+
+.spc-two-columns-page .method-card:has(input[type="radio"]:checked) {
+    border-color: #4ab2f1;
+    background-color: #f0f8ff;
+}
+
+.spc-two-columns-page .method-card label {
+    cursor: pointer;
+    display: block;
+    margin: 0;
+}
+
+.spc-two-columns-page .payment-logo {
+    max-height: 30px;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+.spc-two-columns-page .spc-discounts-giftcards {
+    display: flex;
+    justify-content: space-between;
+    border: none;
+}
+
+.spc-two-columns-page .spc-discounts-giftcards .coupon-box,
+.spc-two-columns-page .spc-discounts-giftcards .giftcard-box {
+    flex: 0 0 calc(50% - 10px);
+    background: #fff;
+    border: 1px solid #ddd;
+}
+
+.spc-two-columns-page .spc-discounts-giftcards label {
+    display: block;
+    background: #4ab2f1;
+    color: #fff;
+    padding: 10px 15px;
+    margin: 0;
+    font-weight: bold;
+}
+
+.spc-two-columns-page .spc-discounts-giftcards .input-group {
+    display: flex;
+    padding: 15px;
+}
+
+.spc-two-columns-page .spc-discounts-giftcards input {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-right: none;
+}
+
+.spc-two-columns-page .spc-discounts-giftcards button {
+    padding: 8px 15px;
+    background: #999;
+    color: #fff;
+    border: 1px solid #999;
+    cursor: pointer;
+}
+
+.spc-two-columns-page .cart-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.spc-two-columns-page .cart-table th,
+.spc-two-columns-page .cart-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+}
+
+.spc-two-columns-page .qty-container {
+    display: flex;
+    align-items: center;
+}
+
+.spc-two-columns-page .qty-container button {
+    width: 30px;
+    height: 30px;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+
+.spc-two-columns-page .qty-container input {
+    width: 40px;
+    height: 30px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-left: none;
+    border-right: none;
+}
+
+.spc-two-columns-page .confirm-order-button {
+    width: 100%;
+    padding: 15px;
     font-size: 18px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
+    background: #2087c8;
+    color: #fff;
+    border: none;
+    cursor: pointer;
 }
 
-@media (min-width: 1200px) {
-    .html-single-page-checkout .spc-main-column {
-        flex: 0 0 65%;
-        max-width: 65%;
-    }
-
-    .html-single-page-checkout .spc-sidebar-column {
-        flex: 0 0 35%;
-        max-width: 35%;
-        margin-top: 0;
-    }
+.spc-two-columns-page .confirm-order-button:hover {
+    background: #1a6fa3;
 }
