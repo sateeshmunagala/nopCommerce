@@ -20,6 +20,7 @@ namespace Nop.Plugin.Misc.SinglePageCheckout.Controllers;
 [AutoValidateAntiforgeryToken]
 public class SinglePageCheckoutController : BasePluginController
 {
+    private readonly OrderSettings _orderSettings;
     private readonly IWorkContext _workContext;
     private readonly IStoreContext _storeContext;
     private readonly ISettingService _settingService;
@@ -32,6 +33,7 @@ public class SinglePageCheckoutController : BasePluginController
     private readonly ICustomerService _customerService;
 
     public SinglePageCheckoutController(
+        OrderSettings orderSettings,
         IWorkContext workContext,
         IStoreContext storeContext,
         ISettingService settingService,
@@ -43,6 +45,7 @@ public class SinglePageCheckoutController : BasePluginController
         ILocalizationService localizationService,
         ICustomerService customerService)
     {
+        _orderSettings = orderSettings;
         _workContext = workContext;
         _storeContext = storeContext;
         _settingService = settingService;
@@ -58,7 +61,7 @@ public class SinglePageCheckoutController : BasePluginController
     public async Task<IActionResult> Index()
     {
         var settings = await _settingService.LoadSettingAsync<SinglePageCheckoutSettings>();
-        if (!settings.Enabled)
+        if (!settings.Enabled || !_orderSettings.OnePageCheckoutEnabled)
             return RedirectToRoute("Checkout");
 
         var customer = await _workContext.GetCurrentCustomerAsync();
@@ -81,8 +84,8 @@ public class SinglePageCheckoutController : BasePluginController
     public async Task<IActionResult> Summary()
     {
         var settings = await _settingService.LoadSettingAsync<SinglePageCheckoutSettings>();
-        if (!settings.Enabled)
-            return RedirectToRoute("Checkout"); // Disabled-state sidebar blocking behavior
+        if (!settings.Enabled || !_orderSettings.OnePageCheckoutEnabled)
+            return Empty;
 
         var customer = await _workContext.GetCurrentCustomerAsync();
         var store = await _storeContext.GetCurrentStoreAsync();

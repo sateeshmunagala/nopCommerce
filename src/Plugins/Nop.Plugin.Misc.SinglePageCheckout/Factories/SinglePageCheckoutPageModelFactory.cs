@@ -34,17 +34,17 @@ public class SinglePageCheckoutPageModelFactory : ISinglePageCheckoutPageModelFa
 
         model.CheckoutModel = await _checkoutModelFactory.PrepareOnePageCheckoutModelAsync(cart);
 
-        if (_settings.ShowCartOnCheckout)
-        {
-            model.ShoppingCartModel = await _shoppingCartModelFactory.PrepareShoppingCartModelAsync(
-                new ShoppingCartModel(),
-                cart,
-                isEditable: _settings.AllowCartItemEditing,
-                validateCheckoutAttributes: false,
-                prepareAndDisplayOrderReviewData: _settings.ShowOrderReviewData);
+        model.ShoppingCartModel = await _shoppingCartModelFactory.PrepareShoppingCartModelAsync(
+            new ShoppingCartModel(),
+            cart,
+            isEditable: _settings.AllowCartItemEditing,
+            validateCheckoutAttributes: false,
+            prepareAndDisplayOrderReviewData: _settings.ShowOrderReviewData);
 
-            _tuner.TuneShoppingCartModel(model.ShoppingCartModel);
-        }
+        _tuner.TuneShoppingCartModel(model.ShoppingCartModel);
+
+        if (_settings.ShowEstimateShipping)
+            model.EstimateShippingModel = await _shoppingCartModelFactory.PrepareEstimateShippingModelAsync(cart);
 
         return model;
     }

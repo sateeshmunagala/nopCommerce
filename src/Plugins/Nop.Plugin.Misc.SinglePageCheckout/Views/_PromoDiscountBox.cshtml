@@ -1,0 +1,45 @@
+@model ShoppingCartModel.DiscountBoxModel
+
+@if (Model.Display)
+{
+    <div class="spc-card spc-card-discount">
+        <div class="spc-card-body">
+            <div class="coupon-box">
+                <h2 class="title">
+                    @T("ShoppingCart.DiscountCouponCode")
+                </h2>
+                <div class="hint">
+                    @T("ShoppingCart.DiscountCouponCode.Tooltip")
+                </div>
+                <div class="coupon-code">
+                    <input form="shopping-cart-form" name="discountcouponcode" id="discountcouponcode" type="text" class="discount-coupon-code" aria-label="@T("ShoppingCart.DiscountCouponCode.Label")" />
+                    <button form="shopping-cart-form" type="submit" name="applydiscountcouponcode" id="applydiscountcouponcode" class="button-1 apply-discount-coupon-code-button">@T("ShoppingCart.DiscountCouponCode.Button")</button>
+                </div>
+                @foreach (var message in Model.Messages)
+                {
+                    <div class="@(Model.IsApplied ? "message-success" : "message-failure")">
+                        @message
+                    </div>
+                }
+                @foreach (var discount in Model.AppliedDiscountsWithCodes)
+                {
+                    <div class="current-code">
+                        <span class="applied-discount-code">@string.Format(T("ShoppingCart.DiscountCouponCode.CurrentCode").Text, discount.CouponCode)</span>
+                        <button form="shopping-cart-form" type="submit" name="removediscount-@discount.Id" class="remove-discount-button"></button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <script asp-location="Footer">
+        $(function() {
+            $('#discountcouponcode').on('keydown', function (event) {
+                if (event.keyCode == 13) {
+                    $('#applydiscountcouponcode').trigger("click");
+                    return false;
+                }
+            });
+        });
+    </script>
+}

@@ -8,5 +8,6 @@ public record SinglePageCheckoutPageModel : BaseNopModel
 {
     public OnePageCheckoutModel CheckoutModel { get; set; }
     public ShoppingCartModel ShoppingCartModel { get; set; }
+    public EstimateShippingModel EstimateShippingModel { get; set; }
     public SinglePageCheckoutSettings Settings { get; set; }
 }

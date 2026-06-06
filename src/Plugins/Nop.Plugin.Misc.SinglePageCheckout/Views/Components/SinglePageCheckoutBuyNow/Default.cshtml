@@ -2,31 +2,41 @@
 
 @if (Model.WidgetZone == Nop.Web.Framework.Infrastructure.PublicWidgetZones.ProductDetailsAddInfo)
 {
-    <!-- For product details, we need to serialize the product-details-form to capture selected attributes -->
     <button type="button" class="btn btn-secondary spc-buy-now-button buy-now-btn-@Model.ProductId">
         @T("Plugins.Misc.SinglePageCheckout.BuyNow.Button")
     </button>
     <script asp-location="Footer">
         $(function () {
             $('.buy-now-btn-@Model.ProductId').on('click', function () {
-                var form = $('#product-details-form');
-                if (form.length > 0) {
-                    var originalAction = form.attr('action');
-                    form.attr('action', '@Url.RouteUrl(SinglePageCheckoutDefaults.BuyNowRouteName, new { productId = Model.ProductId })');
-                    form.submit();
-                    // Restore original action just in case
-                    setTimeout(function () {
-                        form.attr('action', originalAction);
-                    }, 100);
+                var sourceForm = $('#product-details-form');
+                if (!sourceForm.length) {
+                    return;
                 }
+
+                var buyNowForm = $('<form />', {
+                    action: '@Url.RouteUrl(SinglePageCheckoutDefaults.BuyNowRouteName, new { productId = Model.ProductId })',
+                    method: 'post',
+                    style: 'display:none;'
+                });
+
+                $.each(sourceForm.serializeArray(), function (_, item) {
+                    $('<input />', {
+                        type: 'hidden',
+                        name: item.name,
+                        value: item.value
+                    }).appendTo(buyNowForm);
+                });
+
+                $('body').append(buyNowForm);
+                buyNowForm.trigger('submit');
             });
         });
     </script>
 }
 else
 {
-    <!-- For product boxes, typically no selected attributes, so just post the product id (and quantity 1) -->
     <form action="@Url.RouteUrl(SinglePageCheckoutDefaults.BuyNowRouteName, new { productId = Model.ProductId })" method="post" class="spc-buy-now-form d-inline-block">
+        @Html.AntiForgeryToken()
         <input type="hidden" name="addtocart_@(Model.ProductId).EnteredQuantity" value="1" />
         <button type="submit" class="btn btn-secondary spc-buy-now-button">
             @T("Plugins.Misc.SinglePageCheckout.BuyNow.Button")

@@ -1,176 +1,522 @@
-.spc-two-columns-page .spc-container {
-    display: flex;
-    flex-wrap: wrap;
-    margin: 0 -15px;
+.spc-page .checkout-data {
+    background: #fafafa;
 }
 
-.spc-two-columns-page .spc-left-column {
-    flex: 0 0 40%;
-    max-width: 40%;
-    padding: 0 15px;
-    box-sizing: border-box;
+.spc-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 24px;
+    align-items: start;
 }
 
-.spc-two-columns-page .spc-right-column {
-    flex: 0 0 60%;
-    max-width: 60%;
-    padding: 0 15px;
-    box-sizing: border-box;
+.spc-column {
+    display: grid;
+    gap: 20px;
 }
 
-@media (max-width: 991px) {
-    .spc-two-columns-page .spc-left-column,
-    .spc-two-columns-page .spc-right-column {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
-}
-
-.spc-two-columns-page .spc-section {
-    margin-bottom: 20px;
+.spc-card {
+    border: 1px solid #d9d9d9;
     background: #fff;
-    border: 1px solid #ddd;
 }
 
-.spc-two-columns-page .spc-section-title {
-    background: #4ab2f1;
-    color: #fff;
-    padding: 10px 15px;
+.spc-card-title {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e5e5;
+    background: #f7f7f7;
 }
 
-.spc-two-columns-page .spc-section-title h2 {
+.spc-card-title h2 {
     margin: 0;
-    font-size: 16px;
+    color: #4a4a4a;
+    font-size: 18px;
+    font-weight: 600;
 }
 
-.spc-two-columns-page .spc-section-content {
-    padding: 15px;
+.spc-card .a-item,
+.spc-card-body {
+    display: block !important;
+    padding: 16px;
 }
 
-.spc-two-columns-page .shipping-method-blocks,
-.spc-two-columns-page .payment-method-blocks {
-    display: flex;
-    flex-wrap: wrap;
-    margin: 0 -10px;
-}
-
-.spc-two-columns-page .method-card {
-    flex: 0 0 calc(50% - 20px);
-    margin: 10px;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-    box-sizing: border-box;
-}
-
-.spc-two-columns-page .method-card input[type="radio"] {
+.spc-card .step-title .number,
+.spc-card .back-link {
     display: none;
 }
 
-.spc-two-columns-page .method-card:has(input[type="radio"]:checked) {
-    border-color: #4ab2f1;
-    background-color: #f0f8ff;
+.spc-card .buttons {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #ececec;
 }
 
-.spc-two-columns-page .method-card label {
-    cursor: pointer;
+.spc-card .buttons .button-1 {
+    min-width: 150px;
+}
+
+.spc-card .buttons .button-2 {
+    min-width: 150px;
+}
+
+.spc-card .spc-placeholder {
+    color: #7a7a7a;
+    min-height: 24px;
+}
+
+.spc-subtitle {
+    margin: 0 0 12px;
+    color: #666;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.spc-summary-form {
+    display: grid;
+    gap: 20px;
+}
+
+.spc-summary-shell {
+    position: relative;
+}
+
+.spc-summary-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+    z-index: 6;
+}
+
+.spc-summary-progress span {
     display: block;
-    margin: 0;
+    width: 34%;
+    height: 100%;
+    background: linear-gradient(90deg, #56a6f3 0%, #2e7dd1 100%);
+    animation: spc-progress-slide 1s ease-in-out infinite;
 }
 
-.spc-two-columns-page .payment-logo {
-    max-height: 30px;
-    margin-right: 10px;
-    vertical-align: middle;
+.spc-summary-shell.spc-is-busy::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.72);
+    z-index: 5;
 }
 
-.spc-two-columns-page .spc-discounts-giftcards {
-    display: flex;
-    justify-content: space-between;
-    border: none;
+.spc-summary-shell.spc-is-busy::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 28px;
+    height: 28px;
+    margin: -14px 0 0 -14px;
+    border: 3px solid #d4dbe3;
+    border-top-color: #2e7dd1;
+    border-radius: 50%;
+    animation: spc-spinner .7s linear infinite;
+    z-index: 6;
 }
 
-.spc-two-columns-page .spc-discounts-giftcards .coupon-box,
-.spc-two-columns-page .spc-discounts-giftcards .giftcard-box {
-    flex: 0 0 calc(50% - 10px);
-    background: #fff;
-    border: 1px solid #ddd;
+.spc-summary-shell.spc-is-busy .spc-summary-progress {
+    opacity: 1;
 }
 
-.spc-two-columns-page .spc-discounts-giftcards label {
-    display: block;
-    background: #4ab2f1;
-    color: #fff;
-    padding: 10px 15px;
-    margin: 0;
-    font-weight: bold;
+.spc-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
 }
 
-.spc-two-columns-page .spc-discounts-giftcards .input-group {
-    display: flex;
-    padding: 15px;
+.spc-summary-grid > :only-child {
+    grid-column: 1 / -1;
 }
 
-.spc-two-columns-page .spc-discounts-giftcards input {
-    flex-grow: 1;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-right: none;
-}
-
-.spc-two-columns-page .spc-discounts-giftcards button {
-    padding: 8px 15px;
-    background: #999;
-    color: #fff;
-    border: 1px solid #999;
-    cursor: pointer;
-}
-
-.spc-two-columns-page .cart-table {
+.spc-cart-table {
     width: 100%;
     border-collapse: collapse;
 }
 
-.spc-two-columns-page .cart-table th,
-.spc-two-columns-page .cart-table td {
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
+.spc-cart-table th,
+.spc-cart-table td {
+    padding: 12px 10px;
+    border: 1px solid #e6e6e6;
     text-align: left;
+    vertical-align: top;
 }
 
-.spc-two-columns-page .qty-container {
+.spc-cart-table th {
+    background: #fafafa;
+    color: #6a6a6a;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.spc-cart-product {
     display: flex;
-    align-items: center;
+    gap: 12px;
+    align-items: flex-start;
 }
 
-.spc-two-columns-page .qty-container button {
-    width: 30px;
-    height: 30px;
-    background: #f0f0f0;
-    border: 1px solid #ccc;
-    cursor: pointer;
+.spc-cart-product img {
+    width: 64px;
+    height: auto;
 }
 
-.spc-two-columns-page .qty-container input {
-    width: 40px;
-    height: 30px;
+.spc-cart-product-name {
+    color: #3d3d3d;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.spc-cart-meta {
+    margin-top: 6px;
+    color: #777;
+    font-size: 12px;
+}
+
+.spc-cart-table .qty-input,
+.spc-cart-table .qty-dropdown {
+    width: 72px;
     text-align: center;
-    border: 1px solid #ccc;
-    border-left: none;
-    border-right: none;
 }
 
-.spc-two-columns-page .confirm-order-button {
-    width: 100%;
-    padding: 15px;
+.spc-card-discount .coupon-box,
+.spc-card-giftcard .giftcard-box {
+    margin: 0;
+}
+
+.spc-card-discount .title,
+.spc-card-giftcard .title {
+    margin: 0 0 10px;
+    color: #4a4a4a;
     font-size: 18px;
-    background: #2087c8;
-    color: #fff;
-    border: none;
-    cursor: pointer;
 }
 
-.spc-two-columns-page .confirm-order-button:hover {
-    background: #1a6fa3;
+.spc-card-discount .coupon-code,
+.spc-card-giftcard .coupon-code {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.spc-card-discount .coupon-code input,
+.spc-card-giftcard .coupon-code input {
+    flex: 1;
+    min-width: 220px;
+}
+
+.spc-card-discount .coupon-code .button-1,
+.spc-card-giftcard .coupon-code .button-1 {
+    width: auto;
+    min-width: 180px;
+    white-space: nowrap;
+}
+
+.spc-card-totals .total-info {
+    margin: 0 0 0 auto;
+    max-width: 320px;
+}
+
+.spc-card-billing .section,
+.spc-card-shipping .section,
+.spc-card-estimate .inputs,
+.spc-card-payment-method .section,
+.spc-card-payment-info .section,
+.spc-card-checkout-attributes .checkout-attributes,
+.spc-card-order-summary .table-wrapper {
+    margin: 0;
+}
+
+.spc-card-billing .checkout-data,
+.spc-card-shipping .checkout-data,
+.spc-card-payment-method .checkout-data,
+.spc-card-payment-info .checkout-data {
+    background: transparent;
+}
+
+.spc-card-billing .inputs,
+.spc-card-shipping .inputs,
+.spc-card-estimate .inputs {
+    margin-bottom: 14px;
+}
+
+.spc-card-billing .inputs label,
+.spc-card-shipping .inputs label,
+.spc-card-estimate .inputs label {
+    display: block;
+    margin-bottom: 6px;
+    color: #555;
+    font-size: 13px;
+}
+
+.spc-card-billing input,
+.spc-card-billing select,
+.spc-card-billing textarea,
+.spc-card-shipping input,
+.spc-card-shipping select,
+.spc-card-shipping textarea,
+.spc-card-estimate input,
+.spc-card-estimate select,
+.spc-card-payment-info input,
+.spc-card-payment-info select,
+.spc-card-payment-info textarea,
+.spc-card-discount input,
+.spc-card-giftcard input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid #d8d8d8;
+    border-radius: 0;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.spc-card-billing textarea,
+.spc-card-shipping textarea,
+.spc-card-payment-info textarea {
+    min-height: 96px;
+}
+
+.spc-card-billing .opc-select-address-container,
+.spc-card-shipping .opc-select-address-container {
+    display: grid;
+    gap: 10px;
+}
+
+.spc-card-billing .address-select,
+.spc-card-shipping .address-select {
+    width: 100%;
+}
+
+.spc-card-billing .ship-to-same-address,
+.spc-card-shipping .pickup-in-store,
+.spc-card-payment-method .use-reward-points {
+    margin-top: 14px;
+}
+
+.spc-card-billing .ship-to-same-address label,
+.spc-card-shipping .pickup-in-store label,
+.spc-card-payment-method .use-reward-points label {
+    display: inline;
+    margin: 0 0 0 6px;
+}
+
+.spc-card-billing .ship-to-same-address input,
+.spc-card-shipping .pickup-in-store input,
+.spc-card-payment-method .use-reward-points input {
+    width: auto;
+    min-height: 0;
+}
+
+.spc-card-payment-method .method-list,
+.spc-card-shipping-method .method-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.spc-card-payment-method .method-list li,
+.spc-card-shipping-method .method-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid #ececec;
+}
+
+.spc-card-payment-method .method-list li:last-child,
+.spc-card-shipping-method .method-list li:last-child {
+    border-bottom: 0;
+}
+
+.spc-card-payment-method .payment-logo {
+    margin-right: 10px;
+}
+
+.spc-card-payment-method .payment-logo img {
+    max-width: 48px;
+    max-height: 30px;
+}
+
+.spc-card-payment-method .method-name,
+.spc-card-shipping-method .method-name {
+    display: flex;
+    align-items: flex-start;
+}
+
+.spc-card-payment-method .payment-details,
+.spc-card-shipping-method .shipping-details {
+    flex: 1;
+}
+
+.spc-card-payment-method .payment-description,
+.spc-card-shipping-method .method-description {
+    margin-top: 6px;
+    color: #7a7a7a;
+    font-size: 12px;
+}
+
+.spc-card-payment-info {
+    margin-top: -12px;
+    border-top: 0;
+}
+
+.spc-card-payment-info .spc-card-title {
+    display: none;
+}
+
+.spc-card-payment-info .buttons {
+    border-top: 0;
+    padding-top: 10px;
+}
+
+#billing-buttons-container,
+#shipping-buttons-container,
+#payment-info-buttons-container {
+    min-height: 18px;
+    margin-top: 8px;
+    padding-top: 0;
+    border-top: 0;
+}
+
+#billing-buttons-container .button-1,
+#shipping-buttons-container .button-1,
+#payment-info-buttons-container .button-1 {
+    display: none !important;
+}
+
+.spc-card-confirm #checkout-confirm-order-load .order-summary {
+    display: none;
+}
+
+.spc-card-confirm .terms-of-service {
+    margin-bottom: 16px;
+}
+
+.spc-card-confirm .confirm-order-next-step-button {
+    min-width: 170px;
+}
+
+.spc-order-review-data .payment-method-info,
+.spc-order-review-data .shipping-info,
+.spc-order-review-data .shipping-method-info {
+    margin-bottom: 16px;
+}
+
+.spc-disabled {
+    opacity: .55;
+}
+
+.spc-disabled .confirm-order-next-step-button {
+    cursor: not-allowed;
+}
+
+.spc-card .message-error,
+.spc-card .message-failure,
+.spc-card .message-success {
+    margin-top: 12px;
+}
+
+.spc-card-estimate .buttons {
+    margin-top: 8px;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.spc-estimate-hint {
+    margin-bottom: 12px;
+    color: #777;
+    font-size: 12px;
+}
+
+.spc-estimate-results {
+    margin-top: 16px;
+}
+
+.spc-estimate-option-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.spc-estimate-option {
+    padding: 10px 0;
+    border-top: 1px solid #ececec;
+}
+
+.spc-estimate-option-name {
+    display: block;
+    color: #4b4b4b;
+}
+
+.spc-estimate-option-description {
+    margin-top: 4px;
+    color: #777;
+    font-size: 12px;
+}
+
+#shipping-method-buttons-container,
+#payment-method-buttons-container {
+    display: none;
+}
+
+@keyframes spc-progress-slide {
+    0% {
+        transform: translateX(-120%);
+    }
+
+    100% {
+        transform: translateX(320%);
+    }
+}
+
+@keyframes spc-spinner {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 1024px) {
+    .spc-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 767px) {
+    .spc-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .spc-card .a-item,
+    .spc-card-body {
+        padding: 14px;
+    }
+
+    .spc-cart-table,
+    .spc-cart-table tbody,
+    .spc-cart-table tr,
+    .spc-cart-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .spc-cart-table thead {
+        display: none;
+    }
+
+    .spc-cart-table tr {
+        border: 1px solid #e6e6e6;
+        margin-bottom: 12px;
+    }
+
+    .spc-cart-table td {
+        border: 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .spc-card-totals .total-info {
+        max-width: 100%;
+    }
 }
