@@ -37,6 +37,26 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     Tab = (int)Nop.Web.Models.Customer.CustomerNavigationEnum.Info + 100, // Custom tab enum
                     ItemClass = "customer-applications"
                 });
+
+                var customer = await _workContext.GetCurrentCustomerAsync();
+                if (customer != null && customer.VendorId > 0)
+                {
+                    navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                    {
+                        RouteName = "Plugin.Misc.AIInterview.VendorScoreboard",
+                        Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorScoreboard.Title"),
+                        Tab = (int)Nop.Web.Models.Customer.CustomerNavigationEnum.VendorInfo + 1,
+                        ItemClass = "vendor-scoreboard"
+                    });
+
+                    navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                    {
+                        RouteName = "Plugin.Misc.AIInterview.VendorJobCreation",
+                        Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Title"),
+                        Tab = (int)Nop.Web.Models.Customer.CustomerNavigationEnum.VendorInfo + 2,
+                        ItemClass = "vendor-job-creation"
+                    });
+                }
             }
         }
 

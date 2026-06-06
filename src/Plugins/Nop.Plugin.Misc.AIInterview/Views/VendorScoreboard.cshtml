@@ -1,0 +1,19 @@
+@using Nop.Web.Models.Customer
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.VendorScoreboard.Title").Text);
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = 110 })
+}
+
+<div class="page vendor-scoreboard-page">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.VendorScoreboard.Title")</h1>
+    </div>
+    <div class="page-body">
+        <p>Vendor scoreboard metrics and reports will appear here.</p>
+    </div>
+</div>

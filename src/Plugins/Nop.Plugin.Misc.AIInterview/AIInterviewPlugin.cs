@@ -289,11 +289,18 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.UpdateStatus.Success"] = "Application status updated successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.ID"] = "ID",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Email"] = "Email",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.JobTitle"] = "Job Title",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.ChargeMode"] = "Charge Mode",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Attempts"] = "Attempts",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.PromptSource"] = "Prompt Source",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.BulkSuccess"] = "Successfully created {0} invites. {1} emails were invalid.",
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Completed"] = "Completed",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.InProgress"] = "In Progress",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Started"] = "Started",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Applied"] = "Applied",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Reviewed"] = "Reviewed",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Shortlisted"] = "Shortlisted",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Rejected"] = "Rejected",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Withdrawn"] = "Withdrawn",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.Unknown"] = "Unknown",
@@ -308,6 +315,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.NoCredits"] = "Insufficient credits. Please purchase credits to start the interview.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.NoCredits.Link"] = "View Pricing",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.SponsorMessage"] = "This interview is company-sponsored.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.Title"] = "Vendor Scoreboard",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Title"] = "Create a Job",
         });
 
         await base.InstallAsync();

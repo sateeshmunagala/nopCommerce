@@ -29,9 +29,13 @@
                             <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post">
                                 <input type="hidden" name="Id" value="@app.Id" />
                                 <select name="Status">
-                                    <option value="Applied" selected="@(app.Status == "Applied")">Applied</option>
-                                    <option value="InProgress" selected="@(app.Status == "InProgress")">In Progress</option>
-                                    <option value="Completed" selected="@(app.Status == "Completed")">Completed</option>
+                                    <option value="Applied" selected="@(app.Status == "Applied")">@T("Plugins.Misc.AIInterview.Status.Applied")</option>
+                                    <option value="InProgress" selected="@(app.Status == "InProgress")">@T("Plugins.Misc.AIInterview.Status.InProgress")</option>
+                                    <option value="Completed" selected="@(app.Status == "Completed")">@T("Plugins.Misc.AIInterview.Status.Completed")</option>
+                                    <option value="Reviewed" selected="@(app.Status == "Reviewed")">@T("Plugins.Misc.AIInterview.Status.Reviewed")</option>
+                                    <option value="Shortlisted" selected="@(app.Status == "Shortlisted")">@T("Plugins.Misc.AIInterview.Status.Shortlisted")</option>
+                                    <option value="Rejected" selected="@(app.Status == "Rejected")">@T("Plugins.Misc.AIInterview.Status.Rejected")</option>
+                                    <option value="Withdrawn" selected="@(app.Status == "Withdrawn")">@T("Plugins.Misc.AIInterview.Status.Withdrawn")</option>
                                 </select>
                                 <button type="submit" class="button-2">Update</button>
                             </form>

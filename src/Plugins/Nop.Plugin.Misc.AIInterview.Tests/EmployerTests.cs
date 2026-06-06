@@ -55,6 +55,9 @@ public class EmployerTests
 
         _creditService.Setup(x => x.GetOrCreateWalletAsync(It.IsAny<int>())).ReturnsAsync(new CreditWallet { Balance = 500 });
 
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<JobApplication>());
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<InterviewSession>());
+
         _controller = new AIInterviewController(
             _applicationService.Object,
             _interviewSessionService.Object,
@@ -74,7 +77,8 @@ public class EmployerTests
             _creditService.Object,
             _customerService.Object,
             _productService.Object,
-            new Mock<global::Nop.Services.Vendors.IVendorService>().Object);
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            _applicationService.Object);
     }
 
     [Test]

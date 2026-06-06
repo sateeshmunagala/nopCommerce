@@ -48,6 +48,9 @@ public class CandidateFlowTests
         _inviteService = new Mock<ISponsorInviteService>();
         _creditService = new Mock<ICreditService>();
 
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<JobApplication>());
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<InterviewSession>());
+
         _controller = new AIInterviewController(
             _applicationService.Object,
             _sessionService.Object,
@@ -67,7 +70,8 @@ public class CandidateFlowTests
             _creditService.Object,
             _customerService.Object,
             _productService.Object,
-            new Mock<global::Nop.Services.Vendors.IVendorService>().Object);
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            _applicationService.Object);
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);

@@ -21,6 +21,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly ICustomerService _customerService;
     private readonly IProductService _productService;
     private readonly IVendorService _vendorService;
+    private readonly IApplicationService _applicationService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -29,7 +30,8 @@ public class MockAiInterviewController : BasePluginController
         ICreditService creditService,
         ICustomerService customerService,
         IProductService productService,
-        IVendorService vendorService)
+        IVendorService vendorService,
+        IApplicationService applicationService)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -39,6 +41,7 @@ public class MockAiInterviewController : BasePluginController
         _customerService = customerService;
         _productService = productService;
         _vendorService = vendorService;
+        _applicationService = applicationService;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -106,10 +109,14 @@ public class MockAiInterviewController : BasePluginController
                 return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.NoCredits", "Insufficient credits. Please purchase credits to start the interview.");
         }
 
+        var application = (await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id))
+            .FirstOrDefault(a => a.ProductId == productId);
+
         var session = new InterviewSession
         {
             CustomerId = customer.Id,
             ProductId = productId,
+            JobApplicationId = application?.Id ?? 0,
             SessionKey = Guid.NewGuid().ToString("N"),
             Difficulty = difficulty,
             Token = Guid.NewGuid().ToString("N"),
@@ -248,11 +255,47 @@ public class MockAiInterviewController : BasePluginController
         if (!await IsAuthorizedAsync())
             return Challenge();
 
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.EmailRequired") });
+        }
+
         try
         {
             var customer = await _workContext.GetCurrentCustomerAsync();
-            await _inviteService.CreateInviteAsync(customer.Id, email, productId, maxAttempts, expiryDateUtc);
-            return Json(new { success = true, message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Success") });
+            var emails = email.Split(new[] { ',', ':', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                              .Select(e => e.Trim())
+                              .Where(e => !string.IsNullOrEmpty(e))
+                              .Distinct()
+                              .ToList();
+
+            int createdCount = 0;
+            int invalidCount = 0;
+
+            foreach (var e in emails)
+            {
+                // Simple email validation
+                if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(e))
+                {
+                    invalidCount++;
+                    continue;
+                }
+
+                try
+                {
+                    await _inviteService.CreateInviteAsync(customer.Id, e, productId, maxAttempts, expiryDateUtc);
+                    createdCount++;
+                }
+                catch
+                {
+                    invalidCount++;
+                }
+            }
+
+            var bulkSuccessMessageFormat = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.BulkSuccess");
+            var message = string.Format(bulkSuccessMessageFormat ?? "Successfully created {0} invites. {1} emails were invalid.", createdCount, invalidCount);
+
+            return Json(new { success = true, message = message });
         }
         catch (NopException ex)
         {

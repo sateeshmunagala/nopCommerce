@@ -29,6 +29,8 @@
     <None Remove="Views\MyApplications.cshtml" />
     <None Remove="Views\EmployerApplications.cshtml" />
     <None Remove="Views\Report.cshtml" />
+    <None Remove="Views\VendorScoreboard.cshtml" />
+    <None Remove="Views\VendorJobCreation.cshtml" />
     <None Remove="Views\MockAiInterview\Start.cshtml" />
     <None Remove="Views\MockAiInterview\Runtime.cshtml" />
     <None Remove="Views\MockAiInterview\History.cshtml" />
@@ -64,6 +66,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Report.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\VendorScoreboard.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\VendorJobCreation.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\MockAiInterview\Start.cshtml">

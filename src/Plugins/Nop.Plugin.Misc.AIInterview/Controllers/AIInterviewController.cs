@@ -400,25 +400,55 @@ public class AIInterviewController : BasePluginController
         var statusHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.History.Status");
         var scoreHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.History.Score");
         var dateHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.History.Date");
-        sb.AppendLine($"{idHeader},{candidateHeader},{emailHeader},{statusHeader},{scoreHeader},{dateHeader}");
+        var jobTitleHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.JobTitle");
+        var chargeModeHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode");
+        var attemptsHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Attempts");
+        var promptSourceHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.PromptSource");
+        sb.AppendLine($"{idHeader},{candidateHeader},{emailHeader},{statusHeader},{scoreHeader},{dateHeader},{jobTitleHeader},{chargeModeHeader},{attemptsHeader},{promptSourceHeader}");
 
         foreach (var a in applications)
         {
             var appCustomer = customers.FirstOrDefault(c => c.Id == a.CustomerId);
-            var session = await _interviewSessionService.GetLatestCompletedSessionByCustomerIdAndProductIdAsync(a.CustomerId, a.ProductId);
+            var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(a.CustomerId);
+            var appSessions = sessions.Where(s => s.ProductId == a.ProductId).ToList();
+            var session = appSessions.OrderByDescending(s => s.CompletedOnUtc).FirstOrDefault(s => s.CompletedOnUtc.HasValue);
 
             var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
             var email = appCustomer?.Email ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
             var status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{a.Status?.Replace(" ", "")}") ?? a.Status;
             var score = session?.Score.ToString() ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.None");
 
+            var jobTitle = a.JobTitle ?? string.Empty;
+            var attempts = appSessions.Count.ToString();
+            var chargeMode = session != null && session.SponsorInviteId > 0 ? "Sponsor" : "Self-Paid";
+            var promptSource = $"Provider: {_aiInterviewSettings.Provider}, Model: {_aiInterviewSettings.Model}";
+
             var candidateNameCsv = $"\"{candidateName.Replace("\"", "\"\"")}\"";
             var emailCsv = $"\"{email.Replace("\"", "\"\"")}\"";
             var statusCsv = $"\"{status?.Replace("\"", "\"\"")}\"";
+            var jobTitleCsv = $"\"{jobTitle.Replace("\"", "\"\"")}\"";
+            var chargeModeCsv = $"\"{chargeMode.Replace("\"", "\"\"")}\"";
+            var promptSourceCsv = $"\"{promptSource.Replace("\"", "\"\"")}\"";
 
-            sb.AppendLine($"{a.Id},{candidateNameCsv},{emailCsv},{statusCsv},{score},{a.CreatedOnUtc:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"{a.Id},{candidateNameCsv},{emailCsv},{statusCsv},{score},{a.CreatedOnUtc:yyyy-MM-dd HH:mm:ss},{jobTitleCsv},{chargeModeCsv},{attempts},{promptSourceCsv}");
         }
 
         return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "applications.csv");
+    }
+
+    public async Task<IActionResult> VendorScoreboard()
+    {
+        if (!await IsAuthorizedForEmployerActionsAsync())
+            return Challenge();
+
+        return View("~/Plugins/Misc.AIInterview/Views/VendorScoreboard.cshtml");
+    }
+
+    public async Task<IActionResult> VendorJobCreation()
+    {
+        if (!await IsAuthorizedForEmployerActionsAsync())
+            return Challenge();
+
+        return View("~/Plugins/Misc.AIInterview/Views/VendorJobCreation.cshtml");
     }
 }
