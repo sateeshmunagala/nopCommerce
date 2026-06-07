@@ -38,7 +38,7 @@ public class EventConsumerTests
         Assert.That(addedItem.RouteName, Is.EqualTo(AIInterviewDefaults.MyApplicationsRouteName));
         Assert.That(addedItem.Title, Is.EqualTo("My Applications"));
         Assert.That(addedItem.ItemClass, Is.EqualTo("customer-applications"));
-        Assert.That(addedItem.Tab, Is.EqualTo((int)CustomerNavigationEnum.Info + 100));
+        Assert.That(addedItem.Tab, Is.EqualTo(AIInterviewDefaults.MyApplicationsNavigationTab));
     }
 
     [Test]
@@ -60,5 +60,34 @@ public class EventConsumerTests
 
         // Assert
         Assert.That(model.CustomerNavigationItems.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task HandleEventAsync_DoesNotDuplicateNavigationItems()
+    {
+        var localizationService = new Mock<ILocalizationService>();
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
+            .ReturnsAsync((string resourceKey) => resourceKey);
+
+        var creditService = new Mock<Services.ICreditService>();
+        var workContext = new Mock<Nop.Core.IWorkContext>();
+        workContext.Setup(x => x.GetCurrentCustomerAsync())
+            .ReturnsAsync(new Nop.Core.Domain.Customers.Customer { Id = 1, VendorId = 2 });
+        var consumer = new EventConsumer(localizationService.Object, creditService.Object, workContext.Object,
+            new AIInterviewSettings { Enabled = true });
+        var model = new CustomerNavigationModel();
+        var eventMessage = new ModelPreparedEvent<Nop.Web.Framework.Models.BaseNopModel>(model);
+
+        await consumer.HandleEventAsync(eventMessage);
+        await consumer.HandleEventAsync(eventMessage);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.MyApplicationsRouteName), Is.EqualTo(1));
+            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.VendorScoreboardRouteName), Is.EqualTo(1));
+            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.VendorJobCreationRouteName), Is.EqualTo(1));
+            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.EmployerApplicationsRouteName), Is.EqualTo(1));
+            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.MockEmployerManageRouteName), Is.EqualTo(1));
+        });
     }
 }

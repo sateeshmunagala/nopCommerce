@@ -306,7 +306,20 @@ public class CandidateFlowTests
     [Test]
     public async Task WidgetView_Rendering_Works()
     {
-        var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(_creditService.Object, _workContext.Object);
+        var productTemplateService = new Mock<IProductTemplateService>();
+        _productService.Setup(x => x.GetProductByIdAsync(99))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 99, ProductTemplateId = 7 });
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
+            {
+                Id = 7,
+                ViewPath = AIInterviewDefaults.JobProductTemplateViewPath
+            });
+        var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
+            _creditService.Object,
+            _workContext.Object,
+            _productService.Object,
+            productTemplateService.Object);
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?sponsorToken=abc");
 
@@ -349,5 +362,30 @@ public class CandidateFlowTests
         Assert.That(component.ViewBag.HasSponsorCredits, Is.True);
         Assert.That(component.ViewBag.ProductId, Is.EqualTo(99));
         Assert.That(component.ViewBag.SponsorToken, Is.EqualTo("abc"));
+    }
+
+    [Test]
+    public async Task WidgetView_DoesNotRenderForOrdinaryProductTemplate()
+    {
+        var productTemplateService = new Mock<IProductTemplateService>();
+        _productService.Setup(x => x.GetProductByIdAsync(99))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 99, ProductTemplateId = 1 });
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(1))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
+            {
+                Id = 1,
+                ViewPath = "ProductTemplate.Simple"
+            });
+        var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
+            _creditService.Object,
+            _workContext.Object,
+            _productService.Object,
+            productTemplateService.Object);
+
+        var result = await component.InvokeAsync(
+            "productdetails_before_collateral",
+            new Nop.Web.Models.Catalog.ProductDetailsModel { Id = 99 });
+
+        Assert.That(result.GetType().Name, Is.EqualTo("ContentViewComponentResult"));
     }
 }

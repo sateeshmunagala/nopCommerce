@@ -1,9 +1,13 @@
+using Nop.Core.Domain.Catalog;
+using Nop.Core.Domain.Cms;
+using Nop.Services.Catalog;
+using Nop.Services.Cms;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
-using Nop.Services.Localization;
-using Nop.Services.Plugins;
 using Nop.Services.Helpers;
-using Nop.Services.Cms;
+using Nop.Services.Localization;
+using Nop.Services.Messages;
+using Nop.Services.Plugins;
 
 namespace Nop.Plugin.Misc.AIInterview;
 
@@ -17,7 +21,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     private readonly ILocalizationService _localizationService;
     private readonly ISettingService _settingService;
     private readonly IWebHelper _webHelper;
-    private readonly Nop.Services.Messages.IMessageTemplateService _messageTemplateService;
+    private readonly IMessageTemplateService _messageTemplateService;
+    private readonly IProductTemplateService _productTemplateService;
+    private readonly WidgetSettings _widgetSettings;
 
     #endregion
 
@@ -26,12 +32,16 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     public AIInterviewPlugin(ILocalizationService localizationService,
         ISettingService settingService,
         IWebHelper webHelper,
-        Nop.Services.Messages.IMessageTemplateService messageTemplateService)
+        IMessageTemplateService messageTemplateService,
+        IProductTemplateService productTemplateService = null,
+        WidgetSettings widgetSettings = null)
     {
         _localizationService = localizationService;
         _settingService = settingService;
         _webHelper = webHelper;
         _messageTemplateService = messageTemplateService;
+        _productTemplateService = productTemplateService;
+        _widgetSettings = widgetSettings;
     }
 
     #endregion
@@ -105,8 +115,154 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             settings.InterviewRequired = true;
 
         await _settingService.SaveSettingAsync(settings);
+        await EnsureJobProductTemplateAsync();
+        await EnsureWidgetActiveAsync();
+        await EnsureMessageTemplatesAsync();
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
 
         await base.UpdateAsync(currentVersion, targetVersion);
+    }
+
+    protected async Task EnsureMessageTemplatesAsync()
+    {
+        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicantInterviewCompletion", 0)).Any())
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.ApplicantInterviewCompletion",
+                Subject = "Interview Completion: %AIInterview.JobTitle%",
+                Body = "<p>Hello %Customer.FullName%,</p><p>You have completed the interview for %AIInterview.JobTitle% on %AIInterview.CompletionDate%.</p><p>Overall Score: %AIInterview.OverallScore%</p><p>Question-level Summary: %AIInterview.QuestionSummary%</p><p><a href=\"%AIInterview.ReportUrl%\">View Full Report</a></p><p><a href=\"%AIInterview.MyApplicationsUrl%\">View My Applications</a></p>",
+                IsActive = true
+            });
+        }
+
+        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.VendorInterviewCompletion", 0)).Any())
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.VendorInterviewCompletion",
+                Subject = "Candidate Interview Completion: %AIInterview.JobTitle%",
+                Body = "<p>Hello %Vendor.Name%,</p><p>Candidate %Customer.FullName% (%Customer.Email%) has completed the interview for %AIInterview.JobTitle% on %AIInterview.CompletionDate%.</p><p>Overall Score: %AIInterview.OverallScore%</p><p>Question-level Summary: %AIInterview.QuestionSummary%</p><p><a href=\"%AIInterview.CandidateReportUrl%\">View Candidate Report</a></p>",
+                IsActive = true
+            });
+        }
+
+        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationStatusUpdate", 0)).Any())
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.ApplicationStatusUpdate",
+                Subject = "Application Status Update: %AIInterview.JobTitle%",
+                Body = "<p>Hello %Customer.FullName%,</p><p>The status of your application for %AIInterview.JobTitle% has been updated to %AIInterview.NewStatus%.</p><p>Updated on: %AIInterview.UpdateTimestamp%</p><p><a href=\"%AIInterview.MyApplicationsUrl%\">View My Applications</a></p>",
+                IsActive = true
+            });
+        }
+
+        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationSubmitted", 0)).Any())
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.ApplicationSubmitted",
+                Subject = "Application Submitted: %AIInterview.JobTitle%",
+                Body = "<p>Hello %Customer.FullName%,</p><p>Your application for %AIInterview.JobTitle% has been successfully submitted.</p><p><a href=\"%AIInterview.MyApplicationsUrl%\">View My Applications</a></p>",
+                IsActive = true
+            });
+        }
+    }
+
+    protected async Task EnsureJobProductTemplateAsync()
+    {
+        if (_productTemplateService == null)
+            return;
+
+        var templates = await _productTemplateService.GetAllProductTemplatesAsync();
+        var template = templates.FirstOrDefault(item =>
+            string.Equals(item.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase)) ??
+            templates.FirstOrDefault(item =>
+                string.Equals(item.Name, AIInterviewDefaults.JobProductTemplateName, StringComparison.OrdinalIgnoreCase));
+
+        if (template == null)
+        {
+            await _productTemplateService.InsertProductTemplateAsync(new ProductTemplate
+            {
+                Name = AIInterviewDefaults.JobProductTemplateName,
+                ViewPath = AIInterviewDefaults.JobProductTemplateViewPath,
+                DisplayOrder = 20,
+                IgnoredProductTypes = ((int)ProductType.GroupedProduct).ToString()
+            });
+            return;
+        }
+
+        var changed = false;
+        if (!string.Equals(template.Name, AIInterviewDefaults.JobProductTemplateName, StringComparison.Ordinal))
+        {
+            template.Name = AIInterviewDefaults.JobProductTemplateName;
+            changed = true;
+        }
+
+        if (!string.Equals(template.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.Ordinal))
+        {
+            template.ViewPath = AIInterviewDefaults.JobProductTemplateViewPath;
+            changed = true;
+        }
+
+        if (changed)
+            await _productTemplateService.UpdateProductTemplateAsync(template);
+    }
+
+    protected async Task EnsureWidgetActiveAsync()
+    {
+        if (_widgetSettings == null ||
+            _widgetSettings.ActiveWidgetSystemNames.Contains(AIInterviewDefaults.SystemName, StringComparer.OrdinalIgnoreCase))
+            return;
+
+        _widgetSettings.ActiveWidgetSystemNames.Add(AIInterviewDefaults.SystemName);
+        await _settingService.SaveSettingAsync(_widgetSettings);
+    }
+
+    protected static Dictionary<string, string> GetUpgradeLocaleResources()
+    {
+        return new Dictionary<string, string>
+        {
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile.Help"] = "Upload a PDF or DOCX file up to 5 MB, or leave blank to reuse your most recent resume.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.SortBy"] = "Sort by",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Report.AccessDenied"] = "You do not have access to this interview report.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.Title"] = "Interview Session Error",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.StartAgain"] = "Start Again",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.EmailInvalid"] = "Enter a valid email address.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Status"] = "Status",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.StatusComment"] = "Status comment",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Update"] = "Update",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.ExportCsv"] = "Export to CSV",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.UpdateStatus.Invalid"] = "Select a valid application status.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.JobTitle"] = "Job Title",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.ChargeMode"] = "Charge Mode",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Attempts"] = "Attempts",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.PromptSource"] = "Prompt Source",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.BulkSuccess"] = "Successfully created {0} invites. {1} emails were invalid.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Pending"] = "Pending",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.TotalJobs"] = "Total jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.TotalApplications"] = "Total applications",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.CompletedInterviews"] = "Completed interviews",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.Shortlisted"] = "Shortlisted applications",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.AverageScore"] = "Average score",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.HighestScore"] = "Highest score",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.CreateJob"] = "Create a Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.ViewApplications"] = "View Applications",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.RecentApplications"] = "Recent Applications",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.NoApplications"] = "No applications have been submitted yet.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.Title"] = "Vendor Scoreboard",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Name"] = "Job title",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Name.Required"] = "Job title is required.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ShortDescription"] = "Summary",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.FullDescription"] = "Description",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Sku"] = "Reference code",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Published"] = "Published",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Submit"] = "Create Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Success"] = "The job was created successfully.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Unavailable"] = "Job creation is temporarily unavailable.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Title"] = "Create a Job"
+        };
     }
 
     public override async Task InstallAsync()
@@ -128,47 +284,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         };
         await _settingService.SaveSettingAsync(mockSettings);
 
-        //message templates
-        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicantInterviewCompletion", 0)).Any())
-        {
-            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
-            {
-                Name = "AIInterview.ApplicantInterviewCompletion",
-                Subject = "Interview Completion: %AIInterview.JobTitle%",
-                Body = "<p>Hello %Customer.FullName%,</p><p>You have completed the interview for %AIInterview.JobTitle% on %AIInterview.CompletionDate%.</p><p>Overall Score: %AIInterview.OverallScore%</p><p>Question-level Summary: %AIInterview.QuestionSummary%</p><p><a href=\"%AIInterview.ReportUrl%\">View Full Report</a></p><p><a href=\"%AIInterview.MyApplicationsUrl%\">View My Applications</a></p>",
-                IsActive = true
-            });
-        }
-        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.VendorInterviewCompletion", 0)).Any())
-        {
-            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
-            {
-                Name = "AIInterview.VendorInterviewCompletion",
-                Subject = "Candidate Interview Completion: %AIInterview.JobTitle%",
-                Body = "<p>Hello %Vendor.Name%,</p><p>Candidate %Customer.FullName% (%Customer.Email%) has completed the interview for %AIInterview.JobTitle% on %AIInterview.CompletionDate%.</p><p>Overall Score: %AIInterview.OverallScore%</p><p>Question-level Summary: %AIInterview.QuestionSummary%</p><p><a href=\"%AIInterview.CandidateReportUrl%\">View Candidate Report</a></p>",
-                IsActive = true
-            });
-        }
-        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationStatusUpdate", 0)).Any())
-        {
-            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
-            {
-                Name = "AIInterview.ApplicationStatusUpdate",
-                Subject = "Application Status Update: %AIInterview.JobTitle%",
-                Body = "<p>Hello %Customer.FullName%,</p><p>The status of your application for %AIInterview.JobTitle% has been updated to %AIInterview.NewStatus%.</p><p>Updated on: %AIInterview.UpdateTimestamp%</p><p><a href=\"%AIInterview.MyApplicationsUrl%\">View My Applications</a></p>",
-                IsActive = true
-            });
-        }
-        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationSubmitted", 0)).Any())
-        {
-            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
-            {
-                Name = "AIInterview.ApplicationSubmitted",
-                Subject = "Application Submitted: %AIInterview.JobTitle%",
-                Body = "<p>Hello %Customer.FullName%,</p><p>Your application for %AIInterview.JobTitle% has been successfully submitted.</p><p><a href=\"%AIInterview.MyApplicationsUrl%\">View My Applications</a></p>",
-                IsActive = true
-            });
-        }
+        await EnsureJobProductTemplateAsync();
+        await EnsureWidgetActiveAsync();
+        await EnsureMessageTemplatesAsync();
 
         //locales
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
@@ -318,6 +436,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.Title"] = "Vendor Scoreboard",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Title"] = "Create a Job",
         });
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
 
         await base.InstallAsync();
     }
@@ -331,6 +450,12 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         //settings
         await _settingService.DeleteSettingAsync<AIInterviewSettings>();
         await _settingService.DeleteSettingAsync<MockAIInterviewSettings>();
+
+        if (_widgetSettings != null && _widgetSettings.ActiveWidgetSystemNames.RemoveAll(systemName =>
+            string.Equals(systemName, AIInterviewDefaults.SystemName, StringComparison.OrdinalIgnoreCase)) > 0)
+        {
+            await _settingService.SaveSettingAsync(_widgetSettings);
+        }
 
         //locales
         await _localizationService.DeleteLocaleResourcesAsync(AIInterviewDefaults.LocalizationPrefix);

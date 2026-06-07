@@ -20,6 +20,10 @@ public class MockAiInterviewCompletedEventConsumer : IConsumer<MockAiInterviewCo
 
     public async Task HandleEventAsync(MockAiInterviewCompletedEvent eventMessage)
     {
-        await _interviewSessionService.SendInterviewCompletionNotificationAsync(eventMessage.Session, (await _workContext.GetWorkingLanguageAsync()).Id);
+        var languageId = eventMessage.LanguageId;
+        if (languageId <= 0)
+            languageId = (await _workContext.GetWorkingLanguageAsync()).Id;
+
+        await _interviewSessionService.SendInterviewCompletionNotificationAsync(eventMessage.Session, languageId);
     }
 }

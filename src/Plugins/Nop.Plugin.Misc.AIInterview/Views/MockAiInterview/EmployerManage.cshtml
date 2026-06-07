@@ -1,17 +1,16 @@
 @model IList<Nop.Plugin.Misc.AIInterview.Domain.SponsorInvite>
-@using Nop.Core
 @using Nop.Plugin.Misc.AIInterview
-@inject IWebHelper webHelper
+@using Nop.Web.Models.Customer
 
 @{
     Layout = "_ColumnsTwo";
 }
 
 @section left {
-    @await Component.InvokeAsync("VendorNavigation", new { selectedTabId = 0 })
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.SponsorInvitesNavigationTab })
 }
 
-<div class="page vendor-account-page">
+<div class="page vendor-account-page employer-manage">
     <div class="page-title">
         <h1>@T("Plugins.Misc.AIInterview.Employer.Invite.Title")</h1>
     </div>
@@ -71,7 +70,8 @@
                         <tbody>
                             @foreach (var invite in Model)
                             {
-                                var inviteUrl = $"{webHelper.GetStoreLocation()}ai-interview/accept?code={invite.InviteCode}";
+                                var inviteUrl = Url.RouteUrl(AIInterviewDefaults.MockStartRouteName,
+                                    new { productId = invite.ProductId, sponsorToken = invite.InviteCode });
                                 <tr>
                                     <td>@invite.Email</td>
                                     <td>@invite.InviteCode</td>

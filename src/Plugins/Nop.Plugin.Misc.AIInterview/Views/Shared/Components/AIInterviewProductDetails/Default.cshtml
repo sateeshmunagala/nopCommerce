@@ -1,4 +1,4 @@
-@model dynamic
+@model Nop.Web.Models.Catalog.ProductDetailsModel
 @{
     bool hasCredits = ViewBag.HasCredits != null && (bool)ViewBag.HasCredits;
     bool hasSponsorCredits = ViewBag.HasSponsorCredits != null && (bool)ViewBag.HasSponsorCredits;
@@ -24,19 +24,12 @@
     }
 
     <div class="actions" style="margin-top: 15px;">
-        <a href="@Url.Action("Apply", "AIInterview", new { jobTitle = "Product_" + productId, productId = productId })" class="btn btn-primary apply-btn">
-            @T("Plugins.Misc.AIInterview.Apply.Submit")
+        <a href="@Url.Action("Apply", "AIInterview", new { jobTitle = Model.Name, productId })" class="button-1 apply-btn">
+            @T("Plugins.Misc.AIInterview.Index.ApplyNow")
         </a>
 
-        @if (hasCredits || hasSponsorCredits)
-        {
-            <form action="@Url.Action("Start", "MockAiInterview")" method="post" style="display:inline-block; margin-left:10px;">
-                <input type="hidden" name="productId" value="@productId" />
-                <input type="hidden" name="sponsorToken" value="@sponsorToken" />
-                <button type="submit" class="btn btn-secondary start-interview-btn">
-                    Start Interview
-                </button>
-            </form>
-        }
+        <a href="@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName, new { productId, sponsorToken })" class="button-2 start-interview-btn">
+            @T("Plugins.Misc.AIInterview.Index.StartInterview")
+        </a>
     </div>
 </div>

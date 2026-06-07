@@ -1,12 +1,20 @@
 @model ApplicationListModel
+@using Nop.Plugin.Misc.AIInterview.Domain
+@using Nop.Web.Models.Customer
 @{
     Layout = "_ColumnsTwo";
 }
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.EmployerApplicationsNavigationTab })
+}
+
 <div class="page employer-applications">
     <div class="page-title">
         <h1>@T("Plugins.Misc.AIInterview.Employer.Applications.Title")</h1>
         <div class="export-csv">
-            <a href="@Url.RouteUrl("Plugin.Misc.AIInterview.ExportCsv")" class="button-2">Export to CSV</a>
+            <a href="@Url.RouteUrl("Plugin.Misc.AIInterview.ExportCsv")" class="button-2">@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")</a>
         </div>
     </div>
     <div class="page-body">
@@ -21,7 +29,7 @@
                     <th>@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</th>
                     <th>@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>
                     <th>@T("Plugins.Misc.AIInterview.Employer.Applications.PromptSource")</th>
-                    <th>Actions</th>
+                    <th>@T("Plugins.Misc.AIInterview.History.Actions")</th>
                 </tr>
             </thead>
             <tbody>
@@ -34,15 +42,13 @@
                             <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post">
                                 <input type="hidden" name="Id" value="@app.Id" />
                                 <select name="Status">
-                                    <option value="Applied" selected="@(app.RawStatus == "Applied")">@T("Plugins.Misc.AIInterview.Status.Applied")</option>
-                                    <option value="InProgress" selected="@(app.RawStatus == "InProgress")">@T("Plugins.Misc.AIInterview.Status.InProgress")</option>
-                                    <option value="Completed" selected="@(app.RawStatus == "Completed")">@T("Plugins.Misc.AIInterview.Status.Completed")</option>
-                                    <option value="Reviewed" selected="@(app.RawStatus == "Reviewed")">@T("Plugins.Misc.AIInterview.Status.Reviewed")</option>
-                                    <option value="Shortlisted" selected="@(app.RawStatus == "Shortlisted")">@T("Plugins.Misc.AIInterview.Status.Shortlisted")</option>
-                                    <option value="Rejected" selected="@(app.RawStatus == "Rejected")">@T("Plugins.Misc.AIInterview.Status.Rejected")</option>
-                                    <option value="Withdrawn" selected="@(app.RawStatus == "Withdrawn")">@T("Plugins.Misc.AIInterview.Status.Withdrawn")</option>
+                                    @foreach (var status in JobApplicationStatuses.All)
+                                    {
+                                        <option value="@status" selected="@(app.RawStatus == status)">@T($"Plugins.Misc.AIInterview.Status.{status}")</option>
+                                    }
                                 </select>
-                                <button type="submit" class="button-2">Update</button>
+                                <input type="text" name="StatusComment" value="@app.StatusComment" placeholder="@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")" />
+                                <button type="submit" class="button-2">@T("Plugins.Misc.AIInterview.Employer.Applications.Update")</button>
                             </form>
                         </td>
                         <td>@app.InterviewScore</td>
@@ -53,7 +59,7 @@
                         <td>
                             @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
                             {
-                                <a href="@app.InterviewReportUrl">View Report</a>
+                                <a href="@app.InterviewReportUrl">@T("Plugins.Misc.AIInterview.History.ViewReport")</a>
                             }
                         </td>
                     </tr>

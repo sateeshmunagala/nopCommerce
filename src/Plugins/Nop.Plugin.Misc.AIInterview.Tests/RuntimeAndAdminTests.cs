@@ -7,6 +7,7 @@ using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
+using Nop.Plugin.Misc.AIInterview.Events;
 using Nop.Services.Catalog;
 using Nop.Services.Configuration;
 using Nop.Services.Customers;
@@ -23,6 +24,7 @@ public class RuntimeAndAdminTests
     private Mock<ILocalizationService> _localizationService;
     private Mock<IWorkContext> _workContext;
     private Mock<ICustomerService> _customerService;
+    private Mock<Nop.Core.Events.IEventPublisher> _eventPublisher;
     private MockAiInterviewController _runtimeController;
 
     private Mock<ICreditService> _creditService;
@@ -43,10 +45,11 @@ public class RuntimeAndAdminTests
         _localizationService = new Mock<ILocalizationService>();
         _workContext = new Mock<IWorkContext>();
         _customerService = new Mock<ICustomerService>();
+        _eventPublisher = new Mock<Nop.Core.Events.IEventPublisher>();
         _creditService = new Mock<ICreditService>();
         _inviteService = new Mock<ISponsorInviteService>();
         _productService = new Mock<IProductService>();
-        _runtimeController = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object);
+        _runtimeController = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object);
 
         _notificationService = new Mock<INotificationService>();
         _settingService = new Mock<ISettingService>();
@@ -106,6 +109,14 @@ public class RuntimeAndAdminTests
     {
         var ex = Assert.ThrowsAsync<NopException>(async () => await _inviteServiceImplementation.CreateInviteAsync(1, "", 1, 1, null));
         Assert.That(ex.Message, Is.EqualTo("Plugins.Misc.AIInterview.Admin.Invite.EmailRequired"));
+    }
+
+    [Test]
+    public async Task Admin_Invite_Validation_EmailInvalid()
+    {
+        var ex = Assert.ThrowsAsync<NopException>(async () =>
+            await _inviteServiceImplementation.CreateInviteAsync(1, "not-an-email", 1, 1, null));
+        Assert.That(ex.Message, Is.EqualTo("Plugins.Misc.AIInterview.Admin.Invite.EmailInvalid"));
     }
 
     [Test]
@@ -221,6 +232,48 @@ public class RuntimeAndAdminTests
         var deactivateMethod = typeof(MockAiInterviewController).GetMethod("DeactivateInvite");
         Assert.That(createMethod, Is.Not.Null);
         Assert.That(deactivateMethod, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task Runtime_InvalidSession_ReturnsVisibleErrorView()
+    {
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("expired"))
+            .ReturnsAsync(new InterviewSession
+            {
+                Token = "expired",
+                IsActive = true,
+                TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
+            });
+
+        var result = await _runtimeController.Runtime("expired");
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (RuntimeErrorModel)((ViewResult)result).Model;
+        Assert.That(model.StatusCode, Is.EqualTo(400));
+        Assert.That(model.Message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+    }
+
+    [Test]
+    public async Task Stop_PublishesCompletionOnlyOnce()
+    {
+        var session = new InterviewSession
+        {
+            Id = 11,
+            Token = "valid",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("valid")).ReturnsAsync(session);
+        _workContext.Setup(x => x.GetWorkingLanguageAsync())
+            .ReturnsAsync(new Nop.Core.Domain.Localization.Language { Id = 2 });
+
+        var firstResult = await _runtimeController.Stop("valid");
+        var secondResult = await _runtimeController.Stop("valid");
+
+        Assert.That(firstResult, Is.TypeOf<JsonResult>());
+        Assert.That(secondResult, Is.TypeOf<JsonResult>());
+        _eventPublisher.Verify(x => x.PublishAsync(It.Is<MockAiInterviewCompletedEvent>(message =>
+            message.Session.Id == 11 && message.LanguageId == 2)), Times.Once);
     }
 
     private class TestRuntimeController : MockAiInterviewController

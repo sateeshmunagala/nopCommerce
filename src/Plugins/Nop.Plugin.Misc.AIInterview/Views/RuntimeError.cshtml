@@ -1,0 +1,18 @@
+@model RuntimeErrorModel
+
+@{
+    Layout = "_ColumnsOne";
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.Runtime.Error.Title").Text);
+}
+
+<div class="page ai-interview-runtime-error-page">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Runtime.Error.Title")</h1>
+    </div>
+    <div class="page-body">
+        <div class="message-error">@Model.Message</div>
+        <div class="buttons">
+            <a class="button-1" href="@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)">@T("Plugins.Misc.AIInterview.Runtime.Error.StartAgain")</a>
+        </div>
+    </div>
+</div>

@@ -1,8 +1,14 @@
 @model ApplicationListModel
+@using Nop.Web.Models.Customer
 
 @{
-    Layout = "_ColumnsOne";
+    Layout = "_ColumnsTwo";
     NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.MyApplications.Title").Text);
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MyApplicationsNavigationTab })
 }
 
 <div class="page ai-interview-history-page">
@@ -11,7 +17,7 @@
     </div>
     <div class="page-body">
         <div class="sort-options" style="margin-bottom: 20px;">
-            <span>Sort by: </span>
+            <span>@T("Plugins.Misc.AIInterview.MyApplications.SortBy"): </span>
             <select id="sortOrder" onchange="location.href='@Url.Action("MyApplications")?sortOrder=' + this.value;">
                 <option value="LatestApplied" selected="@(Model.SortOrder == "LatestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.LatestApplied")</option>
                 <option value="OldestApplied" selected="@(Model.SortOrder == "OldestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.OldestApplied")</option>

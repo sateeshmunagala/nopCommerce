@@ -320,15 +320,30 @@ public class InterviewSessionService : IInterviewSessionService
 
     public async Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAndProductIdAsync(int customerId, int productId)
     {
+        var legacyApplicationIds = (await _applicationService.GetJobApplicationsByCustomerIdAsync(customerId))
+            .Where(application => application.ProductId == productId)
+            .Select(application => application.Id)
+            .ToList();
+
         return (await _sessionRepository.GetAllAsync(query => query
-            .Where(s => s.CustomerId == customerId && s.ProductId == productId && s.CompletedOnUtc.HasValue)
+            .Where(s => s.CustomerId == customerId &&
+                (s.ProductId == productId || (s.ProductId == 0 && legacyApplicationIds.Contains(s.JobApplicationId))) &&
+                s.CompletedOnUtc.HasValue)
             .OrderByDescending(s => s.CompletedOnUtc)))
             .FirstOrDefault();
     }
 
     public async Task<decimal> GetHighestScoreByCustomerIdAndProductIdAsync(int customerId, int productId)
     {
-        var sessions = await _sessionRepository.Table.Where(s => s.CustomerId == customerId && s.ProductId == productId && s.CompletedOnUtc.HasValue).ToListAsync();
+        var legacyApplicationIds = (await _applicationService.GetJobApplicationsByCustomerIdAsync(customerId))
+            .Where(application => application.ProductId == productId)
+            .Select(application => application.Id)
+            .ToList();
+        var sessions = await _sessionRepository.Table
+            .Where(s => s.CustomerId == customerId &&
+                (s.ProductId == productId || (s.ProductId == 0 && legacyApplicationIds.Contains(s.JobApplicationId))) &&
+                s.CompletedOnUtc.HasValue)
+            .ToListAsync();
         if (!sessions.Any())
             return 0;
 
@@ -381,12 +396,22 @@ public class InterviewSessionService : IInterviewSessionService
 
         if (customer.VendorId > 0)
         {
-            var application = await _applicationService.GetJobApplicationByIdAsync(session.JobApplicationId);
-            if (application != null)
+            if (session.ProductId > 0)
             {
-                var product = await _productService.GetProductByIdAsync(application.ProductId);
+                var product = await _productService.GetProductByIdAsync(session.ProductId);
                 if (product != null && product.VendorId == customer.VendorId)
                     return true;
+            }
+
+            if (session.JobApplicationId > 0)
+            {
+                var application = await _applicationService.GetJobApplicationByIdAsync(session.JobApplicationId);
+                if (application != null)
+                {
+                    var product = await _productService.GetProductByIdAsync(application.ProductId);
+                    if (product != null && product.VendorId == customer.VendorId)
+                        return true;
+                }
             }
         }
 
@@ -490,11 +515,17 @@ public class SponsorInviteService : ISponsorInviteService
         if (string.IsNullOrWhiteSpace(email))
             throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.EmailRequired"));
 
+        if (!CommonHelper.IsValidEmail(email))
+            throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.EmailInvalid"));
+
         var product = await _productService.GetProductByIdAsync(productId);
         if (product == null)
             throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound"));
 
         var sponsor = await _customerService.GetCustomerByIdAsync(sponsorId);
+        if (sponsor == null)
+            throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidOwnership"));
+
         if (!await _customerService.IsAdminAsync(sponsor))
         {
             if (product.VendorId == 0 || product.VendorId != sponsor.VendorId)

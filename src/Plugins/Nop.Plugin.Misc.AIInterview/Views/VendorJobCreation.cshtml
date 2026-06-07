@@ -1,4 +1,5 @@
 @using Nop.Web.Models.Customer
+@model VendorJobModel
 @{
     Layout = "_ColumnsTwo";
     NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.VendorJobCreation.Title").Text);
@@ -6,7 +7,7 @@
 
 @section left
 {
-    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = 110 })
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.VendorJobCreationNavigationTab })
 }
 
 <div class="page vendor-job-creation-page">
@@ -14,6 +15,37 @@
         <h1>@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")</h1>
     </div>
     <div class="page-body">
-        <p>Job creation form for vendors will appear here.</p>
+        <form asp-route="@AIInterviewDefaults.VendorJobCreationRouteName" method="post">
+            <div asp-validation-summary="ModelOnly" class="message-error"></div>
+            <div class="fieldset">
+                <div class="form-fields">
+                    <div class="inputs">
+                        <label asp-for="Name" asp-postfix=":"></label>
+                        <input asp-for="Name" />
+                        <nop-required />
+                        <span asp-validation-for="Name"></span>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="Sku" asp-postfix=":"></label>
+                        <input asp-for="Sku" />
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="ShortDescription" asp-postfix=":"></label>
+                        <textarea asp-for="ShortDescription"></textarea>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="FullDescription" asp-postfix=":"></label>
+                        <textarea asp-for="FullDescription" rows="8"></textarea>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="Published" asp-postfix=":"></label>
+                        <input asp-for="Published" />
+                    </div>
+                </div>
+            </div>
+            <div class="buttons">
+                <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")</button>
+            </div>
+        </form>
     </div>
 </div>

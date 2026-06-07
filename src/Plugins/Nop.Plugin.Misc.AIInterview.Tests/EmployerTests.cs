@@ -11,6 +11,7 @@ using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Messages;
+using Nop.Services.Seo;
 using NUnit.Framework;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
@@ -28,6 +29,8 @@ public class EmployerTests
     private Mock<ISponsorInviteService> _inviteService;
     private Mock<ICreditService> _creditService;
     private Mock<IDownloadService> _downloadService;
+    private Mock<IProductTemplateService> _productTemplateService;
+    private Mock<IUrlRecordService> _urlRecordService;
     private AIInterviewController _controller;
     private MockAiInterviewController _mockAiController;
     private Customer _employer;
@@ -45,6 +48,8 @@ public class EmployerTests
         _inviteService = new Mock<ISponsorInviteService>();
         _creditService = new Mock<ICreditService>();
         _downloadService = new Mock<IDownloadService>();
+        _productTemplateService = new Mock<IProductTemplateService>();
+        _urlRecordService = new Mock<IUrlRecordService>();
 
         _employer = new Customer { Id = 123, VendorId = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_employer);
@@ -67,7 +72,9 @@ public class EmployerTests
             _localizationService.Object,
             _downloadService.Object,
             _customerService.Object,
-            _productService.Object);
+            _productService.Object,
+            _productTemplateService.Object,
+            _urlRecordService.Object);
 
         _mockAiController = new MockAiInterviewController(
             _interviewSessionService.Object,
@@ -141,6 +148,10 @@ public class EmployerTests
         _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.History.Status")).ReturnsAsync("Status");
         _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.History.Score")).ReturnsAsync("Score");
         _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.History.Date")).ReturnsAsync("Date");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.JobTitle")).ReturnsAsync("Job Title");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")).ReturnsAsync("Charge Mode");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Attempts")).ReturnsAsync("Attempts");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.PromptSource")).ReturnsAsync("Prompt Source");
 
         var result = await _controller.ExportCsv(new ApplicationListModel());
 
@@ -148,6 +159,10 @@ public class EmployerTests
         var fileResult = (FileContentResult)result;
         var csv = System.Text.Encoding.UTF8.GetString(fileResult.FileContents);
         Assert.That(csv, Does.Contain("ID,Candidate,Email,Status,Score,Date"));
+        Assert.That(csv, Does.Contain("Job Title"));
+        Assert.That(csv, Does.Contain("Charge Mode"));
+        Assert.That(csv, Does.Contain("Attempts"));
+        Assert.That(csv, Does.Contain("Prompt Source"));
         Assert.That(csv, Does.Contain("1,\"John Doe\",\"john@example.com\""));
     }
 
@@ -172,6 +187,39 @@ public class EmployerTests
 
         _inviteService.Verify(x => x.CreateInviteAsync(123, "invited@test.com", 10, 1, null), Times.Once);
         Assert.That(result, Is.TypeOf<JsonResult>());
+        var json = (JsonResult)result;
+        var success = (bool)json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        Assert.That(success, Is.True);
+    }
+
+    [Test]
+    public async Task CreateInvite_InvalidEmail_ReturnsFailure()
+    {
+        var result = await _mockAiController.CreateInvite("not-an-email", 10, 1, null);
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var json = (JsonResult)result;
+        var success = (bool)json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        var error = (string)json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
+        Assert.That(success, Is.False);
+        Assert.That(error, Is.EqualTo("Enter a valid email address."));
+        _inviteService.Verify(x => x.CreateInviteAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<DateTime?>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CreateInvite_ServiceFailure_ReturnsFailureReason()
+    {
+        _inviteService.Setup(x => x.CreateInviteAsync(123, "invited@test.com", 10, 1, null))
+            .ThrowsAsync(new NopException("Product is not owned by the sponsor."));
+
+        var result = await _mockAiController.CreateInvite("invited@test.com", 10, 1, null);
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var json = (JsonResult)result;
+        var success = (bool)json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        var error = (string)json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
+        Assert.That(success, Is.False);
+        Assert.That(error, Is.EqualTo("Product is not owned by the sponsor."));
     }
 
     [Test]
@@ -190,5 +238,64 @@ public class EmployerTests
         _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>())).ReturnsAsync(false);
         var result = await _mockAiController.CreateInvite("invited@test.com", 10, 1, null);
         Assert.That(result, Is.TypeOf<ChallengeResult>());
+    }
+
+    [Test]
+    public async Task VendorScoreboard_ReturnsAggregatedMetrics()
+    {
+        var applications = new PagedList<JobApplication>(new List<JobApplication>
+        {
+            new() { Id = 10, CustomerId = 789, ProductId = 20, Status = JobApplicationStatuses.Shortlisted, CreatedOnUtc = DateTime.UtcNow }
+        }, 0, int.MaxValue);
+        _applicationService.Setup(x => x.GetApplicationsAsync(null, null, null, null, null, null, 0, 1, 0, int.MaxValue, false))
+            .ReturnsAsync(applications);
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(789))
+            .ReturnsAsync(new List<InterviewSession>
+            {
+                new() { JobApplicationId = 10, ProductId = 20, Score = 88, CompletedOnUtc = DateTime.UtcNow }
+            });
+
+        var result = await _controller.VendorScoreboard();
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (VendorScoreboardModel)((ViewResult)result).Model;
+        Assert.Multiple(() =>
+        {
+            Assert.That(model.TotalApplications, Is.EqualTo(1));
+            Assert.That(model.CompletedInterviews, Is.EqualTo(1));
+            Assert.That(model.ShortlistedApplications, Is.EqualTo(1));
+            Assert.That(model.AverageScore, Is.EqualTo(88));
+            Assert.That(model.HighestScore, Is.EqualTo(88));
+        });
+    }
+
+    [Test]
+    public async Task VendorJobCreation_CreatesVendorOwnedProduct()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<Nop.Core.Domain.Catalog.ProductTemplate>
+            {
+                new() { Id = 1, Name = "Simple product", ViewPath = "ProductTemplate.Simple" },
+                new() { Id = 7, Name = AIInterviewDefaults.JobProductTemplateName, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath }
+            });
+        _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), string.Empty, "Platform Engineer", true))
+            .ReturnsAsync("platform-engineer");
+
+        var result = await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            ShortDescription = "Build reliable systems",
+            Published = true
+        });
+
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        Assert.That(((RedirectToRouteResult)result).RouteName, Is.EqualTo(AIInterviewDefaults.VendorScoreboardRouteName));
+        _productService.Verify(x => x.InsertProductAsync(It.Is<Nop.Core.Domain.Catalog.Product>(product =>
+            product.Name == "Platform Engineer" &&
+            product.VendorId == _employer.VendorId &&
+            product.ProductTemplateId == 7 &&
+            product.Published &&
+            product.DisableBuyButton)), Times.Once);
+        _urlRecordService.Verify(x => x.SaveSlugAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), "platform-engineer", 0), Times.Once);
     }
 }

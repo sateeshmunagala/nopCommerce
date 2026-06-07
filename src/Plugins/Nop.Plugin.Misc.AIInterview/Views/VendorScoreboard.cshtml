@@ -1,4 +1,5 @@
 @using Nop.Web.Models.Customer
+@model VendorScoreboardModel
 @{
     Layout = "_ColumnsTwo";
     NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.VendorScoreboard.Title").Text);
@@ -6,7 +7,7 @@
 
 @section left
 {
-    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = 110 })
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.VendorScoreboardNavigationTab })
 }
 
 <div class="page vendor-scoreboard-page">
@@ -14,6 +15,47 @@
         <h1>@T("Plugins.Misc.AIInterview.VendorScoreboard.Title")</h1>
     </div>
     <div class="page-body">
-        <p>Vendor scoreboard metrics and reports will appear here.</p>
+        <div class="vendor-scoreboard-summary">
+            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.TotalJobs"):</strong> @Model.TotalJobs</div>
+            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.TotalApplications"):</strong> @Model.TotalApplications</div>
+            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.CompletedInterviews"):</strong> @Model.CompletedInterviews</div>
+            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.Shortlisted"):</strong> @Model.ShortlistedApplications</div>
+            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.AverageScore"):</strong> @(Model.AverageScore?.ToString("N2") ?? "-")</div>
+            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.HighestScore"):</strong> @(Model.HighestScore?.ToString("N2") ?? "-")</div>
+        </div>
+
+        <div class="buttons">
+            <a class="button-1" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobCreationRouteName)">@T("Plugins.Misc.AIInterview.VendorScoreboard.CreateJob")</a>
+            <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)">@T("Plugins.Misc.AIInterview.VendorScoreboard.ViewApplications")</a>
+            <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.MockEmployerManageRouteName)">@T("Plugins.Misc.AIInterview.Employer.Invite.Title")</a>
+        </div>
+
+        <h2>@T("Plugins.Misc.AIInterview.VendorScoreboard.RecentApplications")</h2>
+        @if (Model.RecentApplications.Any())
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>@T("Plugins.Misc.AIInterview.MyApplications.JobTitle")</th>
+                        <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
+                        <th>@T("Plugins.Misc.AIInterview.MyApplications.AppliedDate")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var application in Model.RecentApplications)
+                    {
+                        <tr>
+                            <td>@application.JobTitle</td>
+                            <td>@T($"Plugins.Misc.AIInterview.Status.{application.RawStatus}")</td>
+                            <td>@application.CreatedOn.ToString("g")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>@T("Plugins.Misc.AIInterview.VendorScoreboard.NoApplications")</p>
+        }
     </div>
 </div>

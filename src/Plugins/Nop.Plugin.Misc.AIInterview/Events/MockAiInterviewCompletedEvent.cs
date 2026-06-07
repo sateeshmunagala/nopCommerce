@@ -5,9 +5,11 @@ namespace Nop.Plugin.Misc.AIInterview.Events;
 public class MockAiInterviewCompletedEvent
 {
     public InterviewSession Session { get; }
+    public int LanguageId { get; }
 
-    public MockAiInterviewCompletedEvent(InterviewSession session)
+    public MockAiInterviewCompletedEvent(InterviewSession session, int languageId = 0)
     {
         Session = session;
+        LanguageId = languageId;
     }
 }

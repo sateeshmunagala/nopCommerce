@@ -1,3 +1,4 @@
+@model Nop.Plugin.Misc.AIInterview.Domain.InterviewSession
 @{
     Layout = "_ColumnsTwo";
 }
@@ -10,9 +11,51 @@
             <strong>Note:</strong> At this time, the AI Interview plugin only supports typed answers as a fallback. Real voice capture and transcription features are out of scope for the current release.
         </div>
         <div id="mock-interview-container">
+            <form id="mock-interview-security">
+                @Html.AntiForgeryToken()
+            </form>
             <p>@T("Plugins.Misc.AIInterview.Interview.InitialQuestion")</p>
             <textarea id="mock-answer" placeholder="@T("Plugins.Misc.AIInterview.Interview.AnswerPlaceholder")"></textarea>
             <button id="submit-mock-answer" class="button-1">@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</button>
+            <button id="stop-mock-interview" class="button-2">@T("Plugins.Misc.AIInterview.Interview.StopInterview")</button>
+            <div id="mock-interview-message"></div>
         </div>
     </div>
 </div>
+
+<script asp-location="Footer">
+    const interviewToken = '@Model.Token';
+    const messageElement = document.getElementById('mock-interview-message');
+    const verificationToken = document.querySelector('#mock-interview-security input[name="__RequestVerificationToken"]').value;
+
+    document.getElementById('submit-mock-answer').addEventListener('click', async function () {
+        const body = new URLSearchParams({
+            token: interviewToken,
+            answer: document.getElementById('mock-answer').value,
+            __RequestVerificationToken: verificationToken
+        });
+        const response = await fetch('@Url.Action("SubmitAnswer", "MockAiInterview")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        });
+        const result = await response.json();
+        messageElement.textContent = result.error || result.nextQuestion;
+        messageElement.className = result.error ? 'message-error' : 'message-success';
+    });
+
+    document.getElementById('stop-mock-interview').addEventListener('click', async function () {
+        const body = new URLSearchParams({
+            token: interviewToken,
+            __RequestVerificationToken: verificationToken
+        });
+        const response = await fetch('@Url.Action("Stop", "MockAiInterview")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        });
+        const result = await response.json();
+        messageElement.textContent = result.error || '@T("Plugins.Misc.AIInterview.Interview.CompletedScore") ' + result.score;
+        messageElement.className = result.error ? 'message-error' : 'message-success';
+    });
+</script>

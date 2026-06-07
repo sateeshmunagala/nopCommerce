@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
 using Nop.Plugin.Misc.AIInterview.Services;
+using Nop.Services.Catalog;
 using Nop.Web.Framework.Components;
 using Nop.Web.Framework.Models;
 
@@ -9,13 +10,19 @@ namespace Nop.Plugin.Misc.AIInterview.Components;
 public class AIInterviewProductDetailsViewComponent : NopViewComponent
 {
     private readonly ICreditService _creditService;
+    private readonly IProductService _productService;
+    private readonly IProductTemplateService _productTemplateService;
     private readonly IWorkContext _workContext;
 
     public AIInterviewProductDetailsViewComponent(ICreditService creditService,
-        IWorkContext workContext)
+        IWorkContext workContext,
+        IProductService productService,
+        IProductTemplateService productTemplateService)
     {
         _creditService = creditService;
         _workContext = workContext;
+        _productService = productService;
+        _productTemplateService = productTemplateService;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData)
@@ -29,6 +36,14 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
             return Content("");
 
         var productId = (int)productIdProperty.GetValue(model);
+        var product = await _productService.GetProductByIdAsync(productId);
+        if (product == null)
+            return Content("");
+
+        var productTemplate = await _productTemplateService.GetProductTemplateByIdAsync(product.ProductTemplateId);
+        if (productTemplate == null ||
+            !string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase))
+            return Content("");
 
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (customer == null)
@@ -64,6 +79,6 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
 
         ViewBag.HasSponsorCredits = hasSponsorCredits;
 
-        return View("~/Plugins/Misc.AIInterview/Views/Shared/Components/AIInterviewProductDetails/Default.cshtml");
+        return View("~/Plugins/Misc.AIInterview/Views/Shared/Components/AIInterviewProductDetails/Default.cshtml", model);
     }
 }

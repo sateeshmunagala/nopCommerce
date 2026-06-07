@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
+using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Media;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
@@ -10,6 +11,7 @@ using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Messages;
+using Nop.Services.Seo;
 using Nop.Web.Framework.Controllers;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
@@ -25,6 +27,8 @@ public class AIInterviewController : BasePluginController
     private readonly IDownloadService _downloadService;
     private readonly ICustomerService _customerService;
     private readonly IProductService _productService;
+    private readonly IProductTemplateService _productTemplateService;
+    private readonly IUrlRecordService _urlRecordService;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -34,7 +38,9 @@ public class AIInterviewController : BasePluginController
         ILocalizationService localizationService,
         IDownloadService downloadService,
         ICustomerService customerService,
-        IProductService productService)
+        IProductService productService,
+        IProductTemplateService productTemplateService = null,
+        IUrlRecordService urlRecordService = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -45,6 +51,28 @@ public class AIInterviewController : BasePluginController
         _downloadService = downloadService;
         _customerService = customerService;
         _productService = productService;
+        _productTemplateService = productTemplateService;
+        _urlRecordService = urlRecordService;
+    }
+
+    protected static bool SessionMatchesApplication(InterviewSession session, JobApplication application)
+    {
+        return session.JobApplicationId == application.Id ||
+            (session.JobApplicationId == 0 && application.ProductId > 0 && session.ProductId == application.ProductId);
+    }
+
+    protected async Task<IList<JobApplication>> GetApplicationsForJobAsync(int customerId, int productId, string jobTitle)
+    {
+        if (productId <= 0)
+            return await _applicationService.GetJobApplicationsByCustomerIdAndJobTitleAsync(customerId, jobTitle)
+                ?? new List<JobApplication>();
+
+        var applications = await _applicationService.GetJobApplicationsByCustomerIdAsync(customerId);
+        if (applications != null)
+            return applications.Where(application => application.ProductId == productId).ToList();
+
+        return await _applicationService.GetJobApplicationsByCustomerIdAndJobTitleAsync(customerId, jobTitle)
+            ?? new List<JobApplication>();
     }
 
     public async Task<IActionResult> Index()
@@ -79,8 +107,13 @@ public class AIInterviewController : BasePluginController
 
         var applicationModels = await Task.WhenAll(applications.Select(async a =>
         {
-            var appSessions = sessions.Where(s => s.CompletedOnUtc.HasValue && s.ProductId == a.ProductId).ToList();
-            var latestSession = appSessions.OrderByDescending(s => s.CompletedOnUtc).FirstOrDefault();
+            var appSessions = sessions.Where(s => SessionMatchesApplication(s, a)).ToList();
+            var latestSession = appSessions
+                .Where(s => s.CompletedOnUtc.HasValue)
+                .OrderByDescending(s => s.CompletedOnUtc)
+                .ThenByDescending(s => s.Id)
+                .FirstOrDefault();
+            var normalizedStatus = JobApplicationStatuses.Normalize(a.Status);
 
             return new ApplicationModel
             {
@@ -88,7 +121,7 @@ public class AIInterviewController : BasePluginController
                 JobTitle = a.JobTitle,
                 InterviewScore = latestSession?.Score,
                 InterviewReportUrl = latestSession != null ? Url.Action("Report", "AIInterview", new { sessionId = latestSession.Id }) : null,
-                Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{a.Status?.Replace(" ", "")}") ?? a.Status,
+                Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
                 CreatedOn = a.CreatedOnUtc,
                 AttemptCount = appSessions.Count,
                 LatestScoreDate = latestSession?.CompletedOnUtc
@@ -96,8 +129,9 @@ public class AIInterviewController : BasePluginController
         }));
 
         var query = applicationModels.AsQueryable();
+        var normalizedSortOrder = string.IsNullOrEmpty(sortOrder) ? "LatestApplied" : sortOrder;
 
-        query = sortOrder switch
+        query = normalizedSortOrder switch
         {
             "OldestApplied" => query.OrderBy(a => a.CreatedOn),
             "HighestScore" => query.OrderByDescending(a => a.InterviewScore ?? 0),
@@ -109,7 +143,7 @@ public class AIInterviewController : BasePluginController
         var model = new ApplicationListModel
         {
             Applications = query.ToList(),
-            SortOrder = sortOrder
+            SortOrder = normalizedSortOrder
         };
 
         return View("~/Plugins/Misc.AIInterview/Views/MyApplications.cshtml", model);
@@ -165,7 +199,7 @@ public class AIInterviewController : BasePluginController
         return View("~/Plugins/Misc.AIInterview/Views/Interview.cshtml");
     }
 
-    public async Task<IActionResult> Apply(string jobTitle)
+    public async Task<IActionResult> Apply(string jobTitle, int productId = 0)
     {
         if (!_aiInterviewSettings.Enabled)
             return RedirectToRoute("Homepage");
@@ -176,15 +210,15 @@ public class AIInterviewController : BasePluginController
 
         if (!string.IsNullOrEmpty(jobTitle))
         {
-            var applications = await _applicationService.GetJobApplicationsByCustomerIdAndJobTitleAsync(customer.Id, jobTitle);
-            if (applications.Any(a => a.Status != "Rejected" && a.Status != "Withdrawn"))
+            var applications = await GetApplicationsForJobAsync(customer.Id, productId, jobTitle);
+            if (applications.Any(a => !JobApplicationStatuses.CanReapply(a.Status)))
             {
                 _notificationService.WarningNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.AlreadyApplied"));
                 return RedirectToRoute(AIInterviewDefaults.IndexRouteName);
             }
         }
 
-        var model = new ApplyModel { JobTitle = jobTitle };
+        var model = new ApplyModel { JobTitle = jobTitle, ProductId = productId };
         return View("~/Plugins/Misc.AIInterview/Views/Apply.cshtml", model);
     }
 
@@ -198,24 +232,41 @@ public class AIInterviewController : BasePluginController
         if (customer == null)
             return Challenge();
 
-        var applications = await _applicationService.GetJobApplicationsByCustomerIdAndJobTitleAsync(customer.Id, model.JobTitle);
-        if (applications != null && applications.Any(a => a.Status != "Rejected" && a.Status != "Withdrawn"))
+        var applications = await GetApplicationsForJobAsync(customer.Id, model.ProductId, model.JobTitle);
+        if (applications.Any(a => !JobApplicationStatuses.CanReapply(a.Status)))
         {
             _notificationService.WarningNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.AlreadyApplied"));
             return RedirectToRoute(AIInterviewDefaults.IndexRouteName);
         }
 
-        if (!ModelState.IsValid)
+        if (string.IsNullOrWhiteSpace(model.JobTitle))
+            ModelState.AddModelError(nameof(model.JobTitle), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.JobTitle.Required"));
+
+        var allApplications = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<JobApplication>();
+        var reusableResumeDownloadId = allApplications
+            .OrderByDescending(a => a.CreatedOnUtc)
+            .Where(a => a.ResumeDownloadId > 0)
+            .Select(a => a.ResumeDownloadId)
+            .FirstOrDefault();
+
+        if (model.ResumeFile == null)
         {
-            if (ModelState.ContainsKey(nameof(model.ResumeFile)) && ModelState[nameof(model.ResumeFile)].Errors.Any())
+            if (reusableResumeDownloadId > 0)
             {
-                var allApps = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id);
-                var lastWithResume = allApps.OrderByDescending(a => a.CreatedOnUtc).FirstOrDefault(a => a.ResumeDownloadId > 0);
-                if (lastWithResume != null)
-                {
-                    ModelState.Remove(nameof(model.ResumeFile));
-                }
+                ModelState.Remove(nameof(model.ResumeFile));
             }
+            else if (_aiInterviewSettings.ResumeRequired && !ModelState.ContainsKey(nameof(model.ResumeFile)))
+            {
+                ModelState.AddModelError(nameof(model.ResumeFile), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Required"));
+            }
+        }
+        else
+        {
+            var extension = Path.GetExtension(model.ResumeFile.FileName);
+            var validExtension = extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".docx", StringComparison.OrdinalIgnoreCase);
+            if (!validExtension || model.ResumeFile.Length > 5 * 1024 * 1024)
+                ModelState.AddModelError(nameof(model.ResumeFile), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid"));
         }
 
         if (!ModelState.IsValid)
@@ -223,17 +274,22 @@ public class AIInterviewController : BasePluginController
 
         if (_aiInterviewSettings.InterviewRequired)
         {
-            var highestScore = await _interviewSessionService.GetHighestScoreByCustomerIdAndProductIdAsync(customer.Id, model.ProductId);
-            if (highestScore == 0)
+            var legacyApplicationIds = allApplications
+                .Where(application => application.ProductId == model.ProductId)
+                .Select(application => application.Id)
+                .ToList();
+            var completedSessions = ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
+                .Where(s => s.CompletedOnUtc.HasValue &&
+                    (s.ProductId == model.ProductId ||
+                        (s.ProductId == 0 && legacyApplicationIds.Contains(s.JobApplicationId))))
+                .ToList();
+            if (!completedSessions.Any())
             {
-                var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id);
-                if (sessions == null || !sessions.Any(s => s.CompletedOnUtc.HasValue))
-                {
-                    _notificationService.ErrorNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.InterviewRequired"));
-                    return View("~/Plugins/Misc.AIInterview/Views/Apply.cshtml", model);
-                }
+                _notificationService.ErrorNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.InterviewRequired"));
+                return View("~/Plugins/Misc.AIInterview/Views/Apply.cshtml", model);
             }
 
+            var highestScore = await _interviewSessionService.GetHighestScoreByCustomerIdAndProductIdAsync(customer.Id, model.ProductId);
             if (highestScore < _aiInterviewSettings.MinimumScore)
             {
                 _notificationService.ErrorNotification(string.Format(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.MinimumScoreNotReached"), _aiInterviewSettings.MinimumScore));
@@ -241,7 +297,7 @@ public class AIInterviewController : BasePluginController
             }
         }
 
-        int resumeDownloadId = 0;
+        var resumeDownloadId = reusableResumeDownloadId;
         if (model.ResumeFile != null)
         {
             var download = new Download
@@ -257,23 +313,13 @@ public class AIInterviewController : BasePluginController
             await _downloadService.InsertDownloadAsync(download);
             resumeDownloadId = download.Id;
         }
-        else
-        {
-            var allApps = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id);
-            var lastWithResume = allApps.OrderByDescending(a => a.CreatedOnUtc).FirstOrDefault(a => a.ResumeDownloadId > 0);
-            if (lastWithResume != null)
-            {
-                resumeDownloadId = lastWithResume.ResumeDownloadId;
-            }
-        }
-
         var jobApplication = new JobApplication
         {
             CustomerId = customer.Id,
             ProductId = model.ProductId,
             JobTitle = model.JobTitle,
             ResumeDownloadId = resumeDownloadId,
-            Status = "Applied",
+            Status = JobApplicationStatuses.Applied,
             CreatedOnUtc = DateTime.UtcNow
         };
         await _applicationService.InsertJobApplicationAsync(jobApplication);
@@ -323,10 +369,14 @@ public class AIInterviewController : BasePluginController
         model.Applications = await Task.WhenAll(applications.Select(async a =>
         {
             var appCustomer = customers.FirstOrDefault(c => c.Id == a.CustomerId);
-            var session = await _interviewSessionService.GetLatestCompletedSessionByCustomerIdAndProductIdAsync(a.CustomerId, a.ProductId);
-
-            var attempts = (await _interviewSessionService.GetSessionsByCustomerIdAsync(a.CustomerId))
-                .Count(s => s.ProductId == a.ProductId);
+            var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(a.CustomerId);
+            var appSessions = sessions.Where(s => SessionMatchesApplication(s, a)).ToList();
+            var session = appSessions
+                .Where(s => s.CompletedOnUtc.HasValue)
+                .OrderByDescending(s => s.CompletedOnUtc)
+                .ThenByDescending(s => s.Id)
+                .FirstOrDefault();
+            var normalizedStatus = JobApplicationStatuses.Normalize(a.Status);
 
             return new ApplicationModel
             {
@@ -334,13 +384,13 @@ public class AIInterviewController : BasePluginController
                 JobTitle = a.JobTitle,
                 CandidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown"),
                 CandidateEmail = appCustomer?.Email ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown"),
-                Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{a.Status?.Replace(" ", "")}") ?? a.Status,
-                RawStatus = a.Status,
+                Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
+                RawStatus = normalizedStatus,
                 StatusComment = a.StatusComment,
                 InterviewScore = session?.Score,
                 InterviewReportUrl = session != null ? Url.Action("Report", "AIInterview", new { sessionId = session.Id }) : null,
                 CreatedOn = a.CreatedOnUtc,
-                AttemptCount = attempts,
+                AttemptCount = appSessions.Count,
                 ChargeMode = session != null && session.SponsorInviteId > 0 ? "Sponsor" : "Self-Paid",
                 PromptSource = $"Provider: {_aiInterviewSettings.Provider}, Model: {_aiInterviewSettings.Model}"
             };
@@ -359,6 +409,13 @@ public class AIInterviewController : BasePluginController
         if (application == null)
             return NotFound();
 
+        var normalizedStatus = JobApplicationStatuses.Normalize(model.Status);
+        if (!JobApplicationStatuses.IsValid(normalizedStatus))
+        {
+            _notificationService.ErrorNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.UpdateStatus.Invalid"));
+            return RedirectToAction("EmployerApplications");
+        }
+
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (!await _customerService.IsAdminAsync(customer) && customer.VendorId > 0)
         {
@@ -367,7 +424,7 @@ public class AIInterviewController : BasePluginController
                 return Challenge();
         }
 
-        application.Status = model.Status;
+        application.Status = normalizedStatus;
         application.StatusComment = model.StatusComment;
 
         await _applicationService.UpdateJobApplicationAsync(application);
@@ -418,12 +475,12 @@ public class AIInterviewController : BasePluginController
         {
             var appCustomer = customers.FirstOrDefault(c => c.Id == a.CustomerId);
             var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(a.CustomerId);
-            var appSessions = sessions.Where(s => s.ProductId == a.ProductId).ToList();
+            var appSessions = sessions.Where(s => SessionMatchesApplication(s, a)).ToList();
             var session = appSessions.OrderByDescending(s => s.CompletedOnUtc).FirstOrDefault(s => s.CompletedOnUtc.HasValue);
 
             var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
             var email = appCustomer?.Email ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
-            var status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{a.Status?.Replace(" ", "")}") ?? a.Status;
+            var status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{JobApplicationStatuses.Normalize(a.Status)}");
             var score = session?.Score.ToString() ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.None");
 
             var jobTitle = a.JobTitle ?? string.Empty;
@@ -449,7 +506,47 @@ public class AIInterviewController : BasePluginController
         if (!await IsAuthorizedForEmployerActionsAsync())
             return Challenge();
 
-        return View("~/Plugins/Misc.AIInterview/Views/VendorScoreboard.cshtml");
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        var isAdmin = await _customerService.IsAdminAsync(customer);
+        var vendorId = isAdmin ? 0 : customer.VendorId;
+        var applications = await _applicationService.GetApplicationsAsync(vendorId: vendorId);
+        var products = await _productService.SearchProductsAsync(vendorId: vendorId, showHidden: true);
+        var completedScores = new List<decimal>();
+
+        foreach (var application in applications)
+        {
+            var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
+            completedScores.AddRange(sessions
+                .Where(s => SessionMatchesApplication(s, application) && s.CompletedOnUtc.HasValue)
+                .Select(s => s.Score));
+        }
+
+        var recentApplications = applications
+            .OrderByDescending(application => application.CreatedOnUtc)
+            .Take(5)
+            .Select(application => new ApplicationModel
+            {
+                Id = application.Id,
+                JobTitle = application.JobTitle,
+                RawStatus = JobApplicationStatuses.Normalize(application.Status),
+                Status = application.Status,
+                CreatedOn = application.CreatedOnUtc
+            })
+            .ToList();
+
+        var model = new VendorScoreboardModel
+        {
+            TotalJobs = products?.Count ?? 0,
+            TotalApplications = applications.Count,
+            CompletedInterviews = completedScores.Count,
+            ShortlistedApplications = applications.Count(application =>
+                string.Equals(JobApplicationStatuses.Normalize(application.Status), JobApplicationStatuses.Shortlisted, StringComparison.OrdinalIgnoreCase)),
+            AverageScore = completedScores.Any() ? completedScores.Average() : null,
+            HighestScore = completedScores.Any() ? completedScores.Max() : null,
+            RecentApplications = recentApplications
+        };
+
+        return View("~/Plugins/Misc.AIInterview/Views/VendorScoreboard.cshtml", model);
     }
 
     public async Task<IActionResult> VendorJobCreation()
@@ -457,6 +554,61 @@ public class AIInterviewController : BasePluginController
         if (!await IsAuthorizedForEmployerActionsAsync())
             return Challenge();
 
-        return View("~/Plugins/Misc.AIInterview/Views/VendorJobCreation.cshtml");
+        return View("~/Plugins/Misc.AIInterview/Views/VendorJobCreation.cshtml", new VendorJobModel());
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> VendorJobCreation(VendorJobModel model)
+    {
+        if (!await IsAuthorizedForEmployerActionsAsync())
+            return Challenge();
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer.VendorId <= 0)
+            return Challenge();
+
+        if (string.IsNullOrWhiteSpace(model.Name))
+            ModelState.AddModelError(nameof(model.Name), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Name.Required"));
+
+        if (_productTemplateService == null || _urlRecordService == null)
+            ModelState.AddModelError(string.Empty, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Unavailable"));
+
+        var productTemplate = _productTemplateService == null
+            ? null
+            : (await _productTemplateService.GetAllProductTemplatesAsync()).FirstOrDefault(template =>
+                string.Equals(template.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase));
+        if (productTemplate == null)
+            ModelState.AddModelError(string.Empty, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Unavailable"));
+
+        if (!ModelState.IsValid)
+            return View("~/Plugins/Misc.AIInterview/Views/VendorJobCreation.cshtml", model);
+
+        var now = DateTime.UtcNow;
+        var product = new Product
+        {
+            ProductType = ProductType.SimpleProduct,
+            ProductTemplateId = productTemplate.Id,
+            VendorId = customer.VendorId,
+            Name = model.Name.Trim(),
+            ShortDescription = model.ShortDescription,
+            FullDescription = model.FullDescription,
+            Sku = model.Sku,
+            VisibleIndividually = true,
+            Published = model.Published,
+            DisableBuyButton = true,
+            IsShipEnabled = false,
+            ManageInventoryMethod = ManageInventoryMethod.DontManageStock,
+            OrderMinimumQuantity = 1,
+            OrderMaximumQuantity = 1,
+            CreatedOnUtc = now,
+            UpdatedOnUtc = now
+        };
+
+        await _productService.InsertProductAsync(product);
+        var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
+        await _urlRecordService.SaveSlugAsync(product, seName, 0);
+
+        _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Success"));
+        return RedirectToRoute(AIInterviewDefaults.VendorScoreboardRouteName);
     }
 }

@@ -52,3 +52,38 @@ public record UpdateStatusModel : BaseNopModel
     public string Status { get; set; }
     public string StatusComment { get; set; }
 }
+
+public record VendorScoreboardModel : BaseNopModel
+{
+    public int TotalJobs { get; set; }
+    public int TotalApplications { get; set; }
+    public int CompletedInterviews { get; set; }
+    public int ShortlistedApplications { get; set; }
+    public decimal? AverageScore { get; set; }
+    public decimal? HighestScore { get; set; }
+    public IList<ApplicationModel> RecentApplications { get; set; } = new List<ApplicationModel>();
+}
+
+public record VendorJobModel : BaseNopModel
+{
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Name")]
+    public string Name { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.ShortDescription")]
+    public string ShortDescription { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.FullDescription")]
+    public string FullDescription { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Sku")]
+    public string Sku { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Published")]
+    public bool Published { get; set; } = true;
+}
+
+public record RuntimeErrorModel : BaseNopModel
+{
+    public string Message { get; set; }
+    public int StatusCode { get; set; }
+}

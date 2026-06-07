@@ -53,6 +53,10 @@ public class ApplyFlowTests
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<JobApplication>());
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<InterviewSession>());
 
         _controller = new AIInterviewController(
             _applicationService.Object,
@@ -74,6 +78,8 @@ public class ApplyFlowTests
     {
         // Arrange
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
+            .ReturnsAsync(new List<JobApplication> { new JobApplication { JobTitle = "Dev", Status = "Applied", ProductId = 1 } });
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
             .ReturnsAsync(new List<JobApplication> { new JobApplication { JobTitle = "Dev", Status = "Applied", ProductId = 1 } });
 
         // Act
@@ -138,6 +144,11 @@ public class ApplyFlowTests
             .ReturnsAsync(new List<JobApplication>());
         _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
             .ReturnsAsync(75);
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<InterviewSession>
+            {
+                new() { CustomerId = _customer.Id, ProductId = 1, Score = 75, CompletedOnUtc = DateTime.UtcNow }
+            });
 
         var model = new ApplyModel { JobTitle = "Dev", ProductId = 1 };
 
@@ -159,6 +170,12 @@ public class ApplyFlowTests
             .ReturnsAsync(new List<JobApplication>());
         _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
             .ReturnsAsync(70);
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<InterviewSession>
+            {
+                new() { CustomerId = _customer.Id, ProductId = 1, Score = 40, CompletedOnUtc = DateTime.UtcNow },
+                new() { CustomerId = _customer.Id, ProductId = 1, Score = 70, CompletedOnUtc = DateTime.UtcNow.AddDays(-1) }
+            });
 
         var fileMock = new Mock<IFormFile>();
         fileMock.Setup(f => f.FileName).Returns("resume.pdf");
@@ -211,5 +228,69 @@ public class ApplyFlowTests
             a.JobTitle == "New Job" &&
             a.ProductId == 2 &&
             a.ResumeDownloadId == 789)), Times.Once);
+    }
+
+    [TestCase("Rejected")]
+    [TestCase("Withdrawn")]
+    public async Task Apply_Post_AllowsReapply_ForTerminalStatus(string status)
+    {
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<JobApplication>
+            {
+                new() { ProductId = 1, JobTitle = "Dev", Status = status }
+            });
+
+        var result = await _controller.Apply(new ApplyModel { JobTitle = "Dev", ProductId = 1 });
+
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        _applicationService.Verify(x => x.InsertJobApplicationAsync(It.Is<JobApplication>(application =>
+            application.ProductId == 1 && application.Status == JobApplicationStatuses.Applied)), Times.Once);
+    }
+
+    [Test]
+    public async Task Apply_Post_InvalidUploadedResume_DoesNotReusePreviousResume()
+    {
+        _aiInterviewSettings.ResumeRequired = true;
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<JobApplication>
+            {
+                new() { ProductId = 2, ResumeDownloadId = 789, CreatedOnUtc = DateTime.UtcNow.AddDays(-1) }
+            });
+
+        var file = new Mock<IFormFile>();
+        file.Setup(x => x.FileName).Returns("resume.exe");
+        file.Setup(x => x.Length).Returns(100);
+        var model = new ApplyModel { JobTitle = "Dev", ProductId = 1, ResumeFile = file.Object };
+
+        var result = await _controller.Apply(model);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(_controller.ModelState[nameof(ApplyModel.ResumeFile)].Errors, Is.Not.Empty);
+        _applicationService.Verify(x => x.InsertJobApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+        _downloadService.Verify(x => x.InsertDownloadAsync(It.IsAny<Download>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Apply_Post_LegacyLinkedSession_SatisfiesInterviewRequirement()
+    {
+        _aiInterviewSettings.InterviewRequired = true;
+        _aiInterviewSettings.MinimumScore = 60;
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<JobApplication>
+            {
+                new() { Id = 42, ProductId = 1, JobTitle = "Dev", Status = JobApplicationStatuses.Rejected }
+            });
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<InterviewSession>
+            {
+                new() { JobApplicationId = 42, ProductId = 0, Score = 80, CompletedOnUtc = DateTime.UtcNow }
+            });
+        _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
+            .ReturnsAsync(80);
+
+        var result = await _controller.Apply(new ApplyModel { JobTitle = "Dev", ProductId = 1 });
+
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        _applicationService.Verify(x => x.InsertJobApplicationAsync(It.IsAny<JobApplication>()), Times.Once);
     }
 }

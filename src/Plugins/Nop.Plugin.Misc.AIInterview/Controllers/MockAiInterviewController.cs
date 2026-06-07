@@ -35,7 +35,7 @@ public class MockAiInterviewController : BasePluginController
         IProductService productService,
         IVendorService vendorService,
         IApplicationService applicationService,
-        IEventPublisher eventPublisher)
+        IEventPublisher eventPublisher = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -82,7 +82,8 @@ public class MockAiInterviewController : BasePluginController
             return Json(new
             {
                 sessionKey = activeSession.SessionKey,
-                token = activeSession.Token
+                token = activeSession.Token,
+                runtimeUrl = Url?.RouteUrl(AIInterviewDefaults.MockRuntimeRouteName, new { token = activeSession.Token })
             });
         }
 
@@ -91,7 +92,15 @@ public class MockAiInterviewController : BasePluginController
         if (!string.IsNullOrEmpty(sponsorToken))
         {
             var invite = await _inviteService.GetSponsorInviteByCodeAsync(sponsorToken);
-            if (invite != null && !invite.IsAccepted && (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) && invite.Email.Equals(customer.Email, StringComparison.OrdinalIgnoreCase))
+            var sponsoredAttempts = invite == null
+                ? 0
+                : ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
+                    .Count(session => session.SponsorInviteId == invite.Id);
+            if (invite != null &&
+                !invite.IsAccepted &&
+                (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) &&
+                string.Equals(invite.Email, customer.Email, StringComparison.OrdinalIgnoreCase) &&
+                sponsoredAttempts < invite.MaxAttempts)
             {
                 // Sponsor validation logic: check if sponsor wallet has credits
                 var sponsorWallet = await _creditService.GetOrCreateWalletAsync(invite.SponsorId);
@@ -114,8 +123,10 @@ public class MockAiInterviewController : BasePluginController
                 return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.NoCredits", "Insufficient credits. Please purchase credits to start the interview.");
         }
 
-        var application = (await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id))
-            .FirstOrDefault(a => a.ProductId == productId);
+        var application = ((await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id)) ?? new List<JobApplication>())
+            .Where(a => a.ProductId == productId)
+            .OrderByDescending(a => a.CreatedOnUtc)
+            .FirstOrDefault();
 
         var session = new InterviewSession
         {
@@ -136,13 +147,30 @@ public class MockAiInterviewController : BasePluginController
         return Json(new
         {
             sessionKey = session.SessionKey,
-            token = session.Token
+            token = session.Token,
+            runtimeUrl = Url?.RouteUrl(AIInterviewDefaults.MockRuntimeRouteName, new { token = session.Token })
         });
     }
 
-    public async Task<IActionResult> Runtime()
+    public async Task<IActionResult> Runtime(string token)
     {
-        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Runtime.cshtml");
+        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
+        if (session == null || !session.IsActive || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow))
+            return await RuntimeErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.", 400);
+
+        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Runtime.cshtml", session);
+    }
+
+    protected async Task<IActionResult> RuntimeErrorAsync(string resourceKey, string defaultValue, int statusCode)
+    {
+        if (HttpContext != null)
+            Response.StatusCode = statusCode;
+
+        return View("~/Plugins/Misc.AIInterview/Views/RuntimeError.cshtml", new Models.RuntimeErrorModel
+        {
+            Message = await GetLocalizedTextAsync(resourceKey, defaultValue),
+            StatusCode = statusCode
+        });
     }
 
     [HttpPost]
@@ -163,7 +191,8 @@ public class MockAiInterviewController : BasePluginController
     public async Task<IActionResult> Stop(string token)
     {
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
-        if (session == null)
+        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue ||
+            (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
 
         session.IsActive = false;
@@ -177,12 +206,11 @@ public class MockAiInterviewController : BasePluginController
         session.ReportData = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.ReportContentMock");
         await _interviewSessionService.UpdateInterviewSessionAsync(session);
 
-        // Notifications
-        var customer = await _workContext.GetCurrentCustomerAsync();
-        if (customer != null)
-        {
-            await _eventPublisher.PublishAsync(new MockAiInterviewCompletedEvent(session));
-        }
+        var languageId = (await _workContext.GetWorkingLanguageAsync()).Id;
+        if (_eventPublisher != null)
+            await _eventPublisher.PublishAsync(new MockAiInterviewCompletedEvent(session, languageId));
+        else
+            await _interviewSessionService.SendInterviewCompletionNotificationAsync(session, languageId);
 
         return Json(new { success = true, score = session.Score });
     }
@@ -222,9 +250,12 @@ public class MockAiInterviewController : BasePluginController
             return Challenge();
 
         if (!await _interviewSessionService.CanAccessReportAsync(customer.Id, sessionId))
-            return Challenge();
+            return await RuntimeErrorAsync("Plugins.Misc.AIInterview.Report.AccessDenied", "You do not have access to this interview report.", 403);
 
         var session = await _interviewSessionService.GetInterviewSessionByIdAsync(sessionId);
+        if (session == null || string.IsNullOrEmpty(session.ReportData))
+            return await RuntimeErrorAsync("Plugins.Misc.AIInterview.Report.NotFound", "Interview report not found.", 404);
+
         return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Report.cshtml", session);
     }
 
@@ -255,14 +286,18 @@ public class MockAiInterviewController : BasePluginController
             return Challenge();
 
         if (string.IsNullOrWhiteSpace(email))
-        {
             return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.EmailRequired") });
-        }
+
+        if (maxAttempts <= 0)
+            return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidAttempts") });
+
+        if (expiryDateUtc.HasValue && expiryDateUtc.Value <= DateTime.UtcNow)
+            return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidExpiry") });
 
         try
         {
             var customer = await _workContext.GetCurrentCustomerAsync();
-            var emails = email.Split(new[] { ',', ':', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+            var emails = email.Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
                               .Select(e => e.Trim())
                               .Where(e => !string.IsNullOrEmpty(e))
                               .Distinct()
@@ -270,11 +305,11 @@ public class MockAiInterviewController : BasePluginController
 
             int createdCount = 0;
             int invalidCount = 0;
+            var failureMessages = new List<string>();
 
             foreach (var e in emails)
             {
-                // Simple email validation
-                if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(e))
+                if (!CommonHelper.IsValidEmail(e))
                 {
                     invalidCount++;
                     continue;
@@ -285,14 +320,37 @@ public class MockAiInterviewController : BasePluginController
                     await _inviteService.CreateInviteAsync(customer.Id, e, productId, maxAttempts, expiryDateUtc);
                     createdCount++;
                 }
+                catch (NopException ex)
+                {
+                    failureMessages.Add(ex.Message);
+                }
                 catch
                 {
-                    invalidCount++;
+                    failureMessages.Add(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Employer.Invite.Error", "Error creating invite."));
                 }
+            }
+
+            if (createdCount == 0)
+            {
+                if (failureMessages.Count == 1)
+                    return Json(new { success = false, error = failureMessages[0] });
+
+                if (invalidCount > 0 && failureMessages.Count == 0)
+                    return Json(new
+                    {
+                        success = false,
+                        error = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.EmailInvalid", "Enter a valid email address.")
+                    });
+
+                var noInvitesMessage = failureMessages.FirstOrDefault()
+                    ?? $"No invites were created. {invalidCount} email(s) were invalid.";
+                return Json(new { success = false, error = noInvitesMessage });
             }
 
             var bulkSuccessMessageFormat = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.BulkSuccess");
             var message = string.Format(bulkSuccessMessageFormat ?? "Successfully created {0} invites. {1} emails were invalid.", createdCount, invalidCount);
+            if (failureMessages.Count > 0)
+                message = $"{message} {failureMessages.Count} invite(s) failed: {string.Join("; ", failureMessages.Distinct())}";
 
             return Json(new { success = true, message = message });
         }

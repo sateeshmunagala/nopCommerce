@@ -35,6 +35,14 @@ public static class AIInterviewDefaults
     /// </summary>
     public static string EmployerApplicationsRouteName => "Plugin.Misc.AIInterview.EmployerApplications";
 
+    public static string VendorScoreboardRouteName => "Plugin.Misc.AIInterview.VendorScoreboard";
+
+    public static string VendorJobCreationRouteName => "Plugin.Misc.AIInterview.VendorJobCreation";
+
+    public static string JobProductTemplateName => "AI Interview Job Details";
+
+    public static string JobProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.JobDetails.cshtml";
+
     /// <summary>
     /// Gets the report route name
     /// </summary>
@@ -64,4 +72,10 @@ public static class AIInterviewDefaults
     /// Gets the prefix for locale resources
     /// </summary>
     public static string LocalizationPrefix => "Plugins.Misc.AIInterview";
+
+    public const int MyApplicationsNavigationTab = 160;
+    public const int VendorScoreboardNavigationTab = 170;
+    public const int VendorJobCreationNavigationTab = 180;
+    public const int EmployerApplicationsNavigationTab = 190;
+    public const int SponsorInvitesNavigationTab = 200;
 }

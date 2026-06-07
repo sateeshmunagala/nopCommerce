@@ -30,32 +30,68 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
         {
             if (_aiInterviewSettings.Enabled)
             {
-                navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                if (!navigationModel.CustomerNavigationItems.Any(item =>
+                    string.Equals(item.RouteName, AIInterviewDefaults.MyApplicationsRouteName, StringComparison.OrdinalIgnoreCase)))
                 {
-                    RouteName = AIInterviewDefaults.MyApplicationsRouteName,
-                    Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.MyApplications.Title"),
-                    Tab = (int)Nop.Web.Models.Customer.CustomerNavigationEnum.Info + 100, // Custom tab enum
-                    ItemClass = "customer-applications"
-                });
+                    navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                    {
+                        RouteName = AIInterviewDefaults.MyApplicationsRouteName,
+                        Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.MyApplications.Title"),
+                        Tab = AIInterviewDefaults.MyApplicationsNavigationTab,
+                        ItemClass = "customer-applications"
+                    });
+                }
 
                 var customer = await _workContext.GetCurrentCustomerAsync();
                 if (customer != null && customer.VendorId > 0)
                 {
-                    navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                    if (!navigationModel.CustomerNavigationItems.Any(item =>
+                        string.Equals(item.RouteName, AIInterviewDefaults.VendorScoreboardRouteName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        RouteName = "Plugin.Misc.AIInterview.VendorScoreboard",
-                        Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorScoreboard.Title"),
-                        Tab = (int)Nop.Web.Models.Customer.CustomerNavigationEnum.VendorInfo + 1,
-                        ItemClass = "vendor-scoreboard"
-                    });
+                        navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                        {
+                            RouteName = AIInterviewDefaults.VendorScoreboardRouteName,
+                            Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorScoreboard.Title"),
+                            Tab = AIInterviewDefaults.VendorScoreboardNavigationTab,
+                            ItemClass = "vendor-scoreboard"
+                        });
+                    }
 
-                    navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                    if (!navigationModel.CustomerNavigationItems.Any(item =>
+                        string.Equals(item.RouteName, AIInterviewDefaults.VendorJobCreationRouteName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        RouteName = "Plugin.Misc.AIInterview.VendorJobCreation",
-                        Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Title"),
-                        Tab = (int)Nop.Web.Models.Customer.CustomerNavigationEnum.VendorInfo + 2,
-                        ItemClass = "vendor-job-creation"
-                    });
+                        navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                        {
+                            RouteName = AIInterviewDefaults.VendorJobCreationRouteName,
+                            Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Title"),
+                            Tab = AIInterviewDefaults.VendorJobCreationNavigationTab,
+                            ItemClass = "vendor-job-creation"
+                        });
+                    }
+
+                    if (!navigationModel.CustomerNavigationItems.Any(item =>
+                        string.Equals(item.RouteName, AIInterviewDefaults.EmployerApplicationsRouteName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                        {
+                            RouteName = AIInterviewDefaults.EmployerApplicationsRouteName,
+                            Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Title"),
+                            Tab = AIInterviewDefaults.EmployerApplicationsNavigationTab,
+                            ItemClass = "vendor-applications"
+                        });
+                    }
+
+                    if (!navigationModel.CustomerNavigationItems.Any(item =>
+                        string.Equals(item.RouteName, AIInterviewDefaults.MockEmployerManageRouteName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                        {
+                            RouteName = AIInterviewDefaults.MockEmployerManageRouteName,
+                            Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Title"),
+                            Tab = AIInterviewDefaults.SponsorInvitesNavigationTab,
+                            ItemClass = "vendor-sponsor-invites"
+                        });
+                    }
                 }
             }
         }

@@ -53,7 +53,7 @@
             $.post("@Url.Action("Stop", "AIInterviewRuntime")", { token: token }, function(data) {
                 if (data.success) {
                     alert('@T("Plugins.Misc.AIInterview.Interview.CompletedScore"): ' + data.score);
-                    window.location.href = '@Url.RouteUrl(AIInterviewDefaults.HistoryRouteName)';
+                    window.location.href = '@Url.RouteUrl(AIInterviewDefaults.MockHistoryRouteName)';
                 } else {
                     alert(data.error);
                 }

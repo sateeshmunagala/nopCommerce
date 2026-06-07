@@ -1,6 +1,7 @@
 @{
     Layout = "_ColumnsTwo";
     var sponsorToken = Context.Request.Query["sponsorToken"].ToString();
+    var productId = Context.Request.Query["productId"].ToString();
 }
 <div class="page mock-start">
     <div class="page-title">
@@ -14,6 +15,36 @@
             </div>
         }
         <p>@T("Plugins.Misc.AIInterview.Index.StartInterview.Description")</p>
-        <button id="start-mock-btn" class="button-1" data-sponsor-token="@sponsorToken">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+        <form id="start-mock-form" asp-action="Start" asp-controller="MockAiInterview" method="post">
+            <input type="hidden" name="productId" value="@productId" />
+            <input type="hidden" name="sponsorToken" value="@sponsorToken" />
+            <label for="difficulty">@T("Plugins.Misc.AIInterview.Index.Difficulty")</label>
+            <select id="difficulty" name="difficulty">
+                <option value="Easy">@T("Plugins.Misc.AIInterview.Difficulty.Easy")</option>
+                <option value="Medium" selected>@T("Plugins.Misc.AIInterview.Difficulty.Medium")</option>
+                <option value="Hard">@T("Plugins.Misc.AIInterview.Difficulty.Hard")</option>
+            </select>
+            <button id="start-mock-btn" type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+        </form>
+        <div id="start-mock-error" class="message-error" style="display:none"></div>
     </div>
 </div>
+
+<script asp-location="Footer">
+    document.getElementById('start-mock-form').addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const response = await fetch(this.action, {
+            method: 'POST',
+            body: new FormData(this)
+        });
+        const result = await response.json();
+        if (result.runtimeUrl) {
+            window.location.href = result.runtimeUrl;
+            return;
+        }
+
+        const error = document.getElementById('start-mock-error');
+        error.textContent = result.error || '@T("Plugins.Misc.AIInterview.Employer.Invite.Error")';
+        error.style.display = 'block';
+    });
+</script>

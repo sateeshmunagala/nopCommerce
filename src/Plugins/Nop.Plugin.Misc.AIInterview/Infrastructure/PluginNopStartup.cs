@@ -3,8 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nop.Core.Infrastructure;
 using Nop.Plugin.Misc.AIInterview.Services;
-using Nop.Services.Events;
-using Nop.Plugin.Misc.AIInterview.Infrastructure;
 
 namespace Nop.Plugin.Misc.AIInterview.Infrastructure;
 
@@ -24,9 +22,6 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<IInterviewSessionService, InterviewSessionService>();
         services.AddScoped<ICreditService, CreditService>();
         services.AddScoped<ISponsorInviteService, SponsorInviteService>();
-
-        services.AddScoped<IConsumer<Nop.Web.Framework.Events.ModelPreparedEvent<Nop.Web.Framework.Models.BaseNopModel>>, EventConsumer>();
-        services.AddScoped<IConsumer<Nop.Plugin.Misc.AIInterview.Events.MockAiInterviewCompletedEvent>, Nop.Plugin.Misc.AIInterview.Services.Events.MockAiInterviewCompletedEventConsumer>();
     }
 
     /// <summary>

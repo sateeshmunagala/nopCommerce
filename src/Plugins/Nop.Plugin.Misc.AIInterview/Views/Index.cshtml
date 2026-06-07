@@ -9,5 +9,16 @@
     </div>
     <div class="page-body">
         <p>@T("Plugins.Misc.AIInterview.Index.Welcome")</p>
+        <div class="buttons">
+            <a class="button-1" href="@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)">
+                @T("Plugins.Misc.AIInterview.Index.StartInterview")
+            </a>
+            <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.MyApplicationsRouteName)">
+                @T("Plugins.Misc.AIInterview.MyApplications.Title")
+            </a>
+            <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.MockHistoryRouteName)">
+                @T("Plugins.Misc.AIInterview.Index.ViewHistory")
+            </a>
+        </div>
     </div>
 </div>

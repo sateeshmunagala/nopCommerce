@@ -60,4 +60,73 @@ public class ServiceTests
         await _applicationService.InsertJobApplicationAsync(application);
         _applicationRepository.Verify(r => r.InsertAsync(application, true), Times.Once);
     }
+
+    [Test]
+    public async Task InterviewCompletion_NotifiesApplicantAndVendor_WithReportLinks()
+    {
+        var customerService = new Mock<Nop.Services.Customers.ICustomerService>();
+        var productService = new Mock<Nop.Services.Catalog.IProductService>();
+        var vendorService = new Mock<Nop.Services.Vendors.IVendorService>();
+        var applicationService = new Mock<IApplicationService>();
+        var customer = new Customer { Id = 5, Email = "candidate@example.com", FirstName = "Casey", LastName = "Jones" };
+        var product = new Product { Id = 9, Name = "Platform Engineer", VendorId = 3 };
+        var vendor = new Nop.Core.Domain.Vendors.Vendor { Id = 3, Name = "Example Vendor", Email = "vendor@example.com" };
+        var store = new Nop.Core.Domain.Stores.Store { Id = 1 };
+        var applicantTemplate = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.ApplicantInterviewCompletion" };
+        var vendorTemplate = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.VendorInterviewCompletion" };
+        var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 1, Email = "store@example.com" };
+
+        customerService.Setup(x => x.GetCustomerByIdAsync(5)).ReturnsAsync(customer);
+        productService.Setup(x => x.GetProductByIdAsync(9)).ReturnsAsync(product);
+        vendorService.Setup(x => x.GetVendorByIdAsync(3)).ReturnsAsync(vendor);
+        _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
+        _messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync("AIInterview.ApplicantInterviewCompletion", 1))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { applicantTemplate });
+        _messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync("AIInterview.VendorInterviewCompletion", 1))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { vendorTemplate });
+        _emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(It.IsAny<int>())).ReturnsAsync(emailAccount);
+        _webHelper.Setup(x => x.GetStoreLocation(false)).Returns("https://store.example/");
+
+        var service = new InterviewSessionService(
+            _sessionRepository.Object,
+            customerService.Object,
+            applicationService.Object,
+            productService.Object,
+            _workflowMessageService.Object,
+            _messageTemplateService.Object,
+            _emailAccountService.Object,
+            _messageTokenProvider.Object,
+            _emailAccountSettings,
+            _storeContext.Object,
+            _webHelper.Object,
+            vendorService.Object);
+
+        await service.SendInterviewCompletionNotificationAsync(new InterviewSession
+        {
+            Id = 12,
+            CustomerId = 5,
+            ProductId = 9,
+            Score = 91,
+            QuestionScores = "[90,92]",
+            CompletedOnUtc = DateTime.UtcNow
+        }, 1);
+
+        _workflowMessageService.Verify(x => x.SendNotificationAsync(
+            It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>(),
+            emailAccount,
+            1,
+            It.Is<IList<Nop.Services.Messages.Token>>(tokens =>
+                tokens.Any(token => token.Key == "AIInterview.OverallScore") &&
+                tokens.Any(token => token.Key.Contains("ReportUrl"))),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false), Times.Exactly(2));
+    }
 }

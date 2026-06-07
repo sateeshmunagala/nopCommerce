@@ -25,7 +25,8 @@
                     </div>
                     <div class="inputs">
                         <label asp-for="ResumeFile" asp-postfix=":"></label>
-                        <input asp-for="ResumeFile" type="file" class="resume-file" />
+                        <input asp-for="ResumeFile" type="file" accept=".pdf,.docx" class="resume-file" />
+                        <span class="field-validation-valid">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</span>
                         <span asp-validation-for="ResumeFile"></span>
                     </div>
                 </div>

@@ -10,6 +10,7 @@
     <RepositoryUrl>https://github.com/nopSolutions/nopCommerce</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
     <OutputPath>$(MSBuildThisFileDirectory)..\..\Presentation\Nop.Web\Plugins\Misc.AIInterview</OutputPath>
+    <OutputPath Condition="'$(AIInterviewPluginOutputPath)' != ''">$(AIInterviewPluginOutputPath)</OutputPath>
     <OutDir>$(OutputPath)</OutDir>
     <!--Set this parameter to true to get the dlls copied from the NuGet cache to the output of your project.
     You need to set this parameter to true if your plugin has a nuget package
@@ -27,10 +28,13 @@
     <None Remove="Views\Index.cshtml" />
     <None Remove="Views\Interview.cshtml" />
     <None Remove="Views\MyApplications.cshtml" />
+    <None Remove="Views\ProductTemplate.JobDetails.cshtml" />
     <None Remove="Views\EmployerApplications.cshtml" />
     <None Remove="Views\Report.cshtml" />
     <None Remove="Views\VendorScoreboard.cshtml" />
     <None Remove="Views\VendorJobCreation.cshtml" />
+    <None Remove="Views\RuntimeError.cshtml" />
+    <None Remove="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml" />
     <None Remove="Views\MockAiInterview\Start.cshtml" />
     <None Remove="Views\MockAiInterview\Runtime.cshtml" />
     <None Remove="Views\MockAiInterview\History.cshtml" />
@@ -62,6 +66,9 @@
     <Content Include="Views\MyApplications.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Views\ProductTemplate.JobDetails.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Views\EmployerApplications.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -72,6 +79,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\VendorJobCreation.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\RuntimeError.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\MockAiInterview\Start.cshtml">
