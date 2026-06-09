@@ -557,14 +557,14 @@ public class SponsorInviteService : ISponsorInviteService
     public async Task<IList<SponsorInvite>> GetSponsorInvitesAsync(int sponsorId)
     {
         return await _inviteRepository.GetAllAsync(query => query
-            .Where(i => i.SponsorId == sponsorId)
+            .Where(i => sponsorId <= 0 || i.SponsorId == sponsorId)
             .OrderByDescending(i => i.CreatedOnUtc));
     }
 
     public async Task DeactivateInviteAsync(int inviteId, int sponsorId)
     {
         var invite = await _inviteRepository.GetByIdAsync(inviteId);
-        if (invite != null && invite.SponsorId == sponsorId)
+        if (invite != null && (sponsorId <= 0 || invite.SponsorId == sponsorId))
         {
             invite.ExpiryDateUtc = DateTime.UtcNow;
             await _inviteRepository.UpdateAsync(invite);

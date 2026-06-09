@@ -1,0 +1,50 @@
+@model Nop.Plugin.Misc.AIInterview.Models.CreditManagementModel
+
+@{
+    Layout = "_AdminLayout";
+    ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle").Text;
+}
+
+<form asp-controller="AIInterviewAdmin" asp-action="ApplicantCredits" method="post">
+    <div class="content-header clearfix">
+        <h1 class="float-left">@T("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle")</h1>
+        <div class="float-right">
+            <button type="submit" class="btn btn-primary">@T("Plugins.Misc.AIInterview.Admin.Credits.TopUp")</button>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card card-default">
+                <div class="card-body">
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="CustomerId" /></div><div class="col-md-9"><nop-editor asp-for="CustomerId" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Amount" /></div><div class="col-md-9"><nop-editor asp-for="Amount" /></div></div>
+                    <div class="form-group row">
+                        <div class="col-md-3">Wallet Balance</div>
+                        <div class="col-md-9"><strong>@Model.WalletBalance</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-default">
+                <div class="card-header">Ledger</div>
+                <div class="card-body">
+                    <table class="table table-bordered table-striped">
+                        <thead><tr><th>Amount</th><th>Type</th><th>Remarks</th><th>UTC</th></tr></thead>
+                        <tbody>
+                            @foreach (var entry in Model.LedgerEntries)
+                            {
+                                <tr>
+                                    <td>@entry.Amount</td>
+                                    <td>@entry.TransactionType</td>
+                                    <td>@entry.Remarks</td>
+                                    <td>@entry.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</form>

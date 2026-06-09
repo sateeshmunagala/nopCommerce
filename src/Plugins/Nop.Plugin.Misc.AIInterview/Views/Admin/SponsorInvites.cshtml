@@ -1,0 +1,74 @@
+@model Nop.Plugin.Misc.AIInterview.Models.SponsorInviteAdminModel
+
+@{
+    Layout = "_AdminLayout";
+    ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.SponsorInvites.Title").Text;
+}
+
+<div class="content-header clearfix">
+    <h1 class="float-left">@T("Plugins.Misc.AIInterview.Admin.SponsorInvites.Title")</h1>
+</div>
+
+<form asp-controller="AIInterviewAdmin" asp-action="SponsorInvites" method="post">
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card card-default">
+                <div class="card-body">
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="BulkEmails" /></div><div class="col-md-9"><nop-textarea asp-for="BulkEmails" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ProductId" /></div><div class="col-md-9"><nop-editor asp-for="ProductId" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="MaxAttempts" /></div><div class="col-md-9"><nop-editor asp-for="MaxAttempts" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ExpiryDateUtc" /></div><div class="col-md-9"><nop-editor asp-for="ExpiryDateUtc" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="SponsorId" /></div><div class="col-md-9"><nop-editor asp-for="SponsorId" /></div></div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary"><i class="far fa-paper-plane"></i> @T("Plugins.Misc.AIInterview.Admin.SponsorInvites.Create")</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</form>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="card card-default">
+            <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.SponsorInvites.List")</div>
+            <div class="card-body">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>@T("Plugins.Misc.AIInterview.Admin.SponsorInvites.Email")</th>
+                            <th>@T("Plugins.Misc.AIInterview.Admin.SponsorInvites.Status")</th>
+                            <th>Product</th>
+                            <th>Sponsor</th>
+                            <th>Created</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var invite in Model.Invites)
+                        {
+                            <tr>
+                                <td>@invite.Id</td>
+                                <td>@invite.Email</td>
+                                <td>@invite.Status</td>
+                                <td>@invite.ProductId</td>
+                                <td>@invite.SponsorId</td>
+                                <td>@invite.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                <td>
+                                    @if (!invite.IsAccepted && invite.Status != "Expired")
+                                    {
+                                        <form asp-controller="AIInterviewAdmin" asp-action="DeactivateInvite" method="post">
+                                            <input type="hidden" name="id" value="@invite.Id" />
+                                            <button type="submit" class="btn btn-link">@T("Plugins.Misc.AIInterview.Admin.SponsorInvites.Deactivate")</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>

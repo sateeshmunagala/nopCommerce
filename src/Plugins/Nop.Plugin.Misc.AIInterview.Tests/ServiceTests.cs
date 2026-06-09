@@ -1,6 +1,7 @@
 using Moq;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
+using Nop.Core.Caching;
 using Nop.Data;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Services;
@@ -128,5 +129,30 @@ public class ServiceTests
             null,
             null,
             false), Times.Exactly(2));
+    }
+
+    [Test]
+    public async Task CreditService_AddCreditAsync_CreatesWalletAndLedger()
+    {
+        var walletRepository = new Mock<IRepository<CreditWallet>>();
+        var ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
+
+        walletRepository.Setup(x => x.GetAllAsync(It.IsAny<Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>>>(), It.IsAny<Func<ICacheKeyService, CacheKey>>(), true))
+            .ReturnsAsync(new List<CreditWallet>());
+        walletRepository.Setup(x => x.InsertAsync(It.IsAny<CreditWallet>(), true))
+            .Callback<CreditWallet, bool>((wallet, publishEvent) => wallet.Id = 17)
+            .Returns(Task.CompletedTask);
+        walletRepository.Setup(x => x.UpdateAsync(It.IsAny<CreditWallet>(), true))
+            .Returns(Task.CompletedTask);
+        ledgerRepository.Setup(x => x.InsertAsync(It.IsAny<CreditLedgerEntry>(), true))
+            .Returns(Task.CompletedTask);
+
+        var service = new CreditService(walletRepository.Object, ledgerRepository.Object);
+
+        await service.AddCreditAsync(55, 25, "Admin top-up");
+
+        walletRepository.Verify(x => x.InsertAsync(It.Is<CreditWallet>(wallet => wallet.CustomerId == 55 && wallet.Balance == 25), true), Times.Once);
+        walletRepository.Verify(x => x.UpdateAsync(It.Is<CreditWallet>(wallet => wallet.CustomerId == 55 && wallet.Balance == 25), true), Times.Once);
+        ledgerRepository.Verify(x => x.InsertAsync(It.Is<CreditLedgerEntry>(entry => entry.CreditWalletId == 17 && entry.Amount == 25 && entry.Remarks == "Admin top-up"), true), Times.Once);
     }
 }

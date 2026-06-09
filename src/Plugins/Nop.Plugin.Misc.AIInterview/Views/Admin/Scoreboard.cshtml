@@ -1,0 +1,89 @@
+@model Nop.Plugin.Misc.AIInterview.Models.ScoreboardFilterModel
+
+@{
+    Layout = "_AdminLayout";
+    ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.Scoreboard.Title").Text;
+}
+
+<form asp-controller="AIInterviewAdmin" asp-action="Scoreboard" method="get">
+    <div class="content-header clearfix">
+        <h1 class="float-left">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Title")</h1>
+        <div class="float-right">
+            <button type="submit" class="btn btn-primary">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Filter")</button>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card card-default">
+                <div class="card-body">
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Candidate" /></div><div class="col-md-9"><nop-editor asp-for="Candidate" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Vendor" /></div><div class="col-md-9"><nop-editor asp-for="Vendor" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="JobPosting" /></div><div class="col-md-9"><nop-editor asp-for="JobPosting" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Status" /></div><div class="col-md-9"><nop-editor asp-for="Status" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="MinScore" /></div><div class="col-md-9"><nop-editor asp-for="MinScore" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="MaxScore" /></div><div class="col-md-9"><nop-editor asp-for="MaxScore" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="StartDate" /></div><div class="col-md-9"><nop-editor asp-for="StartDate" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="EndDate" /></div><div class="col-md-9"><nop-editor asp-for="EndDate" /></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</form>
+
+<form asp-controller="AIInterviewAdmin" asp-action="ScoreboardExportCsv" method="post">
+    <input type="hidden" asp-for="Candidate" />
+    <input type="hidden" asp-for="Vendor" />
+    <input type="hidden" asp-for="JobPosting" />
+    <input type="hidden" asp-for="Status" />
+    <input type="hidden" asp-for="MinScore" />
+    <input type="hidden" asp-for="MaxScore" />
+    <input type="hidden" asp-for="StartDate" />
+    <input type="hidden" asp-for="EndDate" />
+    <div class="content">
+        <div class="container-fluid">
+            <button type="submit" class="btn btn-secondary">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Export")</button>
+        </div>
+    </div>
+</form>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="card card-default">
+            <div class="card-body">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Candidate</th>
+                            <th>Vendor</th>
+                            <th>Job</th>
+                            <th>Status</th>
+                            <th>Score</th>
+                            <th>Completed UTC</th>
+                            <th>Report</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td>@row.CandidateName</td>
+                                <td>@row.VendorName</td>
+                                <td>@row.JobTitle</td>
+                                <td>@row.Status</td>
+                                <td>@row.Score</td>
+                                <td>@(row.CompletedOnUtc.HasValue ? row.CompletedOnUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + "Z" : "-")</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(row.ReportUrl))
+                                    {
+                                        <a href="@row.ReportUrl">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report")</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>

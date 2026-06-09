@@ -62,18 +62,7 @@ public class MockAiInterviewAdminController : BasePluginController
     {
         var model = new ConfigurationModel
         {
-            Enabled = _aiInterviewSettings.Enabled,
-            ApiKey = _aiInterviewSettings.ApiKey,
-            ResumeRequired = _aiInterviewSettings.ResumeRequired,
-            InterviewRequired = _aiInterviewSettings.InterviewRequired,
-            MinimumScore = _aiInterviewSettings.MinimumScore,
-            UseMockResponses = _mockAIInterviewSettings.UseMockResponses,
-            Provider = _aiInterviewSettings.Provider,
-            AiModel = _aiInterviewSettings.Model,
-            Prompt = _aiInterviewSettings.Prompt,
-            ServiceSettings = _aiInterviewSettings.ServiceSettings,
-            CreditPackAmount = _aiInterviewSettings.CreditPackAmount,
-            CreditPackPrice = _aiInterviewSettings.CreditPackPrice
+            Enabled = _aiInterviewSettings.Enabled
         };
 
         return View("~/Plugins/Misc.AIInterview/Views/Configure.cshtml", model);
@@ -86,20 +75,7 @@ public class MockAiInterviewAdminController : BasePluginController
             return View("~/Plugins/Misc.AIInterview/Views/Configure.cshtml", model);
 
         _aiInterviewSettings.Enabled = model.Enabled;
-        _aiInterviewSettings.ApiKey = model.ApiKey;
-        _aiInterviewSettings.ResumeRequired = model.ResumeRequired;
-        _aiInterviewSettings.InterviewRequired = model.InterviewRequired;
-        _aiInterviewSettings.MinimumScore = model.MinimumScore;
-        _aiInterviewSettings.Provider = model.Provider;
-        _aiInterviewSettings.Model = model.AiModel;
-        _aiInterviewSettings.Prompt = model.Prompt;
-        _aiInterviewSettings.ServiceSettings = model.ServiceSettings;
-        _aiInterviewSettings.CreditPackAmount = model.CreditPackAmount;
-        _aiInterviewSettings.CreditPackPrice = model.CreditPackPrice;
         await _settingService.SaveSettingAsync(_aiInterviewSettings);
-
-        _mockAIInterviewSettings.UseMockResponses = model.UseMockResponses;
-        await _settingService.SaveSettingAsync(_mockAIInterviewSettings);
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
 

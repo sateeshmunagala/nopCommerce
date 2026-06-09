@@ -17,6 +17,20 @@ public class AIInterviewSettings : ISettings
     /// </summary>
     public string ApiKey { get; set; }
 
+    public string AzureOpenAiEndpointUrl { get; set; }
+
+    public string AzureOpenAiApiKey { get; set; }
+
+    public string AzureOpenAiDeploymentOrModel { get; set; }
+
+    public string AgoraAppId { get; set; }
+
+    public string AgoraTokenServiceUrl { get; set; }
+
+    public string AzureSpeechKey { get; set; }
+
+    public string AzureSpeechRegion { get; set; }
+
     /// <summary>
     /// Gets or sets a value indicating whether a resume is required for application
     /// </summary>

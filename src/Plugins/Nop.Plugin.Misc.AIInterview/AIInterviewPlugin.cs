@@ -119,6 +119,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureWidgetActiveAsync();
         await EnsureMessageTemplatesAsync();
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
 
         await base.UpdateAsync(currentVersion, targetVersion);
     }
@@ -262,6 +263,59 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Success"] = "The job was created successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Unavailable"] = "Job creation is temporarily unavailable.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Title"] = "Create a Job"
+        };
+    }
+
+    protected static Dictionary<string, string> GetAdminLocaleResources()
+    {
+        return new Dictionary<string, string>
+        {
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.Root"] = "AI Interview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.Configure"] = "Configure",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.General"] = "General",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.AiService"] = "AI Service",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.SponsorInvites"] = "Sponsor Invite Management",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.VendorCredits"] = "Vendor Credits",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.ApplicantCredits"] = "Applicant Credits",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.Scoreboard"] = "Candidate Scoreboard",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.General.Title"] = "AI Interview General Settings",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.Title"] = "AI Interview Service Settings",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureOpenAiEndpointUrl"] = "Azure OpenAI Endpoint URL",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureOpenAiApiKey"] = "Azure OpenAI API Key",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureOpenAiDeploymentOrModel"] = "Azure OpenAI Deployment / Model",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AgoraAppId"] = "Agora App ID",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AgoraTokenServiceUrl"] = "Agora Token Service URL",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureSpeechKey"] = "Azure Speech Key",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureSpeechRegion"] = "Azure Speech Region",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Title"] = "Sponsor Invite Management",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Create"] = "Create Invites",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.List"] = "Existing Invites",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Email"] = "Email",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Status"] = "Status",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.BulkEmails"] = "Bulk Emails",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.ProductId"] = "Product ID",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.MaxAttempts"] = "Max Attempts",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.ExpiryDateUtc"] = "Expiry Date (UTC)",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.SponsorId"] = "Sponsor ID",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Deactivate"] = "Deactivate",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.VendorTitle"] = "Vendor Credits",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.ApplicantTitle"] = "Applicant Credits",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.TopUp"] = "Top Up",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.CustomerId"] = "Customer ID",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.Amount"] = "Amount",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.CustomerRequired"] = "Customer is required.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Title"] = "Candidate Scoreboard",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Filter"] = "Apply Filters",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Export"] = "Export CSV",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Report"] = "Open report",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Candidate"] = "Candidate",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Vendor"] = "Vendor / Company",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.JobPosting"] = "Job Posting",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Status"] = "Status",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.MinScore"] = "Minimum Score",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.MaxScore"] = "Maximum Score",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.StartDate"] = "Start Date",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.EndDate"] = "End Date"
         };
     }
 
@@ -437,6 +491,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Title"] = "Create a Job",
         });
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
 
         await base.InstallAsync();
     }

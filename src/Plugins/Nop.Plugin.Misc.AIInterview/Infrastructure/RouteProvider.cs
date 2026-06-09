@@ -21,6 +21,34 @@ public class RouteProvider : IRouteProvider
             pattern: "Admin/AIInterview/Configure",
             defaults: new { controller = "MockAiInterviewAdmin", action = "Configure", area = AreaNames.ADMIN });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminGeneralRouteName,
+            pattern: "Admin/AIInterview/General",
+            defaults: new { controller = "AIInterviewAdmin", action = "General", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminAiServiceRouteName,
+            pattern: "Admin/AIInterview/AiService",
+            defaults: new { controller = "AIInterviewAdmin", action = "AiService", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminSponsorInvitesRouteName,
+            pattern: "Admin/AIInterview/SponsorInvites",
+            defaults: new { controller = "AIInterviewAdmin", action = "SponsorInvites", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminVendorCreditsRouteName,
+            pattern: "Admin/AIInterview/VendorCredits",
+            defaults: new { controller = "AIInterviewAdmin", action = "VendorCredits", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminApplicantCreditsRouteName,
+            pattern: "Admin/AIInterview/ApplicantCredits",
+            defaults: new { controller = "AIInterviewAdmin", action = "ApplicantCredits", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminScoreboardRouteName,
+            pattern: "Admin/AIInterview/Scoreboard",
+            defaults: new { controller = "AIInterviewAdmin", action = "Scoreboard", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminScoreboardExportRouteName,
+            pattern: "Admin/AIInterview/ScoreboardExportCsv",
+            defaults: new { controller = "AIInterviewAdmin", action = "ScoreboardExportCsv", area = AreaNames.ADMIN });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminMockConfigureRouteName,
             pattern: "Admin/MockAiInterview/Configure",
             defaults: new { controller = "MockAiInterviewAdmin", action = "MockConfigure", area = AreaNames.ADMIN });

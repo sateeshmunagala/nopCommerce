@@ -133,21 +133,33 @@ public class RuntimeAndAdminTests
     [Test]
     public async Task Admin_Configure_SavesSettings()
     {
+        _aiInterviewSettings.Enabled = true;
+        _aiInterviewSettings.ApiKey = "keep";
+        _aiInterviewSettings.ResumeRequired = true;
+        _aiInterviewSettings.InterviewRequired = true;
+        _aiInterviewSettings.MinimumScore = 42;
+        _aiInterviewSettings.Provider = "keep";
+        _aiInterviewSettings.Model = "keep";
+        _aiInterviewSettings.Prompt = "keep";
+        _aiInterviewSettings.ServiceSettings = "keep";
+
         var model = new ConfigurationModel
         {
-            Enabled = true,
-            ApiKey = "new-key",
-            Provider = "OpenAI",
-            AiModel = "gpt-4",
-            Prompt = "Be a helpful assistant",
-            CreditPackAmount = 100,
-            CreditPackPrice = 50
+            Enabled = false
         };
 
         await _adminController.Configure(model);
 
         _settingService.Verify(x => x.SaveSettingAsync(It.Is<AIInterviewSettings>(s =>
-            s.Enabled && s.ApiKey == "new-key" && s.Provider == "OpenAI" && s.Model == "gpt-4" && s.Prompt == "Be a helpful assistant" && s.CreditPackAmount == 100 && s.CreditPackPrice == 50)), Times.Once);
+            s.Enabled == false &&
+            s.ApiKey == "keep" &&
+            s.ResumeRequired == true &&
+            s.InterviewRequired == true &&
+            s.MinimumScore == 42 &&
+            s.Provider == "keep" &&
+            s.Model == "keep" &&
+            s.Prompt == "keep" &&
+            s.ServiceSettings == "keep")), Times.Once);
     }
 
     [Test]

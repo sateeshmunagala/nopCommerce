@@ -15,6 +15,29 @@ public static class AIInterviewDefaults
     /// </summary>
     public static string ConfigurationRouteName => "Plugin.Misc.AIInterview.Configure";
 
+    public static string AdminGeneralRouteName => "Plugin.Misc.AIInterview.Admin.General";
+
+    public static string AdminAiServiceRouteName => "Plugin.Misc.AIInterview.Admin.AiService";
+
+    public static string AdminSponsorInvitesRouteName => "Plugin.Misc.AIInterview.Admin.SponsorInvites";
+
+    public static string AdminVendorCreditsRouteName => "Plugin.Misc.AIInterview.Admin.VendorCredits";
+
+    public static string AdminApplicantCreditsRouteName => "Plugin.Misc.AIInterview.Admin.ApplicantCredits";
+
+    public static string AdminScoreboardRouteName => "Plugin.Misc.AIInterview.Admin.Scoreboard";
+
+    public static string AdminScoreboardExportRouteName => "Plugin.Misc.AIInterview.Admin.Scoreboard.Export";
+
+    public static string AdminMenuSystemName => "AIInterview";
+    public static string AdminConfigureMenuSystemName => "AIInterview.Configure";
+    public static string AdminGeneralMenuSystemName => "AIInterview.General";
+    public static string AdminAiServiceMenuSystemName => "AIInterview.AiService";
+    public static string AdminSponsorInvitesMenuSystemName => "AIInterview.SponsorInvites";
+    public static string AdminVendorCreditsMenuSystemName => "AIInterview.VendorCredits";
+    public static string AdminApplicantCreditsMenuSystemName => "AIInterview.ApplicantCredits";
+    public static string AdminScoreboardMenuSystemName => "AIInterview.Scoreboard";
+
     /// <summary>
     /// Gets the public index route name
     /// </summary>
