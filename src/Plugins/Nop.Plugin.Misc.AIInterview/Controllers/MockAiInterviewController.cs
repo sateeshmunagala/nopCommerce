@@ -11,6 +11,7 @@ using Nop.Plugin.Misc.AIInterview.Events;
 using Nop.Services.Vendors;
 using Nop.Services.Seo;
 using Nop.Web.Framework.Controllers;
+using Microsoft.Extensions.Logging;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
@@ -28,6 +29,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IEventPublisher _eventPublisher;
     private readonly IJobInterviewExperienceService _jobInterviewExperienceService;
     private readonly IUrlRecordService _urlRecordService;
+    private readonly ILogger<MockAiInterviewController> _logger;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -40,7 +42,8 @@ public class MockAiInterviewController : BasePluginController
         IApplicationService applicationService,
         IEventPublisher eventPublisher = null,
         IJobInterviewExperienceService jobInterviewExperienceService = null,
-        IUrlRecordService urlRecordService = null)
+        IUrlRecordService urlRecordService = null,
+        ILogger<MockAiInterviewController> logger = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -54,6 +57,7 @@ public class MockAiInterviewController : BasePluginController
         _eventPublisher = eventPublisher;
         _jobInterviewExperienceService = jobInterviewExperienceService;
         _urlRecordService = urlRecordService;
+        _logger = logger;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -90,17 +94,41 @@ public class MockAiInterviewController : BasePluginController
         var product = productId > 0 ? await _productService.GetProductByIdAsync(productId) : null;
         difficulty = AIInterviewDefaults.DefaultInterviewDifficulty;
 
-        // Idempotency: check for active session
-        var activeSession = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id))
-            .FirstOrDefault(s => s.IsActive && !s.CompletedOnUtc.HasValue && s.ProductId == productId);
+        var customerSessions = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<InterviewSession>())
+            .Where(s => s.ProductId == productId)
+            .OrderByDescending(s => s.CreatedOnUtc)
+            .ThenByDescending(s => s.Id)
+            .ToList();
 
-        if (activeSession != null)
+        var now = DateTime.UtcNow;
+        var reusableSession = customerSessions.FirstOrDefault(s =>
+            s.IsActive &&
+            !s.CompletedOnUtc.HasValue &&
+            (!s.TokenExpiryUtc.HasValue || s.TokenExpiryUtc > now));
+
+        var staleActiveSessions = customerSessions.Where(s =>
+            s.IsActive &&
+            s.TokenExpiryUtc.HasValue &&
+            s.TokenExpiryUtc <= now).ToList();
+
+        foreach (var staleSession in staleActiveSessions)
+        {
+            staleSession.IsActive = false;
+            if (!staleSession.CompletedOnUtc.HasValue)
+                staleSession.CompletedOnUtc = now;
+
+            await _interviewSessionService.UpdateInterviewSessionAsync(staleSession);
+            _logger?.LogInformation("AIInterview stale session auto-healed for customer {CustomerId}, product {ProductId}, session {SessionId}, token {Token}.",
+                customer.Id, productId, staleSession.Id, staleSession.Token);
+        }
+
+        if (reusableSession != null)
         {
             return Json(new
             {
-                sessionKey = activeSession.SessionKey,
-                token = activeSession.Token,
-                runtimeUrl = Url?.RouteUrl(AIInterviewDefaults.MockRuntimeRouteName, new { token = activeSession.Token })
+                sessionKey = reusableSession.SessionKey,
+                token = reusableSession.Token,
+                runtimeUrl = Url?.RouteUrl(AIInterviewDefaults.MockRuntimeRouteName, new { token = reusableSession.Token })
             });
         }
 
@@ -160,6 +188,8 @@ public class MockAiInterviewController : BasePluginController
             CreatedOnUtc = DateTime.UtcNow
         };
         await _interviewSessionService.InsertInterviewSessionAsync(session);
+        _logger?.LogInformation("AIInterview new session created for customer {CustomerId}, product {ProductId}, session {SessionId}, token {Token}.",
+            customer.Id, productId, session.Id, session.Token);
 
         return Json(new
         {

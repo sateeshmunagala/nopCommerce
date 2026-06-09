@@ -169,7 +169,10 @@
                     <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
                     <div class="job-ai-actions">
                         <button type="button" class="button-1 apply-btn" id="job-apply-button" @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
-                        <button type="button" class="button-2 start-interview-btn" id="start-job-interview">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                        <button type="button"
+                                class="button-2 start-interview-btn"
+                                id="start-job-interview"
+                                data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
                     </div>
                 </div>
             </div>
@@ -198,7 +201,7 @@
                 feedback.classList.toggle('is-success', !isError);
             };
 
-            document.getElementById('job-apply-button')?.addEventListener('click', async () => {
+            const startInterview = async () => {
                 const formData = productForm ? new FormData(productForm) : new FormData();
                 if (!productForm && applyPanel) {
                     applyPanel.querySelectorAll('input').forEach(input => {
@@ -214,30 +217,6 @@
                     });
                 }
 
-                const response = await fetch('@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)', {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
-                const result = await response.json();
-                setFeedback(result.message || result.error, !result.success);
-            });
-
-            document.getElementById('start-job-interview')?.addEventListener('click', async () => {
-                const formData = productForm ? new FormData(productForm) : new FormData();
-                if (!productForm && applyPanel) {
-                    applyPanel.querySelectorAll('input').forEach(input => {
-                        if (input.type === 'file') {
-                            Array.from(input.files || []).forEach(file => formData.append(input.name, file));
-                            return;
-                        }
-
-                        if ((input.type === 'radio' || input.type === 'checkbox') && !input.checked)
-                            return;
-
-                        formData.append(input.name, input.value);
-                    });
-                }
                 formData.set('productId', '@productId');
                 if (sponsorToken)
                     formData.set('sponsorToken', sponsorToken);
@@ -253,6 +232,43 @@
                 }
 
                 setFeedback(result.error || 'Unable to start the interview.', true);
+            };
+
+            const applyInterview = async () => {
+                const formData = productForm ? new FormData(productForm) : new FormData();
+                if (!productForm && applyPanel) {
+                    applyPanel.querySelectorAll('input').forEach(input => {
+                        if (input.type === 'file') {
+                            Array.from(input.files || []).forEach(file => formData.append(input.name, file));
+                            return;
+                        }
+
+                        if ((input.type === 'radio' || input.type === 'checkbox') && !input.checked)
+                            return;
+
+                        formData.append(input.name, input.value);
+                    });
+                }
+                const response = await fetch('@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const result = await response.json();
+                setFeedback(result.message || result.error, !result.success);
+            };
+
+            document.addEventListener('click', async (event) => {
+                const applyButton = event.target.closest?.('#job-apply-button');
+                if (applyButton) {
+                    await applyInterview();
+                    return;
+                }
+
+                const startButton = event.target.closest?.('#start-job-interview, [data-start-interview-button="true"]');
+                if (startButton) {
+                    await startInterview();
+                }
             });
         })();
     </script>

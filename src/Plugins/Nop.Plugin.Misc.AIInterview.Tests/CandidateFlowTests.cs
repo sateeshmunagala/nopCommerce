@@ -145,7 +145,15 @@ public class CandidateFlowTests
         var customer = new Customer { Id = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
 
-        var activeSession = new InterviewSession { SessionKey = "existing", Token = "t1", IsActive = true, CustomerId = 1, ProductId = 1 };
+        var activeSession = new InterviewSession
+        {
+            SessionKey = "existing",
+            Token = "t1",
+            IsActive = true,
+            CustomerId = 1,
+            ProductId = 1,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession> { activeSession });
 
@@ -155,6 +163,71 @@ public class CandidateFlowTests
         var sessionKey = json.Value.GetType().GetProperty("sessionKey").GetValue(json.Value, null);
         Assert.That(sessionKey, Is.EqualTo("existing"));
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Start_ExpiredActiveSession_IsHealed_And_Replaced()
+    {
+        var customer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+
+        var staleSession = new InterviewSession
+        {
+            Id = 7,
+            SessionKey = "stale-session",
+            Token = "expired-token",
+            IsActive = true,
+            CustomerId = 1,
+            ProductId = 1,
+            CreatedOnUtc = DateTime.UtcNow.AddHours(-2),
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-10)
+        };
+
+        InterviewSession insertedSession = null;
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
+            .ReturnsAsync(new List<InterviewSession> { staleSession });
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+        _sessionService.Setup(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(session => insertedSession = session)
+            .Returns(Task.CompletedTask);
+        var urlHelperMock = new Mock<Microsoft.AspNetCore.Mvc.IUrlHelper>();
+        urlHelperMock.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
+            .Returns("/mockaiinterview/runtime?token=generated");
+        _runtimeController.Url = urlHelperMock.Object;
+
+        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1);
+        var json = (JsonResult)result;
+        var runtimeUrl = json.Value.GetType().GetProperty("runtimeUrl").GetValue(json.Value, null) as string;
+
+        Assert.That(staleSession.IsActive, Is.False);
+        Assert.That(staleSession.CompletedOnUtc, Is.Not.Null);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
+            s.Id == staleSession.Id &&
+            s.IsActive == false &&
+            s.CompletedOnUtc.HasValue)), Times.Once);
+
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()), Times.Once);
+        Assert.That(insertedSession, Is.Not.Null);
+        Assert.That(insertedSession.Token, Is.Not.EqualTo(staleSession.Token));
+        Assert.That(insertedSession.TokenExpiryUtc, Is.GreaterThan(DateTime.UtcNow));
+        Assert.That(runtimeUrl, Is.EqualTo("/mockaiinterview/runtime?token=generated"));
+    }
+
+    [Test]
+    public void ProductDetails_StartInterview_Button_Wires_Post_And_Redirect()
+    {
+        var viewPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Shared", "Components", "AIInterviewProductDetails", "Default.cshtml"));
+        var viewText = File.ReadAllText(viewPath);
+
+        Assert.That(viewText, Does.Contain("data-start-interview-button=\"true\""));
+        Assert.That(viewText, Does.Contain("fetch('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)'"));
+        Assert.That(viewText, Does.Contain("window.location.href = result.runtimeUrl"));
+        Assert.That(viewText, Does.Contain("document.addEventListener('click'"));
     }
 
     [Test]
@@ -324,7 +397,8 @@ public class CandidateFlowTests
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
-            productTemplateService.Object);
+            productTemplateService.Object,
+            _applicationService.Object);
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?sponsorToken=abc");
 
@@ -401,7 +475,8 @@ public class CandidateFlowTests
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
-            productTemplateService.Object);
+            productTemplateService.Object,
+            _applicationService.Object);
 
         var result = await component.InvokeAsync(
             "productdetails_before_collateral",
