@@ -22,6 +22,7 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<IInterviewSessionService, InterviewSessionService>();
         services.AddScoped<ICreditService, CreditService>();
         services.AddScoped<ISponsorInviteService, SponsorInviteService>();
+        services.AddScoped<IJobInterviewExperienceService, JobInterviewExperienceService>();
     }
 
     /// <summary>

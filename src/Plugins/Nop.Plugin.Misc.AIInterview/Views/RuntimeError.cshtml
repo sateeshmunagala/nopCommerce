@@ -12,7 +12,7 @@
     <div class="page-body">
         <div class="message-error">@Model.Message</div>
         <div class="buttons">
-            <a class="button-1" href="@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)">@T("Plugins.Misc.AIInterview.Runtime.Error.StartAgain")</a>
+            <a class="button-1" href="@(string.IsNullOrWhiteSpace(Model.RestartUrl) ? Url.RouteUrl("Homepage") : Model.RestartUrl)">@T("Plugins.Misc.AIInterview.Runtime.Error.StartAgain")</a>
         </div>
     </div>
 </div>

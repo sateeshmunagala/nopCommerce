@@ -1,5 +1,7 @@
 using Nop.Core;
 using Nop.Plugin.Misc.AIInterview.Domain;
+using Nop.Core.Domain.Catalog;
+using Microsoft.AspNetCore.Http;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
@@ -44,4 +46,10 @@ public interface ISponsorInviteService
     Task<IList<SponsorInvite>> GetSponsorInvitesAsync(int sponsorId);
     Task DeactivateInviteAsync(int inviteId, int sponsorId);
     Task<bool> ValidateInviteAsync(string code, string email);
+}
+
+public interface IJobInterviewExperienceService
+{
+    Task EnsureInterviewDifficultyAttributeAsync(Product product);
+    Task<string> ResolveInterviewDifficultyAsync(Product product, IFormCollection form);
 }

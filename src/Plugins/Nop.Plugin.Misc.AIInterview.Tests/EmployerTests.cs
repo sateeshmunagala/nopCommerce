@@ -100,11 +100,11 @@ public class EmployerTests
     [Test]
     public async Task List_FiltersCorrectly()
     {
-        var model = new ApplicationListModel { CandidateNameOrEmail = "John", Status = "Pending" };
-        var applications = new PagedList<JobApplication>(new List<JobApplication> { new JobApplication { Id = 1, CustomerId = 789 } }, 0, 10);
+        var model = new ApplicationListModel { CandidateNameOrEmail = "John", Status = "Pending", PageSize = 20 };
+        var applications = new PagedList<JobApplication>(new List<JobApplication> { new JobApplication { Id = 1, CustomerId = 789 } }, 0, 20);
 
         _applicationService.Setup(x => x.GetApplicationsAsync(
-            "John", "Pending", null, null, null, null, 0, 1, 0, 10, false))
+            "John", "Pending", null, null, null, null, 0, 1, 0, 20, false))
             .ReturnsAsync(applications);
 
         _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>())).ReturnsAsync(new List<Customer> { new Customer { Id = 789, Email = "john@example.com" } });

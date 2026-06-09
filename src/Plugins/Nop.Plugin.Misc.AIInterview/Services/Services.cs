@@ -11,6 +11,7 @@ using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Vendors;
 using Nop.Services.Helpers;
+using Microsoft.AspNetCore.Http;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
@@ -579,5 +580,108 @@ public class SponsorInviteService : ISponsorInviteService
         if (!string.Equals(invite.Email, email, StringComparison.OrdinalIgnoreCase)) return false;
 
         return true;
+    }
+}
+
+public class JobInterviewExperienceService : IJobInterviewExperienceService
+{
+    private readonly IProductAttributeService _productAttributeService;
+    private readonly IProductAttributeParser _productAttributeParser;
+
+    public JobInterviewExperienceService(IProductAttributeService productAttributeService,
+        IProductAttributeParser productAttributeParser)
+    {
+        _productAttributeService = productAttributeService;
+        _productAttributeParser = productAttributeParser;
+    }
+
+    public async Task EnsureInterviewDifficultyAttributeAsync(Product product)
+    {
+        if (product == null)
+            return;
+
+        var mappings = await _productAttributeService.GetProductAttributeMappingsByProductIdAsync(product.Id);
+        var existingMapping = await FindDifficultyMappingAsync(mappings);
+        if (existingMapping != null)
+            return;
+
+        var attribute = await GetOrCreateDifficultyAttributeAsync();
+        var mapping = new ProductAttributeMapping
+        {
+            ProductId = product.Id,
+            ProductAttributeId = attribute.Id,
+            TextPrompt = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            IsRequired = true,
+            AttributeControlType = AttributeControlType.RadioList,
+            DisplayOrder = 1
+        };
+        await _productAttributeService.InsertProductAttributeMappingAsync(mapping);
+
+        for (var index = 0; index < AIInterviewDefaults.InterviewDifficultyValues.Count; index++)
+        {
+            var value = AIInterviewDefaults.InterviewDifficultyValues[index];
+            await _productAttributeService.InsertProductAttributeValueAsync(new ProductAttributeValue
+            {
+                ProductAttributeMappingId = mapping.Id,
+                Name = value,
+                IsPreSelected = string.Equals(value, "Medium", StringComparison.OrdinalIgnoreCase),
+                DisplayOrder = index
+            });
+        }
+    }
+
+    public async Task<string> ResolveInterviewDifficultyAsync(Product product, IFormCollection form)
+    {
+        if (product == null)
+            return "Medium";
+
+        if (form == null)
+            return "Medium";
+
+        var errors = new List<string>();
+        var attributesXml = await _productAttributeParser.ParseProductAttributesAsync(product, form, errors);
+        if (string.IsNullOrEmpty(attributesXml))
+            return "Medium";
+
+        var values = await _productAttributeParser.ParseProductAttributeValuesAsync(attributesXml);
+        var selectedDifficulty = values.FirstOrDefault(value =>
+            AIInterviewDefaults.InterviewDifficultyValues.Any(difficulty =>
+                string.Equals(difficulty, value.Name, StringComparison.OrdinalIgnoreCase)));
+
+        return selectedDifficulty?.Name ?? "Medium";
+    }
+
+    protected virtual async Task<ProductAttribute> GetOrCreateDifficultyAttributeAsync()
+    {
+        var attributes = await _productAttributeService.GetAllProductAttributesAsync(AIInterviewDefaults.InterviewDifficultyAttributeName);
+        var attribute = attributes.FirstOrDefault(item =>
+            string.Equals(item.Name, AIInterviewDefaults.InterviewDifficultyAttributeName, StringComparison.OrdinalIgnoreCase));
+        if (attribute != null)
+            return attribute;
+
+        attribute = new ProductAttribute
+        {
+            Name = AIInterviewDefaults.InterviewDifficultyAttributeName
+        };
+        await _productAttributeService.InsertProductAttributeAsync(attribute);
+        return attribute;
+    }
+
+    protected virtual async Task<ProductAttributeMapping> FindDifficultyMappingAsync(IList<ProductAttributeMapping> mappings)
+    {
+        foreach (var mapping in mappings)
+        {
+            var attribute = await _productAttributeService.GetProductAttributeByIdAsync(mapping.ProductAttributeId);
+            if (attribute == null)
+                continue;
+
+            if (string.Equals(attribute.Name, AIInterviewDefaults.InterviewDifficultyAttributeName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(mapping.TextPrompt, AIInterviewDefaults.InterviewDifficultyAttributeName, StringComparison.OrdinalIgnoreCase))
+            {
+                return mapping;
+            }
+        }
+
+        return null;
     }
 }

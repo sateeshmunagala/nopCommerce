@@ -1,4 +1,5 @@
 @model ApplicationListModel
+@using Nop.Plugin.Misc.AIInterview.Domain
 @using Nop.Web.Models.Customer
 
 @{
@@ -11,60 +12,298 @@
     @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MyApplicationsNavigationTab })
 }
 
-<div class="page ai-interview-history-page">
+<style>
+    .ai-applications-page {
+        display: grid;
+        gap: 22px;
+    }
+
+    .ai-applications-page .button-1,
+    .ai-applications-page .button-2 {
+        border-radius: 10px;
+        font-weight: 600;
+    }
+
+    .ai-applications-page .button-1 {
+        background: #0f5bd7;
+        color: #fff;
+    }
+
+    .ai-applications-page .button-2 {
+        background: #eef4ff;
+        color: #0f5bd7;
+        border: 1px solid #c9dafd;
+    }
+
+    .applications-card {
+        padding: 28px;
+        border: 1px solid #dbe3ef;
+        border-radius: 24px;
+        background: #fff;
+        box-shadow: 0 18px 40px rgba(15, 35, 64, 0.08);
+    }
+
+    .applications-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 18px;
+    }
+
+    .applications-sort select {
+        min-width: 220px;
+        padding: 10px 12px;
+        border: 1px solid #cfd7e6;
+        border-radius: 10px;
+    }
+
+    .applications-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .applications-table th,
+    .applications-table td {
+        padding: 18px 14px;
+        text-align: left;
+        border-top: 1px solid #e7edf6;
+        vertical-align: top;
+    }
+
+    .applications-table thead th {
+        color: #213147;
+        font-size: 15px;
+    }
+
+    .score-chip {
+        display: inline-flex;
+        min-width: 40px;
+        min-height: 40px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #e8f0ff;
+        color: #0f5bd7;
+        font-weight: 700;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #eef4ff;
+        color: #0f5bd7;
+        font-weight: 600;
+    }
+
+    .report-preview {
+        margin-top: 12px;
+        padding: 18px;
+        border: 1px solid #dbe3ef;
+        border-radius: 18px;
+        background: #fbfcff;
+    }
+
+    .report-preview h3 {
+        margin: 0 0 16px;
+        color: #132238;
+    }
+
+    .report-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .report-metric {
+        padding: 14px;
+        border: 1px solid #dbe3ef;
+        border-radius: 14px;
+        background: #fff;
+    }
+
+    .report-metric-label {
+        color: #5f6f85;
+        font-size: 13px;
+    }
+
+    .report-metric-value {
+        margin-top: 6px;
+        color: #132238;
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .report-copy {
+        color: #31445f;
+        line-height: 1.7;
+    }
+
+    .applications-footnote {
+        margin-top: 16px;
+        color: #5f6f85;
+    }
+
+    @@media (max-width: 900px) {
+        .report-metrics {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @@media (max-width: 680px) {
+        .applications-card {
+            padding: 20px;
+        }
+
+        .applications-table,
+        .applications-table thead,
+        .applications-table tbody,
+        .applications-table tr,
+        .applications-table th,
+        .applications-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .applications-table thead {
+            display: none;
+        }
+
+        .applications-table td {
+            padding: 10px 0;
+            border-top: 0;
+        }
+
+        .applications-table tr {
+            padding: 16px 0;
+            border-top: 1px solid #e7edf6;
+        }
+
+        .report-metrics {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="page ai-applications-page">
     <div class="page-title">
         <h1>@T("Plugins.Misc.AIInterview.MyApplications.Title")</h1>
     </div>
     <div class="page-body">
-        <div class="sort-options" style="margin-bottom: 20px;">
-            <span>@T("Plugins.Misc.AIInterview.MyApplications.SortBy"): </span>
-            <select id="sortOrder" onchange="location.href='@Url.Action("MyApplications")?sortOrder=' + this.value;">
-                <option value="LatestApplied" selected="@(Model.SortOrder == "LatestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.LatestApplied")</option>
-                <option value="OldestApplied" selected="@(Model.SortOrder == "OldestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.OldestApplied")</option>
-                <option value="HighestScore" selected="@(Model.SortOrder == "HighestScore")">@T("Plugins.Misc.AIInterview.History.Sort.HighestScore")</option>
-                <option value="LowestScore" selected="@(Model.SortOrder == "LowestScore")">@T("Plugins.Misc.AIInterview.History.Sort.LowestScore")</option>
-                <option value="LatestInterviewDate" selected="@(Model.SortOrder == "LatestInterviewDate")">@T("Plugins.Misc.AIInterview.History.Sort.LatestInterviewDate")</option>
-            </select>
-        </div>
+        <div class="applications-card">
+            <div class="applications-toolbar">
+                <div>
+                    <strong>@Model.TotalCount</strong> application(s)
+                </div>
+                <div class="applications-sort">
+                    <label for="sortOrder">@T("Plugins.Misc.AIInterview.MyApplications.SortBy")</label>
+                    <select id="sortOrder" onchange="location.href='@Url.Action("MyApplications")?sortOrder=' + this.value;">
+                        <option value="LatestApplied" selected="@(Model.SortOrder == "LatestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.LatestApplied")</option>
+                        <option value="OldestApplied" selected="@(Model.SortOrder == "OldestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.OldestApplied")</option>
+                        <option value="HighestScore" selected="@(Model.SortOrder == "HighestScore")">@T("Plugins.Misc.AIInterview.History.Sort.HighestScore")</option>
+                        <option value="LowestScore" selected="@(Model.SortOrder == "LowestScore")">@T("Plugins.Misc.AIInterview.History.Sort.LowestScore")</option>
+                        <option value="LatestInterviewDate" selected="@(Model.SortOrder == "LatestInterviewDate")">@T("Plugins.Misc.AIInterview.History.Sort.LatestInterviewDate")</option>
+                    </select>
+                </div>
+            </div>
 
-        @if (Model.Applications.Any())
-        {
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>@T("Plugins.Misc.AIInterview.MyApplications.JobTitle")</th>
-                        <th>@T("Plugins.Misc.AIInterview.MyApplications.AppliedDate")</th>
-                        <th>@T("Plugins.Misc.AIInterview.MyApplications.AttemptCount")</th>
-                        <th>@T("Plugins.Misc.AIInterview.MyApplications.LatestScoreDate")</th>
-                        <th>@T("Plugins.Misc.AIInterview.MyApplications.Score")</th>
-                        <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
-                        <th>@T("Plugins.Misc.AIInterview.History.Actions")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var app in Model.Applications)
-                    {
+            @if (Model.Applications.Any())
+            {
+                <table class="applications-table">
+                    <thead>
                         <tr>
-                            <td>@app.JobTitle</td>
-                            <td>@app.CreatedOn.ToString("g")</td>
-                            <td>@app.AttemptCount</td>
-                            <td>@(app.LatestScoreDate.HasValue ? app.LatestScoreDate.Value.ToString("g") : "-")</td>
-                            <td>@(app.InterviewScore.HasValue ? app.InterviewScore.Value.ToString("N2") : "-")</td>
-                            <td>@app.Status</td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
-                                {
-                                    <a href="@app.InterviewReportUrl">@T("Plugins.Misc.AIInterview.History.ViewReport")</a>
-                                }
-                            </td>
+                            <th>Job</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                            <th>Completed (UTC)</th>
+                            <th>Report</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
-        }
-        else
-        {
-            <p>@T("Plugins.Misc.AIInterview.History.NoSessions")</p>
-        }
+                    </thead>
+                    <tbody>
+                        @foreach (var app in Model.Applications)
+                        {
+                            var metrics = app.QuestionScoreValues?.Take(3).ToList() ?? new List<decimal>();
+                            <tr>
+                                <td>
+                                    <div><strong>@app.JobTitle</strong></div>
+                                    <div class="applications-footnote">Applied @app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</div>
+                                </td>
+                                <td>
+                                    @if (app.InterviewScore.HasValue)
+                                    {
+                                        <span class="score-chip">@Math.Round(app.InterviewScore.Value)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td><span class="status-pill">@app.Status</span></td>
+                                <td>@(app.CompletedOn.HasValue ? app.CompletedOn.Value.ToString("yyyy-MM-dd HH:mm:ss") + "Z" : "-")</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
+                                    {
+                                        <a href="@app.InterviewReportUrl">Open report</a>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                            </tr>
+                            @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
+                            {
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="report-preview">
+                                            <h3>Interview Report - Attempt @app.Id</h3>
+                                            <div class="report-metrics">
+                                                <div class="report-metric">
+                                                    <div class="report-metric-label">Overall</div>
+                                                    <div class="report-metric-value">@(app.InterviewScore.HasValue ? Math.Round(app.InterviewScore.Value).ToString() : "-")</div>
+                                                </div>
+                                                <div class="report-metric">
+                                                    <div class="report-metric-label">Q1 Relevancy</div>
+                                                    <div class="report-metric-value">@(metrics.Count > 0 ? Math.Round(metrics[0]).ToString() : "-")</div>
+                                                </div>
+                                                <div class="report-metric">
+                                                    <div class="report-metric-label">Q1 Correctness</div>
+                                                    <div class="report-metric-value">@(metrics.Count > 1 ? Math.Round(metrics[1]).ToString() : "-")</div>
+                                                </div>
+                                                <div class="report-metric">
+                                                    <div class="report-metric-label">Q1 Answer Score</div>
+                                                    <div class="report-metric-value">@(metrics.Count > 2 ? $"{Math.Round(metrics[2] / 5m, 1)}/20" : "-")</div>
+                                                </div>
+                                            </div>
+                                            <div class="report-copy">
+                                                @if (!string.IsNullOrWhiteSpace(app.ReportSummary))
+                                                {
+                                                    <p><strong>Summary:</strong> @app.ReportSummary</p>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(app.FeedbackSummary))
+                                                {
+                                                    <p><strong>AI feedback:</strong> @app.FeedbackSummary</p>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+
+                <div class="applications-footnote">
+                    Represents the updated customer-side history with overall results and per-question AI evaluation details.
+                </div>
+            }
+            else
+            {
+                <p>@T("Plugins.Misc.AIInterview.History.NoSessions")</p>
+            }
+        </div>
     </div>
 </div>

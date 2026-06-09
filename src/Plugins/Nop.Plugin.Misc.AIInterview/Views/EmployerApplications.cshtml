@@ -1,8 +1,22 @@
 @model ApplicationListModel
 @using Nop.Plugin.Misc.AIInterview.Domain
 @using Nop.Web.Models.Customer
+
 @{
     Layout = "_ColumnsTwo";
+
+    string GetStatusLabel(string status) => status switch
+    {
+        "Pending" => "Pending",
+        "Applied" => "Applied",
+        "InProgress" => "In Progress",
+        "Completed" => "Completed",
+        "Reviewed" => "Reviewed",
+        "Shortlisted" => "Shortlisted",
+        "Rejected" => "Rejected",
+        "Withdrawn" => "Withdrawn",
+        _ => status
+    };
 }
 
 @section left
@@ -10,61 +24,388 @@
     @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.EmployerApplicationsNavigationTab })
 }
 
-<div class="page employer-applications">
+<style>
+    .employer-applications-page {
+        display: grid;
+        gap: 22px;
+    }
+
+    .employer-applications-page .button-1,
+    .employer-applications-page .button-2 {
+        border-radius: 10px;
+        font-weight: 600;
+    }
+
+    .employer-applications-page .button-1 {
+        background: #0f5bd7;
+        color: #fff;
+    }
+
+    .employer-applications-page .button-2 {
+        background: #eef4ff;
+        color: #0f5bd7;
+        border: 1px solid #c9dafd;
+    }
+
+    .employer-card {
+        padding: 24px;
+        border: 1px solid #dbe3ef;
+        border-radius: 24px;
+        background: #fff;
+        box-shadow: 0 18px 40px rgba(15, 35, 64, 0.08);
+    }
+
+    .employer-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(180px, 1fr));
+        gap: 16px 18px;
+        margin-bottom: 18px;
+        align-items: end;
+    }
+
+    .employer-field {
+        display: grid;
+        gap: 8px;
+        max-width: 240px;
+    }
+
+    .employer-field input,
+    .employer-field select {
+        width: 100%;
+        min-height: 50px;
+        padding: 12px 14px;
+        border: 1px solid #cfd7e6;
+        border-radius: 12px;
+        box-sizing: border-box;
+        font-size: 14px;
+        line-height: 1.3;
+    }
+
+    .employer-field select {
+        padding-right: 36px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .employer-filter-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 18px;
+    }
+
+    .filter-summary,
+    .page-size-wrap {
+        color: #5f6f85;
+    }
+
+    .results-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .employer-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 13px;
+    }
+
+    .employer-table th,
+    .employer-table td {
+        padding: 10px 8px;
+        text-align: left;
+        border-top: 1px solid #e7edf6;
+        vertical-align: top;
+        line-height: 1.45;
+        word-break: break-word;
+    }
+
+    .employer-table thead th {
+        color: #213147;
+        font-size: 12px;
+        white-space: normal;
+    }
+
+    .score-badge,
+    .charge-pill {
+        display: inline-flex;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 12px;
+    }
+
+    .score-badge {
+        background: #e8f0ff;
+        color: #0f5bd7;
+    }
+
+    .charge-pill {
+        background: #eef7ee;
+        color: #0c6b39;
+        font-weight: 600;
+    }
+
+    .status-form {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .status-form select,
+    .status-form input {
+        width: 100%;
+        min-height: 42px;
+        padding: 9px 11px;
+        border: 1px solid #cfd7e6;
+        border-radius: 10px;
+        box-sizing: border-box;
+        font-size: 13px;
+    }
+
+    .status-form .button-2 {
+        min-height: 40px;
+        padding: 9px 12px;
+        font-size: 13px;
+    }
+
+    .employer-table th:nth-child(1),
+    .employer-table td:nth-child(1) {
+        width: 10%;
+    }
+
+    .employer-table th:nth-child(2),
+    .employer-table td:nth-child(2) {
+        width: 13%;
+    }
+
+    .employer-table th:nth-child(3),
+    .employer-table td:nth-child(3) {
+        width: 8%;
+    }
+
+    .employer-table th:nth-child(4),
+    .employer-table td:nth-child(4) {
+        width: 8%;
+    }
+
+    .employer-table th:nth-child(5),
+    .employer-table td:nth-child(5) {
+        width: 9%;
+    }
+
+    .employer-table th:nth-child(6),
+    .employer-table td:nth-child(6) {
+        width: 7%;
+    }
+
+    .employer-table th:nth-child(7),
+    .employer-table td:nth-child(7) {
+        width: 6%;
+    }
+
+    .employer-table th:nth-child(8),
+    .employer-table td:nth-child(8) {
+        width: 10%;
+    }
+
+    .employer-table th:nth-child(9),
+    .employer-table td:nth-child(9) {
+        width: 13%;
+    }
+
+    .employer-table th:nth-child(10),
+    .employer-table td:nth-child(10) {
+        width: 12%;
+    }
+
+    .employer-table th:nth-child(11),
+    .employer-table td:nth-child(11) {
+        width: 4%;
+    }
+
+    @@media (max-width: 1200px) {
+        .employer-filter-grid {
+            grid-template-columns: repeat(3, minmax(180px, 1fr));
+        }
+    }
+
+    @@media (max-width: 860px) {
+        .employer-filter-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .employer-field {
+            max-width: none;
+        }
+    }
+
+    @@media (max-width: 640px) {
+        .employer-filter-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="page employer-applications-page">
     <div class="page-title">
         <h1>@T("Plugins.Misc.AIInterview.Employer.Applications.Title")</h1>
-        <div class="export-csv">
-            <a href="@Url.RouteUrl("Plugin.Misc.AIInterview.ExportCsv")" class="button-2">@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")</a>
-        </div>
     </div>
     <div class="page-body">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>@T("Plugins.Misc.AIInterview.Employer.Applications.JobTitle")</th>
-                    <th>@T("Plugins.Misc.AIInterview.Employer.Applications.Candidate")</th>
-                    <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
-                    <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
-                    <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
-                    <th>@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</th>
-                    <th>@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>
-                    <th>@T("Plugins.Misc.AIInterview.Employer.Applications.PromptSource")</th>
-                    <th>@T("Plugins.Misc.AIInterview.History.Actions")</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var app in Model.Applications)
-                {
-                    <tr>
-                        <td>@app.JobTitle</td>
-                        <td>@app.CandidateName (@app.CandidateEmail)</td>
-                        <td>
-                            <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post">
-                                <input type="hidden" name="Id" value="@app.Id" />
-                                <select name="Status">
-                                    @foreach (var status in JobApplicationStatuses.All)
-                                    {
-                                        <option value="@status" selected="@(app.RawStatus == status)">@T($"Plugins.Misc.AIInterview.Status.{status}")</option>
-                                    }
-                                </select>
-                                <input type="text" name="StatusComment" value="@app.StatusComment" placeholder="@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")" />
-                                <button type="submit" class="button-2">@T("Plugins.Misc.AIInterview.Employer.Applications.Update")</button>
-                            </form>
-                        </td>
-                        <td>@app.InterviewScore</td>
-                        <td>@app.CreatedOn.ToString("yyyy-MM-dd")</td>
-                        <td>@app.ChargeMode</td>
-                        <td>@app.AttemptCount</td>
-                        <td>@app.PromptSource</td>
-                        <td>
-                            @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
+        <div class="employer-card">
+            <form method="get" asp-action="EmployerApplications">
+                <div class="employer-filter-grid">
+                    <div class="employer-field">
+                        <label for="CandidateNameOrEmail">Candidate</label>
+                        <input id="CandidateNameOrEmail" name="CandidateNameOrEmail" value="@Model.CandidateNameOrEmail" />
+                    </div>
+                    <div class="employer-field">
+                        <label for="Status">Status</label>
+                        <select id="Status" name="Status">
+                            <option value="">All</option>
+                            @foreach (var status in JobApplicationStatuses.All)
                             {
-                                <a href="@app.InterviewReportUrl">@T("Plugins.Misc.AIInterview.History.ViewReport")</a>
+                                <option value="@status" selected="@(Model.Status == status)">@GetStatusLabel(status)</option>
                             }
-                        </td>
+                        </select>
+                    </div>
+                    <div class="employer-field">
+                        <label for="InterviewSort">Interview sorting</label>
+                        <select id="InterviewSort" name="InterviewSort">
+                            <option value="TopScorersFirst" selected="@(Model.InterviewSort == "TopScorersFirst")">Top scorers first</option>
+                            <option value="LowestScorersFirst" selected="@(Model.InterviewSort == "LowestScorersFirst")">Lowest scorers first</option>
+                            <option value="LatestApplied" selected="@(Model.InterviewSort == "LatestApplied")">Latest applied first</option>
+                        </select>
+                    </div>
+                    <div class="employer-field">
+                        <label for="MinScore">Minimum score</label>
+                        <input id="MinScore" name="MinScore" type="number" min="0" max="100" value="@Model.MinScore" />
+                    </div>
+                    <div class="employer-field">
+                        <label for="MaxScore">Maximum score</label>
+                        <input id="MaxScore" name="MaxScore" type="number" min="0" max="100" value="@Model.MaxScore" />
+                    </div>
+                    <div class="employer-field">
+                        <label for="StartDate">Applied from (UTC)</label>
+                        <input id="StartDate" name="StartDate" type="date" value="@(Model.StartDate?.ToString("yyyy-MM-dd"))" />
+                    </div>
+                    <div class="employer-field">
+                        <label for="EndDate">Applied to (UTC)</label>
+                        <input id="EndDate" name="EndDate" type="date" value="@(Model.EndDate?.ToString("yyyy-MM-dd"))" />
+                    </div>
+                    <div class="employer-field">
+                        <label for="PageSize">Page size</label>
+                        <select id="PageSize" name="PageSize">
+                            <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                            <option value="20" selected="@(Model.PageSize == 20)">20</option>
+                            <option value="50" selected="@(Model.PageSize == 50)">50</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="employer-filter-actions">
+                    <label>
+                        <input type="checkbox" name="OnlyWithInterviewScore" value="true" checked="@Model.OnlyWithInterviewScore" />
+                        Only candidates with interview score
+                    </label>
+                </div>
+
+                <div class="employer-filter-actions">
+                    <button type="submit" class="button-1">Apply filters</button>
+                    <a class="button-2" href="@Url.Action("EmployerApplications")">Reset</a>
+                    <a class="button-2" href="@Url.RouteUrl("Plugin.Misc.AIInterview.ExportCsv", new {
+                        CandidateNameOrEmail = Model.CandidateNameOrEmail,
+                        Status = Model.Status,
+                        MinScore = Model.MinScore,
+                        MaxScore = Model.MaxScore,
+                        StartDate = Model.StartDate?.ToString("o"),
+                        EndDate = Model.EndDate?.ToString("o"),
+                        SortByScore = Model.SortByScore
+                    })">@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")</a>
+                </div>
+            </form>
+
+            <div class="results-toolbar">
+                <div class="filter-summary">
+                    Showing @Model.TotalCount filtered result(s)
+                </div>
+                <div class="page-size-wrap">
+                    Page size @Model.PageSize
+                </div>
+            </div>
+
+            <table class="employer-table">
+                <thead>
+                    <tr>
+                        <th>Candidate</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Charge mode</th>
+                        <th>Prompt source</th>
+                        <th>Interview score</th>
+                        <th>Attempts</th>
+                        <th>Applied on</th>
+                        <th>Cover message</th>
+                        <th>Status</th>
+                        <th>Report</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var app in Model.Applications)
+                    {
+                        <tr>
+                            <td>@app.CandidateName</td>
+                            <td>@app.CandidateEmail</td>
+                            <td>@app.CandidatePhone</td>
+                            <td><span class="charge-pill">@app.ChargeMode</span></td>
+                            <td>@app.PromptSource</td>
+                            <td>
+                                @if (app.InterviewScore.HasValue)
+                                {
+                                    <span class="score-badge">@Math.Round(app.InterviewScore.Value)</span>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td>@app.AttemptCount</td>
+                            <td>@app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                            <td>@app.CoverMessage</td>
+                            <td>
+                                <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post" class="status-form">
+                                    <input type="hidden" name="Id" value="@app.Id" />
+                                    <select name="Status">
+                                        @foreach (var status in JobApplicationStatuses.All)
+                                        {
+                                            <option value="@status" selected="@(app.RawStatus == status)">@GetStatusLabel(status)</option>
+                                        }
+                                    </select>
+                                    <input type="text" name="StatusComment" value="@app.StatusComment" placeholder="@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")" />
+                                    <button type="submit" class="button-2">@T("Plugins.Misc.AIInterview.Employer.Applications.Update")</button>
+                                </form>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(app.InterviewReportUrl))
+                                {
+                                    <a href="@app.InterviewReportUrl">Open report</a>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

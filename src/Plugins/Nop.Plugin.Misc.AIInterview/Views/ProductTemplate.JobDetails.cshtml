@@ -1,54 +1,781 @@
 @model Nop.Web.Models.Catalog.ProductDetailsModel
 
+@using Nop.Core.Domain.Catalog
+@using Nop.Core.Domain.Orders
+@using Nop.Core.Domain.Seo
+@using Nop.Core.Domain.Customers
+@using Nop.Core
+@using Nop.Core.Http
+@using Nop.Services.Helpers
+@using Nop.Services.Html
+@using Nop.Services.Media
+@using Nop.Services.Orders
+@using Nop.Services.Stores
+@using Nop.Services.Vendors
 @using Nop.Web.Components
 @using Nop.Web.Framework.Infrastructure
+@using Nop.Plugin.Misc.AIInterview.Components
+@using Nop.Plugin.Misc.AIInterview.Services
+
+@inject IApplicationService applicationService
+@inject IHtmlFormatter htmlFormatter
+@inject IWebHelper webHelper
+@inject SeoSettings seoSettings
+@inject IWorkContext workContext
+@inject IStoreContext storeContext
+@inject IShoppingCartService shoppingCartService
+@inject IVendorService vendorService
+@inject IPictureService pictureService
 
 @{
     Layout = "_ColumnsOne";
+
     NopHtml.AddTitleParts(!string.IsNullOrEmpty(Model.MetaTitle) ? Model.MetaTitle : Model.Name);
     NopHtml.AddMetaDescriptionParts(Model.MetaDescription);
     NopHtml.AddMetaKeywordParts(Model.MetaKeywords);
     NopHtml.AppendPageCssClassParts("html-job-details-page");
+
+    if (seoSettings.CanonicalUrlsEnabled)
+    {
+        var productUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol())?.ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(productUrl))
+            NopHtml.AddCanonicalUrlParts(productUrl, seoSettings.QueryStringInCanonicalUrlsEnabled);
+    }
+
+    NopHtml.AddJsonLdParts(Model.JsonLd);
+
+    var specificationGroups = Model.ProductSpecificationModel?.Groups
+        ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeGroupModel>();
+    var specificationAttributes = specificationGroups
+        .SelectMany(group => group.Attributes ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeModel>())
+        .ToList();
+
+    Nop.Web.Models.Catalog.ProductSpecificationAttributeModel FindSpecificationAttribute(params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var match = specificationAttributes.FirstOrDefault(specificationAttribute =>
+                string.Equals(specificationAttribute.Name, key, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+                return match;
+        }
+
+        return null;
+    }
+
+    string GetSpecificationValue(Nop.Web.Models.Catalog.ProductSpecificationAttributeModel specificationAttribute)
+    {
+        if (specificationAttribute?.Values?.Any() != true)
+            return string.Empty;
+
+        return string.Join(", ", specificationAttribute.Values
+            .Select(value => htmlFormatter.StripTags(value.ValueRaw)?.Trim())
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    var heroAttributeNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "Experience Level",
+        "Experience",
+        "Work Arrangement",
+        "Work Mode",
+        "Work Type",
+        "Employment Type",
+        "Location",
+        "Job Location",
+        "Salary Range",
+        "Compensation"
+    };
+
+    var experienceLevel = GetSpecificationValue(FindSpecificationAttribute("Experience Level", "Experience"));
+    var workMode = GetSpecificationValue(FindSpecificationAttribute("Work Arrangement", "Work Mode", "Work Type"));
+    var employmentType = GetSpecificationValue(FindSpecificationAttribute("Employment Type"));
+    var location = GetSpecificationValue(FindSpecificationAttribute("Job Location", "Location"));
+    var salaryRange = GetSpecificationValue(FindSpecificationAttribute("Salary Range", "Compensation"));
+    var applyUntil = Model.AvailableEndDate?.ToString("yyyy-MM-dd");
+
+    var heroMetadata = new List<(string Label, string Value)>
+    {
+        ("Experience Level", experienceLevel),
+        ("Work Arrangement", workMode),
+        ("Employment Type", employmentType),
+        ("Apply Until", applyUntil),
+        ("Job Location", location),
+        ("Salary Range", salaryRange)
+    }.Where(item => !string.IsNullOrWhiteSpace(item.Value)).ToList();
+
+    var filteredSpecificationGroups = specificationGroups
+        .Select(group => new
+        {
+            GroupId = group.Id,
+            GroupName = group.Name,
+            Attributes = (group.Attributes ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeModel>())
+                .Where(specificationAttribute => !heroAttributeNames.Contains(specificationAttribute.Name ?? string.Empty))
+                .Where(specificationAttribute => specificationAttribute.Values?.Any(value =>
+                    !string.IsNullOrWhiteSpace(htmlFormatter.StripTags(value.ValueRaw)?.Trim()) ||
+                    (!string.IsNullOrWhiteSpace(value.ColorSquaresRgb) && value.AttributeTypeId == (int)SpecificationAttributeType.Option)) == true)
+                .ToList()
+        })
+        .Where(group => group.Attributes.Any())
+        .ToList();
+
+    var applications = await applicationService.GetApplicationsAsync(productId: Model.Id, pageSize: int.MaxValue);
+    var candidateCount = applications.Count;
+    var currentCustomer = await workContext.GetCurrentCustomerAsync();
+    var currentStore = await storeContext.GetCurrentStoreAsync();
+    var isSavedJob = currentCustomer != null
+        && (await shoppingCartService.GetShoppingCartAsync(currentCustomer, ShoppingCartType.Wishlist, currentStore.Id, Model.Id, customWishlistId: 0)).Any();
+
+    var highlights = System.Text.RegularExpressions.Regex.Matches(Model.FullDescription ?? string.Empty, "<li>(.*?)</li>", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+        .Select(match => htmlFormatter.StripTags(match.Groups[1].Value).Trim())
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Take(5)
+        .ToList();
+
+    if (!highlights.Any() && !string.IsNullOrWhiteSpace(Model.ShortDescription))
+        highlights.Add(htmlFormatter.StripTags(Model.ShortDescription));
+
+    var skillValues = GetSpecificationValue(FindSpecificationAttribute("Skills", "Skill Set"));
+    var skills = !string.IsNullOrWhiteSpace(skillValues)
+        ? skillValues.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+        : Model.ProductTags.Select(tag => tag.Name).Where(name => !string.IsNullOrWhiteSpace(name)).ToList();
+
+    var emailFriendUrl = Model.EmailAFriendEnabled
+        ? Url.RouteUrl(NopRouteNames.Standard.PRODUCT_EMAIL_FRIEND, new { productId = Model.Id })
+        : string.Empty;
+    var productPageUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol()) ?? webHelper.GetThisPageUrl(false);
+    var customWishlistId = webHelper.QueryString<string>("customwishlistid");
+    var vendorPictureUrl = Model.DefaultPictureModel.ImageUrl;
+    var vendorDisplayName = Model.ShowVendor ? Model.VendorModel?.Name : string.Empty;
+
+    if (Model.ShowVendor && Model.VendorModel?.Id > 0)
+    {
+        var vendor = await vendorService.GetVendorByIdAsync(Model.VendorModel.Id);
+        if (vendor?.PictureId > 0)
+        {
+            var vendorPicture = await pictureService.GetPictureByIdAsync(vendor.PictureId);
+            if (vendorPicture != null)
+            {
+                (vendorPictureUrl, _) = await pictureService.GetPictureUrlAsync(vendorPicture, 220, true);
+            }
+        }
+    }
 }
 
 @section Breadcrumb
 {
-    @await Html.PartialAsync("~/Views/Product/_ProductBreadcrumb.cshtml", Model.Breadcrumb)
+    @await Html.PartialAsync("_ProductBreadcrumb", Model.Breadcrumb)
 }
 
+<style>
+    .job-details-page {
+        --job-bg: #f5f7fb;
+        --job-card: #ffffff;
+        --job-border: #dbe3ef;
+        --job-text: #132238;
+        --job-muted: #5f6f85;
+        --job-primary: #0f5bd7;
+        --job-primary-strong: #0b47a8;
+        --job-secondary: #eef4ff;
+        --job-shadow: 0 18px 40px rgba(15, 35, 64, 0.08);
+    }
+
+    .job-details-page .page-body {
+        display: grid;
+        gap: 28px;
+    }
+
+    .job-shell {
+        display: grid;
+        gap: 24px;
+    }
+
+    .job-shell .button-1,
+    .job-shell .button-2,
+    .job-shell button,
+    .job-shell .btn {
+        border: 0;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .job-shell .button-1,
+    .job-shell .btn-primary {
+        background: var(--job-primary);
+        color: #fff;
+        box-shadow: 0 10px 24px rgba(15, 91, 215, 0.18);
+    }
+
+    .job-shell .button-1:hover,
+    .job-shell .btn-primary:hover {
+        background: var(--job-primary-strong);
+    }
+
+    .job-shell .button-2,
+    .job-shell .btn-secondary {
+        background: var(--job-secondary);
+        color: var(--job-primary);
+        border: 1px solid #c9dafd;
+    }
+
+    .job-shell .button-2:hover,
+    .job-shell .btn-secondary:hover {
+        background: #dfeafe;
+    }
+
+    .job-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(330px, 420px);
+        gap: 28px;
+        padding: 32px;
+        border: 1px solid var(--job-border);
+        border-radius: 28px;
+        background: linear-gradient(180deg, #ffffff 0%, var(--job-bg) 100%);
+        box-shadow: var(--job-shadow);
+    }
+
+    .job-hero-copy,
+    .job-main {
+        display: grid;
+        gap: 20px;
+    }
+
+    .job-kicker {
+        display: inline-flex;
+        width: fit-content;
+        padding: 7px 14px;
+        border-radius: 999px;
+        background: #e8f0ff;
+        color: var(--job-primary);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .job-company {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        width: fit-content;
+        padding: 12px 16px;
+        border: 1px solid var(--job-border);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 12px 28px rgba(15, 35, 64, 0.06);
+    }
+
+    .job-company-logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+        object-fit: cover;
+        border: 1px solid var(--job-border);
+        background: #fff;
+    }
+
+    .job-company-label {
+        margin-bottom: 4px;
+        color: var(--job-muted);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .job-company-name {
+        color: var(--job-text);
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .job-title h1 {
+        margin: 0;
+        color: var(--job-text);
+        font-size: clamp(34px, 4vw, 50px);
+        line-height: 1.08;
+    }
+
+    .job-summary {
+        margin: 0;
+        color: var(--job-muted);
+        font-size: 17px;
+        line-height: 1.8;
+    }
+
+    .job-overview-meta,
+    .job-action-links,
+    .job-skills,
+    .job-meta-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .job-pill,
+    .job-action-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border: 1px solid var(--job-border);
+        border-radius: 14px;
+        background: #fff;
+        color: var(--job-text);
+        text-decoration: none;
+    }
+
+    .job-action-link {
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .job-action-link:hover {
+        border-color: #b8cdf7;
+        color: var(--job-primary);
+    }
+
+    .job-action-link.is-saved {
+        background: #ecfdf3;
+        border-color: #abefc6;
+        color: #027a48;
+    }
+
+    .job-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .job-fact,
+    .job-card,
+    .job-reviews-wrap {
+        padding: 24px;
+        border: 1px solid var(--job-border);
+        border-radius: 24px;
+        background: var(--job-card);
+        box-shadow: var(--job-shadow);
+    }
+
+    .job-fact-label {
+        margin-bottom: 8px;
+        color: var(--job-muted);
+        font-size: 14px;
+    }
+
+    .job-fact-value {
+        color: var(--job-text);
+        font-size: 30px;
+        font-weight: 700;
+    }
+
+    .job-fact-value.small {
+        font-size: 20px;
+    }
+
+    .job-meta-item {
+        min-width: 180px;
+        padding: 16px 18px;
+        border: 1px solid var(--job-border);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 12px 28px rgba(15, 35, 64, 0.06);
+    }
+
+    .job-meta-item .job-fact-label {
+        margin-bottom: 6px;
+    }
+
+    .job-section-title {
+        margin: 0 0 14px;
+        color: var(--job-text);
+        font-size: 28px;
+    }
+
+    .job-card p,
+    .job-card li {
+        color: var(--job-text);
+        line-height: 1.8;
+    }
+
+    .job-card ul {
+        margin: 0;
+        padding-left: 22px;
+    }
+
+    .job-skills span {
+        display: inline-flex;
+        padding: 9px 14px;
+        border-radius: 999px;
+        background: #edf3ff;
+        color: var(--job-primary-strong);
+        font-weight: 600;
+    }
+
+    .job-content-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.9fr);
+        gap: 24px;
+    }
+
+    .job-spec-groups {
+        display: grid;
+        gap: 18px;
+    }
+
+    .job-spec-group {
+        display: grid;
+        gap: 12px;
+    }
+
+    .job-spec-group-name {
+        color: var(--job-text);
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .job-spec-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+    }
+
+    .job-spec-item {
+        padding: 16px 18px;
+        border: 1px solid var(--job-border);
+        border-radius: 18px;
+        background: #f9fbff;
+    }
+
+    .job-spec-label {
+        margin-bottom: 8px;
+        color: var(--job-muted);
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .job-spec-value {
+        color: var(--job-text);
+        line-height: 1.7;
+    }
+
+    .job-spec-value .attribute-squares {
+        margin-top: 4px;
+    }
+
+    .job-reviews-wrap .product-reviews {
+        padding: 0;
+        border: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    .job-review-overview {
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
+    @@media (max-width: 1080px) {
+        .job-hero,
+        .job-content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 720px) {
+        .job-hero,
+        .job-fact,
+        .job-card,
+        .job-reviews-wrap {
+            padding: 20px;
+        }
+
+        .job-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsAfterBreadcrumb, additionalData = Model })
+
 <div class="page product-details-page job-details-page">
-    <div class="page-title">
-        <h1>@Model.Name</h1>
-    </div>
     <div class="page-body">
-        @if (Model.ShowVendor && !string.IsNullOrWhiteSpace(Model.VendorModel?.Name))
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsTop, additionalData = Model })
+        <form asp-route="Product" asp-route-sename="@Model.SeName" method="post" id="product-details-form">
+            <article data-productid="@Model.Id" class="job-shell">
+                <section class="job-hero">
+                    <div class="job-hero-copy">
+                        <span class="job-kicker">AI Interview Role</span>
+                        @if (!string.IsNullOrWhiteSpace(vendorDisplayName))
+                        {
+                            <div class="job-company">
+                                <img class="job-company-logo" src="@vendorPictureUrl" alt="@vendorDisplayName" />
+                                <div>
+                                    <div class="job-company-label">Hiring Company</div>
+                                    <div class="job-company-name">@vendorDisplayName</div>
+                                </div>
+                            </div>
+                        }
+                        <div class="job-title">
+                            <h1>@Model.Name</h1>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(Model.ShortDescription))
+                        {
+                            <p class="job-summary">@Html.Raw(Model.ShortDescription)</p>
+                        }
+
+                        <div class="job-overview-meta">
+                            <span class="job-pill"><strong>Candidates</strong> @candidateCount applied</span>
+                        </div>
+
+                        @await Html.PartialAsync("_ProductReviewOverview", Model.ProductReviewOverview)
+
+                        <div class="job-action-links">
+                            @if (!string.IsNullOrWhiteSpace(emailFriendUrl))
+                            {
+                                <a class="job-action-link" href="@emailFriendUrl">Email a friend</a>
+                            }
+                            @if (!Model.AddToCart.DisableWishlistButton)
+                            {
+                                <button type="button"
+                                        id="job-save-button"
+                                        class="job-action-link @(isSavedJob ? "is-saved" : null)"
+                                        data-saved-text="Saved job"
+                                        data-default-text="Save job"
+                                        data-url="@Url.RouteUrl(NopRouteNames.Ajax.ADD_PRODUCT_TO_CART_DETAILS, new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.Wishlist, customwishlistid = customWishlistId })"
+                                        @(isSavedJob ? "disabled" : null)>
+                                    @(isSavedJob ? "Saved job" : "Save job")
+                                </button>
+                                @await Html.PartialAsync("~/Views/Shared/_MoveToWishlistModal.cshtml", Model.AddToCart.ProductToWishlist)
+                                <button type="button"
+                                        id="job-custom-wishlist-button"
+                                        class="job-action-link"
+                                        @(isSavedJob ? null : "disabled")>
+                                    Save to custom wishlist
+                                </button>
+                            }
+                            <button type="button" class="job-action-link" id="share-job-button" data-share-url="@productPageUrl" data-share-title="@Model.Name">Share job</button>
+                        </div>
+
+                        @if (heroMetadata.Any())
+                        {
+                            <div class="job-grid">
+                                @foreach (var item in heroMetadata)
+                                {
+                                    <div class="job-meta-item">
+                                        <div class="job-fact-label">@item.Label</div>
+                                        <div class="job-fact-value small">@item.Value</div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <div>
+                        @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
+                        {
+                            widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
+                            additionalData = Model
+                        })
+                    </div>
+                </section>
+
+                <section class="job-content-grid">
+                    <div class="job-main">
+                        @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
+                        {
+                            <section class="job-card">
+                                <h2 class="job-section-title">Job Description</h2>
+                                <div class="full-description">
+                                    @Html.Raw(Model.FullDescription)
+                                </div>
+                            </section>
+                        }
+
+                        <section class="job-card">
+                            <h2 class="job-section-title">Role Highlights</h2>
+                            @if (highlights.Any())
+                            {
+                                <ul>
+                                    @foreach (var highlight in highlights)
+                                    {
+                                        <li>@highlight</li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p>Key responsibilities and outcomes will be discussed during the interview process.</p>
+                            }
+                        </section>
+                    </div>
+
+                    <div class="job-main">
+                        <section class="job-card">
+                            <h2 class="job-section-title">Skills</h2>
+                            @if (skills.Any())
+                            {
+                                <div class="job-skills">
+                                    @foreach (var skill in skills)
+                                    {
+                                        <span>@skill</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <p>Skills will be evaluated during the AI interview.</p>
+                            }
+                        </section>
+
+                        <section class="job-card">
+                            <h2 class="job-section-title">Job Details</h2>
+                            @if (filteredSpecificationGroups.Any())
+                            {
+                                <div class="job-spec-groups">
+                                    @foreach (var group in filteredSpecificationGroups)
+                                    {
+                                        <div class="job-spec-group">
+                                            @if (group.GroupId > 0 && !string.IsNullOrWhiteSpace(group.GroupName))
+                                            {
+                                                <div class="job-spec-group-name">@group.GroupName</div>
+                                            }
+                                            <div class="job-spec-grid">
+                                                @foreach (var specificationAttribute in group.Attributes)
+                                                {
+                                                    <div class="job-spec-item">
+                                                        <div class="job-spec-label">@specificationAttribute.Name</div>
+                                                        <div class="job-spec-value">
+                                                            @for (int i = 0; i < specificationAttribute.Values.Count; i++)
+                                                            {
+                                                                var value = specificationAttribute.Values[i];
+
+                                                                if (!string.IsNullOrEmpty(value.ColorSquaresRgb) && value.AttributeTypeId == (int)SpecificationAttributeType.Option)
+                                                                {
+                                                                    <div class="attribute-squares color-squares attribute-squares-padding">
+                                                                        <span class="attribute-square-container" title="@Html.Raw(value.ValueRaw)">
+                                                                            <span class="attribute-square" style="background-color: @(value.ColorSquaresRgb);">&nbsp;</span>
+                                                                        </span>
+                                                                    </div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @Html.Raw(value.ValueRaw)
+                                                                    if (i != specificationAttribute.Values.Count - 1)
+                                                                    {
+                                                                        <text>, </text>
+                                                                    }
+                                                                }
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            @await Html.PartialAsync("_ProductTags", Model.ProductTags)
+                        </section>
+                    </div>
+                </section>
+
+                @await Component.InvokeAsync(typeof(ProductsAlsoPurchasedViewComponent), new { productId = Model.Id })
+                @await Component.InvokeAsync(typeof(RelatedProductsViewComponent), new { productId = Model.Id })
+                @await Component.InvokeAsync(typeof(CompatibleWithFilterLevelValuesViewComponent), new { productId = Model.Id })
+            </article>
+        </form>
+
+        @if (Model.ProductReviewOverview.AllowCustomerReviews)
         {
-            <div class="job-employer">
-                <strong>@T("Products.Vendor"):</strong> @Model.VendorModel.Name
+            <div id="product-reviews" class="job-reviews-wrap">
+                @await Html.PartialAsync("_ProductReviews", Model.ProductReviews)
             </div>
         }
 
-        @if (Model.ShowSku && !string.IsNullOrWhiteSpace(Model.Sku))
-        {
-            <div class="job-reference">
-                <strong>@T("Products.Sku"):</strong> @Model.Sku
-            </div>
-        }
-
-        @if (!string.IsNullOrWhiteSpace(Model.ShortDescription))
-        {
-            <div class="short-description">@Html.Raw(Model.ShortDescription)</div>
-        }
-
-        @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
-        {
-            <div class="full-description">@Html.Raw(Model.FullDescription)</div>
-        }
-
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new
-        {
-            widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
-            additionalData = Model
-        })
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsBottom, additionalData = Model })
     </div>
 </div>
+
+<script asp-location="Footer">
+    (() => {
+        const shareButton = document.getElementById('share-job-button');
+        const saveButton = document.getElementById('job-save-button');
+        const customWishlistButton = document.getElementById('job-custom-wishlist-button');
+
+        const markSaved = () => {
+            if (!saveButton)
+                return;
+
+            saveButton.textContent = saveButton.dataset.savedText || 'Saved job';
+            saveButton.classList.add('is-saved');
+            saveButton.disabled = true;
+
+            if (customWishlistButton)
+                customWishlistButton.disabled = false;
+        };
+
+        if (saveButton) {
+            saveButton.addEventListener('click', () => {
+                window.__jobSavePending = true;
+                AjaxCart.addproducttocart_details(saveButton.dataset.url, '#product-details-form');
+                return false;
+            });
+        }
+
+        if (customWishlistButton) {
+            customWishlistButton.addEventListener('click', () => {
+                if (customWishlistButton.disabled) {
+                    displayBarNotification('Save the job first, then choose a custom wishlist.', 'warning', 3500);
+                    return false;
+                }
+
+                showMoveToWishlistModal(@Model.Id);
+                return false;
+            });
+        }
+
+        if (window.AjaxCart && !window.__jobWishlistHooked) {
+            const originalSuccess = AjaxCart.success_process;
+            AjaxCart.success_process = function(response) {
+                const result = originalSuccess.call(this, response);
+                if (window.__jobSavePending && response && response.success === true) {
+                    markSaved();
+                }
+
+                window.__jobSavePending = false;
+                return result;
+            };
+            window.__jobWishlistHooked = true;
+        }
+
+        if (!shareButton)
+            return;
+
+        shareButton.addEventListener('click', async () => {
+            const shareUrl = shareButton.dataset.shareUrl;
+            const shareTitle = shareButton.dataset.shareTitle;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: shareTitle, url: shareUrl });
+                    return;
+                } catch {
+                }
+            }
+
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(shareUrl);
+                shareButton.textContent = 'Link copied';
+                window.setTimeout(() => shareButton.textContent = 'Share job', 1800);
+                return;
+            }
+
+            window.prompt('Copy this job link', shareUrl);
+        });
+    })();
+</script>

@@ -126,10 +126,11 @@ public class AIInterviewControllerTests
         // Arrange
         _customerService.Setup(x => x.IsAdminAsync(_customer)).ReturnsAsync(true);
         var model = new ApplicationListModel { CandidateNameOrEmail = "John", Status = "Applied" };
-        var applications = new PagedList<JobApplication>(new List<JobApplication> { new JobApplication { Id = 1, CustomerId = 123 } }, 0, 10);
+        model.PageSize = 20;
+        var applications = new PagedList<JobApplication>(new List<JobApplication> { new JobApplication { Id = 1, CustomerId = 123 } }, 0, 20);
 
         _applicationService.Setup(x => x.GetApplicationsAsync(
-            "John", "Applied", null, null, null, null, 0, 0, 0, 10, false))
+            "John", "Applied", null, null, null, null, 0, 0, 0, 20, false))
             .ReturnsAsync(applications);
 
         _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>())).ReturnsAsync(new List<Customer> { _customer });

@@ -1,24 +1,280 @@
 @model Nop.Plugin.Misc.AIInterview.Domain.InterviewSession
 @{
-    Layout = "_ColumnsTwo";
+    Layout = "_Root.Head";
 }
-<div class="page mock-runtime">
-    <div class="page-title">
-        <h1>@T("Plugins.Misc.AIInterview.Interview.Title")</h1>
-    </div>
+
+<style>
+    body {
+        margin: 0;
+        background: #eef3fb;
+    }
+
+    .mock-runtime-page {
+        --runtime-bg: #eef3fb;
+        --runtime-card: #ffffff;
+        --runtime-border: rgba(15, 23, 42, 0.08);
+        --runtime-text: #162033;
+        --runtime-muted: #667085;
+        --runtime-accent: #ff7a1a;
+        --runtime-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+    }
+
+    .mock-runtime-page {
+        min-height: 100vh;
+        padding: 12px;
+        box-sizing: border-box;
+    }
+
+    .mock-runtime-page .page-body {
+        display: grid;
+        gap: 18px;
+        min-height: calc(100vh - 24px);
+        padding: 18px;
+        border-radius: 28px;
+        background: linear-gradient(180deg, #f8fafc 0%, var(--runtime-bg) 100%);
+        box-shadow: var(--runtime-shadow);
+    }
+
+    .runtime-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .runtime-title {
+        margin: 0;
+        color: var(--runtime-text);
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    .runtime-meta {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        color: var(--runtime-muted);
+        font-weight: 600;
+    }
+
+    .runtime-topbar .button-1,
+    .runtime-topbar .button-2,
+    .runtime-controls .button-1,
+    .runtime-controls .button-2 {
+        border-radius: 10px;
+    }
+
+    .runtime-topbar .button-1,
+    .runtime-controls .button-1 {
+        background: #0f5bd7;
+        color: #fff;
+    }
+
+    .runtime-topbar .button-2,
+    .runtime-controls .button-2 {
+        background: #eef4ff;
+        color: #0f5bd7;
+        border: 1px solid #c9dafd;
+    }
+
+    .runtime-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.8fr) minmax(320px, 0.9fr);
+        gap: 18px;
+        min-height: 60vh;
+    }
+
+    .runtime-stage,
+    .runtime-sidebar {
+        display: grid;
+        gap: 16px;
+        padding: 18px;
+        border: 1px solid var(--runtime-border);
+        border-radius: 24px;
+        background: var(--runtime-card);
+    }
+
+    .runtime-video {
+        position: relative;
+        display: grid;
+        place-items: center;
+        min-height: 420px;
+        border-radius: 20px;
+        background: linear-gradient(180deg, #d8e2f3 0%, #c8d4ea 100%);
+        color: #51627b;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .runtime-avatar {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 108px;
+        height: 108px;
+        border-radius: 20px;
+        background: linear-gradient(180deg, #f7f9fc 0%, #dce6f3 100%);
+        border: 1px solid rgba(255,255,255,0.85);
+        box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
+    }
+
+    .runtime-avatar::before,
+    .runtime-avatar::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #b5c3d0;
+    }
+
+    .runtime-avatar::before {
+        top: 18px;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+    }
+
+    .runtime-avatar::after {
+        bottom: 18px;
+        width: 54px;
+        height: 34px;
+        border-radius: 999px;
+    }
+
+    .runtime-controls {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        align-items: center;
+        padding: 14px 18px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.9);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+        width: fit-content;
+        margin: -40px auto 0;
+        position: relative;
+    }
+
+    .runtime-dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #d0d5dd;
+    }
+
+    .runtime-dot.is-live {
+        width: 42px;
+        height: 42px;
+        background: #ffffff;
+        border: 2px solid #d0d5dd;
+    }
+
+    .runtime-message,
+    .runtime-question {
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 122, 26, 0.35);
+        background: #fff9f3;
+        color: #a15c00;
+        line-height: 1.6;
+    }
+
+    .runtime-sidebar h3 {
+        margin: 0;
+        color: var(--runtime-text);
+    }
+
+    .runtime-log {
+        display: grid;
+        gap: 12px;
+        align-content: start;
+        min-height: 320px;
+    }
+
+    .runtime-answer-box textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: 14px 16px;
+        border: 1px solid var(--runtime-border);
+        border-radius: 16px;
+        resize: vertical;
+    }
+
+    .runtime-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .runtime-actions .button-1,
+    .runtime-actions .button-2 {
+        border-radius: 999px;
+    }
+
+    .runtime-status {
+        min-height: 24px;
+        font-weight: 600;
+    }
+
+    .runtime-status.message-error {
+        color: #b42318;
+    }
+
+    .runtime-status.message-success {
+        color: #027a48;
+    }
+
+    @@media (max-width: 1024px) {
+        .runtime-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="page mock-runtime mock-runtime-page">
     <div class="page-body">
-        <div class="alert alert-info">
-            <strong>Note:</strong> At this time, the AI Interview plugin only supports typed answers as a fallback. Real voice capture and transcription features are out of scope for the current release.
+        <div class="runtime-topbar">
+            <button id="stop-mock-interview-top" class="button-2">@T("Plugins.Misc.AIInterview.Interview.StopInterview")</button>
+            <h1 class="runtime-title">@T("Plugins.Misc.AIInterview.Interview.Title") on @Model.Difficulty</h1>
+            <div class="runtime-meta">
+                <span id="runtime-timer">00:00</span>
+                <button type="button" class="button-2">Transcript</button>
+            </div>
         </div>
-        <div id="mock-interview-container">
-            <form id="mock-interview-security">
-                @Html.AntiForgeryToken()
-            </form>
-            <p>@T("Plugins.Misc.AIInterview.Interview.InitialQuestion")</p>
-            <textarea id="mock-answer" placeholder="@T("Plugins.Misc.AIInterview.Interview.AnswerPlaceholder")"></textarea>
-            <button id="submit-mock-answer" class="button-1">@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</button>
-            <button id="stop-mock-interview" class="button-2">@T("Plugins.Misc.AIInterview.Interview.StopInterview")</button>
-            <div id="mock-interview-message"></div>
+
+        <div class="runtime-layout">
+            <section class="runtime-stage">
+                <div class="runtime-video">
+                    <span>Camera Off</span>
+                    <div class="runtime-avatar"></div>
+                </div>
+                <div class="runtime-controls">
+                    <span class="runtime-dot is-live"></span>
+                    <span class="runtime-dot"></span>
+                    <button id="submit-mock-answer" class="button-1">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                    <span class="runtime-dot"></span>
+                    <span class="runtime-dot"></span>
+                </div>
+            </section>
+
+            <aside class="runtime-sidebar">
+                <h3>Conversations</h3>
+                <div class="runtime-log">
+                    <div class="runtime-question" id="runtime-question">@T("Plugins.Misc.AIInterview.Interview.InitialQuestion")</div>
+                    <div class="runtime-message">Welcome! Click "Start Interview" when you are ready to begin.</div>
+                </div>
+
+                <div class="runtime-answer-box">
+                    <textarea id="mock-answer" placeholder="@T("Plugins.Misc.AIInterview.Interview.AnswerPlaceholder")"></textarea>
+                </div>
+
+                <div class="runtime-actions">
+                    <button id="submit-mock-answer-secondary" class="button-1">@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</button>
+                    <button id="stop-mock-interview" class="button-2">@T("Plugins.Misc.AIInterview.Interview.StopInterview")</button>
+                </div>
+                <div id="mock-interview-message" class="runtime-status"></div>
+            </aside>
         </div>
     </div>
 </div>
@@ -26,36 +282,52 @@
 <script asp-location="Footer">
     const interviewToken = '@Model.Token';
     const messageElement = document.getElementById('mock-interview-message');
-    const verificationToken = document.querySelector('#mock-interview-security input[name="__RequestVerificationToken"]').value;
+    const questionElement = document.getElementById('runtime-question');
+    const answerElement = document.getElementById('mock-answer');
+    const startedAt = Date.now();
 
-    document.getElementById('submit-mock-answer').addEventListener('click', async function () {
+    setInterval(() => {
+        const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+        const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+        const seconds = String(elapsedSeconds % 60).padStart(2, '0');
+        document.getElementById('runtime-timer').textContent = `${minutes}:${seconds}`;
+    }, 1000);
+
+    async function submitAnswer() {
         const body = new URLSearchParams({
             token: interviewToken,
-            answer: document.getElementById('mock-answer').value,
-            __RequestVerificationToken: verificationToken
+            answer: answerElement.value
         });
         const response = await fetch('@Url.Action("SubmitAnswer", "MockAiInterview")', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body
+            body
         });
         const result = await response.json();
         messageElement.textContent = result.error || result.nextQuestion;
-        messageElement.className = result.error ? 'message-error' : 'message-success';
-    });
+        messageElement.className = `runtime-status ${result.error ? 'message-error' : 'message-success'}`;
+        if (!result.error) {
+            questionElement.textContent = result.nextQuestion;
+            answerElement.value = '';
+        }
+    }
 
-    document.getElementById('stop-mock-interview').addEventListener('click', async function () {
-        const body = new URLSearchParams({
-            token: interviewToken,
-            __RequestVerificationToken: verificationToken
-        });
+    async function stopInterview() {
+        const body = new URLSearchParams({ token: interviewToken });
         const response = await fetch('@Url.Action("Stop", "MockAiInterview")', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body
+            body
         });
         const result = await response.json();
         messageElement.textContent = result.error || '@T("Plugins.Misc.AIInterview.Interview.CompletedScore") ' + result.score;
-        messageElement.className = result.error ? 'message-error' : 'message-success';
-    });
+        messageElement.className = `runtime-status ${result.error ? 'message-error' : 'message-success'}`;
+        if (!result.error)
+            window.location.href = '@Url.RouteUrl(AIInterviewDefaults.MockHistoryRouteName)';
+    }
+
+    document.getElementById('submit-mock-answer').addEventListener('click', submitAnswer);
+    document.getElementById('submit-mock-answer-secondary').addEventListener('click', submitAnswer);
+    document.getElementById('stop-mock-interview').addEventListener('click', stopInterview);
+    document.getElementById('stop-mock-interview-top').addEventListener('click', stopInterview);
 </script>

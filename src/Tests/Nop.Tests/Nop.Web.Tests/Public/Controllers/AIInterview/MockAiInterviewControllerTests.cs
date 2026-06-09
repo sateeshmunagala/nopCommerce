@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using Nop.Core.Domain.Customers;
 using Nop.Plugin.Misc.AIInterview;
@@ -119,7 +120,7 @@ public class MockAiInterviewControllerTests
             .ReturnsAsync(new List<InterviewSession> { activeSession });
 
         // Act
-        var result = await _controller.StartPost();
+        var result = await _controller.StartPost(new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>()));
 
         // Assert
         Assert.That(result, Is.TypeOf<JsonResult>());

@@ -2,34 +2,258 @@
 @{
     bool hasCredits = ViewBag.HasCredits != null && (bool)ViewBag.HasCredits;
     bool hasSponsorCredits = ViewBag.HasSponsorCredits != null && (bool)ViewBag.HasSponsorCredits;
+    bool isAuthenticated = ViewBag.IsAuthenticated != null && (bool)ViewBag.IsAuthenticated;
+    bool alreadyApplied = ViewBag.AlreadyApplied != null && (bool)ViewBag.AlreadyApplied;
     int productId = ViewBag.ProductId != null ? (int)ViewBag.ProductId : 0;
     string sponsorToken = ViewBag.SponsorToken as string;
+    string interviewError = Context?.Request?.Query["interviewError"].ToString();
 }
 
-<div class="ai-interview-product-details">
-    <h3>@T("Plugins.Misc.AIInterview.Interview.Title")</h3>
-
-    @if (hasSponsorCredits)
-    {
-        <div class="sponsor-message alert alert-info">
-            @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
-        </div>
-    }
-    else if (!hasCredits)
-    {
-        <div class="no-credits-message alert alert-warning">
-            @T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits")
-            <a href="@Url.RouteUrl("Topic", new { SeName = "pricing" })">@T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits.Link")</a>
-        </div>
+<style>
+    .job-ai-panel {
+        display: grid;
+        gap: 22px;
+        padding: 28px;
+        border: 1px solid rgba(16, 24, 40, 0.08);
+        border-radius: 24px;
+        background: linear-gradient(180deg, #ffffff 0%, #fff8f1 100%);
+        box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
     }
 
-    <div class="actions" style="margin-top: 15px;">
-        <a href="@Url.Action("Apply", "AIInterview", new { jobTitle = Model.Name, productId })" class="button-1 apply-btn">
-            @T("Plugins.Misc.AIInterview.Index.ApplyNow")
-        </a>
+    .job-ai-panel h2,
+    .job-ai-panel h3 {
+        margin: 0;
+        color: #162033;
+    }
 
-        <a href="@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName, new { productId, sponsorToken })" class="button-2 start-interview-btn">
-            @T("Plugins.Misc.AIInterview.Index.StartInterview")
-        </a>
+    .job-ai-lead {
+        margin: 0;
+        color: #667085;
+        line-height: 1.7;
+    }
+
+    .job-ai-grid {
+        display: grid;
+        gap: 18px;
+    }
+
+    .job-ai-card {
+        padding: 18px;
+        border: 1px solid rgba(16, 24, 40, 0.08);
+        border-radius: 18px;
+        background: #ffffff;
+    }
+
+    .job-ai-card label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #162033;
+    }
+
+    .job-ai-card input[type="file"] {
+        width: 100%;
+    }
+
+    .job-ai-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .job-ai-actions .button-1,
+    .job-ai-actions .button-2 {
+        min-width: 180px;
+        border-radius: 999px;
+    }
+
+    .job-ai-actions .button-1 {
+        background: #0f5bd7;
+        color: #fff;
+    }
+
+    .job-ai-actions .button-2 {
+        background: #eef4ff;
+        color: #0f5bd7;
+        border: 1px solid #c9dafd;
+    }
+
+    .job-inline-message {
+        display: none;
+        padding: 14px 16px;
+        border-radius: 14px;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .job-inline-message.is-visible {
+        display: block;
+    }
+
+    .job-inline-message.is-error {
+        background: #fef3f2;
+        color: #b42318;
+        border: 1px solid #fecdca;
+    }
+
+    .job-inline-message.is-success {
+        background: #ecfdf3;
+        color: #027a48;
+        border: 1px solid #abefc6;
+    }
+
+    .job-inline-message.is-info {
+        background: #eef4ff;
+        color: #0f5bd7;
+        border: 1px solid #c9dafd;
+    }
+
+    .job-ai-note {
+        margin: 0;
+        color: #667085;
+        font-size: 13px;
+    }
+</style>
+
+<div class="job-ai-panel ai-interview-product-details">
+    <div class="job-ai-grid">
+        <div>
+            <h2>@T("Plugins.Misc.AIInterview.Interview.Title")</h2>
+            <p class="job-ai-lead">Apply for this role and start the mock interview directly from this page. Interview difficulty is now handled automatically in the backend.</p>
+        </div>
+
+        @if (hasSponsorCredits)
+        {
+            <div class="job-inline-message is-visible is-success">
+                @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
+            </div>
+        }
+        else if (string.Equals(interviewError, "expired", StringComparison.OrdinalIgnoreCase))
+        {
+            <div class="job-inline-message is-visible is-error">
+                Your previous interview link expired. Start the interview again from this job page.
+            </div>
+        }
+        else if (!hasCredits)
+        {
+            <div class="job-inline-message is-visible is-error">
+                @T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits")
+                <a href="@Url.RouteUrl("Topic", new { SeName = "pricing" })">@T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits.Link")</a>
+            </div>
+        }
+
+        @if (!isAuthenticated)
+        {
+            <div class="job-ai-card">
+                <p class="job-ai-lead">Sign in to apply and start the interview for this role.</p>
+                <a class="button-1" href="@Url.RouteUrl("Login")">Sign In</a>
+            </div>
+        }
+        else
+        {
+            @if (alreadyApplied)
+            {
+                <div class="job-inline-message is-visible is-info">
+                    @T("Plugins.Misc.AIInterview.Apply.AlreadyApplied")
+                </div>
+            }
+
+            <div class="job-ai-card">
+                <h3>@T("Plugins.Misc.AIInterview.Apply.Title")</h3>
+                <div id="job-apply-panel">
+                    <input type="hidden" name="ProductId" value="@productId" />
+                    <input type="hidden" name="JobTitle" value="@Model.Name" />
+                    <label for="job-resume-file">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
+                    <input id="job-resume-file" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                    <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
+                    <div class="job-ai-actions">
+                        <button type="button" class="button-1 apply-btn" id="job-apply-button" @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                        <button type="button" class="button-2 start-interview-btn" id="start-job-interview">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="job-ai-feedback" class="job-inline-message" role="status" aria-live="polite"></div>
+        }
     </div>
 </div>
+
+@if (isAuthenticated)
+{
+    <script asp-location="Footer">
+        (() => {
+            const feedback = document.getElementById('job-ai-feedback');
+            const applyPanel = document.getElementById('job-apply-panel');
+            const productForm = document.getElementById('product-details-form');
+            const sponsorToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sponsorToken ?? string.Empty));
+
+            const setFeedback = (message, isError) => {
+                if (!feedback)
+                    return;
+
+                feedback.textContent = message || '';
+                feedback.classList.add('is-visible');
+                feedback.classList.toggle('is-error', !!isError);
+                feedback.classList.toggle('is-success', !isError);
+            };
+
+            document.getElementById('job-apply-button')?.addEventListener('click', async () => {
+                const formData = productForm ? new FormData(productForm) : new FormData();
+                if (!productForm && applyPanel) {
+                    applyPanel.querySelectorAll('input').forEach(input => {
+                        if (input.type === 'file') {
+                            Array.from(input.files || []).forEach(file => formData.append(input.name, file));
+                            return;
+                        }
+
+                        if ((input.type === 'radio' || input.type === 'checkbox') && !input.checked)
+                            return;
+
+                        formData.append(input.name, input.value);
+                    });
+                }
+
+                const response = await fetch('@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const result = await response.json();
+                setFeedback(result.message || result.error, !result.success);
+            });
+
+            document.getElementById('start-job-interview')?.addEventListener('click', async () => {
+                const formData = productForm ? new FormData(productForm) : new FormData();
+                if (!productForm && applyPanel) {
+                    applyPanel.querySelectorAll('input').forEach(input => {
+                        if (input.type === 'file') {
+                            Array.from(input.files || []).forEach(file => formData.append(input.name, file));
+                            return;
+                        }
+
+                        if ((input.type === 'radio' || input.type === 'checkbox') && !input.checked)
+                            return;
+
+                        formData.append(input.name, input.value);
+                    });
+                }
+                formData.set('productId', '@productId');
+                if (sponsorToken)
+                    formData.set('sponsorToken', sponsorToken);
+
+                const response = await fetch('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.runtimeUrl) {
+                    window.location.href = result.runtimeUrl;
+                    return;
+                }
+
+                setFeedback(result.error || 'Unable to start the interview.', true);
+            });
+        })();
+    </script>
+}

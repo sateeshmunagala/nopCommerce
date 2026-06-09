@@ -39,9 +39,17 @@ public static class AIInterviewDefaults
 
     public static string VendorJobCreationRouteName => "Plugin.Misc.AIInterview.VendorJobCreation";
 
+    public static string ApplyInlineRouteName => "Plugin.Misc.AIInterview.ApplyInline";
+
     public static string JobProductTemplateName => "AI Interview Job Details";
 
     public static string JobProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.JobDetails.cshtml";
+
+    public static string InterviewDifficultyAttributeName => "Interview Difficulty";
+
+    public static IReadOnlyList<string> InterviewDifficultyValues => new[] { "Easy", "Medium", "Hard" };
+
+    public const string DefaultInterviewDifficulty = "Medium";
 
     /// <summary>
     /// Gets the report route name

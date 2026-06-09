@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Nop.Web.Framework.Models;
 using Nop.Web.Framework.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Nop.Plugin.Misc.AIInterview.Models;
 
@@ -14,6 +15,8 @@ public record ApplicationListModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Employer.Applications.Candidate")]
     public string CandidateNameOrEmail { get; set; }
 
+    public string JobTitleOrKeyword { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Employer.Applications.Status")]
     public string Status { get; set; }
 
@@ -23,6 +26,10 @@ public record ApplicationListModel : BaseNopModel
     public DateTime? EndDate { get; set; }
     public bool SortByScore { get; set; }
     public string SortOrder { get; set; }
+    public string InterviewSort { get; set; } = "TopScorersFirst";
+    public bool OnlyWithInterviewScore { get; set; }
+    public int PageSize { get; set; } = 20;
+    public int TotalCount { get; set; }
 
     public IList<ApplicationModel> Applications { get; set; }
 }
@@ -33,17 +40,24 @@ public record ApplicationModel : BaseNopModel
     public string JobTitle { get; set; }
     public string CandidateName { get; set; }
     public string CandidateEmail { get; set; }
+    public string CandidatePhone { get; set; }
     public string Status { get; set; }
     public string StatusComment { get; set; }
     public decimal? InterviewScore { get; set; }
     public string QuestionScores { get; set; }
+    public IList<decimal> QuestionScoreValues { get; set; } = new List<decimal>();
     public string InterviewReportUrl { get; set; }
+    public string ProductUrl { get; set; }
     public DateTime CreatedOn { get; set; }
     public int AttemptCount { get; set; }
     public DateTime? LatestScoreDate { get; set; }
+    public DateTime? CompletedOn { get; set; }
     public string ChargeMode { get; set; }
     public string PromptSource { get; set; }
     public string RawStatus { get; set; }
+    public string CoverMessage { get; set; }
+    public string ReportSummary { get; set; }
+    public string FeedbackSummary { get; set; }
 }
 
 public record UpdateStatusModel : BaseNopModel
@@ -80,10 +94,35 @@ public record VendorJobModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Published")]
     public bool Published { get; set; } = true;
+
+    public int? ExperienceLevelOptionId { get; set; }
+
+    public int? WorkModeOptionId { get; set; }
+
+    public int? EmploymentTypeOptionId { get; set; }
+
+    public string JobLocation { get; set; }
+
+    public string SalaryRange { get; set; }
+
+    public DateTime? ApplyUntilUtc { get; set; }
+
+    public IList<SelectListItem> AvailableExperienceLevels { get; set; } = new List<SelectListItem>();
+
+    public IList<SelectListItem> AvailableWorkModes { get; set; } = new List<SelectListItem>();
+
+    public IList<SelectListItem> AvailableEmploymentTypes { get; set; } = new List<SelectListItem>();
 }
 
 public record RuntimeErrorModel : BaseNopModel
 {
     public string Message { get; set; }
     public int StatusCode { get; set; }
+    public string RestartUrl { get; set; }
+}
+
+public record ApplySubmissionResult
+{
+    public bool Success { get; init; }
+    public string Message { get; init; }
 }

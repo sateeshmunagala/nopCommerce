@@ -86,9 +86,7 @@ public class ApplyFlowTests
         var result = await _controller.Apply(new ApplyModel { JobTitle = "Dev", ProductId = 1 });
 
         // Assert
-        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
-        var redirectResult = (RedirectToRouteResult)result;
-        Assert.That(redirectResult.RouteName, Is.EqualTo(AIInterviewDefaults.IndexRouteName));
+        Assert.That(result, Is.TypeOf<ViewResult>());
         _notificationService.Verify(x => x.WarningNotification(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<int>()), Times.Once);
     }
 
@@ -200,6 +198,18 @@ public class ApplyFlowTests
             a.ResumeDownloadId == 456 &&
             a.Status == "Applied")), Times.Once);
         _notificationService.Verify(x => x.SuccessNotification(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<int>()), Times.Once);
+    }
+
+    [Test]
+    public async Task ApplyInline_Post_Successful_ReturnsJsonSuccess()
+    {
+        _aiInterviewSettings.ResumeRequired = false;
+        var result = await _controller.ApplyInline(new ApplyModel { JobTitle = "Dev", ProductId = 1 });
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var json = (JsonResult)result;
+        var success = (bool)json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        Assert.That(success, Is.True);
     }
 
     [Test]

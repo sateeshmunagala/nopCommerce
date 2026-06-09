@@ -9,6 +9,7 @@ using Nop.Services.Messages;
 using Nop.Core.Events;
 using Nop.Plugin.Misc.AIInterview.Events;
 using Nop.Services.Vendors;
+using Nop.Services.Seo;
 using Nop.Web.Framework.Controllers;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
@@ -25,6 +26,8 @@ public class MockAiInterviewController : BasePluginController
     private readonly IVendorService _vendorService;
     private readonly IApplicationService _applicationService;
     private readonly IEventPublisher _eventPublisher;
+    private readonly IJobInterviewExperienceService _jobInterviewExperienceService;
+    private readonly IUrlRecordService _urlRecordService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -35,7 +38,9 @@ public class MockAiInterviewController : BasePluginController
         IProductService productService,
         IVendorService vendorService,
         IApplicationService applicationService,
-        IEventPublisher eventPublisher = null)
+        IEventPublisher eventPublisher = null,
+        IJobInterviewExperienceService jobInterviewExperienceService = null,
+        IUrlRecordService urlRecordService = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -47,6 +52,8 @@ public class MockAiInterviewController : BasePluginController
         _vendorService = vendorService;
         _applicationService = applicationService;
         _eventPublisher = eventPublisher;
+        _jobInterviewExperienceService = jobInterviewExperienceService;
+        _urlRecordService = urlRecordService;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -60,18 +67,28 @@ public class MockAiInterviewController : BasePluginController
         return Json(new { error = await GetLocalizedTextAsync(resourceKey, defaultValue) });
     }
 
-    public async Task<IActionResult> Start()
+    public async Task<IActionResult> Start(int productId = 0, string sponsorToken = null)
     {
-        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Start.cshtml");
+        if (productId > 0 && _urlRecordService != null)
+        {
+            var product = await _productService.GetProductByIdAsync(productId);
+            if (product != null)
+                return RedirectToRoute("Product", new { SeName = await _urlRecordService.GetSeNameAsync(product), sponsorToken });
+        }
+
+        return RedirectToRoute("Homepage");
     }
 
     [HttpPost]
     [ActionName("Start")]
-    public async Task<IActionResult> StartPost(int productId = 0, string difficulty = "Medium", string sponsorToken = null)
+    public async Task<IActionResult> StartPost(Microsoft.AspNetCore.Http.IFormCollection form, int productId = 0, string difficulty = AIInterviewDefaults.DefaultInterviewDifficulty, string sponsorToken = null)
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (customer == null)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request.", 401);
+
+        var product = productId > 0 ? await _productService.GetProductByIdAsync(productId) : null;
+        difficulty = AIInterviewDefaults.DefaultInterviewDifficulty;
 
         // Idempotency: check for active session
         var activeSession = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id))
@@ -156,20 +173,40 @@ public class MockAiInterviewController : BasePluginController
     {
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
         if (session == null || !session.IsActive || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow))
-            return await RuntimeErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.", 400);
+            return Redirect(await GetRestartUrlAsync(session));
 
         return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Runtime.cshtml", session);
     }
 
-    protected async Task<IActionResult> RuntimeErrorAsync(string resourceKey, string defaultValue, int statusCode)
+    protected async Task<string> GetRestartUrlAsync(InterviewSession session)
+    {
+        var restartUrl = Url?.RouteUrl("Homepage") ?? "/";
+        if (session?.ProductId > 0 && _urlRecordService != null)
+        {
+                var product = await _productService.GetProductByIdAsync(session.ProductId);
+                if (product != null)
+                {
+                    var seName = await _urlRecordService.GetSeNameAsync(product);
+                    if (!string.IsNullOrWhiteSpace(seName))
+                        restartUrl = $"/{seName}?interviewError=expired";
+                }
+            }
+
+        return restartUrl;
+    }
+
+    protected async Task<IActionResult> RuntimeErrorAsync(string resourceKey, string defaultValue, int statusCode, InterviewSession session = null)
     {
         if (HttpContext != null)
             Response.StatusCode = statusCode;
 
+        var restartUrl = await GetRestartUrlAsync(session);
+
         return View("~/Plugins/Misc.AIInterview/Views/RuntimeError.cshtml", new Models.RuntimeErrorModel
         {
             Message = await GetLocalizedTextAsync(resourceKey, defaultValue),
-            StatusCode = statusCode
+            StatusCode = statusCode,
+            RestartUrl = restartUrl
         });
     }
 

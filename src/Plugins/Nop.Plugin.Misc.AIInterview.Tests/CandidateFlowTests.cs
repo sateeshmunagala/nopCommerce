@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
 using Moq;
 using Nop.Core;
 using Nop.Core.Domain.Customers;
@@ -124,7 +125,7 @@ public class CandidateFlowTests
     }
 
     [Test]
-    public async Task Runtime_Start_DifficultySelection_Works()
+    public async Task Runtime_Start_Uses_DefaultDifficulty()
     {
         var customer = new Customer { Id = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
@@ -132,10 +133,10 @@ public class CandidateFlowTests
             .ReturnsAsync(new List<InterviewSession>());
         _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
 
-        var result = await _runtimeController.StartPost(1, "Hard");
+        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1, "Hard");
         var json = (JsonResult)result;
 
-        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.Difficulty == "Hard" && s.ProductId == 1)), Times.Once);
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.Difficulty == AIInterviewDefaults.DefaultInterviewDifficulty && s.ProductId == 1)), Times.Once);
     }
 
     [Test]
@@ -148,7 +149,7 @@ public class CandidateFlowTests
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession> { activeSession });
 
-        var result = await _runtimeController.StartPost(1);
+        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1);
         var json = (JsonResult)result;
 
         var sessionKey = json.Value.GetType().GetProperty("sessionKey").GetValue(json.Value, null);
@@ -173,7 +174,7 @@ public class CandidateFlowTests
         // Customer has credits
         _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
 
-        var result = await _runtimeController.StartPost(1, "Medium", "SPONSOR123");
+        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1, "Medium", "SPONSOR123");
         var json = (JsonResult)result;
 
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.SponsorInviteId == 0)), Times.Once);
@@ -307,6 +308,8 @@ public class CandidateFlowTests
     public async Task WidgetView_Rendering_Works()
     {
         var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+        var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
         _productService.Setup(x => x.GetProductByIdAsync(99))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 99, ProductTemplateId = 7 });
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
@@ -318,6 +321,8 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            productAttributeService.Object,
+            jobInterviewExperienceService.Object,
             _productService.Object,
             productTemplateService.Object);
         var httpContext = new DefaultHttpContext();
@@ -351,6 +356,18 @@ public class CandidateFlowTests
         // Act
         // Mock a Nop base model dynamic
         var productDetailsModel = new Nop.Web.Models.Catalog.ProductDetailsModel { Id = 99 };
+        productDetailsModel.ProductAttributes.Add(new Nop.Web.Models.Catalog.ProductDetailsModel.ProductAttributeModel
+        {
+            Id = 14,
+            Name = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            TextPrompt = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            AttributeControlType = Nop.Core.Domain.Catalog.AttributeControlType.RadioList,
+            Values = new List<Nop.Web.Models.Catalog.ProductDetailsModel.ProductAttributeValueModel>
+            {
+                new() { Id = 101, Name = "Easy" },
+                new() { Id = 102, Name = "Medium", IsPreSelected = true }
+            }
+        });
         var result = await component.InvokeAsync("productdetails_before_collateral", productDetailsModel);
 
         // Assert
@@ -368,6 +385,8 @@ public class CandidateFlowTests
     public async Task WidgetView_DoesNotRenderForOrdinaryProductTemplate()
     {
         var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+        var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
         _productService.Setup(x => x.GetProductByIdAsync(99))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 99, ProductTemplateId = 1 });
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(1))
@@ -379,6 +398,8 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            productAttributeService.Object,
+            jobInterviewExperienceService.Object,
             _productService.Object,
             productTemplateService.Object);
 

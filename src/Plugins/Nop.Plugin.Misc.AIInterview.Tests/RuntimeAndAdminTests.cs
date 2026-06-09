@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
@@ -68,7 +69,7 @@ public class RuntimeAndAdminTests
     public async Task Runtime_Start_Unauthorized_ReturnsError()
     {
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync((Customer)null);
-        var result = await _runtimeController.StartPost();
+        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>()));
         var json = (JsonResult)result;
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
         Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized"));
@@ -247,10 +248,8 @@ public class RuntimeAndAdminTests
 
         var result = await _runtimeController.Runtime("expired");
 
-        Assert.That(result, Is.TypeOf<ViewResult>());
-        var model = (RuntimeErrorModel)((ViewResult)result).Model;
-        Assert.That(model.StatusCode, Is.EqualTo(400));
-        Assert.That(model.Message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+        Assert.That(result, Is.TypeOf<RedirectResult>());
+        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/"));
     }
 
     [Test]
