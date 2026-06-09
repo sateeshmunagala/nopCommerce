@@ -10,6 +10,7 @@ public class SponsorInvite : BaseEntity
     public string InviteCode { get; set; }
     public int MaxAttempts { get; set; }
     public DateTime? ExpiryDateUtc { get; set; }
+    public bool IsActive { get; set; }
     public bool IsAccepted { get; set; }
     public DateTime CreatedOnUtc { get; set; }
 }

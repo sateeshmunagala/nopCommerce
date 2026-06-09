@@ -238,7 +238,7 @@ public class CandidateFlowTests
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession>());
 
-        var sponsorInvite = new SponsorInvite { Id = 10, SponsorId = 2, Email = "test@example.com", InviteCode = "SPONSOR123", ExpiryDateUtc = DateTime.UtcNow.AddDays(1) };
+        var sponsorInvite = new SponsorInvite { Id = 10, SponsorId = 2, Email = "test@example.com", InviteCode = "SPONSOR123", ExpiryDateUtc = DateTime.UtcNow.AddDays(1), IsActive = true };
         _inviteService.Setup(x => x.GetSponsorInviteByCodeAsync("SPONSOR123")).ReturnsAsync(sponsorInvite);
 
         // Sponsor has no credits
@@ -424,7 +424,7 @@ public class CandidateFlowTests
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _creditService.Setup(x => x.GetOrCreateWalletAsync(customer.Id)).ReturnsAsync(new CreditWallet { Balance = 10 });
 
-        var sponsorInvite = new SponsorInvite { Id = 10, SponsorId = 2, Email = "test@example.com", InviteCode = "abc", ExpiryDateUtc = DateTime.UtcNow.AddDays(1) };
+        var sponsorInvite = new SponsorInvite { Id = 10, SponsorId = 2, Email = "test@example.com", InviteCode = "abc", ExpiryDateUtc = DateTime.UtcNow.AddDays(1), IsActive = true };
         _inviteService.Setup(x => x.GetSponsorInviteByCodeAsync("abc")).ReturnsAsync(sponsorInvite);
         _creditService.Setup(x => x.GetOrCreateWalletAsync(2)).ReturnsAsync(new CreditWallet { Balance = 5 });
 

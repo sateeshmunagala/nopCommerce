@@ -546,6 +546,7 @@ public class SponsorInviteService : ISponsorInviteService
             Email = email,
             MaxAttempts = maxAttempts,
             ExpiryDateUtc = expiryDateUtc,
+            IsActive = true,
             InviteCode = Guid.NewGuid().ToString("N"),
             IsAccepted = false,
             CreatedOnUtc = DateTime.UtcNow
@@ -564,9 +565,9 @@ public class SponsorInviteService : ISponsorInviteService
     public async Task DeactivateInviteAsync(int inviteId, int sponsorId)
     {
         var invite = await _inviteRepository.GetByIdAsync(inviteId);
-        if (invite != null && (sponsorId <= 0 || invite.SponsorId == sponsorId))
+        if (invite != null && invite.IsActive && (sponsorId <= 0 || invite.SponsorId == sponsorId))
         {
-            invite.ExpiryDateUtc = DateTime.UtcNow;
+            invite.IsActive = false;
             await _inviteRepository.UpdateAsync(invite);
         }
     }
@@ -575,8 +576,9 @@ public class SponsorInviteService : ISponsorInviteService
     {
         var invite = await GetSponsorInviteByCodeAsync(code);
         if (invite == null) return false;
+        if (!invite.IsActive) return false;
         if (invite.IsAccepted) return false;
-        if (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value < DateTime.UtcNow) return false;
+        if (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow) return false;
         if (!string.Equals(invite.Email, email, StringComparison.OrdinalIgnoreCase)) return false;
 
         return true;

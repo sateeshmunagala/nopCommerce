@@ -169,7 +169,7 @@ public class EmployerTests
     [Test]
     public async Task SponsorInvites_ReturnsViewWithBalance()
     {
-        var invites = new List<SponsorInvite> { new SponsorInvite { Id = 1, Email = "invited@test.com" } };
+        var invites = new List<SponsorInvite> { new SponsorInvite { Id = 1, Email = "invited@test.com", IsActive = true } };
         _inviteService.Setup(x => x.GetSponsorInvitesAsync(123)).ReturnsAsync(invites);
 
         var result = await _mockAiController.EmployerManage();

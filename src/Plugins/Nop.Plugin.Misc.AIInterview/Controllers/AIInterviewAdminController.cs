@@ -322,7 +322,9 @@ public class AIInterviewAdminController : BasePluginController
                 InviteCode = invite.InviteCode,
                 MaxAttempts = invite.MaxAttempts,
                 ExpiryDateUtc = invite.ExpiryDateUtc,
+                IsActive = invite.IsActive,
                 IsAccepted = invite.IsAccepted,
+                IsExpired = invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow,
                 CreatedOnUtc = invite.CreatedOnUtc,
                 Status = GetInviteStatus(invite)
             })
@@ -337,12 +339,15 @@ public class AIInterviewAdminController : BasePluginController
             return string.Empty;
 
         if (invite.IsAccepted)
-            return "Used/Accepted";
+            return "Plugins.Misc.AIInterview.Employer.Invite.Accepted";
+
+        if (!invite.IsActive)
+            return "Plugins.Misc.AIInterview.Employer.Invite.Inactive";
 
         if (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow)
-            return "Expired";
+            return "Plugins.Misc.AIInterview.Employer.Invite.Expired";
 
-        return "Active";
+        return "Plugins.Misc.AIInterview.Employer.Invite.Active";
     }
 
     protected virtual async Task<CreditManagementModel> PrepareCreditModelAsync(string scopeTitleResourceKey, int? customerId)
@@ -387,6 +392,26 @@ public class AIInterviewAdminController : BasePluginController
         if (model.CustomerId <= 0)
         {
             _notificationService.ErrorNotification(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Credits.CustomerRequired", "Customer is required."));
+            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId));
+        }
+
+        var customer = await _customerService.GetCustomerByIdAsync(model.CustomerId);
+        if (customer == null)
+        {
+            _notificationService.ErrorNotification(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Credits.CustomerRequired", "Customer is required."));
+            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId));
+        }
+
+        var isVendorScope = string.Equals(scopeTitleResourceKey, "Plugins.Misc.AIInterview.Admin.Credits.VendorTitle", StringComparison.OrdinalIgnoreCase);
+        if (isVendorScope && customer.VendorId <= 0)
+        {
+            _notificationService.ErrorNotification(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Credits.InvalidVendorScope", "The selected customer is not a vendor account."));
+            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId));
+        }
+
+        if (!isVendorScope && customer.VendorId > 0)
+        {
+            _notificationService.ErrorNotification(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Credits.InvalidApplicantScope", "The selected customer is not an applicant account."));
             return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId));
         }
 

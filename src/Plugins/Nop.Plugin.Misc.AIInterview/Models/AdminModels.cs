@@ -94,7 +94,9 @@ public record SponsorInviteRowModel : BaseNopModel
     public string InviteCode { get; set; }
     public int MaxAttempts { get; set; }
     public DateTime? ExpiryDateUtc { get; set; }
+    public bool IsActive { get; set; }
     public bool IsAccepted { get; set; }
+    public bool IsExpired { get; set; }
     public DateTime CreatedOnUtc { get; set; }
     public string Status { get; set; }
 }

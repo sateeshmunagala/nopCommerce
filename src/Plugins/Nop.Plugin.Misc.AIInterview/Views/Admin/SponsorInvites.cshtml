@@ -51,12 +51,12 @@
                             <tr>
                                 <td>@invite.Id</td>
                                 <td>@invite.Email</td>
-                                <td>@invite.Status</td>
+                                <td>@T(invite.Status)</td>
                                 <td>@invite.ProductId</td>
                                 <td>@invite.SponsorId</td>
                                 <td>@invite.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
                                 <td>
-                                    @if (!invite.IsAccepted && invite.Status != "Expired")
+                                    @if (invite.IsActive && !invite.IsAccepted && !invite.IsExpired)
                                     {
                                         <form asp-controller="AIInterviewAdmin" asp-action="DeactivateInvite" method="post">
                                             <input type="hidden" name="id" value="@invite.Id" />

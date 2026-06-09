@@ -262,8 +262,33 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public async Task SponsorInvites_Show_Active_Expired_And_Inactive_Statuses()
+    {
+        var invites = new List<SponsorInvite>
+        {
+            new() { Id = 1, Email = "active@example.com", IsActive = true, IsAccepted = false, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-1) },
+            new() { Id = 2, Email = "expired@example.com", IsActive = true, IsAccepted = false, ExpiryDateUtc = DateTime.UtcNow.AddDays(-1), CreatedOnUtc = DateTime.UtcNow.AddHours(-2) },
+            new() { Id = 3, Email = "inactive@example.com", IsActive = false, IsAccepted = false, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-3) },
+            new() { Id = 4, Email = "accepted@example.com", IsActive = true, IsAccepted = true, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-4) }
+        };
+
+        _inviteService.Setup(x => x.GetSponsorInvitesAsync(0)).ReturnsAsync(invites);
+
+        var result = await _controller.SponsorInvites();
+
+        var model = (SponsorInviteAdminModel)((ViewResult)result).Model;
+        Assert.That(model.Invites.Single(x => x.Id == 1).Status, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Active"));
+        Assert.That(model.Invites.Single(x => x.Id == 2).Status, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Expired"));
+        Assert.That(model.Invites.Single(x => x.Id == 3).Status, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Inactive"));
+        Assert.That(model.Invites.Single(x => x.Id == 4).Status, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Accepted"));
+    }
+
+    [Test]
     public async Task VendorCredits_TopUp_Calls_AddCredit()
     {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(101))
+            .ReturnsAsync(new Customer { Id = 101, VendorId = 11 });
+
         var result = await _controller.VendorCredits(new CreditManagementModel
         {
             CustomerId = 101,
@@ -275,8 +300,59 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public async Task VendorCredits_Rejects_ApplicantCustomer()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(201))
+            .ReturnsAsync(new Customer { Id = 201, VendorId = 0 });
+
+        await _controller.VendorCredits(new CreditManagementModel
+        {
+            CustomerId = 201,
+            Amount = 25
+        });
+
+        _notificationService.Verify(x => x.ErrorNotification("Plugins.Misc.AIInterview.Admin.Credits.InvalidVendorScope"), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Rejects_VendorCustomer()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(301))
+            .ReturnsAsync(new Customer { Id = 301, VendorId = 12 });
+
+        await _controller.ApplicantCredits(new CreditManagementModel
+        {
+            CustomerId = 301,
+            Amount = 25
+        });
+
+        _notificationService.Verify(x => x.ErrorNotification("Plugins.Misc.AIInterview.Admin.Credits.InvalidApplicantScope"), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Valid_TopUp_Calls_AddCredit()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, VendorId = 0 });
+
+        var result = await _controller.ApplicantCredits(new CreditManagementModel
+        {
+            CustomerId = 202,
+            Amount = 15
+        });
+
+        Assert.That(result, Is.InstanceOf<ViewResult>());
+        _creditService.Verify(x => x.AddCreditAsync(202, 15, "Plugins.Misc.AIInterview.Admin.TopUp.Remarks"), Times.Once);
+    }
+
+    [Test]
     public async Task ApplicantCredits_InvalidAmount_Returns_Error()
     {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, VendorId = 0 });
+
         await _controller.ApplicantCredits(new CreditManagementModel
         {
             CustomerId = 202,
