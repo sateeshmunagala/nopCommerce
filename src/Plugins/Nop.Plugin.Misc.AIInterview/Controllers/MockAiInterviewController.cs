@@ -71,6 +71,25 @@ public class MockAiInterviewController : BasePluginController
         return Json(new { error = await GetLocalizedTextAsync(resourceKey, defaultValue) });
     }
 
+    protected virtual bool IsSessionExpired(InterviewSession session, DateTime? currentUtc = null)
+    {
+        var now = currentUtc ?? DateTime.UtcNow;
+        return session != null &&
+               session.TokenExpiryUtc.HasValue &&
+               session.TokenExpiryUtc.Value <= now;
+    }
+
+    protected virtual bool IsSessionUsable(InterviewSession session, DateTime? currentUtc = null)
+    {
+        if (session == null)
+            return false;
+
+        if (!session.IsActive || session.CompletedOnUtc.HasValue)
+            return false;
+
+        return !IsSessionExpired(session, currentUtc);
+    }
+
     public async Task<IActionResult> Start(int productId = 0, string sponsorToken = null)
     {
         if (productId > 0 && _urlRecordService != null)
@@ -118,11 +137,11 @@ public class MockAiInterviewController : BasePluginController
                 staleSession.CompletedOnUtc = now;
 
             await _interviewSessionService.UpdateInterviewSessionAsync(staleSession);
-            _logger?.LogInformation("AIInterview stale session auto-healed for customer {CustomerId}, product {ProductId}, session {SessionId}, token {Token}.",
-                customer.Id, productId, staleSession.Id, staleSession.Token);
+            _logger?.LogInformation("AIInterview stale session auto-healed for customer {CustomerId}, product {ProductId}, session {SessionId}.",
+                customer.Id, productId, staleSession.Id);
         }
 
-        if (reusableSession != null)
+        if (reusableSession != null && IsSessionUsable(reusableSession, now))
         {
             return Json(new
             {
@@ -188,8 +207,8 @@ public class MockAiInterviewController : BasePluginController
             CreatedOnUtc = DateTime.UtcNow
         };
         await _interviewSessionService.InsertInterviewSessionAsync(session);
-        _logger?.LogInformation("AIInterview new session created for customer {CustomerId}, product {ProductId}, session {SessionId}, token {Token}.",
-            customer.Id, productId, session.Id, session.Token);
+        _logger?.LogInformation("AIInterview new session created for customer {CustomerId}, product {ProductId}, session {SessionId}.",
+            customer.Id, productId, session.Id);
 
         return Json(new
         {
@@ -244,7 +263,7 @@ public class MockAiInterviewController : BasePluginController
     public async Task<IActionResult> SubmitAnswer(string token, string answer)
     {
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
-        if (session == null || !session.IsActive || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc < DateTime.UtcNow))
+        if (!IsSessionUsable(session))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
 
         if (string.IsNullOrEmpty(answer))
@@ -258,8 +277,7 @@ public class MockAiInterviewController : BasePluginController
     public async Task<IActionResult> Stop(string token)
     {
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
-        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue ||
-            (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow))
+        if (!IsSessionUsable(session))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
 
         session.IsActive = false;
@@ -286,12 +304,8 @@ public class MockAiInterviewController : BasePluginController
     public async Task<IActionResult> RefreshToken(string token)
     {
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
-        if (session == null || !session.IsActive)
+        if (!IsSessionUsable(session))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
-
-        // Simulate token service failure if needed for tests
-        if (token == "fail-me")
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.TokenServiceFailure", "Token service failure.");
 
         session.Token = Guid.NewGuid().ToString("N");
         session.TokenExpiryUtc = DateTime.UtcNow.AddMinutes(30);

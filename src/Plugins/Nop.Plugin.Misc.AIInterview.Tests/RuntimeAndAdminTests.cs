@@ -175,7 +175,7 @@ public class RuntimeAndAdminTests
     [Test]
     public async Task Runtime_RefreshToken_Successful()
     {
-        var session = new InterviewSession { Token = "old-token", IsActive = true };
+        var session = new InterviewSession { Token = "old-token", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("old-token")).ReturnsAsync(session);
 
         var result = await _runtimeController.RefreshToken("old-token");
@@ -187,16 +187,31 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task Runtime_RefreshToken_Failure_ReturnsError()
+    public async Task Runtime_RefreshToken_ExpiredSession_ReturnsError()
     {
-        var session = new InterviewSession { Token = "fail-me", IsActive = true };
-        _sessionService.Setup(x => x.GetSessionByTokenAsync("fail-me")).ReturnsAsync(session);
+        var session = new InterviewSession { Token = "expired", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1) };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("expired")).ReturnsAsync(session);
 
-        var result = await _runtimeController.RefreshToken("fail-me");
+        var result = await _runtimeController.RefreshToken("expired");
         var json = (JsonResult)result;
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
 
-        Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.TokenServiceFailure"));
+        Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_RefreshToken_CompletedSession_ReturnsError()
+    {
+        var session = new InterviewSession { Token = "completed", IsActive = true, CompletedOnUtc = DateTime.UtcNow.AddMinutes(-5), TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("completed")).ReturnsAsync(session);
+
+        var result = await _runtimeController.RefreshToken("completed");
+        var json = (JsonResult)result;
+        var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
+
+        Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]

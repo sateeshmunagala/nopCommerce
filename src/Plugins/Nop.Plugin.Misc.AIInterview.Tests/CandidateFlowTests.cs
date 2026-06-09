@@ -279,9 +279,22 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public async Task Runtime_SubmitAnswer_ExpiredSession_ReturnsError()
+    {
+        var session = new InterviewSession { Token = "expired", IsActive = true, TokenExpiryUtc = DateTime.UtcNow };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("expired")).ReturnsAsync(session);
+
+        var result = await _runtimeController.SubmitAnswer("expired", "answer");
+        var json = (JsonResult)result;
+        var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
+
+        Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+    }
+
+    [Test]
     public async Task Runtime_RefreshToken_Success()
     {
-        var session = new InterviewSession { Token = "old", IsActive = true };
+        var session = new InterviewSession { Token = "old", IsActive = true, CompletedOnUtc = null, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("old")).ReturnsAsync(session);
 
         var result = await _runtimeController.RefreshToken("old");
@@ -291,18 +304,6 @@ public class CandidateFlowTests
         Assert.That(newToken, Is.Not.Null);
         Assert.That(newToken, Is.Not.EqualTo("old"));
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Token == newToken.ToString())), Times.Once);
-    }
-
-    [Test]
-    public async Task Runtime_RefreshToken_ServiceFailure_ReturnsError()
-    {
-        var session = new InterviewSession { Token = "fail-me", IsActive = true };
-        _sessionService.Setup(x => x.GetSessionByTokenAsync("fail-me")).ReturnsAsync(session);
-
-        var result = await _runtimeController.RefreshToken("fail-me");
-        var json = (JsonResult)result;
-        var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
-        Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.TokenServiceFailure"));
     }
 
     [Test]
