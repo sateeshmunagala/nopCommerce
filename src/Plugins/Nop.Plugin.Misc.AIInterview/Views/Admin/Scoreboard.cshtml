@@ -1,8 +1,10 @@
 @model Nop.Plugin.Misc.AIInterview.Models.ScoreboardFilterModel
+@using Nop.Plugin.Misc.AIInterview
 
 @{
     Layout = "_AdminLayout";
     ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.Scoreboard.Title").Text;
+    NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminScoreboardMenuSystemName);
 }
 
 <form asp-controller="AIInterviewAdmin" asp-action="Scoreboard" method="get">

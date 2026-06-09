@@ -32,7 +32,7 @@ public class AdminMenuCreatedEventConsumer : BaseAdminMenuCreatedEventConsumer
         var item = plugin.GetAdminMenuItem();
         item.SystemName = AIInterviewDefaults.AdminMenuSystemName;
         item.Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Menu.Root");
-        item.Url = _nopUrlHelper.RouteUrl(AIInterviewDefaults.ConfigurationRouteName);
+        item.Url = string.Empty;
         item.PermissionNames = new List<string> { StandardPermission.Configuration.MANAGE_SETTINGS };
         item.ChildNodes = new List<AdminMenuItem>
         {

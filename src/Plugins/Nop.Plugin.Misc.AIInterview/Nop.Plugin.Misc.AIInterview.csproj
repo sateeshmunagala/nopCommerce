@@ -33,6 +33,12 @@
     <None Remove="Views\VendorScoreboard.cshtml" />
     <None Remove="Views\VendorJobCreation.cshtml" />
     <None Remove="Views\RuntimeError.cshtml" />
+    <None Remove="Views\Admin\General.cshtml" />
+    <None Remove="Views\Admin\AiService.cshtml" />
+    <None Remove="Views\Admin\SponsorInvites.cshtml" />
+    <None Remove="Views\Admin\VendorCredits.cshtml" />
+    <None Remove="Views\Admin\ApplicantCredits.cshtml" />
+    <None Remove="Views\Admin\Scoreboard.cshtml" />
     <None Remove="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml" />
     <None Remove="Views\MockAiInterview\Start.cshtml" />
     <None Remove="Views\MockAiInterview\Runtime.cshtml" />
@@ -81,6 +87,24 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\RuntimeError.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\General.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\AiService.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\SponsorInvites.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\VendorCredits.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\ApplicantCredits.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\Scoreboard.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml">

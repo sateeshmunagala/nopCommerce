@@ -1,8 +1,10 @@
 @model Nop.Plugin.Misc.AIInterview.Models.CreditManagementModel
+@using Nop.Plugin.Misc.AIInterview
 
 @{
     Layout = "_AdminLayout";
     ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle").Text;
+    NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminApplicantCreditsMenuSystemName);
 }
 
 <form asp-controller="AIInterviewAdmin" asp-action="ApplicantCredits" method="post">

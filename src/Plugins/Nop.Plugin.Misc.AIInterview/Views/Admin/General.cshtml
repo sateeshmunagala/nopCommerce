@@ -1,8 +1,10 @@
 @model Nop.Plugin.Misc.AIInterview.Models.GeneralSettingsModel
+@using Nop.Plugin.Misc.AIInterview
 
 @{
     Layout = "_AdminLayout";
     ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.General.Title").Text;
+    NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminGeneralMenuSystemName);
 }
 
 <form asp-controller="AIInterviewAdmin" asp-action="General" method="post">

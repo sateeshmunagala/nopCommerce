@@ -1,8 +1,10 @@
 @model Nop.Plugin.Misc.AIInterview.Models.AiServiceSettingsModel
+@using Nop.Plugin.Misc.AIInterview
 
 @{
     Layout = "_AdminLayout";
     ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.AiService.Title").Text;
+    NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminAiServiceMenuSystemName);
 }
 
 <form asp-controller="AIInterviewAdmin" asp-action="AiService" method="post">
@@ -22,7 +24,12 @@
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="UseMockResponses" /></div><div class="col-md-9"><nop-editor asp-for="UseMockResponses" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Provider" /></div><div class="col-md-9"><nop-editor asp-for="Provider" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ApiKey" /></div><div class="col-md-9"><nop-editor asp-for="ApiKey" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Model" /></div><div class="col-md-9"><nop-editor asp-for="Model" /></div></div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="Model" /></div>
+                        <div class="col-md-9">
+                            <input class="form-control" type="text" name="Model" id="Model" value="@Model.Model" />
+                        </div>
+                    </div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Prompt" /></div><div class="col-md-9"><nop-textarea asp-for="Prompt" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ServiceSettings" /></div><div class="col-md-9"><nop-textarea asp-for="ServiceSettings" /></div></div>
                     <div class="form-group row">

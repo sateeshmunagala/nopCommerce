@@ -161,6 +161,7 @@ public class AdminBaselineTests
 
         var parent = root.ChildNodes.FirstOrDefault(item => item.SystemName == AIInterviewDefaults.AdminMenuSystemName);
         Assert.That(parent, Is.Not.Null);
+        Assert.That(string.IsNullOrWhiteSpace(parent.Url), Is.True);
         Assert.That(parent.ChildNodes.Count, Is.EqualTo(7));
         Assert.That(parent.ChildNodes.Select(x => x.SystemName), Is.EquivalentTo(new[]
         {

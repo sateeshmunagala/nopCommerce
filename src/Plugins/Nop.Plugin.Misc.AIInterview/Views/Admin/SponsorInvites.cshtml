@@ -1,8 +1,10 @@
 @model Nop.Plugin.Misc.AIInterview.Models.SponsorInviteAdminModel
+@using Nop.Plugin.Misc.AIInterview
 
 @{
     Layout = "_AdminLayout";
     ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.SponsorInvites.Title").Text;
+    NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminSponsorInvitesMenuSystemName);
 }
 
 <div class="content-header clearfix">
