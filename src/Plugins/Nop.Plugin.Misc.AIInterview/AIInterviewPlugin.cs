@@ -115,7 +115,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             settings.InterviewRequired = true;
 
         if (string.IsNullOrWhiteSpace(settings.CreditProductSkuMappingsJson))
-            settings.CreditProductSkuMappingsJson = "{\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}";
+            settings.CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson;
+
+        if (string.IsNullOrWhiteSpace(settings.CreditPurchasePageUrl))
+            settings.CreditPurchasePageUrl = AIInterviewDefaults.DefaultCreditPurchasePageUrl;
 
         await _settingService.SaveSettingAsync(settings);
         await EnsureJobProductTemplateAsync();
@@ -291,7 +294,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureSpeechKey"] = "Azure Speech Key",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureSpeechRegion"] = "Azure Speech Region",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditProductSkuMappingsJson"] = "Credit Product SKU Mappings (JSON)",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditProductSkuMappingsJson.Hint"] = "Map product SKUs to credits granted per unit. Example: {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}. Create normal Pricing-category products with those SKUs and prices; credits are granted only after successful payment.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditProductSkuMappingsJson.Hint"] = "Map product SKUs to credits granted per unit. Example: {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}. Create normal Pricing-category products with those SKUs and prices. Credits are granted only after successful payment for registered customers.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditProductSkuMappingsJson.Invalid"] = "The credit product SKU mappings JSON is invalid. Use a JSON object such as {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10}.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditPurchasePageUrl"] = "Credit Purchase Page URL",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditPurchasePageUrl.Hint"] = "Relative or absolute URL used by the job page when the user has no credits. The default is /pricing.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Title"] = "Sponsor Invite Management",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Create"] = "Create Invites",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.List"] = "Existing Invites",
@@ -335,7 +341,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ApiKey = string.Empty,
             ResumeRequired = true,
             InterviewRequired = true,
-            MinimumScore = 0
+            MinimumScore = 0,
+            CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson,
+            CreditPurchasePageUrl = AIInterviewDefaults.DefaultCreditPurchasePageUrl
         };
         await _settingService.SaveSettingAsync(settings);
 
@@ -424,6 +432,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.ServiceSettings"] = "Service Settings",
             [$"{AIInterviewDefaults.LocalizationPrefix}.CreditPackAmount"] = "Credit Pack Amount",
             [$"{AIInterviewDefaults.LocalizationPrefix}.CreditPackPrice"] = "Credit Pack Price",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditPurchasePageUrl"] = "Credit Purchase Page URL",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditPurchasePageUrl.Hint"] = "Relative or absolute URL used by the job page when the user has no credits. The default is /pricing.",
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.TopUp.InvalidAmount"] = "Invalid top-up amount.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.TopUp.Success"] = "Credits topped up successfully.",
@@ -463,6 +473,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Success"] = "Invite created successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Error"] = "Error creating invite.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Deactivated"] = "Invite deactivated successfully.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditProductSkuMappingsJson.Invalid"] = "The credit product SKU mappings JSON is invalid. Use a JSON object such as {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10}.",
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Title"] = "Applications",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Candidate"] = "Candidate",

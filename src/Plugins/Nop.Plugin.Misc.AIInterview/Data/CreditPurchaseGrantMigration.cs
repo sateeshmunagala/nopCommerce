@@ -11,10 +11,17 @@ public class CreditPurchaseGrantMigration : Migration
     public override void Up()
     {
         this.CreateTableIfNotExists<CreditPurchaseGrant>();
+
+        Create.Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId")
+            .OnTable(nameof(CreditPurchaseGrant))
+            .OnColumn(nameof(CreditPurchaseGrant.OrderItemId)).Ascending()
+            .WithOptions().Unique();
     }
 
     public override void Down()
     {
-        this.DeleteTableIfExists<CreditPurchaseGrant>();
+        Delete.Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId")
+            .OnTable(nameof(CreditPurchaseGrant))
+            .OnColumn(nameof(CreditPurchaseGrant.OrderItemId));
     }
 }

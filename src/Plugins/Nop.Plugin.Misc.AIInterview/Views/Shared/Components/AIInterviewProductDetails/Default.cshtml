@@ -6,6 +6,7 @@
     bool alreadyApplied = ViewBag.AlreadyApplied != null && (bool)ViewBag.AlreadyApplied;
     int productId = ViewBag.ProductId != null ? (int)ViewBag.ProductId : 0;
     string sponsorToken = ViewBag.SponsorToken as string;
+    string creditPurchasePageUrl = ViewBag.CreditPurchasePageUrl as string ?? "/pricing";
     string interviewError = Context?.Request?.Query["interviewError"].ToString();
 }
 
@@ -139,7 +140,7 @@
         {
             <div class="job-inline-message is-visible is-error">
                 @T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits")
-                <a href="@Url.RouteUrl("Topic", new { SeName = "pricing" })">@T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits.Link")</a>
+                <a href="@creditPurchasePageUrl">@T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits.Link")</a>
             </div>
         }
 

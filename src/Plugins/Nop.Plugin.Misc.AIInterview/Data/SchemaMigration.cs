@@ -16,6 +16,11 @@ public class SchemaMigration : Migration
         this.CreateTableIfNotExists<CreditLedgerEntry>();
         this.CreateTableIfNotExists<SponsorInvite>();
         this.CreateTableIfNotExists<CreditPurchaseGrant>();
+
+        Create.Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId")
+            .OnTable(nameof(CreditPurchaseGrant))
+            .OnColumn(nameof(CreditPurchaseGrant.OrderItemId)).Ascending()
+            .WithOptions().Unique();
     }
 
     public override void Down()

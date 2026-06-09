@@ -72,6 +72,11 @@ public class AIInterviewSettings : ISettings
     public string CreditProductSkuMappingsJson { get; set; }
 
     /// <summary>
+    /// Gets or sets the URL for the pricing or credit purchase page
+    /// </summary>
+    public string CreditPurchasePageUrl { get; set; }
+
+    /// <summary>
     /// Gets or sets the credit pack amount
     /// </summary>
     public decimal CreditPackAmount { get; set; }

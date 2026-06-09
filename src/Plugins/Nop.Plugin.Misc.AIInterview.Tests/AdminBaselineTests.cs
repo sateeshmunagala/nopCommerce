@@ -82,7 +82,8 @@ public class AdminBaselineTests
             AgoraAppId = "keep-agora",
             AgoraTokenServiceUrl = "keep-agora-url",
             AzureSpeechKey = "keep-speech",
-            AzureSpeechRegion = "keep-region"
+            AzureSpeechRegion = "keep-region",
+            CreditPurchasePageUrl = "keep-credits"
         };
         _mockAIInterviewSettings = new MockAIInterviewSettings { UseMockResponses = true };
 
@@ -216,6 +217,7 @@ public class AdminBaselineTests
         Assert.That(getModel.UseMockResponses, Is.True);
         Assert.That(getModel.AzureOpenAiEndpointUrl, Is.EqualTo("keep-endpoint"));
         Assert.That(getModel.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-1"));
+        Assert.That(getModel.CreditPurchasePageUrl, Is.EqualTo("keep-credits"));
 
         await _controller.AiService(new AiServiceSettingsModel
         {
@@ -226,6 +228,7 @@ public class AdminBaselineTests
             Prompt = "prompt",
             ServiceSettings = "svc",
             CreditProductSkuMappingsJson = "{\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}",
+            CreditPurchasePageUrl = "/credits",
             AzureOpenAiEndpointUrl = "https://endpoint",
             AzureOpenAiApiKey = "aoai-key",
             AzureOpenAiDeploymentOrModel = "deployment",
@@ -239,8 +242,37 @@ public class AdminBaselineTests
         Assert.That(_aiInterviewSettings.Provider, Is.EqualTo("OpenAI"));
         Assert.That(_aiInterviewSettings.AzureSpeechRegion, Is.EqualTo("eastus"));
         Assert.That(_aiInterviewSettings.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-10"));
+        Assert.That(_aiInterviewSettings.CreditPurchasePageUrl, Is.EqualTo("/credits"));
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<AIInterviewSettings>()), Times.AtLeastOnce);
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<MockAIInterviewSettings>()), Times.Once);
+    }
+
+    [Test]
+    public async Task AiService_Invalid_Json_Shows_Error_And_Does_Not_Save()
+    {
+        var result = await _controller.AiService(new AiServiceSettingsModel
+        {
+            UseMockResponses = false,
+            Provider = "OpenAI",
+            ApiKey = "key",
+            Model = "gpt-4",
+            Prompt = "prompt",
+            ServiceSettings = "svc",
+            CreditProductSkuMappingsJson = "{invalid json",
+            CreditPurchasePageUrl = "/credits",
+            AzureOpenAiEndpointUrl = "https://endpoint",
+            AzureOpenAiApiKey = "aoai-key",
+            AzureOpenAiDeploymentOrModel = "deployment",
+            AgoraAppId = "agora",
+            AgoraTokenServiceUrl = "https://token",
+            AzureSpeechKey = "speech",
+            AzureSpeechRegion = "eastus"
+        });
+
+        Assert.That(result, Is.InstanceOf<ViewResult>());
+        Assert.That(_controller.ModelState.IsValid, Is.False);
+        _notificationService.Verify(x => x.ErrorNotification(It.IsAny<string>()), Times.Once);
+        _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<AIInterviewSettings>()), Times.Never);
     }
 
     [Test]

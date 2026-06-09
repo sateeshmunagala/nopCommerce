@@ -68,6 +68,9 @@ public static class AIInterviewDefaults
 
     public static string JobProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.JobDetails.cshtml";
 
+    public static string DefaultCreditProductSkuMappingsJson => "{\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}";
+    public static string DefaultCreditPurchasePageUrl => "/pricing";
+
     public static string InterviewDifficultyAttributeName => "Interview Difficulty";
 
     public static IReadOnlyList<string> InterviewDifficultyValues => new[] { "Easy", "Medium", "Hard" };

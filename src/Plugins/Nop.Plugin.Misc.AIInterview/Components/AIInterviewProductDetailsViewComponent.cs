@@ -19,6 +19,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
     private readonly IProductTemplateService _productTemplateService;
     private readonly IWorkContext _workContext;
     private readonly IApplicationService _applicationService;
+    private readonly AIInterviewSettings _aiInterviewSettings;
 
     public AIInterviewProductDetailsViewComponent(ICreditService creditService,
         IWorkContext workContext,
@@ -26,7 +27,8 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         IJobInterviewExperienceService jobInterviewExperienceService,
         IProductService productService,
         IProductTemplateService productTemplateService,
-        IApplicationService applicationService)
+        IApplicationService applicationService,
+        AIInterviewSettings aiInterviewSettings)
     {
         _creditService = creditService;
         _workContext = workContext;
@@ -35,6 +37,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         _productService = productService;
         _productTemplateService = productTemplateService;
         _applicationService = applicationService;
+        _aiInterviewSettings = aiInterviewSettings;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData)
@@ -72,6 +75,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         ViewBag.AlreadyApplied = alreadyApplied;
         ViewBag.ProductId = productId;
         ViewBag.IsAuthenticated = customer != null;
+        ViewBag.CreditPurchasePageUrl = NormalizeCreditPurchasePageUrl(_aiInterviewSettings?.CreditPurchasePageUrl);
 
         var sponsorToken = HttpContext?.Request?.Query?["sponsorToken"].ToString() ?? "";
         ViewBag.SponsorToken = sponsorToken;
@@ -98,6 +102,17 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         ViewBag.HasSponsorCredits = hasSponsorCredits;
 
         return View("~/Plugins/Misc.AIInterview/Views/Shared/Components/AIInterviewProductDetails/Default.cshtml", model);
+    }
+
+    protected virtual string NormalizeCreditPurchasePageUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return AIInterviewDefaults.DefaultCreditPurchasePageUrl;
+
+        if (Uri.TryCreate(url, UriKind.Absolute, out _))
+            return url;
+
+        return url.StartsWith("/", StringComparison.Ordinal) ? url : "/" + url;
     }
 
     protected virtual async Task EnsureDifficultyAttributeModelAsync(ProductDetailsModel model, int productId)

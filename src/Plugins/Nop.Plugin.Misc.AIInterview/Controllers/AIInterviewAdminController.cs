@@ -127,6 +127,7 @@ public class AIInterviewAdminController : BasePluginController
             Prompt = _aiInterviewSettings.Prompt,
             ServiceSettings = _aiInterviewSettings.ServiceSettings,
             CreditProductSkuMappingsJson = _aiInterviewSettings.CreditProductSkuMappingsJson,
+            CreditPurchasePageUrl = _aiInterviewSettings.CreditPurchasePageUrl,
             AzureOpenAiEndpointUrl = _aiInterviewSettings.AzureOpenAiEndpointUrl,
             AzureOpenAiApiKey = _aiInterviewSettings.AzureOpenAiApiKey,
             AzureOpenAiDeploymentOrModel = _aiInterviewSettings.AzureOpenAiDeploymentOrModel,
@@ -145,6 +146,16 @@ public class AIInterviewAdminController : BasePluginController
         if (!ModelState.IsValid)
             return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", model);
 
+        if (!TryValidateCreditProductSkuMappingsJson(model.CreditProductSkuMappingsJson))
+        {
+            var mappingValidationError = await GetLocalizedTextAsync(
+                "Plugins.Misc.AIInterview.Admin.AiService.CreditProductSkuMappingsJson.Invalid",
+                "The credit product SKU mappings JSON is invalid. Use a JSON object such as {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10}.");
+            ModelState.AddModelError(nameof(model.CreditProductSkuMappingsJson), mappingValidationError);
+            _notificationService.ErrorNotification(mappingValidationError);
+            return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", model);
+        }
+
         _mockAIInterviewSettings.UseMockResponses = model.UseMockResponses;
         await _settingService.SaveSettingAsync(_mockAIInterviewSettings);
 
@@ -154,6 +165,7 @@ public class AIInterviewAdminController : BasePluginController
         _aiInterviewSettings.Prompt = model.Prompt;
         _aiInterviewSettings.ServiceSettings = model.ServiceSettings;
         _aiInterviewSettings.CreditProductSkuMappingsJson = model.CreditProductSkuMappingsJson;
+        _aiInterviewSettings.CreditPurchasePageUrl = model.CreditPurchasePageUrl;
         _aiInterviewSettings.AzureOpenAiEndpointUrl = model.AzureOpenAiEndpointUrl;
         _aiInterviewSettings.AzureOpenAiApiKey = model.AzureOpenAiApiKey;
         _aiInterviewSettings.AzureOpenAiDeploymentOrModel = model.AzureOpenAiDeploymentOrModel;
@@ -298,6 +310,11 @@ public class AIInterviewAdminController : BasePluginController
     protected virtual string Csv(string value)
     {
         return $"\"{(value ?? string.Empty).Replace("\"", "\"\"")}\"";
+    }
+
+    protected virtual bool TryValidateCreditProductSkuMappingsJson(string json)
+    {
+        return CreditPurchaseService.TryParseSkuMappings(json, out _, out _);
     }
 
     protected virtual List<string> ParseEmails(string text)

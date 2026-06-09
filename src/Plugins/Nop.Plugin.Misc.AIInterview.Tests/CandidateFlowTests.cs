@@ -399,7 +399,8 @@ public class CandidateFlowTests
             jobInterviewExperienceService.Object,
             _productService.Object,
             productTemplateService.Object,
-            _applicationService.Object);
+            _applicationService.Object,
+            new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" });
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?sponsorToken=abc");
 
@@ -454,6 +455,7 @@ public class CandidateFlowTests
         Assert.That(component.ViewBag.HasSponsorCredits, Is.True);
         Assert.That(component.ViewBag.ProductId, Is.EqualTo(99));
         Assert.That(component.ViewBag.SponsorToken, Is.EqualTo("abc"));
+        Assert.That(component.ViewBag.CreditPurchasePageUrl, Is.EqualTo("/buy-credits"));
     }
 
     [Test]
@@ -477,7 +479,8 @@ public class CandidateFlowTests
             jobInterviewExperienceService.Object,
             _productService.Object,
             productTemplateService.Object,
-            _applicationService.Object);
+            _applicationService.Object,
+            new AIInterviewSettings { CreditPurchasePageUrl = "/pricing" });
 
         var result = await component.InvokeAsync(
             "productdetails_before_collateral",

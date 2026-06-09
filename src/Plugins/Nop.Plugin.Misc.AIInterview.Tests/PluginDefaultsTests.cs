@@ -45,5 +45,7 @@ public class PluginDefaultsTests
         Assert.That(savedSettings.Enabled, Is.True);
         Assert.That(savedSettings.ResumeRequired, Is.True);
         Assert.That(savedSettings.InterviewRequired, Is.True);
+        Assert.That(savedSettings.CreditProductSkuMappingsJson, Is.EqualTo(AIInterviewDefaults.DefaultCreditProductSkuMappingsJson));
+        Assert.That(savedSettings.CreditPurchasePageUrl, Is.EqualTo(AIInterviewDefaults.DefaultCreditPurchasePageUrl));
     }
 }

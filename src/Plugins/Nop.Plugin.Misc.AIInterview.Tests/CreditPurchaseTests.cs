@@ -7,6 +7,7 @@ using Nop.Data;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Infrastructure;
 using Nop.Plugin.Misc.AIInterview.Services;
+using Microsoft.Extensions.Logging;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Orders;
@@ -24,6 +25,7 @@ public class CreditPurchaseTests
     private Mock<IProductService> _productService;
     private Mock<ICustomerService> _customerService;
     private Mock<ICreditService> _creditService;
+    private Mock<ILogger<CreditPurchaseService>> _logger;
     private AIInterviewSettings _settings;
     private CreditPurchaseService _service;
 
@@ -35,6 +37,7 @@ public class CreditPurchaseTests
         _productService = new Mock<IProductService>();
         _customerService = new Mock<ICustomerService>();
         _creditService = new Mock<ICreditService>();
+        _logger = new Mock<ILogger<CreditPurchaseService>>();
         _settings = new AIInterviewSettings { CreditProductSkuMappingsJson = DefaultMappingsJson };
 
         var grants = new List<CreditPurchaseGrant>();
@@ -60,7 +63,8 @@ public class CreditPurchaseTests
             _productService.Object,
             _customerService.Object,
             _creditService.Object,
-            _settings);
+            _settings,
+            _logger.Object);
     }
 
     [Test]
@@ -182,6 +186,37 @@ public class CreditPurchaseTests
 
         _creditService.Verify(x => x.AddCreditAsync(60, 1, It.IsAny<string>()), Times.Once);
         _grantRepository.Verify(x => x.InsertAsync(It.IsAny<CreditPurchaseGrant>(), true), Times.Once);
+    }
+
+    [Test]
+    public async Task Existing_Grant_Record_Skips_Purchase_And_Wallet_Update()
+    {
+        var order = new Order { Id = 1009, CustomerId = 90 };
+        _customerService.Setup(x => x.GetCustomerByIdAsync(90)).ReturnsAsync(new Customer { Id = 90 });
+        _orderService.Setup(x => x.GetOrderItemsAsync(1009, null, null, 0))
+            .ReturnsAsync(new List<OrderItem>
+            {
+                new() { Id = 19, OrderId = 1009, ProductId = 109, Quantity = 1 }
+            });
+        _orderService.Setup(x => x.GetProductByOrderItemIdAsync(19))
+            .ReturnsAsync(new Product { Id = 109, Sku = "AI-CREDIT-1" });
+
+        // Simulate a row already created by a previous successful run.
+        var existingGrant = new CreditPurchaseGrant { Id = 1, OrderId = 1009, OrderItemId = 19, CustomerId = 90 };
+        _grantRepository.Setup(x => x.GetAllAsync(
+                It.IsAny<Func<IQueryable<CreditPurchaseGrant>, IQueryable<CreditPurchaseGrant>>>(),
+                It.IsAny<Func<ICacheKeyService, CacheKey>>(),
+                true))
+            .ReturnsAsync((Func<IQueryable<CreditPurchaseGrant>, IQueryable<CreditPurchaseGrant>> func, Func<ICacheKeyService, CacheKey> _, bool __) =>
+            {
+                var grants = new List<CreditPurchaseGrant> { existingGrant };
+                return func == null ? grants : func(grants.AsQueryable()).ToList();
+            });
+
+        await _service.GrantCreditsForPaidOrderAsync(order);
+
+        _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        _grantRepository.Verify(x => x.InsertAsync(It.IsAny<CreditPurchaseGrant>(), true), Times.Never);
     }
 
     [Test]
