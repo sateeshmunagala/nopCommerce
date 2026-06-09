@@ -350,7 +350,7 @@ public class AIInterviewAdminController : BasePluginController
         return "Plugins.Misc.AIInterview.Employer.Invite.Active";
     }
 
-    protected virtual async Task<CreditManagementModel> PrepareCreditModelAsync(string scopeTitleResourceKey, int? customerId)
+    protected virtual async Task<CreditManagementModel> PrepareCreditModelAsync(string scopeTitleResourceKey, int? customerId, bool createWallet = true)
     {
         var model = new CreditManagementModel
         {
@@ -359,6 +359,9 @@ public class AIInterviewAdminController : BasePluginController
         };
 
         if (model.CustomerId <= 0)
+            return model;
+
+        if (!createWallet)
             return model;
 
         var wallet = await _creditService.GetOrCreateWalletAsync(model.CustomerId);
@@ -392,39 +395,39 @@ public class AIInterviewAdminController : BasePluginController
         if (model.CustomerId <= 0)
         {
             _notificationService.ErrorNotification(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Credits.CustomerRequired", "Customer is required."));
-            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId));
+            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, false));
         }
 
         var customer = await _customerService.GetCustomerByIdAsync(model.CustomerId);
         if (customer == null)
         {
             _notificationService.ErrorNotification(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Credits.CustomerRequired", "Customer is required."));
-            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId));
+            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, false));
         }
 
         var isVendorScope = string.Equals(scopeTitleResourceKey, "Plugins.Misc.AIInterview.Admin.Credits.VendorTitle", StringComparison.OrdinalIgnoreCase);
         if (isVendorScope && customer.VendorId <= 0)
         {
             _notificationService.ErrorNotification(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Credits.InvalidVendorScope", "The selected customer is not a vendor account."));
-            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId));
+            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, false));
         }
 
         if (!isVendorScope && customer.VendorId > 0)
         {
             _notificationService.ErrorNotification(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Credits.InvalidApplicantScope", "The selected customer is not an applicant account."));
-            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId));
+            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, false));
         }
 
         if (model.Amount <= 0)
         {
             _notificationService.ErrorNotification(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.TopUp.InvalidAmount", "Invalid top-up amount."));
-            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId));
+            return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, false));
         }
 
         await _creditService.AddCreditAsync(model.CustomerId, model.Amount, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Remarks"));
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Success"));
 
-        return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId));
+        return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, true));
     }
 
     protected virtual async Task<ScoreboardFilterModel> PrepareScoreboardModelAsync(ScoreboardFilterModel filter)

@@ -313,6 +313,7 @@ public class AdminBaselineTests
 
         _notificationService.Verify(x => x.ErrorNotification("Plugins.Misc.AIInterview.Admin.Credits.InvalidVendorScope"), Times.Once);
         _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
     }
 
     [Test]
@@ -329,6 +330,7 @@ public class AdminBaselineTests
 
         _notificationService.Verify(x => x.ErrorNotification("Plugins.Misc.AIInterview.Admin.Credits.InvalidApplicantScope"), Times.Once);
         _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
     }
 
     [Test]
@@ -360,6 +362,23 @@ public class AdminBaselineTests
         });
 
         _notificationService.Verify(x => x.ErrorNotification("Plugins.Misc.AIInterview.Admin.TopUp.InvalidAmount"), Times.Once);
+        _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Test]
+    public async Task VendorCredits_MissingCustomer_DoesNotCreateWallet()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(404)).ReturnsAsync((Customer)null);
+
+        await _controller.VendorCredits(new CreditManagementModel
+        {
+            CustomerId = 404,
+            Amount = 25
+        });
+
+        _notificationService.Verify(x => x.ErrorNotification("Plugins.Misc.AIInterview.Admin.Credits.CustomerRequired"), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
     }
 
     [Test]
