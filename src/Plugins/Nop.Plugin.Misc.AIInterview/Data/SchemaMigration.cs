@@ -15,6 +15,7 @@ public class SchemaMigration : Migration
         this.CreateTableIfNotExists<CreditWallet>();
         this.CreateTableIfNotExists<CreditLedgerEntry>();
         this.CreateTableIfNotExists<SponsorInvite>();
+        this.CreateTableIfNotExists<CreditPurchaseGrant>();
     }
 
     public override void Down()
@@ -24,5 +25,6 @@ public class SchemaMigration : Migration
         this.DeleteTableIfExists<CreditWallet>();
         this.DeleteTableIfExists<CreditLedgerEntry>();
         this.DeleteTableIfExists<SponsorInvite>();
+        this.DeleteTableIfExists<CreditPurchaseGrant>();
     }
 }

@@ -75,6 +75,7 @@ public class AdminBaselineTests
             Prompt = "keep-prompt",
             ServiceSettings = "keep-service",
             ApiKey = "keep-api",
+            CreditProductSkuMappingsJson = "{\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}",
             AzureOpenAiEndpointUrl = "keep-endpoint",
             AzureOpenAiApiKey = "keep-aoai-key",
             AzureOpenAiDeploymentOrModel = "keep-deploy",
@@ -214,6 +215,7 @@ public class AdminBaselineTests
         var getModel = (AiServiceSettingsModel)((ViewResult)getResult).Model;
         Assert.That(getModel.UseMockResponses, Is.True);
         Assert.That(getModel.AzureOpenAiEndpointUrl, Is.EqualTo("keep-endpoint"));
+        Assert.That(getModel.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-1"));
 
         await _controller.AiService(new AiServiceSettingsModel
         {
@@ -223,6 +225,7 @@ public class AdminBaselineTests
             Model = "gpt-4",
             Prompt = "prompt",
             ServiceSettings = "svc",
+            CreditProductSkuMappingsJson = "{\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}",
             AzureOpenAiEndpointUrl = "https://endpoint",
             AzureOpenAiApiKey = "aoai-key",
             AzureOpenAiDeploymentOrModel = "deployment",
@@ -235,6 +238,7 @@ public class AdminBaselineTests
         Assert.That(_mockAIInterviewSettings.UseMockResponses, Is.False);
         Assert.That(_aiInterviewSettings.Provider, Is.EqualTo("OpenAI"));
         Assert.That(_aiInterviewSettings.AzureSpeechRegion, Is.EqualTo("eastus"));
+        Assert.That(_aiInterviewSettings.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-10"));
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<AIInterviewSettings>()), Times.AtLeastOnce);
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<MockAIInterviewSettings>()), Times.Once);
     }

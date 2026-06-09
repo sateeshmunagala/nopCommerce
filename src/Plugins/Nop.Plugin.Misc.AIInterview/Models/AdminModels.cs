@@ -36,6 +36,9 @@ public record AiServiceSettingsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.ServiceSettings")]
     public string ServiceSettings { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.CreditProductSkuMappingsJson")]
+    public string CreditProductSkuMappingsJson { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiEndpointUrl")]
     public string AzureOpenAiEndpointUrl { get; set; }
 

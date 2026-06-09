@@ -67,6 +67,11 @@ public class AIInterviewSettings : ISettings
     public string ServiceSettings { get; set; }
 
     /// <summary>
+    /// Gets or sets the JSON mapping between credit pack SKUs and credits granted per unit
+    /// </summary>
+    public string CreditProductSkuMappingsJson { get; set; }
+
+    /// <summary>
     /// Gets or sets the credit pack amount
     /// </summary>
     public decimal CreditPackAmount { get; set; }

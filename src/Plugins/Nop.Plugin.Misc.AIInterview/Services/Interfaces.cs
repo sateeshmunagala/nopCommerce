@@ -38,6 +38,11 @@ public interface ICreditService
     Task<bool> AuthorizeAndChargeAsync(int customerId, decimal amount, string remarks);
 }
 
+public interface ICreditPurchaseService
+{
+    Task GrantCreditsForPaidOrderAsync(Nop.Core.Domain.Orders.Order order);
+}
+
 public interface ISponsorInviteService
 {
     Task InsertSponsorInviteAsync(SponsorInvite invite);

@@ -114,6 +114,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (interviewRequiredSetting == null)
             settings.InterviewRequired = true;
 
+        if (string.IsNullOrWhiteSpace(settings.CreditProductSkuMappingsJson))
+            settings.CreditProductSkuMappingsJson = "{\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}";
+
         await _settingService.SaveSettingAsync(settings);
         await EnsureJobProductTemplateAsync();
         await EnsureWidgetActiveAsync();
@@ -287,6 +290,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AgoraTokenServiceUrl"] = "Agora Token Service URL",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureSpeechKey"] = "Azure Speech Key",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureSpeechRegion"] = "Azure Speech Region",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditProductSkuMappingsJson"] = "Credit Product SKU Mappings (JSON)",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditProductSkuMappingsJson.Hint"] = "Map product SKUs to credits granted per unit. Example: {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}. Create normal Pricing-category products with those SKUs and prices; credits are granted only after successful payment.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Title"] = "Sponsor Invite Management",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Create"] = "Create Invites",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.List"] = "Existing Invites",

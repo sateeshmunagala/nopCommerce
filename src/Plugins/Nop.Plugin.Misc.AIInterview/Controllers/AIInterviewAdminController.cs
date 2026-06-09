@@ -126,6 +126,7 @@ public class AIInterviewAdminController : BasePluginController
             Model = _aiInterviewSettings.Model,
             Prompt = _aiInterviewSettings.Prompt,
             ServiceSettings = _aiInterviewSettings.ServiceSettings,
+            CreditProductSkuMappingsJson = _aiInterviewSettings.CreditProductSkuMappingsJson,
             AzureOpenAiEndpointUrl = _aiInterviewSettings.AzureOpenAiEndpointUrl,
             AzureOpenAiApiKey = _aiInterviewSettings.AzureOpenAiApiKey,
             AzureOpenAiDeploymentOrModel = _aiInterviewSettings.AzureOpenAiDeploymentOrModel,
@@ -152,6 +153,7 @@ public class AIInterviewAdminController : BasePluginController
         _aiInterviewSettings.Model = model.Model;
         _aiInterviewSettings.Prompt = model.Prompt;
         _aiInterviewSettings.ServiceSettings = model.ServiceSettings;
+        _aiInterviewSettings.CreditProductSkuMappingsJson = model.CreditProductSkuMappingsJson;
         _aiInterviewSettings.AzureOpenAiEndpointUrl = model.AzureOpenAiEndpointUrl;
         _aiInterviewSettings.AzureOpenAiApiKey = model.AzureOpenAiApiKey;
         _aiInterviewSettings.AzureOpenAiDeploymentOrModel = model.AzureOpenAiDeploymentOrModel;
