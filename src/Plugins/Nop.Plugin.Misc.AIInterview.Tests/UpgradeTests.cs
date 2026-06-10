@@ -8,6 +8,7 @@ using Nop.Services.Helpers;
 using System.Threading.Tasks;
 using Nop.Core.Configuration;
 using Nop.Core.Domain.Configuration;
+using Nop.Plugin.Misc.AIInterview.Models;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
 
@@ -46,5 +47,9 @@ public class UpgradeTests
         Assert.That(existingSettings.Enabled, Is.False, "Enabled flag was explicitly set in DB, so it should be preserved as False.");
         Assert.That(existingSettings.CreditProductSkuMappingsJson, Is.EqualTo(AIInterviewDefaults.DefaultCreditProductSkuMappingsJson));
         Assert.That(existingSettings.CreditPurchasePageUrl, Is.EqualTo(AIInterviewDefaults.DefaultCreditPurchasePageUrl));
+        Assert.That(typeof(AIInterviewSettings).GetProperty("ResumeRequired"), Is.Null);
+        Assert.That(typeof(AIInterviewSettings).GetProperty("InterviewRequired"), Is.Null);
+        Assert.That(typeof(ConfigurationModel).GetProperty("ResumeRequired"), Is.Null);
+        Assert.That(typeof(ConfigurationModel).GetProperty("InterviewRequired"), Is.Null);
     }
 }

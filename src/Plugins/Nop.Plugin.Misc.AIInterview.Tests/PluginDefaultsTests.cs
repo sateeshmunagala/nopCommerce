@@ -6,6 +6,7 @@ using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Helpers;
 using System.Threading.Tasks;
+using Nop.Plugin.Misc.AIInterview.Models;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
 
@@ -45,5 +46,9 @@ public class PluginDefaultsTests
         Assert.That(savedSettings.Enabled, Is.True);
         Assert.That(savedSettings.CreditProductSkuMappingsJson, Is.EqualTo(AIInterviewDefaults.DefaultCreditProductSkuMappingsJson));
         Assert.That(savedSettings.CreditPurchasePageUrl, Is.EqualTo(AIInterviewDefaults.DefaultCreditPurchasePageUrl));
+        Assert.That(typeof(AIInterviewSettings).GetProperty("ResumeRequired"), Is.Null);
+        Assert.That(typeof(AIInterviewSettings).GetProperty("InterviewRequired"), Is.Null);
+        Assert.That(typeof(ConfigurationModel).GetProperty("ResumeRequired"), Is.Null);
+        Assert.That(typeof(ConfigurationModel).GetProperty("InterviewRequired"), Is.Null);
     }
 }

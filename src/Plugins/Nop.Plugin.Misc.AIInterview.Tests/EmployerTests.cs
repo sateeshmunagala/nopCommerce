@@ -308,4 +308,40 @@ public class EmployerTests
             product.Name == "Platform Engineer"), false, false), Times.Once);
         _urlRecordService.Verify(x => x.SaveSlugAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), "platform-engineer", 0), Times.Once);
     }
+
+    [TestCase(true, true)]
+    [TestCase(true, false)]
+    [TestCase(false, true)]
+    public async Task VendorJobCreation_Saves_Checked_Requirement_Combinations(bool resumeRequired, bool interviewRequired)
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<Nop.Core.Domain.Catalog.ProductTemplate>
+            {
+                new() { Id = 1, Name = "Simple product", ViewPath = "ProductTemplate.Simple" },
+                new() { Id = 7, Name = AIInterviewDefaults.JobProductTemplateName, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath }
+            });
+        _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), string.Empty, "Platform Engineer", true))
+            .ReturnsAsync("platform-engineer");
+
+        var result = await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            ShortDescription = "Build reliable systems",
+            Published = true,
+            ResumeRequired = resumeRequired,
+            InterviewRequired = interviewRequired
+        });
+
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        Assert.That(((RedirectToRouteResult)result).RouteName, Is.EqualTo(AIInterviewDefaults.VendorScoreboardRouteName));
+        _productService.Verify(x => x.InsertProductAsync(It.Is<Nop.Core.Domain.Catalog.Product>(product =>
+            product.Name == "Platform Engineer" &&
+            product.VendorId == _employer.VendorId &&
+            product.ProductTemplateId == 7 &&
+            product.Published &&
+            product.DisableBuyButton)), Times.Once);
+        _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Nop.Core.Domain.Catalog.Product>(product =>
+            product.Name == "Platform Engineer"), resumeRequired, interviewRequired), Times.Once);
+        _urlRecordService.Verify(x => x.SaveSlugAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), "platform-engineer", 0), Times.Once);
+    }
 }
