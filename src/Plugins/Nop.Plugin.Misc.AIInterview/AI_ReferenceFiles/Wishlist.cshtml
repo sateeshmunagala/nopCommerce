@@ -1,0 +1,1442 @@
+﻿@model WishlistModel
+
+@using Nop.Core
+@using Nop.Core.Domain.Catalog
+@using Nop.Core.Domain.Media
+@using Nop.Core.Domain.Tax
+
+@inject IWebHelper webHelper
+@inject IWorkContext workContext
+@inject MediaSettings mediaSettings
+
+
+@{
+    Layout = "_InterviewLayout";
+
+    var lastItem = Model.Items.LastOrDefault();
+    var cartItemId = lastItem?.Id ?? 0;
+    var attributes = lastItem.AttributeInfo;
+    var customerFullName = Model.CustomerFullname;
+    var customerFirstName = (await workContext.GetCurrentCustomerAsync()).FirstName;
+
+    // 1. Split the string into two lines based on the <br /> tag
+    var lines = attributes.Split(new[] { "<br />" }, StringSplitOptions.RemoveEmptyEntries);
+
+    // 2. Initialize variables to hold the extracted values
+    string technology = string.Empty;
+    string difficultyLevel = string.Empty;
+
+    // 3. Loop through each line and extract the key-value pair
+    foreach (var line in lines)
+    {
+        var parts = line.Split(':');
+        if (parts.Length == 2)
+        {
+            var key = parts[0].Trim();
+            var value = parts[1].Trim();
+
+            if (key == "Technology")
+            {
+                technology = value;
+            }
+            else if (key == "Difficulty Level")
+            {
+                difficultyLevel = value;
+            }
+        }
+    }
+
+    //title
+    //NopHtml.AddTitleParts(T("PageTitle.Wishlist").Text);
+    //page class
+    //NopHtml.AppendPageCssClassParts("html-wishlist-page");
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Mock Interview</title>
+    @NopHtml.GenerateCssFiles()
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <style>
+        :root {
+            --accent: #0078d7;
+            --danger: #e94b35;
+            --bg: #f7f9fc;
+            --panel: #ffffff;
+            --muted: #e9edf5;
+            --text: #333;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top bar */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--panel);
+            border-bottom: 1px solid #ddd;
+            padding: 10px 16px;
+            gap: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,.06);
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .topbar-center {
+            flex: 1;
+            text-align: center;
+            font-weight: 700;
+            color: #2c3e50
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .btn {
+            border: none;
+            cursor: pointer
+        }
+
+        .btn-stop {
+            background: var(--danger);
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .timer {
+            font-weight: 700;
+            color: #2c3e50;
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .help-btn {
+            background: #eef6ff;
+            color: #0b63b6;
+            border: 1px solid #cfe4ff;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Layout */
+        .main {
+            flex: 1;
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            overflow: hidden
+        }
+
+        /* Left: camera area */
+        .camera-wrap {
+            flex: 2;
+            background: var(--panel);
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 16px rgba(0,0,0,.06);
+            flex-direction: column;
+        }
+
+        .camera {
+            width: 92%;
+            height: calc(100% - 100px);
+            background: #000;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+            .camera video {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: none;
+            }
+            /* Placeholder for video when not active */
+            .camera .video-placeholder {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                background: #dfe7f3; /* Light blue-grey */
+                border-radius: 12px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: #6c7a89;
+                font-size: 18px;
+                font-weight: 600;
+            }
+
+                .camera .video-placeholder i {
+                    font-size: 60px;
+                    margin-bottom: 15px;
+                    color: #9ab4d1;
+                }
+
+        /* Live transcription overlay */
+        .transcription-overlay {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 65%;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+            .transcription-overlay.visible {
+                opacity: 1;
+            }
+
+        /* Uploaded/Completed status text */
+        .status-text-wrap {
+            display: flex;
+            justify-content: space-between;
+            width: 92%;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 14px;
+            margin-top: 14px;
+        }
+
+        .status-text {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background-color: #d4edda;
+            color: #155724;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+            .status-text.visible {
+                opacity: 1;
+            }
+
+            .status-text i {
+                font-size: 14px;
+            }
+
+        /* AI/Interviewer thumbnail */
+        .thumbnail {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 140px;
+            height: 140px;
+            border-radius: 12px;
+            border: 3px solid #fff;
+            overflow: hidden;
+            box-shadow: 0 8px 18px rgba(0,0,0,.18);
+            background: #dfe7f3;
+        }
+
+            .thumbnail img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: block
+            }
+
+        /* Controls dock */
+        .dock {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            background: rgba(255,255,255,.95);
+            border: 1px solid #e5e7eb;
+            padding: 10px 14px;
+            border-radius: 40px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.12);
+            margin-top: 16px;
+        }
+
+        .icon-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: #f1f3f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #2c3e50;
+            cursor: pointer
+        }
+
+            .icon-btn:hover:not(:disabled) {
+                background: #e7e9ee
+            }
+
+        .action-btn {
+            background: #ff7a1a;
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 800;
+            letter-spacing: .2px;
+            cursor: pointer;
+        }
+
+            /* Disabled state for buttons */
+            .btn:disabled, .icon-btn:disabled, .action-btn:disabled, .send-btn:disabled {
+                background-color: #cccccc !important;
+                color: #666666 !important;
+                cursor: not-allowed !important;
+                border-color: #cccccc !important;
+            }
+
+        textarea:disabled {
+            background-color: #f0f0f0 !important;
+            cursor: not-allowed !important;
+        }
+
+        /* Right: conversations */
+        .side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--panel);
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 0px 10px rgba(0,0,0,.06)
+        }
+
+        .side-header {
+            padding: 12px 14px;
+            border-bottom: 1px solid #eaeaea;
+            font-weight: 700
+        }
+
+        .messages {
+            flex: 1;
+            padding: 14px;
+            overflow: auto;
+            background: #fafafa;
+            display: flex;
+            flex-direction: column
+        }
+
+        .inputbar {
+            display: flex;
+            gap: 10px;
+            padding: 14px;
+            border-top: 1px solid #eaeaea;
+            background: var(--muted)
+        }
+
+            .inputbar textarea {
+                flex: 1;
+                min-height: 76px;
+                font-size: 16px;
+                padding: 12px 14px;
+                border: 1px solid #cfd8e3;
+                border-radius: 8px;
+                resize: vertical;
+                font-family: 'Inter', sans-serif;
+            }
+
+        .send-btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 0 18px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        /* Chat bubble styles */
+        .msg {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 12px;
+            max-width: 85%;
+        }
+
+            .msg strong {
+                font-size: 12px;
+                margin-bottom: 4px;
+                color: #555;
+            }
+
+        .msg-bubble {
+            padding: 10px 14px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 15px;
+        }
+
+        .ai-msg {
+            align-self: flex-start;
+        }
+
+            .ai-msg .msg-bubble {
+                background: #e9edf5;
+                border-bottom-left-radius: 4px;
+            }
+
+        .user-msg {
+            align-self: flex-end;
+        }
+
+            .user-msg .msg-bubble {
+                background: #0078d7;
+                color: #fff;
+                border-bottom-right-radius: 4px;
+            }
+
+        .system-msg {
+            align-self: center;
+            max-width: 100%;
+            width: 100%;
+            text-align: center;
+        }
+
+            .system-msg .msg-bubble {
+                background: #fffbe6;
+                border: 1px solid #ffe58f;
+                color: #d46b08;
+                font-style: italic;
+                font-size: 14px;
+                display: inline-block;
+                text-align: left;
+            }
+
+
+        /* Report overlay */
+        .report-timer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 22px;
+            font-weight: bold;
+            color: #2c3e50;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 24px 32px;
+            border-radius: 14px;
+            text-align: center;
+            box-shadow: 0 6px 16px rgba(0,0,0,.15);
+            min-width: 260px;
+        }
+
+        .report-timer-icon {
+            font-size: 32px;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .view-report-btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+            .view-report-btn:hover {
+                background: #005a9e;
+            }
+
+        /* Full transcript modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+            .modal-overlay.visible {
+                opacity: 1;
+                visibility: visible;
+            }
+
+        .modal-content {
+            background: #fff;
+            padding: 20px 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 25px rgba(0,0,0,.2);
+            transform: scale(0.95);
+            transition: transform 0.3s ease-out;
+        }
+
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e9edf5;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+            .modal-header h3 {
+                margin: 0;
+            }
+
+        .modal-close-btn {
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    @* <nop-antiforgery-token /> *@
+    <div class="topbar">
+        <div class="topbar-left">
+            <button class="btn btn-stop" id="stopBtn" title="End Interview" disabled><i class="fa-solid fa-circle-stop"></i>Stop Interview</button>
+        </div>
+        <div class="topbar-center">AI Interview on Python</div>
+        <div class="topbar-right">
+            <div class="timer" id="timer">00:00</div>
+            <button class="btn help-btn" id="transcriptBtn" title="View Full Transcript">Transcript</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <section class="camera-wrap">
+            <!-- Status Texts -->
+            <div class="status-text-wrap">
+                <span id="videoUploaded" class="status-text"><i class="fa-solid fa-circle-check"></i> Your video is uploaded</span>
+                <span id="interviewCompleted" class="status-text"><i class="fa-solid fa-circle-check"></i> Interview completed</span>
+            </div>
+
+            <div class="camera" id="camera">
+                <video id="localVideo" autoplay playsinline></video>
+                <!-- Placeholder when video is not active -->
+                <div id="videoPlaceholder" class="video-placeholder">
+                    <i class="fa-solid fa-video-slash"></i>
+                    <span>Camera Off</span>
+                </div>
+
+                <!-- Live transcription overlay -->
+                <div id="transcriptionOverlay" class="transcription-overlay"></div>
+
+                <!-- Report Timer Overlay -->
+                <div id="reportTimer" class="report-timer" style="display:none;">
+                    <div id="reportCountdownText">Preparing your results. Please wait... <span id="reportCountdown">10:00</span></div>
+                    <div id="reportReady" style="display:none; margin-top:12px;">
+                        <span style="display:block; margin-bottom:8px; font-weight:600;">Report ready!</span>
+                        <button id="viewReportBtn" class="view-report-btn">View Report</button>
+                    </div>
+                </div>
+
+                <div class="thumbnail">
+                    <img id="aiThumb" alt="AI Interviewer" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'><rect width='300' height='300' fill='rgb(234,239,247)'/><circle cx='150' cy='110' r='60' fill='rgb(207,216,220)'/><circle cx='150' cy='105' r='50' fill='white'/><rect x='85' y='170' width='130' height='90' rx='45' fill='rgb(207,216,220)'/></svg>">
+                </div>
+            </div>
+
+            <div class="dock">
+                <button class="icon-btn" id="micBtn" title="Toggle Mic" disabled><i class="fa-solid fa-microphone"></i></button>
+                <button class="icon-btn" id="camBtn" title="Toggle Camera"><i class="fa-solid fa-video"></i></button>
+                <button class="action-btn" id="actionBtn" title="Start Interview">Start Interview</button>
+                <button class="icon-btn" id="shareBtn" title="Share Screen"><i class="fa-solid fa-display"></i></button>
+                <button class="icon-btn" id="moreBtn" title="More Options" disabled><i class="fa-solid fa-ellipsis"></i></button>
+            </div>
+        </section>
+
+        <aside class="side">
+            <div class="side-header">Conversations</div>
+            <div class="messages" id="messages">
+                <!-- Messages will be dynamically added here -->
+            </div>
+            <div class="inputbar">
+                <textarea id="chatInput" placeholder="Enter your answer here..." disabled></textarea>
+                <button class="send-btn" id="sendBtn" title="Submit Answer" disabled><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Full Transcript Modal -->
+    <div id="transcriptModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Interview Transcript</h3>
+                <button id="modalCloseBtn" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body" id="transcriptModalBody">
+                <!-- Transcript messages will be cloned here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Agora SDK -->
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
+    <!-- Azure Speech SDK (STT + TTS) -->
+    <script src="https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@latest/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+          "use strict";
+
+          const APP_ID = "YOUR_Agora_APP_ID";
+          //const CHANNEL = "interview_channel";
+          //const TOKEN = "Agora_Token";
+          //const USER_ID = 2882341273;
+
+          const CHANNEL = "@Model.AGORA_CHANNEL";
+          const TOKEN = "@Html.Raw(Model.AGORA_TOKEN)";
+          const USER_ID = @Model.AGORA_UID;
+          const USER_NAME = "@customerFirstName";
+
+          console.log(CHANNEL);
+          console.log(TOKEN);
+          console.log(USER_ID);
+
+          const API_BASE = "/api";
+          //const API_BASE = "https://skillfinder-api.azurewebsites.net/api"; //deployed url
+          //const API_BASE = "https://localhost:7091/api"; //local dev url
+          //const API_BASE = "https://localhost:59589/api"; //local  nop url
+          //const USER_ID = "user_12345";
+
+          //BS related
+          const AZURE_KEY = "YOUR_AZURE_SPEECH_KEY_PLACEHOLDER";
+          const AZURE_REGION = "swedencentral";
+          const TTS_VOICE = "en-IN-KavyaNeural";
+
+          // AZURE BLOB (SAS) ---
+          const AZURE_BLOB_CONTAINER_URL = "https://skillfinder.blob.core.windows.net/skillfinder";
+          const AZURE_SAS_TOKEN = "AZURE_SAS_TOKEN"; // include the leading '?'
+
+          // --- STATE ---
+          let client = null, localAudioTrack = null, localVideoTrack = null;
+          let joined = false, interviewDone = false;
+          let recognizer = null, answerBuffer = "", currentQuestion = "", currentQuestionId = 0 ;
+          let preSilenceTimer, autoSubmitInterval, silencePromptTimer;
+          let autoSubmitTimeLeft = 0;
+          let interviewTimerInterval, interviewStartTime = 0;
+
+          // --- Screen recording state ---
+          let screenTrack = null;            // Agora local track or MediaStreamTrack for screen
+          let screenMediaStream = null;      // MediaStream (screen video)
+          let recordingMediaStream = null;   // Combined MediaStream for MediaRecorder
+          let mediaRecorder = null;
+          let recordedChunks = [];
+          let isRecording = false;
+
+          let interviewId = '@cartItemId';
+
+
+          const interviewSession = {
+              appId: APP_ID,
+              channelName: "interview_123",
+              token: "yyy",
+              uid: 456
+            };
+
+          // --- UI ELEMENTS ---
+          const ui = {
+            localVideo: document.getElementById("localVideo"),
+            videoPlaceholder: document.getElementById("videoPlaceholder"),
+            actionBtn: document.getElementById("actionBtn"),
+            stopBtn: document.getElementById("stopBtn"),
+            micBtn: document.getElementById("micBtn"),
+            camBtn: document.getElementById("camBtn"),
+            shareBtn: document.getElementById("shareBtn"),
+            moreBtn: document.getElementById("moreBtn"),
+            sendBtn: document.getElementById("sendBtn"),
+            messages: document.getElementById("messages"),
+            chatInput: document.getElementById("chatInput"),
+            transcriptionOverlay: document.getElementById("transcriptionOverlay"),
+            interviewCompletedStatus: document.getElementById("interviewCompleted"),
+            timer: document.getElementById("timer"),
+            transcriptBtn: document.getElementById("transcriptBtn"),
+            transcriptModal: document.getElementById("transcriptModal"),
+            modalCloseBtn: document.getElementById("modalCloseBtn"),
+            transcriptModalBody: document.getElementById("transcriptModalBody"),
+            reportTimerOverlay: document.getElementById("reportTimer"),
+            reportCountdownText: document.getElementById("reportCountdownText"),
+            reportCountdown: document.getElementById("reportCountdown"),
+            reportReady: document.getElementById("reportReady"),
+            viewReportBtn: document.getElementById("viewReportBtn"),
+            videoUploadedStatus: document.getElementById("videoUploaded"),
+          };
+
+          let micMuted = false, camMuted = false;
+
+          // --- UI & TIMER HELPERS ---
+          const appendMessage = (sender, text, type) => {
+            const msgDiv = document.createElement("div");
+            msgDiv.className = `msg ${type}-msg`;
+            msgDiv.innerHTML = `<strong>${sender}:</strong><div class="msg-bubble">${text}</div>`;
+            ui.messages.appendChild(msgDiv);
+            ui.messages.scrollTop = ui.messages.scrollHeight;
+          };
+
+          const setActionBtnState = (text, disabled = false) => {
+            ui.actionBtn.textContent = text;
+            ui.actionBtn.disabled = disabled;
+          };
+
+          const toggleCamPlaceholder = (show) => {
+            ui.videoPlaceholder.style.display = show ? "flex" : "none";
+            ui.localVideo.style.display = show ? "none" : "block";
+          };
+
+          const clearAllTimers = () => {
+            clearTimeout(preSilenceTimer);
+            clearTimeout(silencePromptTimer);
+            clearInterval(autoSubmitInterval);
+            clearInterval(interviewTimerInterval);
+          };
+
+          const formatTime = (sec) => {
+            const m = String(Math.floor(sec / 60)).padStart(2, "0");
+            const s = String(sec % 60).padStart(2, "0");
+            return `${m}:${s}`;
+          };
+
+          const startInterviewTimer = () => {
+            interviewStartTime = Date.now();
+            clearInterval(interviewTimerInterval);
+            interviewTimerInterval = setInterval(() => {
+              const elapsed = Math.floor((Date.now() - interviewStartTime) / 1000);
+              ui.timer.textContent = formatTime(elapsed);
+            }, 1000);
+          };
+
+          const enableAllControls = (enable) => {
+            const controls = [ui.micBtn, ui.camBtn, ui.shareBtn, ui.moreBtn, ui.chatInput, ui.sendBtn, ui.stopBtn];
+            controls.forEach(control => control.disabled = !enable);
+          };
+
+          // --- SCREEN RECORDING FUNCTIONS ---
+          // Utility: create a unique filename
+          const now = new Date();
+          const timestamp = now.toISOString().slice(0,19).replace(/[:T]/g, "-");
+          const generateRecordingFilename = () => `interview-${USER_NAME}-${timestamp}.webm`;
+
+          // Attempt to get an audio MediaStreamTrack from the Agora localAudioTrack if available,
+          // otherwise fall back to navigator.getUserMedia to capture microphone audio for recording.
+          const getAudioTrackForRecording = async () => {
+            try {
+              if (localAudioTrack && typeof localAudioTrack.getMediaStreamTrack === "function") {
+                const t = localAudioTrack.getMediaStreamTrack();
+                if (t) return t;
+              }
+            } catch (e) {
+              console.warn("Could not get media stream track from Agora audio track, falling back to navigator.getUserMedia:", e);
+            }
+
+            // Fallback: request microphone permission specifically for recording
+            try {
+              const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+              return audioStream.getAudioTracks()[0];
+            } catch (err) {
+              console.error("Failed to get microphone for recording:", err);
+              return null;
+            }
+          };
+
+          // Start screen recording. Uses Agora's createScreenVideoTrack if available, otherwise getDisplayMedia.
+          const startScreenRecording = async () => {
+          try {
+            // 1. Capture screen with system audio
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({
+              video: true,
+              audio: true  // <- system audio
+            });
+            const screenVideoTrack = displayStream.getVideoTracks()[0];
+            const systemAudioTrack = displayStream.getAudioTracks()[0] || null;
+
+            // 2. Capture microphone audio
+            const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const micTrack = micStream.getAudioTracks()[0];
+
+            // 3. Mix system audio + mic audio
+            const audioContext = new AudioContext();
+            const destination = audioContext.createMediaStreamDestination();
+
+            if (systemAudioTrack) {
+              const systemSource = audioContext.createMediaStreamSource(new MediaStream([systemAudioTrack]));
+              systemSource.connect(destination);
+            }
+            if (micTrack) {
+              const micSource = audioContext.createMediaStreamSource(new MediaStream([micTrack]));
+              micSource.connect(destination);
+            }
+
+            // 4. Final MediaStream = screen video + mixed audio
+            const finalStream = new MediaStream();
+            finalStream.addTrack(screenVideoTrack);
+            destination.stream.getAudioTracks().forEach(t => finalStream.addTrack(t));
+
+            // 5. Setup MediaRecorder
+            recordedChunks = [];
+            mediaRecorder = new MediaRecorder(finalStream, { mimeType: "video/webm; codecs=vp9,opus" });
+
+            mediaRecorder.ondataavailable = e => {
+              if (e.data.size > 0) recordedChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+              const blob = new Blob(recordedChunks, { type: "video/webm" });
+              await uploadToAzureBlob(blob);
+            };
+
+            mediaRecorder.start(1000);
+            isRecording = true;
+            appendMessage("System", "Screen + mic recording started.", "system");
+
+          } catch (err) {
+            console.error("Error starting recording:", err);
+            appendMessage("System", "Failed to start screen recording.", "system");
+          }
+        };
+
+
+          // Stop screen recording and clean up resources; if 'force' true, skip upload handling (upload handled by onstop)
+          const stopScreenRecording = async (force = false) => {
+            if (!isRecording && !mediaRecorder) {
+              // nothing to stop
+              return;
+            }
+
+            try {
+              // Stop MediaRecorder (triggers onstop which will upload)
+              if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+              }
+
+              // Stop tracks used for recording
+              if (recordingMediaStream) {
+                recordingMediaStream.getTracks().forEach(t => {
+                  try { t.stop(); } catch (e) {}
+                });
+                recordingMediaStream = null;
+              }
+
+              // If screenTrack was an Agora local track, close it properly
+              if (screenTrack) {
+                try {
+                  if (typeof screenTrack.stop === "function") {
+                    screenTrack.stop(); // for Agora LocalTrack or MediaStreamTrack wrapper
+                  }
+                  // If it's an Agora track with close
+                  if (typeof screenTrack.close === "function") {
+                    screenTrack.close();
+                  }
+                } catch (e) { /* ignore */ }
+                screenTrack = null;
+              }
+
+              // If the underlying screenMediaStream is separate, stop it
+              if (screenMediaStream) {
+                screenMediaStream.getTracks().forEach(t => {
+                  try { t.stop(); } catch (e) {}
+                });
+                screenMediaStream = null;
+              }
+
+              // If we have a fallback audio track from getUserMedia (not the Agora published track),
+              // ensure it is stopped as well. We can't reliably detect it, so stopping all tracks above covers it.
+            } catch (err) {
+              console.warn("Error during stopScreenRecording cleanup:", err);
+            } finally {
+              isRecording = false;
+              mediaRecorder = null;
+              ui.shareBtn.innerHTML = '<i class="fa-solid fa-display"></i>';
+              ui.shareBtn.title = "Share Screen";
+              appendMessage("System", "Screen recording stopped. Upload in progress (if any).", "system");
+            }
+          };
+
+          // Upload the recording blob to Azure Blob Storage using SAS URL (PUT)
+          const uploadToAzureBlob = async (blob) => {
+            if (!AZURE_BLOB_CONTAINER_URL || !AZURE_SAS_TOKEN) {
+              console.error("Azure Blob container URL or SAS token not configured.");
+              appendMessage("System", "Azure Blob storage not configured. Recording not uploaded.", "system");
+              ui.videoUploadedStatus.textContent = "Upload failed: storage not configured";
+              return;
+            }
+
+            const filename = generateRecordingFilename();
+            const uploadUrl = `${AZURE_BLOB_CONTAINER_URL}/${encodeURIComponent(filename)}${AZURE_SAS_TOKEN}`;
+
+            try {
+              // PUT the blob directly
+              const res = await fetch(uploadUrl, {
+                method: "PUT",
+                headers: {
+                  "x-ms-blob-type": "BlockBlob",
+                  "Content-Type": "video/webm"
+                },
+                body: blob
+              });
+
+              if (!res.ok) {
+                const text = await res.text().catch(()=>"");
+                throw new Error(`Upload failed: HTTP ${res.status} ${res.statusText} ${text}`);
+              }
+
+              appendMessage("System", `Recording uploaded: ${filename}`, "system");
+              ui.videoUploadedStatus.textContent = "Your video is uploaded";
+              // Optionally show a link to the blob (SAS gives access until expiry)
+              ui.videoUploadedStatus.classList.add("visible");
+
+              //update the interview with the recording blob url
+               const blobUrl = uploadUrl.split("?")[0];
+               console.log("Recording URL:", blobUrl);
+
+               const payload = { RecordingURL: blobUrl, InterviewId: interviewId };
+               const resp = await fetch(`${API_BASE}/interview/complete-interview`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload)
+               });
+               if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+              console.log("Upload successful:", blobUrl);
+
+            } catch (err) {
+              console.error("uploadToAzureBlob error:", err);
+              appendMessage("System", "Failed to upload recording to Azure Blob.", "system");
+              ui.videoUploadedStatus.textContent = "Upload failed";
+              ui.videoUploadedStatus.classList.add("visible");
+              throw err;
+            }
+          };
+
+          // --- AGORA LOGIC ---
+          const startInterview = async () => {
+            setActionBtnState("Connecting...", true);
+            enableAllControls(false);
+            ui.stopBtn.disabled = false;
+
+            //sateesh added on OCT-4th-25
+            try {
+              if (!isRecording) {
+                // Start recording
+                // Ensure microphone localAudioTrack exists or ask for permission in getAudioTrackForRecording
+                await startScreenRecording();
+              } else {
+                // Stop recording
+                //await stopScreenRecording();
+              }
+            } catch (err) {
+              console.error("startScreenRecording method error:", err);
+            }
+
+            try {
+              client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+              await client.join(APP_ID, CHANNEL, TOKEN, USER_ID);
+              //await client.join(interviewSession.appId, interviewSession.channelName, interviewSession.token, interviewSession.uid);
+
+              client.on("connection-state-change", (curState, revState, reason) => {
+                  console.log(`Connection state changed: ${revState} → ${curState} due to ${reason}`);
+              });
+
+              client.on("token-privilege-will-expire", async () => {
+                const newToken = await fetch("/getNewToken");
+                await client.renewToken(newToken);
+              });
+
+
+                try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                console.log("Media devices ready:", stream);
+
+                } catch (err) {
+                console.error("Error accessing mic/camera:", err);
+                }
+
+              [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+
+              localVideoTrack.play(ui.localVideo);
+              toggleCamPlaceholder(false);
+
+              //do not publish tracks as there are no subscribers in this app
+              //await client.publish([localAudioTrack, localVideoTrack]);
+
+              joined = true;
+              console.log("Agora: Joined and published.");
+
+              startInterviewTimer();
+              enableAllControls(true);
+
+              const res = await apiNewInterview();
+              if (!res || res.interviewDone) {
+                appendMessage("System", "Failed to start interview. Please try again.", "system");
+                await finishInterviewAndShowReport();
+                return;
+              }
+
+              currentQuestion = res.question || "";
+              currentQuestionId = res.questionId || 0;
+              appendMessage("AI", currentQuestion, "ai");
+              await speakTextWithTTS(currentQuestion);
+
+              resetSilencePrompt();
+              setActionBtnState("Submit Answer");
+
+            } catch (err) {
+              console.error("Start Interview Error:", err);
+              appendMessage("System", "Could not start interview. Check console for errors and verify permissions.", "system");
+              await finishInterviewAndShowReport();
+            }
+          };
+
+          const finishInterviewAndShowReport = async () => {
+            interviewDone = true;
+            clearAllTimers();
+            setActionBtnState("Start Interview");
+            enableAllControls(false);
+
+            await stopAzureSTT();
+
+            // Stop local Agora tracks
+            try {
+              if (localAudioTrack) { localAudioTrack.stop(); localAudioTrack.close(); }
+            } catch (e){}
+            try {
+              if (localVideoTrack) { localVideoTrack.stop(); localVideoTrack.close(); }
+            } catch (e){}
+
+            localAudioTrack = localVideoTrack = null;
+
+            if (client && joined) {
+              try { await client.leave(); } catch(e) { console.warn("Agora leave error", e); }
+              joined = false;
+            }
+            client = null;
+
+            toggleCamPlaceholder(true);
+            ui.timer.textContent = "00:00";
+            ui.interviewCompletedStatus.classList.add("visible");
+            console.log("Interview finished and resources released.");
+
+            // If recording is active, stop and upload
+            if (isRecording) {
+              await stopScreenRecording();
+            }
+
+            showReportTimerOverlay();
+          };
+
+          // --- AZURE STT & TTS ---
+          const startAzureSTT = () => {
+            return new Promise((resolve, reject) => {
+              if (!window.SpeechSDK) {
+                appendMessage("System", "Speech SDK not loaded.", "system");
+                return reject("Speech SDK not loaded");
+              }
+              if (recognizer) { // Prevent multiple instances
+                return resolve();
+              }
+              const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(AZURE_KEY, AZURE_REGION);
+              speechConfig.speechRecognitionLanguage = "en-IN";
+              const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+              recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+              recognizer.recognizing = (s, e) => {
+                if (e.result.text) {
+                  ui.transcriptionOverlay.textContent = e.result.text;
+                  ui.transcriptionOverlay.classList.add("visible");
+                  clearTimeout(preSilenceTimer);
+                  clearTimeout(silencePromptTimer);
+                  clearInterval(autoSubmitInterval);
+                  setActionBtnState("Submit Answer");
+                }
+              };
+
+              recognizer.recognized = (s, e) => {
+                if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech && e.result.text) {
+                  answerBuffer += e.result.text + " ";
+                  ui.chatInput.value = answerBuffer.trim();
+                  resetPreSilenceTimer();
+                }
+                ui.transcriptionOverlay.classList.remove("visible");
+              };
+
+              recognizer.canceled = (s, e) => console.warn("STT Canceled:", e.reason);
+
+              recognizer.startContinuousRecognitionAsync(() => {
+                console.log("Azure STT started.");
+                resolve();
+              }, err => {
+                console.error("Azure STT Error:", err);
+                recognizer = null;
+                reject(err);
+              });
+            });
+          };
+
+          const stopAzureSTT = () => {
+            return new Promise((resolve) => {
+              if (!recognizer) {
+                return resolve();
+              }
+
+              recognizer.stopContinuousRecognitionAsync(
+                () => {
+                  console.log("Azure STT stopped successfully.");
+                  recognizer.close();
+                  recognizer = null;
+                  resolve();
+                },
+                (err) => {
+                  console.warn("Azure STT failed to stop gracefully:", err);
+                  recognizer.close();
+                  recognizer = null;
+                  resolve(); // Resolve anyway to not block the application flow
+                }
+              );
+            });
+          };
+
+          const speakTextWithTTS = (text) => {
+            return new Promise(async (resolve) => {
+              if (!window.SpeechSDK) {
+                console.error("Speech SDK not available for TTS");
+                return resolve();
+              }
+
+              await stopAzureSTT();
+
+              // **FIX**: Add a tiny delay to allow microphone release
+              await new Promise(r => setTimeout(r, 200));
+
+              const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(AZURE_KEY, AZURE_REGION);
+              speechConfig.speechSynthesisVoiceName = TTS_VOICE;
+              const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
+
+              synthesizer.speakTextAsync(text,
+                result => {
+                  synthesizer.close();
+                  if (!interviewDone) {
+                    startAzureSTT().catch(err => console.error("Failed to restart STT after TTS:", err));
+                  }
+                  resolve();
+                },
+                err => {
+                  console.error("TTS Error:", err);
+                  synthesizer.close();
+                  if (!interviewDone) {
+                    startAzureSTT().catch(err => console.error("Failed to restart STT after TTS error:", err));
+                  }
+                  resolve();
+                });
+            });
+          };
+
+          const speakTextWithTTSSimple = (text) => {
+            return new Promise((resolve) => {
+              if (!window.SpeechSDK) {
+                console.error("Speech SDK not available for TTS");
+                return resolve();
+              }
+
+              const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(AZURE_KEY, AZURE_REGION);
+              speechConfig.speechSynthesisVoiceName = TTS_VOICE;
+
+              const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
+
+              synthesizer.speakTextAsync(
+                text,
+                result => {
+                synthesizer.close();
+                resolve();
+                },
+                err => {
+                console.error("TTS Error in method : speakTextWithTTSSimple", err);
+                synthesizer.close();
+                resolve();
+                }
+              );
+            });
+          };
+
+
+          // --- INTERVIEW FLOW & SUBMISSION ---
+          const resetPreSilenceTimer = () => {
+            clearTimeout(preSilenceTimer);
+            preSilenceTimer = setTimeout(() => {
+              if (interviewDone) return;
+              if (answerBuffer.trim().length > 0) startAutoSubmitCountdown(10);
+            }, 2000);
+          };
+
+          const startAutoSubmitCountdown = (seconds) => {
+            clearInterval(autoSubmitInterval);
+            autoSubmitTimeLeft = seconds;
+            setActionBtnState(`Auto Submit (${autoSubmitTimeLeft})`);
+            autoSubmitInterval = setInterval(() => {
+              if (interviewDone) {
+                clearInterval(autoSubmitInterval);
+                return;
+              }
+              autoSubmitTimeLeft--;
+              if (autoSubmitTimeLeft > 0) {
+                setActionBtnState(`Auto Submit (${autoSubmitTimeLeft})`);
+              } else {
+                clearInterval(autoSubmitInterval);
+                submitAnswer();
+              }
+            }, 1000);
+          };
+
+          const resetSilencePrompt = () => {
+            clearTimeout(silencePromptTimer);
+            silencePromptTimer = setTimeout(() => {
+              if (interviewDone) return;
+
+              if (!answerBuffer.trim()) {
+                speakTextWithTTS("Are you still there? Please provide your answer.");
+              }
+            }, 15000); // 15 seconds
+          };
+
+          const submitAnswer = async () => {
+            clearAllTimers();
+            setActionBtnState("Submitting...", true);
+            ui.sendBtn.disabled = true;
+
+            const typedAnswer = ui.chatInput.value.trim();
+            const spokenAnswer = answerBuffer.trim();
+            const finalAnswer = typedAnswer || spokenAnswer;
+
+            if (!finalAnswer) {
+              appendMessage("System", "Please provide an answer before submitting.", "system");
+              setActionBtnState("Submit Answer");
+              ui.sendBtn.disabled = false;
+              resetSilencePrompt();
+              return;
+            }
+
+            appendMessage("You", finalAnswer, "user");
+
+            answerBuffer = "";
+            ui.chatInput.value = "";
+
+            const response = await apiContinueInterview(currentQuestionId, currentQuestion, finalAnswer);
+
+            if (!response) {
+              appendMessage("System", "Submission failed. Please try again.", "system");
+              setActionBtnState("Submit Answer");
+              ui.sendBtn.disabled = false;
+              return;
+            }
+
+            if (response.interviewDone) {
+              appendMessage("AI", response.question || "Thank you for completing the interview.", "ai");
+              await speakTextWithTTSSimple("Thank you for completing the interview. Have a great day!"); //sateesh added on OCT-4-25
+              await finishInterviewAndShowReport();
+            } else {
+              currentQuestion = response.question || "";
+              currentQuestionId = response.questionId; //sa added
+              appendMessage("AI", currentQuestion, "ai");
+              await speakTextWithTTS(currentQuestion);
+              resetSilencePrompt();
+              setActionBtnState("Submit Answer");
+              ui.sendBtn.disabled = false;
+            }
+          };
+
+          // --- API HELPERS (YOUR ORIGINAL FUNCTIONS) ---
+          async function apiNewInterview() {
+            try {
+              const res = await fetch(`${API_BASE}/interview/new-interview`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: USER_ID, InterviewId : interviewId })
+              });
+              if (!res.ok) throw new Error("HTTP " + res.status);
+              return await res.json();
+            } catch (err) {
+              console.error("api-NewInterview error:", err);
+              return null;
+            }
+          }
+
+          async function apiContinueInterview(id, question, answer) {
+            try {
+              const payload = { userId: USER_ID, Id: id, question: question, Answer: answer, InterviewId: interviewId };
+              const res = await fetch(`${API_BASE}/interview/continue-interview`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+              });
+              if (!res.ok) throw new Error("HTTP " + res.status);
+              return await res.json();
+            } catch (err) {
+              console.error("apiContinueInterview error:", err);
+              return null;
+            }
+          }
+
+          // --- REPORT & TRANSCRIPT MODAL ---
+          const showReportTimerOverlay = () => {
+            ui.reportTimerOverlay.style.display = "block";
+            ui.reportCountdownText.style.display = 'block';
+            ui.reportReady.style.display = 'none';
+
+            let remaining = 2 * 60; // 10 minutes
+            ui.reportCountdown.textContent = formatTime(remaining);
+            const rep = setInterval(() => {
+              remaining--;
+              ui.reportCountdown.textContent = formatTime(remaining);
+              if (remaining <= 0) {
+                clearInterval(rep);
+                ui.reportCountdownText.style.display = 'none';
+                ui.reportReady.style.display = 'block';
+              }
+            }, 1000);
+          };
+
+          const populateTranscriptModal = () => {
+            ui.transcriptModalBody.innerHTML = '';
+            const messages = ui.messages.querySelectorAll('.msg');
+            messages.forEach(msg => {
+              ui.transcriptModalBody.appendChild(msg.cloneNode(true));
+            });
+          };
+
+          // --- EVENT LISTENERS ---
+          ui.actionBtn.addEventListener("click", () => {
+            if (joined) {
+              submitAnswer();
+            } else {
+              startInterview();
+            }
+          });
+
+          ui.sendBtn.addEventListener("click", submitAnswer);
+
+          ui.stopBtn.addEventListener("click", async () => {
+            if (confirm("Are you sure you want to end the interview?")) {
+              await finishInterviewAndShowReport();
+            }
+          });
+
+          ui.micBtn.addEventListener("click", () => {
+            if (!localAudioTrack) return;
+            micMuted = !micMuted;
+            localAudioTrack.setEnabled(!micMuted);
+            ui.micBtn.innerHTML = micMuted ? '<i class="fa-solid fa-microphone-slash"></i>' : '<i class="fa-solid fa-microphone"></i>';
+          });
+
+          ui.camBtn.addEventListener("click", () => {
+            if (!localVideoTrack) return;
+            camMuted = !camMuted;
+            localVideoTrack.setEnabled(!camMuted);
+            toggleCamPlaceholder(camMuted);
+            ui.camBtn.innerHTML = camMuted ? '<i class="fa-solid fa-video-slash"></i>' : '<i class="fa-solid fa-video"></i>';
+          });
+
+          // Share button toggles start/stop recording.
+          ui.shareBtn.addEventListener("click", async () => {
+            try {
+              if (!isRecording) {
+                // Start recording
+                // Ensure microphone localAudioTrack exists or ask for permission in getAudioTrackForRecording
+                await startScreenRecording();
+              } else {
+                // Stop recording
+                await stopScreenRecording();
+              }
+            } catch (err) {
+              console.error("shareBtn click error:", err);
+            }
+          });
+
+          ui.transcriptBtn.addEventListener("click", () => {
+            populateTranscriptModal();
+            ui.transcriptModal.classList.add("visible");
+          });
+
+          ui.modalCloseBtn.addEventListener("click", () => ui.transcriptModal.classList.remove("visible"));
+          ui.transcriptModal.addEventListener("click", (e) => {
+            if (e.target === ui.transcriptModal) ui.transcriptModal.classList.remove("visible");
+          });
+
+          window.addEventListener("beforeunload", async () => {
+            if (joined) {
+              await finishInterviewAndShowReport();
+            }
+          });
+
+          // Initial message
+          appendMessage("System", "Welcome! Click 'Start Interview' when you are ready to begin.", "system");
+
+        });
+    </script>
+
+</body>
+</html>
+
