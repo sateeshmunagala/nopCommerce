@@ -12,6 +12,7 @@ public class SchemaMigration : Migration
     {
         this.CreateTableIfNotExists<JobApplication>();
         this.CreateTableIfNotExists<InterviewSession>();
+        this.CreateTableIfNotExists<InterviewTurn>();
         this.CreateTableIfNotExists<CreditWallet>();
         this.CreateTableIfNotExists<CreditLedgerEntry>();
         this.CreateTableIfNotExists<SponsorInvite>();
@@ -27,6 +28,7 @@ public class SchemaMigration : Migration
     {
         this.DeleteTableIfExists<JobApplication>();
         this.DeleteTableIfExists<InterviewSession>();
+        this.DeleteTableIfExists<InterviewTurn>();
         this.DeleteTableIfExists<CreditWallet>();
         this.DeleteTableIfExists<CreditLedgerEntry>();
         this.DeleteTableIfExists<SponsorInvite>();

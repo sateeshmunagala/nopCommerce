@@ -29,6 +29,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IEventPublisher _eventPublisher;
     private readonly IJobInterviewExperienceService _jobInterviewExperienceService;
     private readonly IUrlRecordService _urlRecordService;
+    private readonly IInterviewRuntimeService _interviewRuntimeService;
     private readonly ILogger<MockAiInterviewController> _logger;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
@@ -43,6 +44,7 @@ public class MockAiInterviewController : BasePluginController
         IEventPublisher eventPublisher = null,
         IJobInterviewExperienceService jobInterviewExperienceService = null,
         IUrlRecordService urlRecordService = null,
+        IInterviewRuntimeService interviewRuntimeService = null,
         ILogger<MockAiInterviewController> logger = null)
     {
         _interviewSessionService = interviewSessionService;
@@ -57,6 +59,7 @@ public class MockAiInterviewController : BasePluginController
         _eventPublisher = eventPublisher;
         _jobInterviewExperienceService = jobInterviewExperienceService;
         _urlRecordService = urlRecordService;
+        _interviewRuntimeService = interviewRuntimeService;
         _logger = logger;
     }
 
@@ -224,7 +227,29 @@ public class MockAiInterviewController : BasePluginController
         if (session == null || !session.IsActive || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow))
             return Redirect(await GetRestartUrlAsync(session));
 
-        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Runtime.cshtml", session);
+        var model = _interviewRuntimeService == null
+            ? new Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel
+            {
+                SessionId = session.Id,
+                ProductId = session.ProductId,
+                SessionKey = session.SessionKey,
+                Token = session.Token,
+                Difficulty = session.Difficulty,
+                ProductName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview",
+                CurrentQuestion = "Tell me about your background for this role.",
+                ClientSettings = new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel
+                {
+                    SubmitAnswerUrl = Url?.RouteUrl("Plugin.Misc.AIInterview.Mock.SubmitAnswer"),
+                    CompleteInterviewUrl = Url?.RouteUrl("Plugin.Misc.AIInterview.Mock.Stop"),
+                    RefreshTokenUrl = Url?.RouteUrl("Plugin.Misc.AIInterview.Mock.RefreshToken"),
+                    StopInterviewUrl = Url?.RouteUrl("Plugin.Misc.AIInterview.Mock.Stop"),
+                    Token = session.Token,
+                    ProductName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview"
+                }
+            }
+            : await _interviewRuntimeService.EnsureInterviewStartedAsync(session);
+
+        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Runtime.cshtml", model);
     }
 
     protected async Task<string> GetRestartUrlAsync(InterviewSession session)
@@ -262,6 +287,9 @@ public class MockAiInterviewController : BasePluginController
     [HttpPost]
     public async Task<IActionResult> SubmitAnswer(string token, string answer)
     {
+        if (_interviewRuntimeService != null)
+            return Json(await _interviewRuntimeService.SubmitAnswerAsync(token, answer));
+
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
         if (!IsSessionUsable(session))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
@@ -276,6 +304,16 @@ public class MockAiInterviewController : BasePluginController
     [HttpPost]
     public async Task<IActionResult> Stop(string token)
     {
+        if (_interviewRuntimeService != null)
+        {
+            var response = await _interviewRuntimeService.CompleteInterviewAsync(token, "Stopped by user");
+            var completedSession = await _interviewSessionService.GetSessionByTokenAsync(token);
+            if (completedSession != null)
+                await PublishCompletionAsync(completedSession);
+
+            return Json(response);
+        }
+
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
         if (!IsSessionUsable(session))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
@@ -291,13 +329,18 @@ public class MockAiInterviewController : BasePluginController
         session.ReportData = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.ReportContentMock");
         await _interviewSessionService.UpdateInterviewSessionAsync(session);
 
+        await PublishCompletionAsync(session);
+
+        return Json(new { success = true, score = session.Score });
+    }
+
+    protected async Task PublishCompletionAsync(InterviewSession session)
+    {
         var languageId = (await _workContext.GetWorkingLanguageAsync()).Id;
         if (_eventPublisher != null)
             await _eventPublisher.PublishAsync(new MockAiInterviewCompletedEvent(session, languageId));
         else
             await _interviewSessionService.SendInterviewCompletionNotificationAsync(session, languageId);
-
-        return Json(new { success = true, score = session.Score });
     }
 
     [HttpPost]

@@ -1,6 +1,8 @@
-@model Nop.Plugin.Misc.AIInterview.Domain.InterviewSession
+@model Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel
+@using System.Text.Json
 @{
     Layout = "_Root.Head";
+    var clientSettings = JsonSerializer.Serialize(Model.ClientSettings ?? new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel());
 }
 
 <style>
@@ -9,30 +11,20 @@
         background: #eef3fb;
     }
 
-    .mock-runtime-page {
-        --runtime-bg: #eef3fb;
-        --runtime-card: #ffffff;
-        --runtime-border: rgba(15, 23, 42, 0.08);
-        --runtime-text: #162033;
-        --runtime-muted: #667085;
-        --runtime-accent: #ff7a1a;
-        --runtime-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
-    }
-
-    .mock-runtime-page {
+    .runtime-shell {
         min-height: 100vh;
         padding: 12px;
         box-sizing: border-box;
     }
 
-    .mock-runtime-page .page-body {
-        display: grid;
-        gap: 18px;
+    .runtime-page {
         min-height: calc(100vh - 24px);
         padding: 18px;
         border-radius: 28px;
-        background: linear-gradient(180deg, #f8fafc 0%, var(--runtime-bg) 100%);
-        box-shadow: var(--runtime-shadow);
+        background: linear-gradient(180deg, #f8fafc 0%, #eef3fb 100%);
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+        display: grid;
+        gap: 18px;
     }
 
     .runtime-topbar {
@@ -40,67 +32,46 @@
         justify-content: space-between;
         align-items: center;
         gap: 16px;
+        flex-wrap: wrap;
     }
 
-    .runtime-title {
+    .runtime-topbar h1 {
         margin: 0;
-        color: var(--runtime-text);
         font-size: 22px;
-        font-weight: 700;
+        color: #162033;
     }
 
     .runtime-meta {
         display: flex;
-        gap: 12px;
         align-items: center;
-        color: var(--runtime-muted);
+        gap: 12px;
+        color: #667085;
         font-weight: 600;
-    }
-
-    .runtime-topbar .button-1,
-    .runtime-topbar .button-2,
-    .runtime-controls .button-1,
-    .runtime-controls .button-2 {
-        border-radius: 10px;
-    }
-
-    .runtime-topbar .button-1,
-    .runtime-controls .button-1 {
-        background: #0f5bd7;
-        color: #fff;
-    }
-
-    .runtime-topbar .button-2,
-    .runtime-controls .button-2 {
-        background: #eef4ff;
-        color: #0f5bd7;
-        border: 1px solid #c9dafd;
     }
 
     .runtime-layout {
         display: grid;
         grid-template-columns: minmax(0, 1.8fr) minmax(320px, 0.9fr);
         gap: 18px;
-        min-height: 60vh;
+        min-height: 70vh;
     }
 
-    .runtime-stage,
-    .runtime-sidebar {
+    .runtime-stage, .runtime-sidebar {
         display: grid;
         gap: 16px;
         padding: 18px;
-        border: 1px solid var(--runtime-border);
         border-radius: 24px;
-        background: var(--runtime-card);
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
     }
 
     .runtime-video {
         position: relative;
-        display: grid;
-        place-items: center;
         min-height: 420px;
         border-radius: 20px;
-        background: linear-gradient(180deg, #d8e2f3 0%, #c8d4ea 100%);
+        background: linear-gradient(180deg, #d9e2f2 0%, #c8d7ea 100%);
+        display: grid;
+        place-items: center;
         color: #51627b;
         font-size: 28px;
         font-weight: 700;
@@ -144,8 +115,8 @@
     .runtime-controls {
         display: flex;
         justify-content: center;
-        gap: 12px;
         align-items: center;
+        gap: 12px;
         padding: 14px 18px;
         border-radius: 999px;
         background: rgba(255,255,255,0.9);
@@ -169,8 +140,12 @@
         border: 2px solid #d0d5dd;
     }
 
-    .runtime-message,
-    .runtime-question {
+    .runtime-sidebar h3 {
+        margin: 0;
+        color: #162033;
+    }
+
+    .runtime-question, .runtime-message {
         padding: 14px 16px;
         border-radius: 16px;
         border: 1px solid rgba(255, 122, 26, 0.35);
@@ -179,23 +154,17 @@
         line-height: 1.6;
     }
 
-    .runtime-sidebar h3 {
-        margin: 0;
-        color: var(--runtime-text);
+    .runtime-message.is-info {
+        background: #eef4ff;
+        color: #0f5bd7;
+        border-color: #c9dafd;
     }
 
-    .runtime-log {
-        display: grid;
-        gap: 12px;
-        align-content: start;
-        min-height: 320px;
-    }
-
-    .runtime-answer-box textarea {
+    .runtime-answer textarea {
         width: 100%;
         min-height: 120px;
         padding: 14px 16px;
-        border: 1px solid var(--runtime-border);
+        border: 1px solid rgba(15, 23, 42, 0.08);
         border-radius: 16px;
         resize: vertical;
     }
@@ -207,9 +176,19 @@
         align-items: center;
     }
 
-    .runtime-actions .button-1,
-    .runtime-actions .button-2 {
+    .button-1, .button-2 {
         border-radius: 999px;
+    }
+
+    .button-1 {
+        background: #0f5bd7;
+        color: #fff;
+    }
+
+    .button-2 {
+        background: #eef4ff;
+        color: #0f5bd7;
+        border: 1px solid #c9dafd;
     }
 
     .runtime-status {
@@ -225,6 +204,29 @@
         color: #027a48;
     }
 
+    .runtime-transcript {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        z-index: 9999;
+        padding: 24px;
+    }
+
+    .runtime-transcript.is-open {
+        display: grid;
+        place-items: center;
+    }
+
+    .runtime-transcript-card {
+        width: min(900px, 100%);
+        max-height: 80vh;
+        overflow: auto;
+        background: #fff;
+        border-radius: 20px;
+        padding: 20px;
+    }
+
     @@media (max-width: 1024px) {
         .runtime-layout {
             grid-template-columns: 1fr;
@@ -232,14 +234,14 @@
     }
 </style>
 
-<div class="page mock-runtime mock-runtime-page">
-    <div class="page-body">
+<div class="runtime-shell">
+    <div class="runtime-page">
         <div class="runtime-topbar">
-            <button id="stop-mock-interview-top" class="button-2">@T("Plugins.Misc.AIInterview.Interview.StopInterview")</button>
-            <h1 class="runtime-title">@T("Plugins.Misc.AIInterview.Interview.Title") on @Model.Difficulty</h1>
+            <button type="button" id="stop-interview-top" class="button-2">Stop Interview</button>
+            <h1>@Model.ProductName - @Model.Difficulty</h1>
             <div class="runtime-meta">
                 <span id="runtime-timer">00:00</span>
-                <button type="button" class="button-2">Transcript</button>
+                <button type="button" id="open-transcript" class="button-2">Transcript</button>
             </div>
         </div>
 
@@ -252,7 +254,7 @@
                 <div class="runtime-controls">
                     <span class="runtime-dot is-live"></span>
                     <span class="runtime-dot"></span>
-                    <button id="submit-mock-answer" class="button-1">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                    <button type="button" id="start-or-next" class="button-1">Start Interview</button>
                     <span class="runtime-dot"></span>
                     <span class="runtime-dot"></span>
                 </div>
@@ -260,74 +262,145 @@
 
             <aside class="runtime-sidebar">
                 <h3>Conversations</h3>
-                <div class="runtime-log">
-                    <div class="runtime-question" id="runtime-question">@T("Plugins.Misc.AIInterview.Interview.InitialQuestion")</div>
-                    <div class="runtime-message">Welcome! Click "Start Interview" when you are ready to begin.</div>
-                </div>
+                <div id="runtime-question" class="runtime-question">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? "Welcome! Click Start Interview to begin." : Model.CurrentQuestion)</div>
+                <div id="runtime-message" class="runtime-message is-info">Start the interview to load the first question.</div>
 
-                <div class="runtime-answer-box">
-                    <textarea id="mock-answer" placeholder="@T("Plugins.Misc.AIInterview.Interview.AnswerPlaceholder")"></textarea>
+                <div class="runtime-answer">
+                    <textarea id="runtime-answer" placeholder="Enter your answer here..."></textarea>
                 </div>
 
                 <div class="runtime-actions">
-                    <button id="submit-mock-answer-secondary" class="button-1">@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</button>
-                    <button id="stop-mock-interview" class="button-2">@T("Plugins.Misc.AIInterview.Interview.StopInterview")</button>
+                    <button type="button" id="submit-answer" class="button-1">Submit Answer</button>
+                    <button type="button" id="stop-interview" class="button-2">Stop Interview</button>
                 </div>
-                <div id="mock-interview-message" class="runtime-status"></div>
+
+                <div id="runtime-status" class="runtime-status"></div>
             </aside>
         </div>
     </div>
 </div>
 
+<div id="runtime-transcript" class="runtime-transcript">
+    <div class="runtime-transcript-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <h3 style="margin:0;">Transcript</h3>
+            <button type="button" id="close-transcript" class="button-2">Close</button>
+        </div>
+        <div id="transcript-body" style="margin-top:16px;display:grid;gap:12px;"></div>
+    </div>
+</div>
+
 <script asp-location="Footer">
-    const interviewToken = '@Model.Token';
-    const messageElement = document.getElementById('mock-interview-message');
-    const questionElement = document.getElementById('runtime-question');
-    const answerElement = document.getElementById('mock-answer');
-    const startedAt = Date.now();
+    (() => {
+        const config = @Html.Raw(clientSettings);
+        const turns = @Html.Raw(JsonSerializer.Serialize(Model.Turns ?? Array.Empty<object>()));
+        const sessionToken = config.token || '@Model.Token';
+        const answerBox = document.getElementById('runtime-answer');
+        const questionBox = document.getElementById('runtime-question');
+        const messageBox = document.getElementById('runtime-message');
+        const statusBox = document.getElementById('runtime-status');
+        const transcript = document.getElementById('runtime-transcript');
+        const transcriptBody = document.getElementById('transcript-body');
 
-    setInterval(() => {
-        const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
-        const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-        const seconds = String(elapsedSeconds % 60).padStart(2, '0');
-        document.getElementById('runtime-timer').textContent = `${minutes}:${seconds}`;
-    }, 1000);
+        const setStatus = (message, isError) => {
+            statusBox.textContent = message || '';
+            statusBox.className = `runtime-status ${isError ? 'message-error' : 'message-success'}`;
+        };
 
-    async function submitAnswer() {
-        const body = new URLSearchParams({
-            token: interviewToken,
-            answer: answerElement.value
-        });
-        const response = await fetch('@Url.Action("SubmitAnswer", "MockAiInterview")', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body
-        });
-        const result = await response.json();
-        messageElement.textContent = result.error || result.nextQuestion;
-        messageElement.className = `runtime-status ${result.error ? 'message-error' : 'message-success'}`;
-        if (!result.error) {
-            questionElement.textContent = result.nextQuestion;
-            answerElement.value = '';
-        }
-    }
+        const renderTranscript = () => {
+            transcriptBody.innerHTML = '';
+            (turns || []).forEach((turn, index) => {
+                const item = document.createElement('div');
+                item.style.padding = '12px 14px';
+                item.style.border = '1px solid rgba(15,23,42,0.08)';
+                item.style.borderRadius = '14px';
+                item.innerHTML = `<strong>Q${index + 1}.</strong> ${turn.questionText || ''}<br/><strong>Answer:</strong> ${turn.answerText || '(pending)'}<br/><strong>Score:</strong> ${turn.score ?? ''}<br/><strong>Feedback:</strong> ${turn.feedback || ''}`;
+                transcriptBody.appendChild(item);
+            });
+        };
 
-    async function stopInterview() {
-        const body = new URLSearchParams({ token: interviewToken });
-        const response = await fetch('@Url.Action("Stop", "MockAiInterview")', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body
-        });
-        const result = await response.json();
-        messageElement.textContent = result.error || '@T("Plugins.Misc.AIInterview.Interview.CompletedScore") ' + result.score;
-        messageElement.className = `runtime-status ${result.error ? 'message-error' : 'message-success'}`;
-        if (!result.error)
-            window.location.href = '@Url.RouteUrl(AIInterviewDefaults.MockHistoryRouteName)';
-    }
+        const startTimer = (() => {
+            const startedAt = Date.now();
+            setInterval(() => {
+                const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+                const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+                const seconds = String(elapsedSeconds % 60).padStart(2, '0');
+                document.getElementById('runtime-timer').textContent = `${minutes}:${seconds}`;
+            }, 1000);
+        })();
 
-    document.getElementById('submit-mock-answer').addEventListener('click', submitAnswer);
-    document.getElementById('submit-mock-answer-secondary').addEventListener('click', submitAnswer);
-    document.getElementById('stop-mock-interview').addEventListener('click', stopInterview);
-    document.getElementById('stop-mock-interview-top').addEventListener('click', stopInterview);
+        const postForm = async (url, formData) => {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData
+            });
+            return await response.json();
+        };
+
+        const beginInterview = () => {
+            if (messageBox.classList.contains('is-info') || !messageBox.textContent)
+                messageBox.textContent = 'Interview started. Answer the displayed question.';
+            setStatus('Interview started.', false);
+            document.getElementById('start-or-next').disabled = true;
+        };
+
+        const submitAnswer = async () => {
+            const body = new URLSearchParams({
+                token: sessionToken,
+                answer: answerBox.value || ''
+            });
+            const result = await postForm(config.submitAnswerUrl, body);
+            if (!result.success) {
+                setStatus(result.message || result.error || 'Unable to submit answer.', true);
+                return;
+            }
+
+            setStatus(result.feedback || result.message || 'Answer saved.', false);
+            messageBox.textContent = result.question || result.completion || messageBox.textContent;
+            if (result.question) {
+                questionBox.textContent = result.question;
+                turns.push({ questionText: result.question, answerText: '', score: null, feedback: '', askedOnUtc: new Date().toISOString() });
+                answerBox.value = '';
+                renderTranscript();
+            }
+
+            if (result.isTerminated) {
+                questionBox.textContent = result.completion || 'Interview completed.';
+                answerBox.disabled = true;
+                document.getElementById('submit-answer').disabled = true;
+                document.getElementById('start-or-next').disabled = true;
+                window.setTimeout(() => {
+                    if (config.completeInterviewUrl) {
+                        // keep the page stable if completion happens server-side
+                    }
+                }, 0);
+            }
+        };
+
+        const stopInterview = async () => {
+            const body = new URLSearchParams({ token: sessionToken });
+            const result = await postForm(config.stopInterviewUrl, body);
+            if (!result.success) {
+                setStatus(result.message || result.error || 'Unable to stop interview.', true);
+                return;
+            }
+
+            setStatus(result.message || 'Interview completed.', false);
+            questionBox.textContent = result.completion || questionBox.textContent;
+            renderTranscript();
+            document.getElementById('submit-answer').disabled = true;
+            document.getElementById('start-or-next').disabled = true;
+            answerBox.disabled = true;
+        };
+
+        document.getElementById('submit-answer').addEventListener('click', submitAnswer);
+        document.getElementById('start-or-next').addEventListener('click', beginInterview);
+        document.getElementById('stop-interview').addEventListener('click', stopInterview);
+        document.getElementById('stop-interview-top').addEventListener('click', stopInterview);
+        document.getElementById('open-transcript').addEventListener('click', () => transcript.classList.add('is-open'));
+        document.getElementById('close-transcript').addEventListener('click', () => transcript.classList.remove('is-open'));
+
+        renderTranscript();
+    })();
 </script>

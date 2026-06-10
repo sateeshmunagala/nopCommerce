@@ -1,0 +1,107 @@
+using Nop.Web.Framework.Models;
+
+namespace Nop.Plugin.Misc.AIInterview.Models;
+
+public record InterviewRuntimeModel : BaseNopModel
+{
+    public int SessionId { get; set; }
+    public int ProductId { get; set; }
+    public string Token { get; set; }
+    public string SessionKey { get; set; }
+    public string ProductName { get; set; }
+    public string Difficulty { get; set; }
+    public string CandidateName { get; set; }
+    public string CurrentQuestion { get; set; }
+    public string ReportUrl { get; set; }
+    public decimal Score { get; set; }
+    public bool IsCompleted { get; set; }
+    public bool IsMockMode { get; set; }
+    public IEnumerable<InterviewTurnViewModel> Turns { get; set; } = new List<InterviewTurnViewModel>();
+    public RuntimeClientSettingsModel ClientSettings { get; set; } = new();
+}
+
+public record InterviewTurnViewModel
+{
+    public int SequenceNumber { get; set; }
+    public string QuestionText { get; set; }
+    public string AnswerText { get; set; }
+    public decimal? Score { get; set; }
+    public string Feedback { get; set; }
+    public DateTime AskedOnUtc { get; set; }
+    public DateTime? AnsweredOnUtc { get; set; }
+}
+
+public record RuntimeClientSettingsModel
+{
+    public string SubmitAnswerUrl { get; set; }
+    public string CompleteInterviewUrl { get; set; }
+    public string RefreshTokenUrl { get; set; }
+    public string StopInterviewUrl { get; set; }
+    public string TranscriptUrl { get; set; }
+    public string SpeechTokenUrl { get; set; }
+    public string AgoraTokenUrl { get; set; }
+    public string SpeechRegion { get; set; }
+    public string SpeechVoiceName { get; set; }
+    public string AgoraAppId { get; set; }
+    public string ProductName { get; set; }
+    public string Token { get; set; }
+}
+
+public record StartInterviewResponseModel
+{
+    public bool Success { get; init; }
+    public string Message { get; init; }
+    public string RuntimeUrl { get; init; }
+    public string SessionKey { get; init; }
+    public string Token { get; init; }
+}
+
+public record SubmitInterviewAnswerRequest
+{
+    public string Token { get; init; }
+    public string Answer { get; init; }
+}
+
+public record SubmitInterviewAnswerResponse
+{
+    public bool Success { get; init; }
+    public bool IsTerminated { get; init; }
+    public string Completion { get; init; }
+    public string Question { get; init; }
+    public bool Interrupted { get; init; }
+    public decimal Score { get; init; }
+    public string Feedback { get; init; }
+    public string Message { get; init; }
+}
+
+public record CompleteInterviewRequest
+{
+    public string Token { get; init; }
+    public string Reason { get; init; }
+}
+
+public record CompleteInterviewResponse
+{
+    public bool Success { get; init; }
+    public bool IsTerminated { get; init; }
+    public decimal Score { get; init; }
+    public string Feedback { get; init; }
+    public string Message { get; init; }
+    public string Completion { get; init; }
+}
+
+public record SpeechTokenResponseModel
+{
+    public string Token { get; init; }
+    public string Region { get; init; }
+    public int ExpiresInSeconds { get; init; }
+}
+
+public record AgoraTokenResponseModel
+{
+    public string AppId { get; init; }
+    public string Channel { get; init; }
+    public string Token { get; init; }
+    public uint Uid { get; init; }
+    public int ExpiresInSeconds { get; init; }
+}

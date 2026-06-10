@@ -1,0 +1,571 @@
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Nop.Core;
+using Nop.Core.Domain.Catalog;
+using Nop.Core.Domain.Customers;
+using Nop.Data;
+using Nop.Data.Extensions;
+using Nop.Plugin.Misc.AIInterview.Domain;
+using Nop.Plugin.Misc.AIInterview.Models;
+using Nop.Services.Catalog;
+using Nop.Services.Customers;
+using Nop.Services.Localization;
+
+namespace Nop.Plugin.Misc.AIInterview.Services;
+
+public class InterviewTurnService : IInterviewTurnService
+{
+    private readonly IRepository<InterviewTurn> _turnRepository;
+
+    public InterviewTurnService(IRepository<InterviewTurn> turnRepository)
+    {
+        _turnRepository = turnRepository;
+    }
+
+    public async Task<InterviewTurn> InsertInterviewTurnAsync(InterviewTurn turn)
+    {
+        await _turnRepository.InsertAsync(turn);
+        return turn;
+    }
+
+    public async Task<IList<InterviewTurn>> GetTurnsBySessionIdAsync(int interviewSessionId)
+    {
+        return await _turnRepository.GetAllAsync(query => query
+            .Where(turn => turn.InterviewSessionId == interviewSessionId)
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id));
+    }
+
+    public async Task<InterviewTurn> GetLatestTurnBySessionIdAsync(int interviewSessionId)
+    {
+        return (await _turnRepository.GetAllAsync(query => query
+            .Where(turn => turn.InterviewSessionId == interviewSessionId)
+            .OrderByDescending(turn => turn.SequenceNumber)
+            .ThenByDescending(turn => turn.Id)))
+            .FirstOrDefault();
+    }
+
+    public async Task UpdateInterviewTurnAsync(InterviewTurn turn)
+    {
+        await _turnRepository.UpdateAsync(turn);
+    }
+}
+
+public class InterviewAiClient : IAIInterviewClient
+{
+    private readonly AIInterviewSettings _settings;
+    private readonly MockAIInterviewSettings _mockSettings;
+    private readonly ILogger<InterviewAiClient> _logger;
+
+    public InterviewAiClient(AIInterviewSettings settings, MockAIInterviewSettings mockSettings, ILogger<InterviewAiClient> logger = null)
+    {
+        _settings = settings;
+        _mockSettings = mockSettings;
+        _logger = logger;
+    }
+
+    public async Task<AIInterviewClientResponse> GenerateQuestionAsync(AIInterviewClientRequest request)
+    {
+        if (_mockSettings?.UseMockResponses != false)
+            return BuildMockQuestion(request);
+
+        var response = await CallAzureAsync(request, "generate");
+        return response ?? BuildMockQuestion(request);
+    }
+
+    public async Task<AIInterviewClientResponse> ScoreAnswerAsync(AIInterviewClientRequest request)
+    {
+        if (_mockSettings?.UseMockResponses != false)
+            return BuildMockScore(request);
+
+        var response = await CallAzureAsync(request, "score");
+        return response ?? BuildMockScore(request);
+    }
+
+    protected virtual async Task<AIInterviewClientResponse> CallAzureAsync(AIInterviewClientRequest request, string mode)
+    {
+        if (string.IsNullOrWhiteSpace(_settings?.AzureOpenAiEndpointUrl) ||
+            string.IsNullOrWhiteSpace(_settings?.AzureOpenAiApiKey) ||
+            string.IsNullOrWhiteSpace(_settings?.AzureOpenAiDeploymentOrModel))
+            return null;
+
+        try
+        {
+            var endpoint = _settings.AzureOpenAiEndpointUrl.TrimEnd('/');
+            if (!endpoint.Contains("/openai/deployments/", StringComparison.OrdinalIgnoreCase))
+                endpoint = $"{endpoint}/openai/deployments/{_settings.AzureOpenAiDeploymentOrModel.Trim()}/chat/completions?api-version=2024-06-01";
+            else if (!endpoint.Contains("api-version=", StringComparison.OrdinalIgnoreCase))
+                endpoint += endpoint.Contains('?') ? "&api-version=2024-06-01" : "?api-version=2024-06-01";
+
+            var prompt = BuildPrompt(request, mode);
+            var payload = new
+            {
+                messages = new object[]
+                {
+                    new { role = "system", content = "Return valid JSON only with fields question, score, feedback, complete, completion, rawJson, rubricJson." },
+                    new { role = "user", content = prompt }
+                },
+                temperature = 0.2,
+                max_tokens = 400
+            };
+
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("api-key", _settings.AzureOpenAiApiKey.Trim());
+            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            var body = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            var result = await httpClient.PostAsync(endpoint, body);
+            if (!result.IsSuccessStatusCode)
+            {
+                _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}. Falling back to mock response.", result.StatusCode);
+                return null;
+            }
+
+            var json = await result.Content.ReadAsStringAsync();
+            using var document = JsonDocument.Parse(json);
+            var content = document.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
+                .GetString();
+
+            if (string.IsNullOrWhiteSpace(content))
+                return null;
+
+            var parsed = ParseStructuredResponse(content);
+            if (parsed != null)
+                return parsed;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Azure OpenAI interview call failed. Falling back to mock response.");
+        }
+
+        return null;
+    }
+
+    protected virtual string BuildPrompt(AIInterviewClientRequest request, string mode)
+    {
+        var previousQuestions = request.PreviousQuestions.Any()
+            ? string.Join("\n", request.PreviousQuestions.Select((q, index) => $"{index + 1}. {q}"))
+            : "None";
+        var previousScores = request.PreviousScores.Any()
+            ? string.Join(", ", request.PreviousScores.Select(score => score.ToString("N0")))
+            : "None";
+
+        return $"""
+Interview mode: {mode}
+Job title: {request.JobTitle}
+Difficulty: {request.Difficulty}
+Prompt: {request.Prompt}
+Question number: {request.QuestionNumber}
+Previous questions: {previousQuestions}
+Previous scores: {previousScores}
+Current question: {request.Question}
+Candidate answer: {request.Answer}
+""";
+    }
+
+    protected virtual AIInterviewClientResponse ParseStructuredResponse(string content)
+    {
+        try
+        {
+            var start = content.IndexOf('{');
+            var end = content.LastIndexOf('}');
+            if (start >= 0 && end > start)
+                content = content.Substring(start, end - start + 1);
+
+            using var document = JsonDocument.Parse(content);
+            var root = document.RootElement;
+            return new AIInterviewClientResponse
+            {
+                Question = root.TryGetProperty("question", out var question) ? question.GetString() : null,
+                Score = root.TryGetProperty("score", out var score) && score.TryGetDecimal(out var decimalScore) ? decimalScore : 0,
+                Feedback = root.TryGetProperty("feedback", out var feedback) ? feedback.GetString() : null,
+                Complete = root.TryGetProperty("complete", out var complete) && complete.ValueKind == JsonValueKind.True,
+                Completion = root.TryGetProperty("completion", out var completion) ? completion.GetString() : null,
+                RawJson = content,
+                RubricJson = root.TryGetProperty("rubricJson", out var rubricJson) ? rubricJson.GetString() : null
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    protected virtual AIInterviewClientResponse BuildMockQuestion(AIInterviewClientRequest request)
+    {
+        var questionNumber = Math.Max(1, request.QuestionNumber);
+        var question = questionNumber switch
+        {
+            1 => $"Tell me about your background for {request.JobTitle}.",
+            2 => $"How would you handle a difficult problem in a {request.Difficulty} {request.JobTitle} role?",
+            3 => $"What would you prioritize in your first 30 days as a {request.JobTitle}?",
+            _ => $"Share a situation where you improved outcomes in a {request.JobTitle} role."
+        };
+
+        return new AIInterviewClientResponse
+        {
+            Question = question,
+            Score = 0,
+            Feedback = string.Empty,
+            Complete = false,
+            Completion = string.Empty,
+            RawJson = JsonSerializer.Serialize(new { question, complete = false }),
+            RubricJson = "{}"
+        };
+    }
+
+    protected virtual AIInterviewClientResponse BuildMockScore(AIInterviewClientRequest request)
+    {
+        var words = (request.Answer ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var score = Math.Min(100, Math.Max(10, (words.Length * 8) + (request.Answer?.Contains("because", StringComparison.OrdinalIgnoreCase) == true ? 10 : 0)));
+        var feedback = score >= 75
+            ? "Strong answer with clear structure."
+            : score >= 50
+                ? "Decent answer. Add more concrete examples."
+                : "Answer is too brief. Explain your reasoning and impact.";
+
+        return new AIInterviewClientResponse
+        {
+            Question = string.Empty,
+            Score = score,
+            Feedback = feedback,
+            Complete = false,
+            Completion = string.Empty,
+            RawJson = JsonSerializer.Serialize(new { score, feedback, complete = false }),
+            RubricJson = JsonSerializer.Serialize(new { score, feedback })
+        };
+    }
+}
+
+public class InterviewRuntimeService : IInterviewRuntimeService
+{
+    private readonly IInterviewSessionService _sessionService;
+    private readonly IInterviewTurnService _turnService;
+    private readonly IAIInterviewClient _aiClient;
+    private readonly IProductService _productService;
+    private readonly ICustomerService _customerService;
+    private readonly ILocalizationService _localizationService;
+    private readonly AIInterviewSettings _settings;
+    private readonly MockAIInterviewSettings _mockSettings;
+    private readonly ILogger<InterviewRuntimeService> _logger;
+
+    public InterviewRuntimeService(
+        IInterviewSessionService sessionService,
+        IInterviewTurnService turnService,
+        IAIInterviewClient aiClient,
+        IProductService productService,
+        ICustomerService customerService,
+        ILocalizationService localizationService,
+        AIInterviewSettings settings,
+        MockAIInterviewSettings mockSettings,
+        ILogger<InterviewRuntimeService> logger = null)
+    {
+        _sessionService = sessionService;
+        _turnService = turnService;
+        _aiClient = aiClient;
+        _productService = productService;
+        _customerService = customerService;
+        _localizationService = localizationService;
+        _settings = settings;
+        _mockSettings = mockSettings;
+        _logger = logger;
+    }
+
+    public async Task<InterviewRuntimeModel> GetRuntimeModelAsync(string token)
+    {
+        var session = await _sessionService.GetSessionByTokenAsync(token);
+        if (session == null)
+            return null;
+
+        return await EnsureInterviewStartedAsync(session);
+    }
+
+    public async Task<InterviewRuntimeModel> EnsureInterviewStartedAsync(InterviewSession session, Customer customer = null)
+    {
+        if (session == null)
+            return null;
+
+        var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
+        if (!turns.Any())
+        {
+            var first = await GenerateQuestionTurnAsync(session, 1, turns);
+            await _turnService.InsertInterviewTurnAsync(first);
+            turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
+        }
+
+        return await BuildRuntimeModelAsync(session, turns, customer);
+    }
+
+    public async Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(string token, string answer)
+    {
+        var session = await _sessionService.GetSessionByTokenAsync(token);
+        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow))
+        {
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = false,
+                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken")
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(answer))
+        {
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = false,
+                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer")
+            };
+        }
+
+        var turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
+        var currentTurn = turns.LastOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText)) ?? turns.LastOrDefault();
+        if (currentTurn == null)
+        {
+            currentTurn = await GenerateQuestionTurnAsync(session, 1, turns);
+            await _turnService.InsertInterviewTurnAsync(currentTurn);
+            turns.Add(currentTurn);
+        }
+
+        var evaluation = await _aiClient.ScoreAnswerAsync(new AIInterviewClientRequest
+        {
+            JobTitle = await GetJobTitleAsync(session.ProductId),
+            Difficulty = session.Difficulty,
+            Prompt = _settings.Prompt,
+            Question = currentTurn.QuestionText,
+            Answer = answer,
+            QuestionNumber = currentTurn.SequenceNumber,
+            PreviousQuestions = turns.Select(turn => turn.QuestionText).ToList(),
+            PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList()
+        });
+
+        currentTurn.AnswerText = answer;
+        currentTurn.Score = evaluation.Score;
+        currentTurn.Feedback = evaluation.Feedback;
+        currentTurn.RubricJson = evaluation.RubricJson;
+        currentTurn.RawAIResponseJson = evaluation.RawJson;
+        currentTurn.AnsweredOnUtc = DateTime.UtcNow;
+        await _turnService.UpdateInterviewTurnAsync(currentTurn);
+
+        turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
+        var averageScore = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
+        session.Score = averageScore;
+        session.QuestionScores = JsonSerializer.Serialize(turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
+
+        var maxQuestions = GetMaxQuestions(session.Difficulty);
+        var isComplete = turns.Count(turn => !string.IsNullOrWhiteSpace(turn.AnswerText)) >= maxQuestions;
+        if (!isComplete)
+        {
+            var nextTurn = await GenerateQuestionTurnAsync(session, currentTurn.SequenceNumber + 1, turns);
+            await _turnService.InsertInterviewTurnAsync(nextTurn);
+            await _sessionService.UpdateInterviewSessionAsync(session);
+
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = true,
+                IsTerminated = false,
+                Question = nextTurn.QuestionText,
+                Score = session.Score,
+                Feedback = evaluation.Feedback,
+                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.NextQuestion"),
+                Interrupted = false,
+                Completion = string.Empty
+            };
+        }
+
+        var completion = await CompleteInterviewInternalAsync(session, turns, evaluation.Feedback);
+        return new SubmitInterviewAnswerResponse
+        {
+            Success = true,
+            IsTerminated = true,
+            Completion = completion.Completion,
+            Score = completion.Score,
+            Feedback = completion.Feedback,
+            Message = completion.Message,
+            Interrupted = false,
+            Question = string.Empty
+        };
+    }
+
+    public async Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null)
+    {
+        var session = await _sessionService.GetSessionByTokenAsync(token);
+        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow))
+        {
+            return new CompleteInterviewResponse
+            {
+                Success = false,
+                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken")
+            };
+        }
+
+        var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
+        return await CompleteInterviewInternalAsync(session, turns, reason);
+    }
+
+    public async Task<SpeechTokenResponseModel> GetSpeechTokenAsync(string token)
+    {
+        var session = await _sessionService.GetSessionByTokenAsync(token);
+        if (session == null || session.CompletedOnUtc.HasValue)
+            return null;
+
+        return new SpeechTokenResponseModel
+        {
+            Token = Guid.NewGuid().ToString("N"),
+            Region = _settings.AzureSpeechRegion,
+            ExpiresInSeconds = 600
+        };
+    }
+
+    public async Task<AgoraTokenResponseModel> GetAgoraTokenAsync(string token)
+    {
+        var session = await _sessionService.GetSessionByTokenAsync(token);
+        if (session == null || session.CompletedOnUtc.HasValue)
+            return null;
+
+        return new AgoraTokenResponseModel
+        {
+            AppId = _settings.AgoraAppId,
+            Channel = session.SessionKey,
+            Token = Guid.NewGuid().ToString("N"),
+            Uid = (uint)session.CustomerId,
+            ExpiresInSeconds = 600
+        };
+    }
+
+    protected virtual async Task<InterviewRuntimeModel> BuildRuntimeModelAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null)
+    {
+        var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+        var candidate = customer ?? await _customerService.GetCustomerByIdAsync(session.CustomerId);
+        var lastQuestion = turns.LastOrDefault()?.QuestionText ?? string.Empty;
+
+        return new InterviewRuntimeModel
+        {
+            SessionId = session.Id,
+            ProductId = session.ProductId,
+            SessionKey = session.SessionKey,
+            Token = session.Token,
+            ProductName = product?.Name ?? "Interview",
+            CandidateName = candidate != null ? $"{candidate.FirstName} {candidate.LastName}".Trim() : string.Empty,
+            Difficulty = session.Difficulty,
+            CurrentQuestion = lastQuestion,
+            Score = session.Score,
+            IsCompleted = session.CompletedOnUtc.HasValue,
+            IsMockMode = _mockSettings?.UseMockResponses ?? true,
+            ReportUrl = session.Id > 0 ? $"/aiinterview/report/{session.Id}" : string.Empty,
+            Turns = turns.Select(turn => new InterviewTurnViewModel
+            {
+                SequenceNumber = turn.SequenceNumber,
+                QuestionText = turn.QuestionText,
+                AnswerText = turn.AnswerText,
+                Score = turn.Score,
+                Feedback = turn.Feedback,
+                AskedOnUtc = turn.AskedOnUtc,
+                AnsweredOnUtc = turn.AnsweredOnUtc
+            }).ToList(),
+            ClientSettings = new RuntimeClientSettingsModel
+            {
+                SubmitAnswerUrl = "/mockaiinterview/submit-answer",
+                CompleteInterviewUrl = "/mockaiinterview/stop",
+                RefreshTokenUrl = "/mockaiinterview/refresh-token",
+                StopInterviewUrl = "/mockaiinterview/stop",
+                TranscriptUrl = string.Empty,
+                SpeechTokenUrl = string.Empty,
+                AgoraTokenUrl = string.Empty,
+                SpeechRegion = _settings.AzureSpeechRegion,
+                SpeechVoiceName = string.Empty,
+                AgoraAppId = _settings.AgoraAppId,
+                ProductName = product?.Name,
+                Token = session.Token
+            }
+        };
+    }
+
+    protected virtual async Task<InterviewTurn> GenerateQuestionTurnAsync(InterviewSession session, int sequenceNumber, IList<InterviewTurn> turns)
+    {
+        var request = new AIInterviewClientRequest
+        {
+            JobTitle = await GetJobTitleAsync(session.ProductId),
+            Difficulty = session.Difficulty,
+            Prompt = _settings.Prompt,
+            QuestionNumber = sequenceNumber,
+            PreviousQuestions = turns.Select(turn => turn.QuestionText).ToList(),
+            PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList()
+        };
+
+        var aiResponse = await _aiClient.GenerateQuestionAsync(request);
+        return new InterviewTurn
+        {
+            InterviewSessionId = session.Id,
+            SequenceNumber = sequenceNumber,
+            QuestionId = sequenceNumber,
+            QuestionText = aiResponse.Question,
+            AskedOnUtc = DateTime.UtcNow,
+            CreatedOnUtc = DateTime.UtcNow,
+            RawAIResponseJson = aiResponse.RawJson,
+            RubricJson = aiResponse.RubricJson
+        };
+    }
+
+    protected virtual async Task<CompleteInterviewResponse> CompleteInterviewInternalAsync(InterviewSession session, IList<InterviewTurn> turns, string reason)
+    {
+        session.IsActive = false;
+        session.CompletedOnUtc = DateTime.UtcNow;
+        session.Score = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
+        session.QuestionScores = JsonSerializer.Serialize(turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
+        session.ReportData = BuildReport(turns, session.Score, reason);
+        await _sessionService.UpdateInterviewSessionAsync(session);
+
+        var completion = new CompleteInterviewResponse
+        {
+            Success = true,
+            IsTerminated = true,
+            Score = session.Score,
+            Feedback = turns.LastOrDefault()?.Feedback ?? reason ?? string.Empty,
+            Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
+            Completion = session.ReportData
+        };
+
+        _logger?.LogInformation("Interview completed for session {SessionId}, customer {CustomerId}, product {ProductId}.",
+            session.Id, session.CustomerId, session.ProductId);
+
+        return completion;
+    }
+
+    protected virtual string BuildReport(IEnumerable<InterviewTurn> turns, decimal score, string reason)
+    {
+        var strengths = turns.Where(turn => turn.Score.GetValueOrDefault() >= 75).Select(turn => turn.QuestionText).Take(3).ToList();
+        var improvements = turns.Where(turn => turn.Score.GetValueOrDefault() < 75).Select(turn => turn.QuestionText).Take(3).ToList();
+
+        return string.Join(Environment.NewLine, new[]
+        {
+            $"Overall score: {score:N0}",
+            $"Strengths: {(strengths.Any() ? string.Join("; ", strengths) : "Good structure and engagement.")}",
+            $"Improvement areas: {(improvements.Any() ? string.Join("; ", improvements) : "Provide more concrete examples.")}",
+            string.IsNullOrWhiteSpace(reason) ? string.Empty : $"Completion note: {reason}"
+        }.Where(line => !string.IsNullOrWhiteSpace(line)));
+    }
+
+    protected virtual int GetMaxQuestions(string difficulty)
+    {
+        return (difficulty ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "easy" => 2,
+            "hard" => 4,
+            _ => 3
+        };
+    }
+
+    protected virtual async Task<string> GetJobTitleAsync(int productId)
+    {
+        if (productId <= 0)
+            return "Practice Interview";
+
+        var product = await _productService.GetProductByIdAsync(productId);
+        return product?.Name ?? "Practice Interview";
+    }
+}

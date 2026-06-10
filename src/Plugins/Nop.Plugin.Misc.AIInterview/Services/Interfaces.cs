@@ -1,4 +1,5 @@
 using Nop.Core;
+using Nop.Core.Domain.Customers;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Core.Domain.Catalog;
 using Microsoft.AspNetCore.Http;
@@ -30,6 +31,53 @@ public interface IInterviewSessionService
     Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId);
     Task UpdateInterviewSessionAsync(InterviewSession session);
     Task<bool> CanAccessReportAsync(int customerId, int sessionId);
+}
+
+public interface IInterviewTurnService
+{
+    Task<InterviewTurn> InsertInterviewTurnAsync(InterviewTurn turn);
+    Task<IList<InterviewTurn>> GetTurnsBySessionIdAsync(int interviewSessionId);
+    Task<InterviewTurn> GetLatestTurnBySessionIdAsync(int interviewSessionId);
+    Task UpdateInterviewTurnAsync(InterviewTurn turn);
+}
+
+public interface IInterviewRuntimeService
+{
+    Task<InterviewRuntimeModel> GetRuntimeModelAsync(string token);
+    Task<InterviewRuntimeModel> EnsureInterviewStartedAsync(InterviewSession session, Customer customer = null);
+    Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(string token, string answer);
+    Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null);
+    Task<SpeechTokenResponseModel> GetSpeechTokenAsync(string token);
+    Task<AgoraTokenResponseModel> GetAgoraTokenAsync(string token);
+}
+
+public interface IAIInterviewClient
+{
+    Task<AIInterviewClientResponse> GenerateQuestionAsync(AIInterviewClientRequest request);
+    Task<AIInterviewClientResponse> ScoreAnswerAsync(AIInterviewClientRequest request);
+}
+
+public record AIInterviewClientRequest
+{
+    public string JobTitle { get; init; }
+    public string Difficulty { get; init; }
+    public string Prompt { get; init; }
+    public string Question { get; init; }
+    public string Answer { get; init; }
+    public int QuestionNumber { get; init; }
+    public IList<string> PreviousQuestions { get; init; } = new List<string>();
+    public IList<decimal> PreviousScores { get; init; } = new List<decimal>();
+}
+
+public record AIInterviewClientResponse
+{
+    public string Question { get; init; }
+    public decimal Score { get; init; }
+    public string Feedback { get; init; }
+    public bool Complete { get; init; }
+    public string Completion { get; init; }
+    public string RawJson { get; init; }
+    public string RubricJson { get; init; }
 }
 
 public interface ICreditService

@@ -20,6 +20,9 @@ public class PluginNopStartup : INopStartup
     {
         services.AddScoped<IApplicationService, ApplicationService>();
         services.AddScoped<IInterviewSessionService, InterviewSessionService>();
+        services.AddScoped<IInterviewTurnService, InterviewTurnService>();
+        services.AddScoped<IAIInterviewClient, InterviewAiClient>();
+        services.AddScoped<IInterviewRuntimeService, InterviewRuntimeService>();
         services.AddScoped<ICreditService, CreditService>();
         services.AddScoped<ICreditPurchaseService, CreditPurchaseService>();
         services.AddScoped<ISponsorInviteService, SponsorInviteService>();
