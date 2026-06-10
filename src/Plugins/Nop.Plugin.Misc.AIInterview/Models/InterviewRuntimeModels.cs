@@ -22,6 +22,7 @@ public record InterviewRuntimeModel : BaseNopModel
 
 public record InterviewTurnViewModel
 {
+    public int TurnId { get; set; }
     public int SequenceNumber { get; set; }
     public string QuestionText { get; set; }
     public string AnswerText { get; set; }
@@ -45,6 +46,8 @@ public record RuntimeClientSettingsModel
     public string AgoraAppId { get; set; }
     public string ProductName { get; set; }
     public string Token { get; set; }
+    public bool SpeechAvailable { get; set; }
+    public bool AgoraAvailable { get; set; }
 }
 
 public record StartInterviewResponseModel
@@ -68,6 +71,7 @@ public record SubmitInterviewAnswerResponse
     public bool IsTerminated { get; init; }
     public string Completion { get; init; }
     public string Question { get; init; }
+    public InterviewTurnViewModel Turn { get; init; }
     public bool Interrupted { get; init; }
     public decimal Score { get; init; }
     public string Feedback { get; init; }
@@ -88,6 +92,7 @@ public record CompleteInterviewResponse
     public string Feedback { get; init; }
     public string Message { get; init; }
     public string Completion { get; init; }
+    public IList<InterviewTurnViewModel> Turns { get; init; } = new List<InterviewTurnViewModel>();
 }
 
 public record SpeechTokenResponseModel
@@ -104,4 +109,24 @@ public record AgoraTokenResponseModel
     public string Token { get; init; }
     public uint Uid { get; init; }
     public int ExpiresInSeconds { get; init; }
+}
+
+public record InterviewReportModel : BaseNopModel
+{
+    public int SessionId { get; set; }
+    public int CustomerId { get; set; }
+    public int ProductId { get; set; }
+    public string SessionKey { get; set; }
+    public string Token { get; set; }
+    public string ProductName { get; set; }
+    public string JobTitle { get; set; }
+    public string Difficulty { get; set; }
+    public DateTime CreatedOnUtc { get; set; }
+    public DateTime? CompletedOnUtc { get; set; }
+    public decimal Score { get; set; }
+    public bool IsCompleted { get; set; }
+    public string QuestionScores { get; set; }
+    public IList<decimal> ParsedQuestionScores { get; set; } = new List<decimal>();
+    public string ReportData { get; set; }
+    public IList<InterviewTurnViewModel> Turns { get; set; } = new List<InterviewTurnViewModel>();
 }

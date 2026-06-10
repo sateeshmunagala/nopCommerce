@@ -22,6 +22,11 @@ public class SchemaMigration : Migration
             .OnTable(nameof(CreditPurchaseGrant))
             .OnColumn(nameof(CreditPurchaseGrant.OrderItemId)).Ascending()
             .WithOptions().Unique();
+
+        Create.Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber")
+            .OnTable(nameof(InterviewTurn))
+            .OnColumn(nameof(InterviewTurn.InterviewSessionId)).Ascending()
+            .OnColumn(nameof(InterviewTurn.SequenceNumber)).Ascending();
     }
 
     public override void Down()

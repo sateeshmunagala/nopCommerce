@@ -1,4 +1,4 @@
-@model ApplicationModel
+@model Nop.Plugin.Misc.AIInterview.Models.InterviewReportModel
 
 @{
     Layout = "_ColumnsOne";
@@ -11,35 +11,50 @@
     </div>
     <div class="page-body">
         <div class="report-header">
-            <p><strong>@T("Plugins.Misc.AIInterview.Report.Date"):</strong> @Model.CreatedOn.ToString("g")</p>
-            <p><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @(Model.InterviewScore.HasValue ? Model.InterviewScore.Value.ToString("N2") : "-")</p>
+            <p><strong>@T("Plugins.Misc.AIInterview.Report.Date"):</strong> @Model.CreatedOnUtc.ToString("g")</p>
+            <p><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @Model.Score.ToString("N2")</p>
         </div>
 
-        @if (!string.IsNullOrEmpty(Model.QuestionScores))
+        @if (Model.ParsedQuestionScores?.Any() == true)
         {
             <div class="question-scores">
                 <h3>Question Scores</h3>
                 <ul>
-                    @{
-                        var scores = System.Text.Json.JsonSerializer.Deserialize<int[]>(Model.QuestionScores);
-                        if (scores != null)
-                        {
-                            for (int i = 0; i < scores.Length; i++)
-                            {
-                                <li>Question @(i + 1): @scores[i]</li>
-                            }
-                        }
+                    @for (var i = 0; i < Model.ParsedQuestionScores.Count; i++)
+                    {
+                        <li>Question @(i + 1): @Model.ParsedQuestionScores[i]</li>
                     }
                 </ul>
             </div>
         }
 
-        @if (!string.IsNullOrEmpty(Model.StatusComment))
+        @if (Model.Turns?.Any() == true)
+        {
+            <div class="turn-history">
+                <h3>Interview Turns</h3>
+                @foreach (var turn in Model.Turns)
+                {
+                    <div style="padding:12px 14px;border:1px solid rgba(15,23,42,.08);border-radius:14px;margin-bottom:12px;">
+                        <div><strong>Q@turn.SequenceNumber.</strong> @turn.QuestionText</div>
+                        <div><strong>Answer:</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? "(pending)" : turn.AnswerText)</div>
+                        <div><strong>Score:</strong> @(turn.Score.HasValue ? turn.Score.Value.ToString("N2") : "-")</div>
+                        <div><strong>Feedback:</strong> @turn.Feedback</div>
+                        <div><strong>Asked:</strong> @turn.AskedOnUtc.ToString("g")</div>
+                        @if (turn.AnsweredOnUtc.HasValue)
+                        {
+                            <div><strong>Answered:</strong> @turn.AnsweredOnUtc.Value.ToString("g")</div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.ReportData))
         {
             <div class="report-content">
                 <h3>@T("Plugins.Misc.AIInterview.Report.Details")</h3>
                 <div class="report-data">
-                    @Model.StatusComment
+                    @Html.Raw(Model.ReportData)
                 </div>
             </div>
         }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
 using Nop.Plugin.Misc.AIInterview.Domain;
+using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
@@ -29,6 +30,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IEventPublisher _eventPublisher;
     private readonly IJobInterviewExperienceService _jobInterviewExperienceService;
     private readonly IUrlRecordService _urlRecordService;
+    private readonly IInterviewTurnService _turnService;
     private readonly IInterviewRuntimeService _interviewRuntimeService;
     private readonly ILogger<MockAiInterviewController> _logger;
 
@@ -44,6 +46,7 @@ public class MockAiInterviewController : BasePluginController
         IEventPublisher eventPublisher = null,
         IJobInterviewExperienceService jobInterviewExperienceService = null,
         IUrlRecordService urlRecordService = null,
+        IInterviewTurnService turnService = null,
         IInterviewRuntimeService interviewRuntimeService = null,
         ILogger<MockAiInterviewController> logger = null)
     {
@@ -59,6 +62,7 @@ public class MockAiInterviewController : BasePluginController
         _eventPublisher = eventPublisher;
         _jobInterviewExperienceService = jobInterviewExperienceService;
         _urlRecordService = urlRecordService;
+        _turnService = turnService;
         _interviewRuntimeService = interviewRuntimeService;
         _logger = logger;
     }
@@ -114,7 +118,10 @@ public class MockAiInterviewController : BasePluginController
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request.", 401);
 
         var product = productId > 0 ? await _productService.GetProductByIdAsync(productId) : null;
-        difficulty = AIInterviewDefaults.DefaultInterviewDifficulty;
+        if (product != null && _jobInterviewExperienceService != null)
+            difficulty = await _jobInterviewExperienceService.ResolveInterviewDifficultyAsync(product, form) ?? AIInterviewDefaults.DefaultInterviewDifficulty;
+        else
+            difficulty = !string.IsNullOrWhiteSpace(form["difficulty"]) ? form["difficulty"] : difficulty ?? AIInterviewDefaults.DefaultInterviewDifficulty;
 
         var customerSessions = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<InterviewSession>())
             .Where(s => s.ProductId == productId)
@@ -236,20 +243,29 @@ public class MockAiInterviewController : BasePluginController
                 Token = session.Token,
                 Difficulty = session.Difficulty,
                 ProductName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview",
-                CurrentQuestion = "Tell me about your background for this role.",
-                ClientSettings = new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel
-                {
-                    SubmitAnswerUrl = Url?.RouteUrl("Plugin.Misc.AIInterview.Mock.SubmitAnswer"),
-                    CompleteInterviewUrl = Url?.RouteUrl("Plugin.Misc.AIInterview.Mock.Stop"),
-                    RefreshTokenUrl = Url?.RouteUrl("Plugin.Misc.AIInterview.Mock.RefreshToken"),
-                    StopInterviewUrl = Url?.RouteUrl("Plugin.Misc.AIInterview.Mock.Stop"),
-                    Token = session.Token,
-                    ProductName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview"
-                }
+                CurrentQuestion = "Tell me about your background for this role."
             }
             : await _interviewRuntimeService.EnsureInterviewStartedAsync(session);
 
+        ApplyRuntimeClientSettings(model, session);
+
         return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Runtime.cshtml", model);
+    }
+
+    protected virtual void ApplyRuntimeClientSettings(Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel model, InterviewSession session)
+    {
+        if (model == null)
+            return;
+
+        model.ClientSettings ??= new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel();
+        model.ClientSettings.SubmitAnswerUrl = Url?.RouteUrl(AIInterviewDefaults.MockSubmitAnswerRouteName);
+        model.ClientSettings.CompleteInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
+        model.ClientSettings.RefreshTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockRefreshTokenRouteName);
+        model.ClientSettings.StopInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
+        model.ClientSettings.SpeechTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechTokenRouteName);
+        model.ClientSettings.AgoraTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockAgoraTokenRouteName);
+        model.ClientSettings.ProductName = model.ProductName;
+        model.ClientSettings.Token = session?.Token;
     }
 
     protected async Task<string> GetRestartUrlAsync(InterviewSession session)
@@ -307,10 +323,6 @@ public class MockAiInterviewController : BasePluginController
         if (_interviewRuntimeService != null)
         {
             var response = await _interviewRuntimeService.CompleteInterviewAsync(token, "Stopped by user");
-            var completedSession = await _interviewSessionService.GetSessionByTokenAsync(token);
-            if (completedSession != null)
-                await PublishCompletionAsync(completedSession);
-
             return Json(response);
         }
 
@@ -357,6 +369,32 @@ public class MockAiInterviewController : BasePluginController
         return Json(new { newToken = session.Token });
     }
 
+    [HttpPost]
+    public async Task<IActionResult> SpeechToken(string token)
+    {
+        if (_interviewRuntimeService == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech token service is unavailable.");
+
+        var result = await _interviewRuntimeService.GetSpeechTokenAsync(token);
+        if (result == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech token service is unavailable.");
+
+        return Json(new { success = true, token = result.Token, region = result.Region, expiresInSeconds = result.ExpiresInSeconds });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> AgoraToken(string token)
+    {
+        if (_interviewRuntimeService == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Agora token service is unavailable.");
+
+        var result = await _interviewRuntimeService.GetAgoraTokenAsync(token);
+        if (result == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Agora token service is unavailable.");
+
+        return Json(new { success = true, appId = result.AppId, channel = result.Channel, token = result.Token, uid = result.Uid, expiresInSeconds = result.ExpiresInSeconds });
+    }
+
     public async Task<IActionResult> History()
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
@@ -380,7 +418,53 @@ public class MockAiInterviewController : BasePluginController
         if (session == null || string.IsNullOrEmpty(session.ReportData))
             return await RuntimeErrorAsync("Plugins.Misc.AIInterview.Report.NotFound", "Interview report not found.", 404);
 
-        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Report.cshtml", session);
+        var turns = _turnService == null ? new List<InterviewTurn>() : (await _turnService.GetTurnsBySessionIdAsync(session.Id))?.ToList() ?? new List<InterviewTurn>();
+        var model = new InterviewReportModel
+        {
+            SessionId = session.Id,
+            ProductId = session.ProductId,
+            SessionKey = session.SessionKey,
+            Token = session.Token,
+            Difficulty = session.Difficulty,
+            ProductName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview",
+            JobTitle = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview",
+            Score = session.Score,
+            IsCompleted = session.CompletedOnUtc.HasValue,
+            QuestionScores = session.QuestionScores,
+            ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
+            ReportData = session.ReportData,
+            Turns = turns.Select(turn => new InterviewTurnViewModel
+            {
+                TurnId = turn.Id,
+                SequenceNumber = turn.SequenceNumber,
+                QuestionText = turn.QuestionText,
+                AnswerText = turn.AnswerText,
+                Score = turn.Score,
+                Feedback = turn.Feedback,
+                AskedOnUtc = turn.AskedOnUtc,
+                AnsweredOnUtc = turn.AnsweredOnUtc
+            }).ToList(),
+            CreatedOnUtc = session.CreatedOnUtc,
+            CompletedOnUtc = session.CompletedOnUtc
+        };
+
+        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Report.cshtml", model);
+    }
+
+    protected static IList<decimal> ParseQuestionScores(string questionScores)
+    {
+        if (string.IsNullOrWhiteSpace(questionScores))
+            return new List<decimal>();
+
+        try
+        {
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<List<decimal>>(questionScores);
+            return parsed ?? new List<decimal>();
+        }
+        catch
+        {
+            return new List<decimal>();
+        }
     }
 
     protected async Task<bool> IsAuthorizedAsync()

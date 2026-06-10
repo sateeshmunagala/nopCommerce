@@ -1,237 +1,59 @@
 @model Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel
 @using System.Text.Json
+@using System.Text.Json.Serialization
 @{
     Layout = "_Root.Head";
-    var clientSettings = JsonSerializer.Serialize(Model.ClientSettings ?? new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel());
+    var jsonOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+    var clientSettings = JsonSerializer.Serialize(Model.ClientSettings ?? new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel(), jsonOptions);
+    var turns = JsonSerializer.Serialize(Model.Turns ?? Array.Empty<object>(), jsonOptions);
 }
 
 <style>
-    body {
-        margin: 0;
-        background: #eef3fb;
-    }
-
-    .runtime-shell {
-        min-height: 100vh;
-        padding: 12px;
-        box-sizing: border-box;
-    }
-
-    .runtime-page {
-        min-height: calc(100vh - 24px);
-        padding: 18px;
-        border-radius: 28px;
-        background: linear-gradient(180deg, #f8fafc 0%, #eef3fb 100%);
-        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
-        display: grid;
-        gap: 18px;
-    }
-
-    .runtime-topbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        flex-wrap: wrap;
-    }
-
-    .runtime-topbar h1 {
-        margin: 0;
-        font-size: 22px;
-        color: #162033;
-    }
-
-    .runtime-meta {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        color: #667085;
-        font-weight: 600;
-    }
-
-    .runtime-layout {
-        display: grid;
-        grid-template-columns: minmax(0, 1.8fr) minmax(320px, 0.9fr);
-        gap: 18px;
-        min-height: 70vh;
-    }
-
-    .runtime-stage, .runtime-sidebar {
-        display: grid;
-        gap: 16px;
-        padding: 18px;
-        border-radius: 24px;
-        background: #fff;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-    }
-
-    .runtime-video {
-        position: relative;
-        min-height: 420px;
-        border-radius: 20px;
-        background: linear-gradient(180deg, #d9e2f2 0%, #c8d7ea 100%);
-        display: grid;
-        place-items: center;
-        color: #51627b;
-        font-size: 28px;
-        font-weight: 700;
-    }
-
-    .runtime-avatar {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        width: 108px;
-        height: 108px;
-        border-radius: 20px;
-        background: linear-gradient(180deg, #f7f9fc 0%, #dce6f3 100%);
-        border: 1px solid rgba(255,255,255,0.85);
-        box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
-    }
-
-    .runtime-avatar::before,
-    .runtime-avatar::after {
-        content: "";
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #b5c3d0;
-    }
-
-    .runtime-avatar::before {
-        top: 18px;
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-    }
-
-    .runtime-avatar::after {
-        bottom: 18px;
-        width: 54px;
-        height: 34px;
-        border-radius: 999px;
-    }
-
-    .runtime-controls {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 12px;
-        padding: 14px 18px;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.9);
-        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
-        width: fit-content;
-        margin: -40px auto 0;
-        position: relative;
-    }
-
-    .runtime-dot {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: #d0d5dd;
-    }
-
-    .runtime-dot.is-live {
-        width: 42px;
-        height: 42px;
-        background: #ffffff;
-        border: 2px solid #d0d5dd;
-    }
-
-    .runtime-sidebar h3 {
-        margin: 0;
-        color: #162033;
-    }
-
-    .runtime-question, .runtime-message {
-        padding: 14px 16px;
-        border-radius: 16px;
-        border: 1px solid rgba(255, 122, 26, 0.35);
-        background: #fff9f3;
-        color: #a15c00;
-        line-height: 1.6;
-    }
-
-    .runtime-message.is-info {
-        background: #eef4ff;
-        color: #0f5bd7;
-        border-color: #c9dafd;
-    }
-
-    .runtime-answer textarea {
-        width: 100%;
-        min-height: 120px;
-        padding: 14px 16px;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 16px;
-        resize: vertical;
-    }
-
-    .runtime-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        align-items: center;
-    }
-
-    .button-1, .button-2 {
-        border-radius: 999px;
-    }
-
-    .button-1 {
-        background: #0f5bd7;
-        color: #fff;
-    }
-
-    .button-2 {
-        background: #eef4ff;
-        color: #0f5bd7;
-        border: 1px solid #c9dafd;
-    }
-
-    .runtime-status {
-        min-height: 24px;
-        font-weight: 600;
-    }
-
-    .runtime-status.message-error {
-        color: #b42318;
-    }
-
-    .runtime-status.message-success {
-        color: #027a48;
-    }
-
-    .runtime-transcript {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.45);
-        z-index: 9999;
-        padding: 24px;
-    }
-
-    .runtime-transcript.is-open {
-        display: grid;
-        place-items: center;
-    }
-
-    .runtime-transcript-card {
-        width: min(900px, 100%);
-        max-height: 80vh;
-        overflow: auto;
-        background: #fff;
-        border-radius: 20px;
-        padding: 20px;
-    }
-
-    @@media (max-width: 1024px) {
-        .runtime-layout {
-            grid-template-columns: 1fr;
-        }
-    }
+    body { margin: 0; background: #eef3fb; }
+    .runtime-shell { min-height: 100vh; padding: 12px; box-sizing: border-box; }
+    .runtime-page { min-height: calc(100vh - 24px); padding: 18px; border-radius: 28px; background: linear-gradient(180deg, #f8fafc 0%, #eef3fb 100%); box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12); display: grid; gap: 18px; }
+    .runtime-topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .runtime-topbar h1 { margin: 0; font-size: 22px; color: #162033; }
+    .runtime-meta { display: flex; align-items: center; gap: 12px; color: #667085; font-weight: 600; }
+    .runtime-progress { height: 8px; border-radius: 999px; background: #dbe4f0; overflow: hidden; }
+    .runtime-progress > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #0f5bd7, #ff7a1a); transition: width .2s ease; }
+    .runtime-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(320px, .9fr); gap: 18px; min-height: 70vh; }
+    .runtime-stage, .runtime-sidebar { display: grid; gap: 16px; padding: 18px; border-radius: 24px; background: #fff; border: 1px solid rgba(15, 23, 42, 0.08); }
+    .runtime-video { position: relative; min-height: 420px; border-radius: 20px; background: linear-gradient(180deg, #d9e2f2 0%, #c8d7ea 100%); display: grid; place-items: center; color: #51627b; font-size: 28px; font-weight: 700; overflow: hidden; }
+    .runtime-video video { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .runtime-avatar { position: absolute; top: 20px; right: 20px; width: 108px; height: 108px; border-radius: 20px; background: linear-gradient(180deg, #f7f9fc 0%, #dce6f3 100%); border: 1px solid rgba(255,255,255,0.85); box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12); }
+    .runtime-avatar::before, .runtime-avatar::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); background: #b5c3d0; }
+    .runtime-avatar::before { top: 18px; width: 42px; height: 42px; border-radius: 50%; }
+    .runtime-avatar::after { bottom: 18px; width: 54px; height: 34px; border-radius: 999px; }
+    .runtime-controls { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 999px; background: rgba(255,255,255,0.9); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12); width: fit-content; margin: -40px auto 0; position: relative; flex-wrap: wrap; }
+    .runtime-dot { width: 20px; height: 20px; border-radius: 50%; background: #d0d5dd; }
+    .runtime-dot.is-live { width: 42px; height: 42px; background: #ffffff; border: 2px solid #d0d5dd; }
+    .runtime-sidebar h3 { margin: 0; color: #162033; }
+    .runtime-question, .runtime-message { padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255, 122, 26, 0.35); background: #fff9f3; color: #a15c00; line-height: 1.6; }
+    .runtime-message.is-info { background: #eef4ff; color: #0f5bd7; border-color: #c9dafd; }
+    .runtime-conversation { display: grid; gap: 12px; align-content: start; }
+    .turn-card { padding: 14px 16px; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 18px; background: #fff; }
+    .turn-question { font-weight: 700; color: #162033; margin-bottom: 8px; }
+    .turn-answer { color: #334155; margin-bottom: 8px; white-space: pre-wrap; }
+    .turn-meta { color: #667085; font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .runtime-answer textarea { width: 100%; min-height: 120px; padding: 14px 16px; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 16px; resize: vertical; }
+    .runtime-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .button-1, .button-2 { border-radius: 999px; }
+    .button-1 { background: #0f5bd7; color: #fff; }
+    .button-2 { background: #eef4ff; color: #0f5bd7; border: 1px solid #c9dafd; }
+    .runtime-status { min-height: 24px; font-weight: 600; }
+    .runtime-status.message-error { color: #b42318; }
+    .runtime-status.message-success { color: #027a48; }
+    .runtime-transcript { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 9999; padding: 24px; }
+    .runtime-transcript.is-open { display: grid; place-items: center; }
+    .runtime-transcript-card { width: min(900px, 100%); max-height: 80vh; overflow: auto; background: #fff; border-radius: 20px; padding: 20px; }
+    .runtime-meter { display: flex; align-items: end; gap: 4px; height: 34px; }
+    .runtime-meter span { width: 8px; height: 8px; border-radius: 999px; background: #cbd5e1; transition: height .15s ease, background .15s ease; }
+    @@media (max-width: 1024px) { .runtime-layout { grid-template-columns: 1fr; } }
 </style>
 
 <div class="runtime-shell">
@@ -245,18 +67,26 @@
             </div>
         </div>
 
+        <div class="runtime-progress"><span id="runtime-progress-bar"></span></div>
+
         <div class="runtime-layout">
             <section class="runtime-stage">
                 <div class="runtime-video">
-                    <span>Camera Off</span>
+                    <video id="runtime-video" autoplay playsinline muted></video>
+                    <span id="camera-placeholder">Camera Off</span>
                     <div class="runtime-avatar"></div>
                 </div>
                 <div class="runtime-controls">
                     <span class="runtime-dot is-live"></span>
                     <span class="runtime-dot"></span>
+                    <button type="button" id="toggle-camera" class="button-2">Camera On</button>
+                    <button type="button" id="toggle-mic" class="button-2">Mic On</button>
                     <button type="button" id="start-or-next" class="button-1">Start Interview</button>
                     <span class="runtime-dot"></span>
                     <span class="runtime-dot"></span>
+                </div>
+                <div class="runtime-meter" id="audio-meter" aria-label="microphone level">
+                    <span></span><span></span><span></span><span></span><span></span><span></span>
                 </div>
             </section>
 
@@ -264,6 +94,8 @@
                 <h3>Conversations</h3>
                 <div id="runtime-question" class="runtime-question">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? "Welcome! Click Start Interview to begin." : Model.CurrentQuestion)</div>
                 <div id="runtime-message" class="runtime-message is-info">Start the interview to load the first question.</div>
+
+                <div class="runtime-conversation" id="conversation"></div>
 
                 <div class="runtime-answer">
                     <textarea id="runtime-answer" placeholder="Enter your answer here..."></textarea>
@@ -293,7 +125,7 @@
 <script asp-location="Footer">
     (() => {
         const config = @Html.Raw(clientSettings);
-        const turns = @Html.Raw(JsonSerializer.Serialize(Model.Turns ?? Array.Empty<object>()));
+        const turns = @Html.Raw(turns);
         const sessionToken = config.token || '@Model.Token';
         const answerBox = document.getElementById('runtime-answer');
         const questionBox = document.getElementById('runtime-question');
@@ -301,6 +133,16 @@
         const statusBox = document.getElementById('runtime-status');
         const transcript = document.getElementById('runtime-transcript');
         const transcriptBody = document.getElementById('transcript-body');
+        const conversation = document.getElementById('conversation');
+        const progressBar = document.getElementById('runtime-progress-bar');
+        const video = document.getElementById('runtime-video');
+        const cameraPlaceholder = document.getElementById('camera-placeholder');
+        const audioMeter = Array.from(document.querySelectorAll('#audio-meter span'));
+        let cameraStream = null;
+        let micStream = null;
+        let analyser = null;
+        let audioContext = null;
+        let meterFrame = null;
 
         const setStatus = (message, isError) => {
             statusBox.textContent = message || '';
@@ -309,25 +151,33 @@
 
         const renderTranscript = () => {
             transcriptBody.innerHTML = '';
+            conversation.innerHTML = '';
             (turns || []).forEach((turn, index) => {
-                const item = document.createElement('div');
-                item.style.padding = '12px 14px';
-                item.style.border = '1px solid rgba(15,23,42,0.08)';
-                item.style.borderRadius = '14px';
-                item.innerHTML = `<strong>Q${index + 1}.</strong> ${turn.questionText || ''}<br/><strong>Answer:</strong> ${turn.answerText || '(pending)'}<br/><strong>Score:</strong> ${turn.score ?? ''}<br/><strong>Feedback:</strong> ${turn.feedback || ''}`;
-                transcriptBody.appendChild(item);
+                const card = document.createElement('div');
+                card.className = 'turn-card';
+                card.innerHTML = `
+                    <div class="turn-question">Q${turn.sequenceNumber || index + 1}. ${turn.questionText || ''}</div>
+                    <div class="turn-answer">${turn.answerText ? turn.answerText : '<em>Awaiting answer...</em>'}</div>
+                    <div class="turn-meta">
+                        <span>Score: ${turn.score ?? '-'}</span>
+                        <span>${turn.feedback || ''}</span>
+                    </div>`;
+                conversation.appendChild(card.cloneNode(true));
+                transcriptBody.appendChild(card);
             });
+
+            const answered = (turns || []).filter(turn => turn.answerText).length;
+            const progress = Math.min(100, Math.max(0, (answered / Math.max(1, turns.length)) * 100));
+            progressBar.style.width = `${progress}%`;
         };
 
-        const startTimer = (() => {
-            const startedAt = Date.now();
-            setInterval(() => {
-                const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
-                const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-                const seconds = String(elapsedSeconds % 60).padStart(2, '0');
-                document.getElementById('runtime-timer').textContent = `${minutes}:${seconds}`;
-            }, 1000);
-        })();
+        const timerStartedAt = Date.now();
+        setInterval(() => {
+            const elapsedSeconds = Math.floor((Date.now() - timerStartedAt) / 1000);
+            const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+            const seconds = String(elapsedSeconds % 60).padStart(2, '0');
+            document.getElementById('runtime-timer').textContent = `${minutes}:${seconds}`;
+        }, 1000);
 
         const postForm = async (url, formData) => {
             const response = await fetch(url, {
@@ -339,46 +189,71 @@
         };
 
         const beginInterview = () => {
-            if (messageBox.classList.contains('is-info') || !messageBox.textContent)
-                messageBox.textContent = 'Interview started. Answer the displayed question.';
             setStatus('Interview started.', false);
-            document.getElementById('start-or-next').disabled = true;
+            document.getElementById('start-or-next').textContent = 'Next Question';
         };
 
         const submitAnswer = async () => {
-            const body = new URLSearchParams({
-                token: sessionToken,
-                answer: answerBox.value || ''
-            });
+            if (!config.submitAnswerUrl) {
+                setStatus('Answer submission is unavailable.', true);
+                return;
+            }
+
+            const body = new URLSearchParams({ token: sessionToken, answer: answerBox.value || '' });
             const result = await postForm(config.submitAnswerUrl, body);
             if (!result.success) {
                 setStatus(result.message || result.error || 'Unable to submit answer.', true);
                 return;
             }
 
-            setStatus(result.feedback || result.message || 'Answer saved.', false);
-            messageBox.textContent = result.question || result.completion || messageBox.textContent;
-            if (result.question) {
-                questionBox.textContent = result.question;
-                turns.push({ questionText: result.question, answerText: '', score: null, feedback: '', askedOnUtc: new Date().toISOString() });
-                answerBox.value = '';
-                renderTranscript();
+            const currentTurn = result.turn || turns[turns.length - 1];
+            if (currentTurn) {
+                const targetIndex = turns.findIndex(turn => turn.turnId && currentTurn.turnId && turn.turnId === currentTurn.turnId);
+                if (targetIndex >= 0) {
+                    turns[targetIndex] = currentTurn;
+                } else if (turns.length > 0) {
+                    turns[turns.length - 1] = currentTurn;
+                } else {
+                    turns.push(currentTurn);
+                }
             }
 
+            if (!result.isTerminated && result.question) {
+                turns.push({
+                    turnId: Date.now(),
+                    sequenceNumber: (currentTurn?.sequenceNumber || turns.length) + 1,
+                    questionText: result.question,
+                    answerText: '',
+                    score: null,
+                    feedback: '',
+                    askedOnUtc: new Date().toISOString(),
+                    answeredOnUtc: null
+                });
+            }
+
+            questionBox.textContent = result.isTerminated ? (result.completion || 'Interview completed.') : result.question;
+            messageBox.textContent = result.message || result.feedback || '';
+            setStatus(result.feedback || result.message || 'Answer saved.', false);
+            answerBox.value = '';
+            renderTranscript();
+
             if (result.isTerminated) {
-                questionBox.textContent = result.completion || 'Interview completed.';
                 answerBox.disabled = true;
                 document.getElementById('submit-answer').disabled = true;
                 document.getElementById('start-or-next').disabled = true;
-                window.setTimeout(() => {
-                    if (config.completeInterviewUrl) {
-                        // keep the page stable if completion happens server-side
-                    }
-                }, 0);
+                document.getElementById('start-or-next').textContent = 'Completed';
+                return;
             }
+
+            document.getElementById('start-or-next').textContent = 'Next Question';
         };
 
         const stopInterview = async () => {
+            if (!config.stopInterviewUrl) {
+                setStatus('Stop endpoint is unavailable.', true);
+                return;
+            }
+
             const body = new URLSearchParams({ token: sessionToken });
             const result = await postForm(config.stopInterviewUrl, body);
             if (!result.success) {
@@ -388,19 +263,84 @@
 
             setStatus(result.message || 'Interview completed.', false);
             questionBox.textContent = result.completion || questionBox.textContent;
-            renderTranscript();
+            answerBox.disabled = true;
             document.getElementById('submit-answer').disabled = true;
             document.getElementById('start-or-next').disabled = true;
-            answerBox.disabled = true;
+            document.getElementById('start-or-next').textContent = 'Completed';
+            renderTranscript();
+        };
+
+        const setCamera = async (enabled) => {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                setStatus('Camera is not supported in this browser.', true);
+                return;
+            }
+
+            if (!enabled) {
+                cameraStream?.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                video.style.display = 'none';
+                cameraPlaceholder.style.display = '';
+                document.getElementById('toggle-camera').textContent = 'Camera On';
+                return;
+            }
+
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            video.srcObject = cameraStream;
+            video.style.display = 'block';
+            cameraPlaceholder.style.display = 'none';
+            document.getElementById('toggle-camera').textContent = 'Camera Off';
+        };
+
+        const setMic = async (enabled) => {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                setStatus('Microphone is not supported in this browser.', true);
+                return;
+            }
+
+            if (!enabled) {
+                micStream?.getTracks().forEach(track => track.stop());
+                micStream = null;
+                audioContext?.close?.();
+                audioContext = null;
+                analyser = null;
+                audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
+                document.getElementById('toggle-mic').textContent = 'Mic On';
+                return;
+            }
+
+            micStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(micStream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 32;
+            source.connect(analyser);
+
+            const buffer = new Uint8Array(analyser.frequencyBinCount);
+            const updateMeter = () => {
+                if (!analyser)
+                    return;
+                analyser.getByteFrequencyData(buffer);
+                const average = buffer.reduce((sum, value) => sum + value, 0) / buffer.length;
+                audioMeter.forEach((bar, index) => {
+                    const height = Math.max(8, Math.min(34, average - (index * 2)));
+                    bar.style.height = `${height}px`;
+                    bar.style.background = height > 18 ? '#0f5bd7' : '#cbd5e1';
+                });
+                meterFrame = requestAnimationFrame(updateMeter);
+            };
+            updateMeter();
+            document.getElementById('toggle-mic').textContent = 'Mic Off';
         };
 
         document.getElementById('submit-answer').addEventListener('click', submitAnswer);
         document.getElementById('start-or-next').addEventListener('click', beginInterview);
+        document.getElementById('toggle-camera').addEventListener('click', async () => await setCamera(!cameraStream));
+        document.getElementById('toggle-mic').addEventListener('click', async () => await setMic(!micStream));
         document.getElementById('stop-interview').addEventListener('click', stopInterview);
         document.getElementById('stop-interview-top').addEventListener('click', stopInterview);
         document.getElementById('open-transcript').addEventListener('click', () => transcript.classList.add('is-open'));
         document.getElementById('close-transcript').addEventListener('click', () => transcript.classList.remove('is-open'));
-
         renderTranscript();
     })();
 </script>

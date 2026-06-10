@@ -99,17 +99,25 @@ public class RouteProvider : IRouteProvider
             pattern: "mockaiinterview/runtime",
             defaults: new { controller = "MockAiInterview", action = "Runtime" });
 
-        endpointRouteBuilder.MapControllerRoute(name: "Plugin.Misc.AIInterview.Mock.SubmitAnswer",
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockSubmitAnswerRouteName,
             pattern: "mockaiinterview/submit-answer",
             defaults: new { controller = "MockAiInterview", action = "SubmitAnswer" });
 
-        endpointRouteBuilder.MapControllerRoute(name: "Plugin.Misc.AIInterview.Mock.Stop",
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockStopRouteName,
             pattern: "mockaiinterview/stop",
             defaults: new { controller = "MockAiInterview", action = "Stop" });
 
-        endpointRouteBuilder.MapControllerRoute(name: "Plugin.Misc.AIInterview.Mock.RefreshToken",
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockRefreshTokenRouteName,
             pattern: "mockaiinterview/refresh-token",
             defaults: new { controller = "MockAiInterview", action = "RefreshToken" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockSpeechTokenRouteName,
+            pattern: "mockaiinterview/speech-token",
+            defaults: new { controller = "MockAiInterview", action = "SpeechToken" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockAgoraTokenRouteName,
+            pattern: "mockaiinterview/agora-token",
+            defaults: new { controller = "MockAiInterview", action = "AgoraToken" });
 
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockHistoryRouteName,
             pattern: "mockaiinterview/history",

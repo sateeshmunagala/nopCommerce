@@ -38,6 +38,7 @@ public class AIInterviewController : BasePluginController
     private readonly IJobInterviewExperienceService _jobInterviewExperienceService;
     private readonly IJobRequirementService _jobRequirementService;
     private readonly ISpecificationAttributeService _specificationAttributeService;
+    private readonly IInterviewTurnService _interviewTurnService;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -52,7 +53,8 @@ public class AIInterviewController : BasePluginController
         IProductTemplateService productTemplateService = null,
         IUrlRecordService urlRecordService = null,
         IJobInterviewExperienceService jobInterviewExperienceService = null,
-        ISpecificationAttributeService specificationAttributeService = null)
+        ISpecificationAttributeService specificationAttributeService = null,
+        IInterviewTurnService interviewTurnService = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -68,6 +70,7 @@ public class AIInterviewController : BasePluginController
         _jobInterviewExperienceService = jobInterviewExperienceService;
         _jobRequirementService = jobRequirementService;
         _specificationAttributeService = specificationAttributeService;
+        _interviewTurnService = interviewTurnService;
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -96,7 +99,8 @@ public class AIInterviewController : BasePluginController
             productTemplateService,
             urlRecordService,
             jobInterviewExperienceService,
-            specificationAttributeService)
+            specificationAttributeService,
+            null)
     {
     }
 
@@ -266,13 +270,35 @@ public class AIInterviewController : BasePluginController
             return RedirectToRoute(AIInterviewDefaults.MyApplicationsRouteName);
         }
 
-        var model = new ApplicationModel
+        var turns = _interviewTurnService == null
+            ? new List<InterviewTurn>()
+            : (await _interviewTurnService.GetTurnsBySessionIdAsync(sessionId)).ToList();
+
+        var model = new InterviewReportModel
         {
-            Id = session.Id,
-            InterviewScore = session.Score,
+            SessionId = session.Id,
+            CustomerId = session.CustomerId,
+            ProductId = session.ProductId,
+            ProductName = session.ProductId > 0 ? (await _productService.GetProductByIdAsync(session.ProductId))?.Name : string.Empty,
+            JobTitle = session.ProductId > 0 ? (await _productService.GetProductByIdAsync(session.ProductId))?.Name : string.Empty,
+            Difficulty = session.Difficulty,
+            Score = session.Score,
             QuestionScores = session.QuestionScores,
-            StatusComment = session.ReportData,
-            CreatedOn = session.CreatedOnUtc
+            ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
+            ReportData = session.ReportData,
+            CreatedOnUtc = session.CreatedOnUtc,
+            CompletedOnUtc = session.CompletedOnUtc,
+            Turns = turns.Select(turn => new InterviewTurnViewModel
+            {
+                TurnId = turn.Id,
+                SequenceNumber = turn.SequenceNumber,
+                QuestionText = turn.QuestionText,
+                AnswerText = turn.AnswerText,
+                Score = turn.Score,
+                Feedback = turn.Feedback,
+                AskedOnUtc = turn.AskedOnUtc,
+                AnsweredOnUtc = turn.AnsweredOnUtc
+            }).ToList()
         };
 
         return View("~/Plugins/Misc.AIInterview/Views/Report.cshtml", model);

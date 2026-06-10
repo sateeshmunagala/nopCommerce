@@ -72,6 +72,7 @@ public record AIInterviewClientRequest
 public record AIInterviewClientResponse
 {
     public string Question { get; init; }
+    public string NextQuestion { get; init; }
     public decimal Score { get; init; }
     public string Feedback { get; init; }
     public bool Complete { get; init; }

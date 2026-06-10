@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using Moq;
 using Nop.Core;
+using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Domain;
@@ -32,6 +33,8 @@ public class CandidateFlowTests
     private Mock<ISponsorInviteService> _inviteService;
     private Mock<ICreditService> _creditService;
     private Mock<IJobRequirementService> _jobRequirementService;
+    private Mock<IJobInterviewExperienceService> _jobInterviewExperienceService;
+    private Mock<IInterviewTurnService> _turnService;
     private AIInterviewController _controller;
     private MockAiInterviewController _runtimeController;
 
@@ -50,6 +53,8 @@ public class CandidateFlowTests
         _inviteService = new Mock<ISponsorInviteService>();
         _creditService = new Mock<ICreditService>();
         _jobRequirementService = new Mock<IJobRequirementService>();
+        _jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        _turnService = new Mock<IInterviewTurnService>();
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
             .ReturnsAsync(new JobRequirementsModel());
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>()))
@@ -71,7 +76,9 @@ public class CandidateFlowTests
             _jobRequirementService.Object,
             null,
             null,
-            null);
+            null,
+            null,
+            _turnService.Object);
 
         _runtimeController = new MockAiInterviewController(
             _sessionService.Object,
@@ -82,7 +89,9 @@ public class CandidateFlowTests
             _customerService.Object,
             _productService.Object,
             new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
-            _applicationService.Object);
+            _applicationService.Object,
+            null,
+            _jobInterviewExperienceService.Object);
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
@@ -137,18 +146,20 @@ public class CandidateFlowTests
     }
 
     [Test]
-    public async Task Runtime_Start_Uses_DefaultDifficulty()
+    public async Task Runtime_Start_Uses_ResolvedDifficulty()
     {
         var customer = new Customer { Id = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession>());
         _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+        _productService.Setup(x => x.GetProductByIdAsync(1)).ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 1, Name = "Backend Engineer" });
+        _jobInterviewExperienceService.Setup(x => x.ResolveInterviewDifficultyAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), It.IsAny<IFormCollection>()))
+            .ReturnsAsync("Hard");
 
-        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1, "Hard");
-        var json = (JsonResult)result;
+        await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1, "Hard");
 
-        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.Difficulty == AIInterviewDefaults.DefaultInterviewDifficulty && s.ProductId == 1)), Times.Once);
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.Difficulty == "Hard" && s.ProductId == 1)), Times.Once);
     }
 
     [Test]
@@ -352,6 +363,53 @@ public class CandidateFlowTests
         var result = await _controller.Report(1);
         Assert.That(result, Is.InstanceOf<RedirectToRouteResult>());
         _notificationService.Verify(x => x.ErrorNotification(It.IsAny<string>()), Times.Once);
+    }
+
+    [Test]
+    public async Task Report_IncludesSavedTurns()
+    {
+        var customer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 2)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(2)).ReturnsAsync(new InterviewSession
+        {
+            Id = 2,
+            CustomerId = 1,
+            ProductId = 11,
+            SessionKey = "session-2",
+            Token = "token-2",
+            ReportData = "overall score: 88",
+            QuestionScores = "[88, 92]",
+            Score = 90,
+            CreatedOnUtc = DateTime.UtcNow.AddHours(-1),
+            CompletedOnUtc = DateTime.UtcNow
+        });
+        _productService.Setup(x => x.GetProductByIdAsync(11)).ReturnsAsync(new Product { Id = 11, Name = "Backend Engineer" });
+        _turnService.Setup(x => x.GetTurnsBySessionIdAsync(2)).ReturnsAsync(new List<InterviewTurn>
+        {
+            new InterviewTurn
+            {
+                Id = 100,
+                InterviewSessionId = 2,
+                SequenceNumber = 1,
+                QuestionText = "Q1",
+                AnswerText = "A1",
+                Score = 88,
+                Feedback = "Good",
+                AskedOnUtc = DateTime.UtcNow.AddMinutes(-30),
+                AnsweredOnUtc = DateTime.UtcNow.AddMinutes(-29)
+            }
+        });
+
+        var result = await _controller.Report(2);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        var model = (InterviewReportModel)viewResult.Model;
+        Assert.That(model.Turns.Count, Is.EqualTo(1));
+        Assert.That(model.Turns[0].QuestionText, Is.EqualTo("Q1"));
+        Assert.That(model.Turns[0].AnswerText, Is.EqualTo("A1"));
+        Assert.That(model.ParsedQuestionScores, Is.EquivalentTo(new[] { 88m, 92m }));
     }
 
     [Test]

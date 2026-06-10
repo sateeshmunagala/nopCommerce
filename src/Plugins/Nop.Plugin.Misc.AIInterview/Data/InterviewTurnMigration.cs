@@ -11,10 +11,17 @@ public class InterviewTurnMigration : Migration
     public override void Up()
     {
         this.CreateTableIfNotExists<InterviewTurn>();
+
+        Create.Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber")
+            .OnTable(nameof(InterviewTurn))
+            .OnColumn(nameof(InterviewTurn.InterviewSessionId)).Ascending()
+            .OnColumn(nameof(InterviewTurn.SequenceNumber)).Ascending();
     }
 
     public override void Down()
     {
+        Delete.Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber")
+            .OnTable(nameof(InterviewTurn));
         this.DeleteTableIfExists<InterviewTurn>();
     }
 }
