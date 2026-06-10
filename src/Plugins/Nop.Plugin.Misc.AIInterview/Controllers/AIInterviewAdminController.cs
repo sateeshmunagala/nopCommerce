@@ -33,6 +33,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly ICustomerService _customerService;
     private readonly IProductService _productService;
     private readonly IVendorService _vendorService;
+    private readonly IJobRequirementService _jobRequirementService;
     private readonly ILocalizationService _localizationService;
     private readonly INotificationService _notificationService;
     private readonly IWorkContext _workContext;
@@ -56,7 +57,8 @@ public class AIInterviewAdminController : BasePluginController
         IRepository<CreditWallet> walletRepository,
         IRepository<CreditLedgerEntry> ledgerRepository,
         AIInterviewSettings aiInterviewSettings,
-        MockAIInterviewSettings mockAIInterviewSettings)
+        MockAIInterviewSettings mockAIInterviewSettings,
+        IJobRequirementService jobRequirementService = null)
     {
         _creditService = creditService;
         _inviteService = inviteService;
@@ -65,6 +67,7 @@ public class AIInterviewAdminController : BasePluginController
         _customerService = customerService;
         _productService = productService;
         _vendorService = vendorService;
+        _jobRequirementService = jobRequirementService;
         _localizationService = localizationService;
         _notificationService = notificationService;
         _workContext = workContext;
@@ -93,8 +96,6 @@ public class AIInterviewAdminController : BasePluginController
     {
         var model = new GeneralSettingsModel
         {
-            ResumeRequired = _aiInterviewSettings.ResumeRequired,
-            InterviewRequired = _aiInterviewSettings.InterviewRequired,
             MinimumScore = _aiInterviewSettings.MinimumScore
         };
 
@@ -107,8 +108,6 @@ public class AIInterviewAdminController : BasePluginController
         if (!ModelState.IsValid)
             return View("~/Plugins/Misc.AIInterview/Views/Admin/General.cshtml", model);
 
-        _aiInterviewSettings.ResumeRequired = model.ResumeRequired;
-        _aiInterviewSettings.InterviewRequired = model.InterviewRequired;
         _aiInterviewSettings.MinimumScore = model.MinimumScore;
         await _settingService.SaveSettingAsync(_aiInterviewSettings);
 
@@ -177,6 +176,20 @@ public class AIInterviewAdminController : BasePluginController
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
         return AiService();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SaveProductRequirements(JobRequirementsModel model)
+    {
+        if (_jobRequirementService == null || model.ProductId <= 0)
+            return Json(new { success = false });
+
+        var product = await _productService.GetProductByIdAsync(model.ProductId);
+        if (product == null)
+            return Json(new { success = false });
+
+        await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired);
+        return Json(new { success = true });
     }
 
     public async Task<IActionResult> SponsorInvites()

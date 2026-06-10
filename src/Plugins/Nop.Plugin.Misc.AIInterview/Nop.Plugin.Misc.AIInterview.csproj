@@ -39,6 +39,7 @@
     <None Remove="Views\Admin\VendorCredits.cshtml" />
     <None Remove="Views\Admin\ApplicantCredits.cshtml" />
     <None Remove="Views\Admin\Scoreboard.cshtml" />
+    <None Remove="Views\Admin\_ProductJobRequirements.cshtml" />
     <None Remove="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml" />
     <None Remove="Views\MockAiInterview\Start.cshtml" />
     <None Remove="Views\MockAiInterview\Runtime.cshtml" />
@@ -105,6 +106,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Admin\Scoreboard.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\_ProductJobRequirements.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml">

@@ -25,7 +25,9 @@
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Provider" /></div><div class="col-md-9"><nop-editor asp-for="Provider" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ApiKey" /></div><div class="col-md-9"><nop-editor asp-for="ApiKey" /></div></div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="Model" /></div>
+                        <div class="col-md-3">
+                            <label class="col-form-label">@T("Plugins.Misc.AIInterview.Model")</label>
+                        </div>
                         <div class="col-md-9">
                             <input class="form-control" type="text" name="Model" id="Model" value="@Model.Model" />
                         </div>

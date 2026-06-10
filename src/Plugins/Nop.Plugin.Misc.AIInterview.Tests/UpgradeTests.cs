@@ -15,7 +15,7 @@ namespace Nop.Plugin.Misc.AIInterview.Tests;
 public class UpgradeTests
 {
     [Test]
-    public async Task UpdateAsync_SetsMissingApplicantFlagsToTrue_ButPreservesExisting()
+    public async Task UpdateAsync_PreservesExistingDefaults()
     {
         // Arrange
         var settingService = new Mock<ISettingService>();
@@ -33,9 +33,6 @@ public class UpgradeTests
 
         // Mock explicit values in db
         settingService.Setup(s => s.GetSettingAsync("aiinterviewsettings.enabled", 0, false)).ReturnsAsync(new Setting { Name = "aiinterviewsettings.enabled", Value = "False" });
-        settingService.Setup(s => s.GetSettingAsync("aiinterviewsettings.resumerequired", 0, false)).ReturnsAsync((Setting)null);
-        settingService.Setup(s => s.GetSettingAsync("aiinterviewsettings.interviewrequired", 0, false)).ReturnsAsync((Setting)null);
-
         var plugin = new AIInterviewPlugin(localizationService.Object, settingService.Object, webHelper.Object, messageTemplateService.Object);
 
         // Act
@@ -47,7 +44,7 @@ public class UpgradeTests
 
         // Assert
         Assert.That(existingSettings.Enabled, Is.False, "Enabled flag was explicitly set in DB, so it should be preserved as False.");
-        Assert.That(existingSettings.ResumeRequired, Is.True, "ResumeRequired flag was missing in DB, so it should default to True.");
-        Assert.That(existingSettings.InterviewRequired, Is.True, "InterviewRequired flag was missing in DB, so it should default to True.");
+        Assert.That(existingSettings.CreditProductSkuMappingsJson, Is.EqualTo(AIInterviewDefaults.DefaultCreditProductSkuMappingsJson));
+        Assert.That(existingSettings.CreditPurchasePageUrl, Is.EqualTo(AIInterviewDefaults.DefaultCreditPurchasePageUrl));
     }
 }

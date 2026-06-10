@@ -36,6 +36,7 @@ public class AIInterviewController : BasePluginController
     private readonly IProductTemplateService _productTemplateService;
     private readonly IUrlRecordService _urlRecordService;
     private readonly IJobInterviewExperienceService _jobInterviewExperienceService;
+    private readonly IJobRequirementService _jobRequirementService;
     private readonly ISpecificationAttributeService _specificationAttributeService;
 
     public AIInterviewController(IApplicationService applicationService,
@@ -50,6 +51,7 @@ public class AIInterviewController : BasePluginController
         IProductTemplateService productTemplateService = null,
         IUrlRecordService urlRecordService = null,
         IJobInterviewExperienceService jobInterviewExperienceService = null,
+        IJobRequirementService jobRequirementService = null,
         ISpecificationAttributeService specificationAttributeService = null)
     {
         _applicationService = applicationService;
@@ -64,6 +66,7 @@ public class AIInterviewController : BasePluginController
         _productTemplateService = productTemplateService;
         _urlRecordService = urlRecordService;
         _jobInterviewExperienceService = jobInterviewExperienceService;
+        _jobRequirementService = jobRequirementService;
         _specificationAttributeService = specificationAttributeService;
     }
 
@@ -130,7 +133,6 @@ public class AIInterviewController : BasePluginController
 
         var model = new PublicInfoModel
         {
-            InterviewRequired = _aiInterviewSettings.InterviewRequired,
             MinimumScore = _aiInterviewSettings.MinimumScore
         };
 
@@ -336,13 +338,21 @@ public class AIInterviewController : BasePluginController
             .Select(a => a.ResumeDownloadId)
             .FirstOrDefault();
 
+        var jobRequirements = _jobRequirementService == null
+            ? new JobRequirementsModel
+            {
+                ResumeRequired = _aiInterviewSettings.ResumeRequired,
+                InterviewRequired = _aiInterviewSettings.InterviewRequired
+            }
+            : await _jobRequirementService.GetRequirementsAsync(model.ProductId);
+
         if (model.ResumeFile == null)
         {
             if (reusableResumeDownloadId > 0)
             {
                 ModelState.Remove(nameof(model.ResumeFile));
             }
-            else if (_aiInterviewSettings.ResumeRequired && !ModelState.ContainsKey(nameof(model.ResumeFile)))
+            else if (jobRequirements.ResumeRequired && !ModelState.ContainsKey(nameof(model.ResumeFile)))
             {
                 ModelState.AddModelError(nameof(model.ResumeFile), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Required"));
             }
@@ -366,7 +376,7 @@ public class AIInterviewController : BasePluginController
                     ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Error")
             };
 
-        if (_aiInterviewSettings.InterviewRequired)
+        if (jobRequirements.InterviewRequired)
         {
             var legacyApplicationIds = allApplications
                 .Where(application => application.ProductId == model.ProductId)
@@ -846,6 +856,8 @@ public class AIInterviewController : BasePluginController
 
         if (_jobInterviewExperienceService != null)
             await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
+        if (_jobRequirementService != null)
+            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired);
         var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
         await _urlRecordService.SaveSlugAsync(product, seName, 0);
 

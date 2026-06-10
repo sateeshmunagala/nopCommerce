@@ -24,6 +24,7 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<ICreditPurchaseService, CreditPurchaseService>();
         services.AddScoped<ISponsorInviteService, SponsorInviteService>();
         services.AddScoped<IJobInterviewExperienceService, JobInterviewExperienceService>();
+        services.AddScoped<IJobRequirementService, JobRequirementService>();
     }
 
     /// <summary>

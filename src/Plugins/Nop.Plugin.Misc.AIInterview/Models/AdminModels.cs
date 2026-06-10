@@ -6,14 +6,21 @@ namespace Nop.Plugin.Misc.AIInterview.Models;
 
 public record GeneralSettingsModel : BaseNopModel
 {
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.ResumeRequired")]
-    public bool ResumeRequired { get; set; }
-
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.InterviewRequired")]
-    public bool InterviewRequired { get; set; }
-
     [NopResourceDisplayName("Plugins.Misc.AIInterview.MinimumScore")]
     public decimal MinimumScore { get; set; }
+}
+
+public record JobRequirementsModel : BaseNopModel
+{
+    public int ProductId { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.ProductRequirements.ResumeRequired")]
+    public bool ResumeRequired { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.ProductRequirements.InterviewRequired")]
+    public bool InterviewRequired { get; set; }
+
+    public bool IsJobProduct { get; set; }
 }
 
 public record AiServiceSettingsModel : BaseNopModel

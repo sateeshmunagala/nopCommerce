@@ -8,6 +8,7 @@ using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Plugins;
+using Nop.Web.Framework.Infrastructure;
 
 namespace Nop.Plugin.Misc.AIInterview;
 
@@ -62,7 +63,11 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     /// </returns>
     public Task<IList<string>> GetWidgetZonesAsync()
     {
-        return Task.FromResult<IList<string>>(new List<string> { "productdetails_before_collateral" });
+        return Task.FromResult<IList<string>>(new List<string>
+        {
+            "productdetails_before_collateral",
+            AdminWidgetZones.ProductDetailsBlock
+        });
     }
 
     /// <summary>
@@ -72,6 +77,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     /// <returns>View component type</returns>
     public Type GetWidgetViewComponent(string widgetZone)
     {
+        if (string.Equals(widgetZone, AdminWidgetZones.ProductDetailsBlock, StringComparison.OrdinalIgnoreCase))
+            return typeof(Components.AIInterviewAdminProductRequirementsViewComponent);
+
         return typeof(Components.AIInterviewProductDetailsViewComponent);
     }
 
@@ -105,14 +113,6 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         var enabledSetting = await _settingService.GetSettingAsync("aiinterviewsettings.enabled");
         if (enabledSetting == null)
             settings.Enabled = true;
-
-        var resumeRequiredSetting = await _settingService.GetSettingAsync("aiinterviewsettings.resumerequired");
-        if (resumeRequiredSetting == null)
-            settings.ResumeRequired = true;
-
-        var interviewRequiredSetting = await _settingService.GetSettingAsync("aiinterviewsettings.interviewrequired");
-        if (interviewRequiredSetting == null)
-            settings.InterviewRequired = true;
 
         if (string.IsNullOrWhiteSpace(settings.CreditProductSkuMappingsJson))
             settings.CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson;
@@ -265,6 +265,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.FullDescription"] = "Description",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Sku"] = "Reference code",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Published"] = "Published",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ResumeRequired"] = "Resume required",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.InterviewRequired"] = "Interview required",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Submit"] = "Create Job",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Success"] = "The job was created successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Unavailable"] = "Job creation is temporarily unavailable.",
@@ -290,6 +292,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.Configure.Service"] = "AI Service Settings",
             ["Plugins.Misc.AIInterview.Admin.Configure.CreditPack"] = "Credit Pack Settings",
             ["Plugins.Misc.AIInterview.Admin.General.Title"] = "AI Interview General Settings",
+            ["Plugins.Misc.AIInterview.Admin.ProductRequirements.Title"] = "AI Interview Job Requirements",
+            ["Plugins.Misc.AIInterview.Admin.ProductRequirements.Hint"] = "These settings are saved on the product itself and are used when candidates apply.",
+            ["Plugins.Misc.AIInterview.Admin.ProductRequirements.ResumeRequired"] = "Resume Required",
+            ["Plugins.Misc.AIInterview.Admin.ProductRequirements.InterviewRequired"] = "Interview Required",
             ["Plugins.Misc.AIInterview.Admin.AiService.Title"] = "AI Interview Service Settings",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiEndpointUrl"] = "Azure OpenAI Endpoint URL",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiApiKey"] = "Azure OpenAI API Key",
@@ -333,53 +339,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.Scoreboard.MinScore"] = "Minimum Score",
             ["Plugins.Misc.AIInterview.Admin.Scoreboard.MaxScore"] = "Maximum Score",
             ["Plugins.Misc.AIInterview.Admin.Scoreboard.StartDate"] = "Start Date",
-            ["Plugins.Misc.AIInterview.Admin.Scoreboard.EndDate"] = "End Date",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.General.Title"] = "AI Interview General Settings",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.Title"] = "AI Interview Service Settings",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureOpenAiEndpointUrl"] = "Azure OpenAI Endpoint URL",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureOpenAiApiKey"] = "Azure OpenAI API Key",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureOpenAiDeploymentOrModel"] = "Azure OpenAI Deployment / Model",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AgoraAppId"] = "Agora App ID",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AgoraTokenServiceUrl"] = "Agora Token Service URL",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureSpeechKey"] = "Azure Speech Key",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureSpeechRegion"] = "Azure Speech Region",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditProductSkuMappingsJson"] = "Credit Product SKU Mappings (JSON)",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditProductSkuMappingsJson.Hint"] = "Map product SKUs to credits granted per unit. Example: {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}. Create normal Pricing-category products with those SKUs and prices. Credits are granted only after successful payment for registered customers.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditProductSkuMappingsJson.Invalid"] = "The credit product SKU mappings JSON is invalid. Use a JSON object such as {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10}.",
-            ["plugins.misc.aiinterview.admin.menu.root"] = "AI-Interview",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditPurchasePageUrl"] = "Credit Purchase Page URL",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditPurchasePageUrl.Hint"] = "Relative or absolute URL used by the job page when the user has no credits. The default is /pricing.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Title"] = "Sponsor Invite Management",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Create"] = "Create Invites",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.List"] = "Existing Invites",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Email"] = "Email",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Status"] = "Status",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.BulkEmails"] = "Bulk Emails",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.ProductId"] = "Product ID",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.MaxAttempts"] = "Max Attempts",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.ExpiryDateUtc"] = "Expiry Date (UTC)",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.SponsorId"] = "Sponsor ID",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.SponsorInvites.Deactivate"] = "Deactivate",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.VendorTitle"] = "Vendor Credits",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.ApplicantTitle"] = "Applicant Credits",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.TopUp"] = "Top Up",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.CustomerId"] = "Customer ID",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.Amount"] = "Amount",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.CustomerRequired"] = "Customer is required.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.InvalidVendorScope"] = "The selected customer is not a vendor account.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Credits.InvalidApplicantScope"] = "The selected customer is not an applicant account.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Title"] = "Candidate Scoreboard",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Filter"] = "Apply Filters",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Export"] = "Export CSV",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Report"] = "Open report",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Candidate"] = "Candidate",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Vendor"] = "Vendor / Company",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.JobPosting"] = "Job Posting",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.Status"] = "Status",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.MinScore"] = "Minimum Score",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.MaxScore"] = "Maximum Score",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.StartDate"] = "Start Date",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Scoreboard.EndDate"] = "End Date"
+            ["Plugins.Misc.AIInterview.Admin.Scoreboard.EndDate"] = "End Date"
         };
     }
 
@@ -390,8 +350,6 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         {
             Enabled = true,
             ApiKey = string.Empty,
-            ResumeRequired = true,
-            InterviewRequired = true,
             MinimumScore = 0,
             CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson,
             CreditPurchasePageUrl = AIInterviewDefaults.DefaultCreditPurchasePageUrl
@@ -407,6 +365,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureJobProductTemplateAsync();
         await EnsureWidgetActiveAsync();
         await EnsureMessageTemplatesAsync();
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
 
         //locales
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
@@ -417,8 +376,6 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.ApiKey.Hint"] = "Specify the API key for AI service.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.UseMockResponses"] = "Use Mock Responses",
             [$"{AIInterviewDefaults.LocalizationPrefix}.UseMockResponses.Hint"] = "Enable to use mock responses instead of calling actual AI service.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.ResumeRequired"] = "Resume Required",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.InterviewRequired"] = "Interview Required",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MinimumScore"] = "Minimum Score",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.JobTitle"] = "Job Title",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile"] = "Resume File",

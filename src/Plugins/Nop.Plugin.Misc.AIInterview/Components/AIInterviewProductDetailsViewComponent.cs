@@ -3,6 +3,7 @@ using Nop.Core.Domain.Catalog;
 using Nop.Core;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Plugin.Misc.AIInterview.Domain;
+using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Services.Catalog;
 using Nop.Web.Framework.Components;
 using Nop.Web.Framework.Models;
@@ -19,6 +20,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
     private readonly IProductTemplateService _productTemplateService;
     private readonly IWorkContext _workContext;
     private readonly IApplicationService _applicationService;
+    private readonly IJobRequirementService _jobRequirementService;
     private readonly AIInterviewSettings _aiInterviewSettings;
 
     public AIInterviewProductDetailsViewComponent(ICreditService creditService,
@@ -28,7 +30,8 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         IProductService productService,
         IProductTemplateService productTemplateService,
         IApplicationService applicationService,
-        AIInterviewSettings aiInterviewSettings)
+        AIInterviewSettings aiInterviewSettings,
+        IJobRequirementService jobRequirementService = null)
     {
         _creditService = creditService;
         _workContext = workContext;
@@ -37,6 +40,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         _productService = productService;
         _productTemplateService = productTemplateService;
         _applicationService = applicationService;
+        _jobRequirementService = jobRequirementService;
         _aiInterviewSettings = aiInterviewSettings;
     }
 
@@ -56,6 +60,16 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
 
         await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
         await EnsureDifficultyAttributeModelAsync(model, productId);
+
+        var jobRequirements = _jobRequirementService == null
+            ? new JobRequirementsModel
+            {
+                ResumeRequired = _aiInterviewSettings.ResumeRequired,
+                InterviewRequired = _aiInterviewSettings.InterviewRequired
+            }
+            : await _jobRequirementService.GetRequirementsAsync(product);
+        ViewBag.ResumeRequired = jobRequirements.ResumeRequired;
+        ViewBag.InterviewRequired = jobRequirements.InterviewRequired;
 
         var customer = await _workContext.GetCurrentCustomerAsync();
         var hasCredits = false;

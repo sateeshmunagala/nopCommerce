@@ -135,8 +135,6 @@ public class RuntimeAndAdminTests
     {
         _aiInterviewSettings.Enabled = true;
         _aiInterviewSettings.ApiKey = "keep";
-        _aiInterviewSettings.ResumeRequired = true;
-        _aiInterviewSettings.InterviewRequired = true;
         _aiInterviewSettings.MinimumScore = 42;
         _aiInterviewSettings.Provider = "keep";
         _aiInterviewSettings.Model = "keep";
@@ -153,8 +151,6 @@ public class RuntimeAndAdminTests
         _settingService.Verify(x => x.SaveSettingAsync(It.Is<AIInterviewSettings>(s =>
             s.Enabled == false &&
             s.ApiKey == "keep" &&
-            s.ResumeRequired == true &&
-            s.InterviewRequired == true &&
             s.MinimumScore == 42 &&
             s.Provider == "keep" &&
             s.Model == "keep" &&

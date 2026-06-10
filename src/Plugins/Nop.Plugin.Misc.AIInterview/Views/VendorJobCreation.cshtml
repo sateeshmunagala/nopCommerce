@@ -160,6 +160,22 @@
                         <label asp-for="Published"></label>
                     </div>
                 </div>
+
+                <div class="inputs">
+                    <div class="checkbox-row">
+                        <input type="hidden" name="ResumeRequired" value="false" />
+                        <input asp-for="ResumeRequired" />
+                        <label asp-for="ResumeRequired"></label>
+                    </div>
+                </div>
+
+                <div class="inputs">
+                    <div class="checkbox-row">
+                        <input type="hidden" name="InterviewRequired" value="false" />
+                        <input asp-for="InterviewRequired" />
+                        <label asp-for="InterviewRequired"></label>
+                    </div>
+                </div>
             </div>
 
             <div class="buttons">

@@ -13,7 +13,7 @@ namespace Nop.Plugin.Misc.AIInterview.Tests;
 public class PluginDefaultsTests
 {
     [Test]
-    public async Task InstallAsync_SetsApplicantFlagsToTrue()
+    public async Task InstallAsync_SetsCoreDefaults()
     {
         // Arrange
         var settingService = new Mock<ISettingService>();
@@ -43,8 +43,6 @@ public class PluginDefaultsTests
         // Assert
         Assert.That(savedSettings, Is.Not.Null);
         Assert.That(savedSettings.Enabled, Is.True);
-        Assert.That(savedSettings.ResumeRequired, Is.True);
-        Assert.That(savedSettings.InterviewRequired, Is.True);
         Assert.That(savedSettings.CreditProductSkuMappingsJson, Is.EqualTo(AIInterviewDefaults.DefaultCreditProductSkuMappingsJson));
         Assert.That(savedSettings.CreditPurchasePageUrl, Is.EqualTo(AIInterviewDefaults.DefaultCreditPurchasePageUrl));
     }

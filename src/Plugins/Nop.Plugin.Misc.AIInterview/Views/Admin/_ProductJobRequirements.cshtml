@@ -1,0 +1,76 @@
+@model Nop.Web.Areas.Admin.Models.Catalog.ProductModel
+@using Nop.Plugin.Misc.AIInterview
+
+@{
+    var resumeRequired = ViewBag.ResumeRequired != null && (bool)ViewBag.ResumeRequired;
+    var interviewRequired = ViewBag.InterviewRequired != null && (bool)ViewBag.InterviewRequired;
+    var productId = ViewBag.ProductId != null ? (int)ViewBag.ProductId : 0;
+    var canPersist = productId > 0;
+    var saveUrl = Url.Action("SaveProductRequirements", "AIInterviewAdmin");
+}
+
+<nop-card asp-name="aiinterview-job-requirements"
+          asp-icon="fas fa-briefcase"
+          asp-title="@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.Title")"
+          asp-advanced="false">
+    <div class="form-group row">
+        <div class="col-md-12 text-muted">
+            @T("Plugins.Misc.AIInterview.Admin.ProductRequirements.Hint")
+        </div>
+    </div>
+    <div class="form-group row">
+        <div class="col-md-3">
+            <label>@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.ResumeRequired")</label>
+        </div>
+        <div class="col-md-9">
+            <input type="checkbox"
+                   class="form-control aiinterview-job-requirement-toggle"
+                   data-field-name="resumeRequired"
+                   @(resumeRequired ? "checked" : null)
+                   @(canPersist ? null : "disabled") />
+        </div>
+    </div>
+    <div class="form-group row">
+        <div class="col-md-3">
+            <label>@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.InterviewRequired")</label>
+        </div>
+        <div class="col-md-9">
+            <input type="checkbox"
+                   class="form-control aiinterview-job-requirement-toggle"
+                   data-field-name="interviewRequired"
+                   @(interviewRequired ? "checked" : null)
+                   @(canPersist ? null : "disabled") />
+        </div>
+    </div>
+</nop-card>
+
+<script asp-location="Footer">
+    (() => {
+        const saveUrl = '@saveUrl';
+        const productId = @productId;
+        const toggles = document.querySelectorAll('.aiinterview-job-requirement-toggle');
+
+        if (!saveUrl || productId <= 0 || !toggles.length)
+            return;
+
+        const persist = async () => {
+            const form = document.getElementById('product-form');
+            if (!form)
+                return;
+
+            const data = new FormData(form);
+            data.append('ProductId', productId.toString());
+            data.append('ResumeRequired', document.querySelector('.aiinterview-job-requirement-toggle[data-field-name="resumeRequired"]')?.checked ? 'true' : 'false');
+            data.append('InterviewRequired', document.querySelector('.aiinterview-job-requirement-toggle[data-field-name="interviewRequired"]')?.checked ? 'true' : 'false');
+
+            await fetch(saveUrl, {
+                method: 'POST',
+                body: data
+            });
+        };
+
+        toggles.forEach(toggle => toggle.addEventListener('change', () => {
+            persist().catch(() => {});
+        }));
+    })();
+</script>

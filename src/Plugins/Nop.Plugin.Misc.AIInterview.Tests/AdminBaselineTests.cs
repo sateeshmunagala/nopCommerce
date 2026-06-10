@@ -183,8 +183,6 @@ public class AdminBaselineTests
         await _legacyController.Configure(model);
 
         Assert.That(_aiInterviewSettings.Enabled, Is.False);
-        Assert.That(_aiInterviewSettings.ResumeRequired, Is.True);
-        Assert.That(_aiInterviewSettings.InterviewRequired, Is.True);
         Assert.That(_aiInterviewSettings.MinimumScore, Is.EqualTo(10));
         Assert.That(_aiInterviewSettings.Provider, Is.EqualTo("keep-provider"));
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<AIInterviewSettings>()), Times.Once);
@@ -195,18 +193,13 @@ public class AdminBaselineTests
     {
         var getResult = _controller.General();
         var getModel = (GeneralSettingsModel)((ViewResult)getResult).Model;
-        Assert.That(getModel.ResumeRequired, Is.True);
         Assert.That(getModel.MinimumScore, Is.EqualTo(10));
 
         await _controller.General(new GeneralSettingsModel
         {
-            ResumeRequired = false,
-            InterviewRequired = false,
             MinimumScore = 77
         });
 
-        Assert.That(_aiInterviewSettings.ResumeRequired, Is.False);
-        Assert.That(_aiInterviewSettings.InterviewRequired, Is.False);
         Assert.That(_aiInterviewSettings.MinimumScore, Is.EqualTo(77));
     }
 
