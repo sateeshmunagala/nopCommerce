@@ -412,7 +412,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     public async Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(string token, string answer)
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
-        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow))
+        var now = DateTime.UtcNow;
+        if (!IsSessionUsable(session, now))
         {
             return new SubmitInterviewAnswerResponse
             {
@@ -577,7 +578,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     public async Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null)
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
-        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow))
+        var now = DateTime.UtcNow;
+        if (!IsSessionUsable(session, now))
         {
             return new CompleteInterviewResponse
             {
@@ -593,10 +595,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     public async Task<SpeechTokenResponseModel> GetSpeechTokenAsync(string token)
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
-        if (session == null ||
-            !session.IsActive ||
-            session.CompletedOnUtc.HasValue ||
-            (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc < DateTime.UtcNow) ||
+        var now = DateTime.UtcNow;
+        if (!IsSessionUsable(session, now) ||
             string.IsNullOrWhiteSpace(_settings?.AzureSpeechKey) ||
             string.IsNullOrWhiteSpace(_settings?.AzureSpeechRegion))
             return null;
@@ -630,10 +630,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     public async Task<AgoraTokenResponseModel> GetAgoraTokenAsync(string token)
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
-        if (session == null ||
-            !session.IsActive ||
-            session.CompletedOnUtc.HasValue ||
-            (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc < DateTime.UtcNow) ||
+        var now = DateTime.UtcNow;
+        if (!IsSessionUsable(session, now) ||
             string.IsNullOrWhiteSpace(_settings?.AgoraAppId) ||
             string.IsNullOrWhiteSpace(_settings?.AgoraTokenServiceUrl))
             return null;
@@ -705,6 +703,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             return null;
         }
+    }
+
+    protected virtual bool IsSessionUsable(InterviewSession session, DateTime utcNow)
+    {
+        return session != null &&
+            session.IsActive &&
+            !session.CompletedOnUtc.HasValue &&
+            (!session.TokenExpiryUtc.HasValue || session.TokenExpiryUtc > utcNow);
     }
 
     protected virtual async Task<InterviewRuntimeModel> BuildRuntimeModelAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null)

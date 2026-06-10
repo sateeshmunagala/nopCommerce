@@ -277,6 +277,17 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public void Legacy_Interview_View_Is_Removed()
+    {
+        var legacyViewPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Interview.cshtml"));
+
+        Assert.That(File.Exists(legacyViewPath), Is.False);
+    }
+
+    [Test]
     public async Task Runtime_Start_SponsorFallback_Works()
     {
         var customer = new Customer { Id = 1, Email = "test@example.com" };

@@ -293,6 +293,43 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task SubmitAnswerAsync_ExpiryBoundary_ReturnsInvalidToken()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession
+        {
+            Id = 14,
+            ProductId = 21,
+            CustomerId = 5,
+            SessionKey = "key14",
+            Token = "boundary",
+            Difficulty = "Medium",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("boundary")).ReturnsAsync(session);
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            workContext: workContext,
+            eventPublisher: eventPublisher);
+
+        var result = await service.SubmitAnswerAsync("boundary", "answer");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+    }
+
+    [Test]
     public async Task SubmitAnswerAsync_BlankNextQuestion_DoesNotInsertFakeQuestion()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -530,6 +567,38 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task CompleteInterviewAsync_ExpiryBoundary_ReturnsInvalidToken()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession
+        {
+            Id = 44,
+            Token = "boundary",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("boundary")).ReturnsAsync(session);
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
+
+        var result = await service.CompleteInterviewAsync("boundary", "reason");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Never);
+    }
+
+    [Test]
     public async Task SpeechAndAgoraTokens_ReturnNull_WhenConfigMissing()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -583,6 +652,37 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task SpeechToken_ReturnsNull_OnExpiryBoundary()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("speech-token") });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var now = DateTime.UtcNow;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("boundary")).ReturnsAsync(new InterviewSession
+        {
+            Token = "boundary",
+            IsActive = true,
+            TokenExpiryUtc = now
+        });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key",
+                AzureSpeechRegion = "eastus"
+            });
+
+        Assert.That(await service.GetSpeechTokenAsync("boundary"), Is.Null);
+        Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
     public async Task AgoraToken_ReturnsNull_ForInactiveCompletedOrExpiredSessions()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -612,6 +712,39 @@ public class RuntimeServiceTests
         Assert.That(await service.GetAgoraTokenAsync("inactive"), Is.Null);
         Assert.That(await service.GetAgoraTokenAsync("completed"), Is.Null);
         Assert.That(await service.GetAgoraTokenAsync("expired"), Is.Null);
+        Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task AgoraToken_ReturnsNull_OnExpiryBoundary()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"token\":\"agora-token\"}") });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var now = DateTime.UtcNow;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("boundary")).ReturnsAsync(new InterviewSession
+        {
+            Token = "boundary",
+            SessionKey = "channel",
+            CustomerId = 1,
+            IsActive = true,
+            TokenExpiryUtc = now
+        });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AgoraAppId = "app-id",
+                AgoraTokenServiceUrl = "https://tokens"
+            });
+
+        Assert.That(await service.GetAgoraTokenAsync("boundary"), Is.Null);
         Assert.That(httpHandler.Requests, Is.Empty);
     }
 
