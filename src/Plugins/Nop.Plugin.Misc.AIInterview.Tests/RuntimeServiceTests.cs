@@ -1,4 +1,5 @@
 using Moq;
+using Microsoft.Extensions.Http;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
@@ -11,6 +12,11 @@ using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
 using NUnit.Framework;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
 
@@ -24,6 +30,7 @@ public class RuntimeServiceTests
         Mock<IProductService> productService,
         Mock<ICustomerService> customerService,
         Mock<ILocalizationService> localizationService,
+        Mock<IHttpClientFactory> httpClientFactory = null,
         AIInterviewSettings settings = null,
         MockAIInterviewSettings mockSettings = null,
         Mock<IWorkContext> workContext = null,
@@ -38,8 +45,35 @@ public class RuntimeServiceTests
             localizationService.Object,
             settings ?? new AIInterviewSettings { Prompt = "Be concise" },
             mockSettings ?? new MockAIInterviewSettings { UseMockResponses = true },
+            httpClientFactory?.Object ?? new Mock<IHttpClientFactory>().Object,
             workContext?.Object ?? new Mock<IWorkContext>().Object,
             eventPublisher?.Object ?? new Mock<IEventPublisher>().Object);
+    }
+
+    private sealed class TestHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responseFactory;
+
+        public List<HttpRequestMessage> Requests { get; } = new();
+
+        public TestHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
+        {
+            _responseFactory = responseFactory;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            return Task.FromResult(_responseFactory(request));
+        }
+    }
+
+    private static Mock<IHttpClientFactory> CreateHttpClientFactory(TestHttpMessageHandler handler)
+    {
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(x => x.CreateClient(It.IsAny<string>()))
+            .Returns(() => new HttpClient(handler, disposeHandler: false));
+        return factory;
     }
 
     [Test]
@@ -513,6 +547,313 @@ public class RuntimeServiceTests
 
         Assert.That(await service.GetSpeechTokenAsync("token5"), Is.Null);
         Assert.That(await service.GetAgoraTokenAsync("token5"), Is.Null);
+    }
+
+    [Test]
+    public async Task SpeechToken_ReturnsNull_ForInactiveCompletedOrExpiredSessions()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("speech-token") });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key",
+                AzureSpeechRegion = "eastus"
+            });
+
+        var inactive = new InterviewSession { Token = "inactive", IsActive = false, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var completed = new InterviewSession { Token = "completed", IsActive = true, CompletedOnUtc = DateTime.UtcNow.AddMinutes(-1), TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var expired = new InterviewSession { Token = "expired", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddSeconds(-1) };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("inactive")).ReturnsAsync(inactive);
+        sessionService.Setup(x => x.GetSessionByTokenAsync("completed")).ReturnsAsync(completed);
+        sessionService.Setup(x => x.GetSessionByTokenAsync("expired")).ReturnsAsync(expired);
+
+        Assert.That(await service.GetSpeechTokenAsync("inactive"), Is.Null);
+        Assert.That(await service.GetSpeechTokenAsync("completed"), Is.Null);
+        Assert.That(await service.GetSpeechTokenAsync("expired"), Is.Null);
+        Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task AgoraToken_ReturnsNull_ForInactiveCompletedOrExpiredSessions()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"token\":\"agora-token\"}") });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AgoraAppId = "app-id",
+                AgoraTokenServiceUrl = "https://tokens"
+            });
+
+        var inactive = new InterviewSession { Token = "inactive", SessionKey = "channel", CustomerId = 1, IsActive = false, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var completed = new InterviewSession { Token = "completed", SessionKey = "channel", CustomerId = 1, IsActive = true, CompletedOnUtc = DateTime.UtcNow.AddMinutes(-1), TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var expired = new InterviewSession { Token = "expired", SessionKey = "channel", CustomerId = 1, IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddSeconds(-1) };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("inactive")).ReturnsAsync(inactive);
+        sessionService.Setup(x => x.GetSessionByTokenAsync("completed")).ReturnsAsync(completed);
+        sessionService.Setup(x => x.GetSessionByTokenAsync("expired")).ReturnsAsync(expired);
+
+        Assert.That(await service.GetAgoraTokenAsync("inactive"), Is.Null);
+        Assert.That(await service.GetAgoraTokenAsync("completed"), Is.Null);
+        Assert.That(await service.GetAgoraTokenAsync("expired"), Is.Null);
+        Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task GenerateQuestionAsync_MapsAzureSuccessResponse_AndPromptContract()
+    {
+        var responseJson = """
+        {
+          "choices": [
+            {
+              "message": {
+                "content": "{\"question\":\"Q1\",\"complete\":false,\"rubricJson\":{}}"
+              }
+            }
+          ]
+        }
+        """;
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret",
+                AzureOpenAiDeploymentOrModel = "deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            httpFactory.Object);
+
+        var result = await client.GenerateQuestionAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Difficulty = "Medium",
+            Prompt = "Use the admin guidance",
+            QuestionNumber = 1,
+            PreviousQuestions = new List<string>(),
+            PreviousScores = new List<decimal>()
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Question, Is.EqualTo("Q1"));
+        Assert.That(result.Complete, Is.False);
+        var requestBody = await httpHandler.Requests.Single().Content.ReadAsStringAsync();
+        Assert.That(requestBody, Does.Contain("Question mode contract"));
+        Assert.That(requestBody, Does.Contain("complete:false"));
+        Assert.That(requestBody, Does.Contain("optional rubricJson"));
+        Assert.That(requestBody, Does.Contain("Use the admin guidance"));
+    }
+
+    [Test]
+    public async Task ScoreAnswerAsync_MapsAzureSuccessResponse_AndPromptContract()
+    {
+        var responseJson = """
+        {
+          "choices": [
+            {
+              "message": {
+                "content": "{\"score\":91,\"feedback\":\"Strong\",\"complete\":true,\"nextQuestion\":\"Q2\",\"completion\":\"done\"}"
+              }
+            }
+          ]
+        }
+        """;
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret",
+                AzureOpenAiDeploymentOrModel = "deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            httpFactory.Object);
+
+        var result = await client.ScoreAnswerAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Difficulty = "Medium",
+            Prompt = "Use the admin guidance",
+            Question = "Q1",
+            Answer = "A1"
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Score, Is.EqualTo(91));
+        Assert.That(result.NextQuestion, Is.EqualTo("Q2"));
+        Assert.That(result.Complete, Is.True);
+        var requestBody = await httpHandler.Requests.Single().Content.ReadAsStringAsync();
+        Assert.That(requestBody, Does.Contain("Scoring mode contract"));
+        Assert.That(requestBody, Does.Contain("nextQuestion"));
+        Assert.That(requestBody, Does.Contain("completion"));
+    }
+
+    [Test]
+    public async Task AzureOpenAi_NonSuccessOrInvalidJson_ReturnsUnavailable()
+    {
+        var failureHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("bad request")
+        });
+        var failureFactory = CreateHttpClientFactory(failureHandler);
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret",
+                AzureOpenAiDeploymentOrModel = "deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            failureFactory.Object);
+
+        var failure = await client.GenerateQuestionAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Difficulty = "Medium",
+            Prompt = "Prompt"
+        });
+
+        Assert.That(failure.Success, Is.False);
+
+        var invalidJsonHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""{"choices":[{"message":{"content":"not-json"}}]}""", Encoding.UTF8, "application/json")
+        });
+        var invalidFactory = CreateHttpClientFactory(invalidJsonHandler);
+        var invalidClient = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret",
+                AzureOpenAiDeploymentOrModel = "deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            invalidFactory.Object);
+
+        var invalid = await invalidClient.ScoreAnswerAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Question = "Q1",
+            Answer = "A1"
+        });
+
+        Assert.That(invalid.Success, Is.False);
+    }
+
+    [Test]
+    public async Task SpeechToken_MapsSuccessfulResponse()
+    {
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("speech-token", Encoding.UTF8, "text/plain")
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token")).ReturnsAsync(new InterviewSession
+        {
+            Token = "token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key",
+                AzureSpeechRegion = "eastus"
+            });
+
+        var result = await service.GetSpeechTokenAsync("token");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Token, Is.EqualTo("speech-token"));
+        Assert.That(result.Region, Is.EqualTo("eastus"));
+        Assert.That(result.ExpiresInSeconds, Is.EqualTo(600));
+    }
+
+    [Test]
+    public async Task AgoraToken_MapsJsonAndPlainResponses()
+    {
+        var jsonHandler = new TestHttpMessageHandler(request => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"token\":\"agora-token\",\"channel\":\"channel-1\",\"appId\":\"app-id\",\"uid\":42,\"expiresInSeconds\":900}", Encoding.UTF8, "application/json")
+        });
+        var jsonFactory = CreateHttpClientFactory(jsonHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token")).ReturnsAsync(new InterviewSession
+        {
+            Token = "token",
+            SessionKey = "channel-1",
+            CustomerId = 42,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: jsonFactory,
+            settings: new AIInterviewSettings
+            {
+                AgoraAppId = "app-id",
+                AgoraTokenServiceUrl = "https://tokens"
+            });
+
+        var jsonResult = await service.GetAgoraTokenAsync("token");
+        Assert.That(jsonResult, Is.Not.Null);
+        Assert.That(jsonResult.Token, Is.EqualTo("agora-token"));
+        Assert.That(jsonResult.Channel, Is.EqualTo("channel-1"));
+        Assert.That(jsonResult.AppId, Is.EqualTo("app-id"));
+        Assert.That(jsonResult.Uid, Is.EqualTo(42));
+        Assert.That(jsonResult.ExpiresInSeconds, Is.EqualTo(900));
+
+        var plainHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("plain-token", Encoding.UTF8, "text/plain")
+        });
+        var plainFactory = CreateHttpClientFactory(plainHandler);
+        var plainService = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: plainFactory,
+            settings: new AIInterviewSettings
+            {
+                AgoraAppId = "app-id",
+                AgoraTokenServiceUrl = "https://tokens"
+            });
+
+        var plainResult = await plainService.GetAgoraTokenAsync("token");
+        Assert.That(plainResult, Is.Not.Null);
+        Assert.That(plainResult.Token, Is.EqualTo("plain-token"));
+        Assert.That(plainResult.Channel, Is.EqualTo("channel-1"));
     }
 
     [Test]

@@ -291,6 +291,32 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_SpeechToken_ExpiredOrInactive_ReturnsSafeJson()
+    {
+        _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync("expired")).ReturnsAsync((SpeechTokenResponseModel)null);
+        _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync("inactive")).ReturnsAsync((SpeechTokenResponseModel)null);
+
+        var expired = await _runtimeController.SpeechToken("expired");
+        var inactive = await _runtimeController.SpeechToken("inactive");
+
+        Assert.That(((JsonResult)expired).Value.GetType().GetProperty("error").GetValue(((JsonResult)expired).Value, null), Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.Unavailable"));
+        Assert.That(((JsonResult)inactive).Value.GetType().GetProperty("error").GetValue(((JsonResult)inactive).Value, null), Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.Unavailable"));
+    }
+
+    [Test]
+    public async Task Runtime_AgoraToken_ExpiredOrInactive_ReturnsSafeJson()
+    {
+        _interviewRuntimeService.Setup(x => x.GetAgoraTokenAsync("expired")).ReturnsAsync((AgoraTokenResponseModel)null);
+        _interviewRuntimeService.Setup(x => x.GetAgoraTokenAsync("inactive")).ReturnsAsync((AgoraTokenResponseModel)null);
+
+        var expired = await _runtimeController.AgoraToken("expired");
+        var inactive = await _runtimeController.AgoraToken("inactive");
+
+        Assert.That(((JsonResult)expired).Value.GetType().GetProperty("error").GetValue(((JsonResult)expired).Value, null), Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.Unavailable"));
+        Assert.That(((JsonResult)inactive).Value.GetType().GetProperty("error").GetValue(((JsonResult)inactive).Value, null), Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.Unavailable"));
+    }
+
+    [Test]
     public async Task Admin_Invite_Validation_InvalidAttempts()
     {
         _customerService.Setup(x => x.GetCustomerByIdAsync(1)).ReturnsAsync(new Customer { Id = 1, VendorId = 1 });

@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
@@ -60,12 +61,14 @@ public class InterviewAiClient : IAIInterviewClient
 {
     private readonly AIInterviewSettings _settings;
     private readonly MockAIInterviewSettings _mockSettings;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<InterviewAiClient> _logger;
 
-    public InterviewAiClient(AIInterviewSettings settings, MockAIInterviewSettings mockSettings, ILogger<InterviewAiClient> logger = null)
+    public InterviewAiClient(AIInterviewSettings settings, MockAIInterviewSettings mockSettings, IHttpClientFactory httpClientFactory = null, ILogger<InterviewAiClient> logger = null)
     {
         _settings = settings;
         _mockSettings = mockSettings;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -123,14 +126,20 @@ public class InterviewAiClient : IAIInterviewClient
             {
                 messages = new object[]
                 {
-                    new { role = "system", content = "Return valid JSON only with fields question, score, feedback, complete, completion, rawJson, rubricJson." },
+                    new
+                    {
+                        role = "system",
+                        content = mode == "generate"
+                            ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
+                            : "Return JSON only. Scoring mode contract: score, feedback, complete, nextQuestion when continuing, completion when ending, optional rubricJson. No markdown. No prose outside JSON."
+                    },
                     new { role = "user", content = prompt }
                 },
                 temperature = 0.2,
                 max_tokens = 400
             };
 
-            using var httpClient = new HttpClient();
+            using var httpClient = CreateHttpClient();
             httpClient.DefaultRequestHeaders.Add("api-key", _settings.AzureOpenAiApiKey.Trim());
             httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
@@ -165,6 +174,11 @@ public class InterviewAiClient : IAIInterviewClient
         return BuildUnavailableResponse();
     }
 
+    protected virtual HttpClient CreateHttpClient()
+    {
+        return _httpClientFactory?.CreateClient(nameof(InterviewAiClient)) ?? new HttpClient();
+    }
+
     protected virtual string BuildPrompt(AIInterviewClientRequest request, string mode)
     {
         var previousQuestions = request.PreviousQuestions.Any()
@@ -184,6 +198,7 @@ Previous questions: {previousQuestions}
 Previous scores: {previousScores}
 Current question: {request.Question}
 Candidate answer: {request.Answer}
+Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "score, feedback, complete, nextQuestion, completion, optional rubricJson")}
 """;
     }
 
@@ -321,6 +336,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     private readonly ILocalizationService _localizationService;
     private readonly AIInterviewSettings _settings;
     private readonly MockAIInterviewSettings _mockSettings;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IWorkContext _workContext;
     private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<InterviewRuntimeService> _logger;
@@ -334,6 +350,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         ILocalizationService localizationService,
         AIInterviewSettings settings,
         MockAIInterviewSettings mockSettings,
+        IHttpClientFactory httpClientFactory,
         IWorkContext workContext,
         IEventPublisher eventPublisher = null,
         ILogger<InterviewRuntimeService> logger = null)
@@ -346,9 +363,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         _localizationService = localizationService;
         _settings = settings;
         _mockSettings = mockSettings;
+        _httpClientFactory = httpClientFactory;
         _workContext = workContext;
         _eventPublisher = eventPublisher;
         _logger = logger;
+    }
+
+    protected virtual HttpClient CreateHttpClient()
+    {
+        return _httpClientFactory?.CreateClient(nameof(InterviewRuntimeService)) ?? new HttpClient();
     }
 
     public async Task<InterviewRuntimeModel> GetRuntimeModelAsync(string token)
@@ -571,14 +594,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
         if (session == null ||
+            !session.IsActive ||
             session.CompletedOnUtc.HasValue ||
+            (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc < DateTime.UtcNow) ||
             string.IsNullOrWhiteSpace(_settings?.AzureSpeechKey) ||
             string.IsNullOrWhiteSpace(_settings?.AzureSpeechRegion))
             return null;
 
         try
         {
-            using var httpClient = new HttpClient();
+            using var httpClient = CreateHttpClient();
             httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _settings.AzureSpeechKey.Trim());
             var endpoint = $"https://{_settings.AzureSpeechRegion.Trim()}.api.cognitive.microsoft.com/sts/v1.0/issuetoken";
             var response = await httpClient.PostAsync(endpoint, new StringContent(string.Empty));
@@ -606,7 +631,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
         if (session == null ||
+            !session.IsActive ||
             session.CompletedOnUtc.HasValue ||
+            (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc < DateTime.UtcNow) ||
             string.IsNullOrWhiteSpace(_settings?.AgoraAppId) ||
             string.IsNullOrWhiteSpace(_settings?.AgoraTokenServiceUrl))
             return null;
@@ -617,7 +644,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             var separator = requestUrl.Contains('?') ? "&" : "?";
             requestUrl = $"{requestUrl}{separator}channel={Uri.EscapeDataString(session.SessionKey)}&uid={session.CustomerId}&appId={Uri.EscapeDataString(_settings.AgoraAppId.Trim())}";
 
-            using var httpClient = new HttpClient();
+            using var httpClient = CreateHttpClient();
             var response = await httpClient.GetAsync(requestUrl);
             if (!response.IsSuccessStatusCode)
                 return null;
