@@ -248,9 +248,32 @@ public class CandidateFlowTests
         var viewText = File.ReadAllText(viewPath);
 
         Assert.That(viewText, Does.Contain("data-start-interview-button=\"true\""));
-        Assert.That(viewText, Does.Contain("fetch('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)'"));
+        Assert.That(viewText, Does.Contain("postJson('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)'"));
         Assert.That(viewText, Does.Contain("window.location.href = result.runtimeUrl"));
         Assert.That(viewText, Does.Contain("document.addEventListener('click'"));
+    }
+
+    [Test]
+    public void ProductDetails_And_StartViews_Handle_Fetch_Errors_Safely()
+    {
+        var productViewPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Shared", "Components", "AIInterviewProductDetails", "Default.cshtml"));
+        var startViewPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Start.cshtml"));
+
+        var productViewText = File.ReadAllText(productViewPath);
+        var startViewText = File.ReadAllText(startViewPath);
+
+        Assert.That(productViewText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
+        Assert.That(productViewText, Does.Contain("response.ok"));
+        Assert.That(productViewText, Does.Contain("content-type"));
+        Assert.That(startViewText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
+        Assert.That(startViewText, Does.Contain("response.ok"));
+        Assert.That(startViewText, Does.Contain("content-type"));
     }
 
     [Test]

@@ -124,6 +124,46 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task EnsureInterviewStartedAsync_RealMode_BlankQuestion_DoesNotCreateTurn()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession { Id = 11, ProductId = 51, CustomerId = 99, SessionKey = "key11", Token = "token11", Difficulty = "Medium" };
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(11)).ReturnsAsync(new List<InterviewTurn>());
+        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse { Success = true, Question = "   ", RawJson = "{\"question\":\"   \"}" });
+
+        var inserted = false;
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback(() => inserted = true)
+            .ReturnsAsync((InterviewTurn turn) => turn);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            settings: new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://endpoint",
+                AzureOpenAiApiKey = "key",
+                AzureOpenAiDeploymentOrModel = "deployment",
+                Prompt = "prompt"
+            },
+            mockSettings: new MockAIInterviewSettings { UseMockResponses = false },
+            workContext: workContext,
+            eventPublisher: eventPublisher);
+
+        var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99 });
+
+        Assert.That(inserted, Is.False);
+        Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable."));
+    }
+
+    [Test]
     public async Task SubmitAnswerAsync_Persists_Turn_And_Returns_Next_Question()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -219,6 +259,66 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task SubmitAnswerAsync_BlankNextQuestion_DoesNotInsertFakeQuestion()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession { Id = 13, ProductId = 21, CustomerId = 5, SessionKey = "key13", Token = "token13", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var turn = new InterviewTurn { Id = 1, InterviewSessionId = 13, SequenceNumber = 1, QuestionText = "Q1", AskedOnUtc = DateTime.UtcNow.AddMinutes(-1), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1) };
+        var store = new List<InterviewTurn> { turn };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token13")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(13)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
+        aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse { Score = 80, Feedback = "Good", RawJson = "{}" });
+        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse { Success = true, Question = " ", RawJson = "{\"question\":\" \"}" });
+        productService.Setup(x => x.GetProductByIdAsync(21)).ReturnsAsync(new Product { Id = 21, Name = "QA Engineer" });
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback<InterviewTurn>(updated =>
+            {
+                store.RemoveAll(x => x.Id == updated.Id);
+                store.Add(updated);
+            })
+            .Returns(Task.CompletedTask);
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn created) =>
+            {
+                created.Id = created.SequenceNumber;
+                store.Add(created);
+                return created;
+            });
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            settings: new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://endpoint",
+                AzureOpenAiApiKey = "key",
+                AzureOpenAiDeploymentOrModel = "deployment",
+                Prompt = "prompt"
+            },
+            mockSettings: new MockAIInterviewSettings { UseMockResponses = false },
+            workContext: workContext,
+            eventPublisher: eventPublisher);
+
+        var result = await service.SubmitAnswerAsync("token13", "answer");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Message, Does.Contain("AI service unavailable"));
+        Assert.That(result.Feedback, Does.Contain("AI service unavailable"));
+        turnService.Verify(x => x.InsertInterviewTurnAsync(It.Is<InterviewTurn>(t => t.SequenceNumber == 2)), Times.Never);
+    }
+
+    [Test]
     public void ParseStructuredResponse_HandlesFencedJsonAndScoreString()
     {
         var response = InterviewAiClient.ParseStructuredResponse("""
@@ -238,6 +338,35 @@ public class RuntimeServiceTests
         Assert.That(response.Score, Is.EqualTo(87.5m));
         Assert.That(response.Complete, Is.True);
         Assert.That(response.Completion, Is.EqualTo("done"));
+    }
+
+    [Test]
+    public void ParseStructuredResponse_HandlesBooleanCompleteFalse()
+    {
+        var response = InterviewAiClient.ParseStructuredResponse("""{"question":"What is DI?","complete":false}""");
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response.Question, Is.EqualTo("What is DI?"));
+        Assert.That(response.Complete, Is.False);
+    }
+
+    [Test]
+    public void ParseStructuredResponse_HandlesBooleanCompleteTrue()
+    {
+        var response = InterviewAiClient.ParseStructuredResponse("""{"question":"What is DI?","complete":true}""");
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response.Complete, Is.True);
+    }
+
+    [TestCase("false", false)]
+    [TestCase("true", true)]
+    public void ParseStructuredResponse_HandlesStringCompleteValues(string completeValue, bool expected)
+    {
+        var response = InterviewAiClient.ParseStructuredResponse("{\"question\":\"What is DI?\",\"complete\":\"" + completeValue + "\"}");
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response.Complete, Is.EqualTo(expected));
     }
 
     [Test]

@@ -190,7 +190,10 @@
             const feedback = document.getElementById('job-ai-feedback');
             const applyPanel = document.getElementById('job-apply-panel');
             const productForm = document.getElementById('product-details-form');
+            const startButton = document.getElementById('start-job-interview');
+            const applyButton = document.getElementById('job-apply-button');
             const sponsorToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sponsorToken ?? string.Empty));
+            const safeRequestError = 'Unable to reach the interview service. Please check your network and try again.';
 
             const setFeedback = (message, isError) => {
                 if (!feedback)
@@ -202,7 +205,38 @@
                 feedback.classList.toggle('is-success', !isError);
             };
 
+            const setBusy = (isBusy) => {
+                [startButton, applyButton].filter(Boolean).forEach(button => {
+                    button.disabled = !!isBusy;
+                });
+            };
+
+            const postJson = async (url, formData) => {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok)
+                        return { success: false, error: safeRequestError };
+
+                    const contentType = response.headers.get('content-type') || '';
+                    if (!contentType.includes('application/json'))
+                        return { success: false, error: safeRequestError };
+
+                    try {
+                        return await response.json();
+                    } catch {
+                        return { success: false, error: safeRequestError };
+                    }
+                } catch {
+                    return { success: false, error: safeRequestError };
+                }
+            };
+
             const startInterview = async () => {
+                setBusy(true);
                 const formData = productForm ? new FormData(productForm) : new FormData();
                 if (!productForm && applyPanel) {
                     applyPanel.querySelectorAll('input').forEach(input => {
@@ -222,20 +256,21 @@
                 if (sponsorToken)
                     formData.set('sponsorToken', sponsorToken);
 
-                const response = await fetch('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)', {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-                if (result.runtimeUrl) {
-                    window.location.href = result.runtimeUrl;
-                    return;
-                }
+                try {
+                    const result = await postJson('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)', formData);
+                    if (result.runtimeUrl) {
+                        window.location.href = result.runtimeUrl;
+                        return;
+                    }
 
-                setFeedback(result.error || 'Unable to start the interview.', true);
+                    setFeedback(result.error || result.message || safeRequestError, true);
+                } finally {
+                    setBusy(false);
+                }
             };
 
             const applyInterview = async () => {
+                setBusy(true);
                 const formData = productForm ? new FormData(productForm) : new FormData();
                 if (!productForm && applyPanel) {
                     applyPanel.querySelectorAll('input').forEach(input => {
@@ -250,13 +285,12 @@
                         formData.append(input.name, input.value);
                     });
                 }
-                const response = await fetch('@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)', {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
-                const result = await response.json();
-                setFeedback(result.message || result.error, !result.success);
+                try {
+                    const result = await postJson('@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)', formData);
+                    setFeedback(result.message || result.error || safeRequestError, !result.success);
+                } finally {
+                    setBusy(false);
+                }
             };
 
             document.addEventListener('click', async (event) => {

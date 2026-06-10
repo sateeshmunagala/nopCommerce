@@ -31,20 +31,56 @@
 </div>
 
 <script asp-location="Footer">
-    document.getElementById('start-mock-form').addEventListener('submit', async function (event) {
-        event.preventDefault();
-        const response = await fetch(this.action, {
-            method: 'POST',
-            body: new FormData(this)
-        });
-        const result = await response.json();
-        if (result.runtimeUrl) {
-            window.location.href = result.runtimeUrl;
-            return;
-        }
-
+    (() => {
+        const form = document.getElementById('start-mock-form');
+        const button = document.getElementById('start-mock-btn');
         const error = document.getElementById('start-mock-error');
-        error.textContent = result.error || '@T("Plugins.Misc.AIInterview.Employer.Invite.Error")';
-        error.style.display = 'block';
-    });
+        const safeRequestError = 'Unable to reach the interview service. Please check your network and try again.';
+
+        const setBusy = (isBusy) => {
+            if (button)
+                button.disabled = !!isBusy;
+        };
+
+        const postJson = async (url, formData) => {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok)
+                    return { success: false, error: safeRequestError };
+
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json'))
+                    return { success: false, error: safeRequestError };
+
+                try {
+                    return await response.json();
+                } catch {
+                    return { success: false, error: safeRequestError };
+                }
+            } catch {
+                return { success: false, error: safeRequestError };
+            }
+        };
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            setBusy(true);
+            try {
+                const result = await postJson(this.action, new FormData(this));
+                if (result.runtimeUrl) {
+                    window.location.href = result.runtimeUrl;
+                    return;
+                }
+
+                error.textContent = result.error || result.message || safeRequestError;
+                error.style.display = 'block';
+            } finally {
+                setBusy(false);
+            }
+        });
+    })();
 </script>

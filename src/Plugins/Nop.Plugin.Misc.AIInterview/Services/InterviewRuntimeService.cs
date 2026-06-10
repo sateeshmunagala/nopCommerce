@@ -235,7 +235,7 @@ Candidate answer: {request.Answer}
                 NextQuestion = nextQuestion,
                 Score = score,
                 Feedback = feedback,
-                Complete = root.TryGetProperty("complete", out var complete) && (complete.ValueKind == JsonValueKind.True || string.Equals(complete.GetString(), "true", StringComparison.OrdinalIgnoreCase)),
+                Complete = TryParseBoolean(root, "complete"),
                 Completion = completion,
                 RawJson = content,
                 RubricJson = rubricJson
@@ -245,6 +245,20 @@ Candidate answer: {request.Answer}
         {
             return null;
         }
+    }
+
+    private static bool TryParseBoolean(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var property) || property.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+            return false;
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(property.GetString(), out var value) => value,
+            _ => false
+        };
     }
 
     protected virtual AIInterviewClientResponse BuildMockQuestion(AIInterviewClientRequest request)
@@ -724,7 +738,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         };
 
         var aiResponse = await _aiClient.GenerateQuestionAsync(request);
-        if (aiResponse == null || !aiResponse.Success)
+        if (aiResponse == null || !aiResponse.Success || string.IsNullOrWhiteSpace(aiResponse.Question))
             return null;
 
         return new InterviewTurn
