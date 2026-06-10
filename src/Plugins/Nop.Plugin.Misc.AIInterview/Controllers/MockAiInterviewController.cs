@@ -266,6 +266,10 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.AgoraTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockAgoraTokenRouteName);
         model.ClientSettings.ProductName = model.ProductName;
         model.ClientSettings.Token = session?.Token;
+        model.ClientSettings.ReportUrl = model.ReportUrl;
+        model.ClientSettings.TokenExpiryUtc = session?.TokenExpiryUtc;
+        model.ClientSettings.SpeechAvailable = _interviewRuntimeService != null && !string.IsNullOrWhiteSpace(model.ClientSettings.SpeechTokenUrl);
+        model.ClientSettings.AgoraAvailable = _interviewRuntimeService != null && !string.IsNullOrWhiteSpace(model.ClientSettings.AgoraTokenUrl);
     }
 
     protected async Task<string> GetRestartUrlAsync(InterviewSession session)
@@ -366,7 +370,7 @@ public class MockAiInterviewController : BasePluginController
         session.TokenExpiryUtc = DateTime.UtcNow.AddMinutes(30);
         await _interviewSessionService.UpdateInterviewSessionAsync(session);
 
-        return Json(new { newToken = session.Token });
+        return Json(new { newToken = session.Token, tokenExpiryUtc = session.TokenExpiryUtc });
     }
 
     [HttpPost]

@@ -317,10 +317,7 @@ public class AIInterviewController : BasePluginController
         if (session == null || session.CustomerId != customer.Id || session.CompletedOnUtc.HasValue)
             return RedirectToRoute(AIInterviewDefaults.IndexRouteName);
 
-        ViewBag.SessionKey = sessionKey;
-        ViewBag.Difficulty = session.Difficulty;
-
-        return View("~/Plugins/Misc.AIInterview/Views/Interview.cshtml");
+        return RedirectToRoute(AIInterviewDefaults.MockRuntimeRouteName, new { token = session.Token });
     }
 
     public async Task<IActionResult> Apply(string jobTitle, int productId = 0)

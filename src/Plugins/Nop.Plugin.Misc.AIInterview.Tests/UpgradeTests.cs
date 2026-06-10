@@ -52,4 +52,23 @@ public class UpgradeTests
         Assert.That(typeof(ConfigurationModel).GetProperty("ResumeRequired"), Is.Null);
         Assert.That(typeof(ConfigurationModel).GetProperty("InterviewRequired"), Is.Null);
     }
+
+    [Test]
+    public void InterviewTurnMigration_Guards_Index_Creation()
+    {
+        var migrationPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Data", "InterviewTurnMigration.cs"));
+        var schemaMigrationPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Data", "SchemaMigration.cs"));
+
+        var migrationText = System.IO.File.ReadAllText(migrationPath);
+        var schemaText = System.IO.File.ReadAllText(schemaMigrationPath);
+
+        Assert.That(migrationText, Does.Contain("Index(\"IX_AIInterview_InterviewTurn_SessionId_SequenceNumber\").Exists()"));
+        Assert.That(schemaText, Does.Contain("Index(\"IX_AIInterview_InterviewTurn_SessionId_SequenceNumber\").Exists()"));
+    }
 }

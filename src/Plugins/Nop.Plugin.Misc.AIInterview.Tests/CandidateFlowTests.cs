@@ -449,6 +449,53 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public async Task Interview_LegacyAction_Redirects_To_Runtime()
+    {
+        var customer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionBySessionKeyAsync("legacy-key")).ReturnsAsync(new InterviewSession
+        {
+            Id = 20,
+            CustomerId = 1,
+            Token = "runtime-token",
+            SessionKey = "legacy-key"
+        });
+
+        var result = await _controller.Interview("legacy-key");
+
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        var redirect = (RedirectToRouteResult)result;
+        Assert.That(redirect.RouteName, Is.EqualTo(AIInterviewDefaults.MockRuntimeRouteName));
+        Assert.That(redirect.RouteValues["token"], Is.EqualTo("runtime-token"));
+    }
+
+    [Test]
+    public void RuntimeAndReportViews_UseSafeTextRendering()
+    {
+        var runtimePath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml"));
+        var mockReportPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Report.cshtml"));
+        var reportPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Report.cshtml"));
+
+        var runtimeText = System.IO.File.ReadAllText(runtimePath);
+        var mockReportText = System.IO.File.ReadAllText(mockReportPath);
+        var reportText = System.IO.File.ReadAllText(reportPath);
+
+        Assert.That(runtimeText, Does.Contain("textContent"));
+        Assert.That(runtimeText, Does.Not.Contain("card.innerHTML ="));
+        Assert.That(mockReportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
+        Assert.That(reportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
+    }
+
+    [Test]
     public async Task WidgetView_Rendering_Works()
     {
         var productTemplateService = new Mock<IProductTemplateService>();

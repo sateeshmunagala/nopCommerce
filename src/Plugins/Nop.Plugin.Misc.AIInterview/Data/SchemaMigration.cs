@@ -18,15 +18,21 @@ public class SchemaMigration : Migration
         this.CreateTableIfNotExists<SponsorInvite>();
         this.CreateTableIfNotExists<CreditPurchaseGrant>();
 
-        Create.Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId")
-            .OnTable(nameof(CreditPurchaseGrant))
-            .OnColumn(nameof(CreditPurchaseGrant.OrderItemId)).Ascending()
-            .WithOptions().Unique();
+        if (!Schema.Table(nameof(CreditPurchaseGrant)).Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId").Exists())
+        {
+            Create.Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId")
+                .OnTable(nameof(CreditPurchaseGrant))
+                .OnColumn(nameof(CreditPurchaseGrant.OrderItemId)).Ascending()
+                .WithOptions().Unique();
+        }
 
-        Create.Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber")
-            .OnTable(nameof(InterviewTurn))
-            .OnColumn(nameof(InterviewTurn.InterviewSessionId)).Ascending()
-            .OnColumn(nameof(InterviewTurn.SequenceNumber)).Ascending();
+        if (!Schema.Table(nameof(InterviewTurn)).Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber").Exists())
+        {
+            Create.Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber")
+                .OnTable(nameof(InterviewTurn))
+                .OnColumn(nameof(InterviewTurn.InterviewSessionId)).Ascending()
+                .OnColumn(nameof(InterviewTurn.SequenceNumber)).Ascending();
+        }
     }
 
     public override void Down()

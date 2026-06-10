@@ -71,12 +71,14 @@ public record AIInterviewClientRequest
 
 public record AIInterviewClientResponse
 {
+    public bool Success { get; init; } = true;
     public string Question { get; init; }
     public string NextQuestion { get; init; }
     public decimal Score { get; init; }
     public string Feedback { get; init; }
     public bool Complete { get; init; }
     public string Completion { get; init; }
+    public string ErrorMessage { get; init; }
     public string RawJson { get; init; }
     public string RubricJson { get; init; }
 }

@@ -75,7 +75,7 @@ public class InterviewAiClient : IAIInterviewClient
             return BuildMockQuestion(request);
 
         var response = await CallAzureAsync(request, "generate");
-        return response ?? BuildMockQuestion(request);
+        return response ?? BuildUnavailableResponse();
     }
 
     public async Task<AIInterviewClientResponse> ScoreAnswerAsync(AIInterviewClientRequest request)
@@ -84,7 +84,20 @@ public class InterviewAiClient : IAIInterviewClient
             return BuildMockScore(request);
 
         var response = await CallAzureAsync(request, "score");
-        return response ?? BuildMockScore(request);
+        return response ?? BuildUnavailableResponse();
+    }
+
+    protected virtual AIInterviewClientResponse BuildUnavailableResponse()
+    {
+        return new AIInterviewClientResponse
+        {
+            Success = false,
+            ErrorMessage = "AI service unavailable.",
+            Feedback = "AI service unavailable.",
+            Completion = "AI service unavailable.",
+            RawJson = string.Empty,
+            RubricJson = string.Empty
+        };
     }
 
     protected virtual async Task<AIInterviewClientResponse> CallAzureAsync(AIInterviewClientRequest request, string mode)
@@ -92,7 +105,10 @@ public class InterviewAiClient : IAIInterviewClient
         if (string.IsNullOrWhiteSpace(_settings?.AzureOpenAiEndpointUrl) ||
             string.IsNullOrWhiteSpace(_settings?.AzureOpenAiApiKey) ||
             string.IsNullOrWhiteSpace(_settings?.AzureOpenAiDeploymentOrModel))
+        {
+            _logger?.LogWarning("Azure OpenAI configuration is incomplete for AIInterview runtime.");
             return null;
+        }
 
         try
         {
@@ -146,7 +162,7 @@ public class InterviewAiClient : IAIInterviewClient
             _logger?.LogWarning(ex, "Azure OpenAI interview call failed. Falling back to mock response.");
         }
 
-        return null;
+        return BuildUnavailableResponse();
     }
 
     protected virtual string BuildPrompt(AIInterviewClientRequest request, string mode)
@@ -214,6 +230,7 @@ Candidate answer: {request.Answer}
 
             return new AIInterviewClientResponse
             {
+                Success = true,
                 Question = question,
                 NextQuestion = nextQuestion,
                 Score = score,
@@ -241,11 +258,12 @@ Candidate answer: {request.Answer}
             _ => $"Share a situation where you improved outcomes in a {request.JobTitle} role."
         };
 
-        return new AIInterviewClientResponse
-        {
-            Question = question,
-            NextQuestion = question,
-            Score = 0,
+            return new AIInterviewClientResponse
+            {
+                Success = true,
+                Question = question,
+                NextQuestion = question,
+                Score = 0,
             Feedback = string.Empty,
             Complete = false,
             Completion = string.Empty,
@@ -266,6 +284,7 @@ Candidate answer: {request.Answer}
 
         return new AIInterviewClientResponse
         {
+            Success = true,
             Question = string.Empty,
             NextQuestion = string.Empty,
             Score = score,
@@ -336,6 +355,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (!turns.Any())
         {
             var first = await GenerateQuestionTurnAsync(session, 1, turns);
+            if (first == null)
+                return await BuildRuntimeModelAsync(session, turns, customer);
+
             await _turnService.InsertInterviewTurnAsync(first);
             turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
         }
@@ -369,6 +391,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (currentTurn == null)
         {
             currentTurn = await GenerateQuestionTurnAsync(session, 1, turns);
+            if (currentTurn == null)
+            {
+                return new SubmitInterviewAnswerResponse
+                {
+                    Success = false,
+                    Message = "AI service unavailable.",
+                    Feedback = "AI service unavailable."
+                };
+            }
+
             await _turnService.InsertInterviewTurnAsync(currentTurn);
             turns.Add(currentTurn);
         }
@@ -383,7 +415,17 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             QuestionNumber = currentTurn.SequenceNumber,
             PreviousQuestions = turns.Select(turn => turn.QuestionText).ToList(),
             PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList()
-        }) ?? new AIInterviewClientResponse();
+        });
+
+        if (evaluation == null || !evaluation.Success)
+        {
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = false,
+                Message = evaluation?.ErrorMessage ?? "AI service unavailable.",
+                Feedback = evaluation?.ErrorMessage ?? "AI service unavailable."
+            };
+        }
 
         currentTurn.AnswerText = answer;
         currentTurn.Score = evaluation.Score;
@@ -452,7 +494,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
-        var completion = await CompleteInterviewInternalAsync(session, turns, evaluation.Feedback);
+        var completion = await CompleteInterviewInternalAsync(session, turns, evaluation.Completion ?? evaluation.Feedback ?? evaluation.ErrorMessage, evaluation.Completion);
         return new SubmitInterviewAnswerResponse
         {
             Success = true,
@@ -461,6 +503,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Score = completion.Score,
             Feedback = completion.Feedback,
             Message = completion.Message,
+            ReportUrl = completion.ReportUrl,
             Interrupted = false,
             Question = string.Empty,
             Turn = new InterviewTurnViewModel
@@ -625,9 +668,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Score = session.Score,
             IsCompleted = session.CompletedOnUtc.HasValue,
             IsMockMode = _mockSettings?.UseMockResponses ?? true,
-            ReportUrl = session.Id > 0 ? $"/aiinterview/report/{session.Id}" : string.Empty,
-            Turns = turns.Select(turn => new InterviewTurnViewModel
-            {
+                ReportUrl = session.Id > 0 ? $"/aiinterview/report/{session.Id}" : string.Empty,
+                TokenExpiryUtc = session.TokenExpiryUtc,
+                Turns = turns.Select(turn => new InterviewTurnViewModel
+                {
                 TurnId = turn.Id,
                 SequenceNumber = turn.SequenceNumber,
                 QuestionText = turn.QuestionText,
@@ -663,6 +707,21 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         };
 
         var aiResponse = await _aiClient.GenerateQuestionAsync(request);
+        if (aiResponse == null || !aiResponse.Success)
+        {
+            return new InterviewTurn
+            {
+                InterviewSessionId = session.Id,
+                SequenceNumber = sequenceNumber,
+                QuestionId = sequenceNumber,
+                QuestionText = aiResponse?.ErrorMessage ?? "AI service unavailable.",
+                AskedOnUtc = DateTime.UtcNow,
+                CreatedOnUtc = DateTime.UtcNow,
+                RawAIResponseJson = aiResponse?.RawJson,
+                RubricJson = aiResponse?.RubricJson
+            };
+        }
+
         return new InterviewTurn
         {
             InterviewSessionId = session.Id,
@@ -676,7 +735,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         };
     }
 
-    protected virtual async Task<CompleteInterviewResponse> CompleteInterviewInternalAsync(InterviewSession session, IList<InterviewTurn> turns, string reason)
+    protected virtual async Task<CompleteInterviewResponse> CompleteInterviewInternalAsync(InterviewSession session, IList<InterviewTurn> turns, string reason, string aiCompletion = null)
     {
         if (session.CompletedOnUtc.HasValue || !session.IsActive)
         {
@@ -692,7 +751,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         session.CompletedOnUtc = DateTime.UtcNow;
         session.Score = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
         session.QuestionScores = JsonSerializer.Serialize(turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
-        session.ReportData = BuildReport(turns, session.Score, reason);
+        session.ReportData = BuildReport(turns, session.Score, reason, aiCompletion);
         await _sessionService.UpdateInterviewSessionAsync(session);
 
         await PublishCompletionAsync(session);
@@ -705,6 +764,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Feedback = turns.LastOrDefault()?.Feedback ?? reason ?? string.Empty,
             Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
             Completion = session.ReportData,
+            ReportUrl = session.Id > 0 ? $"/aiinterview/report/{session.Id}" : string.Empty,
             Turns = turns.Select(turn => new InterviewTurnViewModel
             {
                 TurnId = turn.Id,
@@ -734,7 +794,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         await _eventPublisher.PublishAsync(new MockAiInterviewCompletedEvent(session, languageId));
     }
 
-    protected virtual string BuildReport(IEnumerable<InterviewTurn> turns, decimal score, string reason)
+    protected virtual string BuildReport(IEnumerable<InterviewTurn> turns, decimal score, string reason, string aiCompletion = null)
     {
         var strengths = turns.Where(turn => turn.Score.GetValueOrDefault() >= 75).Select(turn => turn.QuestionText).Take(3).ToList();
         var improvements = turns.Where(turn => turn.Score.GetValueOrDefault() < 75).Select(turn => turn.QuestionText).Take(3).ToList();
@@ -744,6 +804,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             $"Overall score: {score:N0}",
             $"Strengths: {(strengths.Any() ? string.Join("; ", strengths) : "Good structure and engagement.")}",
             $"Improvement areas: {(improvements.Any() ? string.Join("; ", improvements) : "Provide more concrete examples.")}",
+            string.IsNullOrWhiteSpace(aiCompletion) ? string.Empty : $"AI completion: {aiCompletion}",
             string.IsNullOrWhiteSpace(reason) ? string.Empty : $"Completion note: {reason}"
         }.Where(line => !string.IsNullOrWhiteSpace(line)));
     }

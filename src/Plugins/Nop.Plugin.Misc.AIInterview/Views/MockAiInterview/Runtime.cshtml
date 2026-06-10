@@ -104,9 +104,11 @@
                 <div class="runtime-actions">
                     <button type="button" id="submit-answer" class="button-1">Submit Answer</button>
                     <button type="button" id="stop-interview" class="button-2">Stop Interview</button>
+                    <button type="button" id="view-report" class="button-2" style="display:none;">View Report</button>
                 </div>
 
                 <div id="runtime-status" class="runtime-status"></div>
+                <div id="runtime-completion" class="runtime-message is-info" style="display:none;"></div>
             </aside>
         </div>
     </div>
@@ -126,11 +128,13 @@
     (() => {
         const config = @Html.Raw(clientSettings);
         const turns = @Html.Raw(turns);
-        const sessionToken = config.token || '@Model.Token';
+        let sessionToken = config.token || '@Model.Token';
+        let tokenExpiryUtc = config.tokenExpiryUtc ? new Date(config.tokenExpiryUtc) : null;
         const answerBox = document.getElementById('runtime-answer');
         const questionBox = document.getElementById('runtime-question');
         const messageBox = document.getElementById('runtime-message');
         const statusBox = document.getElementById('runtime-status');
+        const completionBox = document.getElementById('runtime-completion');
         const transcript = document.getElementById('runtime-transcript');
         const transcriptBody = document.getElementById('transcript-body');
         const conversation = document.getElementById('conversation');
@@ -138,32 +142,136 @@
         const video = document.getElementById('runtime-video');
         const cameraPlaceholder = document.getElementById('camera-placeholder');
         const audioMeter = Array.from(document.querySelectorAll('#audio-meter span'));
+        const reportButton = document.getElementById('view-report');
         let cameraStream = null;
         let micStream = null;
         let analyser = null;
         let audioContext = null;
         let meterFrame = null;
+        let tokenRefreshTimer = null;
+        let speechRecognizer = null;
+        let speechSdkLoading = null;
+        let speechSdkLoaded = false;
+        let agoraSdkLoading = null;
+        let agoraClient = null;
+        let agoraTracks = null;
+        let agoraJoined = false;
+        let completedRedirectTimer = null;
+        let completedCountdown = null;
+
+        const loadScriptOnce = (src) => {
+            return new Promise((resolve, reject) => {
+                const existing = document.querySelector(`script[data-ai-src="${src}"]`);
+                if (existing) {
+                    existing.dataset.loaded === 'true' ? resolve() : existing.addEventListener('load', () => resolve(), { once: true });
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.dataset.aiSrc = src;
+                script.onload = () => {
+                    script.dataset.loaded = 'true';
+                    resolve();
+                };
+                script.onerror = () => reject(new Error(`Failed to load ${src}`));
+                document.head.appendChild(script);
+            });
+        };
 
         const setStatus = (message, isError) => {
             statusBox.textContent = message || '';
             statusBox.className = `runtime-status ${isError ? 'message-error' : 'message-success'}`;
         };
 
+        const setCompletedState = (result) => {
+            const reportUrl = result.reportUrl || config.reportUrl || '';
+            const completionText = result.completion || result.message || 'Interview completed.';
+            cameraStream?.getTracks().forEach(track => track.stop());
+            micStream?.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+            micStream = null;
+            audioContext?.close?.();
+            audioContext = null;
+            analyser = null;
+            meterFrame && cancelAnimationFrame(meterFrame);
+            meterFrame = null;
+            void stopSpeechRecognition();
+            void leaveAgoraSession();
+            questionBox.textContent = completionText;
+            messageBox.textContent = result.feedback || result.message || '';
+            completionBox.style.display = '';
+            completionBox.textContent = reportUrl
+                ? `${completionText} You can open the report below, or you will be redirected shortly.`
+                : completionText;
+            answerBox.disabled = true;
+            document.getElementById('submit-answer').disabled = true;
+            document.getElementById('start-or-next').disabled = true;
+            document.getElementById('start-or-next').textContent = 'Completed';
+            if (reportUrl) {
+                reportButton.style.display = 'inline-flex';
+                reportButton.onclick = () => window.location.href = reportUrl;
+                let remaining = 5;
+                clearInterval(completedCountdown);
+                clearTimeout(completedRedirectTimer);
+                completedCountdown = setInterval(() => {
+                    if (remaining <= 0) return;
+                    completionBox.textContent = `${completionText} Redirecting to report in ${remaining}s.`;
+                    remaining -= 1;
+                }, 1000);
+                completedRedirectTimer = setTimeout(() => {
+                    clearInterval(completedCountdown);
+                    window.location.href = reportUrl;
+                }, 5000);
+            } else {
+                reportButton.style.display = 'none';
+            }
+            clearTimeout(tokenRefreshTimer);
+        };
+
+        const buildTurnCard = (turn, index) => {
+            const card = document.createElement('div');
+            card.className = 'turn-card';
+
+            const question = document.createElement('div');
+            question.className = 'turn-question';
+            question.textContent = `Q${turn.sequenceNumber || index + 1}. ${turn.questionText || ''}`;
+
+            const answer = document.createElement('div');
+            answer.className = 'turn-answer';
+            if (turn.answerText) {
+                answer.textContent = turn.answerText;
+            } else {
+                const pending = document.createElement('em');
+                pending.textContent = 'Awaiting answer...';
+                answer.appendChild(pending);
+            }
+
+            const meta = document.createElement('div');
+            meta.className = 'turn-meta';
+
+            const score = document.createElement('span');
+            score.textContent = `Score: ${turn.score ?? '-'}`;
+            const feedback = document.createElement('span');
+            feedback.textContent = turn.feedback || '';
+
+            meta.appendChild(score);
+            meta.appendChild(feedback);
+            card.appendChild(question);
+            card.appendChild(answer);
+            card.appendChild(meta);
+            return card;
+        };
+
         const renderTranscript = () => {
-            transcriptBody.innerHTML = '';
-            conversation.innerHTML = '';
+            transcriptBody.replaceChildren();
+            conversation.replaceChildren();
             (turns || []).forEach((turn, index) => {
-                const card = document.createElement('div');
-                card.className = 'turn-card';
-                card.innerHTML = `
-                    <div class="turn-question">Q${turn.sequenceNumber || index + 1}. ${turn.questionText || ''}</div>
-                    <div class="turn-answer">${turn.answerText ? turn.answerText : '<em>Awaiting answer...</em>'}</div>
-                    <div class="turn-meta">
-                        <span>Score: ${turn.score ?? '-'}</span>
-                        <span>${turn.feedback || ''}</span>
-                    </div>`;
-                conversation.appendChild(card.cloneNode(true));
-                transcriptBody.appendChild(card);
+                const conversationCard = buildTurnCard(turn, index);
+                const transcriptCard = buildTurnCard(turn, index);
+                conversation.appendChild(conversationCard);
+                transcriptBody.appendChild(transcriptCard);
             });
 
             const answered = (turns || []).filter(turn => turn.answerText).length;
@@ -188,9 +296,275 @@
             return await response.json();
         };
 
-        const beginInterview = () => {
-            setStatus('Interview started.', false);
-            document.getElementById('start-or-next').textContent = 'Next Question';
+        const scheduleTokenRefresh = () => {
+            clearTimeout(tokenRefreshTimer);
+            if (!config.refreshTokenUrl || !tokenExpiryUtc || isNaN(tokenExpiryUtc.getTime()))
+                return;
+
+            const refreshAt = Math.max(30000, tokenExpiryUtc.getTime() - Date.now() - 120000);
+            tokenRefreshTimer = setTimeout(refreshToken, refreshAt);
+        };
+
+        const refreshToken = async () => {
+            if (!config.refreshTokenUrl || !sessionToken)
+                return;
+
+            const result = await postForm(config.refreshTokenUrl, new URLSearchParams({ token: sessionToken }));
+            if (!result || result.error || !result.newToken) {
+                setStatus(result?.error || 'Session refresh is unavailable.', true);
+                return;
+            }
+
+            sessionToken = result.newToken;
+            config.token = result.newToken;
+            tokenExpiryUtc = result.tokenExpiryUtc ? new Date(result.tokenExpiryUtc) : tokenExpiryUtc;
+            scheduleTokenRefresh();
+        };
+
+        const ensureSpeechSdk = async () => {
+            if (!config.speechAvailable)
+                return false;
+            if (window.SpeechSDK)
+                return true;
+            if (speechSdkLoading)
+                return speechSdkLoading;
+
+            speechSdkLoading = loadScriptOnce('https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@latest/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js')
+                .then(() => {
+                    speechSdkLoaded = !!window.SpeechSDK;
+                    return speechSdkLoaded;
+                })
+                .catch(() => {
+                    speechSdkLoaded = false;
+                    return false;
+                });
+            return speechSdkLoading;
+        };
+
+        const ensureAgoraSdk = async () => {
+            if (!config.agoraAvailable)
+                return false;
+            if (window.AgoraRTC)
+                return true;
+            if (agoraSdkLoading)
+                return agoraSdkLoading;
+
+            agoraSdkLoading = loadScriptOnce('https://download.agora.io/sdk/release/AgoraRTC_N.js')
+                .then(() => !!window.AgoraRTC)
+                .catch(() => false);
+            return agoraSdkLoading;
+        };
+
+        const stopSpeechRecognition = async () => {
+            if (!speechRecognizer)
+                return;
+
+            await new Promise(resolve => {
+                try {
+                    speechRecognizer.stopContinuousRecognitionAsync(() => {
+                        speechRecognizer.close();
+                        speechRecognizer = null;
+                        resolve();
+                    }, () => {
+                        speechRecognizer.close();
+                        speechRecognizer = null;
+                        resolve();
+                    });
+                } catch {
+                    speechRecognizer = null;
+                    resolve();
+                }
+            });
+        };
+
+        const startSpeechRecognition = async () => {
+            if (!config.speechAvailable)
+                return;
+            if (speechRecognizer)
+                return;
+
+            if (!(await ensureSpeechSdk())) {
+                setStatus('Speech features are unavailable in this browser.', true);
+                return;
+            }
+
+            const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
+            if (!tokenResult || tokenResult.error || !tokenResult.token) {
+                setStatus(tokenResult?.error || 'Speech token service is unavailable.', true);
+                return;
+            }
+
+            try {
+                const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
+                speechConfig.speechRecognitionLanguage = 'en-US';
+                const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+                speechRecognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+                speechRecognizer.recognized = (_, e) => {
+                    if (e.result?.reason === SpeechSDK.ResultReason.RecognizedSpeech && e.result.text) {
+                        answerBox.value = `${answerBox.value ? `${answerBox.value.trim()} ` : ''}${e.result.text}`.trim();
+                    }
+                };
+                speechRecognizer.canceled = () => setStatus('Speech recognition stopped.', false);
+                await new Promise((resolve, reject) => {
+                    speechRecognizer.startContinuousRecognitionAsync(resolve, reject);
+                });
+            } catch {
+                await stopSpeechRecognition();
+                setStatus('Speech recognition could not be started.', true);
+            }
+        };
+
+        const speakText = async (text) => {
+            if (!config.speechAvailable || !text)
+                return;
+
+            if (!(await ensureSpeechSdk()))
+                return;
+
+            const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
+            if (!tokenResult || tokenResult.error || !tokenResult.token)
+                return;
+
+            try {
+                const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
+                const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
+                await new Promise(resolve => {
+                    synthesizer.speakTextAsync(text, () => {
+                        synthesizer.close();
+                        resolve();
+                    }, () => {
+                        synthesizer.close();
+                        resolve();
+                    });
+                });
+            } catch {
+                return;
+            }
+        };
+
+        const ensureAgoraSession = async () => {
+            if (!config.agoraAvailable || agoraJoined)
+                return;
+
+            if (!(await ensureAgoraSdk())) {
+                setStatus('Live RTC features are unavailable in this browser.', true);
+                return;
+            }
+
+            const tokenResult = await postForm(config.agoraTokenUrl, new URLSearchParams({ token: sessionToken }));
+            if (!tokenResult || tokenResult.error || !tokenResult.token) {
+                setStatus(tokenResult?.error || 'Live RTC token service is unavailable.', true);
+                return;
+            }
+
+            try {
+                agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+                agoraTracks = await AgoraRTC.createMicrophoneAndCameraTracks();
+                await agoraClient.join(tokenResult.appId, tokenResult.channel, tokenResult.token, tokenResult.uid || null);
+                await agoraClient.publish(agoraTracks);
+                agoraJoined = true;
+            } catch {
+                await leaveAgoraSession();
+                setStatus('Live RTC features are unavailable.', true);
+            }
+        };
+
+        const leaveAgoraSession = async () => {
+            try {
+                if (agoraTracks) {
+                    agoraTracks.forEach(track => {
+                        try { track.stop?.(); } catch { }
+                        try { track.close?.(); } catch { }
+                    });
+                }
+                if (agoraClient && agoraJoined) {
+                    try { await agoraClient.leave(); } catch { }
+                }
+            } finally {
+                agoraTracks = null;
+                agoraClient = null;
+                agoraJoined = false;
+            }
+        };
+
+        const setCamera = async (enabled) => {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                setStatus('Camera is not supported in this browser.', true);
+                return;
+            }
+
+            if (!enabled) {
+                cameraStream?.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                video.style.display = 'none';
+                cameraPlaceholder.style.display = '';
+                document.getElementById('toggle-camera').textContent = 'Camera On';
+                await leaveAgoraSession();
+                return;
+            }
+
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                video.srcObject = cameraStream;
+                video.style.display = 'block';
+                cameraPlaceholder.style.display = 'none';
+                document.getElementById('toggle-camera').textContent = 'Camera Off';
+                if (config.agoraAvailable)
+                    await ensureAgoraSession();
+            } catch {
+                setStatus('Camera could not be started.', true);
+            }
+        };
+
+        const setMic = async (enabled) => {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                setStatus('Microphone is not supported in this browser.', true);
+                return;
+            }
+
+            if (!enabled) {
+                micStream?.getTracks().forEach(track => track.stop());
+                micStream = null;
+                audioContext?.close?.();
+                audioContext = null;
+                analyser = null;
+                audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
+                document.getElementById('toggle-mic').textContent = 'Mic On';
+                await stopSpeechRecognition();
+                if (!cameraStream)
+                    await leaveAgoraSession();
+                return;
+            }
+
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(micStream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 32;
+                source.connect(analyser);
+
+                const buffer = new Uint8Array(analyser.frequencyBinCount);
+                const updateMeter = () => {
+                    if (!analyser)
+                        return;
+                    analyser.getByteFrequencyData(buffer);
+                    const average = buffer.reduce((sum, value) => sum + value, 0) / buffer.length;
+                    audioMeter.forEach((bar, index) => {
+                        const height = Math.max(8, Math.min(34, average - (index * 2)));
+                        bar.style.height = `${height}px`;
+                        bar.style.background = height > 18 ? '#0f5bd7' : '#cbd5e1';
+                    });
+                    meterFrame = requestAnimationFrame(updateMeter);
+                };
+                updateMeter();
+                document.getElementById('toggle-mic').textContent = 'Mic Off';
+                await startSpeechRecognition();
+                if (config.agoraAvailable)
+                    await ensureAgoraSession();
+            } catch {
+                setStatus('Microphone could not be started.', true);
+            }
         };
 
         const submitAnswer = async () => {
@@ -209,13 +583,12 @@
             const currentTurn = result.turn || turns[turns.length - 1];
             if (currentTurn) {
                 const targetIndex = turns.findIndex(turn => turn.turnId && currentTurn.turnId && turn.turnId === currentTurn.turnId);
-                if (targetIndex >= 0) {
+                if (targetIndex >= 0)
                     turns[targetIndex] = currentTurn;
-                } else if (turns.length > 0) {
+                else if (turns.length > 0)
                     turns[turns.length - 1] = currentTurn;
-                } else {
+                else
                     turns.push(currentTurn);
-                }
             }
 
             if (!result.isTerminated && result.question) {
@@ -238,14 +611,13 @@
             renderTranscript();
 
             if (result.isTerminated) {
-                answerBox.disabled = true;
-                document.getElementById('submit-answer').disabled = true;
-                document.getElementById('start-or-next').disabled = true;
-                document.getElementById('start-or-next').textContent = 'Completed';
+                setCompletedState(result);
                 return;
             }
 
             document.getElementById('start-or-next').textContent = 'Next Question';
+            if (config.speechAvailable && result.question)
+                await speakText(result.question);
         };
 
         const stopInterview = async () => {
@@ -262,75 +634,15 @@
             }
 
             setStatus(result.message || 'Interview completed.', false);
-            questionBox.textContent = result.completion || questionBox.textContent;
-            answerBox.disabled = true;
-            document.getElementById('submit-answer').disabled = true;
-            document.getElementById('start-or-next').disabled = true;
-            document.getElementById('start-or-next').textContent = 'Completed';
             renderTranscript();
+            setCompletedState(result);
         };
 
-        const setCamera = async (enabled) => {
-            if (!navigator.mediaDevices?.getUserMedia) {
-                setStatus('Camera is not supported in this browser.', true);
-                return;
-            }
-
-            if (!enabled) {
-                cameraStream?.getTracks().forEach(track => track.stop());
-                cameraStream = null;
-                video.style.display = 'none';
-                cameraPlaceholder.style.display = '';
-                document.getElementById('toggle-camera').textContent = 'Camera On';
-                return;
-            }
-
-            cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            video.srcObject = cameraStream;
-            video.style.display = 'block';
-            cameraPlaceholder.style.display = 'none';
-            document.getElementById('toggle-camera').textContent = 'Camera Off';
-        };
-
-        const setMic = async (enabled) => {
-            if (!navigator.mediaDevices?.getUserMedia) {
-                setStatus('Microphone is not supported in this browser.', true);
-                return;
-            }
-
-            if (!enabled) {
-                micStream?.getTracks().forEach(track => track.stop());
-                micStream = null;
-                audioContext?.close?.();
-                audioContext = null;
-                analyser = null;
-                audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
-                document.getElementById('toggle-mic').textContent = 'Mic On';
-                return;
-            }
-
-            micStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const source = audioContext.createMediaStreamSource(micStream);
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 32;
-            source.connect(analyser);
-
-            const buffer = new Uint8Array(analyser.frequencyBinCount);
-            const updateMeter = () => {
-                if (!analyser)
-                    return;
-                analyser.getByteFrequencyData(buffer);
-                const average = buffer.reduce((sum, value) => sum + value, 0) / buffer.length;
-                audioMeter.forEach((bar, index) => {
-                    const height = Math.max(8, Math.min(34, average - (index * 2)));
-                    bar.style.height = `${height}px`;
-                    bar.style.background = height > 18 ? '#0f5bd7' : '#cbd5e1';
-                });
-                meterFrame = requestAnimationFrame(updateMeter);
-            };
-            updateMeter();
-            document.getElementById('toggle-mic').textContent = 'Mic Off';
+        const beginInterview = async () => {
+            setStatus('Interview started.', false);
+            document.getElementById('start-or-next').textContent = 'Next Question';
+            if (config.speechAvailable && questionBox.textContent)
+                await speakText(questionBox.textContent);
         };
 
         document.getElementById('submit-answer').addEventListener('click', submitAnswer);
@@ -341,6 +653,8 @@
         document.getElementById('stop-interview-top').addEventListener('click', stopInterview);
         document.getElementById('open-transcript').addEventListener('click', () => transcript.classList.add('is-open'));
         document.getElementById('close-transcript').addEventListener('click', () => transcript.classList.remove('is-open'));
+
         renderTranscript();
+        scheduleTokenRefresh();
     })();
 </script>

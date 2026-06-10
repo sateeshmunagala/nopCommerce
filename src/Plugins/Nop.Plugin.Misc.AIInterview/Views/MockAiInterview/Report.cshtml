@@ -3,6 +3,10 @@
     Layout = "_ColumnsTwo";
 }
 
+<style>
+    .report-data { white-space: pre-line; }
+</style>
+
 <div class="page mock-report">
     <div class="page-title">
         <h1>@T("Plugins.Misc.AIInterview.Report.Title")</h1>
@@ -47,7 +51,7 @@
 
         <div class="report-details">
             <h3>@T("Plugins.Misc.AIInterview.Report.Details")</h3>
-            @Html.Raw(Model.ReportData)
+            <div class="report-data">@Model.ReportData</div>
         </div>
     </div>
 </div>

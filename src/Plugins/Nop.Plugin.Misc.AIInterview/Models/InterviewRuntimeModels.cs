@@ -13,6 +13,7 @@ public record InterviewRuntimeModel : BaseNopModel
     public string CandidateName { get; set; }
     public string CurrentQuestion { get; set; }
     public string ReportUrl { get; set; }
+    public DateTime? TokenExpiryUtc { get; set; }
     public decimal Score { get; set; }
     public bool IsCompleted { get; set; }
     public bool IsMockMode { get; set; }
@@ -46,6 +47,8 @@ public record RuntimeClientSettingsModel
     public string AgoraAppId { get; set; }
     public string ProductName { get; set; }
     public string Token { get; set; }
+    public string ReportUrl { get; set; }
+    public DateTime? TokenExpiryUtc { get; set; }
     public bool SpeechAvailable { get; set; }
     public bool AgoraAvailable { get; set; }
 }
@@ -70,6 +73,7 @@ public record SubmitInterviewAnswerResponse
     public bool Success { get; init; }
     public bool IsTerminated { get; init; }
     public string Completion { get; init; }
+    public string ReportUrl { get; init; }
     public string Question { get; init; }
     public InterviewTurnViewModel Turn { get; init; }
     public bool Interrupted { get; init; }
@@ -92,6 +96,7 @@ public record CompleteInterviewResponse
     public string Feedback { get; init; }
     public string Message { get; init; }
     public string Completion { get; init; }
+    public string ReportUrl { get; init; }
     public IList<InterviewTurnViewModel> Turns { get; init; } = new List<InterviewTurnViewModel>();
 }
 

@@ -223,6 +223,21 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_SpeechAndAgora_Unavailable_ReturnSafeJson()
+    {
+        var session = new InterviewSession { Token = "active", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("active")).ReturnsAsync(session);
+
+        var speechResult = await _runtimeController.SpeechToken("active");
+        var agoraResult = await _runtimeController.AgoraToken("active");
+
+        Assert.That(speechResult, Is.TypeOf<JsonResult>());
+        Assert.That(agoraResult, Is.TypeOf<JsonResult>());
+        Assert.That(((JsonResult)speechResult).Value.GetType().GetProperty("error").GetValue(((JsonResult)speechResult).Value, null), Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.Unavailable"));
+        Assert.That(((JsonResult)agoraResult).Value.GetType().GetProperty("error").GetValue(((JsonResult)agoraResult).Value, null), Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.Unavailable"));
+    }
+
+    [Test]
     public async Task Admin_Invite_Validation_InvalidAttempts()
     {
         _customerService.Setup(x => x.GetCustomerByIdAsync(1)).ReturnsAsync(new Customer { Id = 1, VendorId = 1 });

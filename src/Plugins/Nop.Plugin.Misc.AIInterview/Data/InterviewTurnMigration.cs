@@ -12,16 +12,22 @@ public class InterviewTurnMigration : Migration
     {
         this.CreateTableIfNotExists<InterviewTurn>();
 
-        Create.Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber")
-            .OnTable(nameof(InterviewTurn))
-            .OnColumn(nameof(InterviewTurn.InterviewSessionId)).Ascending()
-            .OnColumn(nameof(InterviewTurn.SequenceNumber)).Ascending();
+        if (!Schema.Table(nameof(InterviewTurn)).Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber").Exists())
+        {
+            Create.Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber")
+                .OnTable(nameof(InterviewTurn))
+                .OnColumn(nameof(InterviewTurn.InterviewSessionId)).Ascending()
+                .OnColumn(nameof(InterviewTurn.SequenceNumber)).Ascending();
+        }
     }
 
     public override void Down()
     {
-        Delete.Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber")
-            .OnTable(nameof(InterviewTurn));
+        if (Schema.Table(nameof(InterviewTurn)).Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber").Exists())
+        {
+            Delete.Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber")
+                .OnTable(nameof(InterviewTurn));
+        }
         this.DeleteTableIfExists<InterviewTurn>();
     }
 }

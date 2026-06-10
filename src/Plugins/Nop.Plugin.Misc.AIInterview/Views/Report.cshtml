@@ -6,6 +6,9 @@
 }
 
 <div class="page ai-interview-report-page">
+    <style>
+        .report-data { white-space: pre-line; }
+    </style>
     <div class="page-title">
         <h1>@T("Plugins.Misc.AIInterview.Report.Title")</h1>
     </div>
@@ -54,7 +57,7 @@
             <div class="report-content">
                 <h3>@T("Plugins.Misc.AIInterview.Report.Details")</h3>
                 <div class="report-data">
-                    @Html.Raw(Model.ReportData)
+                    @Model.ReportData
                 </div>
             </div>
         }

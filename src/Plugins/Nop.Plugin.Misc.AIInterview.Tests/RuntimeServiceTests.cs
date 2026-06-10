@@ -215,7 +215,9 @@ public class RuntimeServiceTests
         };
 
         sessionService.Setup(x => x.GetSessionByTokenAsync("token3")).ReturnsAsync(session);
-        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(updated => session.ReportData = updated.ReportData)
+            .Returns(Task.CompletedTask);
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(3)).ReturnsAsync(new List<InterviewTurn> { turn });
         turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>())).Returns(Task.CompletedTask);
         turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>())).ReturnsAsync((InterviewTurn created) => created);
@@ -238,6 +240,8 @@ public class RuntimeServiceTests
 
         Assert.That(result.IsTerminated, Is.True);
         Assert.That(result.Success, Is.True);
+        Assert.That(result.ReportUrl, Does.Contain("/aiinterview/report/3"));
+        Assert.That(session.ReportData, Does.Contain("AI completion: Interview completed"));
         eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Once);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.CompletedOnUtc.HasValue && !s.IsActive)), Times.Once);
     }
@@ -297,5 +301,23 @@ public class RuntimeServiceTests
 
         Assert.That(await service.GetSpeechTokenAsync("token5"), Is.Null);
         Assert.That(await service.GetAgoraTokenAsync("token5"), Is.Null);
+    }
+
+    [Test]
+    public async Task RealMode_MissingAzureSettings_ReturnsUnavailable()
+    {
+        var client = new InterviewAiClient(
+            new AIInterviewSettings(),
+            new MockAIInterviewSettings { UseMockResponses = false });
+
+        var response = await client.ScoreAnswerAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Question = "Q1",
+            Answer = "A1"
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ErrorMessage, Does.Contain("AI service unavailable"));
     }
 }
