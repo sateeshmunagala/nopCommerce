@@ -84,6 +84,46 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task EnsureInterviewStartedAsync_RealMode_Failure_DoesNotCreateTurn()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession { Id = 10, ProductId = 50, CustomerId = 99, SessionKey = "key10", Token = "token10", Difficulty = "Medium" };
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(10)).ReturnsAsync(new List<InterviewTurn>());
+        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse { Success = false, ErrorMessage = "AI service unavailable." });
+
+        var inserted = false;
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback(() => inserted = true)
+            .ReturnsAsync((InterviewTurn turn) => turn);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            settings: new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://endpoint",
+                AzureOpenAiApiKey = "key",
+                AzureOpenAiDeploymentOrModel = "deployment",
+                Prompt = "prompt"
+            },
+            mockSettings: new MockAIInterviewSettings { UseMockResponses = false },
+            workContext: workContext,
+            eventPublisher: eventPublisher);
+
+        var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99 });
+
+        Assert.That(inserted, Is.False);
+        Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable."));
+    }
+
+    [Test]
     public async Task SubmitAnswerAsync_Persists_Turn_And_Returns_Next_Question()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -133,6 +173,49 @@ public class RuntimeServiceTests
         Assert.That(store.Any(x => x.SequenceNumber == 1 && x.AnswerText != null), Is.True);
         Assert.That(store.Any(x => x.SequenceNumber == 2), Is.True);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Score > 0)), Times.Once);
+    }
+
+    [Test]
+    public async Task SubmitAnswerAsync_QuestionGenerationFailure_DoesNotInsertFakeQuestion()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession { Id = 12, ProductId = 20, CustomerId = 5, SessionKey = "key12", Token = "token12", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token12")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(12)).ReturnsAsync(new List<InterviewTurn>());
+        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse { Success = false, ErrorMessage = "AI service unavailable." });
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+
+        var inserted = false;
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback(() => inserted = true)
+            .ReturnsAsync((InterviewTurn turn) => turn);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            settings: new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://endpoint",
+                AzureOpenAiApiKey = "key",
+                AzureOpenAiDeploymentOrModel = "deployment",
+                Prompt = "prompt"
+            },
+            mockSettings: new MockAIInterviewSettings { UseMockResponses = false },
+            workContext: workContext,
+            eventPublisher: eventPublisher);
+
+        var result = await service.SubmitAnswerAsync("token12", "answer");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Message, Does.Contain("AI service unavailable"));
+        Assert.That(inserted, Is.False);
     }
 
     [Test]
@@ -301,6 +384,42 @@ public class RuntimeServiceTests
 
         Assert.That(await service.GetSpeechTokenAsync("token5"), Is.Null);
         Assert.That(await service.GetAgoraTokenAsync("token5"), Is.Null);
+    }
+
+    [Test]
+    public async Task RuntimeModel_Flags_Reflect_ActualConfig()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession { Id = 6, ProductId = 60, CustomerId = 7, SessionKey = "session-6", Token = "token6", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(6)).ReturnsAsync(new List<InterviewTurn>());
+        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse { Question = "Q1", RawJson = "{\"question\":\"Q1\"}" });
+
+        var missingFlagsService = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            settings: new AIInterviewSettings(),
+            mockSettings: new MockAIInterviewSettings { UseMockResponses = true });
+        var missingModel = await missingFlagsService.EnsureInterviewStartedAsync(session, new Customer { Id = 7 });
+        Assert.That(missingModel.ClientSettings.SpeechAvailable, Is.False);
+        Assert.That(missingModel.ClientSettings.AgoraAvailable, Is.False);
+
+        var presentFlagsService = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech",
+                AzureSpeechRegion = "eastus",
+                AgoraAppId = "app",
+                AgoraTokenServiceUrl = "https://tokens"
+            },
+            mockSettings: new MockAIInterviewSettings { UseMockResponses = true });
+        var presentModel = await presentFlagsService.EnsureInterviewStartedAsync(session, new Customer { Id = 7 });
+        Assert.That(presentModel.ClientSettings.SpeechAvailable, Is.True);
+        Assert.That(presentModel.ClientSettings.AgoraAvailable, Is.True);
     }
 
     [Test]

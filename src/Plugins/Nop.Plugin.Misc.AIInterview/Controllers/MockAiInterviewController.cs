@@ -268,8 +268,8 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.Token = session?.Token;
         model.ClientSettings.ReportUrl = model.ReportUrl;
         model.ClientSettings.TokenExpiryUtc = session?.TokenExpiryUtc;
-        model.ClientSettings.SpeechAvailable = _interviewRuntimeService != null && !string.IsNullOrWhiteSpace(model.ClientSettings.SpeechTokenUrl);
-        model.ClientSettings.AgoraAvailable = _interviewRuntimeService != null && !string.IsNullOrWhiteSpace(model.ClientSettings.AgoraTokenUrl);
+        model.ClientSettings.SpeechAvailable = model.ClientSettings.SpeechAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.SpeechTokenUrl);
+        model.ClientSettings.AgoraAvailable = model.ClientSettings.AgoraAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.AgoraTokenUrl);
     }
 
     protected async Task<string> GetRestartUrlAsync(InterviewSession session)

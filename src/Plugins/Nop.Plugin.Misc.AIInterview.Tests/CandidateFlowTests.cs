@@ -491,6 +491,7 @@ public class CandidateFlowTests
 
         Assert.That(runtimeText, Does.Contain("textContent"));
         Assert.That(runtimeText, Does.Not.Contain("card.innerHTML ="));
+        Assert.That(runtimeText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
         Assert.That(mockReportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
         Assert.That(reportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
     }

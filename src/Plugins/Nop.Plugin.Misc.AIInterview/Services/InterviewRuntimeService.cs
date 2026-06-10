@@ -106,7 +106,7 @@ public class InterviewAiClient : IAIInterviewClient
             string.IsNullOrWhiteSpace(_settings?.AzureOpenAiApiKey) ||
             string.IsNullOrWhiteSpace(_settings?.AzureOpenAiDeploymentOrModel))
         {
-            _logger?.LogWarning("Azure OpenAI configuration is incomplete for AIInterview runtime.");
+            _logger?.LogWarning("AI service unavailable: Azure OpenAI configuration is incomplete.");
             return null;
         }
 
@@ -138,7 +138,7 @@ public class InterviewAiClient : IAIInterviewClient
             var result = await httpClient.PostAsync(endpoint, body);
             if (!result.IsSuccessStatusCode)
             {
-                _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}. Falling back to mock response.", result.StatusCode);
+                _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}.", result.StatusCode);
                 return null;
             }
 
@@ -159,7 +159,7 @@ public class InterviewAiClient : IAIInterviewClient
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Azure OpenAI interview call failed. Falling back to mock response.");
+            _logger?.LogWarning(ex, "Azure OpenAI call failed.");
         }
 
         return BuildUnavailableResponse();
@@ -356,7 +356,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             var first = await GenerateQuestionTurnAsync(session, 1, turns);
             if (first == null)
-                return await BuildRuntimeModelAsync(session, turns, customer);
+            {
+                var unavailableModel = await BuildRuntimeModelAsync(session, turns, customer);
+                unavailableModel.CurrentQuestion = "AI service unavailable.";
+                unavailableModel.ClientSettings ??= new RuntimeClientSettingsModel();
+                unavailableModel.ClientSettings.SpeechAvailable = false;
+                unavailableModel.ClientSettings.AgoraAvailable = false;
+                return unavailableModel;
+            }
 
             await _turnService.InsertInterviewTurnAsync(first);
             turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
@@ -465,6 +472,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             else
             {
                 nextTurn = await GenerateQuestionTurnAsync(session, currentTurn.SequenceNumber + 1, turns);
+            }
+
+            if (nextTurn == null)
+            {
+                return new SubmitInterviewAnswerResponse
+                {
+                    Success = false,
+                    Message = "AI service unavailable.",
+                    Feedback = "AI service unavailable."
+                };
             }
 
             await _turnService.InsertInterviewTurnAsync(nextTurn);
@@ -668,10 +685,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Score = session.Score,
             IsCompleted = session.CompletedOnUtc.HasValue,
             IsMockMode = _mockSettings?.UseMockResponses ?? true,
-                ReportUrl = session.Id > 0 ? $"/aiinterview/report/{session.Id}" : string.Empty,
-                TokenExpiryUtc = session.TokenExpiryUtc,
-                Turns = turns.Select(turn => new InterviewTurnViewModel
-                {
+            ReportUrl = session.Id > 0 ? $"/aiinterview/report/{session.Id}" : string.Empty,
+            TokenExpiryUtc = session.TokenExpiryUtc,
+            Turns = turns.Select(turn => new InterviewTurnViewModel
+            {
                 TurnId = turn.Id,
                 SequenceNumber = turn.SequenceNumber,
                 QuestionText = turn.QuestionText,
@@ -689,7 +706,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 ProductName = product?.Name,
                 Token = session.Token,
                 SpeechAvailable = !string.IsNullOrWhiteSpace(_settings.AzureSpeechKey) && !string.IsNullOrWhiteSpace(_settings.AzureSpeechRegion),
-                AgoraAvailable = !string.IsNullOrWhiteSpace(_settings.AgoraTokenServiceUrl) || !string.IsNullOrWhiteSpace(_settings.AgoraAppId)
+                AgoraAvailable = !string.IsNullOrWhiteSpace(_settings.AgoraAppId) && !string.IsNullOrWhiteSpace(_settings.AgoraTokenServiceUrl)
             }
         };
     }
@@ -708,19 +725,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         var aiResponse = await _aiClient.GenerateQuestionAsync(request);
         if (aiResponse == null || !aiResponse.Success)
-        {
-            return new InterviewTurn
-            {
-                InterviewSessionId = session.Id,
-                SequenceNumber = sequenceNumber,
-                QuestionId = sequenceNumber,
-                QuestionText = aiResponse?.ErrorMessage ?? "AI service unavailable.",
-                AskedOnUtc = DateTime.UtcNow,
-                CreatedOnUtc = DateTime.UtcNow,
-                RawAIResponseJson = aiResponse?.RawJson,
-                RubricJson = aiResponse?.RubricJson
-            };
-        }
+            return null;
 
         return new InterviewTurn
         {

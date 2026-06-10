@@ -35,6 +35,7 @@ public class RuntimeAndAdminTests
     private AIInterviewSettings _aiInterviewSettings;
     private MockAIInterviewSettings _mockAIInterviewSettings;
     private MockAiInterviewAdminController _adminController;
+    private Mock<IInterviewRuntimeService> _interviewRuntimeService;
 
     private Mock<IProductService> _productService;
     private SponsorInviteService _inviteServiceImplementation;
@@ -56,6 +57,7 @@ public class RuntimeAndAdminTests
         _settingService = new Mock<ISettingService>();
         _aiInterviewSettings = new AIInterviewSettings();
         _mockAIInterviewSettings = new MockAIInterviewSettings();
+        _interviewRuntimeService = new Mock<IInterviewRuntimeService>();
         _adminController = new MockAiInterviewAdminController(_creditService.Object, _inviteService.Object, _localizationService.Object, _notificationService.Object, _workContext.Object, _settingService.Object, _aiInterviewSettings, _mockAIInterviewSettings);
 
         _productService = new Mock<IProductService>();
@@ -220,6 +222,57 @@ public class RuntimeAndAdminTests
 
         Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Preserves_Service_Level_MediaFlags()
+    {
+        var runtimeModel = new InterviewRuntimeModel
+        {
+            SessionId = 1,
+            ProductId = 1,
+            SessionKey = "session-key",
+            Token = "token",
+            CurrentQuestion = "Q1",
+            ClientSettings = new RuntimeClientSettingsModel
+            {
+                SpeechAvailable = false,
+                AgoraAvailable = false
+            }
+        };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("token")).ReturnsAsync(new InterviewSession
+        {
+            Id = 1,
+            CustomerId = 1,
+            IsActive = true,
+            Token = "token",
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        _interviewRuntimeService.Setup(x => x.EnsureInterviewStartedAsync(It.IsAny<InterviewSession>(), It.IsAny<Customer>()))
+            .ReturnsAsync(runtimeModel);
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            null,
+            null,
+            null,
+            _interviewRuntimeService.Object);
+
+        var result = await controller.Runtime("token");
+        var viewResult = (ViewResult)result;
+        var model = (InterviewRuntimeModel)viewResult.Model;
+
+        Assert.That(model.ClientSettings.SpeechAvailable, Is.False);
+        Assert.That(model.ClientSettings.AgoraAvailable, Is.False);
     }
 
     [Test]
