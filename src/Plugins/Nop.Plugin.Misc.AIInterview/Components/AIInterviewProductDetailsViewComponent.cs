@@ -31,7 +31,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         IProductTemplateService productTemplateService,
         IApplicationService applicationService,
         AIInterviewSettings aiInterviewSettings,
-        IJobRequirementService jobRequirementService = null)
+        IJobRequirementService jobRequirementService)
     {
         _creditService = creditService;
         _workContext = workContext;
@@ -42,6 +42,26 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         _applicationService = applicationService;
         _jobRequirementService = jobRequirementService;
         _aiInterviewSettings = aiInterviewSettings;
+    }
+
+    public AIInterviewProductDetailsViewComponent(ICreditService creditService,
+        IWorkContext workContext,
+        IProductAttributeService productAttributeService,
+        IJobInterviewExperienceService jobInterviewExperienceService,
+        IProductService productService,
+        IProductTemplateService productTemplateService,
+        IApplicationService applicationService,
+        AIInterviewSettings aiInterviewSettings)
+        : this(creditService,
+            workContext,
+            productAttributeService,
+            jobInterviewExperienceService,
+            productService,
+            productTemplateService,
+            applicationService,
+            aiInterviewSettings,
+            null)
+    {
     }
 
     public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData)
@@ -62,11 +82,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         await EnsureDifficultyAttributeModelAsync(model, productId);
 
         var jobRequirements = _jobRequirementService == null
-            ? new JobRequirementsModel
-            {
-                ResumeRequired = _aiInterviewSettings.ResumeRequired,
-                InterviewRequired = _aiInterviewSettings.InterviewRequired
-            }
+            ? new JobRequirementsModel()
             : await _jobRequirementService.GetRequirementsAsync(product);
         ViewBag.ResumeRequired = jobRequirements.ResumeRequired;
         ViewBag.InterviewRequired = jobRequirements.InterviewRequired;

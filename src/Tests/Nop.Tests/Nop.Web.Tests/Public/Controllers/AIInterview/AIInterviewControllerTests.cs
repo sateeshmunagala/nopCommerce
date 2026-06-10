@@ -27,6 +27,7 @@ public class AIInterviewControllerTests
     private Mock<IDownloadService> _downloadService;
     private Mock<ICustomerService> _customerService;
     private Mock<IProductService> _productService;
+    private Mock<IJobRequirementService> _jobRequirementService;
     private AIInterviewSettings _aiInterviewSettings;
     private AIInterviewController _controller;
     private Customer _customer;
@@ -42,6 +43,9 @@ public class AIInterviewControllerTests
         _downloadService = new Mock<IDownloadService>();
         _customerService = new Mock<ICustomerService>();
         _productService = new Mock<IProductService>();
+        _jobRequirementService = new Mock<IJobRequirementService>();
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
+            .ReturnsAsync(new JobRequirementsModel());
         _aiInterviewSettings = new AIInterviewSettings { Enabled = true };
 
         _customer = new Customer { Id = 123 };
@@ -60,14 +64,19 @@ public class AIInterviewControllerTests
             _localizationService.Object,
             _downloadService.Object,
             _customerService.Object,
-            _productService.Object);
+            _productService.Object,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null);
     }
 
     [Test]
     public async Task Apply_Post_Gating_Fails_When_Interview_Required_And_No_Session()
     {
         // Arrange
-        _aiInterviewSettings.InterviewRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
+            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true });
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
         _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
@@ -89,7 +98,8 @@ public class AIInterviewControllerTests
     public async Task Apply_Post_MinimumScoreNotReached_ReturnsError()
     {
         // Arrange
-        _aiInterviewSettings.InterviewRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
+            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true });
         _aiInterviewSettings.MinimumScore = 80;
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());

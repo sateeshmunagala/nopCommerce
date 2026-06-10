@@ -1,5 +1,8 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.Extensions.Primitives;
 using Moq;
 using Nop.Core;
 using Nop.Core.Caching;
@@ -67,8 +70,6 @@ public class AdminBaselineTests
         _aiInterviewSettings = new AIInterviewSettings
         {
             Enabled = true,
-            ResumeRequired = true,
-            InterviewRequired = true,
             MinimumScore = 10,
             Provider = "keep-provider",
             Model = "keep-model",
@@ -267,6 +268,70 @@ public class AdminBaselineTests
         Assert.That(_controller.ModelState.IsValid, Is.False);
         _notificationService.Verify(x => x.ErrorNotification(It.IsAny<string>()), Times.Once);
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<AIInterviewSettings>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SaveProductRequirements_Saves_Job_Flags_For_Existing_Product()
+    {
+        var jobRequirementService = new Mock<IJobRequirementService>();
+        jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Product>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .Returns(Task.CompletedTask);
+        _productService.Setup(x => x.GetProductByIdAsync(55))
+            .ReturnsAsync(new Product { Id = 55, ProductTemplateId = 7 });
+
+        var controller = new AIInterviewAdminController(
+            _creditService.Object,
+            _inviteService.Object,
+            _applicationService.Object,
+            _sessionService.Object,
+            _customerService.Object,
+            _productService.Object,
+            _vendorService.Object,
+            _localizationService.Object,
+            _notificationService.Object,
+            _workContext.Object,
+            _settingService.Object,
+            _walletRepository.Object,
+            _ledgerRepository.Object,
+            _aiInterviewSettings,
+            _mockAIInterviewSettings,
+            jobRequirementService.Object);
+
+        var result = await controller.SaveProductRequirements(new JobRequirementsModel
+        {
+            ProductId = 55,
+            ResumeRequired = true,
+            InterviewRequired = false
+        });
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Product>(product => product.Id == 55), true, false), Times.Once);
+    }
+
+    [Test]
+    public async Task ProductRequirementsEventConsumer_Saves_Posted_Flags_On_Insert_And_Update()
+    {
+        var jobRequirementService = new Mock<IJobRequirementService>();
+        jobRequirementService.Setup(x => x.IsJobProductAsync(It.IsAny<Product>())).ReturnsAsync(true);
+        jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Product>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .Returns(Task.CompletedTask);
+
+        var context = new DefaultHttpContext();
+        context.Request.Method = "POST";
+        context.Request.ContentType = "application/x-www-form-urlencoded";
+        context.Features.Set<IFormFeature>(new FormFeature(new FormCollection(new Dictionary<string, StringValues>
+        {
+            ["AIInterviewJobResumeRequired"] = new StringValues(new[] { "false", "true" }),
+            ["AIInterviewJobInterviewRequired"] = new StringValues("false")
+        })));
+
+        var consumer = new ProductRequirementsEventConsumer(new HttpContextAccessor { HttpContext = context }, jobRequirementService.Object);
+        var product = new Product { Id = 77, ProductTemplateId = 7 };
+
+        await consumer.HandleEventAsync(new Nop.Core.Events.EntityInsertedEvent<Product>(product));
+        await consumer.HandleEventAsync(new Nop.Core.Events.EntityUpdatedEvent<Product>(product));
+
+        jobRequirementService.Verify(x => x.SaveRequirementsAsync(product, true, false), Times.Exactly(2));
     }
 
     [Test]

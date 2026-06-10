@@ -32,16 +32,6 @@ public class AIInterviewSettings : ISettings
     public string AzureSpeechRegion { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether a resume is required for application
-    /// </summary>
-    public bool ResumeRequired { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether an interview is required before application
-    /// </summary>
-    public bool InterviewRequired { get; set; }
-
-    /// <summary>
     /// Gets or sets the minimum score required in an interview to apply
     /// </summary>
     public decimal MinimumScore { get; set; }

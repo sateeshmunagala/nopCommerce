@@ -28,6 +28,7 @@ public class EmployerTests
     private Mock<IProductService> _productService;
     private Mock<ISponsorInviteService> _inviteService;
     private Mock<ICreditService> _creditService;
+    private Mock<IJobRequirementService> _jobRequirementService;
     private Mock<IDownloadService> _downloadService;
     private Mock<IProductTemplateService> _productTemplateService;
     private Mock<IUrlRecordService> _urlRecordService;
@@ -47,6 +48,11 @@ public class EmployerTests
         _productService = new Mock<IProductService>();
         _inviteService = new Mock<ISponsorInviteService>();
         _creditService = new Mock<ICreditService>();
+        _jobRequirementService = new Mock<IJobRequirementService>();
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
+            .ReturnsAsync(new JobRequirementsModel());
+        _jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .Returns(Task.CompletedTask);
         _downloadService = new Mock<IDownloadService>();
         _productTemplateService = new Mock<IProductTemplateService>();
         _urlRecordService = new Mock<IUrlRecordService>();
@@ -73,8 +79,10 @@ public class EmployerTests
             _downloadService.Object,
             _customerService.Object,
             _productService.Object,
+            _jobRequirementService.Object,
             _productTemplateService.Object,
-            _urlRecordService.Object);
+            _urlRecordService.Object,
+            null);
 
         _mockAiController = new MockAiInterviewController(
             _interviewSessionService.Object,
@@ -296,6 +304,8 @@ public class EmployerTests
             product.ProductTemplateId == 7 &&
             product.Published &&
             product.DisableBuyButton)), Times.Once);
+        _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Nop.Core.Domain.Catalog.Product>(product =>
+            product.Name == "Platform Engineer"), false, false), Times.Once);
         _urlRecordService.Verify(x => x.SaveSlugAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), "platform-engineer", 0), Times.Once);
     }
 }

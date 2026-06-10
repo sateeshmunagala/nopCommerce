@@ -31,6 +31,7 @@ public class CandidateFlowTests
     private Mock<IProductService> _productService;
     private Mock<ISponsorInviteService> _inviteService;
     private Mock<ICreditService> _creditService;
+    private Mock<IJobRequirementService> _jobRequirementService;
     private AIInterviewController _controller;
     private MockAiInterviewController _runtimeController;
 
@@ -48,6 +49,11 @@ public class CandidateFlowTests
         _productService = new Mock<IProductService>();
         _inviteService = new Mock<ISponsorInviteService>();
         _creditService = new Mock<ICreditService>();
+        _jobRequirementService = new Mock<IJobRequirementService>();
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
+            .ReturnsAsync(new JobRequirementsModel());
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>()))
+            .ReturnsAsync(new JobRequirementsModel());
 
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<JobApplication>());
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<InterviewSession>());
@@ -61,7 +67,11 @@ public class CandidateFlowTests
             _localizationService.Object,
             _downloadService.Object,
             _customerService.Object,
-            _productService.Object);
+            _productService.Object,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null);
 
         _runtimeController = new MockAiInterviewController(
             _sessionService.Object,
@@ -81,7 +91,8 @@ public class CandidateFlowTests
     [Test]
     public async Task Apply_ResumeRequired_Validation_Fails()
     {
-        _settings.ResumeRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
+            .ReturnsAsync(new JobRequirementsModel { ResumeRequired = true });
         var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
@@ -101,7 +112,8 @@ public class CandidateFlowTests
     [Test]
     public async Task Apply_ResumeReuse_Path_Works()
     {
-        _settings.ResumeRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
+            .ReturnsAsync(new JobRequirementsModel { ResumeRequired = true });
         var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
@@ -400,7 +412,8 @@ public class CandidateFlowTests
             _productService.Object,
             productTemplateService.Object,
             _applicationService.Object,
-            new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" });
+            new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
+            _jobRequirementService.Object);
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?sponsorToken=abc");
 
@@ -480,7 +493,8 @@ public class CandidateFlowTests
             _productService.Object,
             productTemplateService.Object,
             _applicationService.Object,
-            new AIInterviewSettings { CreditPurchasePageUrl = "/pricing" });
+            new AIInterviewSettings { CreditPurchasePageUrl = "/pricing" },
+            _jobRequirementService.Object);
 
         var result = await component.InvokeAsync(
             "productdetails_before_collateral",

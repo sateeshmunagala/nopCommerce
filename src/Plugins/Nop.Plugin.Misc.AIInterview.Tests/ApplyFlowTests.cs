@@ -31,6 +31,7 @@ public class ApplyFlowTests
     private Mock<IDownloadService> _downloadService;
     private Mock<ICustomerService> _customerService;
     private Mock<IProductService> _productService;
+    private Mock<IJobRequirementService> _jobRequirementService;
     private AIInterviewController _controller;
     private Customer _customer;
 
@@ -46,6 +47,9 @@ public class ApplyFlowTests
         _downloadService = new Mock<IDownloadService>();
         _customerService = new Mock<ICustomerService>();
         _productService = new Mock<IProductService>();
+        _jobRequirementService = new Mock<IJobRequirementService>();
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
+            .ReturnsAsync(new JobRequirementsModel());
 
         _customer = new Customer { Id = 123 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_customer);
@@ -67,7 +71,11 @@ public class ApplyFlowTests
             _localizationService.Object,
             _downloadService.Object,
             _customerService.Object,
-            _productService.Object);
+            _productService.Object,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null);
 
         var tempData = new Mock<ITempDataDictionary>();
         _controller.TempData = tempData.Object;
@@ -94,12 +102,12 @@ public class ApplyFlowTests
     public async Task Apply_Post_ResumeRequired_InvalidModel_ReturnsView()
     {
         // Arrange
-        _aiInterviewSettings.ResumeRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
+            .ReturnsAsync(new JobRequirementsModel { ResumeRequired = true });
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
             .ReturnsAsync(new List<JobApplication>());
 
-        var model = new ApplyModel { JobTitle = "Dev" };
-        _controller.ModelState.AddModelError("ResumeFile", "Required");
+        var model = new ApplyModel { JobTitle = "Dev", ProductId = 1 };
 
         // Act
         var result = await _controller.Apply(model);
@@ -108,13 +116,15 @@ public class ApplyFlowTests
         Assert.That(result, Is.TypeOf<ViewResult>());
         var viewResult = (ViewResult)result;
         Assert.That(viewResult.Model, Is.EqualTo(model));
+        Assert.That(_controller.ModelState[nameof(ApplyModel.ResumeFile)].Errors, Is.Not.Empty);
     }
 
     [Test]
     public async Task Apply_Post_InterviewRequired_NoSession_ReturnsError()
     {
         // Arrange
-        _aiInterviewSettings.InterviewRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
+            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true });
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
         _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
@@ -136,7 +146,8 @@ public class ApplyFlowTests
     public async Task Apply_Post_InterviewRequired_ScoreBelowMin_ReturnsError()
     {
         // Arrange
-        _aiInterviewSettings.InterviewRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
+            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true });
         _aiInterviewSettings.MinimumScore = 80;
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
@@ -162,7 +173,8 @@ public class ApplyFlowTests
     public async Task Apply_Post_Successful_SavesApplication()
     {
         // Arrange
-        _aiInterviewSettings.InterviewRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
+            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true });
         _aiInterviewSettings.MinimumScore = 60;
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
@@ -203,7 +215,6 @@ public class ApplyFlowTests
     [Test]
     public async Task ApplyInline_Post_Successful_ReturnsJsonSuccess()
     {
-        _aiInterviewSettings.ResumeRequired = false;
         var result = await _controller.ApplyInline(new ApplyModel { JobTitle = "Dev", ProductId = 1 });
 
         Assert.That(result, Is.TypeOf<JsonResult>());
@@ -216,7 +227,8 @@ public class ApplyFlowTests
     public async Task Apply_Post_ResumeReuse_Successful()
     {
         // Arrange
-        _aiInterviewSettings.ResumeRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(2))
+            .ReturnsAsync(new JobRequirementsModel { ResumeRequired = true });
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "New Job"))
             .ReturnsAsync(new List<JobApplication>());
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
@@ -260,7 +272,8 @@ public class ApplyFlowTests
     [Test]
     public async Task Apply_Post_InvalidUploadedResume_DoesNotReusePreviousResume()
     {
-        _aiInterviewSettings.ResumeRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
+            .ReturnsAsync(new JobRequirementsModel { ResumeRequired = true });
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
             .ReturnsAsync(new List<JobApplication>
             {
@@ -283,7 +296,8 @@ public class ApplyFlowTests
     [Test]
     public async Task Apply_Post_LegacyLinkedSession_SatisfiesInterviewRequirement()
     {
-        _aiInterviewSettings.InterviewRequired = true;
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
+            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true });
         _aiInterviewSettings.MinimumScore = 60;
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
             .ReturnsAsync(new List<JobApplication>

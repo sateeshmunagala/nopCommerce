@@ -48,10 +48,10 @@ public class AIInterviewController : BasePluginController
         IDownloadService downloadService,
         ICustomerService customerService,
         IProductService productService,
+        IJobRequirementService jobRequirementService,
         IProductTemplateService productTemplateService = null,
         IUrlRecordService urlRecordService = null,
         IJobInterviewExperienceService jobInterviewExperienceService = null,
-        IJobRequirementService jobRequirementService = null,
         ISpecificationAttributeService specificationAttributeService = null)
     {
         _applicationService = applicationService;
@@ -68,6 +68,36 @@ public class AIInterviewController : BasePluginController
         _jobInterviewExperienceService = jobInterviewExperienceService;
         _jobRequirementService = jobRequirementService;
         _specificationAttributeService = specificationAttributeService;
+    }
+
+    public AIInterviewController(IApplicationService applicationService,
+        IInterviewSessionService interviewSessionService,
+        AIInterviewSettings aiInterviewSettings,
+        IWorkContext workContext,
+        INotificationService notificationService,
+        ILocalizationService localizationService,
+        IDownloadService downloadService,
+        ICustomerService customerService,
+        IProductService productService,
+        IProductTemplateService productTemplateService = null,
+        IUrlRecordService urlRecordService = null,
+        IJobInterviewExperienceService jobInterviewExperienceService = null,
+        ISpecificationAttributeService specificationAttributeService = null)
+        : this(applicationService,
+            interviewSessionService,
+            aiInterviewSettings,
+            workContext,
+            notificationService,
+            localizationService,
+            downloadService,
+            customerService,
+            productService,
+            null,
+            productTemplateService,
+            urlRecordService,
+            jobInterviewExperienceService,
+            specificationAttributeService)
+    {
     }
 
     protected static bool SessionMatchesApplication(InterviewSession session, JobApplication application)
@@ -339,11 +369,7 @@ public class AIInterviewController : BasePluginController
             .FirstOrDefault();
 
         var jobRequirements = _jobRequirementService == null
-            ? new JobRequirementsModel
-            {
-                ResumeRequired = _aiInterviewSettings.ResumeRequired,
-                InterviewRequired = _aiInterviewSettings.InterviewRequired
-            }
+            ? new JobRequirementsModel()
             : await _jobRequirementService.GetRequirementsAsync(model.ProductId);
 
         if (model.ResumeFile == null)

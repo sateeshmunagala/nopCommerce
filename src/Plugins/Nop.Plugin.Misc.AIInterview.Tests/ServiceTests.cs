@@ -3,8 +3,11 @@ using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Caching;
 using Nop.Data;
+using Nop.Plugin.Misc.AIInterview;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Services;
+using Nop.Services.Catalog;
+using Nop.Services.Common;
 using NUnit.Framework;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
@@ -154,5 +157,57 @@ public class ServiceTests
         walletRepository.Verify(x => x.InsertAsync(It.Is<CreditWallet>(wallet => wallet.CustomerId == 55 && wallet.Balance == 25), true), Times.Once);
         walletRepository.Verify(x => x.UpdateAsync(It.Is<CreditWallet>(wallet => wallet.CustomerId == 55 && wallet.Balance == 25), true), Times.Once);
         ledgerRepository.Verify(x => x.InsertAsync(It.Is<CreditLedgerEntry>(entry => entry.CreditWalletId == 17 && entry.Amount == 25 && entry.Remarks == "Admin top-up"), true), Times.Once);
+    }
+
+    [Test]
+    public async Task JobRequirementService_DefaultsToFalse_WhenAttributesMissing()
+    {
+        var genericAttributeService = new Mock<IGenericAttributeService>();
+        var productService = new Mock<IProductService>();
+        var productTemplateService = new Mock<IProductTemplateService>();
+
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
+            {
+                Id = 7,
+                ViewPath = AIInterviewDefaults.JobProductTemplateViewPath
+            });
+
+        var service = new JobRequirementService(genericAttributeService.Object, productService.Object, productTemplateService.Object);
+        var product = new Product { Id = 5, ProductTemplateId = 7 };
+
+        var result = await service.GetRequirementsAsync(product);
+
+        Assert.That(result.IsJobProduct, Is.True);
+        Assert.That(result.ResumeRequired, Is.False);
+        Assert.That(result.InterviewRequired, Is.False);
+    }
+
+    [Test]
+    public async Task JobRequirementService_SavesFlags_ForJobProduct()
+    {
+        var genericAttributeService = new Mock<IGenericAttributeService>();
+        var productService = new Mock<IProductService>();
+        var productTemplateService = new Mock<IProductTemplateService>();
+
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
+            {
+                Id = 7,
+                ViewPath = AIInterviewDefaults.JobProductTemplateViewPath
+            });
+
+        var service = new JobRequirementService(genericAttributeService.Object, productService.Object, productTemplateService.Object);
+        var product = new Product { Id = 5, ProductTemplateId = 7 };
+
+        genericAttributeService.Setup(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobResumeRequiredAttributeName, true, 0))
+            .Returns(Task.CompletedTask);
+        genericAttributeService.Setup(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobInterviewRequiredAttributeName, false, 0))
+            .Returns(Task.CompletedTask);
+
+        await service.SaveRequirementsAsync(product, true, false);
+
+        genericAttributeService.Verify(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobResumeRequiredAttributeName, true, 0), Times.Once);
+        genericAttributeService.Verify(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobInterviewRequiredAttributeName, false, 0), Times.Once);
     }
 }
