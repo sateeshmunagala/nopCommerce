@@ -133,7 +133,7 @@
         else if (string.Equals(interviewError, "expired", StringComparison.OrdinalIgnoreCase))
         {
             <div class="job-inline-message is-visible is-error">
-                Your previous interview link expired. Start the interview again from this job page.
+                @T("Plugins.Misc.AIInterview.Runtime.Error.ExpiredLink")
             </div>
         }
         else if (!hasCredits)
