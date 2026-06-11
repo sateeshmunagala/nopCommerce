@@ -21,6 +21,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
     private readonly IProductTemplateService _productTemplateService;
     private readonly IWorkContext _workContext;
     private readonly IApplicationService _applicationService;
+    private readonly IInterviewSessionService _interviewSessionService;
     private readonly IJobRequirementService _jobRequirementService;
     private readonly ISponsorInviteService _sponsorInviteService;
     private readonly AIInterviewSettings _aiInterviewSettings;
@@ -32,6 +33,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         IProductService productService,
         IProductTemplateService productTemplateService,
         IApplicationService applicationService,
+        IInterviewSessionService interviewSessionService,
         AIInterviewSettings aiInterviewSettings,
         IJobRequirementService jobRequirementService,
         ISponsorInviteService sponsorInviteService)
@@ -43,6 +45,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         _productService = productService;
         _productTemplateService = productTemplateService;
         _applicationService = applicationService;
+        _interviewSessionService = interviewSessionService;
         _jobRequirementService = jobRequirementService;
         _sponsorInviteService = sponsorInviteService;
         _aiInterviewSettings = aiInterviewSettings;
@@ -98,10 +101,21 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         if (customer != null && !string.IsNullOrEmpty(sponsorToken) && _sponsorInviteService != null)
         {
             var invite = await _sponsorInviteService.GetSponsorInviteByCodeAsync(sponsorToken);
-            if (invite != null && !invite.IsAccepted && (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) && string.Equals(invite.Email, customer.Email, StringComparison.OrdinalIgnoreCase))
+            if (invite != null &&
+                invite.IsActive &&
+                !invite.IsAccepted &&
+                (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) &&
+                string.Equals(invite.Email, customer.Email, StringComparison.OrdinalIgnoreCase))
             {
                 var sponsorWallet = await _creditService.GetOrCreateWalletAsync(invite.SponsorId);
-                if (sponsorWallet.Balance >= 1)
+                var sponsoredAttempts = 0;
+                if (_interviewSessionService != null)
+                {
+                    var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<InterviewSession>();
+                    sponsoredAttempts = sessions.Count(session => session.ProductId == productId && session.SponsorInviteId == invite.Id);
+                }
+
+                if (sponsorWallet.Balance >= 1 && sponsoredAttempts < invite.MaxAttempts)
                 {
                     hasSponsorCredits = true;
                 }

@@ -172,6 +172,7 @@ public class MockAiInterviewController : BasePluginController
                 : ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
                     .Count(session => session.SponsorInviteId == invite.Id);
             if (invite != null &&
+                invite.IsActive &&
                 !invite.IsAccepted &&
                 (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) &&
                 string.Equals(invite.Email, customer.Email, StringComparison.OrdinalIgnoreCase) &&

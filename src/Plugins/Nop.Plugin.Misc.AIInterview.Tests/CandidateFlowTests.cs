@@ -334,6 +334,70 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public async Task Runtime_Start_InactiveSponsorInvite_FallsBack_To_CandidateCharge()
+    {
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
+            .ReturnsAsync(new List<InterviewSession>());
+
+        var sponsorInvite = new SponsorInvite
+        {
+            Id = 11,
+            SponsorId = 2,
+            Email = "test@example.com",
+            InviteCode = "INACTIVE123",
+            ExpiryDateUtc = DateTime.UtcNow.AddDays(1),
+            IsActive = false
+        };
+        _inviteService.Setup(x => x.GetSponsorInviteByCodeAsync("INACTIVE123")).ReturnsAsync(sponsorInvite);
+
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+
+        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1, "Medium", "INACTIVE123");
+        var json = (JsonResult)result;
+
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.SponsorInviteId == 0)), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(2, 1, It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Start_ExhaustedSponsorInvite_FallsBack_To_CandidateCharge()
+    {
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+
+        var sponsorInvite = new SponsorInvite
+        {
+            Id = 12,
+            SponsorId = 2,
+            Email = "test@example.com",
+            InviteCode = "EXHAUSTED123",
+            ExpiryDateUtc = DateTime.UtcNow.AddDays(1),
+            IsActive = true,
+            MaxAttempts = 2
+        };
+        _inviteService.Setup(x => x.GetSponsorInviteByCodeAsync("EXHAUSTED123")).ReturnsAsync(sponsorInvite);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
+            .ReturnsAsync(new List<InterviewSession>
+            {
+                new InterviewSession { SponsorInviteId = 12, ProductId = 1 },
+                new InterviewSession { SponsorInviteId = 12, ProductId = 1 }
+            });
+
+        _creditService.Setup(x => x.GetOrCreateWalletAsync(2)).ReturnsAsync(new CreditWallet { Balance = 10 });
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+
+        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1, "Medium", "EXHAUSTED123");
+        var json = (JsonResult)result;
+
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.SponsorInviteId == 0)), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(2, 1, It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
     public async Task Runtime_SubmitAnswer_InvalidToken_ReturnsError()
     {
         _sessionService.Setup(x => x.GetSessionByTokenAsync("invalid")).ReturnsAsync((InterviewSession)null);
@@ -833,6 +897,7 @@ public class CandidateFlowTests
             _productService.Object,
             productTemplateService.Object,
             _applicationService.Object,
+            _sessionService.Object,
             new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
             _jobRequirementService.Object,
             _inviteService.Object);
@@ -859,8 +924,9 @@ public class CandidateFlowTests
         var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _creditService.Setup(x => x.GetOrCreateWalletAsync(customer.Id)).ReturnsAsync(new CreditWallet { Balance = 10 });
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
 
-        var sponsorInvite = new SponsorInvite { Id = 10, SponsorId = 2, Email = "test@example.com", InviteCode = "abc", ExpiryDateUtc = DateTime.UtcNow.AddDays(1), IsActive = true };
+        var sponsorInvite = new SponsorInvite { Id = 10, SponsorId = 2, Email = "test@example.com", InviteCode = "abc", ExpiryDateUtc = DateTime.UtcNow.AddDays(1), IsActive = true, MaxAttempts = 1 };
         _inviteService.Setup(x => x.GetSponsorInviteByCodeAsync("abc")).ReturnsAsync(sponsorInvite);
         _creditService.Setup(x => x.GetOrCreateWalletAsync(2)).ReturnsAsync(new CreditWallet { Balance = 5 });
 
@@ -894,6 +960,162 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public async Task WidgetView_DoesNotShowSponsorCredits_WhenInviteInactive()
+    {
+        var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+        var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        _productService.Setup(x => x.GetProductByIdAsync(100))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 100, ProductTemplateId = 7 });
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
+            {
+                Id = 7,
+                ViewPath = AIInterviewDefaults.JobProductTemplateViewPath
+            });
+        var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
+            _creditService.Object,
+            _workContext.Object,
+            productAttributeService.Object,
+            jobInterviewExperienceService.Object,
+            _productService.Object,
+            productTemplateService.Object,
+            _applicationService.Object,
+            _sessionService.Object,
+            new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
+            _jobRequirementService.Object,
+            _inviteService.Object);
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.QueryString = new QueryString("?sponsorToken=inactive-token");
+        var viewEngineMock = new Mock<Microsoft.AspNetCore.Mvc.ViewEngines.ICompositeViewEngine>();
+        var requestServicesMock = new Mock<IServiceProvider>();
+        requestServicesMock.Setup(s => s.GetService(typeof(ISponsorInviteService))).Returns(_inviteService.Object);
+        requestServicesMock.Setup(s => s.GetService(typeof(Microsoft.AspNetCore.Mvc.ViewEngines.ICompositeViewEngine))).Returns(viewEngineMock.Object);
+        httpContext.RequestServices = requestServicesMock.Object;
+
+        component.ViewComponentContext = new Microsoft.AspNetCore.Mvc.ViewComponents.ViewComponentContext
+        {
+            ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext { HttpContext = httpContext }
+        };
+
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _creditService.Setup(x => x.GetOrCreateWalletAsync(customer.Id)).ReturnsAsync(new CreditWallet { Balance = 10 });
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
+        _inviteService.Setup(x => x.GetSponsorInviteByCodeAsync("inactive-token"))
+            .ReturnsAsync(new SponsorInvite
+            {
+                Id = 15,
+                SponsorId = 2,
+                Email = "test@example.com",
+                InviteCode = "inactive-token",
+                ExpiryDateUtc = DateTime.UtcNow.AddDays(1),
+                IsActive = false
+            });
+
+        var productDetailsModel = new Nop.Web.Models.Catalog.ProductDetailsModel { Id = 100 };
+        productDetailsModel.ProductAttributes.Add(new Nop.Web.Models.Catalog.ProductDetailsModel.ProductAttributeModel
+        {
+            Id = 14,
+            Name = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            TextPrompt = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            AttributeControlType = Nop.Core.Domain.Catalog.AttributeControlType.RadioList,
+            Values = new List<Nop.Web.Models.Catalog.ProductDetailsModel.ProductAttributeValueModel>
+            {
+                new() { Id = 101, Name = "Easy" },
+                new() { Id = 102, Name = "Medium", IsPreSelected = true }
+            }
+        });
+
+        var result = await component.InvokeAsync("productdetails_before_collateral", productDetailsModel);
+
+        Assert.That(result, Is.TypeOf<Microsoft.AspNetCore.Mvc.ViewComponents.ViewViewComponentResult>());
+        Assert.That(component.ViewBag.HasSponsorCredits, Is.False);
+    }
+
+    [Test]
+    public async Task WidgetView_DoesNotShowSponsorCredits_WhenInviteAttemptsAreExhausted()
+    {
+        var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+        var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        _productService.Setup(x => x.GetProductByIdAsync(101))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 101, ProductTemplateId = 7 });
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
+            {
+                Id = 7,
+                ViewPath = AIInterviewDefaults.JobProductTemplateViewPath
+            });
+        var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
+            _creditService.Object,
+            _workContext.Object,
+            productAttributeService.Object,
+            jobInterviewExperienceService.Object,
+            _productService.Object,
+            productTemplateService.Object,
+            _applicationService.Object,
+            _sessionService.Object,
+            new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
+            _jobRequirementService.Object,
+            _inviteService.Object);
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.QueryString = new QueryString("?sponsorToken=exhausted-token");
+        var viewEngineMock = new Mock<Microsoft.AspNetCore.Mvc.ViewEngines.ICompositeViewEngine>();
+        var requestServicesMock = new Mock<IServiceProvider>();
+        requestServicesMock.Setup(s => s.GetService(typeof(ISponsorInviteService))).Returns(_inviteService.Object);
+        requestServicesMock.Setup(s => s.GetService(typeof(Microsoft.AspNetCore.Mvc.ViewEngines.ICompositeViewEngine))).Returns(viewEngineMock.Object);
+        httpContext.RequestServices = requestServicesMock.Object;
+
+        component.ViewComponentContext = new Microsoft.AspNetCore.Mvc.ViewComponents.ViewComponentContext
+        {
+            ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext { HttpContext = httpContext }
+        };
+
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _creditService.Setup(x => x.GetOrCreateWalletAsync(customer.Id)).ReturnsAsync(new CreditWallet { Balance = 10 });
+        _creditService.Setup(x => x.GetOrCreateWalletAsync(2)).ReturnsAsync(new CreditWallet { Balance = 10 });
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>
+        {
+            new InterviewSession { SponsorInviteId = 16, ProductId = 101 },
+            new InterviewSession { SponsorInviteId = 16, ProductId = 101 }
+        });
+        _inviteService.Setup(x => x.GetSponsorInviteByCodeAsync("exhausted-token"))
+            .ReturnsAsync(new SponsorInvite
+            {
+                Id = 16,
+                SponsorId = 2,
+                Email = "test@example.com",
+                InviteCode = "exhausted-token",
+                ExpiryDateUtc = DateTime.UtcNow.AddDays(1),
+                IsActive = true,
+                MaxAttempts = 2
+            });
+
+        var productDetailsModel = new Nop.Web.Models.Catalog.ProductDetailsModel { Id = 101 };
+        productDetailsModel.ProductAttributes.Add(new Nop.Web.Models.Catalog.ProductDetailsModel.ProductAttributeModel
+        {
+            Id = 14,
+            Name = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            TextPrompt = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            AttributeControlType = Nop.Core.Domain.Catalog.AttributeControlType.RadioList,
+            Values = new List<Nop.Web.Models.Catalog.ProductDetailsModel.ProductAttributeValueModel>
+            {
+                new() { Id = 101, Name = "Easy" },
+                new() { Id = 102, Name = "Medium", IsPreSelected = true }
+            }
+        });
+
+        var result = await component.InvokeAsync("productdetails_before_collateral", productDetailsModel);
+
+        Assert.That(result, Is.TypeOf<Microsoft.AspNetCore.Mvc.ViewComponents.ViewViewComponentResult>());
+        Assert.That(component.ViewBag.HasSponsorCredits, Is.False);
+    }
+
+    [Test]
     public async Task WidgetView_DoesNotRenderForOrdinaryProductTemplate()
     {
         var productTemplateService = new Mock<IProductTemplateService>();
@@ -915,6 +1137,7 @@ public class CandidateFlowTests
             _productService.Object,
             productTemplateService.Object,
             _applicationService.Object,
+            _sessionService.Object,
             new AIInterviewSettings { CreditPurchasePageUrl = "/pricing" },
             _jobRequirementService.Object,
             _inviteService.Object);

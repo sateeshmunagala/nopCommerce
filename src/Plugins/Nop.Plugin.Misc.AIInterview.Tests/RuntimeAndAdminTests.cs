@@ -78,6 +78,64 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_Start_InactiveSponsorInvite_FallsBack_To_CandidateCharge()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
+        _inviteService.Setup(x => x.GetSponsorInviteByCodeAsync("inactive-token")).ReturnsAsync(new SponsorInvite
+        {
+            Id = 44,
+            SponsorId = 2,
+            Email = "candidate@example.com",
+            InviteCode = "inactive-token",
+            IsActive = false,
+            ExpiryDateUtc = DateTime.UtcNow.AddDays(1)
+        });
+
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+
+        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>()), 1, "Medium", "inactive-token");
+        var json = (JsonResult)result;
+
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session => session.SponsorInviteId == 0)), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(2, 1, It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Start_ExhaustedSponsorInvite_FallsBack_To_CandidateCharge()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>
+        {
+            new InterviewSession { Id = 1, CustomerId = 1, ProductId = 1, SponsorInviteId = 55 },
+            new InterviewSession { Id = 2, CustomerId = 1, ProductId = 1, SponsorInviteId = 55 }
+        });
+        _inviteService.Setup(x => x.GetSponsorInviteByCodeAsync("exhausted-token")).ReturnsAsync(new SponsorInvite
+        {
+            Id = 55,
+            SponsorId = 2,
+            Email = "candidate@example.com",
+            InviteCode = "exhausted-token",
+            IsActive = true,
+            MaxAttempts = 2,
+            ExpiryDateUtc = DateTime.UtcNow.AddDays(1)
+        });
+
+        _creditService.Setup(x => x.GetOrCreateWalletAsync(2)).ReturnsAsync(new CreditWallet { Balance = 10 });
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+
+        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>()), 1, "Medium", "exhausted-token");
+        var json = (JsonResult)result;
+
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session => session.SponsorInviteId == 0)), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(2, 1, It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
     public async Task Runtime_InvalidToken_ReturnsLocalizedError()
     {
         var result = await _runtimeController.SubmitAnswer(null, "Answer");

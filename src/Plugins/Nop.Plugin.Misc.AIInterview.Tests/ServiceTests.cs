@@ -151,6 +151,91 @@ public class ServiceTests
     }
 
     [Test]
+    public async Task SponsorInviteService_CreateInviteAsync_Builds_MockStartRoute_Url()
+    {
+        var inviteRepository = new Mock<IRepository<SponsorInvite>>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<Nop.Services.Customers.ICustomerService>();
+        var localizationService = new Mock<Nop.Services.Localization.ILocalizationService>();
+        var workflowMessageService = new Mock<Nop.Services.Messages.IWorkflowMessageService>();
+        var messageTemplateService = new Mock<Nop.Services.Messages.IMessageTemplateService>();
+        var emailAccountService = new Mock<Nop.Services.Messages.IEmailAccountService>();
+        var storeContext = new Mock<Nop.Core.IStoreContext>();
+        var webHelper = new Mock<global::Nop.Services.Helpers.IWebHelper>();
+        var emailAccountSettings = new Nop.Core.Domain.Messages.EmailAccountSettings { DefaultEmailAccountId = 7 };
+
+        var product = new Product { Id = 77, Name = "QA Engineer", VendorId = 3 };
+        var sponsor = new Customer { Id = 2, VendorId = 3, Email = "sponsor@example.com" };
+        var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 7, Email = "store@example.com", DisplayName = "Store" };
+        var template = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.SponsorInviteCreated", EmailAccountId = 0, IsActive = true };
+        var store = new Nop.Core.Domain.Stores.Store { Id = 22, DefaultLanguageId = 5 };
+
+        productService.Setup(x => x.GetProductByIdAsync(77)).ReturnsAsync(product);
+        customerService.Setup(x => x.GetCustomerByIdAsync(2)).ReturnsAsync(sponsor);
+        customerService.Setup(x => x.IsAdminAsync(sponsor)).ReturnsAsync(false);
+        storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
+        messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync("AIInterview.SponsorInviteCreated", 22))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { template });
+        emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(7)).ReturnsAsync(emailAccount);
+        emailAccountService.Setup(x => x.GetAllEmailAccountsAsync()).ReturnsAsync(new List<Nop.Core.Domain.Messages.EmailAccount> { emailAccount });
+        webHelper.Setup(x => x.GetStoreLocation(It.IsAny<bool?>())).Returns("https://store.example/");
+        inviteRepository.Setup(x => x.InsertAsync(It.IsAny<SponsorInvite>(), true))
+            .Returns(Task.CompletedTask);
+        workflowMessageService.Setup(x => x.SendNotificationAsync(
+                It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>(),
+                It.IsAny<Nop.Core.Domain.Messages.EmailAccount>(),
+                It.IsAny<int>(),
+                It.IsAny<IList<Nop.Services.Messages.Token>>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>()))
+            .ReturnsAsync(1);
+
+        var service = new SponsorInviteService(
+            inviteRepository.Object,
+            productService.Object,
+            customerService.Object,
+            localizationService.Object,
+            workflowMessageService.Object,
+            messageTemplateService.Object,
+            emailAccountService.Object,
+            emailAccountSettings,
+            storeContext.Object,
+            webHelper.Object);
+
+        await service.CreateInviteAsync(2, "candidate@example.com", 77, 3, DateTime.UtcNow.AddDays(3));
+
+        workflowMessageService.Verify(x => x.SendNotificationAsync(
+            It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>(),
+            It.IsAny<Nop.Core.Domain.Messages.EmailAccount>(),
+            It.IsAny<int>(),
+            It.Is<IList<Nop.Services.Messages.Token>>(tokens =>
+                tokens.Any(token => token.Key == "AIInterview.InviteUrl" &&
+                    token.Value.ToString().Contains("/mockaiinterview/start?productId=77")) &&
+                tokens.Any(token => token.Key == "AIInterview.InviteUrl" &&
+                    token.Value.ToString().Contains("sponsorToken=")) &&
+                tokens.Any(token => token.Key == "AIInterview.InviteUrl" &&
+                    !token.Value.ToString().Contains("/aiinterview/mock/start"))),
+            "candidate@example.com",
+            "candidate@example.com",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true), Times.Once);
+    }
+
+    [Test]
     public async Task SponsorInviteService_CreateInviteAsync_FallsBack_To_AnyEmailAccount()
     {
         var inviteRepository = new Mock<IRepository<SponsorInvite>>();

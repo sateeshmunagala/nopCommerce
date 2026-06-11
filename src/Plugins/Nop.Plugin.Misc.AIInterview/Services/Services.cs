@@ -604,7 +604,7 @@ public class SponsorInviteService : ISponsorInviteService
                 return;
 
             var storeLocation = (_webHelper.GetStoreLocation() ?? string.Empty).TrimEnd('/');
-            var inviteUrl = $"{storeLocation}/aiinterview/mock/start?productId={product.Id}&sponsorToken={Uri.EscapeDataString(invite.InviteCode ?? string.Empty)}";
+            var inviteUrl = $"{storeLocation}/mockaiinterview/start?productId={product.Id}&sponsorToken={Uri.EscapeDataString(invite.InviteCode ?? string.Empty)}";
             var tokens = new List<Nop.Services.Messages.Token>
             {
                 new("AIInterview.JobTitle", product.Name ?? string.Empty),
