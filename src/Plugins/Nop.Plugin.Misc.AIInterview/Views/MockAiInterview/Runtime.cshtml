@@ -416,7 +416,7 @@
                     } finally {
                         const toggleRecording = document.getElementById('toggle-recording');
                         if (toggleRecording)
-                            toggleRecording.textContent = 'Recording On';
+                            toggleRecording.textContent = recordingEnabled ? 'Recording On' : 'Recording Off';
                         resolve();
                     }
                 }, { once: true });
@@ -457,10 +457,10 @@
                         recordingChunks.push(event.data);
                 });
                 mediaRecorder.start(1000);
-                setRecordingStatus('Recording started.', false);
+                setRecordingStatus('Recording is active.', false);
                 const toggleRecording = document.getElementById('toggle-recording');
                 if (toggleRecording)
-                    toggleRecording.textContent = 'Recording Off';
+                    toggleRecording.textContent = 'Recording Live';
             } catch {
                 mediaRecorder = null;
                 recordingChunks = [];
@@ -474,8 +474,8 @@
 
             if (recordingEnabled && interviewStarted && getActiveRecordingStream())
                 await startRecording();
-            else
-                await stopRecording(false);
+            else if (!getActiveRecordingStream() && recordingEnabled)
+                setRecordingStatus('Recording is enabled and will resume when camera or microphone is available.', false);
         };
 
         const scheduleTokenRefresh = () => {
@@ -744,7 +744,8 @@
                 cameraPlaceholder.style.display = '';
                 document.getElementById('toggle-camera').textContent = 'Camera On';
                 await leaveAgoraSession();
-                await syncRecording();
+                if (recordingEnabled && mediaRecorder)
+                    setRecordingStatus('Recording remains enabled. Turn recording off to discard or stop the interview to upload.', false);
                 return;
             }
 
@@ -779,7 +780,8 @@
                 await stopSpeechRecognition();
                 if (!cameraStream)
                     await leaveAgoraSession();
-                await syncRecording();
+                if (recordingEnabled && mediaRecorder)
+                    setRecordingStatus('Recording remains enabled. Turn recording off to discard or stop the interview to upload.', false);
                 return;
             }
 
@@ -905,8 +907,13 @@
                     return;
 
                 recordingEnabled = !recordingEnabled;
-                recordingButton.textContent = recordingEnabled ? 'Recording Off' : 'Recording On';
-                await syncRecording();
+                if (!recordingEnabled) {
+                    await stopRecording(false);
+                    setRecordingStatus('Recording disabled.', false);
+                } else {
+                    recordingButton.textContent = 'Recording On';
+                    await syncRecording();
+                }
             });
         }
         document.getElementById('stop-interview').addEventListener('click', stopInterview);

@@ -47,6 +47,7 @@ public record ApplicationModel : BaseNopModel
     public string QuestionScores { get; set; }
     public IList<decimal> QuestionScoreValues { get; set; } = new List<decimal>();
     public string InterviewReportUrl { get; set; }
+    public string RecordingUrl { get; set; }
     public string ProductUrl { get; set; }
     public DateTime CreatedOn { get; set; }
     public int AttemptCount { get; set; }

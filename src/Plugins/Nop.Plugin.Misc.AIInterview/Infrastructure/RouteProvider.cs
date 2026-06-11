@@ -90,6 +90,10 @@ public class RouteProvider : IRouteProvider
             pattern: "aiinterview/report/{sessionId}",
             defaults: new { controller = "AIInterview", action = "Report" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.RecordingRouteName,
+            pattern: "aiinterview/recording/{sessionId}",
+            defaults: new { controller = "AIInterview", action = "Recording" });
+
         //MockAiInterview
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockStartRouteName,
             pattern: "mockaiinterview/start",

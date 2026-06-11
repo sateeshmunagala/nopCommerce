@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Primitives;
 using Moq;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
@@ -37,6 +41,21 @@ public class CandidateFlowTests
     private Mock<IInterviewTurnService> _turnService;
     private AIInterviewController _controller;
     private MockAiInterviewController _runtimeController;
+
+    private sealed class TestHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responseFactory;
+
+        public TestHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
+        {
+            _responseFactory = responseFactory;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_responseFactory(request));
+        }
+    }
 
     [SetUp]
     public void SetUp()
@@ -436,6 +455,12 @@ public class CandidateFlowTests
             }
         });
 
+        var urlHelperMock = new Mock<Microsoft.AspNetCore.Mvc.IUrlHelper>();
+        urlHelperMock.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()))
+            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlActionContext ctx) =>
+                ctx.Action == "Recording" ? "/aiinterview/recording/2" : "/aiinterview/report/2");
+        _controller.Url = urlHelperMock.Object;
+
         var result = await _controller.Report(2);
 
         Assert.That(result, Is.TypeOf<ViewResult>());
@@ -445,7 +470,7 @@ public class CandidateFlowTests
         Assert.That(model.Turns[0].QuestionText, Is.EqualTo("Q1"));
         Assert.That(model.Turns[0].AnswerText, Is.EqualTo("A1"));
         Assert.That(model.ParsedQuestionScores, Is.EquivalentTo(new[] { 88m, 92m }));
-        Assert.That(model.RecordingUrl, Is.EqualTo("https://storage.example.com/recordings/session-2.webm"));
+        Assert.That(model.RecordingUrl, Is.EqualTo("/aiinterview/recording/2"));
     }
 
     [Test]
@@ -479,6 +504,113 @@ public class CandidateFlowTests
         Assert.That(model.ReportData, Is.EqualTo("overall score: 77"));
         Assert.That(model.Turns, Is.Empty);
         Assert.That(model.ParsedQuestionScores, Is.EquivalentTo(new[] { 77m }));
+    }
+
+    [Test]
+    public async Task MyApplications_IncludesRecordingAccess_ForLatestCompletedSession()
+    {
+        var customer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+
+        var applications = new List<JobApplication>
+        {
+            new JobApplication { Id = 10, ProductId = 5, JobTitle = "Test Job", CreatedOnUtc = DateTime.UtcNow.AddDays(-2) }
+        };
+        var sessions = new List<InterviewSession>
+        {
+            new InterviewSession { Id = 98, ProductId = 5, CompletedOnUtc = DateTime.UtcNow.AddDays(-1), RecordingUrl = "" },
+            new InterviewSession { Id = 99, ProductId = 5, CompletedOnUtc = DateTime.UtcNow, RecordingUrl = "https://storage.example.com/recordings/session-99.webm" }
+        };
+
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(customer.Id)).ReturnsAsync(applications);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(sessions);
+
+        var urlHelperMock = new Mock<Microsoft.AspNetCore.Mvc.IUrlHelper>();
+        urlHelperMock.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()))
+            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlActionContext ctx) =>
+                ctx.Action == "Recording" ? "/aiinterview/recording/99" : "/aiinterview/report/99");
+        _controller.Url = urlHelperMock.Object;
+
+        var result = await _controller.MyApplications("LatestApplied");
+
+        var viewResult = (ViewResult)result;
+        var model = (ApplicationListModel)viewResult.Model;
+        Assert.That(model.Applications.Single().RecordingUrl, Is.Not.Null.And.Contain("/aiinterview/recording/99"));
+    }
+
+    [Test]
+    public async Task RecordingRoute_AllowsOwner_AndRejectsUnauthorizedUser()
+    {
+        _settings.AzureBlobStorageSasToken = "?sig=token";
+        var allowedCustomer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(allowedCustomer);
+
+        _sessionService.Setup(x => x.CanAccessReportAsync(allowedCustomer.Id, 55)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(55)).ReturnsAsync(new InterviewSession
+        {
+            Id = 55,
+            CustomerId = 1,
+            RecordingUrl = "https://storage.example.com/recordings/session-55.webm"
+        });
+
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StreamContent(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("recording-bytes")))
+        });
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(() => new HttpClient(handler, disposeHandler: false));
+
+        var controller = new AIInterviewController(
+            _applicationService.Object,
+            _sessionService.Object,
+            _settings,
+            _workContext.Object,
+            _notificationService.Object,
+            _localizationService.Object,
+            _downloadService.Object,
+            _customerService.Object,
+            _productService.Object,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null,
+            null,
+            _turnService.Object,
+            factory.Object);
+
+        var result = await controller.Recording(55);
+        Assert.That(result, Is.TypeOf<FileStreamResult>());
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(new Customer { Id = 2 });
+        _sessionService.Setup(x => x.CanAccessReportAsync(2, 55)).ReturnsAsync(false);
+        var unauthorized = await controller.Recording(55);
+        Assert.That(unauthorized, Is.TypeOf<ChallengeResult>());
+    }
+
+    [Test]
+    public void ReportAndHistoryViews_IncludeRecordingAccessMarkup()
+    {
+        var reportPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Report.cshtml"));
+        var mockReportPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Report.cshtml"));
+        var historyPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "History.cshtml"));
+
+        var reportText = File.ReadAllText(reportPath);
+        var mockReportText = File.ReadAllText(mockReportPath);
+        var historyText = File.ReadAllText(historyPath);
+
+        Assert.That(reportText, Does.Contain("Recording"));
+        Assert.That(mockReportText, Does.Contain("Recording"));
+        Assert.That(historyText, Does.Contain("Open recording"));
+        Assert.That(historyText, Does.Contain("Open report"));
     }
 
     [Test]

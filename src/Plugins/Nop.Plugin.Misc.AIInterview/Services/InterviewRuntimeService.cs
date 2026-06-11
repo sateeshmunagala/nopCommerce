@@ -710,7 +710,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
         var now = DateTime.UtcNow;
-        if (!IsSessionUsable(session, now))
+        if (!CanUploadRecording(session, token, now))
             return RecordingFailure("Invalid or expired session token.");
 
         if (recording == null || recording.Length <= 0)
@@ -749,6 +749,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 return RecordingFailure("Recording upload failed.");
 
             session.RecordingUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}";
+            if (!session.CompletedOnUtc.HasValue)
+                session.CompletedOnUtc = now;
+            session.IsActive = false;
             await _sessionService.UpdateInterviewSessionAsync(session);
 
             return new RecordingUploadResponseModel
@@ -772,6 +775,23 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             session.IsActive &&
             !session.CompletedOnUtc.HasValue &&
             (!session.TokenExpiryUtc.HasValue || session.TokenExpiryUtc > utcNow);
+    }
+
+    protected virtual bool CanUploadRecording(InterviewSession session, string token, DateTime utcNow)
+    {
+        if (session == null || string.IsNullOrWhiteSpace(token) || !string.Equals(session.Token, token, StringComparison.Ordinal))
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(session.RecordingUrl))
+            return false;
+
+        if (session.IsActive && !session.CompletedOnUtc.HasValue && (!session.TokenExpiryUtc.HasValue || session.TokenExpiryUtc > utcNow))
+            return true;
+
+        if (session.CompletedOnUtc.HasValue && session.CompletedOnUtc.Value >= utcNow.AddMinutes(-10))
+            return true;
+
+        return false;
     }
 
     protected virtual async Task<InterviewRuntimeModel> BuildRuntimeModelAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null)

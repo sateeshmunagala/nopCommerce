@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Http;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Media;
@@ -39,6 +40,7 @@ public class AIInterviewController : BasePluginController
     private readonly IJobRequirementService _jobRequirementService;
     private readonly ISpecificationAttributeService _specificationAttributeService;
     private readonly IInterviewTurnService _interviewTurnService;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -54,7 +56,8 @@ public class AIInterviewController : BasePluginController
         IUrlRecordService urlRecordService = null,
         IJobInterviewExperienceService jobInterviewExperienceService = null,
         ISpecificationAttributeService specificationAttributeService = null,
-        IInterviewTurnService interviewTurnService = null)
+        IInterviewTurnService interviewTurnService = null,
+        IHttpClientFactory httpClientFactory = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -71,6 +74,7 @@ public class AIInterviewController : BasePluginController
         _jobRequirementService = jobRequirementService;
         _specificationAttributeService = specificationAttributeService;
         _interviewTurnService = interviewTurnService;
+        _httpClientFactory = httpClientFactory;
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -100,6 +104,7 @@ public class AIInterviewController : BasePluginController
             urlRecordService,
             jobInterviewExperienceService,
             specificationAttributeService,
+            null,
             null)
     {
     }
@@ -203,6 +208,7 @@ public class AIInterviewController : BasePluginController
                 JobTitle = a.JobTitle,
                 InterviewScore = latestSession?.Score,
                 InterviewReportUrl = latestSession != null ? Url.Action("Report", "AIInterview", new { sessionId = latestSession.Id }) : null,
+                RecordingUrl = latestSession != null && !string.IsNullOrWhiteSpace(latestSession.RecordingUrl) ? Url.Action("Recording", "AIInterview", new { sessionId = latestSession.Id }) : null,
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
                 RawStatus = normalizedStatus,
                 CreatedOn = a.CreatedOnUtc,
@@ -295,7 +301,7 @@ public class AIInterviewController : BasePluginController
             QuestionScores = session.QuestionScores,
             ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
             ReportData = session.ReportData,
-            RecordingUrl = session.RecordingUrl,
+            RecordingUrl = Url?.Action("Recording", "AIInterview", new { sessionId = session.Id }),
             CreatedOnUtc = session.CreatedOnUtc,
             CompletedOnUtc = session.CompletedOnUtc,
             Turns = turns.Select(turn => new InterviewTurnViewModel
@@ -314,6 +320,40 @@ public class AIInterviewController : BasePluginController
         return View("~/Plugins/Misc.AIInterview/Views/Report.cshtml", model);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Recording(int sessionId)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null)
+            return Challenge();
+
+        if (!await _interviewSessionService.CanAccessReportAsync(customer.Id, sessionId))
+            return Challenge();
+
+        var session = await _interviewSessionService.GetInterviewSessionByIdAsync(sessionId);
+        if (session == null || string.IsNullOrWhiteSpace(session.RecordingUrl))
+            return NotFound();
+
+        var playbackUrl = BuildRecordingPlaybackUrl(session.RecordingUrl);
+        if (string.IsNullOrWhiteSpace(playbackUrl))
+            return NotFound();
+
+        using var client = _httpClientFactory?.CreateClient(nameof(AIInterviewController)) ?? new HttpClient();
+        var response = await client.GetAsync(playbackUrl, HttpCompletionOption.ResponseHeadersRead);
+        if (!response.IsSuccessStatusCode)
+        {
+            response.Dispose();
+            return NotFound();
+        }
+
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "video/webm";
+        var stream = await response.Content.ReadAsStreamAsync();
+        return File(new ProxyResponseStream(stream, response), contentType);
+    }
+
     public async Task<IActionResult> Interview(string sessionKey)
     {
         if (!_aiInterviewSettings.Enabled)
@@ -328,6 +368,53 @@ public class AIInterviewController : BasePluginController
             return RedirectToRoute(AIInterviewDefaults.IndexRouteName);
 
         return RedirectToRoute(AIInterviewDefaults.MockRuntimeRouteName, new { token = session.Token });
+    }
+
+    protected virtual string BuildRecordingPlaybackUrl(string recordingUrl)
+    {
+        if (string.IsNullOrWhiteSpace(recordingUrl) ||
+            string.IsNullOrWhiteSpace(_aiInterviewSettings.AzureBlobStorageSasToken))
+            return null;
+
+        var sasToken = _aiInterviewSettings.AzureBlobStorageSasToken.Trim();
+        if (!sasToken.StartsWith("?", StringComparison.Ordinal))
+            sasToken = sasToken.StartsWith("&", StringComparison.Ordinal) ? "?" + sasToken[1..] : "?" + sasToken;
+
+        return $"{recordingUrl.TrimEnd('/')}{sasToken}";
+    }
+
+    private sealed class ProxyResponseStream : Stream
+    {
+        private readonly Stream _inner;
+        private readonly HttpResponseMessage _response;
+
+        public ProxyResponseStream(Stream inner, HttpResponseMessage response)
+        {
+            _inner = inner;
+            _response = response;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _inner.Dispose();
+                _response.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+
+        public override bool CanRead => _inner.CanRead;
+        public override bool CanSeek => _inner.CanSeek;
+        public override bool CanWrite => _inner.CanWrite;
+        public override long Length => _inner.Length;
+        public override long Position { get => _inner.Position; set => _inner.Position = value; }
+        public override void Flush() => _inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+        public override long Seek(long offset, SeekOrigin origin) => _inner.Seek(offset, origin);
+        public override void SetLength(long value) => _inner.SetLength(value);
+        public override void Write(byte[] buffer, int offset, int count) => _inner.Write(buffer, offset, count);
     }
 
     public async Task<IActionResult> Apply(string jobTitle, int productId = 0)

@@ -695,7 +695,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task UploadRecordingAsync_Rejects_Invalid_Expired_Completed_Sessions()
+    public async Task UploadRecordingAsync_Rejects_Invalid_Expired_OldCompleted_Sessions()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -724,7 +724,7 @@ public class RuntimeServiceTests
         {
             Token = "completed",
             IsActive = true,
-            CompletedOnUtc = DateTime.UtcNow.AddMinutes(-1),
+            CompletedOnUtc = DateTime.UtcNow.AddMinutes(-11),
             TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
         });
 
@@ -732,6 +732,47 @@ public class RuntimeServiceTests
         Assert.That((await service.UploadRecordingAsync("expired", CreateRecordingFile())).Success, Is.False);
         Assert.That((await service.UploadRecordingAsync("completed", CreateRecordingFile())).Success, Is.False);
         Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task UploadRecordingAsync_Allows_RecentlyCompleted_Session()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Created));
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var completedAt = DateTime.UtcNow.AddMinutes(-2);
+        var session = new InterviewSession
+        {
+            Id = 22,
+            Token = "recent",
+            IsActive = false,
+            CompletedOnUtc = completedAt,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1),
+            SessionKey = "session-recent",
+            CustomerId = 7,
+            ProductId = 5
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("recent")).ReturnsAsync(session);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureBlobStorageContainerUrl = "https://storage.blob.core.windows.net/container",
+                AzureBlobStorageSasToken = "?sig=token"
+            });
+
+        var result = await service.UploadRecordingAsync("recent", CreateRecordingFile("recent-webm"));
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(session.RecordingUrl, Is.EqualTo(result.RecordingUrl));
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Id == 22 && s.RecordingUrl == result.RecordingUrl && s.CompletedOnUtc.HasValue)), Times.Once);
     }
 
     [Test]

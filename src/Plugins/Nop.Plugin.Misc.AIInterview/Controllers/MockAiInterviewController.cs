@@ -464,7 +464,7 @@ public class MockAiInterviewController : BasePluginController
             QuestionScores = session.QuestionScores,
             ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
             ReportData = session.ReportData,
-            RecordingUrl = session.RecordingUrl,
+            RecordingUrl = Url?.Action("Recording", "AIInterview", new { sessionId = session.Id }),
             Turns = turns.Select(turn => new InterviewTurnViewModel
             {
                 TurnId = turn.Id,

@@ -220,6 +220,7 @@
                             <th>Status</th>
                             <th>Completed (UTC)</th>
                             <th>Report</th>
+                            <th>Recording</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -253,11 +254,21 @@
                                         <span>-</span>
                                     }
                                 </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(app.RecordingUrl))
+                                    {
+                                        <a href="@app.RecordingUrl">Open recording</a>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
                             </tr>
                             @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
                             {
                                 <tr>
-                                    <td colspan="5">
+                                    <td colspan="6">
                                         <div class="report-preview">
                                             <h3>Interview Report - Attempt @app.Id</h3>
                                             <div class="report-metrics">

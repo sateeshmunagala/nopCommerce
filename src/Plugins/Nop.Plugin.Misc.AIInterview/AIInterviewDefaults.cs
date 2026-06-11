@@ -86,6 +86,8 @@ public static class AIInterviewDefaults
     /// </summary>
     public static string ReportRouteName => "Plugin.Misc.AIInterview.Report";
 
+    public static string RecordingRouteName => "Plugin.Misc.AIInterview.Recording";
+
     /// <summary>
     /// Gets the interview route name
     /// </summary>

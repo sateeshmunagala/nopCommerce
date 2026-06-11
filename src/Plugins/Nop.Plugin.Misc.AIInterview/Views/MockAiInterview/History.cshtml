@@ -22,6 +22,8 @@
                         <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
                         <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
                         <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
+                        <th>Report</th>
+                        <th>Recording</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -31,6 +33,26 @@
                             <td>@session.CreatedOnUtc.ToString("yyyy-MM-dd")</td>
                             <td>@(session.CompletedOnUtc.HasValue ? "Completed" : "Active")</td>
                             <td>@session.Score</td>
+                            <td>
+                                @if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
+                                {
+                                    <a href="@Url.Action("Report", "AIInterview", new { sessionId = session.Id })">Open report</a>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.RecordingUrl))
+                                {
+                                    <a href="@Url.Action("Recording", "AIInterview", new { sessionId = session.Id })">Open recording</a>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
