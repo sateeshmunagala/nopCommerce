@@ -490,6 +490,7 @@ public class SponsorInviteService : ISponsorInviteService
     private readonly Nop.Services.Messages.IMessageTemplateService _messageTemplateService;
     private readonly Nop.Services.Messages.IEmailAccountService _emailAccountService;
     private readonly Nop.Core.Domain.Messages.EmailAccountSettings _emailAccountSettings;
+    private readonly Nop.Core.IStoreContext _storeContext;
     private readonly IWebHelper _webHelper;
 
     public SponsorInviteService(IRepository<SponsorInvite> inviteRepository,
@@ -500,6 +501,7 @@ public class SponsorInviteService : ISponsorInviteService
         Nop.Services.Messages.IMessageTemplateService messageTemplateService = null,
         Nop.Services.Messages.IEmailAccountService emailAccountService = null,
         Nop.Core.Domain.Messages.EmailAccountSettings emailAccountSettings = null,
+        Nop.Core.IStoreContext storeContext = null,
         IWebHelper webHelper = null)
     {
         _inviteRepository = inviteRepository;
@@ -510,6 +512,7 @@ public class SponsorInviteService : ISponsorInviteService
         _messageTemplateService = messageTemplateService;
         _emailAccountService = emailAccountService;
         _emailAccountSettings = emailAccountSettings;
+        _storeContext = storeContext;
         _webHelper = webHelper;
     }
 
@@ -585,13 +588,18 @@ public class SponsorInviteService : ISponsorInviteService
 
         try
         {
-            var templates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.SponsorInviteCreated", 0);
+            var store = _storeContext == null ? null : await _storeContext.GetCurrentStoreAsync();
+            var storeId = store?.Id ?? 0;
+            var languageId = store?.DefaultLanguageId ?? 0;
+
+            var templates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.SponsorInviteCreated", storeId);
             var template = templates?.FirstOrDefault();
             if (template == null)
                 return;
 
             var emailAccountId = template.EmailAccountId > 0 ? template.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId;
             var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(emailAccountId);
+            emailAccount ??= (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
             if (emailAccount == null)
                 return;
 
@@ -609,7 +617,7 @@ public class SponsorInviteService : ISponsorInviteService
             await _workflowMessageService.SendNotificationAsync(
                 template,
                 emailAccount,
-                0,
+                languageId,
                 tokens,
                 invite.Email,
                 invite.Email,

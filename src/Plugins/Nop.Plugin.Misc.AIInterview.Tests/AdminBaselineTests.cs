@@ -207,6 +207,26 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public void ProductDetailsViewComponent_Has_One_Public_Constructor()
+    {
+        var constructors = typeof(AIInterviewProductDetailsViewComponent).GetConstructors();
+        Assert.That(constructors.Length, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void ProductRequirements_Partial_Contains_NopCard_Hide_Attributes()
+    {
+        var path = Path.Combine(TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Admin", "_ProductJobRequirements.cshtml");
+
+        var text = File.ReadAllText(Path.GetFullPath(path));
+
+        Assert.That(text, Does.Contain("asp-hide-block-attribute-name=\"aiinterview-job-requirements\""));
+        Assert.That(text, Does.Contain("asp-hide=\"false\""));
+    }
+
+    [Test]
     public async Task AiService_Page_Saves_And_Reloads()
     {
         _settingService.Setup(x => x.LoadSettingAsync<AIInterviewSettings>(0)).ReturnsAsync(_aiInterviewSettings);
