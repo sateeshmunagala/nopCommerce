@@ -9,7 +9,7 @@
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
     var clientSettings = JsonSerializer.Serialize(Model.ClientSettings ?? new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel(), jsonOptions);
-    var turns = JsonSerializer.Serialize(Model.Turns ?? Array.Empty<object>(), jsonOptions);
+    var turns = JsonSerializer.Serialize(Model.Turns ?? Array.Empty<InterviewTurnViewModel>(), jsonOptions);
 }
 
 <style>
