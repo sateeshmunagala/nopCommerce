@@ -301,7 +301,7 @@ public class AIInterviewController : BasePluginController
             QuestionScores = session.QuestionScores,
             ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
             ReportData = session.ReportData,
-            RecordingUrl = Url?.Action("Recording", "AIInterview", new { sessionId = session.Id }),
+            RecordingUrl = !string.IsNullOrWhiteSpace(session.RecordingUrl) ? Url?.Action("Recording", "AIInterview", new { sessionId = session.Id }) : null,
             CreatedOnUtc = session.CreatedOnUtc,
             CompletedOnUtc = session.CompletedOnUtc,
             Turns = turns.Select(turn => new InterviewTurnViewModel
@@ -373,14 +373,34 @@ public class AIInterviewController : BasePluginController
     protected virtual string BuildRecordingPlaybackUrl(string recordingUrl)
     {
         if (string.IsNullOrWhiteSpace(recordingUrl) ||
+            string.IsNullOrWhiteSpace(_aiInterviewSettings.AzureBlobStorageContainerUrl) ||
             string.IsNullOrWhiteSpace(_aiInterviewSettings.AzureBlobStorageSasToken))
+            return null;
+
+        if (!Uri.TryCreate(_aiInterviewSettings.AzureBlobStorageContainerUrl.Trim(), UriKind.Absolute, out var containerUri) ||
+            !Uri.TryCreate(recordingUrl.Trim(), UriKind.Absolute, out var recordingUri))
+            return null;
+
+        if (!string.IsNullOrWhiteSpace(recordingUri.Query) || !string.IsNullOrWhiteSpace(recordingUri.Fragment))
+            return null;
+
+        if (!string.Equals(containerUri.Scheme, recordingUri.Scheme, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(containerUri.Host, recordingUri.Host, StringComparison.OrdinalIgnoreCase) ||
+            containerUri.Port != recordingUri.Port)
+            return null;
+
+        var containerPath = containerUri.AbsolutePath.TrimEnd('/');
+        var recordingPath = recordingUri.AbsolutePath.TrimEnd('/');
+        var isMatchingContainer = string.Equals(recordingPath, containerPath, StringComparison.OrdinalIgnoreCase) ||
+            recordingPath.StartsWith(containerPath + "/", StringComparison.OrdinalIgnoreCase);
+        if (!isMatchingContainer)
             return null;
 
         var sasToken = _aiInterviewSettings.AzureBlobStorageSasToken.Trim();
         if (!sasToken.StartsWith("?", StringComparison.Ordinal))
             sasToken = sasToken.StartsWith("&", StringComparison.Ordinal) ? "?" + sasToken[1..] : "?" + sasToken;
 
-        return $"{recordingUrl.TrimEnd('/')}{sasToken}";
+        return $"{recordingUri.GetLeftPart(UriPartial.Path).TrimEnd('/')}{sasToken}";
     }
 
     private sealed class ProxyResponseStream : Stream

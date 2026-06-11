@@ -419,6 +419,31 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public async Task Report_WithoutSavedRecording_LeavesRecordingUrlNull()
+    {
+        var customer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 3)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(3)).ReturnsAsync(new InterviewSession
+        {
+            Id = 3,
+            CustomerId = 1,
+            ProductId = 0,
+            ReportData = "overall score: 70",
+            QuestionScores = "[70]",
+            Score = 70,
+            CreatedOnUtc = DateTime.UtcNow.AddHours(-1),
+            CompletedOnUtc = DateTime.UtcNow
+        });
+
+        var result = await _controller.Report(3);
+
+        var viewResult = (ViewResult)result;
+        var model = (InterviewReportModel)viewResult.Model;
+        Assert.That(model.RecordingUrl, Is.Null.Or.Empty);
+    }
+
+    [Test]
     public async Task Report_IncludesSavedTurns()
     {
         var customer = new Customer { Id = 1 };
@@ -471,6 +496,31 @@ public class CandidateFlowTests
         Assert.That(model.Turns[0].AnswerText, Is.EqualTo("A1"));
         Assert.That(model.ParsedQuestionScores, Is.EquivalentTo(new[] { 88m, 92m }));
         Assert.That(model.RecordingUrl, Is.EqualTo("/aiinterview/recording/2"));
+    }
+
+    [Test]
+    public async Task MockReport_WithoutSavedRecording_LeavesRecordingUrlNull()
+    {
+        var customer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 4)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(4)).ReturnsAsync(new InterviewSession
+        {
+            Id = 4,
+            CustomerId = 1,
+            ProductId = 0,
+            ReportData = "overall score: 70",
+            QuestionScores = "[70]",
+            Score = 70,
+            CreatedOnUtc = DateTime.UtcNow.AddHours(-1),
+            CompletedOnUtc = DateTime.UtcNow
+        });
+
+        var result = await _runtimeController.Report(4);
+
+        var viewResult = (ViewResult)result;
+        var model = (InterviewReportModel)viewResult.Model;
+        Assert.That(model.RecordingUrl, Is.Null.Or.Empty);
     }
 
     [Test]
@@ -541,6 +591,7 @@ public class CandidateFlowTests
     [Test]
     public async Task RecordingRoute_AllowsOwner_AndRejectsUnauthorizedUser()
     {
+        _settings.AzureBlobStorageContainerUrl = "https://storage.example.com/recordings";
         _settings.AzureBlobStorageSasToken = "?sig=token";
         var allowedCustomer = new Customer { Id = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(allowedCustomer);
@@ -585,6 +636,61 @@ public class CandidateFlowTests
         _sessionService.Setup(x => x.CanAccessReportAsync(2, 55)).ReturnsAsync(false);
         var unauthorized = await controller.Recording(55);
         Assert.That(unauthorized, Is.TypeOf<ChallengeResult>());
+    }
+
+    [Test]
+    public async Task RecordingRoute_RejectsUrls_OutsideConfiguredContainer()
+    {
+        _settings.AzureBlobStorageContainerUrl = "https://storage.example.com/recordings";
+        _settings.AzureBlobStorageSasToken = "?sig=token";
+        var customer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 56)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(56)).ReturnsAsync(new InterviewSession
+        {
+            Id = 56,
+            CustomerId = 1,
+            RecordingUrl = "https://evil.example.com/recordings/session-56.webm"
+        });
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 57)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(57)).ReturnsAsync(new InterviewSession
+        {
+            Id = 57,
+            CustomerId = 1,
+            RecordingUrl = "https://storage.example.com/other/session-57.webm?sig=old"
+        });
+
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StreamContent(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("recording-bytes")))
+        });
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(() => new HttpClient(handler, disposeHandler: false));
+
+        var controller = new AIInterviewController(
+            _applicationService.Object,
+            _sessionService.Object,
+            _settings,
+            _workContext.Object,
+            _notificationService.Object,
+            _localizationService.Object,
+            _downloadService.Object,
+            _customerService.Object,
+            _productService.Object,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null,
+            null,
+            _turnService.Object,
+            factory.Object);
+
+        var outsideContainer = await controller.Recording(56);
+        Assert.That(outsideContainer, Is.TypeOf<NotFoundResult>());
+
+        var queryBearing = await controller.Recording(57);
+        Assert.That(queryBearing, Is.TypeOf<NotFoundResult>());
     }
 
     [Test]
