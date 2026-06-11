@@ -104,7 +104,6 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
             if (invite != null &&
                 invite.ProductId == productId &&
                 invite.IsActive &&
-                !invite.IsAccepted &&
                 (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) &&
                 string.Equals(invite.Email, customer.Email, StringComparison.OrdinalIgnoreCase))
             {

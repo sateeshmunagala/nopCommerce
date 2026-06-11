@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -79,7 +80,13 @@ public class InterviewAiClient : IAIInterviewClient
             return BuildMockQuestion(request);
 
         var response = await CallAzureAsync(request, "generate");
-        return response ?? BuildUnavailableResponse();
+        if (response == null)
+            return BuildUnavailableResponse();
+
+        if (string.IsNullOrWhiteSpace(response.Question))
+            return BuildValidationFailureResponse(response, "AI service unavailable.");
+
+        return response;
     }
 
     public async Task<AIInterviewClientResponse> ScoreAnswerAsync(AIInterviewClientRequest request)
@@ -88,7 +95,13 @@ public class InterviewAiClient : IAIInterviewClient
             return BuildMockScore(request);
 
         var response = await CallAzureAsync(request, "score");
-        return response ?? BuildUnavailableResponse();
+        if (response == null)
+            return BuildUnavailableResponse();
+
+        if (!response.Score.HasValue || response.Score.Value < 0 || response.Score.Value > 100)
+            return BuildValidationFailureResponse(response, "AI service unavailable.");
+
+        return response;
     }
 
     protected virtual AIInterviewClientResponse BuildUnavailableResponse()
@@ -100,7 +113,8 @@ public class InterviewAiClient : IAIInterviewClient
             Feedback = "AI service unavailable.",
             Completion = "AI service unavailable.",
             RawJson = string.Empty,
-            RubricJson = string.Empty
+            RubricJson = string.Empty,
+            Score = null
         };
     }
 
@@ -226,14 +240,7 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
 
             using var document = JsonDocument.Parse(content);
             var root = document.RootElement;
-            decimal score = 0;
-            if (root.TryGetProperty("score", out var scoreElement))
-            {
-                if (scoreElement.ValueKind == JsonValueKind.Number && scoreElement.TryGetDecimal(out var numericScore))
-                    score = numericScore;
-                else if (scoreElement.ValueKind == JsonValueKind.String && decimal.TryParse(scoreElement.GetString(), out var stringScore))
-                    score = stringScore;
-            }
+            var score = TryParseNullableDecimal(root, "score");
 
             string question = root.TryGetProperty("question", out var q) ? q.GetString() : null;
             string nextQuestion = root.TryGetProperty("nextQuestion", out var nq) ? nq.GetString()
@@ -261,6 +268,38 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
         {
             return null;
         }
+    }
+
+    protected virtual AIInterviewClientResponse BuildValidationFailureResponse(AIInterviewClientResponse response, string errorMessage)
+    {
+        return new AIInterviewClientResponse
+        {
+            Success = false,
+            ErrorMessage = errorMessage,
+            Question = response?.Question,
+            NextQuestion = response?.NextQuestion,
+            Score = null,
+            Feedback = response?.Feedback,
+            Complete = response?.Complete ?? false,
+            Completion = response?.Completion,
+            RawJson = response?.RawJson,
+            RubricJson = response?.RubricJson
+        };
+    }
+
+    protected static decimal? TryParseNullableDecimal(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var property) || property.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return null;
+
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetDecimal(out var numericScore))
+            return numericScore;
+
+        if (property.ValueKind == JsonValueKind.String &&
+            decimal.TryParse(property.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var stringScore))
+            return stringScore;
+
+        return null;
     }
 
     private static bool TryParseBoolean(JsonElement root, string propertyName)
@@ -293,7 +332,7 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
                 Success = true,
                 Question = question,
                 NextQuestion = question,
-                Score = 0,
+                Score = null,
             Feedback = string.Empty,
             Complete = false,
             Completion = string.Empty,
@@ -463,7 +502,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList()
         });
 
-        if (evaluation == null || !evaluation.Success)
+        if (evaluation == null || !evaluation.Success || !evaluation.Score.HasValue || evaluation.Score.Value < 0 || evaluation.Score.Value > 100)
         {
             return new SubmitInterviewAnswerResponse
             {
@@ -474,7 +513,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
 
         currentTurn.AnswerText = answer;
-        currentTurn.Score = evaluation.Score;
+        currentTurn.Score = evaluation.Score.Value;
         currentTurn.Feedback = evaluation.Feedback;
         currentTurn.RubricJson = evaluation.RubricJson;
         currentTurn.RawAIResponseJson = evaluation.RawJson;

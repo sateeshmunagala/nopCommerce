@@ -173,7 +173,6 @@ public class MockAiInterviewController : BasePluginController
             if (invite != null &&
                 invite.ProductId == productId &&
                 invite.IsActive &&
-                !invite.IsAccepted &&
                 (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) &&
                 string.Equals(invite.Email, customer.Email, StringComparison.OrdinalIgnoreCase) &&
                 sponsoredAttempts < invite.MaxAttempts)
@@ -631,15 +630,13 @@ public class MockAiInterviewController : BasePluginController
 
         var statusKey = attempts >= invite.MaxAttempts && invite.MaxAttempts > 0
             ? "Plugins.Misc.AIInterview.Employer.Invite.Exhausted"
-            : invite.IsAccepted && invite.MaxAttempts == 1
-                ? "Plugins.Misc.AIInterview.Employer.Invite.Exhausted"
-                : invite.IsAccepted
-                    ? "Plugins.Misc.AIInterview.Employer.Invite.Accepted"
-                    : !invite.IsActive
-                        ? "Plugins.Misc.AIInterview.Employer.Invite.Inactive"
-                        : invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow
-                            ? "Plugins.Misc.AIInterview.Employer.Invite.Expired"
-                            : "Plugins.Misc.AIInterview.Employer.Invite.Active";
+            : !invite.IsActive
+                ? "Plugins.Misc.AIInterview.Employer.Invite.Inactive"
+                : invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow
+                    ? "Plugins.Misc.AIInterview.Employer.Invite.Expired"
+                    : attempts > 0 || invite.IsAccepted
+                        ? "Plugins.Misc.AIInterview.Employer.Invite.Accepted"
+                        : "Plugins.Misc.AIInterview.Employer.Invite.Active";
 
         return await GetLocalizedTextAsync(statusKey, statusKey);
     }

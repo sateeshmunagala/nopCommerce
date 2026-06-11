@@ -201,6 +201,9 @@ public class AIInterviewController : BasePluginController
             var normalizedStatus = JobApplicationStatuses.Normalize(a.Status);
             var questionScores = ParseQuestionScores(latestSession?.QuestionScores);
             var reportSections = SplitReportSections(latestSession?.ReportData);
+            var turns = latestSession != null && _interviewTurnService != null
+                ? ((await _interviewTurnService.GetTurnsBySessionIdAsync(latestSession.Id)) ?? new List<InterviewTurn>()).ToList()
+                : new List<InterviewTurn>();
 
             return new ApplicationModel
             {
@@ -218,7 +221,18 @@ public class AIInterviewController : BasePluginController
                 QuestionScores = latestSession?.QuestionScores,
                 QuestionScoreValues = questionScores,
                 ReportSummary = reportSections.Summary,
-                FeedbackSummary = reportSections.Feedback
+                FeedbackSummary = reportSections.Feedback,
+                Turns = turns.Select(turn => new InterviewTurnViewModel
+                {
+                    TurnId = turn.Id,
+                    SequenceNumber = turn.SequenceNumber,
+                    QuestionText = turn.QuestionText,
+                    AnswerText = turn.AnswerText,
+                    Score = turn.Score,
+                    Feedback = turn.Feedback,
+                    AskedOnUtc = turn.AskedOnUtc,
+                    AnsweredOnUtc = turn.AnsweredOnUtc
+                }).ToList()
             };
         }));
 

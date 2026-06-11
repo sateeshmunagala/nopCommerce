@@ -569,14 +569,14 @@ public class AdminBaselineTests
             new() { Id = 2, ProductId = 55, Email = "expired@example.com", IsActive = true, IsAccepted = false, MaxAttempts = 2, ExpiryDateUtc = DateTime.UtcNow.AddDays(-1), CreatedOnUtc = DateTime.UtcNow.AddHours(-2) },
             new() { Id = 3, ProductId = 55, Email = "inactive@example.com", IsActive = false, IsAccepted = false, MaxAttempts = 2, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-3) },
             new() { Id = 4, ProductId = 55, Email = "accepted@example.com", IsActive = true, IsAccepted = true, MaxAttempts = 1, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-4) },
-            new() { Id = 5, ProductId = 55, Email = "accepted2@example.com", IsActive = true, IsAccepted = true, MaxAttempts = 3, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-5) }
+            new() { Id = 5, ProductId = 55, Email = "accepted2@example.com", IsActive = true, IsAccepted = false, MaxAttempts = 3, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-5) }
         };
 
         _inviteService.Setup(x => x.GetSponsorInvitesAsync(0)).ReturnsAsync(invites);
         _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(1)).ReturnsAsync(0);
         _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(2)).ReturnsAsync(0);
         _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(3)).ReturnsAsync(0);
-        _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(4)).ReturnsAsync(0);
+        _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(4)).ReturnsAsync(1);
         _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(5)).ReturnsAsync(1);
 
         var result = await _controller.SponsorInvites();

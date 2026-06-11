@@ -80,12 +80,13 @@
                                 <td>
                                     @{
                                         var statusKey = inviteStatuses.TryGetValue(invite.Id, out var inviteStatus) ? inviteStatus : string.Empty;
+                                        var activeStatus = T("Plugins.Misc.AIInterview.Employer.Invite.Active").Text;
+                                        var isActiveInvite = string.Equals(statusKey, activeStatus, StringComparison.OrdinalIgnoreCase);
                                     }
-                                    @(string.IsNullOrWhiteSpace(statusKey) ? (invite.IsAccepted ? T("Plugins.Misc.AIInterview.Employer.Invite.Accepted") :
-                                      (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc < DateTime.UtcNow ? T("Plugins.Misc.AIInterview.Employer.Invite.Expired") : T("Plugins.Misc.AIInterview.Employer.Invite.Active"))) : statusKey)
+                                    @(string.IsNullOrWhiteSpace(statusKey) ? T("Plugins.Misc.AIInterview.Employer.Invite.Active") : statusKey)
                                 </td>
                                     <td>
-                                        @if (!invite.IsAccepted && (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow))
+                                        @if (isActiveInvite)
                                         {
                                             <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post">
                                                 <button type="submit" class="button-2">@T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate")</button>

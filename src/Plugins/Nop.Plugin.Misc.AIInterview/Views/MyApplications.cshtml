@@ -226,7 +226,6 @@
                     <tbody>
                         @foreach (var app in Model.Applications)
                         {
-                            var metrics = app.QuestionScoreValues?.Take(3).ToList() ?? new List<decimal>();
                             <tr>
                                 <td>
                                     <div><strong>@app.JobTitle</strong></div>
@@ -265,7 +264,7 @@
                                     }
                                 </td>
                             </tr>
-                            @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
+                            @if (!string.IsNullOrEmpty(app.InterviewReportUrl) || app.Turns?.Any() == true)
                             {
                                 <tr>
                                     <td colspan="6">
@@ -277,16 +276,16 @@
                                                     <div class="report-metric-value">@(app.InterviewScore.HasValue ? Math.Round(app.InterviewScore.Value).ToString() : "-")</div>
                                                 </div>
                                                 <div class="report-metric">
-                                                    <div class="report-metric-label">Q1 Relevancy</div>
-                                                    <div class="report-metric-value">@(metrics.Count > 0 ? Math.Round(metrics[0]).ToString() : "-")</div>
+                                                    <div class="report-metric-label">Question Count</div>
+                                                    <div class="report-metric-value">@((app.Turns?.Count ?? 0).ToString())</div>
                                                 </div>
                                                 <div class="report-metric">
-                                                    <div class="report-metric-label">Q1 Correctness</div>
-                                                    <div class="report-metric-value">@(metrics.Count > 1 ? Math.Round(metrics[1]).ToString() : "-")</div>
+                                                    <div class="report-metric-label">Completed</div>
+                                                    <div class="report-metric-value">@(app.CompletedOn.HasValue ? app.CompletedOn.Value.ToString("yyyy-MM-dd") : "-")</div>
                                                 </div>
                                                 <div class="report-metric">
-                                                    <div class="report-metric-label">Q1 Answer Score</div>
-                                                    <div class="report-metric-value">@(metrics.Count > 2 ? $"{Math.Round(metrics[2] / 5m, 1)}/20" : "-")</div>
+                                                    <div class="report-metric-label">Assessment</div>
+                                                    <div class="report-metric-value">@(app.Turns?.Any() == true ? "Available" : "-")</div>
                                                 </div>
                                             </div>
                                             <div class="report-copy">
@@ -299,6 +298,20 @@
                                                     <p><strong>AI feedback:</strong> @app.FeedbackSummary</p>
                                                 }
                                             </div>
+                                            @if (app.Turns?.Any() == true)
+                                            {
+                                                <div class="turn-history">
+                                                    @foreach (var turn in app.Turns)
+                                                    {
+                                                        <div style="padding:12px 14px;border:1px solid rgba(15,23,42,.08);border-radius:14px;margin-top:12px;">
+                                                            <div><strong>Q@turn.SequenceNumber.</strong> @turn.QuestionText</div>
+                                                            <div><strong>Answer:</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? "(pending)" : turn.AnswerText)</div>
+                                                            <div><strong>Score:</strong> @(turn.Score.HasValue ? turn.Score.Value.ToString("N2") : "-")</div>
+                                                            <div><strong>Feedback:</strong> @(string.IsNullOrWhiteSpace(turn.Feedback) ? "-" : turn.Feedback)</div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
                                         </div>
                                     </td>
                                 </tr>

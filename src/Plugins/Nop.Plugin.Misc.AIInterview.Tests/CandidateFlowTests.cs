@@ -822,6 +822,58 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public async Task MyApplications_Uses_Actual_Turn_Data_For_Assessment_Preview()
+    {
+        var customer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+
+        var applications = new List<JobApplication>
+        {
+            new JobApplication { Id = 10, ProductId = 5, JobTitle = "Test Job" }
+        };
+        var sessions = new List<InterviewSession>
+        {
+            new InterviewSession { Id = 99, ProductId = 5, CompletedOnUtc = DateTime.UtcNow, Score = 85, QuestionScores = "[85]" }
+        };
+        var turns = new List<InterviewTurn>
+        {
+            new InterviewTurn
+            {
+                Id = 1,
+                InterviewSessionId = 99,
+                SequenceNumber = 1,
+                QuestionText = "What is dependency injection?",
+                AnswerText = "It removes hard coupling.",
+                Score = 85,
+                Feedback = "Strong answer",
+                AskedOnUtc = DateTime.UtcNow.AddMinutes(-2),
+                AnsweredOnUtc = DateTime.UtcNow.AddMinutes(-1)
+            }
+        };
+
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(customer.Id)).ReturnsAsync(applications);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(sessions);
+        _turnService.Setup(x => x.GetTurnsBySessionIdAsync(99)).ReturnsAsync(turns);
+
+        var urlHelperMock = new Mock<Microsoft.AspNetCore.Mvc.IUrlHelper>();
+        urlHelperMock.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>())).Returns("dummy-url");
+        _controller.Url = urlHelperMock.Object;
+
+        var result = await _controller.MyApplications("LatestApplied");
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        var model = (ApplicationListModel)viewResult.Model;
+        var firstApp = model.Applications.First();
+
+        Assert.That(firstApp.Turns, Has.Count.EqualTo(1));
+        Assert.That(firstApp.Turns[0].SequenceNumber, Is.EqualTo(1));
+        Assert.That(firstApp.Turns[0].QuestionText, Is.EqualTo("What is dependency injection?"));
+        Assert.That(firstApp.Turns[0].Score, Is.EqualTo(85));
+        Assert.That(firstApp.Turns[0].Feedback, Is.EqualTo("Strong answer"));
+    }
+
+    [Test]
     public async Task Interview_LegacyAction_Redirects_To_Runtime()
     {
         var customer = new Customer { Id = 1 };
@@ -858,6 +910,11 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Recording ready."));
         Assert.That(runtimeText, Does.Contain("Recording waiting for camera or mic."));
         Assert.That(runtimeText, Does.Contain("Recording live."));
+        var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml"));
+        Assert.That(myApplicationsText, Does.Not.Contain("Q1 Relevancy"));
+        Assert.That(myApplicationsText, Does.Not.Contain("Q1 Correctness"));
+        Assert.That(myApplicationsText, Does.Not.Contain("Q1 Answer Score"));
+        Assert.That(myApplicationsText, Does.Contain("Question Count"));
         Assert.That(mockReportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
         Assert.That(reportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
     }

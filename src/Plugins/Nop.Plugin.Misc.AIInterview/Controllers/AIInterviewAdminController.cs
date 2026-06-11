@@ -375,17 +375,17 @@ public class AIInterviewAdminController : BasePluginController
         if (invite == null)
             return string.Empty;
 
-        if (IsInviteExhausted(invite, attemptCount))
-            return "Plugins.Misc.AIInterview.Employer.Invite.Exhausted";
-
-        if (invite.IsAccepted)
-            return "Plugins.Misc.AIInterview.Employer.Invite.Accepted";
-
         if (!invite.IsActive)
             return "Plugins.Misc.AIInterview.Employer.Invite.Inactive";
 
         if (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow)
             return "Plugins.Misc.AIInterview.Employer.Invite.Expired";
+
+        if (IsInviteExhausted(invite, attemptCount))
+            return "Plugins.Misc.AIInterview.Employer.Invite.Exhausted";
+
+        if (attemptCount > 0 || invite.IsAccepted)
+            return "Plugins.Misc.AIInterview.Employer.Invite.Accepted";
 
         return "Plugins.Misc.AIInterview.Employer.Invite.Active";
     }
@@ -398,7 +398,7 @@ public class AIInterviewAdminController : BasePluginController
         if (invite.MaxAttempts <= 0)
             return false;
 
-        return attemptCount >= invite.MaxAttempts || (invite.IsAccepted && invite.MaxAttempts == 1);
+        return attemptCount >= invite.MaxAttempts;
     }
 
     protected virtual async Task<string> GetInviteStatusTextAsync(SponsorInvite invite, int attemptCount = 0)

@@ -59,6 +59,7 @@ public record ApplicationModel : BaseNopModel
     public string CoverMessage { get; set; }
     public string ReportSummary { get; set; }
     public string FeedbackSummary { get; set; }
+    public IList<InterviewTurnViewModel> Turns { get; set; } = new List<InterviewTurnViewModel>();
 }
 
 public record UpdateStatusModel : BaseNopModel

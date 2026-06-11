@@ -76,7 +76,7 @@
                                 </td>
                                 <td>@invite.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
                                 <td>
-                                    @if (invite.IsActive && !invite.IsAccepted && !invite.IsExpired)
+                                    @if (string.Equals(invite.Status, "Plugins.Misc.AIInterview.Employer.Invite.Active", StringComparison.OrdinalIgnoreCase))
                                     {
                                         <form asp-controller="AIInterviewAdmin" asp-action="DeactivateInvite" method="post">
                                             <input type="hidden" name="id" value="@invite.Id" />
