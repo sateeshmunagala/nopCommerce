@@ -101,6 +101,9 @@ public record VendorJobModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.ProductRequirements.InterviewRequired")]
     public bool InterviewRequired { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.MinimumScore")]
+    public decimal MinimumScore { get; set; }
+
     public int? ExperienceLevelOptionId { get; set; }
 
     public int? WorkModeOptionId { get; set; }

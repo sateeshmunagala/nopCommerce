@@ -447,6 +447,39 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public async Task Report_HandlesTurnLookupFailure_AndStillRendersSessionReport()
+    {
+        var customer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 18)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(18)).ReturnsAsync(new InterviewSession
+        {
+            Id = 18,
+            CustomerId = 1,
+            ProductId = 11,
+            SessionKey = "session-18",
+            Token = "token-18",
+            ReportData = "overall score: 77",
+            QuestionScores = "[77]",
+            Score = 77,
+            CreatedOnUtc = DateTime.UtcNow.AddHours(-1),
+            CompletedOnUtc = DateTime.UtcNow
+        });
+        _productService.Setup(x => x.GetProductByIdAsync(11)).ReturnsAsync(new Product { Id = 11, Name = "Backend Engineer" });
+        _turnService.Setup(x => x.GetTurnsBySessionIdAsync(18)).ThrowsAsync(new InvalidOperationException("missing turn table"));
+
+        var result = await _controller.Report(18);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        var model = (InterviewReportModel)viewResult.Model;
+        Assert.That(model.SessionId, Is.EqualTo(18));
+        Assert.That(model.ReportData, Is.EqualTo("overall score: 77"));
+        Assert.That(model.Turns, Is.Empty);
+        Assert.That(model.ParsedQuestionScores, Is.EquivalentTo(new[] { 77m }));
+    }
+
+    [Test]
     public async Task MyApplications_ReportLink_IsCorrectlyGenerated()
     {
         // Arrange

@@ -70,6 +70,7 @@ public static class AIInterviewDefaults
 
     public static string JobResumeRequiredAttributeName => "AIInterview.Job.ResumeRequired";
     public static string JobInterviewRequiredAttributeName => "AIInterview.Job.InterviewRequired";
+    public static string JobMinimumScoreAttributeName => "AIInterview.Job.MinimumScore";
 
     public static string DefaultCreditProductSkuMappingsJson => "{\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}";
     public static string DefaultCreditPurchasePageUrl => "/pricing";

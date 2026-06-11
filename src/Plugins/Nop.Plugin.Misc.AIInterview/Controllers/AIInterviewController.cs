@@ -270,9 +270,18 @@ public class AIInterviewController : BasePluginController
             return RedirectToRoute(AIInterviewDefaults.MyApplicationsRouteName);
         }
 
-        var turns = _interviewTurnService == null
-            ? new List<InterviewTurn>()
-            : (await _interviewTurnService.GetTurnsBySessionIdAsync(sessionId)).ToList();
+        var turns = new List<InterviewTurn>();
+        if (_interviewTurnService != null)
+        {
+            try
+            {
+                turns = (await _interviewTurnService.GetTurnsBySessionIdAsync(sessionId)).ToList();
+            }
+            catch
+            {
+                turns = new List<InterviewTurn>();
+            }
+        }
 
         var model = new InterviewReportModel
         {
@@ -444,9 +453,9 @@ public class AIInterviewController : BasePluginController
             }
 
             var highestScore = await _interviewSessionService.GetHighestScoreByCustomerIdAndProductIdAsync(customer.Id, model.ProductId);
-            if (highestScore < _aiInterviewSettings.MinimumScore)
+            if (highestScore < jobRequirements.MinimumScore)
             {
-                var message = string.Format(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.MinimumScoreNotReached"), _aiInterviewSettings.MinimumScore);
+                var message = string.Format(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.MinimumScoreNotReached"), jobRequirements.MinimumScore);
                 _notificationService.ErrorNotification(message);
                 return new ApplySubmissionResult { Success = false, Message = message };
             }
@@ -906,7 +915,7 @@ public class AIInterviewController : BasePluginController
         if (_jobInterviewExperienceService != null)
             await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
         if (_jobRequirementService != null)
-            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired);
+            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, model.MinimumScore);
         var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
         await _urlRecordService.SaveSlugAsync(product, seName, 0);
 

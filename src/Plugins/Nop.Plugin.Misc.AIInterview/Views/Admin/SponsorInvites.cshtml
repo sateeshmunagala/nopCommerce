@@ -17,10 +17,10 @@
             <div class="card card-default">
                 <div class="card-body">
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="BulkEmails" /></div><div class="col-md-9"><nop-textarea asp-for="BulkEmails" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ProductId" /></div><div class="col-md-9"><nop-editor asp-for="ProductId" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ProductId" /></div><div class="col-md-9"><nop-select asp-for="ProductId" asp-items="Model.AvailableProducts" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="MaxAttempts" /></div><div class="col-md-9"><nop-editor asp-for="MaxAttempts" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ExpiryDateUtc" /></div><div class="col-md-9"><nop-editor asp-for="ExpiryDateUtc" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="SponsorId" /></div><div class="col-md-9"><nop-editor asp-for="SponsorId" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="SponsorId" /></div><div class="col-md-9"><nop-select asp-for="SponsorId" asp-items="Model.AvailableSponsors" /></div></div>
                 </div>
                 <div class="card-footer">
                     <button type="submit" class="btn btn-primary"><i class="far fa-paper-plane"></i> @T("Plugins.Misc.AIInterview.Admin.SponsorInvites.Create")</button>
@@ -54,8 +54,26 @@
                                 <td>@invite.Id</td>
                                 <td>@invite.Email</td>
                                 <td>@T(invite.Status)</td>
-                                <td>@invite.ProductId</td>
-                                <td>@invite.SponsorId</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(invite.ProductAdminUrl))
+                                    {
+                                        <a href="@invite.ProductAdminUrl">@invite.ProductName</a>
+                                    }
+                                    else
+                                    {
+                                        @invite.ProductName
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(invite.VendorAdminUrl))
+                                    {
+                                        <a href="@invite.VendorAdminUrl">@invite.VendorName</a>
+                                    }
+                                    else
+                                    {
+                                        @invite.VendorName
+                                    }
+                                </td>
                                 <td>@invite.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
                                 <td>
                                     @if (invite.IsActive && !invite.IsAccepted && !invite.IsExpired)

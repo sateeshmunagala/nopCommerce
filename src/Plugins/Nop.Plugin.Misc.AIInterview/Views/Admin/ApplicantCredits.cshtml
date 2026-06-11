@@ -19,8 +19,25 @@
         <div class="container-fluid">
             <div class="card card-default">
                 <div class="card-body">
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="CustomerId" /></div><div class="col-md-9"><nop-editor asp-for="CustomerId" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="CustomerId" /></div><div class="col-md-9"><nop-select asp-for="CustomerId" asp-items="Model.AvailableCustomers" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Amount" /></div><div class="col-md-9"><nop-editor asp-for="Amount" /></div></div>
+                    <div class="form-group row">
+                        <div class="col-md-3">Selected Customer</div>
+                        <div class="col-md-9">
+                            @if (!string.IsNullOrWhiteSpace(Model.CustomerAdminUrl))
+                            {
+                                <a href="@Model.CustomerAdminUrl">@Model.CustomerName</a>
+                            }
+                            else
+                            {
+                                <strong>@Model.CustomerName</strong>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(Model.CustomerEmail))
+                            {
+                                <span class="text-muted"> (@Model.CustomerEmail)</span>
+                            }
+                        </div>
+                    </div>
                     <div class="form-group row">
                         <div class="col-md-3">Wallet Balance</div>
                         <div class="col-md-9"><strong>@Model.WalletBalance</strong></div>
@@ -32,11 +49,21 @@
                 <div class="card-header">Ledger</div>
                 <div class="card-body">
                     <table class="table table-bordered table-striped">
-                        <thead><tr><th>Amount</th><th>Type</th><th>Remarks</th><th>UTC</th></tr></thead>
+                        <thead><tr><th>Customer</th><th>Amount</th><th>Type</th><th>Remarks</th><th>UTC</th></tr></thead>
                         <tbody>
                             @foreach (var entry in Model.LedgerEntries)
                             {
                                 <tr>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(entry.CustomerAdminUrl))
+                                        {
+                                            <a href="@entry.CustomerAdminUrl">@entry.CustomerName</a>
+                                        }
+                                        else
+                                        {
+                                            @entry.CustomerName
+                                        }
+                                    </td>
                                     <td>@entry.Amount</td>
                                     <td>@entry.TransactionType</td>
                                     <td>@entry.Remarks</td>

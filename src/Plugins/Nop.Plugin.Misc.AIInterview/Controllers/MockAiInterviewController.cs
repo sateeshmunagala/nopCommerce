@@ -422,7 +422,18 @@ public class MockAiInterviewController : BasePluginController
         if (session == null || string.IsNullOrEmpty(session.ReportData))
             return await RuntimeErrorAsync("Plugins.Misc.AIInterview.Report.NotFound", "Interview report not found.", 404);
 
-        var turns = _turnService == null ? new List<InterviewTurn>() : (await _turnService.GetTurnsBySessionIdAsync(session.Id))?.ToList() ?? new List<InterviewTurn>();
+        var turns = new List<InterviewTurn>();
+        if (_turnService != null)
+        {
+            try
+            {
+                turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id))?.ToList() ?? new List<InterviewTurn>();
+            }
+            catch
+            {
+                turns = new List<InterviewTurn>();
+            }
+        }
         var model = new InterviewReportModel
         {
             SessionId = session.Id,

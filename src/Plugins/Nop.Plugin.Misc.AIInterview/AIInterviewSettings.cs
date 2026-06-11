@@ -31,6 +31,10 @@ public class AIInterviewSettings : ISettings
 
     public string AzureSpeechRegion { get; set; }
 
+    public string AzureBlobStorageContainerUrl { get; set; }
+
+    public string AzureBlobStorageSasToken { get; set; }
+
     /// <summary>
     /// Gets or sets the minimum score required in an interview to apply
     /// </summary>

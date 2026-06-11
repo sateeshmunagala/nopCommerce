@@ -176,6 +176,12 @@
                         <label asp-for="InterviewRequired"></label>
                     </div>
                 </div>
+
+                <div class="inputs">
+                    <label asp-for="MinimumScore" asp-postfix=":"></label>
+                    <input asp-for="MinimumScore" type="number" min="0" step="0.01" />
+                    <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.VendorJobCreation.MinimumScore.Hint")</small>
+                </div>
             </div>
 
             <div class="buttons">

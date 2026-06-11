@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using System.Globalization;
 using Microsoft.Extensions.Primitives;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Events;
@@ -11,6 +12,7 @@ public class ProductRequirementsEventConsumer : IConsumer<EntityInsertedEvent<Pr
 {
     private const string ResumeRequiredFieldName = "AIInterviewJobResumeRequired";
     private const string InterviewRequiredFieldName = "AIInterviewJobInterviewRequired";
+    private const string MinimumScoreFieldName = "AIInterviewJobMinimumScore";
 
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IJobRequirementService _jobRequirementService;
@@ -43,7 +45,8 @@ public class ProductRequirementsEventConsumer : IConsumer<EntityInsertedEvent<Pr
             return;
 
         if (!request.Form.ContainsKey(ResumeRequiredFieldName) &&
-            !request.Form.ContainsKey(InterviewRequiredFieldName))
+            !request.Form.ContainsKey(InterviewRequiredFieldName) &&
+            !request.Form.ContainsKey(MinimumScoreFieldName))
         {
             return;
         }
@@ -53,8 +56,9 @@ public class ProductRequirementsEventConsumer : IConsumer<EntityInsertedEvent<Pr
 
         var resumeRequired = IsTrue(request.Form[ResumeRequiredFieldName]);
         var interviewRequired = IsTrue(request.Form[InterviewRequiredFieldName]);
+        var minimumScore = ParseDecimal(request.Form[MinimumScoreFieldName]);
 
-        await _jobRequirementService.SaveRequirementsAsync(product, resumeRequired, interviewRequired);
+        await _jobRequirementService.SaveRequirementsAsync(product, resumeRequired, interviewRequired, minimumScore);
     }
 
     protected static bool IsTrue(StringValues values)
@@ -66,5 +70,22 @@ public class ProductRequirementsEventConsumer : IConsumer<EntityInsertedEvent<Pr
         }
 
         return false;
+    }
+
+    protected static decimal ParseDecimal(StringValues values)
+    {
+        foreach (var value in values)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            if (decimal.TryParse(value, NumberStyles.Any, CultureInfo.CurrentCulture, out var parsed) ||
+                decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out parsed))
+            {
+                return parsed;
+            }
+        }
+
+        return 0m;
     }
 }

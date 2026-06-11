@@ -173,18 +173,21 @@ public class ServiceTests
                 ViewPath = AIInterviewDefaults.JobProductTemplateViewPath
             });
 
-        var service = new JobRequirementService(genericAttributeService.Object, productService.Object, productTemplateService.Object);
+        var service = new JobRequirementService(genericAttributeService.Object, productService.Object, productTemplateService.Object, new AIInterviewSettings { MinimumScore = 42 });
         var product = new Product { Id = 5, ProductTemplateId = 7 };
+        genericAttributeService.Setup(x => x.GetAttributeAsync<decimal>(product, AIInterviewDefaults.JobMinimumScoreAttributeName, 0, 42m))
+            .ReturnsAsync(42m);
 
         var result = await service.GetRequirementsAsync(product);
 
         Assert.That(result.IsJobProduct, Is.True);
         Assert.That(result.ResumeRequired, Is.False);
         Assert.That(result.InterviewRequired, Is.False);
+        Assert.That(result.MinimumScore, Is.EqualTo(42));
     }
 
     [Test]
-    public async Task JobRequirementService_SavesFlags_ForJobProduct()
+    public async Task JobRequirementService_SavesFlags_AndMinimumScore_ForJobProduct()
     {
         var genericAttributeService = new Mock<IGenericAttributeService>();
         var productService = new Mock<IProductService>();
@@ -204,10 +207,44 @@ public class ServiceTests
             .Returns(Task.CompletedTask);
         genericAttributeService.Setup(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobInterviewRequiredAttributeName, false, 0))
             .Returns(Task.CompletedTask);
+        genericAttributeService.Setup(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobMinimumScoreAttributeName, 87.5m, 0))
+            .Returns(Task.CompletedTask);
 
-        await service.SaveRequirementsAsync(product, true, false);
+        await service.SaveRequirementsAsync(product, true, false, 87.5m);
 
         genericAttributeService.Verify(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobResumeRequiredAttributeName, true, 0), Times.Once);
         genericAttributeService.Verify(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobInterviewRequiredAttributeName, false, 0), Times.Once);
+        genericAttributeService.Verify(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobMinimumScoreAttributeName, 87.5m, 0), Times.Once);
+    }
+
+    [Test]
+    public async Task JobRequirementService_Reads_MinimumScore_From_ProductAttribute()
+    {
+        var genericAttributeService = new Mock<IGenericAttributeService>();
+        var productService = new Mock<IProductService>();
+        var productTemplateService = new Mock<IProductTemplateService>();
+
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
+            {
+                Id = 7,
+                ViewPath = AIInterviewDefaults.JobProductTemplateViewPath
+            });
+
+        var product = new Product { Id = 5, ProductTemplateId = 7 };
+        genericAttributeService.Setup(x => x.GetAttributeAsync<bool>(product, AIInterviewDefaults.JobResumeRequiredAttributeName, 0, false))
+            .ReturnsAsync(false);
+        genericAttributeService.Setup(x => x.GetAttributeAsync<bool>(product, AIInterviewDefaults.JobInterviewRequiredAttributeName, 0, true))
+            .ReturnsAsync(false);
+        genericAttributeService.Setup(x => x.GetAttributeAsync<decimal>(product, AIInterviewDefaults.JobMinimumScoreAttributeName, 0, 0m))
+            .ReturnsAsync(73.25m);
+
+        var service = new JobRequirementService(genericAttributeService.Object, productService.Object, productTemplateService.Object);
+
+        var result = await service.GetRequirementsAsync(product);
+
+        Assert.That(result.ResumeRequired, Is.False);
+        Assert.That(result.InterviewRequired, Is.False);
+        Assert.That(result.MinimumScore, Is.EqualTo(73.25m));
     }
 }

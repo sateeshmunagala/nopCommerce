@@ -10,6 +10,7 @@ using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Vendors;
 using Nop.Data;
+using Nop.Plugin.Misc.AIInterview.Components;
 using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Infrastructure;
@@ -26,6 +27,7 @@ using Nop.Web.Framework.Events;
 using Nop.Web.Framework.Menu;
 using Nop.Web.Framework.Mvc.Filters;
 using Nop.Web.Framework.Mvc.Routing;
+using Nop.Web.Areas.Admin.Models.Catalog;
 using NUnit.Framework;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
@@ -84,6 +86,8 @@ public class AdminBaselineTests
             AgoraTokenServiceUrl = "keep-agora-url",
             AzureSpeechKey = "keep-speech",
             AzureSpeechRegion = "keep-region",
+            AzureBlobStorageContainerUrl = "keep-container",
+            AzureBlobStorageSasToken = "keep-sas",
             CreditPurchasePageUrl = "keep-credits"
         };
         _mockAIInterviewSettings = new MockAIInterviewSettings { UseMockResponses = true };
@@ -110,6 +114,13 @@ public class AdminBaselineTests
             _ledgerRepository.Object,
             _aiInterviewSettings,
             _mockAIInterviewSettings);
+
+        var defaultUrlHelper = new Mock<IUrlHelper>();
+        defaultUrlHelper.Setup(x => x.Action(It.IsAny<UrlActionContext>()))
+            .Returns("/admin/mock");
+        defaultUrlHelper.Setup(x => x.RouteUrl(It.IsAny<UrlRouteContext>()))
+            .Returns("/aiinterview/report/mock");
+        _controller.Url = defaultUrlHelper.Object;
 
         _legacyController = new MockAiInterviewAdminController(
             _creditService.Object,
@@ -210,14 +221,18 @@ public class AdminBaselineTests
         var getResult = _controller.AiService();
         var getModel = (AiServiceSettingsModel)((ViewResult)getResult).Model;
         Assert.That(getModel.UseMockResponses, Is.True);
+        Assert.That(getModel.AvailableProviders, Has.Count.EqualTo(1));
+        Assert.That(getModel.AvailableProviders.Single().Value, Is.EqualTo("Azure OpenAI"));
         Assert.That(getModel.AzureOpenAiEndpointUrl, Is.EqualTo("keep-endpoint"));
         Assert.That(getModel.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-1"));
         Assert.That(getModel.CreditPurchasePageUrl, Is.EqualTo("keep-credits"));
+        Assert.That(getModel.AzureBlobStorageContainerUrl, Is.EqualTo("keep-container"));
+        Assert.That(getModel.AzureBlobStorageSasToken, Is.EqualTo("keep-sas"));
 
         await _controller.AiService(new AiServiceSettingsModel
         {
             UseMockResponses = false,
-            Provider = "OpenAI",
+            Provider = "Azure OpenAI",
             ApiKey = "key",
             Model = "gpt-4",
             Prompt = "prompt",
@@ -230,16 +245,70 @@ public class AdminBaselineTests
             AgoraAppId = "agora",
             AgoraTokenServiceUrl = "https://token",
             AzureSpeechKey = "speech",
-            AzureSpeechRegion = "eastus"
+            AzureSpeechRegion = "eastus",
+            AzureBlobStorageContainerUrl = "",
+            AzureBlobStorageSasToken = ""
         });
 
         Assert.That(_mockAIInterviewSettings.UseMockResponses, Is.False);
-        Assert.That(_aiInterviewSettings.Provider, Is.EqualTo("OpenAI"));
+        Assert.That(_aiInterviewSettings.Provider, Is.EqualTo("Azure OpenAI"));
         Assert.That(_aiInterviewSettings.AzureSpeechRegion, Is.EqualTo("eastus"));
+        Assert.That(_aiInterviewSettings.AzureBlobStorageContainerUrl, Is.EqualTo(string.Empty));
+        Assert.That(_aiInterviewSettings.AzureBlobStorageSasToken, Is.EqualTo(string.Empty));
         Assert.That(_aiInterviewSettings.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-10"));
         Assert.That(_aiInterviewSettings.CreditPurchasePageUrl, Is.EqualTo("/credits"));
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<AIInterviewSettings>()), Times.AtLeastOnce);
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<MockAIInterviewSettings>()), Times.Once);
+    }
+
+    [Test]
+    public async Task SponsorInvites_Page_Populates_Dropdowns_And_Row_Links()
+    {
+        var product = new Product { Id = 55, Name = "Senior Backend Engineer", VendorId = 17 };
+        var vendor = new Vendor { Id = 17, Name = "Acme Hiring", Email = "vendor@example.com", PmCustomerId = 42 };
+        _inviteService.Setup(x => x.GetSponsorInvitesAsync(0)).ReturnsAsync(new List<SponsorInvite>
+        {
+            new() { Id = 1, SponsorId = 42, ProductId = 55, Email = "candidate@example.com", IsActive = true, CreatedOnUtc = DateTime.UtcNow }
+        });
+        _productService.Setup(x => x.SearchProductsAsync(
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<IList<int>>(),
+                It.IsAny<IList<int>>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<ProductType?>(),
+                It.IsAny<bool>(),
+                It.IsAny<bool>(),
+                It.IsAny<decimal?>(),
+                It.IsAny<decimal?>(),
+                It.IsAny<int>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<bool>(),
+                It.IsAny<bool>(),
+                It.IsAny<bool>(),
+                It.IsAny<int>(),
+                It.IsAny<IList<SpecificationAttributeOption>>(),
+                It.IsAny<ProductSortingEnum>(),
+                It.IsAny<bool>(),
+                It.IsAny<bool?>()))
+            .ReturnsAsync(new Nop.Core.PagedList<Product>(new List<Product> { product }, 0, 1, 1));
+        _productService.Setup(x => x.GetProductsByIdsAsync(It.IsAny<int[]>()))
+            .ReturnsAsync(new List<Product> { product });
+        _vendorService.Setup(x => x.GetAllVendorsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>()))
+            .ReturnsAsync(new Nop.Core.PagedList<Vendor>(new List<Vendor> { vendor }, 0, 1, 1));
+
+        var result = await _controller.SponsorInvites();
+        var model = (SponsorInviteAdminModel)((ViewResult)result).Model;
+
+        Assert.That(model.AvailableProducts, Has.Count.EqualTo(1));
+        Assert.That(model.AvailableSponsors, Has.Count.EqualTo(1));
+        Assert.That(model.Invites.Single().ProductName, Is.EqualTo("Senior Backend Engineer"));
+        Assert.That(model.Invites.Single().VendorName, Is.EqualTo("Acme Hiring"));
+        Assert.That(model.Invites.Single().ProductAdminUrl, Is.Not.Empty);
+        Assert.That(model.Invites.Single().VendorAdminUrl, Is.Not.Empty);
     }
 
     [Test]
@@ -261,7 +330,9 @@ public class AdminBaselineTests
             AgoraAppId = "agora",
             AgoraTokenServiceUrl = "https://token",
             AzureSpeechKey = "speech",
-            AzureSpeechRegion = "eastus"
+            AzureSpeechRegion = "eastus",
+            AzureBlobStorageContainerUrl = "container",
+            AzureBlobStorageSasToken = "sas"
         });
 
         Assert.That(result, Is.InstanceOf<ViewResult>());
@@ -274,7 +345,7 @@ public class AdminBaselineTests
     public async Task SaveProductRequirements_Saves_Job_Flags_For_Existing_Product()
     {
         var jobRequirementService = new Mock<IJobRequirementService>();
-        jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Product>(), It.IsAny<bool>(), It.IsAny<bool>()))
+        jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Product>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<decimal>()))
             .Returns(Task.CompletedTask);
         _productService.Setup(x => x.GetProductByIdAsync(55))
             .ReturnsAsync(new Product { Id = 55, ProductTemplateId = 7 });
@@ -301,11 +372,34 @@ public class AdminBaselineTests
         {
             ProductId = 55,
             ResumeRequired = true,
-            InterviewRequired = false
+            InterviewRequired = false,
+            MinimumScore = 88
         });
 
         Assert.That(result, Is.TypeOf<JsonResult>());
-        jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Product>(product => product.Id == 55), true, false), Times.Once);
+        jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Product>(product => product.Id == 55), true, false, 88m), Times.Once);
+    }
+
+    [Test]
+    public async Task ProductRequirementsWidget_Reads_MinimumScore_From_Product_Attributes()
+    {
+        var product = new Product { Id = 60, ProductTemplateId = 7 };
+        _productService.Setup(x => x.GetProductByIdAsync(60)).ReturnsAsync(product);
+        var jobRequirementService = new Mock<IJobRequirementService>();
+        jobRequirementService.Setup(x => x.GetRequirementsAsync(product))
+            .ReturnsAsync(new JobRequirementsModel
+            {
+                IsJobProduct = true,
+                ResumeRequired = true,
+                InterviewRequired = false,
+                MinimumScore = 64.5m
+            });
+
+        var component = new AIInterviewAdminProductRequirementsViewComponent(_productService.Object, new Mock<IProductTemplateService>().Object, jobRequirementService.Object);
+        var result = await component.InvokeAsync("", new ProductModel { Id = 60 });
+
+        Assert.That(result, Is.TypeOf<Microsoft.AspNetCore.Mvc.ViewComponents.ViewViewComponentResult>());
+        Assert.That(component.ViewBag.MinimumScore, Is.EqualTo(64.5m));
     }
 
     [Test]
@@ -313,17 +407,18 @@ public class AdminBaselineTests
     {
         var jobRequirementService = new Mock<IJobRequirementService>();
         jobRequirementService.Setup(x => x.IsJobProductAsync(It.IsAny<Product>())).ReturnsAsync(true);
-        jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Product>(), It.IsAny<bool>(), It.IsAny<bool>()))
+        jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Product>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<decimal>()))
             .Returns(Task.CompletedTask);
 
         var context = new DefaultHttpContext();
         context.Request.Method = "POST";
-        context.Request.ContentType = "application/x-www-form-urlencoded";
-        context.Features.Set<IFormFeature>(new FormFeature(new FormCollection(new Dictionary<string, StringValues>
-        {
-            ["AIInterviewJobResumeRequired"] = new StringValues(new[] { "false", "true" }),
-            ["AIInterviewJobInterviewRequired"] = new StringValues("false")
-        })));
+            context.Request.ContentType = "application/x-www-form-urlencoded";
+            context.Features.Set<IFormFeature>(new FormFeature(new FormCollection(new Dictionary<string, StringValues>
+            {
+                ["AIInterviewJobResumeRequired"] = new StringValues(new[] { "false", "true" }),
+                ["AIInterviewJobInterviewRequired"] = new StringValues("false"),
+                ["AIInterviewJobMinimumScore"] = new StringValues("77.5")
+            })));
 
         var consumer = new ProductRequirementsEventConsumer(new HttpContextAccessor { HttpContext = context }, jobRequirementService.Object);
         var product = new Product { Id = 77, ProductTemplateId = 7 };
@@ -331,7 +426,7 @@ public class AdminBaselineTests
         await consumer.HandleEventAsync(new Nop.Core.Events.EntityInsertedEvent<Product>(product));
         await consumer.HandleEventAsync(new Nop.Core.Events.EntityUpdatedEvent<Product>(product));
 
-        jobRequirementService.Verify(x => x.SaveRequirementsAsync(product, true, false), Times.Exactly(2));
+        jobRequirementService.Verify(x => x.SaveRequirementsAsync(product, true, false, 77.5m), Times.Exactly(2));
     }
 
     [Test]
@@ -395,6 +490,22 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public async Task VendorCredits_Get_Populates_Vendor_Dropdown()
+    {
+        _vendorService.Setup(x => x.GetAllVendorsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>()))
+            .ReturnsAsync(new Nop.Core.PagedList<Vendor>(new List<Vendor>
+            {
+                new() { Id = 11, Name = "Vendor One", Email = "vendor1@example.com", PmCustomerId = 101 }
+            }, 0, 1, 1));
+
+        var result = await _controller.VendorCredits();
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.AvailableCustomers, Has.Count.EqualTo(1));
+        Assert.That(model.AvailableCustomers.Single().Value, Is.EqualTo("101"));
+    }
+
+    [Test]
     public async Task VendorCredits_Rejects_ApplicantCustomer()
     {
         _customerService.Setup(x => x.GetCustomerByIdAsync(201))
@@ -442,6 +553,43 @@ public class AdminBaselineTests
 
         Assert.That(result, Is.InstanceOf<ViewResult>());
         _creditService.Verify(x => x.AddCreditAsync(202, 15, "Plugins.Misc.AIInterview.Admin.TopUp.Remarks"), Times.Once);
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Get_Populates_Customer_Dropdown()
+    {
+        _customerService.Setup(x => x.GetAllCustomersAsync(
+                It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int[]>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<bool?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<bool>()))
+            .ReturnsAsync(new Nop.Core.PagedList<Customer>(new List<Customer>
+            {
+                new() { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 }
+            }, 0, 1, 1));
+
+        var result = await _controller.ApplicantCredits();
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.AvailableCustomers, Has.Count.EqualTo(1));
+        Assert.That(model.AvailableCustomers.Single().Value, Is.EqualTo("202"));
     }
 
     [Test]
@@ -503,5 +651,69 @@ public class AdminBaselineTests
         Assert.That(text, Does.Contain("Candidate"));
         Assert.That(text, Does.Contain("Casey Jones"));
         Assert.That(text, Does.Contain("Example Vendor"));
+    }
+
+    [Test]
+    public async Task Scoreboard_Page_Populates_Status_Dropdown_And_Admin_Links()
+    {
+        var customer = new Customer { Id = 5, FirstName = "Casey", LastName = "Jones", Email = "casey@example.com" };
+        var product = new Product { Id = 9, Name = "Platform Engineer", VendorId = 3 };
+        var vendor = new Vendor { Id = 3, Name = "Example Vendor", PmCustomerId = 88 };
+        var application = new JobApplication { Id = 1, CustomerId = 5, ProductId = 9, JobTitle = "Platform Engineer", Status = "Reviewed", CreatedOnUtc = DateTime.UtcNow.AddDays(-1) };
+        var session = new InterviewSession { Id = 77, CustomerId = 5, ProductId = 9, JobApplicationId = 1, CompletedOnUtc = DateTime.UtcNow, Score = 88 };
+
+        _applicationService.Setup(x => x.GetApplicationsAsync(null, null, null, null, null, null, 0, 0, 0, int.MaxValue, false))
+            .ReturnsAsync(new Nop.Core.PagedList<JobApplication>(new List<JobApplication> { application }, 0, 1, 1));
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(5)).ReturnsAsync(new List<InterviewSession> { session });
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.Is<int[]>(ids => ids.Contains(5)))).ReturnsAsync(new List<Customer> { customer });
+        _productService.Setup(x => x.GetProductsByIdsAsync(It.Is<int[]>(ids => ids.Contains(9)))).ReturnsAsync(new List<Product> { product });
+        _vendorService.Setup(x => x.GetVendorByIdAsync(3)).ReturnsAsync(vendor);
+
+        var result = await _controller.Scoreboard(new ScoreboardFilterModel());
+        var model = (ScoreboardFilterModel)((ViewResult)result).Model;
+
+        Assert.That(model.AvailableStatuses, Has.Count.EqualTo(JobApplicationStatuses.All.Length + 1));
+        Assert.That(model.Rows.Single().CandidateAdminUrl, Is.Not.Empty);
+        Assert.That(model.Rows.Single().VendorAdminUrl, Is.Not.Empty);
+        Assert.That(model.Rows.Single().ProductAdminUrl, Is.Not.Empty);
+    }
+
+    [Test]
+    public async Task Scoreboard_Filters_By_Candidate_Vendor_Job_Status_And_Score()
+    {
+        var customer = new Customer { Id = 5, FirstName = "Casey", LastName = "Jones", Email = "casey@example.com" };
+        var product = new Product { Id = 9, Name = "Platform Engineer", VendorId = 3 };
+        var vendor = new Vendor { Id = 3, Name = "Example Vendor" };
+        var matchingApplication = new JobApplication { Id = 1, CustomerId = 5, ProductId = 9, JobTitle = "Platform Engineer", Status = "Reviewed", CreatedOnUtc = DateTime.UtcNow.AddDays(-1) };
+        var otherApplication = new JobApplication { Id = 2, CustomerId = 6, ProductId = 10, JobTitle = "Other Job", Status = "Rejected", CreatedOnUtc = DateTime.UtcNow.AddDays(-2) };
+        var matchingSession = new InterviewSession { Id = 77, CustomerId = 5, ProductId = 9, JobApplicationId = 1, CompletedOnUtc = DateTime.UtcNow, Score = 88 };
+        var otherSession = new InterviewSession { Id = 78, CustomerId = 6, ProductId = 10, JobApplicationId = 2, CompletedOnUtc = DateTime.UtcNow, Score = 40 };
+
+        _applicationService.Setup(x => x.GetApplicationsAsync(null, null, null, null, null, null, 0, 0, 0, int.MaxValue, false))
+            .ReturnsAsync(new Nop.Core.PagedList<JobApplication>(new List<JobApplication> { matchingApplication, otherApplication }, 0, 2, 2));
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(5)).ReturnsAsync(new List<InterviewSession> { matchingSession });
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(6)).ReturnsAsync(new List<InterviewSession> { otherSession });
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.Is<int[]>(ids => ids.Contains(5) || ids.Contains(6)))).ReturnsAsync(new List<Customer> { customer, new Customer { Id = 6, FirstName = "Other", LastName = "User", Email = "other@example.com" } });
+        _productService.Setup(x => x.GetProductsByIdsAsync(It.Is<int[]>(ids => ids.Contains(9) || ids.Contains(10)))).ReturnsAsync(new List<Product> { product, new Product { Id = 10, Name = "Other Job", VendorId = 4 } });
+        _vendorService.Setup(x => x.GetVendorByIdAsync(3)).ReturnsAsync(vendor);
+        _vendorService.Setup(x => x.GetVendorByIdAsync(4)).ReturnsAsync(new Vendor { Id = 4, Name = "Other Vendor" });
+
+        var result = await _controller.Scoreboard(new ScoreboardFilterModel
+        {
+            Candidate = "Casey",
+            Vendor = "Example",
+            JobPosting = "Platform",
+            Status = "Reviewed",
+            MinScore = 80,
+            MaxScore = 90,
+            StartDate = DateTime.UtcNow.AddDays(-2),
+            EndDate = DateTime.UtcNow.AddDays(1)
+        });
+
+        var model = (ScoreboardFilterModel)((ViewResult)result).Model;
+        Assert.That(model.Rows, Has.Count.EqualTo(1));
+        Assert.That(model.Rows.Single().CandidateName, Is.EqualTo("Casey Jones"));
+        Assert.That(model.Rows.Single().VendorName, Is.EqualTo("Example Vendor"));
+        Assert.That(model.Rows.Single().JobTitle, Is.EqualTo("Platform Engineer"));
     }
 }

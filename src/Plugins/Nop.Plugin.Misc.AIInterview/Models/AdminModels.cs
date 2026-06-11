@@ -20,6 +20,9 @@ public record JobRequirementsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.ProductRequirements.InterviewRequired")]
     public bool InterviewRequired { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.ProductRequirements.MinimumScore")]
+    public decimal MinimumScore { get; set; }
+
     public bool IsJobProduct { get; set; }
 }
 
@@ -30,6 +33,8 @@ public record AiServiceSettingsModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Provider")]
     public string Provider { get; set; }
+
+    public IList<SelectListItem> AvailableProviders { get; set; } = new List<SelectListItem>();
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.ApiKey")]
     public string ApiKey { get; set; }
@@ -69,6 +74,12 @@ public record AiServiceSettingsModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRegion")]
     public string AzureSpeechRegion { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl")]
+    public string AzureBlobStorageContainerUrl { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken")]
+    public string AzureBlobStorageSasToken { get; set; }
 }
 
 public record SponsorInviteAdminModel : BaseNopModel
@@ -84,6 +95,8 @@ public record SponsorInviteAdminModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.SponsorInvites.ProductId")]
     public int ProductId { get; set; }
 
+    public IList<SelectListItem> AvailableProducts { get; set; } = new List<SelectListItem>();
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.SponsorInvites.MaxAttempts")]
     public int MaxAttempts { get; set; } = 1;
 
@@ -92,6 +105,8 @@ public record SponsorInviteAdminModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.SponsorInvites.SponsorId")]
     public int? SponsorId { get; set; }
+
+    public IList<SelectListItem> AvailableSponsors { get; set; } = new List<SelectListItem>();
 
     public string Message { get; set; }
 
@@ -103,6 +118,10 @@ public record SponsorInviteRowModel : BaseNopModel
     public int Id { get; set; }
     public int SponsorId { get; set; }
     public int ProductId { get; set; }
+    public string ProductName { get; set; }
+    public string ProductAdminUrl { get; set; }
+    public string VendorName { get; set; }
+    public string VendorAdminUrl { get; set; }
     public string Email { get; set; }
     public string InviteCode { get; set; }
     public int MaxAttempts { get; set; }
@@ -124,6 +143,12 @@ public record CreditManagementModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.CustomerId")]
     public int CustomerId { get; set; }
 
+    public string CustomerName { get; set; }
+    public string CustomerEmail { get; set; }
+    public string CustomerAdminUrl { get; set; }
+
+    public IList<SelectListItem> AvailableCustomers { get; set; } = new List<SelectListItem>();
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Amount")]
     public decimal Amount { get; set; }
 
@@ -134,6 +159,9 @@ public record CreditManagementModel : BaseNopModel
 
 public record CreditLedgerRowModel : BaseNopModel
 {
+    public int CustomerId { get; set; }
+    public string CustomerName { get; set; }
+    public string CustomerAdminUrl { get; set; }
     public decimal Amount { get; set; }
     public string TransactionType { get; set; }
     public string Remarks { get; set; }
@@ -159,6 +187,8 @@ public record ScoreboardFilterModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Scoreboard.Status")]
     public string Status { get; set; }
 
+    public IList<SelectListItem> AvailableStatuses { get; set; } = new List<SelectListItem>();
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Scoreboard.MinScore")]
     public decimal? MinScore { get; set; }
 
@@ -180,10 +210,14 @@ public record ScoreboardRowModel : BaseNopModel
     public int ApplicationId { get; set; }
     public int ProductId { get; set; }
     public int VendorId { get; set; }
+    public int CandidateCustomerId { get; set; }
     public string CandidateName { get; set; }
     public string CandidateEmail { get; set; }
+    public string CandidateAdminUrl { get; set; }
     public string VendorName { get; set; }
+    public string VendorAdminUrl { get; set; }
     public string JobTitle { get; set; }
+    public string ProductAdminUrl { get; set; }
     public string Status { get; set; }
     public decimal Score { get; set; }
     public DateTime? CompletedOnUtc { get; set; }

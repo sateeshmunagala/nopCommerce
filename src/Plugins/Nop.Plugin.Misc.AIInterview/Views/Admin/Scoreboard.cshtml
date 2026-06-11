@@ -19,14 +19,38 @@
         <div class="container-fluid">
             <div class="card card-default">
                 <div class="card-body">
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Candidate" /></div><div class="col-md-9"><nop-editor asp-for="Candidate" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Vendor" /></div><div class="col-md-9"><nop-editor asp-for="Vendor" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="JobPosting" /></div><div class="col-md-9"><nop-editor asp-for="JobPosting" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Status" /></div><div class="col-md-9"><nop-editor asp-for="Status" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="MinScore" /></div><div class="col-md-9"><nop-editor asp-for="MinScore" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="MaxScore" /></div><div class="col-md-9"><nop-editor asp-for="MaxScore" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="StartDate" /></div><div class="col-md-9"><nop-editor asp-for="StartDate" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="EndDate" /></div><div class="col-md-9"><nop-editor asp-for="EndDate" /></div></div>
+                    <div class="form-group row">
+                        <div class="col-md-6">
+                            <div class="form-group row"><div class="col-md-4"><nop-label asp-for="Candidate" /></div><div class="col-md-8"><nop-editor asp-for="Candidate" /></div></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row"><div class="col-md-4"><nop-label asp-for="Status" /></div><div class="col-md-8"><nop-select asp-for="Status" asp-items="Model.AvailableStatuses" /></div></div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-6">
+                            <div class="form-group row"><div class="col-md-4"><nop-label asp-for="Vendor" /></div><div class="col-md-8"><nop-editor asp-for="Vendor" /></div></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row"><div class="col-md-4"><nop-label asp-for="JobPosting" /></div><div class="col-md-8"><nop-editor asp-for="JobPosting" /></div></div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-6">
+                            <div class="form-group row"><div class="col-md-4"><nop-label asp-for="MinScore" /></div><div class="col-md-8"><nop-editor asp-for="MinScore" /></div></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row"><div class="col-md-4"><nop-label asp-for="MaxScore" /></div><div class="col-md-8"><nop-editor asp-for="MaxScore" /></div></div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-6">
+                            <div class="form-group row"><div class="col-md-4"><nop-label asp-for="StartDate" /></div><div class="col-md-8"><nop-editor asp-for="StartDate" /></div></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row"><div class="col-md-4"><nop-label asp-for="EndDate" /></div><div class="col-md-8"><nop-editor asp-for="EndDate" /></div></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -69,9 +93,36 @@
                         @foreach (var row in Model.Rows)
                         {
                             <tr>
-                                <td>@row.CandidateName</td>
-                                <td>@row.VendorName</td>
-                                <td>@row.JobTitle</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(row.CandidateAdminUrl))
+                                    {
+                                        <a href="@row.CandidateAdminUrl">@row.CandidateName</a>
+                                    }
+                                    else
+                                    {
+                                        @row.CandidateName
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(row.VendorAdminUrl))
+                                    {
+                                        <a href="@row.VendorAdminUrl">@row.VendorName</a>
+                                    }
+                                    else
+                                    {
+                                        @row.VendorName
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(row.ProductAdminUrl))
+                                    {
+                                        <a href="@row.ProductAdminUrl">@row.JobTitle</a>
+                                    }
+                                    else
+                                    {
+                                        @row.JobTitle
+                                    }
+                                </td>
                                 <td>@row.Status</td>
                                 <td>@row.Score</td>
                                 <td>@(row.CompletedOnUtc.HasValue ? row.CompletedOnUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + "Z" : "-")</td>

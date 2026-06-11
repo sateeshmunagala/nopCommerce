@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
@@ -26,6 +27,8 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 [AutoValidateAntiforgeryToken]
 public class AIInterviewAdminController : BasePluginController
 {
+    private const string AzureOpenAiProviderValue = "Azure OpenAI";
+
     private readonly ICreditService _creditService;
     private readonly ISponsorInviteService _inviteService;
     private readonly IApplicationService _applicationService;
@@ -117,33 +120,14 @@ public class AIInterviewAdminController : BasePluginController
 
     public IActionResult AiService()
     {
-        var model = new AiServiceSettingsModel
-        {
-            UseMockResponses = _mockAIInterviewSettings.UseMockResponses,
-            Provider = _aiInterviewSettings.Provider,
-            ApiKey = _aiInterviewSettings.ApiKey,
-            Model = _aiInterviewSettings.Model,
-            Prompt = _aiInterviewSettings.Prompt,
-            ServiceSettings = _aiInterviewSettings.ServiceSettings,
-            CreditProductSkuMappingsJson = _aiInterviewSettings.CreditProductSkuMappingsJson,
-            CreditPurchasePageUrl = _aiInterviewSettings.CreditPurchasePageUrl,
-            AzureOpenAiEndpointUrl = _aiInterviewSettings.AzureOpenAiEndpointUrl,
-            AzureOpenAiApiKey = _aiInterviewSettings.AzureOpenAiApiKey,
-            AzureOpenAiDeploymentOrModel = _aiInterviewSettings.AzureOpenAiDeploymentOrModel,
-            AgoraAppId = _aiInterviewSettings.AgoraAppId,
-            AgoraTokenServiceUrl = _aiInterviewSettings.AgoraTokenServiceUrl,
-            AzureSpeechKey = _aiInterviewSettings.AzureSpeechKey,
-            AzureSpeechRegion = _aiInterviewSettings.AzureSpeechRegion
-        };
-
-        return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", model);
+        return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", PrepareAiServiceModel());
     }
 
     [HttpPost]
     public async Task<IActionResult> AiService(AiServiceSettingsModel model)
     {
         if (!ModelState.IsValid)
-            return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", model);
+            return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", PrepareAiServiceModel(model));
 
         if (!TryValidateCreditProductSkuMappingsJson(model.CreditProductSkuMappingsJson))
         {
@@ -152,13 +136,13 @@ public class AIInterviewAdminController : BasePluginController
                 "The credit product SKU mappings JSON is invalid. Use a JSON object such as {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10}.");
             ModelState.AddModelError(nameof(model.CreditProductSkuMappingsJson), mappingValidationError);
             _notificationService.ErrorNotification(mappingValidationError);
-            return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", model);
+            return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", PrepareAiServiceModel(model));
         }
 
         _mockAIInterviewSettings.UseMockResponses = model.UseMockResponses;
         await _settingService.SaveSettingAsync(_mockAIInterviewSettings);
 
-        _aiInterviewSettings.Provider = model.Provider;
+        _aiInterviewSettings.Provider = AzureOpenAiProviderValue;
         _aiInterviewSettings.ApiKey = model.ApiKey;
         _aiInterviewSettings.Model = model.Model;
         _aiInterviewSettings.Prompt = model.Prompt;
@@ -172,6 +156,8 @@ public class AIInterviewAdminController : BasePluginController
         _aiInterviewSettings.AgoraTokenServiceUrl = model.AgoraTokenServiceUrl;
         _aiInterviewSettings.AzureSpeechKey = model.AzureSpeechKey;
         _aiInterviewSettings.AzureSpeechRegion = model.AzureSpeechRegion;
+        _aiInterviewSettings.AzureBlobStorageContainerUrl = model.AzureBlobStorageContainerUrl;
+        _aiInterviewSettings.AzureBlobStorageSasToken = model.AzureBlobStorageSasToken;
         await _settingService.SaveSettingAsync(_aiInterviewSettings);
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
@@ -188,7 +174,7 @@ public class AIInterviewAdminController : BasePluginController
         if (product == null)
             return Json(new { success = false });
 
-        await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired);
+        await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, model.MinimumScore);
         return Json(new { success = true });
     }
 
@@ -342,7 +328,21 @@ public class AIInterviewAdminController : BasePluginController
 
     protected virtual async Task<SponsorInviteAdminModel> PrepareSponsorInviteModelAsync(SponsorInviteAdminModel model)
     {
-        var invites = await _inviteService.GetSponsorInvitesAsync(0);
+        model ??= new SponsorInviteAdminModel();
+
+        model.AvailableProducts = await BuildJobProductSelectListAsync(model.ProductId);
+        model.AvailableSponsors = await BuildSponsorSelectListAsync(model.SponsorId);
+
+        var invites = await _inviteService.GetSponsorInvitesAsync(0) ?? new List<SponsorInvite>();
+        var products = await _productService.GetProductsByIdsAsync(invites.Select(invite => invite.ProductId).Where(id => id > 0).Distinct().ToArray()) ?? new List<Product>();
+        var productLookup = products.ToDictionary(product => product.Id, product => product);
+        var vendorIds = products.Where(product => product.VendorId > 0).Select(product => product.VendorId).Distinct().ToArray();
+        var vendorList = await _vendorService.GetAllVendorsAsync(showHidden: true, pageSize: int.MaxValue);
+        var vendors = vendorIds.Length == 0 ? new List<Vendor>() : (vendorList?.Where(vendor => vendorIds.Contains(vendor.Id)).ToList() ?? new List<Vendor>());
+        var vendorLookupByProduct = vendors.ToDictionary(vendor => vendor.Id, vendor => vendor);
+        var vendorLookupByCustomer = vendors.Where(vendor => vendor.PmCustomerId.HasValue)
+            .ToDictionary(vendor => vendor.PmCustomerId.GetValueOrDefault(), vendor => vendor);
+
         model.Invites = invites
             .OrderByDescending(invite => invite.CreatedOnUtc)
             .Select(invite => new SponsorInviteRowModel
@@ -350,6 +350,10 @@ public class AIInterviewAdminController : BasePluginController
                 Id = invite.Id,
                 SponsorId = invite.SponsorId,
                 ProductId = invite.ProductId,
+                ProductName = productLookup.TryGetValue(invite.ProductId, out var product) ? product.Name : $"Product #{invite.ProductId}",
+                ProductAdminUrl = product != null ? BuildProductAdminUrl(product.Id) : string.Empty,
+                VendorName = vendorLookupByProduct.TryGetValue(product?.VendorId ?? 0, out var vendor) ? vendor.Name : (vendorLookupByCustomer.TryGetValue(invite.SponsorId, out var sponsorVendor) ? sponsorVendor.Name : $"Vendor #{invite.SponsorId}"),
+                VendorAdminUrl = vendor != null ? BuildVendorAdminUrl(vendor.Id) : (vendorLookupByCustomer.TryGetValue(invite.SponsorId, out var sponsorVendorForUrl) ? BuildVendorAdminUrl(sponsorVendorForUrl.Id) : string.Empty),
                 Email = invite.Email,
                 InviteCode = invite.InviteCode,
                 MaxAttempts = invite.MaxAttempts,
@@ -390,8 +394,21 @@ public class AIInterviewAdminController : BasePluginController
             ScopeTitle = await _localizationService.GetResourceAsync(scopeTitleResourceKey)
         };
 
+        var isVendorScope = string.Equals(scopeTitleResourceKey, "Plugins.Misc.AIInterview.Admin.Credits.VendorTitle", StringComparison.OrdinalIgnoreCase);
+        model.AvailableCustomers = isVendorScope
+            ? await BuildVendorCustomerSelectListAsync(model.CustomerId)
+            : await BuildApplicantCustomerSelectListAsync(model.CustomerId);
+
         if (model.CustomerId <= 0)
             return model;
+
+        var customer = await _customerService.GetCustomerByIdAsync(model.CustomerId);
+        if (customer != null)
+        {
+            model.CustomerName = GetCustomerName(customer);
+            model.CustomerEmail = customer.Email;
+            model.CustomerAdminUrl = BuildCustomerAdminUrl(customer.Id);
+        }
 
         if (!createWallet)
             return model;
@@ -408,6 +425,9 @@ public class AIInterviewAdminController : BasePluginController
             .Take(20)
             .Select(entry => new CreditLedgerRowModel
             {
+                CustomerId = model.CustomerId,
+                CustomerName = model.CustomerName,
+                CustomerAdminUrl = model.CustomerAdminUrl,
                 Amount = entry.Amount,
                 TransactionType = entry.TransactionType,
                 Remarks = entry.Remarks,
@@ -465,13 +485,14 @@ public class AIInterviewAdminController : BasePluginController
     protected virtual async Task<ScoreboardFilterModel> PrepareScoreboardModelAsync(ScoreboardFilterModel filter)
     {
         filter ??= new ScoreboardFilterModel();
+        filter.AvailableStatuses = BuildStatusSelectList(filter.Status);
 
-        var applications = await _applicationService.GetApplicationsAsync(pageSize: int.MaxValue);
+        var applications = await _applicationService.GetApplicationsAsync(pageSize: int.MaxValue) ?? new Nop.Core.PagedList<JobApplication>(new List<JobApplication>(), 0, 1, 1);
         var filteredApplications = applications.AsEnumerable();
 
         var rows = new List<ScoreboardRowModel>();
         var productIds = filteredApplications.Select(application => application.ProductId).Distinct().Where(id => id > 0).ToArray();
-        var products = await _productService.GetProductsByIdsAsync(productIds);
+        var products = await _productService.GetProductsByIdsAsync(productIds) ?? new List<Product>();
         var vendors = new Dictionary<int, Vendor>();
         foreach (var vendorId in products.Where(product => product.VendorId > 0).Select(product => product.VendorId).Distinct())
         {
@@ -480,7 +501,7 @@ public class AIInterviewAdminController : BasePluginController
                 vendors[vendorId] = vendor;
         }
 
-        var customers = await _customerService.GetCustomersByIdsAsync(filteredApplications.Select(application => application.CustomerId).Distinct().ToArray());
+        var customers = await _customerService.GetCustomersByIdsAsync(filteredApplications.Select(application => application.CustomerId).Distinct().ToArray()) ?? new List<Customer>();
         var customerLookup = customers.ToDictionary(customer => customer.Id, customer => customer);
 
         foreach (var application in filteredApplications)
@@ -503,10 +524,14 @@ public class AIInterviewAdminController : BasePluginController
                 ApplicationId = application.Id,
                 ProductId = application.ProductId,
                 VendorId = product?.VendorId ?? 0,
+                CandidateCustomerId = application.CustomerId,
                 CandidateName = GetCustomerName(customer),
                 CandidateEmail = customer?.Email ?? string.Empty,
+                CandidateAdminUrl = customer != null ? BuildCustomerAdminUrl(customer.Id) : string.Empty,
                 VendorName = vendor?.Name ?? string.Empty,
+                VendorAdminUrl = vendor != null ? BuildVendorAdminUrl(vendor.Id) : string.Empty,
                 JobTitle = application.JobTitle,
+                ProductAdminUrl = product != null ? BuildProductAdminUrl(product.Id) : string.Empty,
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{JobApplicationStatuses.Normalize(application.Status)}"),
                 Score = session?.Score ?? 0,
                 CompletedOnUtc = session?.CompletedOnUtc,
@@ -555,5 +580,145 @@ public class AIInterviewAdminController : BasePluginController
             return string.Empty;
 
         return $"{customer.FirstName} {customer.LastName}".Trim();
+    }
+
+    protected virtual AiServiceSettingsModel PrepareAiServiceModel(AiServiceSettingsModel model = null)
+    {
+        model ??= new AiServiceSettingsModel
+        {
+            UseMockResponses = _mockAIInterviewSettings.UseMockResponses,
+            ApiKey = _aiInterviewSettings.ApiKey,
+            Model = _aiInterviewSettings.Model,
+            Prompt = _aiInterviewSettings.Prompt,
+            ServiceSettings = _aiInterviewSettings.ServiceSettings,
+            CreditProductSkuMappingsJson = _aiInterviewSettings.CreditProductSkuMappingsJson,
+            CreditPurchasePageUrl = _aiInterviewSettings.CreditPurchasePageUrl,
+            AzureOpenAiEndpointUrl = _aiInterviewSettings.AzureOpenAiEndpointUrl,
+            AzureOpenAiApiKey = _aiInterviewSettings.AzureOpenAiApiKey,
+            AzureOpenAiDeploymentOrModel = _aiInterviewSettings.AzureOpenAiDeploymentOrModel,
+            AgoraAppId = _aiInterviewSettings.AgoraAppId,
+            AgoraTokenServiceUrl = _aiInterviewSettings.AgoraTokenServiceUrl,
+            AzureSpeechKey = _aiInterviewSettings.AzureSpeechKey,
+            AzureSpeechRegion = _aiInterviewSettings.AzureSpeechRegion,
+            AzureBlobStorageContainerUrl = _aiInterviewSettings.AzureBlobStorageContainerUrl,
+            AzureBlobStorageSasToken = _aiInterviewSettings.AzureBlobStorageSasToken
+        };
+
+        model.Provider = AzureOpenAiProviderValue;
+        model.AvailableProviders = BuildProviderSelectList(model.Provider);
+        return model;
+    }
+
+    protected virtual IList<SelectListItem> BuildProviderSelectList(string selectedProvider)
+    {
+        return new List<SelectListItem>
+        {
+            new() { Text = AzureOpenAiProviderValue, Value = AzureOpenAiProviderValue, Selected = string.Equals(selectedProvider, AzureOpenAiProviderValue, StringComparison.OrdinalIgnoreCase) }
+        };
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildJobProductSelectListAsync(int selectedProductId)
+    {
+        var products = await _productService.SearchProductsAsync(pageSize: int.MaxValue, showHidden: true) ?? new Nop.Core.PagedList<Product>(new List<Product>(), 0, 1, 1);
+        var jobProducts = new List<Product>();
+
+        foreach (var product in products)
+        {
+            if (_jobRequirementService == null || await _jobRequirementService.IsJobProductAsync(product))
+                jobProducts.Add(product);
+        }
+
+        return jobProducts
+            .OrderBy(product => product.Name)
+            .Select(product => new SelectListItem
+            {
+                Text = $"{product.Name} (ID: {product.Id})",
+                Value = product.Id.ToString(),
+                Selected = product.Id == selectedProductId
+            })
+            .ToList();
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildSponsorSelectListAsync(int? selectedSponsorId)
+    {
+        var vendors = await _vendorService.GetAllVendorsAsync(showHidden: true, pageSize: int.MaxValue) ?? new Nop.Core.PagedList<Vendor>(new List<Vendor>(), 0, 1, 1);
+        return vendors
+            .Where(vendor => vendor.PmCustomerId.HasValue)
+            .OrderBy(vendor => vendor.Name)
+            .Select(vendor => new SelectListItem
+            {
+                Text = string.IsNullOrWhiteSpace(vendor.Email)
+                    ? $"{vendor.Name} (Customer ID: {vendor.PmCustomerId})"
+                    : $"{vendor.Name} ({vendor.Email}) - Customer ID: {vendor.PmCustomerId}",
+                Value = vendor.PmCustomerId.GetValueOrDefault().ToString(),
+                Selected = selectedSponsorId.HasValue && vendor.PmCustomerId == selectedSponsorId
+            })
+            .ToList();
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildVendorCustomerSelectListAsync(int selectedCustomerId)
+    {
+        var vendors = await _vendorService.GetAllVendorsAsync(showHidden: true, pageSize: int.MaxValue) ?? new Nop.Core.PagedList<Vendor>(new List<Vendor>(), 0, 1, 1);
+        return vendors
+            .Where(vendor => vendor.PmCustomerId.HasValue)
+            .OrderBy(vendor => vendor.Name)
+            .Select(vendor => new SelectListItem
+            {
+                Text = string.IsNullOrWhiteSpace(vendor.Email)
+                    ? $"{vendor.Name} (Customer ID: {vendor.PmCustomerId})"
+                    : $"{vendor.Name} ({vendor.Email}) - Customer ID: {vendor.PmCustomerId}",
+                Value = vendor.PmCustomerId.GetValueOrDefault().ToString(),
+                Selected = vendor.PmCustomerId == selectedCustomerId
+            })
+            .ToList();
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildApplicantCustomerSelectListAsync(int selectedCustomerId)
+    {
+        var customers = await _customerService.GetAllCustomersAsync(pageSize: int.MaxValue) ?? new Nop.Core.PagedList<Customer>(new List<Customer>(), 0, 1, 1);
+        return customers
+            .Where(customer => customer.VendorId == 0 && !customer.Deleted)
+            .OrderBy(customer => GetCustomerName(customer))
+            .Select(customer => new SelectListItem
+            {
+                Text = string.IsNullOrWhiteSpace(customer.Email)
+                    ? $"{GetCustomerName(customer)} (Customer ID: {customer.Id})"
+                    : $"{GetCustomerName(customer)} ({customer.Email}) - Customer ID: {customer.Id}",
+                Value = customer.Id.ToString(),
+                Selected = customer.Id == selectedCustomerId
+            })
+            .ToList();
+    }
+
+    protected virtual IList<SelectListItem> BuildStatusSelectList(string selectedStatus)
+    {
+        var items = new List<SelectListItem>
+        {
+            new() { Text = string.Empty, Value = string.Empty, Selected = string.IsNullOrWhiteSpace(selectedStatus) }
+        };
+
+        items.AddRange(JobApplicationStatuses.All.Select(status => new SelectListItem
+        {
+            Text = status,
+            Value = status,
+            Selected = string.Equals(status, selectedStatus, StringComparison.OrdinalIgnoreCase)
+        }));
+
+        return items;
+    }
+
+    protected virtual string BuildProductAdminUrl(int productId)
+    {
+        return productId > 0 ? Url.Action("Edit", "Product", new { area = AreaNames.ADMIN, id = productId }) : string.Empty;
+    }
+
+    protected virtual string BuildVendorAdminUrl(int vendorId)
+    {
+        return vendorId > 0 ? Url.Action("Edit", "Vendor", new { area = AreaNames.ADMIN, id = vendorId }) : string.Empty;
+    }
+
+    protected virtual string BuildCustomerAdminUrl(int customerId)
+    {
+        return customerId > 0 ? Url.Action("Edit", "Customer", new { area = AreaNames.ADMIN, id = customerId }) : string.Empty;
     }
 }

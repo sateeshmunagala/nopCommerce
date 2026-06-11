@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
 using Nop.Core.Domain.Catalog;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
@@ -45,8 +46,9 @@ public class AIInterviewAdminProductRequirementsViewComponent : NopViewComponent
                 Id = product.Id
             };
 
-            ViewBag.ResumeRequired = requirements.ResumeRequired;
-            ViewBag.InterviewRequired = requirements.InterviewRequired;
+            ViewBag.ResumeRequired = ResolvePostedBool("AIInterviewJobResumeRequired", requirements.ResumeRequired);
+            ViewBag.InterviewRequired = ResolvePostedBool("AIInterviewJobInterviewRequired", requirements.InterviewRequired);
+            ViewBag.MinimumScore = ResolvePostedDecimal("AIInterviewJobMinimumScore", requirements.MinimumScore);
         }
         else if (model.ProductTemplateId > 0)
         {
@@ -58,12 +60,68 @@ public class AIInterviewAdminProductRequirementsViewComponent : NopViewComponent
             if (!isJobTemplate)
                 return Content(string.Empty);
 
-            ViewBag.ResumeRequired = false;
-            ViewBag.InterviewRequired = false;
+            ViewBag.ResumeRequired = ResolvePostedBool("AIInterviewJobResumeRequired", false);
+            ViewBag.InterviewRequired = ResolvePostedBool("AIInterviewJobInterviewRequired", false);
+            ViewBag.MinimumScore = ResolvePostedDecimal("AIInterviewJobMinimumScore", 0m);
         }
 
         ViewBag.ProductId = model.Id;
         ViewBag.IsJobTemplate = isJobTemplate;
         return View("~/Plugins/Misc.AIInterview/Views/Admin/_ProductJobRequirements.cshtml", model);
+    }
+
+    protected virtual bool ResolvePostedBool(string fieldName, bool fallback)
+    {
+        var request = HttpContext?.Request;
+        if (request?.HasFormContentType == true)
+        {
+            var form = request.Form;
+            if (form.TryGetValue(fieldName, out var values))
+            {
+                var parsedAny = false;
+                foreach (var value in values)
+                {
+                    if (bool.TryParse(value, out var parsed))
+                    {
+                        parsedAny = true;
+                        if (parsed)
+                            return true;
+                    }
+                }
+
+                if (parsedAny)
+                    return false;
+            }
+        }
+
+        return fallback;
+    }
+
+    protected virtual decimal ResolvePostedDecimal(string fieldName, decimal fallback)
+    {
+        var request = HttpContext?.Request;
+        if (request?.HasFormContentType == true)
+        {
+            var form = request.Form;
+            if (form.TryGetValue(fieldName, out var values))
+            {
+                var hasPostedValue = false;
+                foreach (var value in values)
+                {
+                    hasPostedValue = true;
+                    if (string.IsNullOrWhiteSpace(value))
+                        continue;
+
+                    if (decimal.TryParse(value, NumberStyles.Any, CultureInfo.CurrentCulture, out var parsed) ||
+                        decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out parsed))
+                        return parsed;
+                }
+
+                if (hasPostedValue)
+                    return 0m;
+            }
+        }
+
+        return fallback;
     }
 }

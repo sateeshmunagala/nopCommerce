@@ -147,8 +147,7 @@ public class ApplyFlowTests
     {
         // Arrange
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
-            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true });
-        _aiInterviewSettings.MinimumScore = 80;
+            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true, MinimumScore = 80 });
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
         _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
@@ -174,8 +173,7 @@ public class ApplyFlowTests
     {
         // Arrange
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
-            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true });
-        _aiInterviewSettings.MinimumScore = 60;
+            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true, MinimumScore = 60 });
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "Dev"))
             .ReturnsAsync(new List<JobApplication>());
         _interviewSessionService.Setup(x => x.GetHighestScoreByCustomerIdAndProductIdAsync(_customer.Id, 1))
@@ -297,8 +295,7 @@ public class ApplyFlowTests
     public async Task Apply_Post_LegacyLinkedSession_SatisfiesInterviewRequirement()
     {
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(1))
-            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true });
-        _aiInterviewSettings.MinimumScore = 60;
+            .ReturnsAsync(new JobRequirementsModel { InterviewRequired = true, MinimumScore = 60 });
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
             .ReturnsAsync(new List<JobApplication>
             {

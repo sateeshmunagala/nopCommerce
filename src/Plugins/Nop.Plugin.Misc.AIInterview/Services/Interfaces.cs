@@ -116,6 +116,6 @@ public interface IJobRequirementService
     Task<bool> IsJobProductAsync(Product product);
     Task<JobRequirementsModel> GetRequirementsAsync(Product product);
     Task<JobRequirementsModel> GetRequirementsAsync(int productId);
-    Task SaveRequirementsAsync(Product product, bool resumeRequired, bool interviewRequired);
-    Task SaveRequirementsAsync(int productId, bool resumeRequired, bool interviewRequired);
+    Task SaveRequirementsAsync(Product product, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0);
+    Task SaveRequirementsAsync(int productId, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0);
 }

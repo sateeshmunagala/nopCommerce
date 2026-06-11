@@ -51,7 +51,7 @@ public class EmployerTests
         _jobRequirementService = new Mock<IJobRequirementService>();
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
             .ReturnsAsync(new JobRequirementsModel());
-        _jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), It.IsAny<bool>(), It.IsAny<bool>()))
+        _jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<decimal>()))
             .Returns(Task.CompletedTask);
         _downloadService = new Mock<IDownloadService>();
         _productTemplateService = new Mock<IProductTemplateService>();
@@ -305,7 +305,7 @@ public class EmployerTests
             product.Published &&
             product.DisableBuyButton)), Times.Once);
         _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Nop.Core.Domain.Catalog.Product>(product =>
-            product.Name == "Platform Engineer"), false, false), Times.Once);
+            product.Name == "Platform Engineer"), false, false, 0m), Times.Once);
         _urlRecordService.Verify(x => x.SaveSlugAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), "platform-engineer", 0), Times.Once);
     }
 
@@ -329,7 +329,8 @@ public class EmployerTests
             ShortDescription = "Build reliable systems",
             Published = true,
             ResumeRequired = resumeRequired,
-            InterviewRequired = interviewRequired
+            InterviewRequired = interviewRequired,
+            MinimumScore = 82
         });
 
         Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
@@ -341,7 +342,7 @@ public class EmployerTests
             product.Published &&
             product.DisableBuyButton)), Times.Once);
         _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Nop.Core.Domain.Catalog.Product>(product =>
-            product.Name == "Platform Engineer"), resumeRequired, interviewRequired), Times.Once);
+            product.Name == "Platform Engineer"), resumeRequired, interviewRequired, 82m), Times.Once);
         _urlRecordService.Verify(x => x.SaveSlugAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), "platform-engineer", 0), Times.Once);
     }
 }
