@@ -390,6 +390,41 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_ExpiredProductSession_RedirectsToProductUrlWithExpiredFlag()
+    {
+        var urlRecordService = new Mock<global::Nop.Services.Seo.IUrlRecordService>();
+        urlRecordService.Setup(x => x.GetSeNameAsync(It.IsAny<Product>())).ReturnsAsync("sample-job");
+        _productService.Setup(x => x.GetProductByIdAsync(42)).ReturnsAsync(new Product { Id = 42, Name = "Sample Job" });
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("expired-product"))
+            .ReturnsAsync(new InterviewSession
+            {
+                Token = "expired-product",
+                ProductId = 42,
+                IsActive = true,
+                TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
+            });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            null,
+            null,
+            urlRecordService.Object);
+
+        var result = await controller.Runtime("expired-product");
+
+        Assert.That(result, Is.TypeOf<RedirectResult>());
+        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/sample-job?interviewError=expired"));
+    }
+
+    [Test]
     public async Task Stop_PublishesCompletionOnlyOnce()
     {
         var session = new InterviewSession

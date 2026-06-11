@@ -81,7 +81,7 @@
                     <span class="runtime-dot"></span>
                     <button type="button" id="toggle-camera" class="button-2">Camera On</button>
                     <button type="button" id="toggle-mic" class="button-2">Mic On</button>
-                    <button type="button" id="toggle-recording" class="button-2">Recording On</button>
+                    <button type="button" id="toggle-recording" class="button-2">Recording Ready</button>
                     <button type="button" id="start-or-next" class="button-1">Start Interview</button>
                     <span class="runtime-dot"></span>
                     <span class="runtime-dot"></span>
@@ -175,7 +175,7 @@
         recordingEnabled = !!config.recordingAvailable;
         if (recordingButton) {
             recordingButton.disabled = !config.recordingAvailable;
-            recordingButton.textContent = config.recordingAvailable ? 'Recording On' : 'Recording Unavailable';
+            recordingButton.textContent = config.recordingAvailable ? 'Recording Ready' : 'Recording Unavailable';
         }
 
         const loadScriptOnce = (src) => {
@@ -211,6 +211,11 @@
             recordingStatus.textContent = message || '';
             recordingStatus.className = `runtime-status ${isError ? 'message-error' : 'message-success'}`;
         };
+
+        if (config.recordingAvailable)
+            setRecordingStatus('Recording ready.', false);
+        else
+            setRecordingStatus('Recording unavailable.', false);
 
         const setCompletedState = async (result) => {
             const reportUrl = result.reportUrl || config.reportUrl || '';
@@ -367,12 +372,41 @@
 
         const getActiveRecordingStream = () => {
             const tracks = [];
+            const seenTrackIds = new Set();
             if (cameraStream?.getTracks)
-                tracks.push(...cameraStream.getTracks().filter(track => track.readyState === 'live'));
+                tracks.push(...cameraStream.getTracks().filter(track => track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
             if (micStream?.getTracks)
-                tracks.push(...micStream.getTracks().filter(track => track.readyState === 'live'));
+                tracks.push(...micStream.getTracks().filter(track => track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
 
             return tracks.length ? new MediaStream(tracks) : null;
+        };
+
+        const requestRecordingMediaForStart = async () => {
+            if (!config.recordingAvailable || !recordingEnabled)
+                return false;
+
+            if (getActiveRecordingStream())
+                return true;
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                setRecordingStatus('Recording waiting for camera or mic.', false);
+                return false;
+            }
+
+            await setCamera(true, true);
+            if (getActiveRecordingStream()) {
+                setRecordingStatus('Recording ready.', false);
+                return true;
+            }
+
+            await setMic(true, true);
+            if (getActiveRecordingStream()) {
+                setRecordingStatus('Recording ready.', false);
+                return true;
+            }
+
+            setRecordingStatus('Recording waiting for camera or mic.', false);
+            return false;
         };
 
         const uploadRecording = async (blob) => {
@@ -416,7 +450,7 @@
                     } finally {
                         const toggleRecording = document.getElementById('toggle-recording');
                         if (toggleRecording)
-                            toggleRecording.textContent = recordingEnabled ? 'Recording On' : 'Recording Off';
+                            toggleRecording.textContent = recordingEnabled ? 'Recording Ready' : 'Recording Off';
                         resolve();
                     }
                 }, { once: true });
@@ -457,7 +491,7 @@
                         recordingChunks.push(event.data);
                 });
                 mediaRecorder.start(1000);
-                setRecordingStatus('Recording is active.', false);
+                setRecordingStatus('Recording live.', false);
                 const toggleRecording = document.getElementById('toggle-recording');
                 if (toggleRecording)
                     toggleRecording.textContent = 'Recording Live';
@@ -475,7 +509,7 @@
             if (recordingEnabled && interviewStarted && getActiveRecordingStream())
                 await startRecording();
             else if (!getActiveRecordingStream() && recordingEnabled)
-                setRecordingStatus('Recording is enabled and will resume when camera or microphone is available.', false);
+                setRecordingStatus('Recording waiting for camera or mic.', false);
         };
 
         const scheduleTokenRefresh = () => {
@@ -731,7 +765,7 @@
             }
         };
 
-        const setCamera = async (enabled) => {
+        const setCamera = async (enabled, skipRecordingSync = false) => {
             if (!navigator.mediaDevices?.getUserMedia) {
                 setStatus('Camera is not supported in this browser.', true);
                 return;
@@ -757,13 +791,14 @@
                 document.getElementById('toggle-camera').textContent = 'Camera Off';
                 if (config.agoraAvailable)
                     await ensureAgoraSession();
-                await syncRecording();
+                if (!skipRecordingSync)
+                    await syncRecording();
             } catch {
                 setStatus('Camera could not be started.', true);
             }
         };
 
-        const setMic = async (enabled) => {
+        const setMic = async (enabled, skipRecordingSync = false) => {
             if (!navigator.mediaDevices?.getUserMedia) {
                 setStatus('Microphone is not supported in this browser.', true);
                 return;
@@ -811,7 +846,8 @@
                 await startSpeechRecognition();
                 if (config.agoraAvailable)
                     await ensureAgoraSession();
-                await syncRecording();
+                if (!skipRecordingSync)
+                    await syncRecording();
             } catch {
                 setStatus('Microphone could not be started.', true);
             }
@@ -892,6 +928,8 @@
             interviewStarted = true;
             setStatus('Interview started.', false);
             document.getElementById('start-or-next').textContent = 'Next Question';
+            if (config.recordingAvailable && recordingEnabled)
+                await requestRecordingMediaForStart();
             await syncRecording();
             if (config.speechAvailable && questionBox.textContent)
                 await speakText(questionBox.textContent);
@@ -911,7 +949,8 @@
                     await stopRecording(false);
                     setRecordingStatus('Recording disabled.', false);
                 } else {
-                    recordingButton.textContent = 'Recording On';
+                    recordingButton.textContent = 'Recording Ready';
+                    setRecordingStatus('Recording ready.', false);
                     await syncRecording();
                 }
             });

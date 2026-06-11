@@ -290,6 +290,8 @@ public class CandidateFlowTests
         Assert.That(productViewText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
         Assert.That(productViewText, Does.Contain("response.ok"));
         Assert.That(productViewText, Does.Contain("content-type"));
+        Assert.That(productViewText, Does.Contain("interviewError"));
+        Assert.That(productViewText, Does.Contain("Your previous interview link expired. Start the interview again from this job page."));
         Assert.That(startViewText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
         Assert.That(startViewText, Does.Contain("response.ok"));
         Assert.That(startViewText, Does.Contain("content-type"));
@@ -799,6 +801,12 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("textContent"));
         Assert.That(runtimeText, Does.Not.Contain("card.innerHTML ="));
         Assert.That(runtimeText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
+        Assert.That(runtimeText, Does.Contain("requestRecordingMediaForStart"));
+        Assert.That(runtimeText, Does.Contain("await setCamera(true);"));
+        Assert.That(runtimeText, Does.Contain("await setMic(true);"));
+        Assert.That(runtimeText, Does.Contain("Recording ready."));
+        Assert.That(runtimeText, Does.Contain("Recording waiting for camera or mic."));
+        Assert.That(runtimeText, Does.Contain("Recording live."));
         Assert.That(mockReportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
         Assert.That(reportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
     }
