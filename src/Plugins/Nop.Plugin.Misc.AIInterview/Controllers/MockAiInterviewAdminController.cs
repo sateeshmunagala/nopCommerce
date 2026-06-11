@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
+using Nop.Plugin.Misc.AIInterview;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Services.Configuration;
@@ -79,7 +80,7 @@ public class MockAiInterviewAdminController : BasePluginController
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
 
-        return Configure();
+        return RedirectToRoute(AIInterviewDefaults.ConfigurationRouteName);
     }
 
     public IActionResult MockConfigure()

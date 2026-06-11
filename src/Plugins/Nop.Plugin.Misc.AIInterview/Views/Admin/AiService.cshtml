@@ -7,7 +7,7 @@
     NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminAiServiceMenuSystemName);
 }
 
-<form asp-controller="AIInterviewAdmin" asp-action="AiService" method="post">
+<form asp-route="@AIInterviewDefaults.AdminAiServiceRouteName" method="post">
     <div class="content-header clearfix">
         <h1 class="float-left">@T("Plugins.Misc.AIInterview.Admin.AiService.Title")</h1>
         <div class="float-right">

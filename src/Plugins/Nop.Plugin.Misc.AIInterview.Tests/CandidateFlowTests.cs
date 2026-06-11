@@ -260,11 +260,7 @@ public class CandidateFlowTests
     [Test]
     public void ProductDetails_StartInterview_Button_Wires_Post_And_Redirect()
     {
-        var viewPath = Path.GetFullPath(Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Shared", "Components", "AIInterviewProductDetails", "Default.cshtml"));
-        var viewText = File.ReadAllText(viewPath);
+        var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "Components", "AIInterviewProductDetails", "Default.cshtml"));
 
         Assert.That(viewText, Does.Contain("data-start-interview-button=\"true\""));
         Assert.That(viewText, Does.Contain("postJson('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)'"));
@@ -275,17 +271,8 @@ public class CandidateFlowTests
     [Test]
     public void ProductDetails_And_StartViews_Handle_Fetch_Errors_Safely()
     {
-        var productViewPath = Path.GetFullPath(Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Shared", "Components", "AIInterviewProductDetails", "Default.cshtml"));
-        var startViewPath = Path.GetFullPath(Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Start.cshtml"));
-
-        var productViewText = File.ReadAllText(productViewPath);
-        var startViewText = File.ReadAllText(startViewPath);
+        var productViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "Components", "AIInterviewProductDetails", "Default.cshtml"));
+        var startViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Start.cshtml"));
 
         Assert.That(productViewText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
         Assert.That(productViewText, Does.Contain("response.ok"));
@@ -300,12 +287,7 @@ public class CandidateFlowTests
     [Test]
     public void Legacy_Interview_View_Is_Removed()
     {
-        var legacyViewPath = Path.GetFullPath(Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Interview.cshtml"));
-
-        Assert.That(File.Exists(legacyViewPath), Is.False);
+        Assert.That(File.Exists(TestFilePathHelper.GetPluginFilePath("Views", "Interview.cshtml")), Is.False);
     }
 
     [Test]
@@ -762,22 +744,9 @@ public class CandidateFlowTests
     [Test]
     public void ReportAndHistoryViews_IncludeRecordingAccessMarkup()
     {
-        var reportPath = Path.GetFullPath(Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Report.cshtml"));
-        var mockReportPath = Path.GetFullPath(Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Report.cshtml"));
-        var historyPath = Path.GetFullPath(Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "History.cshtml"));
-
-        var reportText = File.ReadAllText(reportPath);
-        var mockReportText = File.ReadAllText(mockReportPath);
-        var historyText = File.ReadAllText(historyPath);
+        var reportText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Report.cshtml"));
+        var mockReportText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Report.cshtml"));
+        var historyText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml"));
 
         Assert.That(reportText, Does.Contain("Recording"));
         Assert.That(mockReportText, Does.Contain("Recording"));
@@ -845,22 +814,9 @@ public class CandidateFlowTests
     [Test]
     public void RuntimeAndReportViews_UseSafeTextRendering()
     {
-        var runtimePath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml"));
-        var mockReportPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Report.cshtml"));
-        var reportPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Report.cshtml"));
-
-        var runtimeText = System.IO.File.ReadAllText(runtimePath);
-        var mockReportText = System.IO.File.ReadAllText(mockReportPath);
-        var reportText = System.IO.File.ReadAllText(reportPath);
+        var runtimeText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+        var mockReportText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Report.cshtml"));
+        var reportText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Report.cshtml"));
 
         Assert.That(runtimeText, Does.Contain("textContent"));
         Assert.That(runtimeText, Does.Not.Contain("card.innerHTML ="));

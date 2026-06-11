@@ -338,11 +338,7 @@ public class RuntimeAndAdminTests
     [Test]
     public void RuntimeView_Contains_Recording_Upload_And_Agora_Renewal_Hooks()
     {
-        var runtimeViewPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
-            TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml"));
-        var runtimeViewText = System.IO.File.ReadAllText(runtimeViewPath);
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
 
         Assert.That(runtimeViewText, Does.Contain("recordingUploadUrl"));
         Assert.That(runtimeViewText, Does.Contain("MediaRecorder"));

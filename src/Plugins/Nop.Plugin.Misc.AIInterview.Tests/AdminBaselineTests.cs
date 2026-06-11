@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Moq;
 using Nop.Core;
@@ -44,6 +45,7 @@ public class AdminBaselineTests
     private Mock<IVendorService> _vendorService;
     private Mock<ILocalizationService> _localizationService;
     private Mock<INotificationService> _notificationService;
+    private Mock<ILogger<AIInterviewAdminController>> _logger;
     private Mock<IWorkContext> _workContext;
     private Mock<ISettingService> _settingService;
     private Mock<IRepository<CreditWallet>> _walletRepository;
@@ -65,6 +67,7 @@ public class AdminBaselineTests
         _vendorService = new Mock<IVendorService>();
         _localizationService = new Mock<ILocalizationService>();
         _notificationService = new Mock<INotificationService>();
+        _logger = new Mock<ILogger<AIInterviewAdminController>>();
         _workContext = new Mock<IWorkContext>();
         _settingService = new Mock<ISettingService>();
         _walletRepository = new Mock<IRepository<CreditWallet>>();
@@ -108,6 +111,7 @@ public class AdminBaselineTests
             _vendorService.Object,
             _localizationService.Object,
             _notificationService.Object,
+            _logger.Object,
             _workContext.Object,
             _settingService.Object,
             _walletRepository.Object,
@@ -216,11 +220,7 @@ public class AdminBaselineTests
     [Test]
     public void ProductRequirements_Partial_Contains_NopCard_Hide_Attributes()
     {
-        var path = Path.Combine(TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..", "..",
-            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "Admin", "_ProductJobRequirements.cshtml");
-
-        var text = File.ReadAllText(Path.GetFullPath(path));
+        var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "_ProductJobRequirements.cshtml"));
 
         Assert.That(text, Does.Contain("asp-hide-block-attribute-name=\"aiinterview-job-requirements\""));
         Assert.That(text, Does.Contain("asp-hide=\"false\""));
@@ -264,8 +264,8 @@ public class AdminBaselineTests
             AzureBlobStorageSasToken = ""
         });
 
-        Assert.That(postResult, Is.InstanceOf<RedirectToActionResult>());
-        Assert.That(((RedirectToActionResult)postResult).ActionName, Is.EqualTo(nameof(AIInterviewAdminController.AiService)));
+        Assert.That(postResult, Is.InstanceOf<RedirectToRouteResult>());
+        Assert.That(((RedirectToRouteResult)postResult).RouteName, Is.EqualTo(AIInterviewDefaults.AdminAiServiceRouteName));
 
         var refreshed = await _controller.AiService();
         var refreshedModel = (AiServiceSettingsModel)((ViewResult)refreshed).Model;
@@ -291,6 +291,46 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public async Task AiService_Save_Exception_Returns_View_And_Shows_Error()
+    {
+        _settingService.Setup(x => x.SaveSettingAsync(It.IsAny<MockAIInterviewSettings>()))
+            .Returns(Task.CompletedTask);
+        _settingService.Setup(x => x.SaveSettingAsync(It.IsAny<AIInterviewSettings>()))
+            .ThrowsAsync(new InvalidOperationException("boom"));
+
+        var result = await _controller.AiService(new AiServiceSettingsModel
+        {
+            UseMockResponses = true,
+            Provider = "Azure OpenAI",
+            ApiKey = "key",
+            Model = "gpt-4",
+            Prompt = "prompt",
+            ServiceSettings = "svc",
+            CreditProductSkuMappingsJson = "{\"AI-CREDIT-1\":1}",
+            CreditPurchasePageUrl = "/credits",
+            AzureOpenAiEndpointUrl = "https://endpoint",
+            AzureOpenAiApiKey = "aoai-key",
+            AzureOpenAiDeploymentOrModel = "deployment",
+            AgoraAppId = "agora",
+            AgoraTokenServiceUrl = "https://token",
+            AzureSpeechKey = "speech",
+            AzureSpeechRegion = "eastus",
+            AzureBlobStorageContainerUrl = "container",
+            AzureBlobStorageSasToken = "sas"
+        });
+
+        Assert.That(result, Is.InstanceOf<ViewResult>());
+        Assert.That(_controller.ModelState.IsValid, Is.False);
+        _notificationService.Verify(x => x.ErrorNotification("Unable to save AI Interview service settings. Please check the values and try again."), Times.Once);
+        _logger.Verify(x => x.Log(
+            LogLevel.Error,
+            It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((_, _) => true),
+            It.Is<Exception>(ex => ex.Message == "boom"),
+            It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+    }
+
+    [Test]
     public void Upgrade_Locale_Resources_Include_AzureBlob_Keys()
     {
         var method = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
@@ -302,6 +342,31 @@ public class AdminBaselineTests
         Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"), Is.True);
         Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"), Is.True);
         Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"), Is.True);
+    }
+
+    [Test]
+    public void AiService_View_Uses_Named_Route()
+    {
+        var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "AiService.cshtml"));
+
+        Assert.That(text, Does.Contain("asp-route=\"@AIInterviewDefaults.AdminAiServiceRouteName\""));
+    }
+
+    [Test]
+    public void Configure_View_Uses_Named_Route()
+    {
+        var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Configure.cshtml"));
+
+        Assert.That(text, Does.Contain("asp-route=\"@AIInterviewDefaults.ConfigurationRouteName\""));
+    }
+
+    [Test]
+    public async Task Configure_Post_Returns_Redirect_To_Configuration_Route()
+    {
+        var result = await _legacyController.Configure(new ConfigurationModel { Enabled = true });
+
+        Assert.That(result, Is.InstanceOf<RedirectToRouteResult>());
+        Assert.That(((RedirectToRouteResult)result).RouteName, Is.EqualTo(AIInterviewDefaults.ConfigurationRouteName));
     }
 
     [Test]
@@ -403,6 +468,7 @@ public class AdminBaselineTests
             _vendorService.Object,
             _localizationService.Object,
             _notificationService.Object,
+            _logger.Object,
             _workContext.Object,
             _settingService.Object,
             _walletRepository.Object,

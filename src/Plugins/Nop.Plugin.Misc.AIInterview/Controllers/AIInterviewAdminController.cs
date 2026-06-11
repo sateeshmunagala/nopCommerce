@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.Logging;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
@@ -39,6 +40,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly IJobRequirementService _jobRequirementService;
     private readonly ILocalizationService _localizationService;
     private readonly INotificationService _notificationService;
+    private readonly ILogger<AIInterviewAdminController> _logger;
     private readonly IWorkContext _workContext;
     private readonly ISettingService _settingService;
     private readonly IRepository<CreditWallet> _walletRepository;
@@ -55,6 +57,7 @@ public class AIInterviewAdminController : BasePluginController
         IVendorService vendorService,
         ILocalizationService localizationService,
         INotificationService notificationService,
+        ILogger<AIInterviewAdminController> logger,
         IWorkContext workContext,
         ISettingService settingService,
         IRepository<CreditWallet> walletRepository,
@@ -73,6 +76,7 @@ public class AIInterviewAdminController : BasePluginController
         _jobRequirementService = jobRequirementService;
         _localizationService = localizationService;
         _notificationService = notificationService;
+        _logger = logger;
         _workContext = workContext;
         _settingService = settingService;
         _walletRepository = walletRepository;
@@ -116,29 +120,40 @@ public class AIInterviewAdminController : BasePluginController
             return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", await PrepareAiServiceModelAsync(model));
         }
 
-        _mockAIInterviewSettings.UseMockResponses = model.UseMockResponses;
-        await _settingService.SaveSettingAsync(_mockAIInterviewSettings);
+        try
+        {
+            _mockAIInterviewSettings.UseMockResponses = model.UseMockResponses;
+            await _settingService.SaveSettingAsync(_mockAIInterviewSettings);
 
-        _aiInterviewSettings.Provider = AzureOpenAiProviderValue;
-        _aiInterviewSettings.ApiKey = model.ApiKey;
-        _aiInterviewSettings.Model = model.Model;
-        _aiInterviewSettings.Prompt = model.Prompt;
-        _aiInterviewSettings.ServiceSettings = model.ServiceSettings;
-        _aiInterviewSettings.CreditProductSkuMappingsJson = model.CreditProductSkuMappingsJson;
-        _aiInterviewSettings.CreditPurchasePageUrl = model.CreditPurchasePageUrl;
-        _aiInterviewSettings.AzureOpenAiEndpointUrl = model.AzureOpenAiEndpointUrl;
-        _aiInterviewSettings.AzureOpenAiApiKey = model.AzureOpenAiApiKey;
-        _aiInterviewSettings.AzureOpenAiDeploymentOrModel = model.AzureOpenAiDeploymentOrModel;
-        _aiInterviewSettings.AgoraAppId = model.AgoraAppId;
-        _aiInterviewSettings.AgoraTokenServiceUrl = model.AgoraTokenServiceUrl;
-        _aiInterviewSettings.AzureSpeechKey = model.AzureSpeechKey;
-        _aiInterviewSettings.AzureSpeechRegion = model.AzureSpeechRegion;
-        _aiInterviewSettings.AzureBlobStorageContainerUrl = model.AzureBlobStorageContainerUrl;
-        _aiInterviewSettings.AzureBlobStorageSasToken = model.AzureBlobStorageSasToken;
-        await _settingService.SaveSettingAsync(_aiInterviewSettings);
+            _aiInterviewSettings.Provider = AzureOpenAiProviderValue;
+            _aiInterviewSettings.ApiKey = model.ApiKey;
+            _aiInterviewSettings.Model = model.Model;
+            _aiInterviewSettings.Prompt = model.Prompt;
+            _aiInterviewSettings.ServiceSettings = model.ServiceSettings;
+            _aiInterviewSettings.CreditProductSkuMappingsJson = model.CreditProductSkuMappingsJson;
+            _aiInterviewSettings.CreditPurchasePageUrl = model.CreditPurchasePageUrl;
+            _aiInterviewSettings.AzureOpenAiEndpointUrl = model.AzureOpenAiEndpointUrl;
+            _aiInterviewSettings.AzureOpenAiApiKey = model.AzureOpenAiApiKey;
+            _aiInterviewSettings.AzureOpenAiDeploymentOrModel = model.AzureOpenAiDeploymentOrModel;
+            _aiInterviewSettings.AgoraAppId = model.AgoraAppId;
+            _aiInterviewSettings.AgoraTokenServiceUrl = model.AgoraTokenServiceUrl;
+            _aiInterviewSettings.AzureSpeechKey = model.AzureSpeechKey;
+            _aiInterviewSettings.AzureSpeechRegion = model.AzureSpeechRegion;
+            _aiInterviewSettings.AzureBlobStorageContainerUrl = model.AzureBlobStorageContainerUrl;
+            _aiInterviewSettings.AzureBlobStorageSasToken = model.AzureBlobStorageSasToken;
+            await _settingService.SaveSettingAsync(_aiInterviewSettings);
+        }
+        catch (Exception exception)
+        {
+            const string defaultMessage = "Unable to save AI Interview service settings. Please check the values and try again.";
+            _logger.LogError(exception, "Failed to save AI Interview service settings.");
+            ModelState.AddModelError(string.Empty, defaultMessage);
+            _notificationService.ErrorNotification(defaultMessage);
+            return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", await PrepareAiServiceModelAsync(model));
+        }
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
-        return RedirectToAction(nameof(AiService));
+        return RedirectToRoute(AIInterviewDefaults.AdminAiServiceRouteName);
     }
 
     [HttpPost]

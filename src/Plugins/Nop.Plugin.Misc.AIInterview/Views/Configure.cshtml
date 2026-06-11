@@ -1,11 +1,12 @@
 @model Nop.Plugin.Misc.AIInterview.Models.ConfigurationModel
+@using Nop.Plugin.Misc.AIInterview
 
 @{
     Layout = "_AdminLayout";
     ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.Configure.Title").Text;
 }
 
-<form asp-controller="MockAiInterviewAdmin" asp-action="Configure" method="post">
+<form asp-route="@AIInterviewDefaults.ConfigurationRouteName" method="post">
     <div class="content-header clearfix">
         <h1 class="float-left">
             @T("Plugins.Misc.AIInterview.Admin.Configure.Title")
