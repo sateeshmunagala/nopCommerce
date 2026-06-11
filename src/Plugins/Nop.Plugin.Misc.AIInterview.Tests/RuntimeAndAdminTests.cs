@@ -237,7 +237,8 @@ public class RuntimeAndAdminTests
             ClientSettings = new RuntimeClientSettingsModel
             {
                 SpeechAvailable = false,
-                AgoraAvailable = false
+                AgoraAvailable = false,
+                RecordingAvailable = false
             }
         };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("token")).ReturnsAsync(new InterviewSession
@@ -273,6 +274,25 @@ public class RuntimeAndAdminTests
 
         Assert.That(model.ClientSettings.SpeechAvailable, Is.False);
         Assert.That(model.ClientSettings.AgoraAvailable, Is.False);
+        Assert.That(model.ClientSettings.RecordingAvailable, Is.False);
+    }
+
+    [Test]
+    public void RuntimeView_Contains_Recording_Upload_And_Agora_Renewal_Hooks()
+    {
+        var runtimeViewPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..",
+            "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml"));
+        var runtimeViewText = System.IO.File.ReadAllText(runtimeViewPath);
+
+        Assert.That(runtimeViewText, Does.Contain("recordingUploadUrl"));
+        Assert.That(runtimeViewText, Does.Contain("MediaRecorder"));
+        Assert.That(runtimeViewText, Does.Contain("toggle-recording"));
+        Assert.That(runtimeViewText, Does.Contain("token-privilege-will-expire"));
+        Assert.That(runtimeViewText, Does.Contain("token-privilege-did-expire"));
+        Assert.That(runtimeViewText, Does.Contain("renewToken("));
+        Assert.That(runtimeViewText, Does.Contain("uploadRecording"));
     }
 
     [Test]

@@ -42,6 +42,7 @@ public record RuntimeClientSettingsModel
     public string TranscriptUrl { get; set; }
     public string SpeechTokenUrl { get; set; }
     public string AgoraTokenUrl { get; set; }
+    public string RecordingUploadUrl { get; set; }
     public string SpeechRegion { get; set; }
     public string SpeechVoiceName { get; set; }
     public string AgoraAppId { get; set; }
@@ -51,6 +52,7 @@ public record RuntimeClientSettingsModel
     public DateTime? TokenExpiryUtc { get; set; }
     public bool SpeechAvailable { get; set; }
     public bool AgoraAvailable { get; set; }
+    public bool RecordingAvailable { get; set; }
 }
 
 public record StartInterviewResponseModel
@@ -100,6 +102,13 @@ public record CompleteInterviewResponse
     public IList<InterviewTurnViewModel> Turns { get; init; } = new List<InterviewTurnViewModel>();
 }
 
+public record RecordingUploadResponseModel
+{
+    public bool Success { get; init; }
+    public string Message { get; init; }
+    public string RecordingUrl { get; init; }
+}
+
 public record SpeechTokenResponseModel
 {
     public string Token { get; init; }
@@ -133,5 +142,6 @@ public record InterviewReportModel : BaseNopModel
     public string QuestionScores { get; set; }
     public IList<decimal> ParsedQuestionScores { get; set; } = new List<decimal>();
     public string ReportData { get; set; }
+    public string RecordingUrl { get; set; }
     public IList<InterviewTurnViewModel> Turns { get; set; } = new List<InterviewTurnViewModel>();
 }

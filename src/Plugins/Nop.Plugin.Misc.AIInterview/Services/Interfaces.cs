@@ -49,6 +49,7 @@ public interface IInterviewRuntimeService
     Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null);
     Task<SpeechTokenResponseModel> GetSpeechTokenAsync(string token);
     Task<AgoraTokenResponseModel> GetAgoraTokenAsync(string token);
+    Task<RecordingUploadResponseModel> UploadRecordingAsync(string token, IFormFile recording);
 }
 
 public interface IAIInterviewClient

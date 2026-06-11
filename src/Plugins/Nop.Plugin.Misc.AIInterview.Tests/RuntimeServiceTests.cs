@@ -1,5 +1,6 @@
 using Moq;
 using Microsoft.Extensions.Http;
+using Microsoft.AspNetCore.Http;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
@@ -74,6 +75,17 @@ public class RuntimeServiceTests
         factory.Setup(x => x.CreateClient(It.IsAny<string>()))
             .Returns(() => new HttpClient(handler, disposeHandler: false));
         return factory;
+    }
+
+    private static IFormFile CreateRecordingFile(string content = "recording-content", string fileName = "interview.webm", string contentType = "video/webm")
+    {
+        var bytes = Encoding.UTF8.GetBytes(content);
+        var stream = new MemoryStream(bytes);
+        return new FormFile(stream, 0, bytes.Length, "recording", fileName)
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = contentType
+        };
     }
 
     [Test]
@@ -680,6 +692,166 @@ public class RuntimeServiceTests
 
         Assert.That(await service.GetSpeechTokenAsync("boundary"), Is.Null);
         Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task UploadRecordingAsync_Rejects_Invalid_Expired_Completed_Sessions()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureBlobStorageContainerUrl = "https://storage.blob.core.windows.net/container",
+                AzureBlobStorageSasToken = "?sig=token"
+            });
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("invalid")).ReturnsAsync((InterviewSession)null);
+        sessionService.Setup(x => x.GetSessionByTokenAsync("expired")).ReturnsAsync(new InterviewSession
+        {
+            Token = "expired",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
+        });
+        sessionService.Setup(x => x.GetSessionByTokenAsync("completed")).ReturnsAsync(new InterviewSession
+        {
+            Token = "completed",
+            IsActive = true,
+            CompletedOnUtc = DateTime.UtcNow.AddMinutes(-1),
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+
+        Assert.That((await service.UploadRecordingAsync("invalid", CreateRecordingFile())).Success, Is.False);
+        Assert.That((await service.UploadRecordingAsync("expired", CreateRecordingFile())).Success, Is.False);
+        Assert.That((await service.UploadRecordingAsync("completed", CreateRecordingFile())).Success, Is.False);
+        Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task UploadRecordingAsync_OnExpiryBoundary_ReturnsInvalidToken()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var now = DateTime.UtcNow;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("boundary")).ReturnsAsync(new InterviewSession
+        {
+            Token = "boundary",
+            IsActive = true,
+            TokenExpiryUtc = now
+        });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureBlobStorageContainerUrl = "https://storage.blob.core.windows.net/container",
+                AzureBlobStorageSasToken = "?sig=token"
+            });
+
+        var result = await service.UploadRecordingAsync("boundary", CreateRecordingFile());
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Message, Is.EqualTo("Invalid or expired session token."));
+        Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task UploadRecordingAsync_RejectsMissingConfigAndEmptyFile()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var session = new InterviewSession
+        {
+            Id = 20,
+            Token = "upload",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            SessionKey = "session-upload",
+            CustomerId = 7,
+            ProductId = 5
+        };
+        sessionService.Setup(x => x.GetSessionByTokenAsync("upload")).ReturnsAsync(session);
+
+        var serviceMissingConfig = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings());
+        var missingConfig = await serviceMissingConfig.UploadRecordingAsync("upload", CreateRecordingFile());
+        Assert.That(missingConfig.Success, Is.False);
+
+        var serviceWithConfig = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureBlobStorageContainerUrl = "https://storage.blob.core.windows.net/container",
+                AzureBlobStorageSasToken = "?sig=token"
+            });
+        var emptyFile = new FormFile(new MemoryStream(Array.Empty<byte>()), 0, 0, "recording", "empty.webm")
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "video/webm"
+        };
+        var emptyUpload = await serviceWithConfig.UploadRecordingAsync("upload", emptyFile);
+        Assert.That(emptyUpload.Success, Is.False);
+        Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task UploadRecordingAsync_SavesRecordingUrl_OnSuccess()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Created));
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var session = new InterviewSession
+        {
+            Id = 21,
+            Token = "upload-success",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            SessionKey = "session-success",
+            CustomerId = 7,
+            ProductId = 5
+        };
+        sessionService.Setup(x => x.GetSessionByTokenAsync("upload-success")).ReturnsAsync(session);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureBlobStorageContainerUrl = "https://storage.blob.core.windows.net/container",
+                AzureBlobStorageSasToken = "?sig=token"
+            });
+
+        var result = await service.UploadRecordingAsync("upload-success", CreateRecordingFile("webm-data"));
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.RecordingUrl, Does.Contain("https://storage.blob.core.windows.net/container/recordings-session-success-"));
+        Assert.That(session.RecordingUrl, Is.EqualTo(result.RecordingUrl));
+        Assert.That(httpHandler.Requests.Count, Is.EqualTo(1));
+        Assert.That(httpHandler.Requests[0].Method, Is.EqualTo(HttpMethod.Put));
+        Assert.That(httpHandler.Requests[0].Headers.Contains("x-ms-blob-type"), Is.True);
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.RecordingUrl == result.RecordingUrl)), Times.Once);
     }
 
     [Test]

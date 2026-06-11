@@ -81,10 +81,12 @@
                     <span class="runtime-dot"></span>
                     <button type="button" id="toggle-camera" class="button-2">Camera On</button>
                     <button type="button" id="toggle-mic" class="button-2">Mic On</button>
+                    <button type="button" id="toggle-recording" class="button-2">Recording On</button>
                     <button type="button" id="start-or-next" class="button-1">Start Interview</button>
                     <span class="runtime-dot"></span>
                     <span class="runtime-dot"></span>
                 </div>
+                <div class="runtime-status" id="recording-status"></div>
                 <div class="runtime-meter" id="audio-meter" aria-label="microphone level">
                     <span></span><span></span><span></span><span></span><span></span><span></span>
                 </div>
@@ -141,6 +143,8 @@
         const progressBar = document.getElementById('runtime-progress-bar');
         const video = document.getElementById('runtime-video');
         const cameraPlaceholder = document.getElementById('camera-placeholder');
+        const recordingStatus = document.getElementById('recording-status');
+        const recordingButton = document.getElementById('toggle-recording');
         const audioMeter = Array.from(document.querySelectorAll('#audio-meter span'));
         const reportButton = document.getElementById('view-report');
         let cameraStream = null;
@@ -156,8 +160,23 @@
         let agoraClient = null;
         let agoraTracks = null;
         let agoraJoined = false;
+        let agoraTokenExpiryTimer = null;
+        let agoraTokenWillExpireHandler = null;
+        let agoraTokenDidExpireHandler = null;
+        let mediaRecorder = null;
+        let recordingChunks = [];
+        let recordingMimeType = 'video/webm';
+        let recordingEnabled = false;
+        let recordingUploadInFlight = false;
+        let interviewStarted = false;
         let completedRedirectTimer = null;
         let completedCountdown = null;
+
+        recordingEnabled = !!config.recordingAvailable;
+        if (recordingButton) {
+            recordingButton.disabled = !config.recordingAvailable;
+            recordingButton.textContent = config.recordingAvailable ? 'Recording On' : 'Recording Unavailable';
+        }
 
         const loadScriptOnce = (src) => {
             return new Promise((resolve, reject) => {
@@ -185,9 +204,22 @@
             statusBox.className = `runtime-status ${isError ? 'message-error' : 'message-success'}`;
         };
 
-        const setCompletedState = (result) => {
+        const setRecordingStatus = (message, isError) => {
+            if (!recordingStatus)
+                return;
+
+            recordingStatus.textContent = message || '';
+            recordingStatus.className = `runtime-status ${isError ? 'message-error' : 'message-success'}`;
+        };
+
+        const setCompletedState = async (result) => {
             const reportUrl = result.reportUrl || config.reportUrl || '';
             const completionText = result.completion || result.message || 'Interview completed.';
+            await stopRecording(true);
+            recordingEnabled = false;
+            interviewStarted = false;
+            if (recordingButton)
+                recordingButton.disabled = true;
             cameraStream?.getTracks().forEach(track => track.stop());
             micStream?.getTracks().forEach(track => track.stop());
             cameraStream = null;
@@ -197,8 +229,8 @@
             analyser = null;
             meterFrame && cancelAnimationFrame(meterFrame);
             meterFrame = null;
-            void stopSpeechRecognition();
-            void leaveAgoraSession();
+            await stopSpeechRecognition();
+            await leaveAgoraSession();
             questionBox.textContent = completionText;
             messageBox.textContent = result.feedback || result.message || '';
             completionBox.style.display = '';
@@ -307,6 +339,143 @@
             } catch {
                 return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
             }
+        };
+
+        const postMultipart = async (url, formData) => {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok)
+                    return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
+
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json'))
+                    return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
+
+                try {
+                    return await response.json();
+                } catch {
+                    return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
+                }
+            } catch {
+                return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
+            }
+        };
+
+        const getActiveRecordingStream = () => {
+            const tracks = [];
+            if (cameraStream?.getTracks)
+                tracks.push(...cameraStream.getTracks().filter(track => track.readyState === 'live'));
+            if (micStream?.getTracks)
+                tracks.push(...micStream.getTracks().filter(track => track.readyState === 'live'));
+
+            return tracks.length ? new MediaStream(tracks) : null;
+        };
+
+        const uploadRecording = async (blob) => {
+            if (!config.recordingUploadUrl || !blob || recordingUploadInFlight)
+                return;
+
+            recordingUploadInFlight = true;
+            try {
+                const formData = new FormData();
+                formData.append('token', sessionToken);
+                formData.append('recording', blob, `interview-${Date.now()}.webm`);
+
+                const result = await postMultipart(config.recordingUploadUrl, formData);
+                if (result?.success && result.recordingUrl) {
+                    setRecordingStatus('Recording uploaded successfully.', false);
+                } else {
+                    setRecordingStatus(result?.message || result?.error || 'Recording upload failed.', true);
+                }
+            } finally {
+                recordingUploadInFlight = false;
+            }
+        };
+
+        const stopRecording = async (upload = false) => {
+            if (!mediaRecorder)
+                return;
+
+            const recorder = mediaRecorder;
+            const mimeType = recordingMimeType || 'video/webm';
+            mediaRecorder = null;
+
+            await new Promise(resolve => {
+                recorder.addEventListener('stop', async () => {
+                    try {
+                        const blob = recordingChunks.length ? new Blob(recordingChunks, { type: mimeType }) : null;
+                        recordingChunks = [];
+                        if (upload && blob)
+                            await uploadRecording(blob);
+                    } catch {
+                        setRecordingStatus('Recording upload failed.', true);
+                    } finally {
+                        const toggleRecording = document.getElementById('toggle-recording');
+                        if (toggleRecording)
+                            toggleRecording.textContent = 'Recording On';
+                        resolve();
+                    }
+                }, { once: true });
+
+                try {
+                    recorder.stop();
+                } catch {
+                    recordingChunks = [];
+                    resolve();
+                }
+            });
+        };
+
+        const startRecording = async () => {
+            if (!config.recordingAvailable || mediaRecorder)
+                return;
+
+            const stream = getActiveRecordingStream();
+            if (!stream) {
+                setRecordingStatus('Enable camera or microphone before recording.', true);
+                return;
+            }
+
+            if (!window.MediaRecorder) {
+                setRecordingStatus('Recording is not supported in this browser.', true);
+                return;
+            }
+
+            try {
+                const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+                    ? { mimeType: 'video/webm;codecs=vp9,opus' }
+                    : (MediaRecorder.isTypeSupported('video/webm') ? { mimeType: 'video/webm' } : {});
+                mediaRecorder = new MediaRecorder(stream, options);
+                recordingMimeType = mediaRecorder.mimeType || options.mimeType || 'video/webm';
+                recordingChunks = [];
+                mediaRecorder.addEventListener('dataavailable', event => {
+                    if (event.data && event.data.size > 0)
+                        recordingChunks.push(event.data);
+                });
+                mediaRecorder.start(1000);
+                setRecordingStatus('Recording started.', false);
+                const toggleRecording = document.getElementById('toggle-recording');
+                if (toggleRecording)
+                    toggleRecording.textContent = 'Recording Off';
+            } catch {
+                mediaRecorder = null;
+                recordingChunks = [];
+                setRecordingStatus('Recording could not be started.', true);
+            }
+        };
+
+        const syncRecording = async () => {
+            if (!config.recordingAvailable)
+                return;
+
+            if (recordingEnabled && interviewStarted && getActiveRecordingStream())
+                await startRecording();
+            else
+                await stopRecording(false);
         };
 
         const scheduleTokenRefresh = () => {
@@ -476,13 +645,69 @@
                 await agoraClient.join(tokenResult.appId, tokenResult.channel, tokenResult.token, tokenResult.uid || null);
                 await agoraClient.publish(agoraTracks);
                 agoraJoined = true;
+                const expiresInSeconds = tokenResult.expiresInSeconds || 600;
+                scheduleAgoraRenewal(expiresInSeconds);
+                registerAgoraTokenHandlers();
             } catch {
                 await leaveAgoraSession();
                 setStatus('Live RTC features are unavailable.', true);
             }
         };
 
+        const registerAgoraTokenHandlers = () => {
+            if (!agoraClient)
+                return;
+
+            if (agoraTokenWillExpireHandler)
+                agoraClient.off?.('token-privilege-will-expire', agoraTokenWillExpireHandler);
+            if (agoraTokenDidExpireHandler)
+                agoraClient.off?.('token-privilege-did-expire', agoraTokenDidExpireHandler);
+
+            agoraTokenWillExpireHandler = async () => {
+                await renewAgoraToken();
+            };
+            agoraTokenDidExpireHandler = async () => {
+                await renewAgoraToken(true);
+            };
+
+            agoraClient.on?.('token-privilege-will-expire', agoraTokenWillExpireHandler);
+            agoraClient.on?.('token-privilege-did-expire', agoraTokenDidExpireHandler);
+        };
+
+        const scheduleAgoraRenewal = (expiresInSeconds) => {
+            clearTimeout(agoraTokenExpiryTimer);
+            if (!expiresInSeconds || expiresInSeconds <= 0)
+                return;
+
+            const safetyMarginMs = 60000;
+            const delay = Math.max(5000, (expiresInSeconds * 1000) - safetyMarginMs);
+            agoraTokenExpiryTimer = setTimeout(() => {
+                void renewAgoraToken();
+            }, delay);
+        };
+
+        const renewAgoraToken = async (force = false) => {
+            if (!config.agoraAvailable || !agoraClient || !agoraJoined)
+                return;
+
+            const tokenResult = await postForm(config.agoraTokenUrl, new URLSearchParams({ token: sessionToken }));
+            if (!tokenResult || tokenResult.error || !tokenResult.token) {
+                if (force)
+                    setStatus(tokenResult?.error || 'Live RTC token service is unavailable.', true);
+                return;
+            }
+
+            try {
+                await agoraClient.renewToken(tokenResult.token);
+                scheduleAgoraRenewal(tokenResult.expiresInSeconds || 600);
+            } catch {
+                setStatus('Live RTC token renewal failed.', true);
+            }
+        };
+
         const leaveAgoraSession = async () => {
+            clearTimeout(agoraTokenExpiryTimer);
+            agoraTokenExpiryTimer = null;
             try {
                 if (agoraTracks) {
                     agoraTracks.forEach(track => {
@@ -491,12 +716,18 @@
                     });
                 }
                 if (agoraClient && agoraJoined) {
+                    if (agoraTokenWillExpireHandler)
+                        agoraClient.off?.('token-privilege-will-expire', agoraTokenWillExpireHandler);
+                    if (agoraTokenDidExpireHandler)
+                        agoraClient.off?.('token-privilege-did-expire', agoraTokenDidExpireHandler);
                     try { await agoraClient.leave(); } catch { }
                 }
             } finally {
                 agoraTracks = null;
                 agoraClient = null;
                 agoraJoined = false;
+                agoraTokenWillExpireHandler = null;
+                agoraTokenDidExpireHandler = null;
             }
         };
 
@@ -513,6 +744,7 @@
                 cameraPlaceholder.style.display = '';
                 document.getElementById('toggle-camera').textContent = 'Camera On';
                 await leaveAgoraSession();
+                await syncRecording();
                 return;
             }
 
@@ -524,6 +756,7 @@
                 document.getElementById('toggle-camera').textContent = 'Camera Off';
                 if (config.agoraAvailable)
                     await ensureAgoraSession();
+                await syncRecording();
             } catch {
                 setStatus('Camera could not be started.', true);
             }
@@ -546,6 +779,7 @@
                 await stopSpeechRecognition();
                 if (!cameraStream)
                     await leaveAgoraSession();
+                await syncRecording();
                 return;
             }
 
@@ -575,6 +809,7 @@
                 await startSpeechRecognition();
                 if (config.agoraAvailable)
                     await ensureAgoraSession();
+                await syncRecording();
             } catch {
                 setStatus('Microphone could not be started.', true);
             }
@@ -624,7 +859,7 @@
             renderTranscript();
 
             if (result.isTerminated) {
-                setCompletedState(result);
+                await setCompletedState(result);
                 return;
             }
 
@@ -648,12 +883,14 @@
 
             setStatus(result.message || 'Interview completed.', false);
             renderTranscript();
-            setCompletedState(result);
+            await setCompletedState(result);
         };
 
         const beginInterview = async () => {
+            interviewStarted = true;
             setStatus('Interview started.', false);
             document.getElementById('start-or-next').textContent = 'Next Question';
+            await syncRecording();
             if (config.speechAvailable && questionBox.textContent)
                 await speakText(questionBox.textContent);
         };
@@ -662,6 +899,16 @@
         document.getElementById('start-or-next').addEventListener('click', beginInterview);
         document.getElementById('toggle-camera').addEventListener('click', async () => await setCamera(!cameraStream));
         document.getElementById('toggle-mic').addEventListener('click', async () => await setMic(!micStream));
+        if (recordingButton) {
+            recordingButton.addEventListener('click', async () => {
+                if (!config.recordingAvailable)
+                    return;
+
+                recordingEnabled = !recordingEnabled;
+                recordingButton.textContent = recordingEnabled ? 'Recording Off' : 'Recording On';
+                await syncRecording();
+            });
+        }
         document.getElementById('stop-interview').addEventListener('click', stopInterview);
         document.getElementById('stop-interview-top').addEventListener('click', stopInterview);
         document.getElementById('open-transcript').addEventListener('click', () => transcript.classList.add('is-open'));

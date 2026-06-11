@@ -119,6 +119,10 @@ public class RouteProvider : IRouteProvider
             pattern: "mockaiinterview/agora-token",
             defaults: new { controller = "MockAiInterview", action = "AgoraToken" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockRecordingUploadRouteName,
+            pattern: "mockaiinterview/upload-recording",
+            defaults: new { controller = "MockAiInterview", action = "UploadRecording" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockHistoryRouteName,
             pattern: "mockaiinterview/history",
             defaults: new { controller = "MockAiInterview", action = "History" });

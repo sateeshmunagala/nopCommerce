@@ -415,6 +415,7 @@ public class CandidateFlowTests
             ReportData = "overall score: 88",
             QuestionScores = "[88, 92]",
             Score = 90,
+            RecordingUrl = "https://storage.example.com/recordings/session-2.webm",
             CreatedOnUtc = DateTime.UtcNow.AddHours(-1),
             CompletedOnUtc = DateTime.UtcNow
         });
@@ -444,6 +445,7 @@ public class CandidateFlowTests
         Assert.That(model.Turns[0].QuestionText, Is.EqualTo("Q1"));
         Assert.That(model.Turns[0].AnswerText, Is.EqualTo("A1"));
         Assert.That(model.ParsedQuestionScores, Is.EquivalentTo(new[] { 88m, 92m }));
+        Assert.That(model.RecordingUrl, Is.EqualTo("https://storage.example.com/recordings/session-2.webm"));
     }
 
     [Test]

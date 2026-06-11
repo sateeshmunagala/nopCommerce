@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Nop.Core;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
@@ -270,6 +271,8 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.TokenExpiryUtc = session?.TokenExpiryUtc;
         model.ClientSettings.SpeechAvailable = model.ClientSettings.SpeechAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.SpeechTokenUrl);
         model.ClientSettings.AgoraAvailable = model.ClientSettings.AgoraAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.AgoraTokenUrl);
+        model.ClientSettings.RecordingUploadUrl = Url?.RouteUrl(AIInterviewDefaults.MockRecordingUploadRouteName);
+        model.ClientSettings.RecordingAvailable = model.ClientSettings.RecordingAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.RecordingUploadUrl);
     }
 
     protected async Task<string> GetRestartUrlAsync(InterviewSession session)
@@ -399,6 +402,19 @@ public class MockAiInterviewController : BasePluginController
         return Json(new { success = true, appId = result.AppId, channel = result.Channel, token = result.Token, uid = result.Uid, expiresInSeconds = result.ExpiresInSeconds });
     }
 
+    [HttpPost]
+    public async Task<IActionResult> UploadRecording(string token, IFormFile recording)
+    {
+        if (_interviewRuntimeService == null)
+            return Json(new { success = false, message = "Recording upload is unavailable." });
+
+        var result = await _interviewRuntimeService.UploadRecordingAsync(token, recording);
+        if (result == null || !result.Success)
+            return Json(new { success = false, message = result?.Message ?? "Recording upload failed." });
+
+        return Json(new { success = true, message = result.Message, recordingUrl = result.RecordingUrl });
+    }
+
     public async Task<IActionResult> History()
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
@@ -448,6 +464,7 @@ public class MockAiInterviewController : BasePluginController
             QuestionScores = session.QuestionScores,
             ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
             ReportData = session.ReportData,
+            RecordingUrl = session.RecordingUrl,
             Turns = turns.Select(turn => new InterviewTurnViewModel
             {
                 TurnId = turn.Id,

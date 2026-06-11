@@ -16,6 +16,10 @@
         <div class="report-header">
             <p><strong>@T("Plugins.Misc.AIInterview.Report.Date"):</strong> @Model.CreatedOnUtc.ToString("g")</p>
             <p><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @Model.Score.ToString("N2")</p>
+            @if (!string.IsNullOrWhiteSpace(Model.RecordingUrl))
+            {
+                <p><strong>Recording:</strong> <a href="@Model.RecordingUrl" target="_blank" rel="noopener">Open recording</a></p>
+            }
         </div>
 
         @if (Model.ParsedQuestionScores?.Any() == true)

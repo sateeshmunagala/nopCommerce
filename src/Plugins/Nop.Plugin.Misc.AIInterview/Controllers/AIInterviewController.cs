@@ -295,6 +295,7 @@ public class AIInterviewController : BasePluginController
             QuestionScores = session.QuestionScores,
             ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
             ReportData = session.ReportData,
+            RecordingUrl = session.RecordingUrl,
             CreatedOnUtc = session.CreatedOnUtc,
             CompletedOnUtc = session.CompletedOnUtc,
             Turns = turns.Select(turn => new InterviewTurnViewModel

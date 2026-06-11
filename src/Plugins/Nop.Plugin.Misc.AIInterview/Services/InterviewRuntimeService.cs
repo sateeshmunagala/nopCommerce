@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Nop.Core;
@@ -705,6 +706,66 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
     }
 
+    public async Task<RecordingUploadResponseModel> UploadRecordingAsync(string token, IFormFile recording)
+    {
+        var session = await _sessionService.GetSessionByTokenAsync(token);
+        var now = DateTime.UtcNow;
+        if (!IsSessionUsable(session, now))
+            return RecordingFailure("Invalid or expired session token.");
+
+        if (recording == null || recording.Length <= 0)
+            return RecordingFailure("Recording file is empty.");
+
+        const long maxRecordingBytes = 100L * 1024L * 1024L;
+        if (recording.Length > maxRecordingBytes)
+            return RecordingFailure("Recording file is too large.");
+
+        if (string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageContainerUrl) ||
+            string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageSasToken))
+            return RecordingFailure("Recording storage is not configured.");
+
+        var containerUrl = _settings.AzureBlobStorageContainerUrl.Trim().TrimEnd('/');
+        var sasToken = _settings.AzureBlobStorageSasToken.Trim();
+        if (!sasToken.StartsWith("?", StringComparison.Ordinal))
+            sasToken = sasToken.StartsWith("&", StringComparison.Ordinal) ? "?" + sasToken[1..] : "?" + sasToken;
+
+        var blobName = $"recordings-{session.SessionKey}-{DateTime.UtcNow:yyyyMMddHHmmss}.webm";
+        var uploadUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}{sasToken}";
+
+        try
+        {
+            using var httpClient = CreateHttpClient();
+            using var content = new StreamContent(recording.OpenReadStream());
+            content.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(recording.ContentType) ? "video/webm" : recording.ContentType);
+
+            using var request = new HttpRequestMessage(HttpMethod.Put, uploadUrl)
+            {
+                Content = content
+            };
+            request.Headers.TryAddWithoutValidation("x-ms-blob-type", "BlockBlob");
+
+            var response = await httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return RecordingFailure("Recording upload failed.");
+
+            session.RecordingUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}";
+            await _sessionService.UpdateInterviewSessionAsync(session);
+
+            return new RecordingUploadResponseModel
+            {
+                Success = true,
+                Message = "Recording uploaded successfully.",
+                RecordingUrl = session.RecordingUrl
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Recording upload failed for session {SessionId}, customer {CustomerId}, product {ProductId}.",
+                session.Id, session.CustomerId, session.ProductId);
+            return RecordingFailure("Recording upload failed.");
+        }
+    }
+
     protected virtual bool IsSessionUsable(InterviewSession session, DateTime utcNow)
     {
         return session != null &&
@@ -753,7 +814,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 ProductName = product?.Name,
                 Token = session.Token,
                 SpeechAvailable = !string.IsNullOrWhiteSpace(_settings.AzureSpeechKey) && !string.IsNullOrWhiteSpace(_settings.AzureSpeechRegion),
-                AgoraAvailable = !string.IsNullOrWhiteSpace(_settings.AgoraAppId) && !string.IsNullOrWhiteSpace(_settings.AgoraTokenServiceUrl)
+                AgoraAvailable = !string.IsNullOrWhiteSpace(_settings.AgoraAppId) && !string.IsNullOrWhiteSpace(_settings.AgoraTokenServiceUrl),
+                RecordingUploadUrl = string.Empty,
+                RecordingAvailable = !string.IsNullOrWhiteSpace(_settings.AzureBlobStorageContainerUrl) && !string.IsNullOrWhiteSpace(_settings.AzureBlobStorageSasToken)
             }
         };
     }
@@ -868,6 +931,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             "easy" => 2,
             "hard" => 4,
             _ => 3
+        };
+    }
+
+    protected virtual RecordingUploadResponseModel RecordingFailure(string message)
+    {
+        return new RecordingUploadResponseModel
+        {
+            Success = false,
+            Message = message
         };
     }
 
