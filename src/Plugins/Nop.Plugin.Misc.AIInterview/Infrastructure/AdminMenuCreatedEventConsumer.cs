@@ -37,7 +37,6 @@ public class AdminMenuCreatedEventConsumer : BaseAdminMenuCreatedEventConsumer
         item.ChildNodes = new List<AdminMenuItem>
         {
             await BuildChildAsync(AIInterviewDefaults.AdminConfigureMenuSystemName, "Plugins.Misc.AIInterview.Admin.Menu.Configure", AIInterviewDefaults.ConfigurationRouteName),
-            await BuildChildAsync(AIInterviewDefaults.AdminGeneralMenuSystemName, "Plugins.Misc.AIInterview.Admin.Menu.General", AIInterviewDefaults.AdminGeneralRouteName),
             await BuildChildAsync(AIInterviewDefaults.AdminAiServiceMenuSystemName, "Plugins.Misc.AIInterview.Admin.Menu.AiService", AIInterviewDefaults.AdminAiServiceRouteName),
             await BuildChildAsync(AIInterviewDefaults.AdminSponsorInvitesMenuSystemName, "Plugins.Misc.AIInterview.Admin.Menu.SponsorInvites", AIInterviewDefaults.AdminSponsorInvitesRouteName),
             await BuildChildAsync(AIInterviewDefaults.AdminVendorCreditsMenuSystemName, "Plugins.Misc.AIInterview.Admin.Menu.VendorCredits", AIInterviewDefaults.AdminVendorCreditsRouteName),

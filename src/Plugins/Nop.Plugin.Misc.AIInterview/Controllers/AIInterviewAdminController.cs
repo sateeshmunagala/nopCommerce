@@ -95,39 +95,16 @@ public class AIInterviewAdminController : BasePluginController
         };
     }
 
-    public IActionResult General()
+    public async Task<IActionResult> AiService()
     {
-        var model = new GeneralSettingsModel
-        {
-            MinimumScore = _aiInterviewSettings.MinimumScore
-        };
-
-        return View("~/Plugins/Misc.AIInterview/Views/Admin/General.cshtml", model);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> General(GeneralSettingsModel model)
-    {
-        if (!ModelState.IsValid)
-            return View("~/Plugins/Misc.AIInterview/Views/Admin/General.cshtml", model);
-
-        _aiInterviewSettings.MinimumScore = model.MinimumScore;
-        await _settingService.SaveSettingAsync(_aiInterviewSettings);
-
-        _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
-        return General();
-    }
-
-    public IActionResult AiService()
-    {
-        return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", PrepareAiServiceModel());
+        return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", await PrepareAiServiceModelAsync());
     }
 
     [HttpPost]
     public async Task<IActionResult> AiService(AiServiceSettingsModel model)
     {
         if (!ModelState.IsValid)
-            return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", PrepareAiServiceModel(model));
+            return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", await PrepareAiServiceModelAsync(model));
 
         if (!TryValidateCreditProductSkuMappingsJson(model.CreditProductSkuMappingsJson))
         {
@@ -136,7 +113,7 @@ public class AIInterviewAdminController : BasePluginController
                 "The credit product SKU mappings JSON is invalid. Use a JSON object such as {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10}.");
             ModelState.AddModelError(nameof(model.CreditProductSkuMappingsJson), mappingValidationError);
             _notificationService.ErrorNotification(mappingValidationError);
-            return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", PrepareAiServiceModel(model));
+            return View("~/Plugins/Misc.AIInterview/Views/Admin/AiService.cshtml", await PrepareAiServiceModelAsync(model));
         }
 
         _mockAIInterviewSettings.UseMockResponses = model.UseMockResponses;
@@ -161,7 +138,7 @@ public class AIInterviewAdminController : BasePluginController
         await _settingService.SaveSettingAsync(_aiInterviewSettings);
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
-        return AiService();
+        return RedirectToAction(nameof(AiService));
     }
 
     [HttpPost]
@@ -582,26 +559,29 @@ public class AIInterviewAdminController : BasePluginController
         return $"{customer.FirstName} {customer.LastName}".Trim();
     }
 
-    protected virtual AiServiceSettingsModel PrepareAiServiceModel(AiServiceSettingsModel model = null)
+    protected virtual async Task<AiServiceSettingsModel> PrepareAiServiceModelAsync(AiServiceSettingsModel model = null)
     {
+        var aiInterviewSettings = await _settingService.LoadSettingAsync<AIInterviewSettings>() ?? _aiInterviewSettings;
+        var mockAIInterviewSettings = await _settingService.LoadSettingAsync<MockAIInterviewSettings>() ?? _mockAIInterviewSettings;
+
         model ??= new AiServiceSettingsModel
         {
-            UseMockResponses = _mockAIInterviewSettings.UseMockResponses,
-            ApiKey = _aiInterviewSettings.ApiKey,
-            Model = _aiInterviewSettings.Model,
-            Prompt = _aiInterviewSettings.Prompt,
-            ServiceSettings = _aiInterviewSettings.ServiceSettings,
-            CreditProductSkuMappingsJson = _aiInterviewSettings.CreditProductSkuMappingsJson,
-            CreditPurchasePageUrl = _aiInterviewSettings.CreditPurchasePageUrl,
-            AzureOpenAiEndpointUrl = _aiInterviewSettings.AzureOpenAiEndpointUrl,
-            AzureOpenAiApiKey = _aiInterviewSettings.AzureOpenAiApiKey,
-            AzureOpenAiDeploymentOrModel = _aiInterviewSettings.AzureOpenAiDeploymentOrModel,
-            AgoraAppId = _aiInterviewSettings.AgoraAppId,
-            AgoraTokenServiceUrl = _aiInterviewSettings.AgoraTokenServiceUrl,
-            AzureSpeechKey = _aiInterviewSettings.AzureSpeechKey,
-            AzureSpeechRegion = _aiInterviewSettings.AzureSpeechRegion,
-            AzureBlobStorageContainerUrl = _aiInterviewSettings.AzureBlobStorageContainerUrl,
-            AzureBlobStorageSasToken = _aiInterviewSettings.AzureBlobStorageSasToken
+            UseMockResponses = mockAIInterviewSettings.UseMockResponses,
+            ApiKey = aiInterviewSettings.ApiKey,
+            Model = aiInterviewSettings.Model,
+            Prompt = aiInterviewSettings.Prompt,
+            ServiceSettings = aiInterviewSettings.ServiceSettings,
+            CreditProductSkuMappingsJson = aiInterviewSettings.CreditProductSkuMappingsJson,
+            CreditPurchasePageUrl = aiInterviewSettings.CreditPurchasePageUrl,
+            AzureOpenAiEndpointUrl = aiInterviewSettings.AzureOpenAiEndpointUrl,
+            AzureOpenAiApiKey = aiInterviewSettings.AzureOpenAiApiKey,
+            AzureOpenAiDeploymentOrModel = aiInterviewSettings.AzureOpenAiDeploymentOrModel,
+            AgoraAppId = aiInterviewSettings.AgoraAppId,
+            AgoraTokenServiceUrl = aiInterviewSettings.AgoraTokenServiceUrl,
+            AzureSpeechKey = aiInterviewSettings.AzureSpeechKey,
+            AzureSpeechRegion = aiInterviewSettings.AzureSpeechRegion,
+            AzureBlobStorageContainerUrl = aiInterviewSettings.AzureBlobStorageContainerUrl,
+            AzureBlobStorageSasToken = aiInterviewSettings.AzureBlobStorageSasToken
         };
 
         model.Provider = AzureOpenAiProviderValue;

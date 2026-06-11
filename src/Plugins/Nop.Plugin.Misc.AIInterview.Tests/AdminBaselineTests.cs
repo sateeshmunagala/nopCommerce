@@ -174,11 +174,10 @@ public class AdminBaselineTests
         var parent = root.ChildNodes.FirstOrDefault(item => item.SystemName == AIInterviewDefaults.AdminMenuSystemName);
         Assert.That(parent, Is.Not.Null);
         Assert.That(string.IsNullOrWhiteSpace(parent.Url), Is.True);
-        Assert.That(parent.ChildNodes.Count, Is.EqualTo(7));
+        Assert.That(parent.ChildNodes.Count, Is.EqualTo(6));
         Assert.That(parent.ChildNodes.Select(x => x.SystemName), Is.EquivalentTo(new[]
         {
             AIInterviewDefaults.AdminConfigureMenuSystemName,
-            AIInterviewDefaults.AdminGeneralMenuSystemName,
             AIInterviewDefaults.AdminAiServiceMenuSystemName,
             AIInterviewDefaults.AdminSponsorInvitesMenuSystemName,
             AIInterviewDefaults.AdminVendorCreditsMenuSystemName,
@@ -201,24 +200,19 @@ public class AdminBaselineTests
     }
 
     [Test]
-    public async Task General_Page_Saves_And_Reloads()
+    public void General_Page_Is_No_Longer_Exposed()
     {
-        var getResult = _controller.General();
-        var getModel = (GeneralSettingsModel)((ViewResult)getResult).Model;
-        Assert.That(getModel.MinimumScore, Is.EqualTo(10));
-
-        await _controller.General(new GeneralSettingsModel
-        {
-            MinimumScore = 77
-        });
-
-        Assert.That(_aiInterviewSettings.MinimumScore, Is.EqualTo(77));
+        Assert.That(typeof(AIInterviewAdminController).GetMethod("General"), Is.Null);
+        Assert.That(typeof(MockAiInterviewAdminController).GetMethod("General"), Is.Null);
     }
 
     [Test]
     public async Task AiService_Page_Saves_And_Reloads()
     {
-        var getResult = _controller.AiService();
+        _settingService.Setup(x => x.LoadSettingAsync<AIInterviewSettings>(0)).ReturnsAsync(_aiInterviewSettings);
+        _settingService.Setup(x => x.LoadSettingAsync<MockAIInterviewSettings>(0)).ReturnsAsync(_mockAIInterviewSettings);
+
+        var getResult = await _controller.AiService();
         var getModel = (AiServiceSettingsModel)((ViewResult)getResult).Model;
         Assert.That(getModel.UseMockResponses, Is.True);
         Assert.That(getModel.AvailableProviders, Has.Count.EqualTo(1));
@@ -229,7 +223,7 @@ public class AdminBaselineTests
         Assert.That(getModel.AzureBlobStorageContainerUrl, Is.EqualTo("keep-container"));
         Assert.That(getModel.AzureBlobStorageSasToken, Is.EqualTo("keep-sas"));
 
-        await _controller.AiService(new AiServiceSettingsModel
+        var postResult = await _controller.AiService(new AiServiceSettingsModel
         {
             UseMockResponses = false,
             Provider = "Azure OpenAI",
@@ -250,6 +244,12 @@ public class AdminBaselineTests
             AzureBlobStorageSasToken = ""
         });
 
+        Assert.That(postResult, Is.InstanceOf<RedirectToActionResult>());
+        Assert.That(((RedirectToActionResult)postResult).ActionName, Is.EqualTo(nameof(AIInterviewAdminController.AiService)));
+
+        var refreshed = await _controller.AiService();
+        var refreshedModel = (AiServiceSettingsModel)((ViewResult)refreshed).Model;
+
         Assert.That(_mockAIInterviewSettings.UseMockResponses, Is.False);
         Assert.That(_aiInterviewSettings.Provider, Is.EqualTo("Azure OpenAI"));
         Assert.That(_aiInterviewSettings.AzureSpeechRegion, Is.EqualTo("eastus"));
@@ -257,8 +257,31 @@ public class AdminBaselineTests
         Assert.That(_aiInterviewSettings.AzureBlobStorageSasToken, Is.EqualTo(string.Empty));
         Assert.That(_aiInterviewSettings.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-10"));
         Assert.That(_aiInterviewSettings.CreditPurchasePageUrl, Is.EqualTo("/credits"));
+        Assert.That(refreshedModel.AzureOpenAiEndpointUrl, Is.EqualTo("https://endpoint"));
+        Assert.That(refreshedModel.AzureOpenAiApiKey, Is.EqualTo("aoai-key"));
+        Assert.That(refreshedModel.AzureOpenAiDeploymentOrModel, Is.EqualTo("deployment"));
+        Assert.That(refreshedModel.AgoraAppId, Is.EqualTo("agora"));
+        Assert.That(refreshedModel.AgoraTokenServiceUrl, Is.EqualTo("https://token"));
+        Assert.That(refreshedModel.AzureSpeechKey, Is.EqualTo("speech"));
+        Assert.That(refreshedModel.AzureSpeechRegion, Is.EqualTo("eastus"));
+        Assert.That(refreshedModel.AzureBlobStorageContainerUrl, Is.Empty);
+        Assert.That(refreshedModel.AzureBlobStorageSasToken, Is.Empty);
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<AIInterviewSettings>()), Times.AtLeastOnce);
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<MockAIInterviewSettings>()), Times.Once);
+    }
+
+    [Test]
+    public void Upgrade_Locale_Resources_Include_AzureBlob_Keys()
+    {
+        var method = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.That(method, Is.Not.Null);
+
+        var resources = (Dictionary<string, string>)method.Invoke(null, null);
+
+        Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl"), Is.True);
+        Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"), Is.True);
+        Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"), Is.True);
+        Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"), Is.True);
     }
 
     [Test]

@@ -66,6 +66,86 @@ public class ServiceTests
     }
 
     [Test]
+    public async Task SponsorInviteService_CreateInviteAsync_QueuesNotificationEmail()
+    {
+        var inviteRepository = new Mock<IRepository<SponsorInvite>>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<Nop.Services.Customers.ICustomerService>();
+        var localizationService = new Mock<Nop.Services.Localization.ILocalizationService>();
+        var workflowMessageService = new Mock<Nop.Services.Messages.IWorkflowMessageService>();
+        var messageTemplateService = new Mock<Nop.Services.Messages.IMessageTemplateService>();
+        var emailAccountService = new Mock<Nop.Services.Messages.IEmailAccountService>();
+        var webHelper = new Mock<global::Nop.Services.Helpers.IWebHelper>();
+        var emailAccountSettings = new Nop.Core.Domain.Messages.EmailAccountSettings { DefaultEmailAccountId = 7 };
+
+        var product = new Product { Id = 11, Name = "Senior Backend Engineer", VendorId = 3 };
+        var sponsor = new Customer { Id = 2, VendorId = 3, Email = "sponsor@example.com" };
+        var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 7, Email = "store@example.com", DisplayName = "Store" };
+        var template = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.SponsorInviteCreated", EmailAccountId = 0, IsActive = true };
+
+        productService.Setup(x => x.GetProductByIdAsync(11)).ReturnsAsync(product);
+        customerService.Setup(x => x.GetCustomerByIdAsync(2)).ReturnsAsync(sponsor);
+        customerService.Setup(x => x.IsAdminAsync(sponsor)).ReturnsAsync(false);
+        messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync("AIInterview.SponsorInviteCreated", 0))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { template });
+        emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(7)).ReturnsAsync(emailAccount);
+        webHelper.Setup(x => x.GetStoreLocation(It.IsAny<bool?>())).Returns("https://store.example/");
+        inviteRepository.Setup(x => x.InsertAsync(It.IsAny<SponsorInvite>(), true))
+            .Returns(Task.CompletedTask);
+        workflowMessageService.Setup(x => x.SendNotificationAsync(
+                It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>(),
+                It.IsAny<Nop.Core.Domain.Messages.EmailAccount>(),
+                It.IsAny<int>(),
+                It.Is<IList<Nop.Services.Messages.Token>>(tokens =>
+                    tokens.Any(token => token.Key == "AIInterview.JobTitle" && Equals(token.Value, "Senior Backend Engineer")) &&
+                    tokens.Any(token => token.Key == "AIInterview.InviteUrl" && token.Value.ToString().Contains("sponsorToken=")) &&
+                    tokens.Any(token => token.Key == "AIInterview.InviteCode") &&
+                    tokens.Any(token => token.Key == "AIInterview.MaxAttempts" && Equals(token.Value, 3)) &&
+                    tokens.Any(token => token.Key == "AIInterview.ExpiryDate")),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>()))
+            .ReturnsAsync(1);
+
+        var service = new SponsorInviteService(
+            inviteRepository.Object,
+            productService.Object,
+            customerService.Object,
+            localizationService.Object,
+            workflowMessageService.Object,
+            messageTemplateService.Object,
+            emailAccountService.Object,
+            emailAccountSettings,
+            webHelper.Object);
+
+        await service.CreateInviteAsync(2, "candidate@example.com", 11, 3, DateTime.UtcNow.AddDays(3));
+
+        inviteRepository.Verify(x => x.InsertAsync(It.IsAny<SponsorInvite>(), true), Times.Once);
+        workflowMessageService.Verify(x => x.SendNotificationAsync(
+            It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>(),
+            It.IsAny<Nop.Core.Domain.Messages.EmailAccount>(),
+            It.IsAny<int>(),
+            It.IsAny<IList<Nop.Services.Messages.Token>>(),
+            "candidate@example.com",
+            "candidate@example.com",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true), Times.Once);
+    }
+
+    [Test]
     public async Task InterviewCompletion_NotifiesApplicantAndVendor_WithReportLinks()
     {
         var customerService = new Mock<Nop.Services.Customers.ICustomerService>();

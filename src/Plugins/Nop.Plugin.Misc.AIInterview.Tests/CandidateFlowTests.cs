@@ -834,7 +834,8 @@ public class CandidateFlowTests
             productTemplateService.Object,
             _applicationService.Object,
             new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
-            _jobRequirementService.Object);
+            _jobRequirementService.Object,
+            _inviteService.Object);
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?sponsorToken=abc");
 
@@ -915,7 +916,8 @@ public class CandidateFlowTests
             productTemplateService.Object,
             _applicationService.Object,
             new AIInterviewSettings { CreditPurchasePageUrl = "/pricing" },
-            _jobRequirementService.Object);
+            _jobRequirementService.Object,
+            _inviteService.Object);
 
         var result = await component.InvokeAsync(
             "productdetails_before_collateral",

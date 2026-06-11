@@ -21,10 +21,6 @@ public class RouteProvider : IRouteProvider
             pattern: "Admin/AIInterview/Configure",
             defaults: new { controller = "MockAiInterviewAdmin", action = "Configure", area = AreaNames.ADMIN });
 
-        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminGeneralRouteName,
-            pattern: "Admin/AIInterview/General",
-            defaults: new { controller = "AIInterviewAdmin", action = "General", area = AreaNames.ADMIN });
-
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminAiServiceRouteName,
             pattern: "Admin/AIInterview/AiService",
             defaults: new { controller = "AIInterviewAdmin", action = "AiService", area = AreaNames.ADMIN });

@@ -486,16 +486,31 @@ public class SponsorInviteService : ISponsorInviteService
     private readonly Nop.Services.Catalog.IProductService _productService;
     private readonly ICustomerService _customerService;
     private readonly ILocalizationService _localizationService;
+    private readonly Nop.Services.Messages.IWorkflowMessageService _workflowMessageService;
+    private readonly Nop.Services.Messages.IMessageTemplateService _messageTemplateService;
+    private readonly Nop.Services.Messages.IEmailAccountService _emailAccountService;
+    private readonly Nop.Core.Domain.Messages.EmailAccountSettings _emailAccountSettings;
+    private readonly IWebHelper _webHelper;
 
     public SponsorInviteService(IRepository<SponsorInvite> inviteRepository,
         Nop.Services.Catalog.IProductService productService,
         ICustomerService customerService,
-        ILocalizationService localizationService)
+        ILocalizationService localizationService,
+        Nop.Services.Messages.IWorkflowMessageService workflowMessageService = null,
+        Nop.Services.Messages.IMessageTemplateService messageTemplateService = null,
+        Nop.Services.Messages.IEmailAccountService emailAccountService = null,
+        Nop.Core.Domain.Messages.EmailAccountSettings emailAccountSettings = null,
+        IWebHelper webHelper = null)
     {
         _inviteRepository = inviteRepository;
         _productService = productService;
         _customerService = customerService;
         _localizationService = localizationService;
+        _workflowMessageService = workflowMessageService;
+        _messageTemplateService = messageTemplateService;
+        _emailAccountService = emailAccountService;
+        _emailAccountSettings = emailAccountSettings;
+        _webHelper = webHelper;
     }
 
     public async Task InsertSponsorInviteAsync(SponsorInvite invite)
@@ -553,6 +568,57 @@ public class SponsorInviteService : ISponsorInviteService
         };
 
         await InsertSponsorInviteAsync(invite);
+        await TrySendInviteNotificationAsync(invite, product);
+    }
+
+    protected virtual async Task TrySendInviteNotificationAsync(SponsorInvite invite, Product product)
+    {
+        if (invite == null || product == null ||
+            _workflowMessageService == null ||
+            _messageTemplateService == null ||
+            _emailAccountService == null ||
+            _emailAccountSettings == null ||
+            _webHelper == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var templates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.SponsorInviteCreated", 0);
+            var template = templates?.FirstOrDefault();
+            if (template == null)
+                return;
+
+            var emailAccountId = template.EmailAccountId > 0 ? template.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId;
+            var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(emailAccountId);
+            if (emailAccount == null)
+                return;
+
+            var storeLocation = (_webHelper.GetStoreLocation() ?? string.Empty).TrimEnd('/');
+            var inviteUrl = $"{storeLocation}/aiinterview/mock/start?productId={product.Id}&sponsorToken={Uri.EscapeDataString(invite.InviteCode ?? string.Empty)}";
+            var tokens = new List<Nop.Services.Messages.Token>
+            {
+                new("AIInterview.JobTitle", product.Name ?? string.Empty),
+                new("AIInterview.InviteUrl", inviteUrl),
+                new("AIInterview.InviteCode", invite.InviteCode ?? string.Empty),
+                new("AIInterview.MaxAttempts", invite.MaxAttempts),
+                new("AIInterview.ExpiryDate", invite.ExpiryDateUtc?.ToString("u") ?? string.Empty)
+            };
+
+            await _workflowMessageService.SendNotificationAsync(
+                template,
+                emailAccount,
+                0,
+                tokens,
+                invite.Email,
+                invite.Email,
+                ignoreDelayBeforeSend: true);
+        }
+        catch
+        {
+            // Invite creation must succeed even when notification delivery is unavailable.
+        }
     }
 
     public async Task<IList<SponsorInvite>> GetSponsorInvitesAsync(int sponsorId)

@@ -4,12 +4,6 @@ using Nop.Web.Framework.Mvc.ModelBinding;
 
 namespace Nop.Plugin.Misc.AIInterview.Models;
 
-public record GeneralSettingsModel : BaseNopModel
-{
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.MinimumScore")]
-    public decimal MinimumScore { get; set; }
-}
-
 public record JobRequirementsModel : BaseNopModel
 {
     public int ProductId { get; set; }

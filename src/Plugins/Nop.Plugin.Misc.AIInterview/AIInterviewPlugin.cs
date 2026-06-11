@@ -132,7 +132,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
     protected async Task EnsureMessageTemplatesAsync()
     {
-        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicantInterviewCompletion", 0)).Any())
+        var applicantTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicantInterviewCompletion", 0);
+        if (!(applicantTemplates?.Any() ?? false))
         {
             await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
             {
@@ -143,7 +144,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             });
         }
 
-        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.VendorInterviewCompletion", 0)).Any())
+        var vendorTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.VendorInterviewCompletion", 0);
+        if (!(vendorTemplates?.Any() ?? false))
         {
             await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
             {
@@ -154,7 +156,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             });
         }
 
-        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationStatusUpdate", 0)).Any())
+        var statusTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationStatusUpdate", 0);
+        if (!(statusTemplates?.Any() ?? false))
         {
             await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
             {
@@ -165,13 +168,26 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             });
         }
 
-        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationSubmitted", 0)).Any())
+        var submittedTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationSubmitted", 0);
+        if (!(submittedTemplates?.Any() ?? false))
         {
             await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
             {
                 Name = "AIInterview.ApplicationSubmitted",
                 Subject = "Application Submitted: %AIInterview.JobTitle%",
                 Body = "<p>Hello %Customer.FullName%,</p><p>Your application for %AIInterview.JobTitle% has been successfully submitted.</p><p><a href=\"%AIInterview.MyApplicationsUrl%\">View My Applications</a></p>",
+                IsActive = true
+            });
+        }
+
+        var sponsorInviteTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.SponsorInviteCreated", 0);
+        if (!(sponsorInviteTemplates?.Any() ?? false))
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.SponsorInviteCreated",
+                Subject = "Interview Invite: %AIInterview.JobTitle%",
+                Body = "<p>Hello,</p><p>You have been invited to interview for %AIInterview.JobTitle%.</p><p>Invite Code: %AIInterview.InviteCode%</p><p>Max Attempts: %AIInterview.MaxAttempts%</p><p>Expiry Date: %AIInterview.ExpiryDate%</p><p><a href=\"%AIInterview.InviteUrl%\">Start Interview</a></p>",
                 IsActive = true
             });
         }
@@ -237,6 +253,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.Title"] = "Interview Session Error",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.StartAgain"] = "Start Again",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.ExpiredLink"] = "Your previous interview link expired. Start the interview again from this page.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl"] = "Azure Blob Storage Container URL",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"] = "Paste the SAS token string exactly as issued. It is stored only in admin settings.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.EmailInvalid"] = "Enter a valid email address.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Status"] = "Status",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.StatusComment"] = "Status comment",
@@ -284,7 +304,6 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.Root"] = "AI Interview",
             ["plugins.misc.aiinterview.admin.menu.root"] = "AI-Interview",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.Configure"] = "Configure",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.General"] = "General",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.AiService"] = "AI Service",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.SponsorInvites"] = "Sponsor Invite Management",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.VendorCredits"] = "Vendor Credits",
@@ -294,7 +313,6 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.Configure.General"] = "General Settings",
             ["Plugins.Misc.AIInterview.Admin.Configure.Service"] = "AI Service Settings",
             ["Plugins.Misc.AIInterview.Admin.Configure.CreditPack"] = "Credit Pack Settings",
-            ["Plugins.Misc.AIInterview.Admin.General.Title"] = "AI Interview General Settings",
             ["Plugins.Misc.AIInterview.Admin.ProductRequirements.Title"] = "AI Interview Job Requirements",
             ["Plugins.Misc.AIInterview.Admin.ProductRequirements.Hint"] = "These settings are saved on the product itself and are used when candidates apply.",
             ["Plugins.Misc.AIInterview.Admin.ProductRequirements.ResumeRequired"] = "Resume Required",
@@ -348,7 +366,11 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.Scoreboard.MinScore"] = "Minimum Score",
             ["Plugins.Misc.AIInterview.Admin.Scoreboard.MaxScore"] = "Maximum Score",
             ["Plugins.Misc.AIInterview.Admin.Scoreboard.StartDate"] = "Start Date",
-            ["Plugins.Misc.AIInterview.Admin.Scoreboard.EndDate"] = "End Date"
+            ["Plugins.Misc.AIInterview.Admin.Scoreboard.EndDate"] = "End Date",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl"] = "Azure Blob Storage Container URL",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"] = "Paste the SAS token string exactly as issued. It is stored only in admin settings."
         };
     }
 

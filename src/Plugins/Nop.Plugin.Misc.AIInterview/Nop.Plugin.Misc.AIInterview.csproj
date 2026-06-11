@@ -33,7 +33,6 @@
     <None Remove="Views\VendorScoreboard.cshtml" />
     <None Remove="Views\VendorJobCreation.cshtml" />
     <None Remove="Views\RuntimeError.cshtml" />
-    <None Remove="Views\Admin\General.cshtml" />
     <None Remove="Views\Admin\AiService.cshtml" />
     <None Remove="Views\Admin\SponsorInvites.cshtml" />
     <None Remove="Views\Admin\VendorCredits.cshtml" />
@@ -85,9 +84,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\RuntimeError.cshtml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Views\Admin\General.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Admin\AiService.cshtml">

@@ -5,6 +5,7 @@ using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Services.Catalog;
+using Nop.Services.Customers;
 using Nop.Web.Framework.Components;
 using Nop.Web.Framework.Models;
 using Nop.Web.Models.Catalog;
@@ -21,6 +22,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
     private readonly IWorkContext _workContext;
     private readonly IApplicationService _applicationService;
     private readonly IJobRequirementService _jobRequirementService;
+    private readonly ISponsorInviteService _sponsorInviteService;
     private readonly AIInterviewSettings _aiInterviewSettings;
 
     public AIInterviewProductDetailsViewComponent(ICreditService creditService,
@@ -31,7 +33,8 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         IProductTemplateService productTemplateService,
         IApplicationService applicationService,
         AIInterviewSettings aiInterviewSettings,
-        IJobRequirementService jobRequirementService)
+        IJobRequirementService jobRequirementService,
+        ISponsorInviteService sponsorInviteService)
     {
         _creditService = creditService;
         _workContext = workContext;
@@ -41,27 +44,8 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         _productTemplateService = productTemplateService;
         _applicationService = applicationService;
         _jobRequirementService = jobRequirementService;
+        _sponsorInviteService = sponsorInviteService;
         _aiInterviewSettings = aiInterviewSettings;
-    }
-
-    public AIInterviewProductDetailsViewComponent(ICreditService creditService,
-        IWorkContext workContext,
-        IProductAttributeService productAttributeService,
-        IJobInterviewExperienceService jobInterviewExperienceService,
-        IProductService productService,
-        IProductTemplateService productTemplateService,
-        IApplicationService applicationService,
-        AIInterviewSettings aiInterviewSettings)
-        : this(creditService,
-            workContext,
-            productAttributeService,
-            jobInterviewExperienceService,
-            productService,
-            productTemplateService,
-            applicationService,
-            aiInterviewSettings,
-            null)
-    {
     }
 
     public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData)
@@ -110,21 +94,16 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         var sponsorToken = HttpContext?.Request?.Query?["sponsorToken"].ToString() ?? "";
         ViewBag.SponsorToken = sponsorToken;
 
-        // Verify sponsor token validity
         bool hasSponsorCredits = false;
-        if (!string.IsNullOrEmpty(sponsorToken))
+        if (customer != null && !string.IsNullOrEmpty(sponsorToken) && _sponsorInviteService != null)
         {
-            var inviteService = HttpContext.RequestServices.GetService(typeof(ISponsorInviteService)) as ISponsorInviteService;
-            if (inviteService != null)
+            var invite = await _sponsorInviteService.GetSponsorInviteByCodeAsync(sponsorToken);
+            if (invite != null && !invite.IsAccepted && (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) && string.Equals(invite.Email, customer.Email, StringComparison.OrdinalIgnoreCase))
             {
-                var invite = await inviteService.GetSponsorInviteByCodeAsync(sponsorToken);
-                if (invite != null && !invite.IsAccepted && (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) && invite.Email.Equals(customer.Email, StringComparison.OrdinalIgnoreCase))
+                var sponsorWallet = await _creditService.GetOrCreateWalletAsync(invite.SponsorId);
+                if (sponsorWallet.Balance >= 1)
                 {
-                    var sponsorWallet = await _creditService.GetOrCreateWalletAsync(invite.SponsorId);
-                    if (sponsorWallet.Balance >= 1)
-                    {
-                        hasSponsorCredits = true;
-                    }
+                    hasSponsorCredits = true;
                 }
             }
         }
