@@ -102,7 +102,9 @@ public class ServiceTests
                 It.IsAny<int>(),
                 It.Is<IList<Nop.Services.Messages.Token>>(tokens =>
                     tokens.Any(token => token.Key == "AIInterview.JobTitle" && Equals(token.Value, "Senior Backend Engineer")) &&
+                    tokens.Any(token => token.Key == "AIInterview.InviteUrl" && token.Value.ToString().Contains("/mockaiinterview/start?productId=11")) &&
                     tokens.Any(token => token.Key == "AIInterview.InviteUrl" && token.Value.ToString().Contains("sponsorToken=")) &&
+                    tokens.Any(token => token.Key == "AIInterview.InviteUrl" && !token.Value.ToString().Contains("/aiinterview/mock/start")) &&
                     tokens.Any(token => token.Key == "AIInterview.InviteCode") &&
                     tokens.Any(token => token.Key == "AIInterview.MaxAttempts" && Equals(token.Value, 3)) &&
                     tokens.Any(token => token.Key == "AIInterview.ExpiryDate")),

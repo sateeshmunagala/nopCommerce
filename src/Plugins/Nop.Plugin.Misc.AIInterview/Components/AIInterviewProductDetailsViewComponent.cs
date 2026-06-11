@@ -102,18 +102,16 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         {
             var invite = await _sponsorInviteService.GetSponsorInviteByCodeAsync(sponsorToken);
             if (invite != null &&
+                invite.ProductId == productId &&
                 invite.IsActive &&
                 !invite.IsAccepted &&
                 (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) &&
                 string.Equals(invite.Email, customer.Email, StringComparison.OrdinalIgnoreCase))
             {
                 var sponsorWallet = await _creditService.GetOrCreateWalletAsync(invite.SponsorId);
-                var sponsoredAttempts = 0;
-                if (_interviewSessionService != null)
-                {
-                    var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<InterviewSession>();
-                    sponsoredAttempts = sessions.Count(session => session.ProductId == productId && session.SponsorInviteId == invite.Id);
-                }
+                var sponsoredAttempts = _interviewSessionService == null
+                    ? 0
+                    : await _interviewSessionService.GetSponsorInviteAttemptCountAsync(invite.Id);
 
                 if (sponsorWallet.Balance >= 1 && sponsoredAttempts < invite.MaxAttempts)
                 {

@@ -565,21 +565,28 @@ public class AdminBaselineTests
     {
         var invites = new List<SponsorInvite>
         {
-            new() { Id = 1, Email = "active@example.com", IsActive = true, IsAccepted = false, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-1) },
-            new() { Id = 2, Email = "expired@example.com", IsActive = true, IsAccepted = false, ExpiryDateUtc = DateTime.UtcNow.AddDays(-1), CreatedOnUtc = DateTime.UtcNow.AddHours(-2) },
-            new() { Id = 3, Email = "inactive@example.com", IsActive = false, IsAccepted = false, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-3) },
-            new() { Id = 4, Email = "accepted@example.com", IsActive = true, IsAccepted = true, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-4) }
+            new() { Id = 1, ProductId = 55, Email = "active@example.com", IsActive = true, IsAccepted = false, MaxAttempts = 2, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-1) },
+            new() { Id = 2, ProductId = 55, Email = "expired@example.com", IsActive = true, IsAccepted = false, MaxAttempts = 2, ExpiryDateUtc = DateTime.UtcNow.AddDays(-1), CreatedOnUtc = DateTime.UtcNow.AddHours(-2) },
+            new() { Id = 3, ProductId = 55, Email = "inactive@example.com", IsActive = false, IsAccepted = false, MaxAttempts = 2, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-3) },
+            new() { Id = 4, ProductId = 55, Email = "accepted@example.com", IsActive = true, IsAccepted = true, MaxAttempts = 1, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-4) },
+            new() { Id = 5, ProductId = 55, Email = "accepted2@example.com", IsActive = true, IsAccepted = true, MaxAttempts = 3, ExpiryDateUtc = DateTime.UtcNow.AddDays(1), CreatedOnUtc = DateTime.UtcNow.AddHours(-5) }
         };
 
         _inviteService.Setup(x => x.GetSponsorInvitesAsync(0)).ReturnsAsync(invites);
+        _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(1)).ReturnsAsync(0);
+        _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(2)).ReturnsAsync(0);
+        _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(3)).ReturnsAsync(0);
+        _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(4)).ReturnsAsync(0);
+        _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(5)).ReturnsAsync(1);
 
         var result = await _controller.SponsorInvites();
 
         var model = (SponsorInviteAdminModel)((ViewResult)result).Model;
-        Assert.That(model.Invites.Single(x => x.Id == 1).Status, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Active"));
-        Assert.That(model.Invites.Single(x => x.Id == 2).Status, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Expired"));
-        Assert.That(model.Invites.Single(x => x.Id == 3).Status, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Inactive"));
-        Assert.That(model.Invites.Single(x => x.Id == 4).Status, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Accepted"));
+        Assert.That(model.Invites.Single(x => x.Id == 1).StatusText, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Active"));
+        Assert.That(model.Invites.Single(x => x.Id == 2).StatusText, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Expired"));
+        Assert.That(model.Invites.Single(x => x.Id == 3).StatusText, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Inactive"));
+        Assert.That(model.Invites.Single(x => x.Id == 4).StatusText, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Exhausted"));
+        Assert.That(model.Invites.Single(x => x.Id == 5).StatusText, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Accepted"));
     }
 
     [Test]

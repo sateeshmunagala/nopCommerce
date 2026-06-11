@@ -334,18 +334,26 @@ public class AIInterviewAdminController : BasePluginController
         var vendorLookupByProduct = vendors.ToDictionary(vendor => vendor.Id, vendor => vendor);
         var vendorLookupByCustomer = vendors.Where(vendor => vendor.PmCustomerId.HasValue)
             .ToDictionary(vendor => vendor.PmCustomerId.GetValueOrDefault(), vendor => vendor);
+        var inviteAttemptCounts = new Dictionary<int, int>();
+        foreach (var invite in invites)
+            inviteAttemptCounts[invite.Id] = await _sessionService.GetSponsorInviteAttemptCountAsync(invite.Id);
 
-        model.Invites = invites
-            .OrderByDescending(invite => invite.CreatedOnUtc)
-            .Select(invite => new SponsorInviteRowModel
+        model.Invites = new List<SponsorInviteRowModel>();
+        foreach (var invite in invites.OrderByDescending(invite => invite.CreatedOnUtc))
+        {
+            var attemptCount = inviteAttemptCounts.GetValueOrDefault(invite.Id);
+            var product = productLookup.TryGetValue(invite.ProductId, out var foundProduct) ? foundProduct : null;
+            var vendor = vendorLookupByProduct.TryGetValue(product?.VendorId ?? 0, out var foundVendor) ? foundVendor : null;
+            var sponsorVendor = vendorLookupByCustomer.TryGetValue(invite.SponsorId, out var foundSponsorVendor) ? foundSponsorVendor : null;
+            model.Invites.Add(new SponsorInviteRowModel
             {
                 Id = invite.Id,
                 SponsorId = invite.SponsorId,
                 ProductId = invite.ProductId,
-                ProductName = productLookup.TryGetValue(invite.ProductId, out var product) ? product.Name : $"Product #{invite.ProductId}",
+                ProductName = product != null ? product.Name : $"Product #{invite.ProductId}",
                 ProductAdminUrl = product != null ? BuildProductAdminUrl(product.Id) : string.Empty,
-                VendorName = vendorLookupByProduct.TryGetValue(product?.VendorId ?? 0, out var vendor) ? vendor.Name : (vendorLookupByCustomer.TryGetValue(invite.SponsorId, out var sponsorVendor) ? sponsorVendor.Name : $"Vendor #{invite.SponsorId}"),
-                VendorAdminUrl = vendor != null ? BuildVendorAdminUrl(vendor.Id) : (vendorLookupByCustomer.TryGetValue(invite.SponsorId, out var sponsorVendorForUrl) ? BuildVendorAdminUrl(sponsorVendorForUrl.Id) : string.Empty),
+                VendorName = vendor != null ? vendor.Name : (sponsorVendor != null ? sponsorVendor.Name : $"Vendor #{invite.SponsorId}"),
+                VendorAdminUrl = vendor != null ? BuildVendorAdminUrl(vendor.Id) : (sponsorVendor != null ? BuildVendorAdminUrl(sponsorVendor.Id) : string.Empty),
                 Email = invite.Email,
                 InviteCode = invite.InviteCode,
                 MaxAttempts = invite.MaxAttempts,
@@ -354,17 +362,21 @@ public class AIInterviewAdminController : BasePluginController
                 IsAccepted = invite.IsAccepted,
                 IsExpired = invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow,
                 CreatedOnUtc = invite.CreatedOnUtc,
-                Status = GetInviteStatus(invite)
-            })
-            .ToList();
+                Status = GetInviteStatus(invite, attemptCount),
+                StatusText = await GetInviteStatusTextAsync(invite, attemptCount)
+            });
+        }
 
         return model;
     }
 
-    protected virtual string GetInviteStatus(SponsorInvite invite)
+    protected virtual string GetInviteStatus(SponsorInvite invite, int attemptCount = 0)
     {
         if (invite == null)
             return string.Empty;
+
+        if (IsInviteExhausted(invite, attemptCount))
+            return "Plugins.Misc.AIInterview.Employer.Invite.Exhausted";
 
         if (invite.IsAccepted)
             return "Plugins.Misc.AIInterview.Employer.Invite.Accepted";
@@ -376,6 +388,26 @@ public class AIInterviewAdminController : BasePluginController
             return "Plugins.Misc.AIInterview.Employer.Invite.Expired";
 
         return "Plugins.Misc.AIInterview.Employer.Invite.Active";
+    }
+
+    protected virtual bool IsInviteExhausted(SponsorInvite invite, int attemptCount)
+    {
+        if (invite == null)
+            return false;
+
+        if (invite.MaxAttempts <= 0)
+            return false;
+
+        return attemptCount >= invite.MaxAttempts || (invite.IsAccepted && invite.MaxAttempts == 1);
+    }
+
+    protected virtual async Task<string> GetInviteStatusTextAsync(SponsorInvite invite, int attemptCount = 0)
+    {
+        var status = GetInviteStatus(invite, attemptCount);
+        if (string.IsNullOrWhiteSpace(status))
+            return string.Empty;
+
+        return await _localizationService.GetResourceAsync(status);
     }
 
     protected virtual async Task<CreditManagementModel> PrepareCreditModelAsync(string scopeTitleResourceKey, int? customerId, bool createWallet = true)

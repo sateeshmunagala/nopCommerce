@@ -241,6 +241,37 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task EmployerManage_Uses_Exhausted_Status_For_Fully_Used_Invite()
+    {
+        var customer = new Customer { Id = 1, VendorId = 2, Email = "vendor@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _inviteService.Setup(x => x.GetSponsorInvitesAsync(1)).ReturnsAsync(new List<SponsorInvite>
+        {
+            new SponsorInvite
+            {
+                Id = 22,
+                SponsorId = 1,
+                ProductId = 10,
+                Email = "candidate@example.com",
+                InviteCode = "INV-22",
+                MaxAttempts = 2,
+                IsActive = true,
+                IsAccepted = true,
+                ExpiryDateUtc = DateTime.UtcNow.AddDays(1)
+            }
+        });
+        _creditService.Setup(x => x.GetOrCreateWalletAsync(1)).ReturnsAsync(new CreditWallet { Balance = 5 });
+        _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(22)).ReturnsAsync(2);
+
+        var result = await _runtimeController.EmployerManage();
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var statuses = _runtimeController.ViewBag.SponsorInviteStatuses as IDictionary<int, string>;
+        Assert.That(statuses, Is.Not.Null);
+        Assert.That(statuses[22], Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Exhausted"));
+    }
+
+    [Test]
     public async Task Runtime_RefreshToken_Successful()
     {
         var session = new InterviewSession { Token = "old-token", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };

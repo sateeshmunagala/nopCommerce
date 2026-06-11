@@ -125,6 +125,7 @@ public record SponsorInviteRowModel : BaseNopModel
     public bool IsExpired { get; set; }
     public DateTime CreatedOnUtc { get; set; }
     public string Status { get; set; }
+    public string StatusText { get; set; }
 }
 
 public record CreditManagementModel : BaseNopModel

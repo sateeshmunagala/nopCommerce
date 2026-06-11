@@ -4,6 +4,7 @@
 
 @{
     Layout = "_ColumnsTwo";
+    var inviteStatuses = ViewBag.SponsorInviteStatuses as IDictionary<int, string> ?? new Dictionary<int, string>();
 }
 
 @section left {
@@ -75,11 +76,14 @@
                                 <tr>
                                     <td>@invite.Email</td>
                                     <td>@invite.InviteCode</td>
-                                    <td><a href="@inviteUrl">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</a></td>
-                                    <td>
-                                        @(invite.IsAccepted ? T("Plugins.Misc.AIInterview.Employer.Invite.Accepted") :
-                                          (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc < DateTime.UtcNow ? T("Plugins.Misc.AIInterview.Employer.Invite.Expired") : T("Plugins.Misc.AIInterview.Employer.Invite.Active")))
-                                    </td>
+                                <td><a href="@inviteUrl">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</a></td>
+                                <td>
+                                    @{
+                                        var statusKey = inviteStatuses.TryGetValue(invite.Id, out var inviteStatus) ? inviteStatus : string.Empty;
+                                    }
+                                    @(string.IsNullOrWhiteSpace(statusKey) ? (invite.IsAccepted ? T("Plugins.Misc.AIInterview.Employer.Invite.Accepted") :
+                                      (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc < DateTime.UtcNow ? T("Plugins.Misc.AIInterview.Employer.Invite.Expired") : T("Plugins.Misc.AIInterview.Employer.Invite.Active"))) : statusKey)
+                                </td>
                                     <td>
                                         @if (!invite.IsAccepted && (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow))
                                         {

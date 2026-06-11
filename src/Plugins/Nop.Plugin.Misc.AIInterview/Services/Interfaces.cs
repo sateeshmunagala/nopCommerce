@@ -26,6 +26,7 @@ public interface IInterviewSessionService
     Task<InterviewSession> GetInterviewSessionByIdAsync(int sessionId);
     Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAndProductIdAsync(int customerId, int productId);
     Task<decimal> GetHighestScoreByCustomerIdAndProductIdAsync(int customerId, int productId);
+    Task<int> GetSponsorInviteAttemptCountAsync(int inviteId);
     Task<InterviewSession> GetSessionBySessionKeyAsync(string sessionKey);
     Task<InterviewSession> GetSessionByTokenAsync(string token);
     Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId);

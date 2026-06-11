@@ -53,7 +53,7 @@
                             <tr>
                                 <td>@invite.Id</td>
                                 <td>@invite.Email</td>
-                                <td>@T(invite.Status)</td>
+                                <td>@(string.IsNullOrWhiteSpace(invite.StatusText) ? T(invite.Status) : invite.StatusText)</td>
                                 <td>
                                     @if (!string.IsNullOrWhiteSpace(invite.ProductAdminUrl))
                                     {

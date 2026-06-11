@@ -351,6 +351,14 @@ public class InterviewSessionService : IInterviewSessionService
         return sessions.Max(s => s.Score);
     }
 
+    public async Task<int> GetSponsorInviteAttemptCountAsync(int inviteId)
+    {
+        if (inviteId <= 0)
+            return 0;
+
+        return await _sessionRepository.Table.CountAsync(session => session.SponsorInviteId == inviteId);
+    }
+
     public async Task<InterviewSession> GetSessionBySessionKeyAsync(string sessionKey)
     {
         if (string.IsNullOrEmpty(sessionKey))
@@ -603,8 +611,8 @@ public class SponsorInviteService : ISponsorInviteService
             if (emailAccount == null)
                 return;
 
-            var storeLocation = (_webHelper.GetStoreLocation() ?? string.Empty).TrimEnd('/');
-            var inviteUrl = $"{storeLocation}/mockaiinterview/start?productId={product.Id}&sponsorToken={Uri.EscapeDataString(invite.InviteCode ?? string.Empty)}";
+              var storeLocation = (_webHelper.GetStoreLocation() ?? string.Empty).TrimEnd('/');
+              var inviteUrl = $"{storeLocation}/mockaiinterview/start?productId={product.Id}&sponsorToken={Uri.EscapeDataString(invite.InviteCode ?? string.Empty)}";
             var tokens = new List<Nop.Services.Messages.Token>
             {
                 new("AIInterview.JobTitle", product.Name ?? string.Empty),

@@ -167,11 +167,11 @@ public class MockAiInterviewController : BasePluginController
         if (!string.IsNullOrEmpty(sponsorToken))
         {
             var invite = await _inviteService.GetSponsorInviteByCodeAsync(sponsorToken);
-            var sponsoredAttempts = invite == null
+            var sponsoredAttempts = invite == null || _interviewSessionService == null
                 ? 0
-                : ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
-                    .Count(session => session.SponsorInviteId == invite.Id);
+                : await _interviewSessionService.GetSponsorInviteAttemptCountAsync(invite.Id);
             if (invite != null &&
+                invite.ProductId == productId &&
                 invite.IsActive &&
                 !invite.IsAccepted &&
                 (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow) &&
@@ -514,8 +514,12 @@ public class MockAiInterviewController : BasePluginController
         var customer = await _workContext.GetCurrentCustomerAsync();
         var invites = await _inviteService.GetSponsorInvitesAsync(customer.Id);
         var wallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
+        var inviteStatuses = new Dictionary<int, string>();
+        foreach (var invite in invites)
+            inviteStatuses[invite.Id] = await GetInviteStatusTextAsync(invite);
 
         ViewBag.CreditBalance = wallet.Balance;
+        ViewBag.SponsorInviteStatuses = inviteStatuses;
 
         return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/EmployerManage.cshtml", invites);
     }
@@ -614,5 +618,29 @@ public class MockAiInterviewController : BasePluginController
         var customer = await _workContext.GetCurrentCustomerAsync();
         await _inviteService.DeactivateInviteAsync(id, customer.Id);
         return Json(new { success = true, message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Deactivated") });
+    }
+
+    protected virtual async Task<string> GetInviteStatusTextAsync(SponsorInvite invite)
+    {
+        if (invite == null)
+            return string.Empty;
+
+        var attempts = _interviewSessionService == null
+            ? 0
+            : await _interviewSessionService.GetSponsorInviteAttemptCountAsync(invite.Id);
+
+        var statusKey = attempts >= invite.MaxAttempts && invite.MaxAttempts > 0
+            ? "Plugins.Misc.AIInterview.Employer.Invite.Exhausted"
+            : invite.IsAccepted && invite.MaxAttempts == 1
+                ? "Plugins.Misc.AIInterview.Employer.Invite.Exhausted"
+                : invite.IsAccepted
+                    ? "Plugins.Misc.AIInterview.Employer.Invite.Accepted"
+                    : !invite.IsActive
+                        ? "Plugins.Misc.AIInterview.Employer.Invite.Inactive"
+                        : invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow
+                            ? "Plugins.Misc.AIInterview.Employer.Invite.Expired"
+                            : "Plugins.Misc.AIInterview.Employer.Invite.Active";
+
+        return await GetLocalizedTextAsync(statusKey, statusKey);
     }
 }
