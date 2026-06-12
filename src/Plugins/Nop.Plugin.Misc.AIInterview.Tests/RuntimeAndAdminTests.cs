@@ -374,10 +374,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("recordingUploadUrl"));
         Assert.That(runtimeViewText, Does.Contain("MediaRecorder"));
         Assert.That(runtimeViewText, Does.Contain("toggle-recording"));
-        Assert.That(runtimeViewText, Does.Contain("token-privilege-will-expire"));
-        Assert.That(runtimeViewText, Does.Contain("token-privilege-did-expire"));
-        Assert.That(runtimeViewText, Does.Contain("renewToken("));
-        Assert.That(runtimeViewText, Does.Contain("uploadRecording"));
+                                Assert.That(runtimeViewText, Does.Contain("uploadRecording"));
     }
 
     [Test]

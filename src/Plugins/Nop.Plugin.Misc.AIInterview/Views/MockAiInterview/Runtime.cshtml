@@ -156,14 +156,7 @@
         let speechRecognizer = null;
         let speechSdkLoading = null;
         let speechSdkLoaded = false;
-        let agoraSdkLoading = null;
-        let agoraClient = null;
-        let agoraTracks = null;
-        let agoraJoined = false;
-        let agoraTokenExpiryTimer = null;
-        let agoraTokenWillExpireHandler = null;
-        let agoraTokenDidExpireHandler = null;
-        let mediaRecorder = null;
+                                                                let mediaRecorder = null;
         let recordingChunks = [];
         let recordingMimeType = 'video/webm';
         let recordingEnabled = false;
@@ -235,7 +228,6 @@
             meterFrame && cancelAnimationFrame(meterFrame);
             meterFrame = null;
             await stopSpeechRecognition();
-            await leaveAgoraSession();
             questionBox.textContent = completionText;
             messageBox.textContent = result.feedback || result.message || '';
             completionBox.style.display = '';
@@ -557,19 +549,6 @@
             return speechSdkLoading;
         };
 
-        const ensureAgoraSdk = async () => {
-            if (!config.agoraAvailable)
-                return false;
-            if (window.AgoraRTC)
-                return true;
-            if (agoraSdkLoading)
-                return agoraSdkLoading;
-
-            agoraSdkLoading = loadScriptOnce('https://download.agora.io/sdk/release/AgoraRTC_N.js')
-                .then(() => !!window.AgoraRTC)
-                .catch(() => false);
-            return agoraSdkLoading;
-        };
 
         const stopSpeechRecognition = async () => {
             if (!speechRecognizer)
@@ -658,112 +637,10 @@
             }
         };
 
-        const ensureAgoraSession = async () => {
-            if (!config.agoraAvailable || agoraJoined)
-                return;
 
-            if (!(await ensureAgoraSdk())) {
-                setStatus('Live RTC features are unavailable in this browser.', true);
-                return;
-            }
 
-            const tokenResult = await postForm(config.agoraTokenUrl, new URLSearchParams({ token: sessionToken }));
-            if (!tokenResult || tokenResult.error || !tokenResult.token) {
-                setStatus(tokenResult?.error || 'Live RTC token service is unavailable.', true);
-                return;
-            }
 
-            try {
-                agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-                agoraTracks = await AgoraRTC.createMicrophoneAndCameraTracks();
-                await agoraClient.join(tokenResult.appId, tokenResult.channel, tokenResult.token, tokenResult.uid || null);
-                await agoraClient.publish(agoraTracks);
-                agoraJoined = true;
-                const expiresInSeconds = tokenResult.expiresInSeconds || 600;
-                scheduleAgoraRenewal(expiresInSeconds);
-                registerAgoraTokenHandlers();
-            } catch {
-                await leaveAgoraSession();
-                setStatus('Live RTC features are unavailable.', true);
-            }
-        };
 
-        const registerAgoraTokenHandlers = () => {
-            if (!agoraClient)
-                return;
-
-            if (agoraTokenWillExpireHandler)
-                agoraClient.off?.('token-privilege-will-expire', agoraTokenWillExpireHandler);
-            if (agoraTokenDidExpireHandler)
-                agoraClient.off?.('token-privilege-did-expire', agoraTokenDidExpireHandler);
-
-            agoraTokenWillExpireHandler = async () => {
-                await renewAgoraToken();
-            };
-            agoraTokenDidExpireHandler = async () => {
-                await renewAgoraToken(true);
-            };
-
-            agoraClient.on?.('token-privilege-will-expire', agoraTokenWillExpireHandler);
-            agoraClient.on?.('token-privilege-did-expire', agoraTokenDidExpireHandler);
-        };
-
-        const scheduleAgoraRenewal = (expiresInSeconds) => {
-            clearTimeout(agoraTokenExpiryTimer);
-            if (!expiresInSeconds || expiresInSeconds <= 0)
-                return;
-
-            const safetyMarginMs = 60000;
-            const delay = Math.max(5000, (expiresInSeconds * 1000) - safetyMarginMs);
-            agoraTokenExpiryTimer = setTimeout(() => {
-                void renewAgoraToken();
-            }, delay);
-        };
-
-        const renewAgoraToken = async (force = false) => {
-            if (!config.agoraAvailable || !agoraClient || !agoraJoined)
-                return;
-
-            const tokenResult = await postForm(config.agoraTokenUrl, new URLSearchParams({ token: sessionToken }));
-            if (!tokenResult || tokenResult.error || !tokenResult.token) {
-                if (force)
-                    setStatus(tokenResult?.error || 'Live RTC token service is unavailable.', true);
-                return;
-            }
-
-            try {
-                await agoraClient.renewToken(tokenResult.token);
-                scheduleAgoraRenewal(tokenResult.expiresInSeconds || 600);
-            } catch {
-                setStatus('Live RTC token renewal failed.', true);
-            }
-        };
-
-        const leaveAgoraSession = async () => {
-            clearTimeout(agoraTokenExpiryTimer);
-            agoraTokenExpiryTimer = null;
-            try {
-                if (agoraTracks) {
-                    agoraTracks.forEach(track => {
-                        try { track.stop?.(); } catch { }
-                        try { track.close?.(); } catch { }
-                    });
-                }
-                if (agoraClient && agoraJoined) {
-                    if (agoraTokenWillExpireHandler)
-                        agoraClient.off?.('token-privilege-will-expire', agoraTokenWillExpireHandler);
-                    if (agoraTokenDidExpireHandler)
-                        agoraClient.off?.('token-privilege-did-expire', agoraTokenDidExpireHandler);
-                    try { await agoraClient.leave(); } catch { }
-                }
-            } finally {
-                agoraTracks = null;
-                agoraClient = null;
-                agoraJoined = false;
-                agoraTokenWillExpireHandler = null;
-                agoraTokenDidExpireHandler = null;
-            }
-        };
 
         const setCamera = async (enabled, skipRecordingSync = false) => {
             if (!navigator.mediaDevices?.getUserMedia) {
@@ -777,7 +654,6 @@
                 video.style.display = 'none';
                 cameraPlaceholder.style.display = '';
                 document.getElementById('toggle-camera').textContent = 'Camera On';
-                await leaveAgoraSession();
                 if (recordingEnabled && mediaRecorder)
                     setRecordingStatus('Recording remains enabled. Turn recording off to discard or stop the interview to upload.', false);
                 return;
@@ -789,8 +665,6 @@
                 video.style.display = 'block';
                 cameraPlaceholder.style.display = 'none';
                 document.getElementById('toggle-camera').textContent = 'Camera Off';
-                if (config.agoraAvailable)
-                    await ensureAgoraSession();
                 if (!skipRecordingSync)
                     await syncRecording();
             } catch {
@@ -813,8 +687,6 @@
                 audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
                 document.getElementById('toggle-mic').textContent = 'Mic On';
                 await stopSpeechRecognition();
-                if (!cameraStream)
-                    await leaveAgoraSession();
                 if (recordingEnabled && mediaRecorder)
                     setRecordingStatus('Recording remains enabled. Turn recording off to discard or stop the interview to upload.', false);
                 return;
@@ -844,8 +716,6 @@
                 updateMeter();
                 document.getElementById('toggle-mic').textContent = 'Mic Off';
                 await startSpeechRecognition();
-                if (config.agoraAvailable)
-                    await ensureAgoraSession();
                 if (!skipRecordingSync)
                     await syncRecording();
             } catch {
