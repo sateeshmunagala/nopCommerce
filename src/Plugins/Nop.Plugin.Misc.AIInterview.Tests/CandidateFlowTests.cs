@@ -417,7 +417,11 @@ public class CandidateFlowTests
 
         var result = await _runtimeController.SubmitAnswer("invalid", "answer");
         var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        var message = json.Value.GetType().GetProperty("message").GetValue(json.Value, null);
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
+        Assert.That(success, Is.False);
+        Assert.That(message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
         Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
     }
 
@@ -429,7 +433,11 @@ public class CandidateFlowTests
 
         var result = await _runtimeController.SubmitAnswer("valid", "");
         var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        var message = json.Value.GetType().GetProperty("message").GetValue(json.Value, null);
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
+        Assert.That(success, Is.False);
+        Assert.That(message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer"));
         Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer"));
     }
 
@@ -441,8 +449,11 @@ public class CandidateFlowTests
 
         var result = await _runtimeController.SubmitAnswer("expired", "answer");
         var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        var message = json.Value.GetType().GetProperty("message").GetValue(json.Value, null);
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
-
+        Assert.That(success, Is.False);
+        Assert.That(message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
         Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
     }
 

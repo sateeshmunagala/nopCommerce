@@ -504,11 +504,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         if (evaluation == null || !evaluation.Success || !evaluation.Score.HasValue || evaluation.Score.Value < 0 || evaluation.Score.Value > 100)
         {
+            _logger?.LogWarning("SubmitAnswer score failure for session {SessionId}. Mode: score. Reason: {Reason}. Raw: {RawJson}",
+                session.Id, evaluation?.ErrorMessage ?? "Invalid format/range", evaluation?.RawJson ?? string.Empty);
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
-                Message = evaluation?.ErrorMessage ?? "AI service unavailable.",
-                Feedback = evaluation?.ErrorMessage ?? "AI service unavailable."
+                Message = "AI service unavailable.",
+                Feedback = "AI service unavailable."
             };
         }
 
@@ -648,7 +650,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             var endpoint = $"https://{_settings.AzureSpeechRegion.Trim()}.api.cognitive.microsoft.com/sts/v1.0/issuetoken";
             var response = await httpClient.PostAsync(endpoint, new StringContent(string.Empty));
             if (!response.IsSuccessStatusCode)
+            {
+                _logger?.LogWarning("Azure Speech token request failed. Region: {Region}. Status: {StatusCode}.",
+                    _settings.AzureSpeechRegion.Trim(), response.StatusCode);
                 return null;
+            }
 
             var tokenValue = (await response.Content.ReadAsStringAsync())?.Trim();
             if (string.IsNullOrWhiteSpace(tokenValue))
@@ -661,8 +667,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 ExpiresInSeconds = 600
             };
         }
-        catch
+        catch (Exception ex)
         {
+            _logger?.LogWarning(ex, "Azure Speech token request exception. Region: {Region}.", _settings.AzureSpeechRegion.Trim());
             return null;
         }
     }
@@ -894,7 +901,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         var aiResponse = await _aiClient.GenerateQuestionAsync(request);
         if (aiResponse == null || !aiResponse.Success || string.IsNullOrWhiteSpace(aiResponse.Question))
+        {
+            _logger?.LogWarning("GenerateQuestion failure for session {SessionId}. Mode: generate. Reason: {Reason}. Raw: {RawJson}",
+                session.Id, aiResponse?.ErrorMessage ?? "Invalid format", aiResponse?.RawJson ?? string.Empty);
             return null;
+        }
 
         return new InterviewTurn
         {

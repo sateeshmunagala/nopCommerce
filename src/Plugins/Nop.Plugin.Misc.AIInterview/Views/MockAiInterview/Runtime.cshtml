@@ -184,14 +184,19 @@
 
             const text = (answerBox.value || '').trim();
             if (text) {
+                logActivity('Timer scheduled for auto-submit.');
                 silenceTimer = setTimeout(() => {
                     logActivity('Auto-submitting answer due to silence.');
                     submitAnswer();
                 }, 5000);
             } else {
+                logActivity('Timer scheduled for silence reminder.');
                 reminderTimer = setTimeout(() => {
-                    logActivity('Prompting candidate due to silence.');
-                    speakText("Please answer the question.");
+                    logActivity('Reminder shown/spoken: Please answer the question.');
+                    setStatus('Please answer the question.', false);
+                    if (config.speechAvailable) {
+                        speakText("Please answer the question.");
+                    }
                 }, 5000);
             }
         };
@@ -274,8 +279,8 @@
             setRecordingStatus('Recording unavailable.', false);
 
         const setCompletedState = async (result) => {
-            const reportUrl = result.reportUrl || config.reportUrl || '';
-            const completionText = result.completion || result.message || 'Interview completed.';
+            const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
+            const completionText = getValue(result, 'completion', 'Completion') || getValue(result, 'message', 'Message') || 'Interview completed.';
             clearTimeout(silenceTimer);
             clearTimeout(reminderTimer);
             isSpeakingOrSubmitting = true;
@@ -519,11 +524,12 @@
                 formData.append('recording', blob, `interview-${Date.now()}.webm`);
 
                 const result = await postMultipart(config.recordingUploadUrl, formData);
-                if (isSuccess(result) && result.recordingUrl) {
-                    logActivity('Recording uploaded successfully.');
-                    setRecordingStatus('Recording uploaded successfully.', false);
+                const recordingUrl = getValue(result, 'recordingUrl', 'RecordingUrl');
+                if (isSuccess(result) && recordingUrl) {
+                    logActivity('Recording upload success.');
+                    setRecordingStatus('Recording uploaded.', false);
                 } else {
-                    logActivity('Recording upload failed.');
+                    logActivity('Recording upload failure.');
                     setRecordingStatus(getRuntimeMessage(result, 'Recording upload failed.'), true);
                 }
             } finally {
@@ -627,14 +633,16 @@
                 return;
 
             const result = await postForm(config.refreshTokenUrl, new URLSearchParams({ token: sessionToken }));
-            if (!result || result.error || !result.newToken) {
-                setStatus(result?.error || 'Session refresh is unavailable.', true);
+            const newToken = getValue(result, "newToken", "NewToken");
+            if (!result || !isSuccess(result) || !newToken) {
+                setStatus(getRuntimeMessage(result, 'Session refresh is unavailable.'), true);
                 return;
             }
 
-            sessionToken = result.newToken;
-            config.token = result.newToken;
-            tokenExpiryUtc = result.tokenExpiryUtc ? new Date(result.tokenExpiryUtc) : tokenExpiryUtc;
+            sessionToken = newToken;
+            config.token = newToken;
+            const expiry = getValue(result, "tokenExpiryUtc", "TokenExpiryUtc");
+            tokenExpiryUtc = expiry ? new Date(expiry) : tokenExpiryUtc;
             scheduleTokenRefresh();
         };
 
@@ -693,13 +701,17 @@
             }
 
             const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
-            if (!tokenResult || tokenResult.error || !tokenResult.token) {
-                setStatus(tokenResult?.error || 'Speech token service is unavailable.', true);
+            const speechToken = getValue(tokenResult, 'token', 'Token');
+            const region = getValue(tokenResult, 'region', 'Region');
+            if (!tokenResult || !isSuccess(tokenResult) || !speechToken) {
+                logActivity('Speech token request failure.');
+                setStatus(getRuntimeMessage(tokenResult, 'Speech token service is unavailable.'), true);
                 return;
             }
+            logActivity('Speech token request success.');
 
             try {
-                const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
+                const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(speechToken, region);
                 speechConfig.speechRecognitionLanguage = 'en-US';
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 speechRecognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
@@ -744,14 +756,18 @@
             clearTimeout(reminderTimer);
 
             const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
-            if (!tokenResult || tokenResult.error || !tokenResult.token) {
+            const speechToken = getValue(tokenResult, 'token', 'Token');
+            const region = getValue(tokenResult, 'region', 'Region');
+            if (!tokenResult || !isSuccess(tokenResult) || !speechToken) {
+                logActivity('Speech token request failure.');
                 isSpeakingOrSubmitting = false;
                 resetTimers();
                 return;
             }
+            logActivity('Speech token request success.');
 
             try {
-                const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
+                const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(speechToken, region);
                 const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
                 await new Promise(resolve => {
                     synthesizer.speakTextAsync(text, () => {
@@ -888,10 +904,12 @@
             isSpeakingOrSubmitting = false;
 
             if (!isSuccess(result)) {
+                logActivity('Submit response failure: ' + getRuntimeMessage(result, 'Unable to submit answer.'));
                 setStatus(getRuntimeMessage(result, 'Unable to submit answer.'), true);
                 resetTimers();
                 return;
             }
+            logActivity('Submit response success: ' + getRuntimeMessage(result, 'Answer saved.'));
 
             const currentTurn = getValue(result, "turn", "Turn") || turns[turns.length - 1];
             if (currentTurn) {
@@ -924,6 +942,7 @@
             }
 
             questionBox.textContent = isTerminated ? (resultCompletion || 'Interview completed.') : resultQuestion;
+            if (!isTerminated && resultQuestion) logActivity('Question shown: ' + resultQuestion);
             messageBox.textContent = resultMessage || resultFeedback || '';
             setStatus(resultFeedback || resultMessage || 'Answer saved.', false);
             answerBox.value = '';
@@ -937,6 +956,8 @@
             document.getElementById('start-or-next').textContent = 'Next Question';
             if (config.speechAvailable && resultQuestion)
                 await speakText(resultQuestion);
+            else
+                resetTimers();
         };
 
         const stopInterview = async () => {
@@ -978,15 +999,19 @@
                     stopTopBtn.textContent = originalText;
                 }
 
+                logActivity('Stop response failure: ' + getRuntimeMessage(result, 'Unable to stop interview.'));
                 setStatus(getRuntimeMessage(result, 'Unable to stop interview.'), true);
                 return;
             }
 
             if (stopBtn) stopBtn.classList.remove('is-loading');
             if (stopTopBtn) stopTopBtn.classList.remove('is-loading');
+            logActivity('Stop response success: ' + getRuntimeMessage(result, 'Interview completed.'));
             setStatus(getRuntimeMessage(result, 'Interview completed.'), false);
             renderTranscript();
             await setCompletedState(result);
+            clearTimeout(silenceTimer);
+            clearTimeout(reminderTimer);
         };
 
         const beginInterview = async () => {
@@ -997,8 +1022,11 @@
             if (config.recordingAvailable && recordingEnabled)
                 await requestRecordingMediaForStart();
             await syncRecording();
+            if (questionBox.textContent) logActivity('Question shown: ' + questionBox.textContent);
             if (config.speechAvailable && questionBox.textContent)
                 await speakText(questionBox.textContent);
+            else
+                resetTimers();
         };
 
         document.getElementById('submit-answer').addEventListener('click', submitAnswer);

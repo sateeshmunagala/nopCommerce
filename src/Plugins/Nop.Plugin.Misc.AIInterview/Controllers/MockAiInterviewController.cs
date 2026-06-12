@@ -76,7 +76,18 @@ public class MockAiInterviewController : BasePluginController
 
     protected async Task<IActionResult> LocalizedErrorAsync(string resourceKey, string defaultValue, int statusCode = 400)
     {
-        return Json(new { error = await GetLocalizedTextAsync(resourceKey, defaultValue) });
+        if (HttpContext != null)
+            Response.StatusCode = statusCode;
+
+        var text = await GetLocalizedTextAsync(resourceKey, defaultValue);
+        return Json(new { success = false, message = text, error = text });
+    }
+
+    protected virtual string MaskToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return string.Empty;
+        if (token.Length <= 6) return "*****";
+        return token.Substring(0, 6) + "...";
     }
 
     protected virtual bool IsSessionExpired(InterviewSession session, DateTime? currentUtc = null)
@@ -310,10 +321,19 @@ public class MockAiInterviewController : BasePluginController
     [HttpPost]
     public async Task<IActionResult> SubmitAnswer(string token, string answer)
     {
-        _logger?.LogInformation("SubmitAnswer called with session token {Token} without logging full answer", token);
+        _logger?.LogInformation("SubmitAnswer called with session token {Token}", MaskToken(token));
 
         if (_interviewRuntimeService != null)
-            return Json(await _interviewRuntimeService.SubmitAnswerAsync(token, answer));
+        {
+            var runtimeResponse = await _interviewRuntimeService.SubmitAnswerAsync(token, answer);
+            if (runtimeResponse != null && !runtimeResponse.Success)
+            {
+                var sessionInfo = await _interviewSessionService.GetSessionByTokenAsync(token);
+                _logger?.LogWarning("SubmitAnswer failed for session {SessionId}, customer {CustomerId}, product {ProductId}: {Message}",
+                    sessionInfo?.Id, sessionInfo?.CustomerId, sessionInfo?.ProductId, runtimeResponse.Message);
+            }
+            return Json(runtimeResponse);
+        }
 
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
         if (!IsSessionUsable(session))
@@ -329,13 +349,17 @@ public class MockAiInterviewController : BasePluginController
     [HttpPost]
     public async Task<IActionResult> Stop(string token)
     {
-        _logger?.LogInformation("Stop called with session token {Token}", token);
+        _logger?.LogInformation("Stop called with session token {Token}", MaskToken(token));
 
         if (_interviewRuntimeService != null)
         {
             var response = await _interviewRuntimeService.CompleteInterviewAsync(token, "Stopped by user");
             if (response != null && !response.Success)
-                _logger?.LogWarning("Stop failed for session token {Token}: {Message}", token, response.Message);
+            {
+                var sessionInfo = await _interviewSessionService.GetSessionByTokenAsync(token);
+                _logger?.LogWarning("Stop failed for session {SessionId}, customer {CustomerId}, product {ProductId}: {Message}",
+                    sessionInfo?.Id, sessionInfo?.CustomerId, sessionInfo?.ProductId, response.Message);
+            }
             return Json(response);
         }
 

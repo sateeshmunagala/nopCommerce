@@ -152,7 +152,11 @@ public class RuntimeAndAdminTests
         var controller = new TestRuntimeController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object);
         var result = await controller.TestFallback();
         var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        var message = json.Value.GetType().GetProperty("message").GetValue(json.Value, null);
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
+        Assert.That(success, Is.False);
+        Assert.That(message, Is.EqualTo("Fallback text"));
         Assert.That(error, Is.EqualTo("Fallback text"));
     }
 
@@ -550,5 +554,16 @@ public class RuntimeAndAdminTests
         {
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Missing", "Fallback text");
         }
+    }
+
+    [Test]
+    public void Runtime_NoAgoraSdkUsage()
+    {
+        var path = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml");
+        if (!System.IO.File.Exists(path))
+            path = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml"); // CI/CD path fallback
+
+        var content = System.IO.File.ReadAllText(path);
+        Assert.That(content.Contains("AgoraRTC"), Is.False, "Runtime should not contain AgoraRTC usage.");
     }
 }
