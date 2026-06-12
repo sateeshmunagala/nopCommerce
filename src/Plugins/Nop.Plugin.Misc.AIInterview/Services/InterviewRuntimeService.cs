@@ -911,6 +911,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     protected virtual async Task<CompleteInterviewResponse> CompleteInterviewInternalAsync(InterviewSession session, IList<InterviewTurn> turns, string reason, string aiCompletion = null)
     {
+        _logger?.LogInformation("Stop called with session id {SessionId}", session.Id);
+
         if (session.CompletedOnUtc.HasValue || !session.IsActive)
         {
             return new CompleteInterviewResponse

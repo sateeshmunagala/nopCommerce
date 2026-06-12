@@ -42,9 +42,13 @@
     .turn-meta { color: #667085; font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
     .runtime-answer textarea { width: 100%; min-height: 120px; padding: 14px 16px; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 16px; resize: vertical; }
     .runtime-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-    .button-1, .button-2 { border-radius: 999px; }
-    .button-1 { background: #0f5bd7; color: #fff; }
+    .button-1, .button-2 { border-radius: 999px; padding: 10px 20px; font-weight: 600; min-height: 44px; min-width: 120px; cursor: pointer; transition: all 0.2s ease; border: none; }
+    .button-1 { background: #0f5bd7; color: #fff; border: 1px solid #0f5bd7; }
+    .button-1:hover:not(:disabled) { background: #0d4eb8; border-color: #0d4eb8; }
     .button-2 { background: #eef4ff; color: #0f5bd7; border: 1px solid #c9dafd; }
+    .button-2:hover:not(:disabled) { background: #dce7fa; }
+    .button-1:disabled, .button-2:disabled { opacity: 0.6; cursor: not-allowed; }
+    .button-1.is-loading, .button-2.is-loading { opacity: 0.8; cursor: wait; }
     .runtime-status { min-height: 24px; font-weight: 600; }
     .runtime-status.message-error { color: #b42318; }
     .runtime-status.message-success { color: #027a48; }
@@ -72,6 +76,10 @@
         <div class="runtime-layout">
             <section class="runtime-stage">
                 <div class="runtime-video">
+                    <div id="runtime-log" style="position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(255,255,255,0.85); border-radius: 8px; padding: 8px; font-size: 11px; max-width: 250px; max-height: 200px; overflow-y: auto; text-align: left;">
+                        <div style="font-weight: 700; color: #333; margin-bottom: 4px;">Runtime Log</div>
+                        <div id="runtime-log-body"></div>
+                    </div>
                     <video id="runtime-video" autoplay playsinline muted></video>
                     <span id="camera-placeholder">Camera Off</span>
                     <div class="runtime-avatar"></div>
@@ -165,6 +173,31 @@
         let completedRedirectTimer = null;
         let completedCountdown = null;
 
+        let silenceTimer = null;
+        let reminderTimer = null;
+        let isSpeakingOrSubmitting = false;
+
+        const resetTimers = () => {
+            clearTimeout(silenceTimer);
+            clearTimeout(reminderTimer);
+            if (!interviewStarted || isSpeakingOrSubmitting) return;
+
+            const text = (answerBox.value || '').trim();
+            if (text) {
+                silenceTimer = setTimeout(() => {
+                    logActivity('Auto-submitting answer due to silence.');
+                    submitAnswer();
+                }, 5000);
+            } else {
+                reminderTimer = setTimeout(() => {
+                    logActivity('Prompting candidate due to silence.');
+                    speakText("Please answer the question.");
+                }, 5000);
+            }
+        };
+
+        answerBox.addEventListener('input', resetTimers);
+
         recordingEnabled = !!config.recordingAvailable;
         if (recordingButton) {
             recordingButton.disabled = !config.recordingAvailable;
@@ -205,6 +238,36 @@
             recordingStatus.className = `runtime-status ${isError ? 'message-error' : 'message-success'}`;
         };
 
+        const logActivity = (msg) => {
+            console.debug(`[AIInterview Runtime] ${msg}`);
+            const logPanel = document.getElementById('runtime-log-body');
+            if (logPanel) {
+                const p = document.createElement('p');
+                p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+                p.style.margin = '4px 0';
+                p.style.fontSize = '12px';
+                p.style.color = '#334155';
+                logPanel.prepend(p);
+            }
+        };
+
+        const getValue = (result, camel, pascal) => {
+            if (!result) return null;
+            if (camel in result) return result[camel];
+            if (pascal in result) return result[pascal];
+            return null;
+        };
+
+        const isSuccess = (result) => {
+            return getValue(result, "success", "Success") === true;
+        };
+
+        const getRuntimeMessage = (result, fallback) => {
+            return getValue(result, "message", "Message") || getValue(result, "error", "Error") || fallback;
+        };
+
+        logActivity('Runtime initialized.');
+
         if (config.recordingAvailable)
             setRecordingStatus('Recording ready.', false);
         else
@@ -213,6 +276,9 @@
         const setCompletedState = async (result) => {
             const reportUrl = result.reportUrl || config.reportUrl || '';
             const completionText = result.completion || result.message || 'Interview completed.';
+            clearTimeout(silenceTimer);
+            clearTimeout(reminderTimer);
+            isSpeakingOrSubmitting = true;
             await stopRecording(true);
             recordingEnabled = false;
             interviewStarted = false;
@@ -323,6 +389,7 @@
         }, 1000);
 
         const postForm = async (url, formData) => {
+            logActivity(`Request started: ${url}`);
             try {
                 const response = await fetch(url, {
                     method: 'POST',
@@ -331,39 +398,72 @@
                 });
 
                 if (!response.ok) {
-                    return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
+                    const text = await response.text();
+                    let msg = 'Unable to reach the interview service.';
+                    try {
+                        const parsed = JSON.parse(text);
+                        msg = getRuntimeMessage(parsed, msg);
+                    } catch {}
+                    console.error(`[AIInterview] Request failed: ${url} (Status: ${response.status}) Body: ${text}`);
+                    logActivity(`Request failed (${response.status}): ${msg}`);
+                    return { success: false, message: msg, status: response.status };
                 }
 
                 try {
-                    return await response.json();
+                    const result = await response.json();
+                    logActivity(`Request success: ${url}`);
+                    return result;
                 } catch {
-                    return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
+                    console.error(`[AIInterview] Request JSON parse failed: ${url}`);
+                    logActivity(`Request failed: Invalid JSON response.`);
+                    return { success: false, message: 'Invalid response from server.' };
                 }
-            } catch {
+            } catch (e) {
+                console.error(`[AIInterview] Request exception: ${url}`, e);
+                logActivity(`Request error: ${e.message}`);
                 return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
             }
         };
 
         const postMultipart = async (url, formData) => {
+            logActivity(`Multipart request started: ${url}`);
             try {
                 const response = await fetch(url, {
                     method: 'POST',
                     body: formData
                 });
 
-                if (!response.ok)
-                    return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
+                if (!response.ok) {
+                    const text = await response.text();
+                    let msg = 'Unable to reach the interview service.';
+                    try {
+                        const parsed = JSON.parse(text);
+                        msg = getRuntimeMessage(parsed, msg);
+                    } catch {}
+                    console.error(`[AIInterview] Multipart request failed: ${url} (Status: ${response.status}) Body: ${text}`);
+                    logActivity(`Multipart request failed (${response.status}): ${msg}`);
+                    return { success: false, message: msg, status: response.status };
+                }
 
                 const contentType = response.headers.get('content-type') || '';
-                if (!contentType.includes('application/json'))
-                    return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
+                if (!contentType.includes('application/json')) {
+                    console.error(`[AIInterview] Multipart request non-JSON response: ${url}`);
+                    logActivity(`Multipart request failed: non-JSON response.`);
+                    return { success: false, message: 'Invalid response format from server.' };
+                }
 
                 try {
-                    return await response.json();
+                    const result = await response.json();
+                    logActivity(`Multipart request success: ${url}`);
+                    return result;
                 } catch {
-                    return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
+                    console.error(`[AIInterview] Multipart request JSON parse failed: ${url}`);
+                    logActivity(`Multipart request failed: Invalid JSON response.`);
+                    return { success: false, message: 'Invalid response from server.' };
                 }
-            } catch {
+            } catch (e) {
+                console.error(`[AIInterview] Multipart request exception: ${url}`, e);
+                logActivity(`Multipart request error: ${e.message}`);
                 return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
             }
         };
@@ -412,16 +512,19 @@
                 return;
 
             recordingUploadInFlight = true;
+            logActivity('Uploading recording...');
             try {
                 const formData = new FormData();
                 formData.append('token', sessionToken);
                 formData.append('recording', blob, `interview-${Date.now()}.webm`);
 
                 const result = await postMultipart(config.recordingUploadUrl, formData);
-                if (result?.success && result.recordingUrl) {
+                if (isSuccess(result) && result.recordingUrl) {
+                    logActivity('Recording uploaded successfully.');
                     setRecordingStatus('Recording uploaded successfully.', false);
                 } else {
-                    setRecordingStatus(result?.message || result?.error || 'Recording upload failed.', true);
+                    logActivity('Recording upload failed.');
+                    setRecordingStatus(getRuntimeMessage(result, 'Recording upload failed.'), true);
                 }
             } finally {
                 recordingUploadInFlight = false;
@@ -600,12 +703,26 @@
                 speechConfig.speechRecognitionLanguage = 'en-US';
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 speechRecognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+                speechRecognizer.recognizing = (_, e) => {
+                    resetTimers();
+                };
+
                 speechRecognizer.recognized = (_, e) => {
                     if (e.result?.reason === SpeechSDK.ResultReason.RecognizedSpeech && e.result.text) {
                         answerBox.value = `${answerBox.value ? `${answerBox.value.trim()} ` : ''}${e.result.text}`.trim();
+                        logActivity('Speech recognized and appended.');
+                        resetTimers();
                     }
                 };
-                speechRecognizer.canceled = () => setStatus('Speech recognition stopped.', false);
+
+                speechRecognizer.sessionStarted = () => logActivity('Speech recognition session started.');
+                speechRecognizer.sessionStopped = () => logActivity('Speech recognition session stopped.');
+                speechRecognizer.canceled = () => {
+                    logActivity('Speech recognition canceled.');
+                    setStatus('Speech recognition stopped.', false);
+                };
+
                 await new Promise((resolve, reject) => {
                     speechRecognizer.startContinuousRecognitionAsync(resolve, reject);
                 });
@@ -622,9 +739,16 @@
             if (!(await ensureSpeechSdk()))
                 return;
 
+            isSpeakingOrSubmitting = true;
+            clearTimeout(silenceTimer);
+            clearTimeout(reminderTimer);
+
             const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
-            if (!tokenResult || tokenResult.error || !tokenResult.token)
+            if (!tokenResult || tokenResult.error || !tokenResult.token) {
+                isSpeakingOrSubmitting = false;
+                resetTimers();
                 return;
+            }
 
             try {
                 const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
@@ -639,12 +763,17 @@
                     });
                 });
             } catch {
-                return;
+                // Ignore exception
+            } finally {
+                isSpeakingOrSubmitting = false;
+                resetTimers();
             }
         };
 
         const setCamera = async (enabled, skipRecordingSync = false) => {
+            logActivity(`Camera requested: ${enabled}`);
             if (!navigator.mediaDevices?.getUserMedia) {
+                logActivity('Camera unsupported.');
                 setStatus('Camera is not supported in this browser.', true);
                 return;
             }
@@ -655,6 +784,7 @@
                 video.style.display = 'none';
                 cameraPlaceholder.style.display = '';
                 document.getElementById('toggle-camera').textContent = 'Camera On';
+                logActivity('Camera stopped.');
                 if (recordingEnabled && mediaRecorder)
                     setRecordingStatus('Recording remains enabled. Turn recording off to discard or stop the interview to upload.', false);
                 return;
@@ -666,15 +796,19 @@
                 video.style.display = 'block';
                 cameraPlaceholder.style.display = 'none';
                 document.getElementById('toggle-camera').textContent = 'Camera Off';
+                logActivity('Camera started.');
                 if (!skipRecordingSync)
                     await syncRecording();
             } catch {
+                logActivity('Camera failed to start.');
                 setStatus('Camera could not be started.', true);
             }
         };
 
         const setMic = async (enabled, skipRecordingSync = false) => {
+            logActivity(`Mic requested: ${enabled}`);
             if (!navigator.mediaDevices?.getUserMedia) {
+                logActivity('Mic unsupported.');
                 setStatus('Microphone is not supported in this browser.', true);
                 return;
             }
@@ -687,6 +821,7 @@
                 analyser = null;
                 audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
                 document.getElementById('toggle-mic').textContent = 'Mic On';
+                logActivity('Mic stopped.');
                 await stopSpeechRecognition();
                 if (recordingEnabled && mediaRecorder)
                     setRecordingStatus('Recording remains enabled. Turn recording off to discard or stop the interview to upload.', false);
@@ -716,10 +851,12 @@
                 };
                 updateMeter();
                 document.getElementById('toggle-mic').textContent = 'Mic Off';
+                logActivity('Mic started.');
                 await startSpeechRecognition();
                 if (!skipRecordingSync)
                     await syncRecording();
             } catch {
+                logActivity('Mic failed to start.');
                 setStatus('Microphone could not be started.', true);
             }
         };
@@ -730,14 +867,33 @@
                 return;
             }
 
+            const submitBtn = document.getElementById('submit-answer');
+            if (submitBtn.disabled) return;
+
+            logActivity('Submitting answer...');
+            isSpeakingOrSubmitting = true;
+            clearTimeout(silenceTimer);
+            clearTimeout(reminderTimer);
+            submitBtn.disabled = true;
+            submitBtn.classList.add('is-loading');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Submitting...';
+
             const body = new URLSearchParams({ token: sessionToken, answer: answerBox.value || '' });
             const result = await postForm(config.submitAnswerUrl, body);
-            if (!result.success) {
-                setStatus(result.message || result.error || 'Unable to submit answer.', true);
+
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('is-loading');
+            submitBtn.textContent = originalText;
+            isSpeakingOrSubmitting = false;
+
+            if (!isSuccess(result)) {
+                setStatus(getRuntimeMessage(result, 'Unable to submit answer.'), true);
+                resetTimers();
                 return;
             }
 
-            const currentTurn = result.turn || turns[turns.length - 1];
+            const currentTurn = getValue(result, "turn", "Turn") || turns[turns.length - 1];
             if (currentTurn) {
                 const targetIndex = turns.findIndex(turn => turn.turnId && currentTurn.turnId && turn.turnId === currentTurn.turnId);
                 if (targetIndex >= 0)
@@ -748,11 +904,17 @@
                     turns.push(currentTurn);
             }
 
-            if (!result.isTerminated && result.question) {
+            const isTerminated = getValue(result, "isTerminated", "IsTerminated");
+            const resultQuestion = getValue(result, "question", "Question");
+            const resultMessage = getRuntimeMessage(result, '');
+            const resultFeedback = getValue(result, "feedback", "Feedback");
+            const resultCompletion = getValue(result, "completion", "Completion");
+
+            if (!isTerminated && resultQuestion) {
                 turns.push({
                     turnId: Date.now(),
                     sequenceNumber: (currentTurn?.sequenceNumber || turns.length) + 1,
-                    questionText: result.question,
+                    questionText: resultQuestion,
                     answerText: '',
                     score: null,
                     feedback: '',
@@ -761,20 +923,20 @@
                 });
             }
 
-            questionBox.textContent = result.isTerminated ? (result.completion || 'Interview completed.') : result.question;
-            messageBox.textContent = result.message || result.feedback || '';
-            setStatus(result.feedback || result.message || 'Answer saved.', false);
+            questionBox.textContent = isTerminated ? (resultCompletion || 'Interview completed.') : resultQuestion;
+            messageBox.textContent = resultMessage || resultFeedback || '';
+            setStatus(resultFeedback || resultMessage || 'Answer saved.', false);
             answerBox.value = '';
             renderTranscript();
 
-            if (result.isTerminated) {
+            if (isTerminated) {
                 await setCompletedState(result);
                 return;
             }
 
             document.getElementById('start-or-next').textContent = 'Next Question';
-            if (config.speechAvailable && result.question)
-                await speakText(result.question);
+            if (config.speechAvailable && resultQuestion)
+                await speakText(resultQuestion);
         };
 
         const stopInterview = async () => {
@@ -783,19 +945,52 @@
                 return;
             }
 
+            const stopBtn = document.getElementById('stop-interview');
+            const stopTopBtn = document.getElementById('stop-interview-top');
+            if (stopBtn && stopBtn.disabled) return;
+
+            logActivity('Stopping interview...');
+            let originalText = '';
+            if (stopBtn) {
+                originalText = stopBtn.textContent;
+                stopBtn.disabled = true;
+                stopBtn.classList.add('is-loading');
+                stopBtn.textContent = 'Stopping...';
+            }
+            if (stopTopBtn) {
+                stopTopBtn.disabled = true;
+                stopTopBtn.classList.add('is-loading');
+                stopTopBtn.textContent = 'Stopping...';
+            }
+
             const body = new URLSearchParams({ token: sessionToken });
             const result = await postForm(config.stopInterviewUrl, body);
-            if (!result.success) {
-                setStatus(result.message || result.error || 'Unable to stop interview.', true);
+
+            if (!isSuccess(result)) {
+                if (stopBtn) {
+                    stopBtn.disabled = false;
+                    stopBtn.classList.remove('is-loading');
+                    stopBtn.textContent = originalText;
+                }
+                if (stopTopBtn) {
+                    stopTopBtn.disabled = false;
+                    stopTopBtn.classList.remove('is-loading');
+                    stopTopBtn.textContent = originalText;
+                }
+
+                setStatus(getRuntimeMessage(result, 'Unable to stop interview.'), true);
                 return;
             }
 
-            setStatus(result.message || 'Interview completed.', false);
+            if (stopBtn) stopBtn.classList.remove('is-loading');
+            if (stopTopBtn) stopTopBtn.classList.remove('is-loading');
+            setStatus(getRuntimeMessage(result, 'Interview completed.'), false);
             renderTranscript();
             await setCompletedState(result);
         };
 
         const beginInterview = async () => {
+            logActivity('Interview started clicked.');
             interviewStarted = true;
             setStatus('Interview started.', false);
             document.getElementById('start-or-next').textContent = 'Next Question';

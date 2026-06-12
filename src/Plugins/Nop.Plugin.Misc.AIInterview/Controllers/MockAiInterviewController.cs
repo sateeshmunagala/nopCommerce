@@ -310,6 +310,8 @@ public class MockAiInterviewController : BasePluginController
     [HttpPost]
     public async Task<IActionResult> SubmitAnswer(string token, string answer)
     {
+        _logger?.LogInformation("SubmitAnswer called with session token {Token} without logging full answer", token);
+
         if (_interviewRuntimeService != null)
             return Json(await _interviewRuntimeService.SubmitAnswerAsync(token, answer));
 
@@ -327,9 +329,13 @@ public class MockAiInterviewController : BasePluginController
     [HttpPost]
     public async Task<IActionResult> Stop(string token)
     {
+        _logger?.LogInformation("Stop called with session token {Token}", token);
+
         if (_interviewRuntimeService != null)
         {
             var response = await _interviewRuntimeService.CompleteInterviewAsync(token, "Stopped by user");
+            if (response != null && !response.Success)
+                _logger?.LogWarning("Stop failed for session token {Token}: {Message}", token, response.Message);
             return Json(response);
         }
 
