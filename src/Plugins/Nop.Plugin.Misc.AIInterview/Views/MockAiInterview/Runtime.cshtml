@@ -156,7 +156,7 @@
         let speechRecognizer = null;
         let speechSdkLoading = null;
         let speechSdkLoaded = false;
-                                                                let mediaRecorder = null;
+        let mediaRecorder = null;
         let recordingChunks = [];
         let recordingMimeType = 'video/webm';
         let recordingEnabled = false;
@@ -227,6 +227,12 @@
             analyser = null;
             meterFrame && cancelAnimationFrame(meterFrame);
             meterFrame = null;
+            video.srcObject = null;
+            video.style.display = 'none';
+            cameraPlaceholder.style.display = '';
+            document.getElementById('toggle-camera').textContent = 'Camera On';
+            document.getElementById('toggle-mic').textContent = 'Mic On';
+            audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
             await stopSpeechRecognition();
             questionBox.textContent = completionText;
             messageBox.textContent = result.feedback || result.message || '';
@@ -636,11 +642,6 @@
                 return;
             }
         };
-
-
-
-
-
 
         const setCamera = async (enabled, skipRecordingSync = false) => {
             if (!navigator.mediaDevices?.getUserMedia) {

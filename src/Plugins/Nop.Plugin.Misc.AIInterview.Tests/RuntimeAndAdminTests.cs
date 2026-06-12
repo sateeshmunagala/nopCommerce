@@ -367,14 +367,26 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public void RuntimeView_Contains_Recording_Upload_And_Agora_Renewal_Hooks()
+    public void RuntimeView_Contains_Recording_And_Upload_Hooks()
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
 
         Assert.That(runtimeViewText, Does.Contain("recordingUploadUrl"));
         Assert.That(runtimeViewText, Does.Contain("MediaRecorder"));
         Assert.That(runtimeViewText, Does.Contain("toggle-recording"));
-                                Assert.That(runtimeViewText, Does.Contain("uploadRecording"));
+        Assert.That(runtimeViewText, Does.Contain("uploadRecording"));
+        Assert.That(runtimeViewText, Does.Contain("getUserMedia"));
+        Assert.That(runtimeViewText, Does.Contain("SpeechSDK"));
+        Assert.That(runtimeViewText, Does.Contain("speechTokenUrl"));
+        Assert.That(runtimeViewText, Does.Contain("submitAnswer"));
+        Assert.That(runtimeViewText, Does.Contain("stopInterview"));
+
+        Assert.That(runtimeViewText, Does.Not.Contain("AgoraRTC"));
+        Assert.That(runtimeViewText, Does.Not.Contain("download.agora.io"));
+        Assert.That(runtimeViewText, Does.Not.Contain("ensureAgoraSession"));
+        Assert.That(runtimeViewText, Does.Not.Contain("renewAgoraToken"));
+        Assert.That(runtimeViewText, Does.Not.Contain("leaveAgoraSession"));
+        Assert.That(runtimeViewText, Does.Not.Contain("agora-token"));
     }
 
     [Test]
