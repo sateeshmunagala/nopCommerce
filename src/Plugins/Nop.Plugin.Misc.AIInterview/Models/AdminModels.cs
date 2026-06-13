@@ -57,12 +57,6 @@ public record AiServiceSettingsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel")]
     public string AzureOpenAiDeploymentOrModel { get; set; }
 
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AgoraAppId")]
-    public string AgoraAppId { get; set; }
-
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AgoraTokenServiceUrl")]
-    public string AgoraTokenServiceUrl { get; set; }
-
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechKey")]
     public string AzureSpeechKey { get; set; }
 

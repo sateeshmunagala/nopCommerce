@@ -23,10 +23,6 @@ public class AIInterviewSettings : ISettings
 
     public string AzureOpenAiDeploymentOrModel { get; set; }
 
-    public string AgoraAppId { get; set; }
-
-    public string AgoraTokenServiceUrl { get; set; }
-
     public string AzureSpeechKey { get; set; }
 
     public string AzureSpeechRegion { get; set; }

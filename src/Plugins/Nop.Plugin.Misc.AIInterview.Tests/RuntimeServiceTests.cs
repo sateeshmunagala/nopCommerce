@@ -694,7 +694,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task SpeechAndAgoraTokens_ReturnNull_WhenConfigMissing()
+    public async Task SpeechToken_ReturnNull_WhenConfigMissing()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -710,7 +710,6 @@ public class RuntimeServiceTests
         var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
 
         Assert.That(await service.GetSpeechTokenAsync("token5"), Is.Null);
-        Assert.That(await service.GetAgoraTokenAsync("token5"), Is.Null);
     }
 
     [Test]
@@ -979,72 +978,6 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task AgoraToken_ReturnsNull_ForInactiveCompletedOrExpiredSessions()
-    {
-        var sessionService = new Mock<IInterviewSessionService>();
-        var turnService = new Mock<IInterviewTurnService>();
-        var aiClient = new Mock<IAIInterviewClient>();
-        var productService = new Mock<IProductService>();
-        var customerService = new Mock<ICustomerService>();
-        var localizationService = new Mock<ILocalizationService>();
-        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"token\":\"agora-token\"}") });
-        var httpFactory = CreateHttpClientFactory(httpHandler);
-
-        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
-            settings: new AIInterviewSettings
-            {
-                AgoraAppId = "app-id",
-                AgoraTokenServiceUrl = "https://tokens"
-            });
-
-        var inactive = new InterviewSession { Token = "inactive", SessionKey = "channel", CustomerId = 1, IsActive = false, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
-        var completed = new InterviewSession { Token = "completed", SessionKey = "channel", CustomerId = 1, IsActive = true, CompletedOnUtc = DateTime.UtcNow.AddMinutes(-1), TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
-        var expired = new InterviewSession { Token = "expired", SessionKey = "channel", CustomerId = 1, IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddSeconds(-1) };
-
-        sessionService.Setup(x => x.GetSessionByTokenAsync("inactive")).ReturnsAsync(inactive);
-        sessionService.Setup(x => x.GetSessionByTokenAsync("completed")).ReturnsAsync(completed);
-        sessionService.Setup(x => x.GetSessionByTokenAsync("expired")).ReturnsAsync(expired);
-
-        Assert.That(await service.GetAgoraTokenAsync("inactive"), Is.Null);
-        Assert.That(await service.GetAgoraTokenAsync("completed"), Is.Null);
-        Assert.That(await service.GetAgoraTokenAsync("expired"), Is.Null);
-        Assert.That(httpHandler.Requests, Is.Empty);
-    }
-
-    [Test]
-    public async Task AgoraToken_ReturnsNull_OnExpiryBoundary()
-    {
-        var sessionService = new Mock<IInterviewSessionService>();
-        var turnService = new Mock<IInterviewTurnService>();
-        var aiClient = new Mock<IAIInterviewClient>();
-        var productService = new Mock<IProductService>();
-        var customerService = new Mock<ICustomerService>();
-        var localizationService = new Mock<ILocalizationService>();
-        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"token\":\"agora-token\"}") });
-        var httpFactory = CreateHttpClientFactory(httpHandler);
-        var now = DateTime.UtcNow;
-
-        sessionService.Setup(x => x.GetSessionByTokenAsync("boundary")).ReturnsAsync(new InterviewSession
-        {
-            Token = "boundary",
-            SessionKey = "channel",
-            CustomerId = 1,
-            IsActive = true,
-            TokenExpiryUtc = now
-        });
-
-        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
-            settings: new AIInterviewSettings
-            {
-                AgoraAppId = "app-id",
-                AgoraTokenServiceUrl = "https://tokens"
-            });
-
-        Assert.That(await service.GetAgoraTokenAsync("boundary"), Is.Null);
-        Assert.That(httpHandler.Requests, Is.Empty);
-    }
-
-    [Test]
     public async Task GenerateQuestionAsync_MapsAzureSuccessResponse_AndPromptContract()
     {
         var responseJson = """
@@ -1290,62 +1223,6 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task AgoraToken_MapsJsonAndPlainResponses()
-    {
-        var jsonHandler = new TestHttpMessageHandler(request => new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent("{\"token\":\"agora-token\",\"channel\":\"channel-1\",\"appId\":\"app-id\",\"uid\":42,\"expiresInSeconds\":900}", Encoding.UTF8, "application/json")
-        });
-        var jsonFactory = CreateHttpClientFactory(jsonHandler);
-        var sessionService = new Mock<IInterviewSessionService>();
-        var turnService = new Mock<IInterviewTurnService>();
-        var aiClient = new Mock<IAIInterviewClient>();
-        var productService = new Mock<IProductService>();
-        var customerService = new Mock<ICustomerService>();
-        var localizationService = new Mock<ILocalizationService>();
-        sessionService.Setup(x => x.GetSessionByTokenAsync("token")).ReturnsAsync(new InterviewSession
-        {
-            Token = "token",
-            SessionKey = "channel-1",
-            CustomerId = 42,
-            IsActive = true,
-            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
-        });
-
-        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: jsonFactory,
-            settings: new AIInterviewSettings
-            {
-                AgoraAppId = "app-id",
-                AgoraTokenServiceUrl = "https://tokens"
-            });
-
-        var jsonResult = await service.GetAgoraTokenAsync("token");
-        Assert.That(jsonResult, Is.Not.Null);
-        Assert.That(jsonResult.Token, Is.EqualTo("agora-token"));
-        Assert.That(jsonResult.Channel, Is.EqualTo("channel-1"));
-        Assert.That(jsonResult.AppId, Is.EqualTo("app-id"));
-        Assert.That(jsonResult.Uid, Is.EqualTo(42));
-        Assert.That(jsonResult.ExpiresInSeconds, Is.EqualTo(900));
-
-        var plainHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent("plain-token", Encoding.UTF8, "text/plain")
-        });
-        var plainFactory = CreateHttpClientFactory(plainHandler);
-        var plainService = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: plainFactory,
-            settings: new AIInterviewSettings
-            {
-                AgoraAppId = "app-id",
-                AgoraTokenServiceUrl = "https://tokens"
-            });
-
-        var plainResult = await plainService.GetAgoraTokenAsync("token");
-        Assert.That(plainResult, Is.Not.Null);
-        Assert.That(plainResult.Token, Is.EqualTo("plain-token"));
-        Assert.That(plainResult.Channel, Is.EqualTo("channel-1"));
-    }
-
-    [Test]
     public async Task RuntimeModel_Flags_Reflect_ActualConfig()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -1365,20 +1242,17 @@ public class RuntimeServiceTests
             mockSettings: new MockAIInterviewSettings { UseMockResponses = true });
         var missingModel = await missingFlagsService.EnsureInterviewStartedAsync(session, new Customer { Id = 7 });
         Assert.That(missingModel.ClientSettings.SpeechAvailable, Is.False);
-        Assert.That(missingModel.ClientSettings.AgoraAvailable, Is.False);
+        Assert.That(typeof(RuntimeClientSettingsModel).GetProperty("AgoraAvailable"), Is.Null);
 
         var presentFlagsService = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
             settings: new AIInterviewSettings
             {
                 AzureSpeechKey = "speech",
-                AzureSpeechRegion = "eastus",
-                AgoraAppId = "app",
-                AgoraTokenServiceUrl = "https://tokens"
+                AzureSpeechRegion = "eastus"
             },
             mockSettings: new MockAIInterviewSettings { UseMockResponses = true });
         var presentModel = await presentFlagsService.EnsureInterviewStartedAsync(session, new Customer { Id = 7 });
         Assert.That(presentModel.ClientSettings.SpeechAvailable, Is.True);
-        Assert.That(presentModel.ClientSettings.AgoraAvailable, Is.True);
     }
 
     [Test]

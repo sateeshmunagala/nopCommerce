@@ -209,7 +209,7 @@ public class CandidateFlowTests
     }
 
     [Test]
-    public async Task Runtime_Start_ExpiredActiveSession_IsHealed_And_Replaced()
+    public async Task Runtime_Start_ExpiredActiveSession_IsHealed_And_Reused()
     {
         var customer = new Customer { Id = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
@@ -226,13 +226,10 @@ public class CandidateFlowTests
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-10)
         };
 
-        InterviewSession insertedSession = null;
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession> { staleSession });
-        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
-        _sessionService.Setup(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()))
-            .Callback<InterviewSession>(session => insertedSession = session)
-            .Returns(Task.CompletedTask);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(staleSession.Token))
+            .ReturnsAsync(staleSession);
         var urlHelperMock = new Mock<Microsoft.AspNetCore.Mvc.IUrlHelper>();
         urlHelperMock.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
             .Returns("/mockaiinterview/runtime?token=generated");
@@ -241,19 +238,20 @@ public class CandidateFlowTests
         var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1);
         var json = (JsonResult)result;
         var runtimeUrl = json.Value.GetType().GetProperty("runtimeUrl").GetValue(json.Value, null) as string;
+        var token = json.Value.GetType().GetProperty("token").GetValue(json.Value, null) as string;
 
-        Assert.That(staleSession.IsActive, Is.False);
-        Assert.That(staleSession.CompletedOnUtc, Is.Not.Null);
+        Assert.That(staleSession.IsActive, Is.True);
+        Assert.That(staleSession.CompletedOnUtc, Is.Null);
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
             s.Id == staleSession.Id &&
-            s.IsActive == false &&
-            s.CompletedOnUtc.HasValue)), Times.Once);
+            s.IsActive &&
+            !s.CompletedOnUtc.HasValue &&
+            s.Token != "expired-token" &&
+            s.TokenExpiryUtc > DateTime.UtcNow)), Times.Once);
 
-        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Once);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()), Times.Once);
-        Assert.That(insertedSession, Is.Not.Null);
-        Assert.That(insertedSession.Token, Is.Not.EqualTo(staleSession.Token));
-        Assert.That(insertedSession.TokenExpiryUtc, Is.GreaterThan(DateTime.UtcNow));
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        Assert.That(token, Is.Not.EqualTo("expired-token"));
         Assert.That(runtimeUrl, Is.EqualTo("/mockaiinterview/runtime?token=generated"));
     }
 
@@ -923,6 +921,8 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("if (auto && !trimmedAnswer)"));
         Assert.That(runtimeText, Does.Contain("Auto submitting..."));
         Assert.That(runtimeText, Does.Contain("Speaking question."));
+        Assert.That(runtimeText, Does.Contain("Speaking reminder."));
+        Assert.That(runtimeText, Does.Contain("Question speech completed."));
         Assert.That(runtimeText, Does.Contain("Reminder shown."));
         Assert.That(runtimeText, Does.Contain("Reminder spoken."));
         Assert.That(runtimeText, Does.Contain("Reminder speech failed."));
@@ -930,6 +930,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Recording waiting for camera or mic."));
         Assert.That(runtimeText, Does.Contain("Recording live."));
         Assert.That(runtimeText, Does.Contain("clamp(220px, 28vw, 252px)"));
+        Assert.That(runtimeText, Does.Contain("Development mock mode is enabled. Azure OpenAI is bypassed."));
         var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Relevancy"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Correctness"));

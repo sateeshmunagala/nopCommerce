@@ -458,7 +458,6 @@ public class RuntimeAndAdminTests
             ClientSettings = new RuntimeClientSettingsModel
             {
                 SpeechAvailable = false,
-                AgoraAvailable = false,
                 RecordingAvailable = false
             }
         };
@@ -494,7 +493,6 @@ public class RuntimeAndAdminTests
         var model = (InterviewRuntimeModel)viewResult.Model;
 
         Assert.That(model.ClientSettings.SpeechAvailable, Is.False);
-        Assert.That(model.ClientSettings.AgoraAvailable, Is.False);
         Assert.That(model.ClientSettings.RecordingAvailable, Is.False);
     }
 
@@ -522,21 +520,6 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task Runtime_SpeechAndAgora_Unavailable_ReturnSafeJson()
-    {
-        var session = new InterviewSession { Token = "active", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
-        _sessionService.Setup(x => x.GetSessionByTokenAsync("active")).ReturnsAsync(session);
-
-        var speechResult = await _runtimeController.SpeechToken("active");
-        var agoraResult = await _runtimeController.AgoraToken("active");
-
-        Assert.That(speechResult, Is.TypeOf<JsonResult>());
-        Assert.That(agoraResult, Is.TypeOf<JsonResult>());
-        Assert.That(((JsonResult)speechResult).Value.GetType().GetProperty("error").GetValue(((JsonResult)speechResult).Value, null), Is.EqualTo("Speech token service is unavailable."));
-        Assert.That(((JsonResult)agoraResult).Value.GetType().GetProperty("error").GetValue(((JsonResult)agoraResult).Value, null), Is.EqualTo("Agora token service is unavailable."));
-    }
-
-    [Test]
     public async Task Runtime_SpeechToken_ExpiredOrInactive_ReturnsSafeJson()
     {
         _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync("expired")).ReturnsAsync((SpeechTokenResponseModel)null);
@@ -547,19 +530,6 @@ public class RuntimeAndAdminTests
 
         Assert.That(((JsonResult)expired).Value.GetType().GetProperty("error").GetValue(((JsonResult)expired).Value, null), Is.EqualTo("Speech token service is unavailable."));
         Assert.That(((JsonResult)inactive).Value.GetType().GetProperty("error").GetValue(((JsonResult)inactive).Value, null), Is.EqualTo("Speech token service is unavailable."));
-    }
-
-    [Test]
-    public async Task Runtime_AgoraToken_ExpiredOrInactive_ReturnsSafeJson()
-    {
-        _interviewRuntimeService.Setup(x => x.GetAgoraTokenAsync("expired")).ReturnsAsync((AgoraTokenResponseModel)null);
-        _interviewRuntimeService.Setup(x => x.GetAgoraTokenAsync("inactive")).ReturnsAsync((AgoraTokenResponseModel)null);
-
-        var expired = await _runtimeController.AgoraToken("expired");
-        var inactive = await _runtimeController.AgoraToken("inactive");
-
-        Assert.That(((JsonResult)expired).Value.GetType().GetProperty("error").GetValue(((JsonResult)expired).Value, null), Is.EqualTo("Agora token service is unavailable."));
-        Assert.That(((JsonResult)inactive).Value.GetType().GetProperty("error").GetValue(((JsonResult)inactive).Value, null), Is.EqualTo("Agora token service is unavailable."));
     }
 
     [Test]

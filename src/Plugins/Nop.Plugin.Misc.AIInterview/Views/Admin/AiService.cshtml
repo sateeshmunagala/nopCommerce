@@ -26,7 +26,7 @@
                         <div class="col-md-3"><nop-label asp-for="UseMockResponses" /></div>
                         <div class="col-md-9">
                             <nop-editor asp-for="UseMockResponses" />
-                            <small class="form-text text-muted" id="mock-responses-hint" style="display: none;">Mock AI responses are enabled; Azure OpenAI is not being called.</small>
+                            <small class="form-text text-warning font-weight-bold" id="mock-responses-hint" style="display: none;">Development mock mode is enabled. Azure OpenAI is bypassed.</small>
                         </div>
                     </div>
                     <script>
@@ -63,11 +63,6 @@
                     <h4>Azure Speech</h4>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureSpeechKey" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechKey" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureSpeechRegion" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechRegion" /></div></div>
-                    <hr />
-                    <h4>Agora</h4>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AgoraAppId" /></div><div class="col-md-9"><nop-editor asp-for="AgoraAppId" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AgoraTokenServiceUrl" /></div><div class="col-md-9"><nop-editor asp-for="AgoraTokenServiceUrl" /></div></div>
-                    <hr />
                     <h4>Azure Blob storage</h4>
                     <div class="form-group row">
                         <div class="col-md-3"><nop-label asp-for="AzureBlobStorageContainerUrl" /></div>

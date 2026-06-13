@@ -85,8 +85,6 @@ public class AdminBaselineTests
             AzureOpenAiEndpointUrl = "keep-endpoint",
             AzureOpenAiApiKey = "keep-aoai-key",
             AzureOpenAiDeploymentOrModel = "keep-deploy",
-            AgoraAppId = "keep-agora",
-            AgoraTokenServiceUrl = "keep-agora-url",
             AzureSpeechKey = "keep-speech",
             AzureSpeechRegion = "keep-region",
             AzureBlobStorageContainerUrl = "keep-container",
@@ -256,8 +254,6 @@ public class AdminBaselineTests
             AzureOpenAiEndpointUrl = "https://endpoint",
             AzureOpenAiApiKey = "aoai-key",
             AzureOpenAiDeploymentOrModel = "deployment",
-            AgoraAppId = "agora",
-            AgoraTokenServiceUrl = "https://token",
             AzureSpeechKey = "speech",
             AzureSpeechRegion = "eastus",
             AzureBlobStorageContainerUrl = "",
@@ -280,8 +276,6 @@ public class AdminBaselineTests
         Assert.That(refreshedModel.AzureOpenAiEndpointUrl, Is.EqualTo("https://endpoint"));
         Assert.That(refreshedModel.AzureOpenAiApiKey, Is.EqualTo("aoai-key"));
         Assert.That(refreshedModel.AzureOpenAiDeploymentOrModel, Is.EqualTo("deployment"));
-        Assert.That(refreshedModel.AgoraAppId, Is.EqualTo("agora"));
-        Assert.That(refreshedModel.AgoraTokenServiceUrl, Is.EqualTo("https://token"));
         Assert.That(refreshedModel.AzureSpeechKey, Is.EqualTo("speech"));
         Assert.That(refreshedModel.AzureSpeechRegion, Is.EqualTo("eastus"));
         Assert.That(refreshedModel.AzureBlobStorageContainerUrl, Is.Empty);
@@ -311,8 +305,6 @@ public class AdminBaselineTests
             AzureOpenAiEndpointUrl = "https://endpoint",
             AzureOpenAiApiKey = "aoai-key",
             AzureOpenAiDeploymentOrModel = "deployment",
-            AgoraAppId = "agora",
-            AgoraTokenServiceUrl = "https://token",
             AzureSpeechKey = "speech",
             AzureSpeechRegion = "eastus",
             AzureBlobStorageContainerUrl = "container",
@@ -350,6 +342,7 @@ public class AdminBaselineTests
         var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "AiService.cshtml"));
 
         Assert.That(text, Does.Contain("asp-route=\"@AIInterviewDefaults.AdminAiServiceRouteName\""));
+        Assert.That(text, Does.Contain("Development mock mode is enabled. Azure OpenAI is bypassed."));
     }
 
     [Test]
@@ -435,8 +428,6 @@ public class AdminBaselineTests
             AzureOpenAiEndpointUrl = "https://endpoint",
             AzureOpenAiApiKey = "aoai-key",
             AzureOpenAiDeploymentOrModel = "deployment",
-            AgoraAppId = "agora",
-            AgoraTokenServiceUrl = "https://token",
             AzureSpeechKey = "speech",
             AzureSpeechRegion = "eastus",
             AzureBlobStorageContainerUrl = "container",

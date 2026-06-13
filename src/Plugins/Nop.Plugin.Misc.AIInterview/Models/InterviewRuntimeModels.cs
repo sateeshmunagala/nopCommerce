@@ -41,17 +41,14 @@ public record RuntimeClientSettingsModel
     public string StopInterviewUrl { get; set; }
     public string TranscriptUrl { get; set; }
     public string SpeechTokenUrl { get; set; }
-    public string AgoraTokenUrl { get; set; }
     public string RecordingUploadUrl { get; set; }
     public string SpeechRegion { get; set; }
     public string SpeechVoiceName { get; set; }
-    public string AgoraAppId { get; set; }
     public string ProductName { get; set; }
     public string Token { get; set; }
     public string ReportUrl { get; set; }
     public DateTime? TokenExpiryUtc { get; set; }
     public bool SpeechAvailable { get; set; }
-    public bool AgoraAvailable { get; set; }
     public bool RecordingAvailable { get; set; }
 }
 
@@ -113,15 +110,6 @@ public record SpeechTokenResponseModel
 {
     public string Token { get; init; }
     public string Region { get; init; }
-    public int ExpiresInSeconds { get; init; }
-}
-
-public record AgoraTokenResponseModel
-{
-    public string AppId { get; init; }
-    public string Channel { get; init; }
-    public string Token { get; init; }
-    public uint Uid { get; init; }
     public int ExpiresInSeconds { get; init; }
 }
 

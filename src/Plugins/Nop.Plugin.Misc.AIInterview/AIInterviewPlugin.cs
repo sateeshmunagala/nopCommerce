@@ -325,8 +325,6 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiEndpointUrl"] = "Azure OpenAI Endpoint URL",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiApiKey"] = "Azure OpenAI API Key",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel"] = "Azure OpenAI Deployment / Model",
-            ["Plugins.Misc.AIInterview.Admin.AiService.AgoraAppId"] = "Agora App ID",
-            ["Plugins.Misc.AIInterview.Admin.AiService.AgoraTokenServiceUrl"] = "Agora Token Service URL",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechKey"] = "Azure Speech Key",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRegion"] = "Azure Speech Region",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl"] = "Azure Blob Storage Container URL",
@@ -373,7 +371,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl"] = "Azure Blob Storage Container URL",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
-            ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"] = "Paste the SAS token string exactly as issued. It is stored only in admin settings."
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"] = "Paste the SAS token string exactly as issued. It is stored only in admin settings.",
+            ["Plugins.Misc.AIInterview.Admin.MockMode.Warning"] = "Development mock mode is enabled. Azure OpenAI is bypassed.",
+            ["Plugins.Misc.AIInterview.Runtime.MockMode.Warning"] = "Development mock mode is enabled. Azure OpenAI is bypassed."
         };
     }
 
@@ -392,7 +392,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         var mockSettings = new MockAIInterviewSettings
         {
-            UseMockResponses = true
+            UseMockResponses = false
         };
         await _settingService.SaveSettingAsync(mockSettings);
 
@@ -409,7 +409,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.ApiKey"] = "API Key",
             [$"{AIInterviewDefaults.LocalizationPrefix}.ApiKey.Hint"] = "Specify the API key for AI service.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.UseMockResponses"] = "Use Mock Responses",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.UseMockResponses.Hint"] = "Enable to use mock responses instead of calling actual AI service.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.UseMockResponses.Hint"] = "Development only. Enable to bypass Azure OpenAI and use mock responses.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MinimumScore"] = "Default minimum score fallback",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.JobTitle"] = "Job Title",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile"] = "Resume File",

@@ -12,8 +12,10 @@ using Nop.Core.Events;
 using Nop.Plugin.Misc.AIInterview.Events;
 using Nop.Services.Vendors;
 using Nop.Services.Seo;
+using NopLogger = Nop.Services.Logging.ILogger;
 using Nop.Web.Framework.Controllers;
 using Microsoft.Extensions.Logging;
+using NopLogLevel = Nop.Core.Domain.Logging.LogLevel;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
@@ -33,6 +35,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IUrlRecordService _urlRecordService;
     private readonly IInterviewTurnService _turnService;
     private readonly IInterviewRuntimeService _interviewRuntimeService;
+    private readonly NopLogger _nopLogger;
     private readonly ILogger<MockAiInterviewController> _logger;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
@@ -49,6 +52,7 @@ public class MockAiInterviewController : BasePluginController
         IUrlRecordService urlRecordService = null,
         IInterviewTurnService turnService = null,
         IInterviewRuntimeService interviewRuntimeService = null,
+        NopLogger nopLogger = null,
         ILogger<MockAiInterviewController> logger = null)
     {
         _interviewSessionService = interviewSessionService;
@@ -65,7 +69,13 @@ public class MockAiInterviewController : BasePluginController
         _urlRecordService = urlRecordService;
         _turnService = turnService;
         _interviewRuntimeService = interviewRuntimeService;
+        _nopLogger = nopLogger;
         _logger = logger;
+    }
+
+    protected virtual Task LogRuntimeIssueAsync(string shortMessage, string fullMessage = "")
+    {
+        return _nopLogger == null ? Task.CompletedTask : _nopLogger.InsertLogAsync(NopLogLevel.Warning, shortMessage, fullMessage);
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -167,27 +177,17 @@ public class MockAiInterviewController : BasePluginController
         var now = DateTime.UtcNow;
         var reusableSession = customerSessions.FirstOrDefault(s =>
             s.IsActive &&
-            !s.CompletedOnUtc.HasValue &&
-            (!s.TokenExpiryUtc.HasValue || s.TokenExpiryUtc > now));
+            !s.CompletedOnUtc.HasValue);
 
-        var staleActiveSessions = customerSessions.Where(s =>
-            s.IsActive &&
-            s.TokenExpiryUtc.HasValue &&
-            s.TokenExpiryUtc <= now).ToList();
-
-        foreach (var staleSession in staleActiveSessions)
+        if (reusableSession != null)
         {
-            staleSession.IsActive = false;
-            if (!staleSession.CompletedOnUtc.HasValue)
-                staleSession.CompletedOnUtc = now;
+            if (reusableSession.TokenExpiryUtc.HasValue && reusableSession.TokenExpiryUtc <= now)
+            {
+                var renewed = await RenewActiveRuntimeTokenAsync(reusableSession.Token, true);
+                if (renewed.Session != null)
+                    reusableSession = renewed.Session;
+            }
 
-            await _interviewSessionService.UpdateInterviewSessionAsync(staleSession);
-            _logger?.LogInformation("AIInterview stale session auto-healed for customer {CustomerId}, product {ProductId}, session {SessionId}.",
-                customer.Id, productId, staleSession.Id);
-        }
-
-        if (reusableSession != null && IsSessionUsable(reusableSession, now))
-        {
             return Json(new
             {
                 sessionKey = reusableSession.SessionKey,
@@ -306,13 +306,11 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.RefreshTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockRefreshTokenRouteName);
         model.ClientSettings.StopInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
         model.ClientSettings.SpeechTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechTokenRouteName);
-        model.ClientSettings.AgoraTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockAgoraTokenRouteName);
         model.ClientSettings.ProductName = model.ProductName;
         model.ClientSettings.Token = session?.Token;
         model.ClientSettings.ReportUrl = model.ReportUrl;
         model.ClientSettings.TokenExpiryUtc = session?.TokenExpiryUtc;
         model.ClientSettings.SpeechAvailable = model.ClientSettings.SpeechAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.SpeechTokenUrl);
-        model.ClientSettings.AgoraAvailable = model.ClientSettings.AgoraAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.AgoraTokenUrl);
         model.ClientSettings.RecordingUploadUrl = Url?.RouteUrl(AIInterviewDefaults.MockRecordingUploadRouteName);
         model.ClientSettings.RecordingAvailable = model.ClientSettings.RecordingAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.RecordingUploadUrl);
     }
@@ -391,7 +389,10 @@ public class MockAiInterviewController : BasePluginController
 
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
         if (!IsSessionUsable(session))
+        {
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"SubmitAnswer rejected invalid session for token {MaskToken(token)}.");
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+        }
 
         if (string.IsNullOrEmpty(answer))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer", "Answer cannot be empty.");
@@ -440,7 +441,10 @@ public class MockAiInterviewController : BasePluginController
 
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
         if (!IsSessionUsable(session))
+        {
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"Stop rejected invalid session for token {MaskToken(token)}.");
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+        }
 
         session.IsActive = false;
         session.CompletedOnUtc = DateTime.UtcNow;
@@ -473,7 +477,10 @@ public class MockAiInterviewController : BasePluginController
         var tokenRenewal = await RenewActiveRuntimeTokenAsync(token, true);
         var session = tokenRenewal.Session;
         if (session == null)
+        {
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"Token refresh failed for token {MaskToken(token)}.");
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+        }
 
         return Json(new { newToken = session.Token, tokenExpiryUtc = session.TokenExpiryUtc });
     }
@@ -490,7 +497,10 @@ public class MockAiInterviewController : BasePluginController
 
         var result = await _interviewRuntimeService.GetSpeechTokenAsync(token);
         if (result == null)
+        {
+            await LogRuntimeIssueAsync("AI Interview speech token failure", $"Speech token retrieval failed for token {MaskToken(token)}.");
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech token service is unavailable.");
+        }
 
         if (tokenRenewal.Renewed)
         {
@@ -509,38 +519,6 @@ public class MockAiInterviewController : BasePluginController
     }
 
     [HttpPost]
-    public async Task<IActionResult> AgoraToken(string token)
-    {
-        if (_interviewRuntimeService == null)
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Agora token service is unavailable.");
-
-        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
-        if (tokenRenewal.Session != null && tokenRenewal.Renewed)
-            token = tokenRenewal.Session.Token;
-
-        var result = await _interviewRuntimeService.GetAgoraTokenAsync(token);
-        if (result == null)
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Agora token service is unavailable.");
-
-        if (tokenRenewal.Renewed)
-        {
-            return Json(new
-            {
-                success = true,
-                appId = result.AppId,
-                channel = result.Channel,
-                token = result.Token,
-                uid = result.Uid,
-                expiresInSeconds = result.ExpiresInSeconds,
-                newToken = tokenRenewal.Session.Token,
-                tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
-            });
-        }
-
-        return Json(new { success = true, appId = result.AppId, channel = result.Channel, token = result.Token, uid = result.Uid, expiresInSeconds = result.ExpiresInSeconds });
-    }
-
-    [HttpPost]
     public async Task<IActionResult> UploadRecording(string token, IFormFile recording)
     {
         if (_interviewRuntimeService == null)
@@ -552,7 +530,10 @@ public class MockAiInterviewController : BasePluginController
 
         var result = await _interviewRuntimeService.UploadRecordingAsync(token, recording);
         if (result == null || !result.Success)
+        {
+            await LogRuntimeIssueAsync("AI Interview recording upload failure", $"Recording upload failed for token {MaskToken(token)}.");
             return Json(new { success = false, message = result?.Message ?? "Recording upload failed." });
+        }
 
         if (tokenRenewal.Renewed)
         {

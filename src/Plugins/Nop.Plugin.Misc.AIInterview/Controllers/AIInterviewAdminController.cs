@@ -138,8 +138,6 @@ public class AIInterviewAdminController : BasePluginController
             _aiInterviewSettings.AzureOpenAiEndpointUrl = settingsModel.AzureOpenAiEndpointUrl;
             _aiInterviewSettings.AzureOpenAiApiKey = settingsModel.AzureOpenAiApiKey;
             _aiInterviewSettings.AzureOpenAiDeploymentOrModel = settingsModel.AzureOpenAiDeploymentOrModel;
-            _aiInterviewSettings.AgoraAppId = settingsModel.AgoraAppId;
-            _aiInterviewSettings.AgoraTokenServiceUrl = settingsModel.AgoraTokenServiceUrl;
             _aiInterviewSettings.AzureSpeechKey = settingsModel.AzureSpeechKey;
             _aiInterviewSettings.AzureSpeechRegion = settingsModel.AzureSpeechRegion;
             _aiInterviewSettings.AzureBlobStorageContainerUrl = settingsModel.AzureBlobStorageContainerUrl;
@@ -626,8 +624,6 @@ public class AIInterviewAdminController : BasePluginController
             AzureOpenAiEndpointUrl = aiInterviewSettings.AzureOpenAiEndpointUrl,
             AzureOpenAiApiKey = aiInterviewSettings.AzureOpenAiApiKey,
             AzureOpenAiDeploymentOrModel = aiInterviewSettings.AzureOpenAiDeploymentOrModel,
-            AgoraAppId = aiInterviewSettings.AgoraAppId,
-            AgoraTokenServiceUrl = aiInterviewSettings.AgoraTokenServiceUrl,
             AzureSpeechKey = aiInterviewSettings.AzureSpeechKey,
             AzureSpeechRegion = aiInterviewSettings.AzureSpeechRegion,
             AzureBlobStorageContainerUrl = aiInterviewSettings.AzureBlobStorageContainerUrl,

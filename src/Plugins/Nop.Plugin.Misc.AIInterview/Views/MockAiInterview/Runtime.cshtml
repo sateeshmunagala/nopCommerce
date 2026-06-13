@@ -97,8 +97,8 @@
                 <div class="runtime-status" id="recording-status"></div>
                 @if (Model.IsMockMode)
                 {
-                    <div class="runtime-status message-info" style="color: #0f5bd7; text-align: center; margin-top: 10px; font-size: 13px;">
-                        Mock AI responses are enabled; Azure OpenAI is not being called.
+                    <div class="runtime-status message-info" style="color: #0f5bd7; text-align: center; margin-top: 10px; font-size: 13px; font-weight: 700;">
+                        Development mock mode is enabled. Azure OpenAI is bypassed.
                     </div>
                 }
                 <div class="runtime-meter" id="audio-meter" aria-label="microphone level">
@@ -860,7 +860,7 @@
             if (purpose === 'question')
                 logActivity('Speaking question.');
             else if (purpose === 'reminder')
-                logActivity('Reminder spoken.');
+                logActivity('Speaking reminder.');
 
             isSpeakingOrSubmitting = true;
             clearTimeout(silenceTimer);
@@ -868,11 +868,9 @@
 
             const tokenResult = await requestSpeechToken();
             if (!tokenResult || !tokenResult.success) {
-                logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${tokenResult?.message || 'Speech token service is unavailable.'}`);
-                if (purpose === 'question')
-                    setStatus(tokenResult?.message || 'Speech token service is unavailable.', true);
-                if (purpose === 'reminder')
-                    setStatus(tokenResult?.message || 'Speech token service is unavailable.', true);
+                const failureReason = tokenResult?.message || 'Speech token service is unavailable.';
+                logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${failureReason}`);
+                setStatus(failureReason, true);
                 isSpeakingOrSubmitting = false;
                 resetTimers();
                 return;
@@ -881,25 +879,23 @@
             try {
                 const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
                 const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
-                await new Promise(resolve => {
+                await new Promise((resolve, reject) => {
                     synthesizer.speakTextAsync(text, () => {
                         synthesizer.close();
                         resolve();
-                    }, () => {
+                    }, (result) => {
                         synthesizer.close();
-                        resolve();
+                        reject(new Error(result?.errorDetails || result?.error || 'Speech synthesis failed.'));
                     });
                 });
                 if (purpose === 'question')
                     logActivity('Question speech completed.');
                 else if (purpose === 'reminder')
                     logActivity('Reminder spoken.');
-            } catch {
-                logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed.`);
-                if (purpose === 'question')
-                    setStatus('Question speech failed.', true);
-                if (purpose === 'reminder')
-                    setStatus('Reminder speech failed.', true);
+            } catch (error) {
+                const reason = error?.message || 'Speech synthesis failed.';
+                logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${reason}`);
+                setStatus(purpose === 'reminder' ? 'Reminder speech failed.' : 'Question speech failed.', true);
             } finally {
                 isSpeakingOrSubmitting = false;
                 resetTimers();
@@ -1159,7 +1155,11 @@
             interviewStarted = true;
             setStatus('Interview started.', false);
             document.getElementById('start-or-next').textContent = 'Next Question';
-            await ensureRuntimeTokenFresh();
+            if (!(await ensureRuntimeTokenFresh())) {
+                setStatus('Interview token refresh failed.', true);
+                interviewStarted = false;
+                return;
+            }
             if (config.recordingAvailable && recordingEnabled)
                 await requestRecordingMediaForStart();
             await syncRecording();
