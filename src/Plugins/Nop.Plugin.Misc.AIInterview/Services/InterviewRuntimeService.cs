@@ -248,6 +248,10 @@ public class InterviewAiClient : IAIInterviewClient
         var previousScores = request.PreviousScores.Any()
             ? string.Join(", ", request.PreviousScores.Select(score => score.ToString("N0")))
             : "None";
+        var previousTurns = request.PreviousTurns.Any()
+            ? string.Join("\n", request.PreviousTurns.Select(turn =>
+                $"#{turn.SequenceNumber} Q: {TruncateSafe(turn.Question, 120)} | A: {TruncateSafe(turn.Answer, 180)} | Score: {(turn.Score.HasValue ? turn.Score.Value.ToString("N0") : "-")} | Feedback: {TruncateSafe(turn.Feedback, 120)}"))
+            : "None";
 
         return $"""
 Interview mode: {mode}
@@ -257,6 +261,8 @@ Prompt: {request.Prompt}
 Question number: {request.QuestionNumber}
 Previous questions: {previousQuestions}
 Previous scores: {previousScores}
+Previous answered turns:
+{previousTurns}
 Current question: {request.Question}
 Candidate answer: {request.Answer}
 Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "score, feedback, complete, nextQuestion, completion, optional rubricJson")}
@@ -573,7 +579,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Answer = answer,
             QuestionNumber = currentTurn.SequenceNumber,
             PreviousQuestions = turns.Select(turn => turn.QuestionText).ToList(),
-            PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList()
+            PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList(),
+            PreviousTurns = BuildPreviousTurnContext(turns, currentTurn)
         });
 
         if (evaluation == null || !evaluation.Success || !evaluation.Score.HasValue || evaluation.Score.Value < 0 || evaluation.Score.Value > 100)
@@ -869,7 +876,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Score = session.Score,
             IsCompleted = session.CompletedOnUtc.HasValue,
             IsMockMode = _mockSettings?.UseMockResponses ?? true,
-            ReportUrl = session.Id > 0 ? $"/aiinterview/report/{session.Id}" : string.Empty,
+            ReportUrl = string.Empty,
             TokenExpiryUtc = session.TokenExpiryUtc,
             Turns = turns.Select(turn => new InterviewTurnViewModel
             {
@@ -904,7 +911,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Prompt = _settings.Prompt,
             QuestionNumber = sequenceNumber,
             PreviousQuestions = turns.Select(turn => turn.QuestionText).ToList(),
-            PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList()
+            PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList(),
+            PreviousTurns = BuildPreviousTurnContext(turns)
         };
 
         var aiResponse = await _aiClient.GenerateQuestionAsync(request);
@@ -959,7 +967,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Feedback = turns.LastOrDefault()?.Feedback ?? reason ?? string.Empty,
             Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
             Completion = session.ReportData,
-            ReportUrl = session.Id > 0 ? $"/aiinterview/report/{session.Id}" : string.Empty,
+            ReportUrl = string.Empty,
             Turns = turns.Select(turn => new InterviewTurnViewModel
             {
                 TurnId = turn.Id,
@@ -1030,5 +1038,24 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         var product = await _productService.GetProductByIdAsync(productId);
         return product?.Name ?? "Practice Interview";
+    }
+
+    protected virtual IList<AIInterviewHistoryItem> BuildPreviousTurnContext(IEnumerable<InterviewTurn> turns, InterviewTurn currentTurn = null)
+    {
+        return (turns ?? Enumerable.Empty<InterviewTurn>())
+            .Where(turn => turn != null
+                && turn.Id != currentTurn?.Id
+                && !string.IsNullOrWhiteSpace(turn.AnswerText))
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .Select(turn => new AIInterviewHistoryItem
+            {
+                SequenceNumber = turn.SequenceNumber,
+                Question = turn.QuestionText,
+                Answer = turn.AnswerText,
+                Score = turn.Score,
+                Feedback = turn.Feedback
+            })
+            .ToList();
     }
 }

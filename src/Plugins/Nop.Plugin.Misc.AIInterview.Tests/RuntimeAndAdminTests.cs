@@ -488,12 +488,125 @@ public class RuntimeAndAdminTests
             null,
             _interviewRuntimeService.Object);
 
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
+            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext ctx) => ctx.RouteName switch
+            {
+                var name when name == AIInterviewDefaults.MockReportRouteName => "/mockaiinterview/report/1",
+                var name when name == AIInterviewDefaults.MockSubmitAnswerRouteName => "/mockaiinterview/submit-answer",
+                var name when name == AIInterviewDefaults.MockStopRouteName => "/mockaiinterview/stop",
+                var name when name == AIInterviewDefaults.MockRefreshTokenRouteName => "/mockaiinterview/refresh-token",
+                var name when name == AIInterviewDefaults.MockSpeechTokenRouteName => "/mockaiinterview/speech-token",
+                var name when name == AIInterviewDefaults.MockRecordingUploadRouteName => "/mockaiinterview/upload-recording",
+                _ => string.Empty
+            });
+        controller.Url = urlHelper.Object;
+
         var result = await controller.Runtime("token");
         var viewResult = (ViewResult)result;
         var model = (InterviewRuntimeModel)viewResult.Model;
 
         Assert.That(model.ClientSettings.SpeechAvailable, Is.False);
         Assert.That(model.ClientSettings.RecordingAvailable, Is.False);
+        Assert.That(model.ReportUrl, Is.EqualTo("/mockaiinterview/report/1"));
+        Assert.That(model.ClientSettings.ReportUrl, Is.EqualTo("/mockaiinterview/report/1"));
+    }
+
+    [Test]
+    public async Task Runtime_SubmitAnswer_CompletedResponse_UsesMockReportRoute()
+    {
+        var session = new InterviewSession
+        {
+            Id = 71,
+            CustomerId = 1,
+            Token = "complete-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("complete-token")).ReturnsAsync(session);
+        _interviewRuntimeService.Setup(x => x.SubmitAnswerAsync("complete-token", "Answer"))
+            .ReturnsAsync(new SubmitInterviewAnswerResponse
+            {
+                Success = true,
+                IsTerminated = true,
+                ReportUrl = string.Empty,
+                Completion = "done"
+            });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            null,
+            null,
+            null,
+            _interviewRuntimeService.Object);
+
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
+            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext ctx) => ctx.RouteName == AIInterviewDefaults.MockReportRouteName ? "/mockaiinterview/report/71" : string.Empty);
+        controller.Url = urlHelper.Object;
+
+        var result = await controller.SubmitAnswer("complete-token", "Answer");
+        var json = (JsonResult)result;
+        var reportUrl = json.Value.GetType().GetProperty("ReportUrl")?.GetValue(json.Value, null)?.ToString();
+
+        Assert.That(reportUrl, Is.EqualTo("/mockaiinterview/report/71"));
+    }
+
+    [Test]
+    public async Task Runtime_Stop_CompletedResponse_UsesMockReportRoute()
+    {
+        var session = new InterviewSession
+        {
+            Id = 72,
+            CustomerId = 1,
+            Token = "stop-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("stop-token")).ReturnsAsync(session);
+        _interviewRuntimeService.Setup(x => x.CompleteInterviewAsync("stop-token", "Stopped by user"))
+            .ReturnsAsync(new CompleteInterviewResponse
+            {
+                Success = true,
+                IsTerminated = true,
+                ReportUrl = string.Empty
+            });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            null,
+            null,
+            null,
+            _interviewRuntimeService.Object);
+
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
+            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext ctx) => ctx.RouteName == AIInterviewDefaults.MockReportRouteName ? "/mockaiinterview/report/72" : string.Empty);
+        controller.Url = urlHelper.Object;
+
+        var result = await controller.Stop("stop-token");
+        var json = (JsonResult)result;
+        var reportUrl = json.Value.GetType().GetProperty("ReportUrl")?.GetValue(json.Value, null)?.ToString();
+
+        Assert.That(reportUrl, Is.EqualTo("/mockaiinterview/report/72"));
     }
 
     [Test]

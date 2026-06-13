@@ -263,6 +263,69 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task SubmitAnswerAsync_Includes_Previous_Answers_And_Feedback_In_Ai_Request_Context()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession { Id = 22, ProductId = 44, CustomerId = 5, SessionKey = "key22", Token = "token22", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var priorTurn = new InterviewTurn { Id = 1, InterviewSessionId = 22, SequenceNumber = 1, QuestionText = "Q1", AnswerText = "A1 with detail", Score = 74, Feedback = "Add stronger metrics", AskedOnUtc = DateTime.UtcNow.AddMinutes(-5), AnsweredOnUtc = DateTime.UtcNow.AddMinutes(-4), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-5) };
+        var currentTurn = new InterviewTurn { Id = 2, InterviewSessionId = 22, SequenceNumber = 2, QuestionText = "Q2", AskedOnUtc = DateTime.UtcNow.AddMinutes(-2), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-2) };
+        var store = new List<InterviewTurn> { priorTurn, currentTurn };
+
+        AIInterviewClientRequest scoreRequest = null;
+        AIInterviewClientRequest nextQuestionRequest = null;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token22")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(22)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
+        aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
+            .Callback<AIInterviewClientRequest>(request => scoreRequest = request)
+            .ReturnsAsync(new AIInterviewClientResponse { Score = 88, Feedback = "Strong follow-up", RawJson = "{}" });
+        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
+            .Callback<AIInterviewClientRequest>(request => nextQuestionRequest = request)
+            .ReturnsAsync(new AIInterviewClientResponse { Question = "Q3", RawJson = "{\"question\":\"Q3\"}" });
+        productService.Setup(x => x.GetProductByIdAsync(44)).ReturnsAsync(new Product { Id = 44, Name = "Platform Engineer" });
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback<InterviewTurn>(updated =>
+            {
+                store.RemoveAll(x => x.Id == updated.Id);
+                store.Add(updated);
+            })
+            .Returns(Task.CompletedTask);
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn created) =>
+            {
+                created.Id = 3;
+                store.Add(created);
+                return created;
+            });
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
+
+        var result = await service.SubmitAnswerAsync("token22", "A2 with structure and impact.");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(scoreRequest, Is.Not.Null);
+        Assert.That(scoreRequest.PreviousTurns.Count, Is.EqualTo(1));
+        Assert.That(scoreRequest.PreviousTurns[0].Question, Is.EqualTo("Q1"));
+        Assert.That(scoreRequest.PreviousTurns[0].Answer, Is.EqualTo("A1 with detail"));
+        Assert.That(scoreRequest.PreviousTurns[0].Feedback, Is.EqualTo("Add stronger metrics"));
+
+        Assert.That(nextQuestionRequest, Is.Not.Null);
+        Assert.That(nextQuestionRequest.PreviousTurns.Count, Is.EqualTo(2));
+        Assert.That(nextQuestionRequest.PreviousTurns.Any(x => x.Question == "Q1" && x.Answer == "A1 with detail" && x.Feedback == "Add stronger metrics"), Is.True);
+        Assert.That(nextQuestionRequest.PreviousTurns.Any(x => x.Question == "Q2" && x.Answer == "A2 with structure and impact." && x.Feedback == "Strong follow-up"), Is.True);
+    }
+
+    [Test]
     public async Task SubmitAnswerAsync_QuestionGenerationFailure_DoesNotInsertFakeQuestion()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -609,7 +672,7 @@ public class RuntimeServiceTests
 
         Assert.That(result.IsTerminated, Is.True);
         Assert.That(result.Success, Is.True);
-        Assert.That(result.ReportUrl, Does.Contain("/aiinterview/report/3"));
+        Assert.That(result.ReportUrl, Is.Empty);
         Assert.That(updatedSession, Is.Not.Null);
         Assert.That(updatedSession.Score, Is.EqualTo(91));
         Assert.That(updatedSession.QuestionScores, Does.Contain("91"));
@@ -1013,7 +1076,11 @@ public class RuntimeServiceTests
             Prompt = "Use the admin guidance",
             QuestionNumber = 1,
             PreviousQuestions = new List<string>(),
-            PreviousScores = new List<decimal>()
+            PreviousScores = new List<decimal>(),
+            PreviousTurns = new List<AIInterviewHistoryItem>
+            {
+                new() { SequenceNumber = 1, Question = "Previous question", Answer = "Previous answer with business impact", Score = 84, Feedback = "Tighten the metrics" }
+            }
         });
 
         Assert.That(result.Success, Is.True);
@@ -1024,6 +1091,9 @@ public class RuntimeServiceTests
         Assert.That(requestBody, Does.Contain("complete:false"));
         Assert.That(requestBody, Does.Contain("optional rubricJson"));
         Assert.That(requestBody, Does.Contain("Use the admin guidance"));
+        Assert.That(requestBody, Does.Contain("Previous answered turns"));
+        Assert.That(requestBody, Does.Contain("Previous answer with business impact"));
+        Assert.That(requestBody, Does.Contain("Tighten the metrics"));
     }
 
     [Test]
@@ -1061,14 +1131,21 @@ public class RuntimeServiceTests
             Difficulty = "Medium",
             Prompt = "Use the admin guidance",
             Question = "Q1",
-            Answer = "A1"
+            Answer = "A1",
+            PreviousTurns = new List<AIInterviewHistoryItem>
+            {
+                new() { SequenceNumber = 1, Question = "Previous question", Answer = "Previous answer", Score = 79, Feedback = "More detail on trade-offs" }
+            }
         });
 
         Assert.That(result.Success, Is.True);
         Assert.That(result.Score, Is.EqualTo(91));
         Assert.That(result.NextQuestion, Is.EqualTo("Q2"));
-        Assert.That(result.Complete, Is.True);
         var requestBody = await httpHandler.Requests.Single().Content.ReadAsStringAsync();
+        Assert.That(requestBody, Does.Contain("Previous answered turns"));
+        Assert.That(requestBody, Does.Contain("Previous answer"));
+        Assert.That(requestBody, Does.Contain("More detail on trade-offs"));
+        Assert.That(result.Complete, Is.True);
         Assert.That(requestBody, Does.Contain("Scoring mode contract"));
         Assert.That(requestBody, Does.Contain("nextQuestion"));
         Assert.That(requestBody, Does.Contain("completion"));

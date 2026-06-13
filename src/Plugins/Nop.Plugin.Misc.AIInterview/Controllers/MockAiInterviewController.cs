@@ -121,6 +121,13 @@ public class MockAiInterviewController : BasePluginController
         return !IsSessionExpired(session, currentUtc);
     }
 
+    protected virtual string GetMockReportUrl(int sessionId)
+    {
+        return sessionId > 0
+            ? Url?.RouteUrl(AIInterviewDefaults.MockReportRouteName, new { sessionId }) ?? string.Empty
+            : string.Empty;
+    }
+
     protected virtual async Task<(InterviewSession Session, bool Renewed)> RenewActiveRuntimeTokenAsync(string token, bool forceRenew = false)
     {
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
@@ -308,6 +315,7 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.SpeechTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechTokenRouteName);
         model.ClientSettings.ProductName = model.ProductName;
         model.ClientSettings.Token = session?.Token;
+        model.ReportUrl = GetMockReportUrl(session?.Id ?? model.SessionId);
         model.ClientSettings.ReportUrl = model.ReportUrl;
         model.ClientSettings.TokenExpiryUtc = session?.TokenExpiryUtc;
         model.ClientSettings.SpeechAvailable = model.ClientSettings.SpeechAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.SpeechTokenUrl);
@@ -359,9 +367,10 @@ public class MockAiInterviewController : BasePluginController
         if (_interviewRuntimeService != null)
         {
             var runtimeResponse = await _interviewRuntimeService.SubmitAnswerAsync(token, answer);
+            var sessionInfo = await _interviewSessionService.GetSessionByTokenAsync(token);
+            var reportUrl = runtimeResponse?.IsTerminated == true ? GetMockReportUrl(sessionInfo?.Id ?? 0) : runtimeResponse?.ReportUrl;
             if (runtimeResponse != null && !runtimeResponse.Success)
             {
-                var sessionInfo = await _interviewSessionService.GetSessionByTokenAsync(token);
                 _logger?.LogWarning("SubmitAnswer failed for session {SessionId}, customer {CustomerId}, product {ProductId}: {Message}",
                     sessionInfo?.Id, sessionInfo?.CustomerId, sessionInfo?.ProductId, runtimeResponse.Message);
             }
@@ -372,7 +381,7 @@ public class MockAiInterviewController : BasePluginController
                     runtimeResponse.Success,
                     runtimeResponse.IsTerminated,
                     runtimeResponse.Completion,
-                    runtimeResponse.ReportUrl,
+                    ReportUrl = reportUrl,
                     runtimeResponse.Question,
                     runtimeResponse.Turn,
                     runtimeResponse.Interrupted,
@@ -384,7 +393,19 @@ public class MockAiInterviewController : BasePluginController
                 });
             }
 
-            return Json(runtimeResponse);
+            return Json(new
+            {
+                runtimeResponse.Success,
+                runtimeResponse.IsTerminated,
+                runtimeResponse.Completion,
+                ReportUrl = reportUrl,
+                runtimeResponse.Question,
+                runtimeResponse.Turn,
+                runtimeResponse.Interrupted,
+                runtimeResponse.Score,
+                runtimeResponse.Feedback,
+                runtimeResponse.Message
+            });
         }
 
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
@@ -413,9 +434,10 @@ public class MockAiInterviewController : BasePluginController
         if (_interviewRuntimeService != null)
         {
             var response = await _interviewRuntimeService.CompleteInterviewAsync(token, "Stopped by user");
+            var sessionInfo = await _interviewSessionService.GetSessionByTokenAsync(token);
+            var reportUrl = response?.Success == true ? GetMockReportUrl(sessionInfo?.Id ?? 0) : response?.ReportUrl;
             if (response != null && !response.Success)
             {
-                var sessionInfo = await _interviewSessionService.GetSessionByTokenAsync(token);
                 _logger?.LogWarning("Stop failed for session {SessionId}, customer {CustomerId}, product {ProductId}: {Message}",
                     sessionInfo?.Id, sessionInfo?.CustomerId, sessionInfo?.ProductId, response.Message);
             }
@@ -429,14 +451,24 @@ public class MockAiInterviewController : BasePluginController
                     response.Feedback,
                     response.Message,
                     response.Completion,
-                    response.ReportUrl,
+                    ReportUrl = reportUrl,
                     response.Turns,
                     newToken = tokenRenewal.Session.Token,
                     tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
                 });
             }
 
-            return Json(response);
+            return Json(new
+            {
+                response.Success,
+                response.IsTerminated,
+                response.Score,
+                response.Feedback,
+                response.Message,
+                response.Completion,
+                ReportUrl = reportUrl,
+                response.Turns
+            });
         }
 
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);

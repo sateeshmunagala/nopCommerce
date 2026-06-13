@@ -68,6 +68,16 @@ public record AIInterviewClientRequest
     public int QuestionNumber { get; init; }
     public IList<string> PreviousQuestions { get; init; } = new List<string>();
     public IList<decimal> PreviousScores { get; init; } = new List<decimal>();
+    public IList<AIInterviewHistoryItem> PreviousTurns { get; init; } = new List<AIInterviewHistoryItem>();
+}
+
+public record AIInterviewHistoryItem
+{
+    public int SequenceNumber { get; init; }
+    public string Question { get; init; }
+    public string Answer { get; init; }
+    public decimal? Score { get; init; }
+    public string Feedback { get; init; }
 }
 
 public record AIInterviewClientResponse
