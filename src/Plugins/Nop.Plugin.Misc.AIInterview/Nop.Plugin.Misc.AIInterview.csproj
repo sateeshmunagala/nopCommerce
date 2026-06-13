@@ -19,6 +19,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="AI_ReferenceFiles\**\*" />
+    <Content Remove="AI_ReferenceFiles\**\*" />
+    <None Remove="AI_ReferenceFiles\**\*" />
     <None Remove="logo.png" />
     <None Remove="plugin.json" />
     <None Remove="Views\_ViewImports.cshtml" />

@@ -62,4 +62,14 @@ public class UpgradeTests
         Assert.That(migrationText, Does.Contain("Index(\"IX_AIInterview_InterviewTurn_SessionId_SequenceNumber\").Exists()"));
         Assert.That(schemaText, Does.Contain("Index(\"IX_AIInterview_InterviewTurn_SessionId_SequenceNumber\").Exists()"));
     }
+
+    [Test]
+    public void InterviewSessionTokenExpiryMigration_Guards_Column_Creation()
+    {
+        var migrationText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Data", "InterviewSessionTokenExpiryMigration.cs"));
+
+        Assert.That(migrationText, Does.Contain("Schema.Table(TableName).Column(ColumnName).Exists()"));
+        Assert.That(migrationText, Does.Contain("nameof(InterviewSession.TokenExpiryUtc)"));
+        Assert.That(migrationText, Does.Contain("AsDateTime2().Nullable()"));
+    }
 }

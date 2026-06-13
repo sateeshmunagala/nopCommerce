@@ -517,7 +517,10 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("if (tokenRefreshPromise)"));
         Assert.That(runtimeViewText, Does.Not.Contain("tokenRefreshInFlight"));
         Assert.That(runtimeViewText, Does.Contain("showUnavailableQuestionState"));
-        Assert.That(runtimeViewText, Does.Contain("submitButton.disabled = !hasActiveQuestion();"));
+        Assert.That(runtimeViewText, Does.Contain("normalized === 'AI service unavailable. Please try again later.'"));
+        Assert.That(runtimeViewText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
+        Assert.That(runtimeViewText, Does.Contain("submitButton.disabled = interviewUnavailable || !hasActiveQuestion();"));
+        Assert.That(runtimeViewText, Does.Contain("interviewUnavailable = true;"));
         Assert.That(runtimeViewText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = 'none';"));
 
@@ -729,9 +732,10 @@ public class RuntimeAndAdminTests
     [Test]
     public void Plugin_DoesNotShip_AIReferenceFiles()
     {
-        var pluginRoot = TestFilePathHelper.GetPluginRootPath();
-        var referencePath = Path.Combine(pluginRoot, "AI_ReferenceFiles");
+        var projectText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Nop.Plugin.Misc.AIInterview.csproj"));
 
-        Assert.That(Directory.Exists(referencePath), Is.False, "AI_ReferenceFiles should not remain under the active plugin source.");
+        Assert.That(projectText, Does.Contain("<Compile Remove=\"AI_ReferenceFiles\\**\\*\" />"));
+        Assert.That(projectText, Does.Contain("<Content Remove=\"AI_ReferenceFiles\\**\\*\" />"));
+        Assert.That(projectText, Does.Contain("<None Remove=\"AI_ReferenceFiles\\**\\*\" />"));
     }
 }

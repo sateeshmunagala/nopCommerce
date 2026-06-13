@@ -181,6 +181,7 @@
         let recordingUploadInFlight = false;
         let tokenRefreshPromise = null;
         let interviewStarted = false;
+        let interviewUnavailable = false;
         let completedRedirectTimer = null;
         let completedCountdown = null;
 
@@ -301,21 +302,25 @@
             const normalized = (text || '').trim();
             return !normalized
                 || normalized === 'Welcome! Click Start Interview to begin.'
-                || normalized === 'AI service unavailable.';
+                || normalized === 'AI service unavailable.'
+                || normalized === 'AI service unavailable. Please try again later.';
         };
 
         const currentQuestionText = () => (questionBox.textContent || '').trim();
 
-        const hasActiveQuestion = () => !isPlaceholderSpeechText(currentQuestionText());
+        const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());
 
         const updateSubmitAvailability = () => {
             if (!submitButton || answerBox.disabled)
                 return;
 
-            submitButton.disabled = !hasActiveQuestion();
+            submitButton.disabled = interviewUnavailable || !hasActiveQuestion();
         };
 
         const showUnavailableQuestionState = (message = 'AI service unavailable. Please try again later.') => {
+            interviewUnavailable = true;
+            clearTimeout(silenceTimer);
+            clearTimeout(reminderTimer);
             questionBox.textContent = message;
             messageBox.textContent = message;
             setStatus(message, true);
@@ -1108,10 +1113,13 @@
 
             questionBox.textContent = isTerminated ? (resultCompletion || 'Interview completed.') : resultQuestion;
             if (!isTerminated && resultQuestion) logActivity('Question shown: ' + resultQuestion);
+            if (!isTerminated && resultQuestion)
+                interviewUnavailable = false;
             messageBox.textContent = resultMessage || resultFeedback || '';
             setStatus(resultFeedback || resultMessage || 'Answer saved.', false);
             answerBox.value = '';
             renderTranscript();
+            updateSubmitAvailability();
 
             if (isTerminated) {
                 await setCompletedState(result);
@@ -1196,6 +1204,7 @@
                 return;
             }
 
+            interviewUnavailable = false;
             interviewStarted = true;
             setStatus('Interview started.', false);
             startButton.textContent = 'Next Question';

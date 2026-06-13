@@ -925,7 +925,13 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Not.Contain("tokenRefreshInFlight"));
         Assert.That(runtimeText, Does.Contain("Interview cannot start because no active AI question is available."));
         Assert.That(runtimeText, Does.Contain("showUnavailableQuestionState"));
-        Assert.That(runtimeText, Does.Contain("submitButton.disabled = !hasActiveQuestion();"));
+        Assert.That(runtimeText, Does.Contain("let interviewUnavailable = false;"));
+        Assert.That(runtimeText, Does.Contain("normalized === 'AI service unavailable. Please try again later.'"));
+        Assert.That(runtimeText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
+        Assert.That(runtimeText, Does.Contain("submitButton.disabled = interviewUnavailable || !hasActiveQuestion();"));
+        Assert.That(runtimeText, Does.Contain("interviewUnavailable = true;"));
+        Assert.That(runtimeText, Does.Contain("clearTimeout(silenceTimer);"));
+        Assert.That(runtimeText, Does.Contain("clearTimeout(reminderTimer);"));
         Assert.That(runtimeText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeText, Does.Contain("if (auto && !trimmedAnswer)"));
         Assert.That(runtimeText, Does.Contain("Auto submitting..."));
