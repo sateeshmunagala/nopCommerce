@@ -63,4 +63,26 @@ public class PluginDefaultsTests
         Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Runtime.Error.Unavailable"), Is.True);
         Assert.That(resources["Plugins.Misc.AIInterview.Runtime.Error.Unavailable"], Is.EqualTo("The interview service is temporarily unavailable. Please try again."));
     }
+
+    [Test]
+    public void Locale_Resources_DoNotContain_CaseInsensitive_Duplicates()
+    {
+        var upgradeMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var adminMethod = typeof(AIInterviewPlugin).GetMethod("GetAdminLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        var upgradeResources = (Dictionary<string, string>)upgradeMethod.Invoke(null, null);
+        var adminResources = (Dictionary<string, string>)adminMethod.Invoke(null, null);
+        var unavailableKeys = upgradeResources.Keys
+            .Concat(adminResources.Keys)
+            .Where(key => key.Contains("Runtime.Error.Unavailable", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var duplicateKeys = unavailableKeys
+            .GroupBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToList();
+
+        Assert.That(unavailableKeys, Has.Count.EqualTo(1));
+        Assert.That(duplicateKeys, Is.Empty);
+    }
 }

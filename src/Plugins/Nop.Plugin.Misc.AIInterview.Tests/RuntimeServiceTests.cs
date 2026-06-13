@@ -167,7 +167,7 @@ public class RuntimeServiceTests
         var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99 });
 
         Assert.That(inserted, Is.False);
-        Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable."));
+        Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable. Please try again later."));
     }
 
     [Test]
@@ -207,7 +207,7 @@ public class RuntimeServiceTests
         var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99 });
 
         Assert.That(inserted, Is.False);
-        Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable."));
+        Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable. Please try again later."));
     }
 
     [Test]
@@ -229,7 +229,17 @@ public class RuntimeServiceTests
         sessionService.Setup(x => x.GetSessionByTokenAsync("token2")).ReturnsAsync(session);
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(2)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
         aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
-            .ReturnsAsync(new AIInterviewClientResponse { Score = 80, Feedback = "Good", RawJson = "{}" });
+            .ReturnsAsync(new AIInterviewClientResponse
+            {
+                Score = 80,
+                TechnicalScore = 78,
+                CommunicationScore = 82,
+                ProfessionalismScore = 80,
+                PositiveAttitudeScore = 80,
+                Feedback = "Good",
+                RawJson = "{}",
+                RubricJson = "{\"technicalScore\":78,\"communicationScore\":82,\"professionalismScore\":80,\"positiveAttitudeScore\":80,\"score\":80}"
+            });
         aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
             .ReturnsAsync(new AIInterviewClientResponse { Question = "Q2", RawJson = "{\"question\":\"Q2\"}" });
         productService.Setup(x => x.GetProductByIdAsync(20)).ReturnsAsync(new Product { Id = 20, Name = "QA Engineer" });
@@ -260,6 +270,78 @@ public class RuntimeServiceTests
         Assert.That(store.Any(x => x.SequenceNumber == 1 && x.AnswerText != null), Is.True);
         Assert.That(store.Any(x => x.SequenceNumber == 2), Is.True);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Score > 0)), Times.Once);
+    }
+
+    [Test]
+    public async Task SubmitAnswerAsync_Persists_CategoryRubric_And_SessionAverage()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession { Id = 222, ProductId = 20, CustomerId = 5, SessionKey = "key222", Token = "token222", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var turn = new InterviewTurn { Id = 1, InterviewSessionId = 222, SequenceNumber = 1, QuestionText = "Q1", AskedOnUtc = DateTime.UtcNow.AddMinutes(-1), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1) };
+        var store = new List<InterviewTurn> { turn };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token222")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(222)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
+        aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse
+            {
+                Success = true,
+                TechnicalScore = 92,
+                CommunicationScore = 84,
+                ProfessionalismScore = 88,
+                PositiveAttitudeScore = 76,
+                Score = 85,
+                Feedback = "Balanced answer",
+                RawJson = "{\"technicalScore\":92,\"communicationScore\":84,\"professionalismScore\":88,\"positiveAttitudeScore\":76,\"score\":85}",
+                RubricJson = "{\"technicalScore\":92,\"communicationScore\":84,\"professionalismScore\":88,\"positiveAttitudeScore\":76,\"score\":85}"
+            });
+        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse { Question = "Q2", RawJson = "{\"question\":\"Q2\"}" });
+        productService.Setup(x => x.GetProductByIdAsync(20)).ReturnsAsync(new Product { Id = 20, Name = "QA Engineer" });
+        InterviewTurn updatedTurn = null;
+        InterviewSession updatedSession = null;
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback<InterviewTurn>(updated =>
+            {
+                updatedTurn = updated;
+                store.RemoveAll(x => x.Id == updated.Id);
+                store.Add(updated);
+            })
+            .Returns(Task.CompletedTask);
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn created) =>
+            {
+                created.Id = created.SequenceNumber + 10;
+                store.Add(created);
+                return created;
+            });
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(updated => updatedSession = updated)
+            .Returns(Task.CompletedTask);
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
+
+        var result = await service.SubmitAnswerAsync("token222", "Answer with detail.");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(updatedTurn, Is.Not.Null);
+        Assert.That(updatedTurn.Score, Is.EqualTo(85));
+        Assert.That(updatedTurn.RubricJson, Does.Contain("technicalScore"));
+        Assert.That(updatedTurn.RubricJson, Does.Contain("communicationScore"));
+        Assert.That(updatedTurn.RubricJson, Does.Contain("professionalismScore"));
+        Assert.That(updatedTurn.RubricJson, Does.Contain("positiveAttitudeScore"));
+        Assert.That(updatedSession, Is.Not.Null);
+        Assert.That(updatedSession.Score, Is.EqualTo(85));
+        Assert.That(updatedSession.QuestionScores, Does.Contain("85"));
     }
 
     [Test]
@@ -364,7 +446,7 @@ public class RuntimeServiceTests
         var result = await service.SubmitAnswerAsync("token12", "answer");
 
         Assert.That(result.Success, Is.False);
-        Assert.That(result.Message, Does.Contain("AI service unavailable"));
+        Assert.That(result.Message, Does.Contain("temporarily unavailable"));
         Assert.That(inserted, Is.False);
     }
 
@@ -421,7 +503,7 @@ public class RuntimeServiceTests
         var result = await service.SubmitAnswerAsync("token15", "answer");
 
         Assert.That(result.Success, Is.False);
-        Assert.That(result.Message, Does.Contain("AI service unavailable"));
+        Assert.That(result.Message, Does.Contain("temporarily unavailable"));
         Assert.That(updatedTurn, Is.False);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
@@ -518,8 +600,8 @@ public class RuntimeServiceTests
         var result = await service.SubmitAnswerAsync("token13", "answer");
 
         Assert.That(result.Success, Is.False);
-        Assert.That(result.Message, Does.Contain("AI service unavailable"));
-        Assert.That(result.Feedback, Does.Contain("AI service unavailable"));
+        Assert.That(result.Message, Does.Contain("temporarily unavailable"));
+        Assert.That(result.Feedback, Does.Contain("temporarily unavailable"));
         turnService.Verify(x => x.InsertInterviewTurnAsync(It.Is<InterviewTurn>(t => t.SequenceNumber == 2)), Times.Never);
     }
 
@@ -553,6 +635,22 @@ public class RuntimeServiceTests
         Assert.That(response, Is.Not.Null);
         Assert.That(response.Question, Is.EqualTo("What is DI?"));
         Assert.That(response.Score, Is.Null);
+    }
+
+    [Test]
+    public void ParseStructuredResponse_Handles_CategoryScores_And_ComputesAverage()
+    {
+        var response = InterviewAiClient.ParseStructuredResponse("""
+{"technicalScore":92,"communicationScore":"84","professionalismScore":88,"positiveAttitudeScore":76,"feedback":"Balanced","complete":false}
+""");
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response.TechnicalScore, Is.EqualTo(92));
+        Assert.That(response.CommunicationScore, Is.EqualTo(84));
+        Assert.That(response.ProfessionalismScore, Is.EqualTo(88));
+        Assert.That(response.PositiveAttitudeScore, Is.EqualTo(76));
+        Assert.That(response.Score, Is.EqualTo(85));
+        Assert.That(response.RubricJson, Does.Contain("technicalScore"));
     }
 
     [Test]
@@ -1206,8 +1304,8 @@ public class RuntimeServiceTests
             Answer = "A1"
         });
 
-        Assert.That(outOfRange.Success, Is.False);
-        Assert.That(outOfRange.Score, Is.Null);
+        Assert.That(outOfRange.Success, Is.True);
+        Assert.That(outOfRange.Score, Is.EqualTo(100));
         Assert.That(outOfRange.RawJson, Does.Contain("\"score\":150"));
     }
 

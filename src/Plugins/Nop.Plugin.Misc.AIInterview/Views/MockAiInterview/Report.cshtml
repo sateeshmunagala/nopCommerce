@@ -4,7 +4,18 @@
 }
 
 <style>
-    .report-data { white-space: pre-line; }
+    .mock-report-wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 20px; }
+    .mock-report-hero, .mock-report-card, .mock-report-turn { background: #fff; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 18px; padding: 20px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05); }
+    .mock-report-hero h2, .mock-report-card h3 { margin: 0 0 12px; color: #162033; }
+    .mock-report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    .mock-report-stat { padding: 14px; border-radius: 14px; background: #f8fafc; border: 1px solid rgba(15, 23, 42, 0.08); }
+    .mock-report-stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #667085; margin-bottom: 6px; }
+    .mock-report-stat-value { font-size: 24px; font-weight: 700; color: #0f5bd7; }
+    .mock-report-turn { display: grid; gap: 10px; }
+    .mock-report-turn-title { font-weight: 700; color: #162033; }
+    .mock-report-answer, .mock-report-feedback, .report-data { white-space: pre-line; color: #334155; }
+    .mock-report-meta { display: flex; gap: 16px; flex-wrap: wrap; color: #667085; font-size: 13px; }
+    @@media (max-width: 767px) { .mock-report-hero, .mock-report-card, .mock-report-turn { padding: 16px; } }
 </style>
 
 <div class="page mock-report">
@@ -12,50 +23,81 @@
         <h1>@T("Plugins.Misc.AIInterview.Report.Title")</h1>
     </div>
     <div class="page-body">
-        <p><strong>@T("Plugins.Misc.AIInterview.Report.Date"):</strong> @Model.CreatedOnUtc.ToString("f")</p>
-        <p><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @Model.Score.ToString("N2")</p>
-        @if (!string.IsNullOrWhiteSpace(Model.RecordingUrl))
-        {
-            <p><strong>Recording:</strong> <a href="@Model.RecordingUrl" target="_blank" rel="noopener">Open recording</a></p>
-        }
+        <div class="mock-report-wrap">
+            <section class="mock-report-hero">
+                <h2>@(string.IsNullOrWhiteSpace(Model.JobTitle) ? Model.ProductName : Model.JobTitle)</h2>
+                <div class="mock-report-grid">
+                    <div class="mock-report-stat">
+                        <div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Score")</div>
+                        <div class="mock-report-stat-value">@Model.Score.ToString("N0")/100</div>
+                    </div>
+                    <div class="mock-report-stat">
+                        <div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Date")</div>
+                        <div class="mock-report-stat-value" style="font-size:16px;color:#162033;">@Model.CreatedOnUtc.ToString("f")</div>
+                    </div>
+                    <div class="mock-report-stat">
+                        <div class="mock-report-stat-label">Questions</div>
+                        <div class="mock-report-stat-value">@((Model.Turns?.Count ?? 0).ToString())</div>
+                    </div>
+                    <div class="mock-report-stat">
+                        <div class="mock-report-stat-label">Recording</div>
+                        <div class="mock-report-stat-value" style="font-size:16px;color:#162033;">
+                            @if (!string.IsNullOrWhiteSpace(Model.RecordingUrl))
+                            {
+                                <a href="@Model.RecordingUrl" target="_blank" rel="noopener">Open recording</a>
+                            }
+                            else
+                            {
+                                <span>-</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        @if (Model.ParsedQuestionScores?.Any() == true)
-        {
-            <div class="question-scores">
-                <h3>Question Scores</h3>
-                <ul>
-                    @for (var i = 0; i < Model.ParsedQuestionScores.Count; i++)
-                    {
-                        <li>Question @(i + 1): @Model.ParsedQuestionScores[i]</li>
-                    }
-                </ul>
-            </div>
-        }
-
-        @if (Model.Turns?.Any() == true)
-        {
-            <div class="turn-history">
-                <h3>Interview Turns</h3>
-                @foreach (var turn in Model.Turns)
-                {
-                    <div style="padding:12px 14px;border:1px solid rgba(15,23,42,.08);border-radius:14px;margin-bottom:12px;">
-                        <div><strong>Q@turn.SequenceNumber.</strong> @turn.QuestionText</div>
-                        <div><strong>Answer:</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? "(pending)" : turn.AnswerText)</div>
-                        <div><strong>Score:</strong> @(turn.Score.HasValue ? turn.Score.Value.ToString("N2") : "-")</div>
-                        <div><strong>Feedback:</strong> @turn.Feedback</div>
-                        <div><strong>Asked:</strong> @turn.AskedOnUtc.ToString("g")</div>
-                        @if (turn.AnsweredOnUtc.HasValue)
+            @if (Model.ParsedQuestionScores?.Any() == true)
+            {
+                <section class="mock-report-card">
+                    <h3>Question Scores</h3>
+                    <div class="mock-report-grid">
+                        @for (var i = 0; i < Model.ParsedQuestionScores.Count; i++)
                         {
-                            <div><strong>Answered:</strong> @turn.AnsweredOnUtc.Value.ToString("g")</div>
+                            <div class="mock-report-stat">
+                                <div class="mock-report-stat-label">Question @(i + 1)</div>
+                                <div class="mock-report-stat-value">@Model.ParsedQuestionScores[i].ToString("N0")/100</div>
+                            </div>
                         }
                     </div>
-                }
-            </div>
-        }
+                </section>
+            }
 
-        <div class="report-details">
-            <h3>@T("Plugins.Misc.AIInterview.Report.Details")</h3>
-            <div class="report-data">@Model.ReportData</div>
+            @if (Model.Turns?.Any() == true)
+            {
+                <section class="mock-report-card">
+                    <h3>Interview Turns</h3>
+                    @foreach (var turn in Model.Turns)
+                    {
+                        <div class="mock-report-turn">
+                            <div class="mock-report-turn-title">Q@turn.SequenceNumber. @turn.QuestionText</div>
+                            <div class="mock-report-answer"><strong>Answer:</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? "(pending)" : turn.AnswerText)</div>
+                            <div class="mock-report-feedback"><strong>Feedback:</strong> @(string.IsNullOrWhiteSpace(turn.Feedback) ? "-" : turn.Feedback)</div>
+                            <div class="mock-report-meta">
+                                <span><strong>Score:</strong> @(turn.Score.HasValue ? $"{turn.Score.Value:N0}/100" : "-")</span>
+                                <span><strong>Asked:</strong> @turn.AskedOnUtc.ToString("g")</span>
+                                @if (turn.AnsweredOnUtc.HasValue)
+                                {
+                                    <span><strong>Answered:</strong> @turn.AnsweredOnUtc.Value.ToString("g")</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </section>
+            }
+
+            <section class="mock-report-card">
+                <h3>@T("Plugins.Misc.AIInterview.Report.Details")</h3>
+                <div class="report-data">@Model.ReportData</div>
+            </section>
         </div>
     </div>
 </div>

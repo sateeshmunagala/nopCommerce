@@ -95,8 +95,10 @@ public class RuntimeAndAdminTests
 
         Assert.That(result, Is.TypeOf<JsonResult>());
         var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
         var newToken = json.Value.GetType().GetProperty("newToken").GetValue(json.Value, null)?.ToString();
 
+        Assert.That(success, Is.EqualTo(true));
         Assert.That(newToken, Is.Not.Null);
         Assert.That(newToken, Is.Not.EqualTo("expired-active"));
         Assert.That(json.Value.GetType().GetProperty("tokenExpiryUtc").GetValue(json.Value, null), Is.Not.Null);
@@ -313,8 +315,10 @@ public class RuntimeAndAdminTests
 
         var result = await _runtimeController.RefreshToken("old-token");
         var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
         var newToken = json.Value.GetType().GetProperty("newToken").GetValue(json.Value, null);
 
+        Assert.That(success, Is.EqualTo(true));
         Assert.That(newToken, Is.Not.EqualTo("old-token"));
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Token == (string)newToken)), Times.Once);
     }
@@ -364,8 +368,10 @@ public class RuntimeAndAdminTests
 
         var result = await _runtimeController.RefreshToken("expired-active");
         var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
         var newToken = json.Value.GetType().GetProperty("newToken").GetValue(json.Value, null)?.ToString();
 
+        Assert.That(success, Is.EqualTo(true));
         Assert.That(newToken, Is.Not.Null);
         Assert.That(newToken, Is.Not.EqualTo("expired-active"));
         Assert.That(json.Value.GetType().GetProperty("tokenExpiryUtc").GetValue(json.Value, null), Is.Not.Null);
@@ -412,12 +418,56 @@ public class RuntimeAndAdminTests
 
         Assert.That(result, Is.TypeOf<JsonResult>());
         var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success")?.GetValue(json.Value, null);
         var newTokenProperty = json.Value.GetType().GetProperty("newToken") ?? json.Value.GetType().GetProperty("NewToken");
         Assert.That(newTokenProperty, Is.Not.Null, "Expected renewed submit-answer response to include a token update.");
+        Assert.That(success, Is.EqualTo(true));
         var newToken = newTokenProperty.GetValue(json.Value, null)?.ToString();
         Assert.That(newToken, Is.Not.Null);
         Assert.That(newToken, Is.Not.EqualTo("expired-submit"));
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Token == newToken)), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_Stop_ExpiredActiveSession_ReturnsRenewedToken_WithSuccess()
+    {
+        var session = new InterviewSession
+        {
+            Id = 94,
+            CustomerId = 1,
+            Token = "expired-stop",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
+        };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("expired-stop")).ReturnsAsync(session);
+        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        _interviewRuntimeService.Setup(x => x.CompleteInterviewAsync(It.IsAny<string>(), "Stopped by user"))
+            .ReturnsAsync(new CompleteInterviewResponse { Success = true, IsTerminated = true, Completion = "done" });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            null,
+            null,
+            null,
+            _interviewRuntimeService.Object);
+
+        var result = await controller.Stop("expired-stop");
+
+        var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success")?.GetValue(json.Value, null);
+        var newToken = json.Value.GetType().GetProperty("newToken")?.GetValue(json.Value, null)?.ToString();
+
+        Assert.That(success, Is.EqualTo(true));
+        Assert.That(newToken, Is.Not.Null.And.Not.EqualTo("expired-stop"));
     }
 
     [Test]
@@ -634,6 +684,10 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
         Assert.That(runtimeViewText, Does.Contain("submitButton.disabled = interviewUnavailable || !hasActiveQuestion();"));
         Assert.That(runtimeViewText, Does.Contain("interviewUnavailable = true;"));
+        Assert.That(runtimeViewText, Does.Contain("const autoSubmitDelaySeconds = 10;"));
+        Assert.That(runtimeViewText, Does.Contain("clearInteractionTimers();"));
+        Assert.That(runtimeViewText, Does.Contain("Auto submitting in ${countdownValue}"));
+        Assert.That(runtimeViewText, Does.Contain("Please speak or type something."));
         Assert.That(runtimeViewText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = 'none';"));
 

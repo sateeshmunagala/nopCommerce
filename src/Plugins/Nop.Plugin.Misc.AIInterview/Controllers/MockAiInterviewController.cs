@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Nop.Core;
 using Nop.Plugin.Misc.AIInterview.Domain;
@@ -378,6 +378,7 @@ public class MockAiInterviewController : BasePluginController
             {
                 return Json(new
                 {
+                    success = runtimeResponse.Success,
                     runtimeResponse.Success,
                     runtimeResponse.IsTerminated,
                     runtimeResponse.Completion,
@@ -445,6 +446,7 @@ public class MockAiInterviewController : BasePluginController
             {
                 return Json(new
                 {
+                    success = response.Success,
                     response.Success,
                     response.IsTerminated,
                     response.Score,
@@ -514,7 +516,7 @@ public class MockAiInterviewController : BasePluginController
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
-        return Json(new { newToken = session.Token, tokenExpiryUtc = session.TokenExpiryUtc });
+        return Json(new { success = true, newToken = session.Token, tokenExpiryUtc = session.TokenExpiryUtc });
     }
 
     [HttpPost]

@@ -464,7 +464,9 @@ public class CandidateFlowTests
         var result = await _runtimeController.RefreshToken("old");
         var json = (JsonResult)result;
 
+        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
         var newToken = json.Value.GetType().GetProperty("newToken").GetValue(json.Value, null);
+        Assert.That(success, Is.EqualTo(true));
         Assert.That(newToken, Is.Not.Null);
         Assert.That(newToken, Is.Not.EqualTo("old"));
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Token == newToken.ToString())), Times.Once);
@@ -930,11 +932,13 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
         Assert.That(runtimeText, Does.Contain("submitButton.disabled = interviewUnavailable || !hasActiveQuestion();"));
         Assert.That(runtimeText, Does.Contain("interviewUnavailable = true;"));
-        Assert.That(runtimeText, Does.Contain("clearTimeout(silenceTimer);"));
-        Assert.That(runtimeText, Does.Contain("clearTimeout(reminderTimer);"));
+        Assert.That(runtimeText, Does.Contain("const autoSubmitDelaySeconds = 10;"));
+        Assert.That(runtimeText, Does.Contain("clearInteractionTimers();"));
         Assert.That(runtimeText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeText, Does.Contain("if (auto && !trimmedAnswer)"));
         Assert.That(runtimeText, Does.Contain("Auto submitting..."));
+        Assert.That(runtimeText, Does.Contain("Auto submitting in ${countdownValue}"));
+        Assert.That(runtimeText, Does.Contain("Please speak or type something."));
         Assert.That(runtimeText, Does.Contain("Speaking question."));
         Assert.That(runtimeText, Does.Contain("Speaking reminder."));
         Assert.That(runtimeText, Does.Contain("Question speech completed."));

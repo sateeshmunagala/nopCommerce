@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
@@ -90,7 +91,7 @@ public class InterviewAiClient : IAIInterviewClient
         if (string.IsNullOrWhiteSpace(response.Question))
         {
             if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview question validation failure", "Azure OpenAI returned an empty question.");
+                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview question validation failure", "Mode=generate; Reason=empty question.");
             return BuildValidationFailureResponse(response, "AI service unavailable.");
         }
 
@@ -106,10 +107,10 @@ public class InterviewAiClient : IAIInterviewClient
         if (response == null)
             return BuildUnavailableResponse();
 
-        if (!response.Score.HasValue || response.Score.Value < 0 || response.Score.Value > 100)
+        if (!response.Score.HasValue)
         {
             if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview score validation failure", "Azure OpenAI returned an invalid score.");
+                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview score validation failure", "Mode=score; Reason=missing required score.");
             return BuildValidationFailureResponse(response, "AI service unavailable.");
         }
 
@@ -138,7 +139,7 @@ public class InterviewAiClient : IAIInterviewClient
         {
             _logger?.LogWarning("AI service unavailable: Azure OpenAI configuration is incomplete.");
             if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI unavailable", "Azure OpenAI configuration is incomplete.");
+                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI unavailable", $"Mode={mode}; Reason=configuration incomplete.");
             return null;
         }
 
@@ -160,7 +161,7 @@ public class InterviewAiClient : IAIInterviewClient
                         role = "system",
                         content = mode == "generate"
                             ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
-                            : "Return JSON only. Scoring mode contract: score, feedback, complete, nextQuestion when continuing, completion when ending, optional rubricJson. No markdown. No prose outside JSON."
+                            : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, nextQuestion when continuing, completion when ending, optional rubricJson. Every score must be numeric 0-100. score must be the average of the four category scores. No markdown. No prose outside JSON."
                     },
                     new { role = "user", content = prompt }
                 },
@@ -180,7 +181,7 @@ public class InterviewAiClient : IAIInterviewClient
             {
                 _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}.", result.StatusCode);
                 if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", $"Azure OpenAI call failed with status {(int)result.StatusCode} for mode {mode}.");
+                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", $"Mode={mode}; HttpStatus={(int)result.StatusCode}; Reason=http failure.");
                 return null;
             }
 
@@ -188,12 +189,16 @@ public class InterviewAiClient : IAIInterviewClient
             if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
             {
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty choices.", mode);
+                if (_nopLogger != null)
+                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Mode={mode}; Reason=empty response choices.");
                 return null;
             }
 
             if (!choices[0].TryGetProperty("message", out var message) || !message.TryGetProperty("content", out var contentProperty))
             {
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Missing message content.", mode);
+                if (_nopLogger != null)
+                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Mode={mode}; Reason=missing message content.");
                 return null;
             }
 
@@ -201,6 +206,8 @@ public class InterviewAiClient : IAIInterviewClient
             if (string.IsNullOrWhiteSpace(content))
             {
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty content string.", mode);
+                if (_nopLogger != null)
+                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Mode={mode}; Reason=empty response content.");
                 return null;
             }
 
@@ -210,19 +217,19 @@ public class InterviewAiClient : IAIInterviewClient
 
             _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON or failed contract parsing.", mode);
             if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Azure OpenAI call returned invalid or unsupported JSON for mode {mode}.");
+                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Mode={mode}; Reason=invalid JSON or failed contract parsing.");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger?.LogWarning(ex, "Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON format.", mode);
             if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI JSON failure", $"Azure OpenAI call returned invalid JSON for mode {mode}.");
+                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI JSON failure", $"Mode={mode}; Reason=invalid JSON format.");
         }
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Azure OpenAI call exception.");
             if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Error, "AI Interview Azure OpenAI exception", $"Azure OpenAI call exception for mode {mode}: {ex.GetType().Name}.");
+                await _nopLogger.InsertLogAsync(NopLogLevel.Error, "AI Interview Azure OpenAI exception", $"Mode={mode}; Reason={ex.GetType().Name}.");
         }
 
         return BuildUnavailableResponse();
@@ -265,7 +272,7 @@ Previous answered turns:
 {previousTurns}
 Current question: {request.Question}
 Candidate answer: {request.Answer}
-Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "score, feedback, complete, nextQuestion, completion, optional rubricJson")}
+Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, nextQuestion, completion, optional rubricJson")}
 """;
     }
 
@@ -292,7 +299,18 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
 
             using var document = JsonDocument.Parse(content);
             var root = document.RootElement;
-            var score = TryParseNullableDecimal(root, "score");
+            var rubricNode = TryParseJsonNode(root, "rubricJson") ?? TryParseJsonNode(root, "rubric");
+            var technicalScore = GetScoreValue(root, rubricNode, "technicalScore");
+            var communicationScore = GetScoreValue(root, rubricNode, "communicationScore");
+            var professionalismScore = GetScoreValue(root, rubricNode, "professionalismScore");
+            var positiveAttitudeScore = GetScoreValue(root, rubricNode, "positiveAttitudeScore");
+            var score = GetScoreValue(root, rubricNode, "score");
+            var rubricScores = new[] { technicalScore, communicationScore, professionalismScore, positiveAttitudeScore }
+                .Where(value => value.HasValue)
+                .Select(value => value.Value)
+                .ToList();
+            if (!score.HasValue && rubricScores.Count == 4)
+                score = Math.Round(rubricScores.Average(), 2);
 
             string question = root.TryGetProperty("question", out var q) ? q.GetString() : null;
             string nextQuestion = root.TryGetProperty("nextQuestion", out var nq) ? nq.GetString()
@@ -303,12 +321,32 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
                 : root.TryGetProperty("rubric", out var rubricElement) ? rubricElement.GetRawText()
                 : null;
 
+            var normalizedRubric = rubricNode as JsonObject;
+            if (normalizedRubric == null && (technicalScore.HasValue || communicationScore.HasValue || professionalismScore.HasValue || positiveAttitudeScore.HasValue || score.HasValue))
+                normalizedRubric = new JsonObject();
+
+            if (normalizedRubric != null)
+            {
+                UpsertScoreValue(normalizedRubric, "technicalScore", technicalScore);
+                UpsertScoreValue(normalizedRubric, "communicationScore", communicationScore);
+                UpsertScoreValue(normalizedRubric, "professionalismScore", professionalismScore);
+                UpsertScoreValue(normalizedRubric, "positiveAttitudeScore", positiveAttitudeScore);
+                UpsertScoreValue(normalizedRubric, "score", score);
+                if (!string.IsNullOrWhiteSpace(feedback))
+                    normalizedRubric["feedback"] = feedback;
+                rubricJson = normalizedRubric.ToJsonString();
+            }
+
             return new AIInterviewClientResponse
             {
                 Success = true,
                 Question = question,
                 NextQuestion = nextQuestion,
                 Score = score,
+                TechnicalScore = technicalScore,
+                CommunicationScore = communicationScore,
+                ProfessionalismScore = professionalismScore,
+                PositiveAttitudeScore = positiveAttitudeScore,
                 Feedback = feedback,
                 Complete = TryParseBoolean(root, "complete"),
                 Completion = completion,
@@ -331,6 +369,10 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
             Question = response?.Question,
             NextQuestion = response?.NextQuestion,
             Score = null,
+            TechnicalScore = response?.TechnicalScore,
+            CommunicationScore = response?.CommunicationScore,
+            ProfessionalismScore = response?.ProfessionalismScore,
+            PositiveAttitudeScore = response?.PositiveAttitudeScore,
             Feedback = response?.Feedback,
             Complete = response?.Complete ?? false,
             Completion = response?.Completion,
@@ -352,6 +394,58 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
             return stringScore;
 
         return null;
+    }
+
+    protected static decimal? TryParseNullableDecimal(JsonNode node, string propertyName)
+    {
+        if (node is not JsonObject obj || obj[propertyName] == null)
+            return null;
+
+        var valueNode = obj[propertyName];
+        if (valueNode is JsonValue value)
+        {
+            if (value.TryGetValue<decimal>(out var numericValue))
+                return numericValue;
+
+            if (value.TryGetValue<string>(out var stringValue) &&
+                decimal.TryParse(stringValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+                return parsed;
+        }
+
+        return null;
+    }
+
+    protected static JsonNode TryParseJsonNode(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var property) || property.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return null;
+
+        try
+        {
+            return property.ValueKind == JsonValueKind.String
+                ? JsonNode.Parse(property.GetString() ?? string.Empty)
+                : JsonNode.Parse(property.GetRawText());
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    protected static decimal? GetScoreValue(JsonElement root, JsonNode rubricNode, string propertyName)
+    {
+        var direct = TryParseNullableDecimal(root, propertyName);
+        if (direct.HasValue)
+            return Math.Clamp(direct.Value, 0, 100);
+
+        var rubric = TryParseNullableDecimal(rubricNode, propertyName);
+        return rubric.HasValue ? Math.Clamp(rubric.Value, 0, 100) : null;
+    }
+
+    protected static void UpsertScoreValue(JsonObject rubric, string propertyName, decimal? value)
+    {
+        if (value.HasValue)
+            rubric[propertyName] = value.Value;
     }
 
     private static bool TryParseBoolean(JsonElement root, string propertyName)
@@ -402,18 +496,44 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
             : score >= 50
                 ? "Decent answer. Add more concrete examples."
                 : "Answer is too brief. Explain your reasoning and impact.";
+        var technicalScore = score;
+        var communicationScore = Math.Clamp(score - 4, 0, 100);
+        var professionalismScore = Math.Clamp(score + 2, 0, 100);
+        var positiveAttitudeScore = Math.Clamp(score + 1, 0, 100);
+        var averageScore = Math.Round((technicalScore + communicationScore + professionalismScore + positiveAttitudeScore) / 4m, 2);
 
         return new AIInterviewClientResponse
         {
             Success = true,
             Question = string.Empty,
             NextQuestion = string.Empty,
-            Score = score,
+            Score = averageScore,
+            TechnicalScore = technicalScore,
+            CommunicationScore = communicationScore,
+            ProfessionalismScore = professionalismScore,
+            PositiveAttitudeScore = positiveAttitudeScore,
             Feedback = feedback,
             Complete = false,
             Completion = string.Empty,
-            RawJson = JsonSerializer.Serialize(new { score, feedback, complete = false }),
-            RubricJson = JsonSerializer.Serialize(new { score, feedback })
+            RawJson = JsonSerializer.Serialize(new
+            {
+                technicalScore,
+                communicationScore,
+                professionalismScore,
+                positiveAttitudeScore,
+                score = averageScore,
+                feedback,
+                complete = false
+            }),
+            RubricJson = JsonSerializer.Serialize(new
+            {
+                technicalScore,
+                communicationScore,
+                professionalismScore,
+                positiveAttitudeScore,
+                score = averageScore,
+                feedback
+            })
         };
     }
 }
@@ -512,11 +632,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             if (first == null)
             {
                 var unavailableModel = await BuildRuntimeModelAsync(session, turns, customer);
-                unavailableModel.CurrentQuestion = "AI service unavailable.";
+                unavailableModel.CurrentQuestion = "AI service unavailable. Please try again later.";
                 unavailableModel.ClientSettings ??= new RuntimeClientSettingsModel();
                 unavailableModel.ClientSettings.SpeechAvailable = false;
                 if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview first question unavailable", $"Unable to generate the first question for session {session.Id}.");
+                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview first question unavailable", $"Mode=generate; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=first question generation failed.");
                 return unavailableModel;
             }
 
@@ -557,12 +677,12 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             if (currentTurn == null)
             {
                 if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview missing current turn", $"SubmitAnswer could not locate the current turn for session {session.Id}.");
+                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview missing current turn", $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=current turn missing.");
                 return new SubmitInterviewAnswerResponse
                 {
                     Success = false,
-                    Message = "AI service unavailable.",
-                    Feedback = "AI service unavailable."
+                    Message = "The AI interview service is temporarily unavailable. Please try again later.",
+                    Feedback = "The AI interview service is temporarily unavailable. Please try again later."
                 };
             }
 
@@ -583,22 +703,22 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             PreviousTurns = BuildPreviousTurnContext(turns, currentTurn)
         });
 
-        if (evaluation == null || !evaluation.Success || !evaluation.Score.HasValue || evaluation.Score.Value < 0 || evaluation.Score.Value > 100)
+        if (evaluation == null || !evaluation.Success || !evaluation.Score.HasValue)
         {
             _logger?.LogWarning("SubmitAnswer score failure for session {SessionId}. Reason: {Reason}.",
                 session.Id, evaluation?.ErrorMessage ?? "Invalid format/range");
             if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview scoring failure", $"Scoring failed for session {session.Id}: {evaluation?.ErrorMessage ?? "Invalid format/range"}.");
+                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview scoring failure", $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason={evaluation?.ErrorMessage ?? "missing required score"}.");
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
-                Message = "AI service unavailable.",
-                Feedback = "AI service unavailable."
+                Message = "The AI interview service is temporarily unavailable. Please try again later.",
+                Feedback = "The AI interview service is temporarily unavailable. Please try again later."
             };
         }
 
         currentTurn.AnswerText = answer;
-        currentTurn.Score = evaluation.Score.Value;
+        currentTurn.Score = Math.Clamp(evaluation.Score.Value, 0, 100);
         currentTurn.Feedback = evaluation.Feedback;
         currentTurn.RubricJson = evaluation.RubricJson;
         currentTurn.RawAIResponseJson = evaluation.RawJson;
@@ -640,12 +760,12 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             if (nextTurn == null)
             {
                 if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview next question unavailable", $"Unable to generate the next question for session {session.Id}.");
+                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview next question unavailable", $"Mode=generate; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=next question generation failed.");
                 return new SubmitInterviewAnswerResponse
                 {
                     Success = false,
-                    Message = "AI service unavailable.",
-                    Feedback = "AI service unavailable."
+                    Message = "The AI interview service is temporarily unavailable. Please try again later.",
+                    Feedback = "The AI interview service is temporarily unavailable. Please try again later."
                 };
             }
 
@@ -1004,7 +1124,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         return string.Join(Environment.NewLine, new[]
         {
-            $"Overall score: {score:N0}",
+            $"Overall score: {score:N0}/100",
             $"Strengths: {(strengths.Any() ? string.Join("; ", strengths) : "Good structure and engagement.")}",
             $"Improvement areas: {(improvements.Any() ? string.Join("; ", improvements) : "Provide more concrete examples.")}",
             string.IsNullOrWhiteSpace(aiCompletion) ? string.Empty : $"AI completion: {aiCompletion}",

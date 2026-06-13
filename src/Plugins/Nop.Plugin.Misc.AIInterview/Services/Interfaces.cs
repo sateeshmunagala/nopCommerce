@@ -86,6 +86,10 @@ public record AIInterviewClientResponse
     public string Question { get; init; }
     public string NextQuestion { get; init; }
     public decimal? Score { get; init; }
+    public decimal? TechnicalScore { get; init; }
+    public decimal? CommunicationScore { get; init; }
+    public decimal? ProfessionalismScore { get; init; }
+    public decimal? PositiveAttitudeScore { get; init; }
     public string Feedback { get; init; }
     public bool Complete { get; init; }
     public string Completion { get; init; }
