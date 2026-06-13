@@ -143,6 +143,8 @@
 <script asp-location="Footer">
     (() => {
         const config = @Html.Raw(clientSettings);
+        console.log("Settings Config")
+        console.log(config)
         const turns = @Html.Raw(turns);
         let sessionToken = config.token || '@Model.Token';
         let tokenExpiryUtc = config.tokenExpiryUtc ? new Date(config.tokenExpiryUtc) : null;

@@ -51,4 +51,16 @@ public class PluginDefaultsTests
         Assert.That(typeof(ConfigurationModel).GetProperty("ResumeRequired"), Is.Null);
         Assert.That(typeof(ConfigurationModel).GetProperty("InterviewRequired"), Is.Null);
     }
+
+    [Test]
+    public void Locale_Resources_Include_Runtime_Unavailable_Message()
+    {
+        var installMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.That(installMethod, Is.Not.Null);
+
+        var resources = (Dictionary<string, string>)installMethod.Invoke(null, null);
+
+        Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Runtime.Error.Unavailable"), Is.True);
+        Assert.That(resources["Plugins.Misc.AIInterview.Runtime.Error.Unavailable"], Is.EqualTo("The interview service is temporarily unavailable. Please try again."));
+    }
 }
