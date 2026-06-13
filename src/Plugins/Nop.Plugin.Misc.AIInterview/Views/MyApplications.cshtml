@@ -304,7 +304,7 @@
                                                     @foreach (var turn in app.Turns)
                                                     {
                                                         <div style="padding:12px 14px;border:1px solid rgba(15,23,42,.08);border-radius:14px;margin-top:12px;">
-                                                            <div><strong>Q@turn.SequenceNumber.</strong> @turn.QuestionText</div>
+                                                            <div><strong>Q@(turn.SequenceNumber).</strong> @turn.QuestionText</div>
                                                             <div><strong>Answer:</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? "(pending)" : turn.AnswerText)</div>
                                                             <div><strong>Score:</strong> @(turn.Score.HasValue ? turn.Score.Value.ToString("N2") : "-")</div>
                                                             <div><strong>Feedback:</strong> @(string.IsNullOrWhiteSpace(turn.Feedback) ? "-" : turn.Feedback)</div>

@@ -656,6 +656,53 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public void ParseStructuredResponse_Handles_RubricJson_Object_WithRootScore_AndNextQuestion()
+    {
+        var response = InterviewAiClient.ParseStructuredResponse("""
+{"score":85,"feedback":"Balanced","complete":false,"nextQuestion":"Tell me about system design.","rubricJson":{"technicalScore":92,"communicationScore":84,"professionalismScore":88,"positiveAttitudeScore":76,"score":85}}
+""");
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response.Score, Is.EqualTo(85));
+        Assert.That(response.TechnicalScore, Is.EqualTo(92));
+        Assert.That(response.CommunicationScore, Is.EqualTo(84));
+        Assert.That(response.ProfessionalismScore, Is.EqualTo(88));
+        Assert.That(response.PositiveAttitudeScore, Is.EqualTo(76));
+        Assert.That(response.NextQuestion, Is.EqualTo("Tell me about system design."));
+        Assert.That(response.Feedback, Is.EqualTo("Balanced"));
+    }
+
+    [Test]
+    public void ParseStructuredResponse_Handles_RubricJson_String_And_AlternateScoreNames()
+    {
+        var response = InterviewAiClient.ParseStructuredResponse("""
+{"overallScore":"81","feedback":"Clear answer","complete":false,"nextQuestion":"Explain caching.","rubricJson":"{\"technical_score\":80,\"communication\":79,\"professionalism_score\":83,\"attitude\":82,\"overall_score\":81}"}
+""");
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response.Score, Is.EqualTo(81));
+        Assert.That(response.TechnicalScore, Is.EqualTo(80));
+        Assert.That(response.CommunicationScore, Is.EqualTo(79));
+        Assert.That(response.ProfessionalismScore, Is.EqualTo(83));
+        Assert.That(response.PositiveAttitudeScore, Is.EqualTo(82));
+    }
+
+    [Test]
+    public void ParseStructuredResponse_Handles_MarkdownFencedScoringJson()
+    {
+        var response = InterviewAiClient.ParseStructuredResponse("""
+```json
+{"technicalScore":"90","communicationScore":"88","professionalismScore":"86","positiveAttitudeScore":"84","score":"87","feedback":"Solid","complete":false,"nextQuestion":"What tradeoffs did you consider?"}
+```
+""");
+
+        Assert.That(response, Is.Not.Null);
+        Assert.That(response.Score, Is.EqualTo(87));
+        Assert.That(response.Feedback, Is.EqualTo("Solid"));
+        Assert.That(response.NextQuestion, Is.EqualTo("What tradeoffs did you consider?"));
+    }
+
+    [Test]
     public void ParseStructuredResponse_HandlesBooleanCompleteFalse()
     {
         var response = InterviewAiClient.ParseStructuredResponse("""{"question":"What is DI?","complete":false}""");
@@ -779,6 +826,53 @@ public class RuntimeServiceTests
                 message.Contains("missing required score") &&
                 !message.Contains("super-secret-key") &&
                 !message.Contains("It reduces coupling.")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task ScoreAnswerAsync_PlainTextContractFailure_LogsSafeDiagnostics()
+    {
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"choices\":[{\"message\":{\"content\":\"Sorry, I cannot score this right now.\"}}]}", Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(handler);
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(x => x.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "super-secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-4o-mini",
+                Prompt = "prompt"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            httpFactory.Object,
+            nopLogger.Object);
+
+        var response = await client.ScoreAnswerAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Backend Engineer",
+            Difficulty = "Medium",
+            Prompt = "prompt",
+            Question = "Explain dependency injection.",
+            Answer = "My full candidate answer with confidential details."
+        });
+
+        Assert.That(response.Success, Is.False);
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI contract failure",
+            It.Is<string>(message =>
+                message.Contains("Mode=score") &&
+                message.Contains("Reason=invalid JSON") &&
+                message.Contains("Shape=plain text") &&
+                message.Contains("Sample=Sorry, I cannot score this right now.") &&
+                !message.Contains("super-secret-key") &&
+                !message.Contains("My full candidate answer with confidential details.")),
             null), Times.Once);
     }
 
@@ -1339,7 +1433,7 @@ public class RuntimeServiceTests
           "choices": [
             {
               "message": {
-                "content": "{\"score\":91,\"feedback\":\"Strong\",\"complete\":true,\"nextQuestion\":\"Q2\",\"completion\":\"done\"}"
+                "content": "{\"technicalScore\":92,\"communicationScore\":90,\"professionalismScore\":88,\"positiveAttitudeScore\":94,\"score\":91,\"feedback\":\"Strong\",\"complete\":true,\"nextQuestion\":\"Q2\",\"completion\":\"done\",\"rubricJson\":{\"technicalScore\":92,\"communicationScore\":90,\"professionalismScore\":88,\"positiveAttitudeScore\":94,\"score\":91}}"
               }
             }
           ]
@@ -1375,6 +1469,10 @@ public class RuntimeServiceTests
 
         Assert.That(result.Success, Is.True);
         Assert.That(result.Score, Is.EqualTo(91));
+        Assert.That(result.TechnicalScore, Is.EqualTo(92));
+        Assert.That(result.CommunicationScore, Is.EqualTo(90));
+        Assert.That(result.ProfessionalismScore, Is.EqualTo(88));
+        Assert.That(result.PositiveAttitudeScore, Is.EqualTo(94));
         Assert.That(result.NextQuestion, Is.EqualTo("Q2"));
         var requestBody = await httpHandler.Requests.Single().Content.ReadAsStringAsync();
         Assert.That(requestBody, Does.Contain("Previous answered turns"));
@@ -1384,6 +1482,12 @@ public class RuntimeServiceTests
         Assert.That(requestBody, Does.Contain("Scoring mode contract"));
         Assert.That(requestBody, Does.Contain("nextQuestion"));
         Assert.That(requestBody, Does.Contain("completion"));
+        Assert.That(requestBody, Does.Contain("feedback must be present"));
+        Assert.That(requestBody, Does.Contain("technicalScore"));
+        Assert.That(requestBody, Does.Contain("communicationScore"));
+        Assert.That(requestBody, Does.Contain("professionalismScore"));
+        Assert.That(requestBody, Does.Contain("positiveAttitudeScore"));
+        Assert.That(requestBody, Does.Contain("rubricJson should be a JSON object"));
     }
 
     [Test]
@@ -1419,7 +1523,7 @@ public class RuntimeServiceTests
 
         var outOfRangeHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent("""{"choices":[{"message":{"content":"{\"score\":150,\"feedback\":\"Too high\",\"complete\":false}"}}]}""", Encoding.UTF8, "application/json")
+            Content = new StringContent("""{"choices":[{"message":{"content":"{\"technicalScore\":96,\"communicationScore\":94,\"professionalismScore\":92,\"positiveAttitudeScore\":90,\"score\":150,\"feedback\":\"Too high\",\"complete\":false,\"nextQuestion\":\"Q2\"}"}}]}""", Encoding.UTF8, "application/json")
         });
         var outOfRangeFactory = CreateHttpClientFactory(outOfRangeHandler);
         var outOfRangeClient = new InterviewAiClient(
@@ -1444,6 +1548,35 @@ public class RuntimeServiceTests
         Assert.That(outOfRange.Success, Is.True);
         Assert.That(outOfRange.Score, Is.EqualTo(100));
         Assert.That(outOfRange.RawJson, Does.Contain("\"score\":150"));
+    }
+
+    [Test]
+    public async Task ScoreAnswerAsync_MissingCategoriesOrFeedback_ReturnsUnavailable()
+    {
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""{"choices":[{"message":{"content":"{\"score\":91,\"feedback\":\"\",\"complete\":false,\"nextQuestion\":\"Q2\",\"technicalScore\":91}"}}]}""", Encoding.UTF8, "application/json")
+        });
+        var factory = CreateHttpClientFactory(handler);
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret",
+                AzureOpenAiDeploymentOrModel = "deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            factory.Object);
+
+        var response = await client.ScoreAnswerAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Question = "Q1",
+            Answer = "A1"
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.Score, Is.Null);
     }
 
     [Test]

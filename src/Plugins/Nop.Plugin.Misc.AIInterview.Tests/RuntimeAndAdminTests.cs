@@ -699,10 +699,19 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
         Assert.That(runtimeViewText, Does.Contain("submitButton.disabled = interviewUnavailable || !hasActiveQuestion();"));
         Assert.That(runtimeViewText, Does.Contain("interviewUnavailable = true;"));
+        Assert.That(runtimeViewText, Does.Contain("let runtimeStoppedOrCompleted = false;"));
+        Assert.That(runtimeViewText, Does.Contain("let stopInProgress = false;"));
+        Assert.That(runtimeViewText, Does.Contain("if (runtimeStoppedOrCompleted || stopInProgress)"));
         Assert.That(runtimeViewText, Does.Contain("const autoSubmitDelaySeconds = 10;"));
         Assert.That(runtimeViewText, Does.Contain("clearInteractionTimers();"));
         Assert.That(runtimeViewText, Does.Contain("Auto submitting in ${countdownValue}"));
         Assert.That(runtimeViewText, Does.Contain("Please speak or type something."));
+        Assert.That(runtimeViewText, Does.Contain("stopInProgress = true;"));
+        Assert.That(runtimeViewText, Does.Contain("runtimeStoppedOrCompleted = true;"));
+        Assert.That(runtimeViewText, Does.Contain("clearTimeout(tokenRefreshTimer);"));
+        Assert.That(runtimeViewText, Does.Contain("if (!config.recordingUploadUrl || !blob || recordingUploadInFlight)"));
+        Assert.That(runtimeViewText, Does.Contain("Camera permission was denied. You can continue by typing your answers."));
+        Assert.That(runtimeViewText, Does.Contain("Microphone permission was denied. You can continue by typing your answers."));
         Assert.That(runtimeViewText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = 'none';"));
 

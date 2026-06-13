@@ -1006,6 +1006,10 @@ public class CandidateFlowTests
         Assert.That(myApplicationsText, Does.Contain("Question Count"));
         Assert.That(mockReportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
         Assert.That(reportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
+        Assert.That(mockReportText, Does.Not.Contain("Q@turn.SequenceNumber"));
+        Assert.That(reportText, Does.Not.Contain("Q@turn.SequenceNumber"));
+        Assert.That(mockReportText, Does.Contain("Q@(turn.SequenceNumber)"));
+        Assert.That(reportText, Does.Contain("Q@(turn.SequenceNumber)"));
         Assert.That(mockReportText, Does.Contain("Technical Score"));
         Assert.That(mockReportText, Does.Contain("Communication"));
         Assert.That(mockReportText, Does.Contain("Professionalism"));

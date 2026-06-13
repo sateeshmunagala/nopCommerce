@@ -182,6 +182,9 @@
         let tokenRefreshPromise = null;
         let interviewStarted = false;
         let interviewUnavailable = false;
+        let runtimeStoppedOrCompleted = false;
+        let stopInProgress = false;
+        let mediaPermissionDenied = false;
         let completedRedirectTimer = null;
         let completedCountdown = null;
         const autoSubmitDelaySeconds = 10;
@@ -203,8 +206,10 @@
         const clearInteractionTimers = () => {
             clearTimeout(answerStageTimer);
             clearInterval(countdownTimer);
+            clearTimeout(tokenRefreshTimer);
             answerStageTimer = null;
             countdownTimer = null;
+            tokenRefreshTimer = null;
             countdownValue = autoSubmitDelaySeconds;
             resetSubmitButtonText();
         };
@@ -364,6 +369,9 @@
         };
 
         const applyTokenUpdate = (result) => {
+            if (runtimeStoppedOrCompleted || stopInProgress)
+                return;
+
             const newToken = getValue(result, 'newToken', 'NewToken');
             if (!newToken)
                 return;
@@ -376,6 +384,9 @@
         };
 
         const isTokenRefreshNeeded = () => {
+            if (runtimeStoppedOrCompleted || stopInProgress)
+                return false;
+
             if (!config.refreshTokenUrl || !sessionToken)
                 return false;
 
@@ -388,6 +399,9 @@
         const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         const refreshTokenWithRetry = (attempt = 0) => {
+            if (runtimeStoppedOrCompleted || stopInProgress)
+                return Promise.resolve(false);
+
             if (!config.refreshTokenUrl || !sessionToken)
                 return Promise.resolve(false);
 
@@ -425,6 +439,9 @@
         };
 
         const ensureRuntimeTokenFresh = async () => {
+            if (runtimeStoppedOrCompleted || stopInProgress)
+                return false;
+
             if (!isTokenRefreshNeeded())
                 return true;
 
@@ -459,6 +476,8 @@
         };
 
         const setCompletedState = async (result) => {
+            runtimeStoppedOrCompleted = true;
+            stopInProgress = false;
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
             const completionText = getValue(result, 'completion', 'Completion') || getValue(result, 'message', 'Message') || 'Interview completed.';
             clearInteractionTimers();
@@ -513,6 +532,7 @@
                 reportButton.style.display = 'none';
             }
             clearTimeout(tokenRefreshTimer);
+            tokenRefreshTimer = null;
         };
 
         const buildTurnCard = (turn, index) => {
@@ -795,6 +815,9 @@
 
         const scheduleTokenRefresh = () => {
             clearTimeout(tokenRefreshTimer);
+            tokenRefreshTimer = null;
+            if (runtimeStoppedOrCompleted || stopInProgress)
+                return;
             if (!config.refreshTokenUrl || !tokenExpiryUtc || isNaN(tokenExpiryUtc.getTime()))
                 return;
 
@@ -997,9 +1020,14 @@
                 logActivity('Camera started.');
                 if (!skipRecordingSync)
                     await syncRecording();
-            } catch {
+            } catch (error) {
                 logActivity('Camera failed to start.');
-                setStatus('Camera could not be started.', true);
+                if (error?.name === 'NotAllowedError' || /denied|permission/i.test(error?.message || '')) {
+                    mediaPermissionDenied = true;
+                    setStatus('Camera permission was denied. You can continue by typing your answers.', false);
+                } else {
+                    setStatus('Camera could not be started.', true);
+                }
             }
         };
 
@@ -1053,9 +1081,14 @@
                 await startSpeechRecognition();
                 if (!skipRecordingSync)
                     await syncRecording();
-            } catch {
+            } catch (error) {
                 logActivity('Mic failed to start.');
-                setStatus('Microphone could not be started.', true);
+                if (error?.name === 'NotAllowedError' || /denied|permission/i.test(error?.message || '')) {
+                    mediaPermissionDenied = true;
+                    setStatus('Microphone permission was denied. You can continue by typing your answers.', false);
+                } else {
+                    setStatus('Microphone could not be started.', true);
+                }
             }
         };
 
@@ -1181,6 +1214,10 @@
                 return;
 
             logActivity('Stopping interview...');
+            stopInProgress = true;
+            clearInteractionTimers();
+            clearTimeout(tokenRefreshTimer);
+            tokenRefreshTimer = null;
             let originalText = '';
             if (stopBtn) {
                 originalText = stopBtn.textContent;
@@ -1198,6 +1235,7 @@
             const result = await postForm(config.stopInterviewUrl, body);
 
             if (!isSuccess(result)) {
+                stopInProgress = false;
                 if (stopBtn) {
                     stopBtn.disabled = false;
                     stopBtn.classList.remove('is-loading');
@@ -1211,6 +1249,7 @@
 
                 logActivity('Stop response failure: ' + getRuntimeMessage(result, 'Unable to stop interview.'));
                 setStatus(getRuntimeMessage(result, 'Unable to stop interview.'), true);
+                scheduleTokenRefresh();
                 return;
             }
 

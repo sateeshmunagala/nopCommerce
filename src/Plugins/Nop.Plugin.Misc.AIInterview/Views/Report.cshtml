@@ -100,7 +100,7 @@
                     @foreach (var turn in Model.Turns)
                     {
                         <div class="ai-report-turn">
-                            <div class="ai-report-turn-title">Q@turn.SequenceNumber. @turn.QuestionText</div>
+                            <div class="ai-report-turn-title">Q@(turn.SequenceNumber). @turn.QuestionText</div>
                             <div class="ai-report-answer"><strong>Answer:</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? "(pending)" : turn.AnswerText)</div>
                             <div class="ai-report-feedback"><strong>Feedback:</strong> @(string.IsNullOrWhiteSpace(turn.Feedback) ? "-" : turn.Feedback)</div>
                             <div class="ai-report-grid">

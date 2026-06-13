@@ -107,10 +107,16 @@ public class InterviewAiClient : IAIInterviewClient
         if (response == null)
             return BuildUnavailableResponse();
 
-        if (!response.Score.HasValue)
+        if (!response.Score.HasValue ||
+            string.IsNullOrWhiteSpace(response.Feedback) ||
+            !response.TechnicalScore.HasValue ||
+            !response.CommunicationScore.HasValue ||
+            !response.ProfessionalismScore.HasValue ||
+            !response.PositiveAttitudeScore.HasValue ||
+            (!response.Complete && string.IsNullOrWhiteSpace(response.NextQuestion)))
         {
             if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview score validation failure", "Mode=score; Reason=missing required score.");
+                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview score validation failure", BuildScoreValidationFailureLog(response));
             return BuildValidationFailureResponse(response, "AI service unavailable.");
         }
 
@@ -161,7 +167,7 @@ public class InterviewAiClient : IAIInterviewClient
                         role = "system",
                         content = mode == "generate"
                             ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
-                            : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, nextQuestion when continuing, completion when ending, optional rubricJson. Every score must be numeric 0-100. score must be the average of the four category scores. No markdown. No prose outside JSON."
+                            : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, nextQuestion, completion, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. nextQuestion must be present unless complete=true. rubricJson should be a JSON object that repeats the category scores and score."
                     },
                     new { role = "user", content = prompt }
                 },
@@ -215,10 +221,10 @@ public class InterviewAiClient : IAIInterviewClient
             if (parsed != null)
                 return parsed;
 
-            var contractReason = GetStructuredResponseFailureReason(content, mode);
+            var contractReason = BuildStructuredResponseFailureLog(content, mode);
             _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON or failed contract parsing.", mode);
             if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Mode={mode}; Reason={contractReason}.");
+                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", contractReason);
         }
         catch (System.Text.Json.JsonException ex)
         {
@@ -273,7 +279,7 @@ Previous answered turns:
 {previousTurns}
 Current question: {request.Question}
 Candidate answer: {request.Answer}
-Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, nextQuestion, completion, optional rubricJson")}
+Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100,\"feedback\":\"string\",\"complete\":false,\"nextQuestion\":\"string or null\",\"completion\":\"string or null\",\"rubricJson\":{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100}}")}
 """;
     }
 
@@ -316,42 +322,14 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
 
         try
         {
-            var normalized = content.Trim();
-            if (normalized.StartsWith("```", StringComparison.Ordinal))
-            {
-                var firstBrace = normalized.IndexOf('{');
-                var lastBrace = normalized.LastIndexOf('}');
-                if (firstBrace >= 0 && lastBrace > firstBrace)
-                    normalized = normalized.Substring(firstBrace, lastBrace - firstBrace + 1);
-            }
-
-            var start = normalized.IndexOf('{');
-            var end = normalized.LastIndexOf('}');
-            if (start >= 0 && end > start)
-                normalized = normalized.Substring(start, end - start + 1);
-
+            var normalized = ExtractJsonObjectPayload(content);
             using var document = JsonDocument.Parse(normalized);
             var root = document.RootElement;
             if (string.Equals(mode, "generate", StringComparison.OrdinalIgnoreCase))
                 return string.IsNullOrWhiteSpace(root.TryGetProperty("question", out var q) ? q.GetString() : null) ? "empty question" : "unknown contract failure";
 
-            var score = TryParseNullableDecimal(root, "score");
-            var rubricNode = TryParseJsonNode(root, "rubricJson") ?? TryParseJsonNode(root, "rubric");
-            var categoryValues = new[]
-            {
-                GetScoreValue(root, rubricNode, "technicalScore"),
-                GetScoreValue(root, rubricNode, "communicationScore"),
-                GetScoreValue(root, rubricNode, "professionalismScore"),
-                GetScoreValue(root, rubricNode, "positiveAttitudeScore")
-            };
-
-            if (!score.HasValue && categoryValues.All(value => !value.HasValue))
-                return "missing score";
-
-            if (categoryValues.Any(value => value.HasValue && (value.Value < 0 || value.Value > 100)))
-                return "invalid category score";
-
-            return "invalid JSON or failed contract parsing";
+            var diagnostics = AnalyzeScoreContract(root);
+            return diagnostics.Reason;
         }
         catch (JsonException)
         {
@@ -370,28 +348,16 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
             if (string.IsNullOrWhiteSpace(content))
                 return null;
 
-            content = content.Trim();
-            if (content.StartsWith("```", StringComparison.Ordinal))
-            {
-                var firstBrace = content.IndexOf('{');
-                var lastBrace = content.LastIndexOf('}');
-                if (firstBrace >= 0 && lastBrace > firstBrace)
-                    content = content.Substring(firstBrace, lastBrace - firstBrace + 1);
-            }
-
-            var start = content.IndexOf('{');
-            var end = content.LastIndexOf('}');
-            if (start >= 0 && end > start)
-                content = content.Substring(start, end - start + 1);
+            content = ExtractJsonObjectPayload(content);
 
             using var document = JsonDocument.Parse(content);
             var root = document.RootElement;
             var rubricNode = TryParseJsonNode(root, "rubricJson") ?? TryParseJsonNode(root, "rubric");
-            var technicalScore = GetScoreValue(root, rubricNode, "technicalScore");
-            var communicationScore = GetScoreValue(root, rubricNode, "communicationScore");
-            var professionalismScore = GetScoreValue(root, rubricNode, "professionalismScore");
-            var positiveAttitudeScore = GetScoreValue(root, rubricNode, "positiveAttitudeScore");
-            var score = GetScoreValue(root, rubricNode, "score");
+            var technicalScore = GetScoreValue(root, rubricNode, "technicalScore", "technical", "technical_score");
+            var communicationScore = GetScoreValue(root, rubricNode, "communicationScore", "communication", "communication_score");
+            var professionalismScore = GetScoreValue(root, rubricNode, "professionalismScore", "professionalism", "professionalism_score");
+            var positiveAttitudeScore = GetScoreValue(root, rubricNode, "positiveAttitudeScore", "positiveAttitude", "positive_attitude", "attitude", "positiveAttitudeScore");
+            var score = GetScoreValue(root, rubricNode, "score", "overallScore", "overall_score", "totalScore");
             var rubricScores = new[] { technicalScore, communicationScore, professionalismScore, positiveAttitudeScore }
                 .Where(value => value.HasValue)
                 .Select(value => value.Value)
@@ -519,14 +485,113 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
         }
     }
 
-    protected static decimal? GetScoreValue(JsonElement root, JsonNode rubricNode, string propertyName)
+    protected static decimal? GetScoreValue(JsonElement root, JsonNode rubricNode, params string[] propertyNames)
     {
-        var direct = TryParseNullableDecimal(root, propertyName);
-        if (direct.HasValue)
-            return Math.Clamp(direct.Value, 0, 100);
+        foreach (var propertyName in propertyNames.Where(name => !string.IsNullOrWhiteSpace(name)))
+        {
+            var direct = TryParseNullableDecimal(root, propertyName);
+            if (direct.HasValue)
+                return Math.Clamp(direct.Value, 0, 100);
 
-        var rubric = TryParseNullableDecimal(rubricNode, propertyName);
-        return rubric.HasValue ? Math.Clamp(rubric.Value, 0, 100) : null;
+            var rubric = TryParseNullableDecimal(rubricNode, propertyName);
+            if (rubric.HasValue)
+                return Math.Clamp(rubric.Value, 0, 100);
+        }
+
+        return null;
+    }
+
+    protected static string ExtractJsonObjectPayload(string content)
+    {
+        var normalized = content?.Trim() ?? string.Empty;
+        if (normalized.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstBrace = normalized.IndexOf('{');
+            var lastBrace = normalized.LastIndexOf('}');
+            if (firstBrace >= 0 && lastBrace > firstBrace)
+                normalized = normalized.Substring(firstBrace, lastBrace - firstBrace + 1);
+        }
+
+        var start = normalized.IndexOf('{');
+        var end = normalized.LastIndexOf('}');
+        if (start >= 0 && end > start)
+            normalized = normalized.Substring(start, end - start + 1);
+
+        return normalized;
+    }
+
+    protected sealed record ScoreContractDiagnostics(string Reason, string Shape, string PropertyNames, string Sample);
+
+    protected static ScoreContractDiagnostics AnalyzeScoreContract(JsonElement root)
+    {
+        var rubricNode = TryParseJsonNode(root, "rubricJson") ?? TryParseJsonNode(root, "rubric");
+        var technicalScore = GetScoreValue(root, rubricNode, "technicalScore", "technical", "technical_score");
+        var communicationScore = GetScoreValue(root, rubricNode, "communicationScore", "communication", "communication_score");
+        var professionalismScore = GetScoreValue(root, rubricNode, "professionalismScore", "professionalism", "professionalism_score");
+        var positiveAttitudeScore = GetScoreValue(root, rubricNode, "positiveAttitudeScore", "positiveAttitude", "positive_attitude", "attitude");
+        var score = GetScoreValue(root, rubricNode, "score", "overallScore", "overall_score", "totalScore");
+        var feedback = root.TryGetProperty("feedback", out var feedbackElement) ? feedbackElement.GetString() : null;
+        var nextQuestion = root.TryGetProperty("nextQuestion", out var nextQuestionElement) ? nextQuestionElement.GetString()
+            : root.TryGetProperty("optionalNextQuestion", out var optionalNextQuestionElement) ? optionalNextQuestionElement.GetString() : null;
+        var complete = TryParseBoolean(root, "complete");
+        var propertyNames = root.ValueKind == JsonValueKind.Object
+            ? string.Join(",", root.EnumerateObject().Select(property => property.Name))
+            : string.Empty;
+
+        var reason = "invalid JSON or failed contract parsing";
+        if (!score.HasValue)
+            reason = "missing score";
+        else if (!technicalScore.HasValue || !communicationScore.HasValue || !professionalismScore.HasValue || !positiveAttitudeScore.HasValue)
+            reason = "missing category score";
+        else if (string.IsNullOrWhiteSpace(feedback))
+            reason = "missing feedback";
+        else if (!complete && string.IsNullOrWhiteSpace(nextQuestion))
+            reason = "missing next question";
+
+        return new ScoreContractDiagnostics(reason, root.ValueKind.ToString(), propertyNames, TruncateSafe(root.GetRawText(), 800));
+    }
+
+    protected static string BuildStructuredResponseFailureLog(string content, string mode)
+    {
+        var shape = "empty";
+        var sample = TruncateSafe(content, 800);
+        try
+        {
+            var normalized = ExtractJsonObjectPayload(content);
+            using var document = JsonDocument.Parse(normalized);
+            var diagnostics = string.Equals(mode, "score", StringComparison.OrdinalIgnoreCase)
+                ? AnalyzeScoreContract(document.RootElement)
+                : new ScoreContractDiagnostics(GetStructuredResponseFailureReason(content, mode), document.RootElement.ValueKind.ToString(),
+                    document.RootElement.ValueKind == JsonValueKind.Object ? string.Join(",", document.RootElement.EnumerateObject().Select(property => property.Name)) : string.Empty,
+                    TruncateSafe(document.RootElement.GetRawText(), 800));
+
+            return $"Mode={mode}; Reason={diagnostics.Reason}; Shape={diagnostics.Shape}; PropertyNames={diagnostics.PropertyNames}; Sample={diagnostics.Sample}.";
+        }
+        catch
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                shape = "empty";
+            else if (content.TrimStart().StartsWith("```", StringComparison.Ordinal))
+                shape = "markdown fenced JSON";
+            else if (content.Contains('{'))
+                shape = "malformed object-like text";
+            else
+                shape = "plain text";
+
+            return $"Mode={mode}; Reason={GetStructuredResponseFailureReason(content, mode)}; Shape={shape}; Sample={sample}.";
+        }
+    }
+
+    protected static string BuildScoreValidationFailureLog(AIInterviewClientResponse response)
+    {
+        var reason = response == null || !response.Score.HasValue ? "missing required score"
+            : !response.TechnicalScore.HasValue || !response.CommunicationScore.HasValue || !response.ProfessionalismScore.HasValue || !response.PositiveAttitudeScore.HasValue ? "missing category score"
+            : string.IsNullOrWhiteSpace(response.Feedback) ? "missing feedback"
+            : !response.Complete && string.IsNullOrWhiteSpace(response.NextQuestion) ? "missing next question"
+            : "invalid score contract";
+
+        var sample = TruncateSafe(response?.RawJson, 800);
+        return $"Mode=score; Reason={reason}; Sample={sample}.";
     }
 
     protected static void UpsertScoreValue(JsonObject rubric, string propertyName, decimal? value)
