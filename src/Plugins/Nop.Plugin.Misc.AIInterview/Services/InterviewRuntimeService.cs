@@ -160,33 +160,57 @@ public class InterviewAiClient : IAIInterviewClient
 
             var body = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
             var result = await httpClient.PostAsync(endpoint, body);
+            var json = await result.Content.ReadAsStringAsync();
+
             if (!result.IsSuccessStatusCode)
             {
-                _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}.", result.StatusCode);
+                _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}. Response: {Response}", result.StatusCode, TruncateSafe(json));
                 return null;
             }
 
-            var json = await result.Content.ReadAsStringAsync();
             using var document = JsonDocument.Parse(json);
-            var content = document.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString();
-
-            if (string.IsNullOrWhiteSpace(content))
+            if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+            {
+                _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty choices.", mode);
                 return null;
+            }
+
+            if (!choices[0].TryGetProperty("message", out var message) || !message.TryGetProperty("content", out var contentProperty))
+            {
+                _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Missing message content.", mode);
+                return null;
+            }
+
+            var content = contentProperty.GetString();
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty content string.", mode);
+                return null;
+            }
 
             var parsed = ParseStructuredResponse(content);
             if (parsed != null)
                 return parsed;
+
+            _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON or failed contract parsing. Raw content: {Content}", mode, TruncateSafe(content));
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger?.LogWarning(ex, "Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON format.", mode);
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Azure OpenAI call failed.");
+            _logger?.LogWarning(ex, "Azure OpenAI call exception.");
         }
 
         return BuildUnavailableResponse();
+    }
+
+
+    protected static string TruncateSafe(string text, int length = 500)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+        return text.Length <= length ? text : text.Substring(0, length) + "...";
     }
 
     protected virtual HttpClient CreateHttpClient()
@@ -409,6 +433,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         _logger = logger;
     }
 
+
+    protected static string TruncateSafe(string text, int length = 500)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+        return text.Length <= length ? text : text.Substring(0, length) + "...";
+    }
+
     protected virtual HttpClient CreateHttpClient()
     {
         return _httpClientFactory?.CreateClient(nameof(InterviewRuntimeService)) ?? new HttpClient();
@@ -505,7 +536,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (evaluation == null || !evaluation.Success || !evaluation.Score.HasValue || evaluation.Score.Value < 0 || evaluation.Score.Value > 100)
         {
             _logger?.LogWarning("SubmitAnswer score failure for session {SessionId}. Mode: score. Reason: {Reason}. Raw: {RawJson}",
-                session.Id, evaluation?.ErrorMessage ?? "Invalid format/range", evaluation?.RawJson ?? string.Empty);
+                session.Id, evaluation?.ErrorMessage ?? "Invalid format/range", TruncateSafe(evaluation?.RawJson));
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
@@ -903,7 +934,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (aiResponse == null || !aiResponse.Success || string.IsNullOrWhiteSpace(aiResponse.Question))
         {
             _logger?.LogWarning("GenerateQuestion failure for session {SessionId}. Mode: generate. Reason: {Reason}. Raw: {RawJson}",
-                session.Id, aiResponse?.ErrorMessage ?? "Invalid format", aiResponse?.RawJson ?? string.Empty);
+                session.Id, aiResponse?.ErrorMessage ?? "Invalid format", TruncateSafe(aiResponse?.RawJson));
             return null;
         }
 

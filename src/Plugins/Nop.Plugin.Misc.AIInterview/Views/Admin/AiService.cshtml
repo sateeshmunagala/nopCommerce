@@ -22,7 +22,26 @@
             <div class="card card-default">
                 <div class="card-body">
                     <h4>General / Model</h4>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="UseMockResponses" /></div><div class="col-md-9"><nop-editor asp-for="UseMockResponses" /></div></div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="UseMockResponses" /></div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="UseMockResponses" />
+                            <small class="form-text text-muted" id="mock-responses-hint" style="display: none;">Mock AI responses are enabled; Azure OpenAI is not being called.</small>
+                        </div>
+                    </div>
+                    <script>
+                        $(document).ready(function() {
+                            function toggleMockHint() {
+                                if ($('#@Html.IdFor(model => model.UseMockResponses)').is(':checked')) {
+                                    $('#mock-responses-hint').show();
+                                } else {
+                                    $('#mock-responses-hint').hide();
+                                }
+                            }
+                            $('#@Html.IdFor(model => model.UseMockResponses)').change(toggleMockHint);
+                            toggleMockHint();
+                        });
+                    </script>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Provider" /></div><div class="col-md-9"><nop-select asp-for="Provider" asp-items="Model.AvailableProviders" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ApiKey" /></div><div class="col-md-9"><nop-editor asp-for="ApiKey" /></div></div>
                     <div class="form-group row">

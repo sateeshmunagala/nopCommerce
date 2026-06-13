@@ -95,6 +95,12 @@
                     <span class="runtime-dot"></span>
                 </div>
                 <div class="runtime-status" id="recording-status"></div>
+                @if (Model.IsMockMode)
+                {
+                    <div class="runtime-status message-info" style="color: #0f5bd7; text-align: center; margin-top: 10px; font-size: 13px;">
+                        Mock AI responses are enabled; Azure OpenAI is not being called.
+                    </div>
+                }
                 <div class="runtime-meter" id="audio-meter" aria-label="microphone level">
                     <span></span><span></span><span></span><span></span><span></span><span></span>
                 </div>
@@ -191,11 +197,19 @@
                 }, 5000);
             } else {
                 logActivity('Timer scheduled for silence reminder.');
-                reminderTimer = setTimeout(() => {
+                reminderTimer = setTimeout(async () => {
                     logActivity('Reminder shown/spoken: Please answer the question.');
                     setStatus('Please answer the question.', false);
                     if (config.speechAvailable) {
-                        speakText("Please answer the question.");
+                        try {
+                            await speakText("Please answer the question.");
+                        } catch (e) {
+                            logActivity('Speech reminder error ignored.');
+                        }
+                    }
+                    const currentText = (answerBox.value || '').trim();
+                    if (!currentText && interviewStarted && !isSpeakingOrSubmitting) {
+                         resetTimers();
                     }
                 }, 5000);
             }

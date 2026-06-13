@@ -557,6 +557,57 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_SubmitAnswer_Empty_ReturnsLocalizedJsonError()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token")).ReturnsAsync(new InterviewSession
+        {
+            Token = "token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        var controller = new TestRuntimeController(sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object);
+        var result = await controller.SubmitAnswer("token", "");
+        var json = (JsonResult)result;
+
+        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        var message = json.Value.GetType().GetProperty("message").GetValue(json.Value, null);
+        var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
+
+        Assert.That(success, Is.False);
+        Assert.That(message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer"));
+        Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer"));
+    }
+
+    [Test]
+    public async Task LocalizedErrorAsync_SetsStatusCode_WhenHttpContextExists()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var controller = new TestRuntimeController(sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object);
+        var httpContext = new DefaultHttpContext();
+        controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        var result = await controller.SubmitAnswer(null, null); // invalid token & answer -> triggering LocalizedErrorAsync
+
+        Assert.That(httpContext.Response.StatusCode, Is.EqualTo(400));
+        var json = (JsonResult)result;
+        Assert.That(json.Value.GetType().GetProperty("success").GetValue(json.Value, null), Is.False);
+    }
+
+    [Test]
+    public void MockAiInterviewController_MaskToken_Works()
+    {
+        var controller = new TestRuntimeController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object);
+
+        var maskMethod = controller.GetType().GetMethod("MaskToken", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var maskedShort = maskMethod.Invoke(controller, new object[] { "12345" });
+        var maskedLong = maskMethod.Invoke(controller, new object[] { "1234567890" });
+
+        Assert.That(maskedShort, Is.EqualTo("*****"));
+        Assert.That(maskedLong, Is.EqualTo("123456..."));
+    }
+
+    [Test]
     public void Runtime_NoAgoraSdkUsage()
     {
         var path = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml");

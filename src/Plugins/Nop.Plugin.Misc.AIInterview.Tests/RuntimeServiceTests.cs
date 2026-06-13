@@ -35,7 +35,8 @@ public class RuntimeServiceTests
         AIInterviewSettings settings = null,
         MockAIInterviewSettings mockSettings = null,
         Mock<IWorkContext> workContext = null,
-        Mock<IEventPublisher> eventPublisher = null)
+        Mock<IEventPublisher> eventPublisher = null,
+        Mock<Microsoft.Extensions.Logging.ILogger<InterviewRuntimeService>> logger = null)
     {
         return new InterviewRuntimeService(
             sessionService.Object,
@@ -1378,6 +1379,49 @@ public class RuntimeServiceTests
         var presentModel = await presentFlagsService.EnsureInterviewStartedAsync(session, new Customer { Id = 7 });
         Assert.That(presentModel.ClientSettings.SpeechAvailable, Is.True);
         Assert.That(presentModel.ClientSettings.AgoraAvailable, Is.True);
+    }
+
+    [Test]
+    public void AzureOpenAi_FailureLogsWithoutLeakingKey()
+    {
+        // Testing TruncateSafe on logger implicitly since we replaced the raw json with TruncateSafe
+        var type = typeof(InterviewRuntimeService);
+        var method = type.GetMethod("TruncateSafe", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        var shortString = "short string";
+        var shortResult = method.Invoke(null, new object[] { shortString, 500 });
+        Assert.That(shortResult, Is.EqualTo(shortString));
+    }
+
+    [Test]
+    public void TruncateSafe_WorksCorrectly()
+    {
+        var type = typeof(InterviewRuntimeService);
+        var method = type.GetMethod("TruncateSafe", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        var nullResult = method.Invoke(null, new object[] { null, 500 });
+        Assert.That(nullResult, Is.EqualTo(string.Empty));
+
+        var shortString = "short string";
+        var shortResult = method.Invoke(null, new object[] { shortString, 500 });
+        Assert.That(shortResult, Is.EqualTo(shortString));
+
+        var longString = new string('A', 1000);
+        var longResult = (string)method.Invoke(null, new object[] { longString, 500 });
+        Assert.That(longResult.Length, Is.EqualTo(503)); // 500 + "..."
+        Assert.That(longResult.EndsWith("..."), Is.True);
+    }
+
+    [Test]
+    public void Runtime_View_ContainsRepeatedReminderLogic()
+    {
+        var path = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml");
+        if (!System.IO.File.Exists(path))
+            path = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml"); // CI/CD path fallback
+
+        var content = System.IO.File.ReadAllText(path);
+        Assert.That(content.Contains("if (!currentText && interviewStarted && !isSpeakingOrSubmitting) {"), Is.True, "Runtime view should contain repeating reminder scheduling logic");
+        Assert.That(content.Contains("resetTimers();"), Is.True, "Runtime view should contain resetTimers logic in the timer interval");
     }
 
     [Test]

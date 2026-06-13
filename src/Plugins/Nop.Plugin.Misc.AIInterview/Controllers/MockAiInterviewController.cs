@@ -255,7 +255,8 @@ public class MockAiInterviewController : BasePluginController
                 Token = session.Token,
                 Difficulty = session.Difficulty,
                 ProductName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview",
-                CurrentQuestion = "Tell me about your background for this role."
+                CurrentQuestion = "Tell me about your background for this role.",
+                IsMockMode = true
             }
             : await _interviewRuntimeService.EnsureInterviewStartedAsync(session);
 

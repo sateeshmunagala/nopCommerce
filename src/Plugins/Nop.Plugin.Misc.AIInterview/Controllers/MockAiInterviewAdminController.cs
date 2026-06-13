@@ -53,7 +53,8 @@ public class MockAiInterviewAdminController : BasePluginController
 
     protected async Task<IActionResult> LocalizedErrorAsync(string resourceKey, string defaultValue, int statusCode = 400)
     {
-        return new JsonResult(new { error = await GetLocalizedTextAsync(resourceKey, defaultValue) })
+        var text = await GetLocalizedTextAsync(resourceKey, defaultValue);
+        return new JsonResult(new { success = false, message = text, error = text })
         {
             StatusCode = statusCode
         };
