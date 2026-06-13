@@ -633,7 +633,7 @@ public class AdminBaselineTests
             Amount = 25
         });
 
-        _notificationService.Verify(x => x.ErrorNotification("Plugins.Misc.AIInterview.Admin.Credits.InvalidVendorScope"), Times.Once);
+        _notificationService.Verify(x => x.ErrorNotification("The selected customer is not a vendor account."), Times.Once);
         _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
         _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
     }
@@ -650,7 +650,7 @@ public class AdminBaselineTests
             Amount = 25
         });
 
-        _notificationService.Verify(x => x.ErrorNotification("Plugins.Misc.AIInterview.Admin.Credits.InvalidApplicantScope"), Times.Once);
+        _notificationService.Verify(x => x.ErrorNotification("The selected customer is not an applicant account."), Times.Once);
         _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
         _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
     }
@@ -720,7 +720,7 @@ public class AdminBaselineTests
             Amount = 0
         });
 
-        _notificationService.Verify(x => x.ErrorNotification("Plugins.Misc.AIInterview.Admin.TopUp.InvalidAmount"), Times.Once);
+        _notificationService.Verify(x => x.ErrorNotification("Invalid top-up amount."), Times.Once);
         _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
     }
 
@@ -735,7 +735,7 @@ public class AdminBaselineTests
             Amount = 25
         });
 
-        _notificationService.Verify(x => x.ErrorNotification("Plugins.Misc.AIInterview.Admin.Credits.CustomerRequired"), Times.Once);
+        _notificationService.Verify(x => x.ErrorNotification("Customer is required."), Times.Once);
         _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
         _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
     }

@@ -440,6 +440,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         return text.Length <= length ? text : text.Substring(0, length) + "...";
     }
 
+    protected async Task<string> GetLocalizedTextAsync(string resourceKey, string fallback)
+    {
+        var text = await _localizationService.GetResourceAsync(resourceKey);
+        if (string.IsNullOrWhiteSpace(text) ||
+            string.Equals(text.Trim(), resourceKey, StringComparison.OrdinalIgnoreCase))
+            return fallback;
+
+        return text;
+    }
+
     protected virtual HttpClient CreateHttpClient()
     {
         return _httpClientFactory?.CreateClient(nameof(InterviewRuntimeService)) ?? new HttpClient();
@@ -489,7 +499,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
-                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken")
+                Message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.")
             };
         }
 
@@ -498,7 +508,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
-                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer")
+                Message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer", "Answer cannot be empty.")
             };
         }
 
@@ -657,7 +667,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             return new CompleteInterviewResponse
             {
                 Success = false,
-                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken")
+                Message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.")
             };
         }
 

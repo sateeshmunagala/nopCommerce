@@ -23,7 +23,7 @@
     .runtime-progress > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #0f5bd7, #ff7a1a); transition: width .2s ease; }
     .runtime-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(320px, .9fr); gap: 18px; min-height: 70vh; }
     .runtime-stage, .runtime-sidebar { display: grid; gap: 16px; padding: 18px; border-radius: 24px; background: #fff; border: 1px solid rgba(15, 23, 42, 0.08); }
-    .runtime-video { position: relative; min-height: 420px; border-radius: 20px; background: linear-gradient(180deg, #d9e2f2 0%, #c8d7ea 100%); display: grid; place-items: center; color: #51627b; font-size: 28px; font-weight: 700; overflow: hidden; }
+    .runtime-video { position: relative; min-height: clamp(220px, 28vw, 252px); max-height: 252px; border-radius: 20px; background: linear-gradient(180deg, #d9e2f2 0%, #c8d7ea 100%); display: grid; place-items: center; color: #51627b; font-size: 28px; font-weight: 700; overflow: hidden; }
     .runtime-video video { width: 100%; height: 100%; object-fit: cover; display: none; }
     .runtime-avatar { position: absolute; top: 20px; right: 20px; width: 108px; height: 108px; border-radius: 20px; background: linear-gradient(180deg, #f7f9fc 0%, #dce6f3 100%); border: 1px solid rgba(255,255,255,0.85); box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12); }
     .runtime-avatar::before, .runtime-avatar::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); background: #b5c3d0; }
@@ -177,6 +177,7 @@
         let recordingMimeType = 'video/webm';
         let recordingEnabled = false;
         let recordingUploadInFlight = false;
+        let tokenRefreshInFlight = false;
         let interviewStarted = false;
         let completedRedirectTimer = null;
         let completedCountdown = null;
@@ -184,6 +185,7 @@
         let silenceTimer = null;
         let reminderTimer = null;
         let isSpeakingOrSubmitting = false;
+        let isSubmittingAnswer = false;
 
         const resetTimers = () => {
             clearTimeout(silenceTimer);
@@ -194,26 +196,19 @@
             if (text) {
                 logActivity('Timer scheduled for auto-submit.');
                 silenceTimer = setTimeout(() => {
+                    const submitText = (answerBox.value || '').trim();
+                    if (!submitText) {
+                        logActivity('Auto-submit skipped; answer is empty.');
+                        reminderTimer = setTimeout(() => showReminder(), 0);
+                        return;
+                    }
+
                     logActivity('Auto-submitting answer due to silence.');
-                    submitAnswer();
+                    submitAnswer({ auto: true });
                 }, 5000);
             } else {
                 logActivity('Timer scheduled for silence reminder.');
-                reminderTimer = setTimeout(async () => {
-                    logActivity('Reminder shown/spoken: Please answer the question.');
-                    setStatus('Please answer the question.', false);
-                    if (config.speechAvailable) {
-                        try {
-                            await speakText("Please answer the question.");
-                        } catch (e) {
-                            logActivity('Speech reminder error ignored.');
-                        }
-                    }
-                    const currentText = (answerBox.value || '').trim();
-                    if (!currentText && interviewStarted && !isSpeakingOrSubmitting) {
-                         resetTimers();
-                    }
-                }, 5000);
+                reminderTimer = setTimeout(async () => await showReminder(), 5000);
             }
         };
 
@@ -290,9 +285,103 @@
         logActivity('Runtime initialized.');
 
         if (config.recordingAvailable)
-            setRecordingStatus('Recording ready.', false);
+            setRecordingStatus('Recording waiting for camera or mic.', false);
         else
             setRecordingStatus('Recording unavailable.', false);
+
+        const isPlaceholderSpeechText = (text) => {
+            const normalized = (text || '').trim();
+            return !normalized
+                || normalized === 'Welcome! Click Start Interview to begin.'
+                || normalized === 'AI service unavailable.';
+        };
+
+        const applyTokenUpdate = (result) => {
+            const newToken = getValue(result, 'newToken', 'NewToken');
+            if (!newToken)
+                return;
+
+            sessionToken = newToken;
+            config.token = newToken;
+            const expiry = getValue(result, 'tokenExpiryUtc', 'TokenExpiryUtc');
+            tokenExpiryUtc = expiry ? new Date(expiry) : tokenExpiryUtc;
+            scheduleTokenRefresh();
+        };
+
+        const isTokenRefreshNeeded = () => {
+            if (!config.refreshTokenUrl || !sessionToken)
+                return false;
+
+            if (!tokenExpiryUtc || isNaN(tokenExpiryUtc.getTime()))
+                return true;
+
+            return (tokenExpiryUtc.getTime() - Date.now()) <= 120000;
+        };
+
+        const refreshTokenWithRetry = async (attempt = 0) => {
+            if (!config.refreshTokenUrl || !sessionToken || tokenRefreshInFlight)
+                return false;
+
+            tokenRefreshInFlight = true;
+            try {
+                const result = await postForm(config.refreshTokenUrl, new URLSearchParams({ token: sessionToken }));
+                const newToken = getValue(result, 'newToken', 'NewToken');
+                if (result && isSuccess(result) && newToken) {
+                    logActivity('Session token refreshed.');
+                    applyTokenUpdate(result);
+                    return true;
+                }
+
+                if (attempt < 2 && isTokenRefreshNeeded()) {
+                    const backoff = (attempt + 1) * 1500;
+                    logActivity(`Token refresh retry scheduled in ${backoff / 1000}s.`);
+                    setTimeout(() => refreshTokenWithRetry(attempt + 1), backoff);
+                    return false;
+                }
+
+                if (tokenExpiryUtc && tokenExpiryUtc.getTime() <= Date.now()) {
+                    setStatus('Unable to continue the interview right now. Please reload and try again.', true);
+                }
+
+                return false;
+            } finally {
+                tokenRefreshInFlight = false;
+            }
+        };
+
+        const ensureRuntimeTokenFresh = async () => {
+            if (!isTokenRefreshNeeded())
+                return true;
+
+            const expired = tokenExpiryUtc && !isNaN(tokenExpiryUtc.getTime()) && tokenExpiryUtc.getTime() <= Date.now();
+            const refreshed = await refreshTokenWithRetry();
+            if (!refreshed && expired) {
+                logActivity('Token refresh failed for expired session token.');
+                setStatus('Unable to continue the interview right now. Please reload and try again.', true);
+                return false;
+            }
+
+            return true;
+        };
+
+        const showReminder = async () => {
+            if (!interviewStarted || isSpeakingOrSubmitting)
+                return;
+
+            logActivity('Reminder shown.');
+            setStatus('Please answer the question.', false);
+            if (config.speechAvailable) {
+                try {
+                    await speakText('Please answer the question.', 'reminder');
+                } catch {
+                    logActivity('Reminder speech failed.');
+                }
+            }
+
+            const currentText = (answerBox.value || '').trim();
+            if (!currentText && interviewStarted && !isSpeakingOrSubmitting)
+                resetTimers();
+        };
 
         const setCompletedState = async (result) => {
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
@@ -433,6 +522,7 @@
                 try {
                     const result = await response.json();
                     logActivity(`Request success: ${url}`);
+                    applyTokenUpdate(result);
                     return result;
                 } catch {
                     console.error(`[AIInterview] Request JSON parse failed: ${url}`);
@@ -476,6 +566,7 @@
                 try {
                     const result = await response.json();
                     logActivity(`Multipart request success: ${url}`);
+                    applyTokenUpdate(result);
                     return result;
                 } catch {
                     console.error(`[AIInterview] Multipart request JSON parse failed: ${url}`);
@@ -640,26 +731,13 @@
             if (!config.refreshTokenUrl || !tokenExpiryUtc || isNaN(tokenExpiryUtc.getTime()))
                 return;
 
-            const refreshAt = Math.max(30000, tokenExpiryUtc.getTime() - Date.now() - 120000);
-            tokenRefreshTimer = setTimeout(refreshToken, refreshAt);
-        };
-
-        const refreshToken = async () => {
-            if (!config.refreshTokenUrl || !sessionToken)
-                return;
-
-            const result = await postForm(config.refreshTokenUrl, new URLSearchParams({ token: sessionToken }));
-            const newToken = getValue(result, "newToken", "NewToken");
-            if (!result || !isSuccess(result) || !newToken) {
-                setStatus(getRuntimeMessage(result, 'Session refresh is unavailable.'), true);
+            const refreshAt = tokenExpiryUtc.getTime() - Date.now() - 120000;
+            if (refreshAt <= 0) {
+                refreshTokenWithRetry();
                 return;
             }
 
-            sessionToken = newToken;
-            config.token = newToken;
-            const expiry = getValue(result, "tokenExpiryUtc", "TokenExpiryUtc");
-            tokenExpiryUtc = expiry ? new Date(expiry) : tokenExpiryUtc;
-            scheduleTokenRefresh();
+            tokenRefreshTimer = setTimeout(() => refreshTokenWithRetry(), refreshAt);
         };
 
         const ensureSpeechSdk = async () => {
@@ -705,6 +783,20 @@
             });
         };
 
+        const requestSpeechToken = async () => {
+            if (!await ensureRuntimeTokenFresh())
+                return null;
+
+            const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
+            const speechToken = getValue(tokenResult, 'token', 'Token');
+            const region = getValue(tokenResult, 'region', 'Region');
+            if (!tokenResult || !isSuccess(tokenResult) || !speechToken) {
+                return { success: false, message: getRuntimeMessage(tokenResult, 'Speech token service is unavailable.') };
+            }
+
+            return { success: true, token: speechToken, region: region };
+        };
+
         const startSpeechRecognition = async () => {
             if (!config.speechAvailable)
                 return;
@@ -716,10 +808,8 @@
                 return;
             }
 
-            const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
-            const speechToken = getValue(tokenResult, 'token', 'Token');
-            const region = getValue(tokenResult, 'region', 'Region');
-            if (!tokenResult || !isSuccess(tokenResult) || !speechToken) {
+            const tokenResult = await requestSpeechToken();
+            if (!tokenResult || !tokenResult.success) {
                 logActivity('Speech token request failure.');
                 setStatus(getRuntimeMessage(tokenResult, 'Speech token service is unavailable.'), true);
                 return;
@@ -727,7 +817,7 @@
             logActivity('Speech token request success.');
 
             try {
-                const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(speechToken, region);
+                const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
                 speechConfig.speechRecognitionLanguage = 'en-US';
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 speechRecognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
@@ -760,30 +850,36 @@
             }
         };
 
-        const speakText = async (text) => {
-            if (!config.speechAvailable || !text)
+        const speakText = async (text, purpose = 'question') => {
+            if (!config.speechAvailable || !text || isPlaceholderSpeechText(text))
                 return;
 
             if (!(await ensureSpeechSdk()))
                 return;
 
+            if (purpose === 'question')
+                logActivity('Speaking question.');
+            else if (purpose === 'reminder')
+                logActivity('Reminder spoken.');
+
             isSpeakingOrSubmitting = true;
             clearTimeout(silenceTimer);
             clearTimeout(reminderTimer);
 
-            const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
-            const speechToken = getValue(tokenResult, 'token', 'Token');
-            const region = getValue(tokenResult, 'region', 'Region');
-            if (!tokenResult || !isSuccess(tokenResult) || !speechToken) {
-                logActivity('Speech token request failure.');
+            const tokenResult = await requestSpeechToken();
+            if (!tokenResult || !tokenResult.success) {
+                logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${tokenResult?.message || 'Speech token service is unavailable.'}`);
+                if (purpose === 'question')
+                    setStatus(tokenResult?.message || 'Speech token service is unavailable.', true);
+                if (purpose === 'reminder')
+                    setStatus(tokenResult?.message || 'Speech token service is unavailable.', true);
                 isSpeakingOrSubmitting = false;
                 resetTimers();
                 return;
             }
-            logActivity('Speech token request success.');
 
             try {
-                const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(speechToken, region);
+                const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
                 const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
                 await new Promise(resolve => {
                     synthesizer.speakTextAsync(text, () => {
@@ -794,8 +890,16 @@
                         resolve();
                     });
                 });
+                if (purpose === 'question')
+                    logActivity('Question speech completed.');
+                else if (purpose === 'reminder')
+                    logActivity('Reminder spoken.');
             } catch {
-                // Ignore exception
+                logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed.`);
+                if (purpose === 'question')
+                    setStatus('Question speech failed.', true);
+                if (purpose === 'reminder')
+                    setStatus('Reminder speech failed.', true);
             } finally {
                 isSpeakingOrSubmitting = false;
                 resetTimers();
@@ -893,31 +997,48 @@
             }
         };
 
-        const submitAnswer = async () => {
+        const submitAnswer = async (options = {}) => {
             if (!config.submitAnswerUrl) {
                 setStatus('Answer submission is unavailable.', true);
                 return;
             }
 
             const submitBtn = document.getElementById('submit-answer');
-            if (submitBtn.disabled) return;
+            if (submitBtn.disabled || isSubmittingAnswer) return;
+
+            const auto = options.auto === true;
+            const trimmedAnswer = (answerBox.value || '').trim();
+            if (auto && !trimmedAnswer) {
+                logActivity('Auto-submit skipped; answer is empty.');
+                setStatus('Please answer the question.', false);
+                resetTimers();
+                return;
+            }
+
+            if (!(await ensureRuntimeTokenFresh())) {
+                if (auto)
+                    setStatus('Auto submit is unavailable right now.', true);
+                return;
+            }
 
             logActivity('Submitting answer...');
             isSpeakingOrSubmitting = true;
+            isSubmittingAnswer = true;
             clearTimeout(silenceTimer);
             clearTimeout(reminderTimer);
             submitBtn.disabled = true;
             submitBtn.classList.add('is-loading');
             const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Submitting...';
+            submitBtn.textContent = auto ? 'Auto submitting...' : 'Submitting...';
 
-            const body = new URLSearchParams({ token: sessionToken, answer: answerBox.value || '' });
+            const body = new URLSearchParams({ token: sessionToken, answer: trimmedAnswer });
             const result = await postForm(config.submitAnswerUrl, body);
 
             submitBtn.disabled = false;
             submitBtn.classList.remove('is-loading');
             submitBtn.textContent = originalText;
             isSpeakingOrSubmitting = false;
+            isSubmittingAnswer = false;
 
             if (!isSuccess(result)) {
                 logActivity('Submit response failure: ' + getRuntimeMessage(result, 'Unable to submit answer.'));
@@ -970,8 +1091,8 @@
             }
 
             document.getElementById('start-or-next').textContent = 'Next Question';
-            if (config.speechAvailable && resultQuestion)
-                await speakText(resultQuestion);
+            if (config.speechAvailable && !isPlaceholderSpeechText(resultQuestion))
+                await speakText(resultQuestion, 'question');
             else
                 resetTimers();
         };
@@ -985,6 +1106,9 @@
             const stopBtn = document.getElementById('stop-interview');
             const stopTopBtn = document.getElementById('stop-interview-top');
             if (stopBtn && stopBtn.disabled) return;
+
+            if (!(await ensureRuntimeTokenFresh()))
+                return;
 
             logActivity('Stopping interview...');
             let originalText = '';
@@ -1035,12 +1159,13 @@
             interviewStarted = true;
             setStatus('Interview started.', false);
             document.getElementById('start-or-next').textContent = 'Next Question';
+            await ensureRuntimeTokenFresh();
             if (config.recordingAvailable && recordingEnabled)
                 await requestRecordingMediaForStart();
             await syncRecording();
             if (questionBox.textContent) logActivity('Question shown: ' + questionBox.textContent);
-            if (config.speechAvailable && questionBox.textContent)
-                await speakText(questionBox.textContent);
+            if (config.speechAvailable && !isPlaceholderSpeechText(questionBox.textContent))
+                await speakText(questionBox.textContent, 'question');
             else
                 resetTimers();
         };

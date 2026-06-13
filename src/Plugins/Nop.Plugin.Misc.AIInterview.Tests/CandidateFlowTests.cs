@@ -421,8 +421,8 @@ public class CandidateFlowTests
         var message = json.Value.GetType().GetProperty("message").GetValue(json.Value, null);
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
         Assert.That(success, Is.False);
-        Assert.That(message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
-        Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+        Assert.That(message, Is.EqualTo("Invalid or expired session token."));
+        Assert.That(error, Is.EqualTo("Invalid or expired session token."));
     }
 
     [Test]
@@ -437,8 +437,8 @@ public class CandidateFlowTests
         var message = json.Value.GetType().GetProperty("message").GetValue(json.Value, null);
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
         Assert.That(success, Is.False);
-        Assert.That(message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer"));
-        Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer"));
+        Assert.That(message, Is.EqualTo("Answer cannot be empty."));
+        Assert.That(error, Is.EqualTo("Answer cannot be empty."));
     }
 
     [Test]
@@ -453,8 +453,8 @@ public class CandidateFlowTests
         var message = json.Value.GetType().GetProperty("message").GetValue(json.Value, null);
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
         Assert.That(success, Is.False);
-        Assert.That(message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
-        Assert.That(error, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+        Assert.That(message, Is.EqualTo("Invalid or expired session token."));
+        Assert.That(error, Is.EqualTo("Invalid or expired session token."));
     }
 
     [Test]
@@ -918,9 +918,18 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("requestRecordingMediaForStart"));
         Assert.That(runtimeText, Does.Contain("await setCamera(true, true);"));
         Assert.That(runtimeText, Does.Contain("await setMic(true, true);"));
+        Assert.That(runtimeText, Does.Contain("refreshAt <= 0"));
+        Assert.That(runtimeText, Does.Contain("refreshTokenWithRetry(attempt + 1)"));
+        Assert.That(runtimeText, Does.Contain("if (auto && !trimmedAnswer)"));
+        Assert.That(runtimeText, Does.Contain("Auto submitting..."));
+        Assert.That(runtimeText, Does.Contain("Speaking question."));
+        Assert.That(runtimeText, Does.Contain("Reminder shown."));
+        Assert.That(runtimeText, Does.Contain("Reminder spoken."));
+        Assert.That(runtimeText, Does.Contain("Reminder speech failed."));
         Assert.That(runtimeText, Does.Contain("Recording ready."));
         Assert.That(runtimeText, Does.Contain("Recording waiting for camera or mic."));
         Assert.That(runtimeText, Does.Contain("Recording live."));
+        Assert.That(runtimeText, Does.Contain("clamp(220px, 28vw, 252px)"));
         var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Relevancy"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Correctness"));

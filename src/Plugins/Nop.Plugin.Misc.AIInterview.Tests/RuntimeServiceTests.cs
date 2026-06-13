@@ -397,7 +397,7 @@ public class RuntimeServiceTests
         var result = await service.SubmitAnswerAsync("boundary", "answer");
 
         Assert.That(result.Success, Is.False);
-        Assert.That(result.Message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+        Assert.That(result.Message, Is.EqualTo("Invalid or expired session token."));
     }
 
     [Test]
@@ -689,7 +689,7 @@ public class RuntimeServiceTests
         var result = await service.CompleteInterviewAsync("boundary", "reason");
 
         Assert.That(result.Success, Is.False);
-        Assert.That(result.Message, Is.EqualTo("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"));
+        Assert.That(result.Message, Is.EqualTo("Invalid or expired session token."));
         eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Never);
     }
 
@@ -1420,7 +1420,7 @@ public class RuntimeServiceTests
             path = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml"); // CI/CD path fallback
 
         var content = System.IO.File.ReadAllText(path);
-        Assert.That(content.Contains("if (!currentText && interviewStarted && !isSpeakingOrSubmitting) {"), Is.True, "Runtime view should contain repeating reminder scheduling logic");
+        Assert.That(content.Contains("if (!currentText && interviewStarted && !isSpeakingOrSubmitting)"), Is.True, "Runtime view should contain repeating reminder scheduling logic");
         Assert.That(content.Contains("resetTimers();"), Is.True, "Runtime view should contain resetTimers logic in the timer interval");
     }
 

@@ -88,7 +88,9 @@ public class AIInterviewAdminController : BasePluginController
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
     {
         var text = await _localizationService.GetResourceAsync(resourceKey);
-        return string.IsNullOrEmpty(text) ? defaultValue : text;
+        return string.IsNullOrWhiteSpace(text) || string.Equals(text, resourceKey, StringComparison.OrdinalIgnoreCase)
+            ? defaultValue
+            : text;
     }
 
     protected async Task<IActionResult> LocalizedErrorAsync(string resourceKey, string defaultValue, int statusCode = 400)

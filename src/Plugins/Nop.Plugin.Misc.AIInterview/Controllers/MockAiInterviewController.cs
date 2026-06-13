@@ -71,7 +71,9 @@ public class MockAiInterviewController : BasePluginController
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
     {
         var text = await _localizationService.GetResourceAsync(resourceKey);
-        return string.IsNullOrEmpty(text) ? defaultValue : text;
+        return string.IsNullOrWhiteSpace(text) || string.Equals(text, resourceKey, StringComparison.OrdinalIgnoreCase)
+            ? defaultValue
+            : text;
     }
 
     protected async Task<IActionResult> LocalizedErrorAsync(string resourceKey, string defaultValue, int statusCode = 400)
@@ -107,6 +109,27 @@ public class MockAiInterviewController : BasePluginController
             return false;
 
         return !IsSessionExpired(session, currentUtc);
+    }
+
+    protected virtual async Task<(InterviewSession Session, bool Renewed)> RenewActiveRuntimeTokenAsync(string token, bool forceRenew = false)
+    {
+        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
+        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue)
+            return (null, false);
+
+        var now = DateTime.UtcNow;
+        var shouldRenew = forceRenew || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc.Value <= now);
+        if (!shouldRenew)
+            return (session, false);
+
+        session.Token = Guid.NewGuid().ToString("N");
+        session.TokenExpiryUtc = now.AddMinutes(30);
+        await _interviewSessionService.UpdateInterviewSessionAsync(session);
+
+        _logger?.LogInformation("AIInterview runtime token renewed for session {SessionId}, customer {CustomerId}, product {ProductId}.",
+            session.Id, session.CustomerId, session.ProductId);
+
+        return (session, true);
     }
 
     public async Task<IActionResult> Start(int productId = 0, string sponsorToken = null)
@@ -243,8 +266,15 @@ public class MockAiInterviewController : BasePluginController
     public async Task<IActionResult> Runtime(string token)
     {
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
-        if (session == null || !session.IsActive || (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow))
+        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue)
             return Redirect(await GetRestartUrlAsync(session));
+
+        if (session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc <= DateTime.UtcNow)
+        {
+            var renewed = await RenewActiveRuntimeTokenAsync(token, true);
+            if (renewed.Session != null)
+                return RedirectToAction(nameof(Runtime), new { token = renewed.Session.Token });
+        }
 
         var model = _interviewRuntimeService == null
             ? new Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel
@@ -324,6 +354,10 @@ public class MockAiInterviewController : BasePluginController
     {
         _logger?.LogInformation("SubmitAnswer called with session token {Token}", MaskToken(token));
 
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
+        if (tokenRenewal.Session != null && tokenRenewal.Renewed)
+            token = tokenRenewal.Session.Token;
+
         if (_interviewRuntimeService != null)
         {
             var runtimeResponse = await _interviewRuntimeService.SubmitAnswerAsync(token, answer);
@@ -333,6 +367,25 @@ public class MockAiInterviewController : BasePluginController
                 _logger?.LogWarning("SubmitAnswer failed for session {SessionId}, customer {CustomerId}, product {ProductId}: {Message}",
                     sessionInfo?.Id, sessionInfo?.CustomerId, sessionInfo?.ProductId, runtimeResponse.Message);
             }
+            if (tokenRenewal.Renewed)
+            {
+                return Json(new
+                {
+                    runtimeResponse.Success,
+                    runtimeResponse.IsTerminated,
+                    runtimeResponse.Completion,
+                    runtimeResponse.ReportUrl,
+                    runtimeResponse.Question,
+                    runtimeResponse.Turn,
+                    runtimeResponse.Interrupted,
+                    runtimeResponse.Score,
+                    runtimeResponse.Feedback,
+                    runtimeResponse.Message,
+                    newToken = tokenRenewal.Session.Token,
+                    tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+                });
+            }
+
             return Json(runtimeResponse);
         }
 
@@ -352,6 +405,10 @@ public class MockAiInterviewController : BasePluginController
     {
         _logger?.LogInformation("Stop called with session token {Token}", MaskToken(token));
 
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
+        if (tokenRenewal.Session != null && tokenRenewal.Renewed)
+            token = tokenRenewal.Session.Token;
+
         if (_interviewRuntimeService != null)
         {
             var response = await _interviewRuntimeService.CompleteInterviewAsync(token, "Stopped by user");
@@ -361,6 +418,23 @@ public class MockAiInterviewController : BasePluginController
                 _logger?.LogWarning("Stop failed for session {SessionId}, customer {CustomerId}, product {ProductId}: {Message}",
                     sessionInfo?.Id, sessionInfo?.CustomerId, sessionInfo?.ProductId, response.Message);
             }
+            if (tokenRenewal.Renewed)
+            {
+                return Json(new
+                {
+                    response.Success,
+                    response.IsTerminated,
+                    response.Score,
+                    response.Feedback,
+                    response.Message,
+                    response.Completion,
+                    response.ReportUrl,
+                    response.Turns,
+                    newToken = tokenRenewal.Session.Token,
+                    tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+                });
+            }
+
             return Json(response);
         }
 
@@ -396,13 +470,10 @@ public class MockAiInterviewController : BasePluginController
     [HttpPost]
     public async Task<IActionResult> RefreshToken(string token)
     {
-        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
-        if (!IsSessionUsable(session))
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token, true);
+        var session = tokenRenewal.Session;
+        if (session == null)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
-
-        session.Token = Guid.NewGuid().ToString("N");
-        session.TokenExpiryUtc = DateTime.UtcNow.AddMinutes(30);
-        await _interviewSessionService.UpdateInterviewSessionAsync(session);
 
         return Json(new { newToken = session.Token, tokenExpiryUtc = session.TokenExpiryUtc });
     }
@@ -413,9 +484,26 @@ public class MockAiInterviewController : BasePluginController
         if (_interviewRuntimeService == null)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech token service is unavailable.");
 
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
+        if (tokenRenewal.Session != null && tokenRenewal.Renewed)
+            token = tokenRenewal.Session.Token;
+
         var result = await _interviewRuntimeService.GetSpeechTokenAsync(token);
         if (result == null)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech token service is unavailable.");
+
+        if (tokenRenewal.Renewed)
+        {
+            return Json(new
+            {
+                success = true,
+                token = result.Token,
+                region = result.Region,
+                expiresInSeconds = result.ExpiresInSeconds,
+                newToken = tokenRenewal.Session.Token,
+                tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+            });
+        }
 
         return Json(new { success = true, token = result.Token, region = result.Region, expiresInSeconds = result.ExpiresInSeconds });
     }
@@ -426,9 +514,28 @@ public class MockAiInterviewController : BasePluginController
         if (_interviewRuntimeService == null)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Agora token service is unavailable.");
 
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
+        if (tokenRenewal.Session != null && tokenRenewal.Renewed)
+            token = tokenRenewal.Session.Token;
+
         var result = await _interviewRuntimeService.GetAgoraTokenAsync(token);
         if (result == null)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Agora token service is unavailable.");
+
+        if (tokenRenewal.Renewed)
+        {
+            return Json(new
+            {
+                success = true,
+                appId = result.AppId,
+                channel = result.Channel,
+                token = result.Token,
+                uid = result.Uid,
+                expiresInSeconds = result.ExpiresInSeconds,
+                newToken = tokenRenewal.Session.Token,
+                tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+            });
+        }
 
         return Json(new { success = true, appId = result.AppId, channel = result.Channel, token = result.Token, uid = result.Uid, expiresInSeconds = result.ExpiresInSeconds });
     }
@@ -439,9 +546,25 @@ public class MockAiInterviewController : BasePluginController
         if (_interviewRuntimeService == null)
             return Json(new { success = false, message = "Recording upload is unavailable." });
 
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
+        if (tokenRenewal.Session != null && tokenRenewal.Renewed)
+            token = tokenRenewal.Session.Token;
+
         var result = await _interviewRuntimeService.UploadRecordingAsync(token, recording);
         if (result == null || !result.Success)
             return Json(new { success = false, message = result?.Message ?? "Recording upload failed." });
+
+        if (tokenRenewal.Renewed)
+        {
+            return Json(new
+            {
+                success = true,
+                message = result.Message,
+                recordingUrl = result.RecordingUrl,
+                newToken = tokenRenewal.Session.Token,
+                tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+            });
+        }
 
         return Json(new { success = true, message = result.Message, recordingUrl = result.RecordingUrl });
     }
