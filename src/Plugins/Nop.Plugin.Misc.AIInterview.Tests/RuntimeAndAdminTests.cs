@@ -718,8 +718,13 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("Click Start Interview to begin."));
         Assert.That(runtimeViewText, Does.Not.Contain("startButton.textContent = 'Next Question';"));
         Assert.That(runtimeViewText, Does.Contain("startButton.textContent = 'Repeat Question';"));
+        Assert.That(runtimeViewText, Does.Contain("startButton.textContent = 'Interview Started';"));
+        Assert.That(runtimeViewText, Does.Contain("const updateStartButtonState = () =>"));
         Assert.That(runtimeViewText, Does.Contain("const normalizeTurn = (turn, index = 0) =>"));
         Assert.That(runtimeViewText, Does.Contain("await stopRecording(true);"));
+        Assert.That(runtimeViewText, Does.Not.Contain("clearAllRuntimeTimers();\r\n            let originalText = ''").And.Not.Contain("clearAllRuntimeTimers();\n            let originalText = ''"));
+        Assert.That(runtimeViewText, Does.Contain("clearAnswerTimers();"));
+        Assert.That(runtimeViewText, Does.Contain("if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)\r\n                    resetTimers();").Or.Contain("if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)\n                    resetTimers();"));
         Assert.That(runtimeViewText, Does.Contain("window.addEventListener('pagehide', clearAllRuntimeTimers);"));
         Assert.That(runtimeViewText, Does.Contain("window.addEventListener('beforeunload', clearAllRuntimeTimers);"));
         Assert.That(runtimeViewText, Does.Contain("Camera permission was denied. You can continue by typing your answers."));

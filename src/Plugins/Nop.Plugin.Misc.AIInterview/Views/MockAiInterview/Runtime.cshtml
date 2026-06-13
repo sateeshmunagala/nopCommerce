@@ -206,6 +206,32 @@
                 submitButton.textContent = 'Submit Answer';
         };
 
+        const updateStartButtonState = () => {
+            if (!startButton)
+                return;
+
+            if (runtimeStoppedOrCompleted) {
+                startButton.disabled = true;
+                startButton.textContent = 'Completed';
+                return;
+            }
+
+            if (!interviewStarted) {
+                startButton.disabled = false;
+                startButton.textContent = 'Start Interview';
+                return;
+            }
+
+            if (config.speechAvailable) {
+                startButton.disabled = false;
+                startButton.textContent = 'Repeat Question';
+                return;
+            }
+
+            startButton.disabled = true;
+            startButton.textContent = 'Interview Started';
+        };
+
         const clearAnswerTimers = () => {
             clearTimeout(answerStageTimer);
             clearInterval(countdownTimer);
@@ -557,8 +583,7 @@
                 : completionText;
             answerBox.disabled = true;
             submitButton.disabled = true;
-            startButton.disabled = true;
-            startButton.textContent = 'Completed';
+            updateStartButtonState();
             if (reportUrl) {
                 reportButton.style.display = 'inline-flex';
                 reportButton.onclick = () => window.location.href = reportUrl;
@@ -1265,11 +1290,13 @@
             updateSubmitAvailability();
 
             if (isTerminated) {
+                if (mediaRecorder && recordingEnabled)
+                    await stopRecording(true);
                 await setCompletedState(result);
                 return;
             }
 
-            startButton.textContent = 'Repeat Question';
+            updateStartButtonState();
             updateSubmitAvailability();
             if (config.speechAvailable && !isPlaceholderSpeechText(resultQuestion))
                 await speakText(resultQuestion, 'question');
@@ -1292,7 +1319,8 @@
 
             logActivity('Stopping interview...');
             stopInProgress = true;
-            clearAllRuntimeTimers();
+            clearAnswerTimers();
+            clearTokenRefreshTimer();
             let originalText = '';
             if (stopBtn) {
                 originalText = stopBtn.textContent;
@@ -1327,6 +1355,10 @@
 
                 logActivity('Stop response failure: ' + getRuntimeMessage(result, 'Unable to stop interview.'));
                 setStatus(getRuntimeMessage(result, 'Unable to stop interview.'), true);
+                updateStartButtonState();
+                updateSubmitAvailability();
+                if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)
+                    resetTimers();
                 scheduleTokenRefresh();
                 return;
             }
@@ -1364,7 +1396,7 @@
             startRuntimeTimer();
             setStatus('Please answer the question.', false);
             messageBox.textContent = 'Please answer the question.';
-            startButton.textContent = 'Repeat Question';
+            updateStartButtonState();
             if (config.recordingAvailable && recordingEnabled)
                 await requestRecordingMediaForStart();
             await syncRecording();
@@ -1405,6 +1437,7 @@
 
         renderTranscript();
         answerBox.disabled = true;
+        updateStartButtonState();
         updateSubmitAvailability();
         scheduleTokenRefresh();
     })();

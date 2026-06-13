@@ -1003,11 +1003,14 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Reminder speech failed."));
         Assert.That(runtimeText, Does.Contain("if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure) return;"));
         Assert.That(runtimeText, Does.Contain("startRuntimeTimer();"));
+        Assert.That(runtimeText, Does.Contain("const updateStartButtonState = () =>"));
         Assert.That(runtimeText, Does.Contain("startButton.textContent = 'Repeat Question';"));
+        Assert.That(runtimeText, Does.Contain("startButton.textContent = 'Interview Started';"));
         Assert.That(runtimeText, Does.Not.Contain("startButton.textContent = 'Next Question';"));
         Assert.That(runtimeText, Does.Contain("const normalizeTurn = (turn, index = 0) =>"));
         Assert.That(runtimeText, Does.Contain("getValue(turn, 'questionText', 'QuestionText')"));
         Assert.That(runtimeText, Does.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
+        Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)\r\n                    await stopRecording(true);").Or.Contain("if (mediaRecorder && recordingEnabled)\n                    await stopRecording(true);"));
         Assert.That(runtimeText, Does.Contain("Recording ready."));
         Assert.That(runtimeText, Does.Contain("Recording waiting for camera or mic."));
         Assert.That(runtimeText, Does.Contain("Recording live."));
