@@ -181,7 +181,7 @@ public class InterviewAiClient : IAIInterviewClient
             {
                 _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}.", result.StatusCode);
                 if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", $"Mode={mode}; HttpStatus={(int)result.StatusCode}; Reason=http failure.");
+                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", BuildAzureHttpFailureLog(mode, (int)result.StatusCode, json));
                 return null;
             }
 
@@ -215,9 +215,10 @@ public class InterviewAiClient : IAIInterviewClient
             if (parsed != null)
                 return parsed;
 
+            var contractReason = GetStructuredResponseFailureReason(content, mode);
             _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON or failed contract parsing.", mode);
             if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Mode={mode}; Reason=invalid JSON or failed contract parsing.");
+                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Mode={mode}; Reason={contractReason}.");
         }
         catch (System.Text.Json.JsonException ex)
         {
@@ -274,6 +275,92 @@ Current question: {request.Question}
 Candidate answer: {request.Answer}
 Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, nextQuestion, completion, optional rubricJson")}
 """;
+    }
+
+    protected static string BuildAzureHttpFailureLog(string mode, int statusCode, string responseBody)
+    {
+        var errorCode = string.Empty;
+        var errorMessage = string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(responseBody))
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(responseBody);
+                if (document.RootElement.TryGetProperty("error", out var errorElement))
+                {
+                    if (errorElement.TryGetProperty("code", out var codeElement))
+                        errorCode = codeElement.GetString() ?? string.Empty;
+                    if (errorElement.TryGetProperty("message", out var messageElement))
+                        errorMessage = TruncateSafe(messageElement.GetString(), 180);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        var details = new List<string> { $"Mode={mode}", $"HttpStatus={statusCode}", "Reason=http failure" };
+        if (!string.IsNullOrWhiteSpace(errorCode))
+            details.Add($"AzureErrorCode={errorCode}");
+        if (!string.IsNullOrWhiteSpace(errorMessage))
+            details.Add($"AzureErrorMessage={errorMessage}");
+
+        return string.Join("; ", details) + ".";
+    }
+
+    protected static string GetStructuredResponseFailureReason(string content, string mode)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return "empty content";
+
+        try
+        {
+            var normalized = content.Trim();
+            if (normalized.StartsWith("```", StringComparison.Ordinal))
+            {
+                var firstBrace = normalized.IndexOf('{');
+                var lastBrace = normalized.LastIndexOf('}');
+                if (firstBrace >= 0 && lastBrace > firstBrace)
+                    normalized = normalized.Substring(firstBrace, lastBrace - firstBrace + 1);
+            }
+
+            var start = normalized.IndexOf('{');
+            var end = normalized.LastIndexOf('}');
+            if (start >= 0 && end > start)
+                normalized = normalized.Substring(start, end - start + 1);
+
+            using var document = JsonDocument.Parse(normalized);
+            var root = document.RootElement;
+            if (string.Equals(mode, "generate", StringComparison.OrdinalIgnoreCase))
+                return string.IsNullOrWhiteSpace(root.TryGetProperty("question", out var q) ? q.GetString() : null) ? "empty question" : "unknown contract failure";
+
+            var score = TryParseNullableDecimal(root, "score");
+            var rubricNode = TryParseJsonNode(root, "rubricJson") ?? TryParseJsonNode(root, "rubric");
+            var categoryValues = new[]
+            {
+                GetScoreValue(root, rubricNode, "technicalScore"),
+                GetScoreValue(root, rubricNode, "communicationScore"),
+                GetScoreValue(root, rubricNode, "professionalismScore"),
+                GetScoreValue(root, rubricNode, "positiveAttitudeScore")
+            };
+
+            if (!score.HasValue && categoryValues.All(value => !value.HasValue))
+                return "missing score";
+
+            if (categoryValues.Any(value => value.HasValue && (value.Value < 0 || value.Value > 100)))
+                return "invalid category score";
+
+            return "invalid JSON or failed contract parsing";
+        }
+        catch (JsonException)
+        {
+            return "invalid JSON";
+        }
+        catch
+        {
+            return "invalid JSON or failed contract parsing";
+        }
     }
 
     public static AIInterviewClientResponse ParseStructuredResponse(string content)
@@ -448,6 +535,30 @@ Response contract: {(mode == "generate" ? "question, complete:false, optional ru
             rubric[propertyName] = value.Value;
     }
 
+    protected static decimal? ParseRubricScore(string rubricJson, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(rubricJson))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(rubricJson);
+            if (!document.RootElement.TryGetProperty(propertyName, out var value))
+                return null;
+
+            return value.ValueKind switch
+            {
+                JsonValueKind.Number when value.TryGetDecimal(out var decimalValue) => decimalValue,
+                JsonValueKind.String when decimal.TryParse(value.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue) => parsedValue,
+                _ => null
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static bool TryParseBoolean(JsonElement root, string propertyName)
     {
         if (!root.TryGetProperty(propertyName, out var property) || property.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
@@ -594,6 +705,30 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
         return text.Length <= length ? text : text.Substring(0, length) + "...";
+    }
+
+    protected static decimal? ParseRubricScore(string rubricJson, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(rubricJson) || string.IsNullOrWhiteSpace(propertyName))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(rubricJson);
+            if (!document.RootElement.TryGetProperty(propertyName, out var value))
+                return null;
+
+            return value.ValueKind switch
+            {
+                JsonValueKind.Number when value.TryGetDecimal(out var decimalValue) => decimalValue,
+                JsonValueKind.String when decimal.TryParse(value.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue) => parsedValue,
+                _ => null
+            };
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string fallback)
@@ -789,6 +924,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     QuestionText = currentTurn.QuestionText,
                     AnswerText = currentTurn.AnswerText,
                     Score = currentTurn.Score,
+                    TechnicalScore = ParseRubricScore(currentTurn.RubricJson, "technicalScore"),
+                    CommunicationScore = ParseRubricScore(currentTurn.RubricJson, "communicationScore"),
+                    ProfessionalismScore = ParseRubricScore(currentTurn.RubricJson, "professionalismScore"),
+                    PositiveAttitudeScore = ParseRubricScore(currentTurn.RubricJson, "positiveAttitudeScore"),
                     Feedback = currentTurn.Feedback,
                     AskedOnUtc = currentTurn.AskedOnUtc,
                     AnsweredOnUtc = currentTurn.AnsweredOnUtc
@@ -815,6 +954,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 QuestionText = currentTurn.QuestionText,
                 AnswerText = currentTurn.AnswerText,
                 Score = currentTurn.Score,
+                TechnicalScore = ParseRubricScore(currentTurn.RubricJson, "technicalScore"),
+                CommunicationScore = ParseRubricScore(currentTurn.RubricJson, "communicationScore"),
+                ProfessionalismScore = ParseRubricScore(currentTurn.RubricJson, "professionalismScore"),
+                PositiveAttitudeScore = ParseRubricScore(currentTurn.RubricJson, "positiveAttitudeScore"),
                 Feedback = currentTurn.Feedback,
                 AskedOnUtc = currentTurn.AskedOnUtc,
                 AnsweredOnUtc = currentTurn.AnsweredOnUtc
@@ -1005,6 +1148,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 QuestionText = turn.QuestionText,
                 AnswerText = turn.AnswerText,
                 Score = turn.Score,
+                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
+                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
+                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
+                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
                 Feedback = turn.Feedback,
                 AskedOnUtc = turn.AskedOnUtc,
                 AnsweredOnUtc = turn.AnsweredOnUtc
@@ -1095,6 +1242,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 QuestionText = turn.QuestionText,
                 AnswerText = turn.AnswerText,
                 Score = turn.Score,
+                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
+                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
+                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
+                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
                 Feedback = turn.Feedback,
                 AskedOnUtc = turn.AskedOnUtc,
                 AnsweredOnUtc = turn.AnsweredOnUtc

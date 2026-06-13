@@ -418,9 +418,15 @@ public class RuntimeAndAdminTests
 
         Assert.That(result, Is.TypeOf<JsonResult>());
         var json = (JsonResult)result;
-        var success = json.Value.GetType().GetProperty("success")?.GetValue(json.Value, null);
-        var newTokenProperty = json.Value.GetType().GetProperty("newToken") ?? json.Value.GetType().GetProperty("NewToken");
+        var successProperty = json.Value.GetType().GetProperty("success");
+        var duplicateSuccessProperty = json.Value.GetType().GetProperty("Success");
+        var newTokenProperty = json.Value.GetType().GetProperty("newToken");
+        var duplicateReportUrlProperty = json.Value.GetType().GetProperty("ReportUrl");
+        Assert.That(successProperty, Is.Not.Null);
+        Assert.That(duplicateSuccessProperty, Is.Null);
         Assert.That(newTokenProperty, Is.Not.Null, "Expected renewed submit-answer response to include a token update.");
+        Assert.That(duplicateReportUrlProperty, Is.Null);
+        var success = successProperty.GetValue(json.Value, null);
         Assert.That(success, Is.EqualTo(true));
         var newToken = newTokenProperty.GetValue(json.Value, null)?.ToString();
         Assert.That(newToken, Is.Not.Null);
@@ -463,8 +469,17 @@ public class RuntimeAndAdminTests
         var result = await controller.Stop("expired-stop");
 
         var json = (JsonResult)result;
-        var success = json.Value.GetType().GetProperty("success")?.GetValue(json.Value, null);
-        var newToken = json.Value.GetType().GetProperty("newToken")?.GetValue(json.Value, null)?.ToString();
+        var successProperty = json.Value.GetType().GetProperty("success");
+        var duplicateSuccessProperty = json.Value.GetType().GetProperty("Success");
+        var duplicateReportUrlProperty = json.Value.GetType().GetProperty("ReportUrl");
+        var newTokenProperty = json.Value.GetType().GetProperty("newToken");
+        Assert.That(successProperty, Is.Not.Null);
+        Assert.That(duplicateSuccessProperty, Is.Null);
+        Assert.That(duplicateReportUrlProperty, Is.Null);
+        Assert.That(newTokenProperty, Is.Not.Null);
+
+        var success = successProperty.GetValue(json.Value, null);
+        var newToken = newTokenProperty.GetValue(json.Value, null)?.ToString();
 
         Assert.That(success, Is.EqualTo(true));
         Assert.That(newToken, Is.Not.Null.And.Not.EqualTo("expired-stop"));

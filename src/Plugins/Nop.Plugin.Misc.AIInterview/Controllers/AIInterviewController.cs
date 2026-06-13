@@ -145,6 +145,30 @@ public class AIInterviewController : BasePluginController
         }
     }
 
+    protected static decimal? ParseRubricScore(string rubricJson, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(rubricJson))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(rubricJson);
+            if (!document.RootElement.TryGetProperty(propertyName, out var property))
+                return null;
+
+            if (property.ValueKind == JsonValueKind.Number && property.TryGetDecimal(out var numeric))
+                return numeric;
+
+            if (property.ValueKind == JsonValueKind.String && decimal.TryParse(property.GetString(), out var parsed))
+                return parsed;
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
     protected static (string Summary, string Feedback) SplitReportSections(string reportData)
     {
         if (string.IsNullOrWhiteSpace(reportData))
@@ -229,6 +253,10 @@ public class AIInterviewController : BasePluginController
                     QuestionText = turn.QuestionText,
                     AnswerText = turn.AnswerText,
                     Score = turn.Score,
+                    TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
+                    CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
+                    ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
+                    PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
                     Feedback = turn.Feedback,
                     AskedOnUtc = turn.AskedOnUtc,
                     AnsweredOnUtc = turn.AnsweredOnUtc
@@ -325,6 +353,10 @@ public class AIInterviewController : BasePluginController
                 QuestionText = turn.QuestionText,
                 AnswerText = turn.AnswerText,
                 Score = turn.Score,
+                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
+                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
+                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
+                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
                 Feedback = turn.Feedback,
                 AskedOnUtc = turn.AskedOnUtc,
                 AnsweredOnUtc = turn.AnsweredOnUtc

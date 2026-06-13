@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Nop.Core;
+using System.Text.Json;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
@@ -378,17 +379,16 @@ public class MockAiInterviewController : BasePluginController
             {
                 return Json(new
                 {
-                    success = runtimeResponse.Success,
-                    runtimeResponse.Success,
-                    runtimeResponse.IsTerminated,
-                    runtimeResponse.Completion,
-                    ReportUrl = reportUrl,
-                    runtimeResponse.Question,
-                    runtimeResponse.Turn,
-                    runtimeResponse.Interrupted,
-                    runtimeResponse.Score,
-                    runtimeResponse.Feedback,
-                    runtimeResponse.Message,
+                    success = runtimeResponse?.Success == true,
+                    isTerminated = runtimeResponse?.IsTerminated == true,
+                    completion = runtimeResponse?.Completion,
+                    reportUrl,
+                    question = runtimeResponse?.Question,
+                    turn = runtimeResponse?.Turn,
+                    interrupted = runtimeResponse?.Interrupted == true,
+                    score = runtimeResponse?.Score ?? 0,
+                    feedback = runtimeResponse?.Feedback,
+                    message = runtimeResponse?.Message,
                     newToken = tokenRenewal.Session.Token,
                     tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
                 });
@@ -446,15 +446,14 @@ public class MockAiInterviewController : BasePluginController
             {
                 return Json(new
                 {
-                    success = response.Success,
-                    response.Success,
-                    response.IsTerminated,
-                    response.Score,
-                    response.Feedback,
-                    response.Message,
-                    response.Completion,
-                    ReportUrl = reportUrl,
-                    response.Turns,
+                    success = response?.Success == true,
+                    isTerminated = response?.IsTerminated == true,
+                    score = response?.Score ?? 0,
+                    feedback = response?.Feedback,
+                    message = response?.Message,
+                    completion = response?.Completion,
+                    reportUrl,
+                    turns = response?.Turns,
                     newToken = tokenRenewal.Session.Token,
                     tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
                 });
@@ -641,6 +640,10 @@ public class MockAiInterviewController : BasePluginController
                 QuestionText = turn.QuestionText,
                 AnswerText = turn.AnswerText,
                 Score = turn.Score,
+                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
+                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
+                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
+                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
                 Feedback = turn.Feedback,
                 AskedOnUtc = turn.AskedOnUtc,
                 AnsweredOnUtc = turn.AnsweredOnUtc
@@ -666,6 +669,30 @@ public class MockAiInterviewController : BasePluginController
         {
             return new List<decimal>();
         }
+    }
+
+    protected static decimal? ParseRubricScore(string rubricJson, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(rubricJson))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(rubricJson);
+            if (!document.RootElement.TryGetProperty(propertyName, out var property))
+                return null;
+
+            if (property.ValueKind == JsonValueKind.Number && property.TryGetDecimal(out var numeric))
+                return numeric;
+
+            if (property.ValueKind == JsonValueKind.String && decimal.TryParse(property.GetString(), out var parsed))
+                return parsed;
+        }
+        catch
+        {
+        }
+
+        return null;
     }
 
     protected async Task<bool> IsAuthorizedAsync()

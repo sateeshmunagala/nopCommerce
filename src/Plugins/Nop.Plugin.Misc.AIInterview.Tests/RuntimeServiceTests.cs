@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
+using Nop.Core.Domain.Logging;
 using Nop.Core.Events;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Events;
@@ -12,6 +13,7 @@ using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
+using NopLogger = Nop.Services.Logging.ILogger;
 using NUnit.Framework;
 using System.Net;
 using System.Net.Http;
@@ -686,6 +688,141 @@ public class RuntimeServiceTests
     public void ParseStructuredResponse_InvalidJson_ReturnsNull()
     {
         Assert.That(InterviewAiClient.ParseStructuredResponse("not json at all"), Is.Null);
+    }
+
+    [Test]
+    public async Task GenerateQuestionAsync_HttpFailure_LogsSafeAzureDetails()
+    {
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage((HttpStatusCode)429)
+        {
+            Content = new StringContent("{\"error\":{\"code\":\"rate_limit_exceeded\",\"message\":\"Too many requests for this deployment.\"}}", Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(handler);
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(x => x.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "super-secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-4o-mini",
+                Prompt = "prompt"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            httpFactory.Object,
+            nopLogger.Object);
+
+        var response = await client.GenerateQuestionAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Backend Engineer",
+            Difficulty = "Medium",
+            Prompt = "prompt",
+            QuestionNumber = 1
+        });
+
+        Assert.That(response.Success, Is.False);
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI HTTP failure",
+            It.Is<string>(message =>
+                message.Contains("Mode=generate") &&
+                message.Contains("HttpStatus=429") &&
+                message.Contains("AzureErrorCode=rate_limit_exceeded") &&
+                message.Contains("AzureErrorMessage=Too many requests for this deployment.") &&
+                !message.Contains("super-secret-key") &&
+                !message.Contains("api-key")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task ScoreAnswerAsync_ContractFailure_LogsPreciseSafeReason()
+    {
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"choices\":[{\"message\":{\"content\":\"{\\\"feedback\\\":\\\"Helpful\\\",\\\"complete\\\":false}\"}}]}", Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(handler);
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(x => x.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "super-secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-4o-mini",
+                Prompt = "prompt"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            httpFactory.Object,
+            nopLogger.Object);
+
+        var response = await client.ScoreAnswerAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Backend Engineer",
+            Difficulty = "Medium",
+            Prompt = "prompt",
+            QuestionNumber = 1,
+            Question = "Explain dependency injection.",
+            Answer = "It reduces coupling."
+        });
+
+        Assert.That(response.Success, Is.False);
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview score validation failure",
+            It.Is<string>(message =>
+                message.Contains("Mode=score") &&
+                message.Contains("missing required score") &&
+                !message.Contains("super-secret-key") &&
+                !message.Contains("It reduces coupling.")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task GenerateQuestionAsync_ContractFailure_LogsSafeReason()
+    {
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"choices\":[]}", Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(handler);
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(x => x.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "super-secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-4o-mini",
+                Prompt = "prompt"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            httpFactory.Object,
+            nopLogger.Object);
+
+        var response = await client.GenerateQuestionAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Backend Engineer",
+            Difficulty = "Medium",
+            Prompt = "prompt",
+            QuestionNumber = 1
+        });
+
+        Assert.That(response.Success, Is.False);
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI contract failure",
+            It.Is<string>(message =>
+                message.Contains("Mode=generate") &&
+                message.Contains("Reason=empty response choices") &&
+                !message.Contains("super-secret-key")),
+            null), Times.Once);
     }
 
     [Test]

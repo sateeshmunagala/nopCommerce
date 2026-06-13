@@ -565,6 +565,7 @@ public class CandidateFlowTests
                 AnswerText = "A1",
                 Score = 88,
                 Feedback = "Good",
+                RubricJson = "{\"technicalScore\":91,\"communicationScore\":86,\"professionalismScore\":84,\"positiveAttitudeScore\":92,\"score\":88}",
                 AskedOnUtc = DateTime.UtcNow.AddMinutes(-30),
                 AnsweredOnUtc = DateTime.UtcNow.AddMinutes(-29)
             }
@@ -584,8 +585,55 @@ public class CandidateFlowTests
         Assert.That(model.Turns.Count, Is.EqualTo(1));
         Assert.That(model.Turns[0].QuestionText, Is.EqualTo("Q1"));
         Assert.That(model.Turns[0].AnswerText, Is.EqualTo("A1"));
+        Assert.That(model.Turns[0].TechnicalScore, Is.EqualTo(91));
+        Assert.That(model.Turns[0].CommunicationScore, Is.EqualTo(86));
+        Assert.That(model.Turns[0].ProfessionalismScore, Is.EqualTo(84));
+        Assert.That(model.Turns[0].PositiveAttitudeScore, Is.EqualTo(92));
         Assert.That(model.ParsedQuestionScores, Is.EquivalentTo(new[] { 88m, 92m }));
         Assert.That(model.RecordingUrl, Is.EqualTo("/aiinterview/recording/2"));
+    }
+
+    [Test]
+    public async Task Report_OldTurnWithoutRubric_LeavesCategoryScoresNull()
+    {
+        var customer = new Customer { Id = 1 };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 12)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(12)).ReturnsAsync(new InterviewSession
+        {
+            Id = 12,
+            CustomerId = 1,
+            ProductId = 11,
+            ReportData = "overall score: 75",
+            QuestionScores = "[75]",
+            Score = 75,
+            CreatedOnUtc = DateTime.UtcNow.AddHours(-1),
+            CompletedOnUtc = DateTime.UtcNow
+        });
+        _turnService.Setup(x => x.GetTurnsBySessionIdAsync(12)).ReturnsAsync(new List<InterviewTurn>
+        {
+            new InterviewTurn
+            {
+                Id = 101,
+                InterviewSessionId = 12,
+                SequenceNumber = 1,
+                QuestionText = "Legacy Q1",
+                AnswerText = "Legacy A1",
+                Score = 75,
+                Feedback = "Legacy feedback"
+            }
+        });
+
+        var result = await _controller.Report(12);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        var model = (InterviewReportModel)viewResult.Model;
+        Assert.That(model.Turns, Has.Count.EqualTo(1));
+        Assert.That(model.Turns[0].TechnicalScore, Is.Null);
+        Assert.That(model.Turns[0].CommunicationScore, Is.Null);
+        Assert.That(model.Turns[0].ProfessionalismScore, Is.Null);
+        Assert.That(model.Turns[0].PositiveAttitudeScore, Is.Null);
     }
 
     [Test]
@@ -958,6 +1006,14 @@ public class CandidateFlowTests
         Assert.That(myApplicationsText, Does.Contain("Question Count"));
         Assert.That(mockReportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
         Assert.That(reportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
+        Assert.That(mockReportText, Does.Contain("Technical Score"));
+        Assert.That(mockReportText, Does.Contain("Communication"));
+        Assert.That(mockReportText, Does.Contain("Professionalism"));
+        Assert.That(mockReportText, Does.Contain("Positive Attitude"));
+        Assert.That(reportText, Does.Contain("Technical Score"));
+        Assert.That(reportText, Does.Contain("Communication"));
+        Assert.That(reportText, Does.Contain("Professionalism"));
+        Assert.That(reportText, Does.Contain("Positive Attitude"));
     }
 
     [Test]

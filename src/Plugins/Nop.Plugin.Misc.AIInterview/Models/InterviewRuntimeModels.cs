@@ -28,6 +28,10 @@ public record InterviewTurnViewModel
     public string QuestionText { get; set; }
     public string AnswerText { get; set; }
     public decimal? Score { get; set; }
+    public decimal? TechnicalScore { get; set; }
+    public decimal? CommunicationScore { get; set; }
+    public decimal? ProfessionalismScore { get; set; }
+    public decimal? PositiveAttitudeScore { get; set; }
     public string Feedback { get; set; }
     public DateTime AskedOnUtc { get; set; }
     public DateTime? AnsweredOnUtc { get; set; }

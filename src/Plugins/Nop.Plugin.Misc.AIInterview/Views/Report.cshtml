@@ -3,6 +3,11 @@
 @{
     Layout = "_ColumnsOne";
     NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.Report.Title").Text);
+    var categoryTurns = (Model.Turns ?? Enumerable.Empty<Nop.Plugin.Misc.AIInterview.Models.InterviewTurnViewModel>()).ToList();
+    decimal? avgTechnical = categoryTurns.Any(x => x.TechnicalScore.HasValue) ? categoryTurns.Where(x => x.TechnicalScore.HasValue).Average(x => x.TechnicalScore.Value) : null;
+    decimal? avgCommunication = categoryTurns.Any(x => x.CommunicationScore.HasValue) ? categoryTurns.Where(x => x.CommunicationScore.HasValue).Average(x => x.CommunicationScore.Value) : null;
+    decimal? avgProfessionalism = categoryTurns.Any(x => x.ProfessionalismScore.HasValue) ? categoryTurns.Where(x => x.ProfessionalismScore.HasValue).Average(x => x.ProfessionalismScore.Value) : null;
+    decimal? avgPositiveAttitude = categoryTurns.Any(x => x.PositiveAttitudeScore.HasValue) ? categoryTurns.Where(x => x.PositiveAttitudeScore.HasValue).Average(x => x.PositiveAttitudeScore.Value) : null;
 }
 
 <style>
@@ -53,6 +58,22 @@
                             }
                         </div>
                     </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">Average Technical Score</div>
+                        <div class="ai-report-stat-value">@((avgTechnical.HasValue ? $"{avgTechnical.Value:N0}/100" : "-"))</div>
+                    </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">Average Communication</div>
+                        <div class="ai-report-stat-value">@((avgCommunication.HasValue ? $"{avgCommunication.Value:N0}/100" : "-"))</div>
+                    </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">Average Professionalism</div>
+                        <div class="ai-report-stat-value">@((avgProfessionalism.HasValue ? $"{avgProfessionalism.Value:N0}/100" : "-"))</div>
+                    </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">Average Positive Attitude</div>
+                        <div class="ai-report-stat-value">@((avgPositiveAttitude.HasValue ? $"{avgPositiveAttitude.Value:N0}/100" : "-"))</div>
+                    </div>
                 </div>
             </section>
 
@@ -82,6 +103,12 @@
                             <div class="ai-report-turn-title">Q@turn.SequenceNumber. @turn.QuestionText</div>
                             <div class="ai-report-answer"><strong>Answer:</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? "(pending)" : turn.AnswerText)</div>
                             <div class="ai-report-feedback"><strong>Feedback:</strong> @(string.IsNullOrWhiteSpace(turn.Feedback) ? "-" : turn.Feedback)</div>
+                            <div class="ai-report-grid">
+                                <div class="ai-report-stat"><div class="ai-report-stat-label">Technical Score</div><div class="ai-report-stat-value">@((turn.TechnicalScore.HasValue ? $"{turn.TechnicalScore.Value:N0}/100" : "-"))</div></div>
+                                <div class="ai-report-stat"><div class="ai-report-stat-label">Communication</div><div class="ai-report-stat-value">@((turn.CommunicationScore.HasValue ? $"{turn.CommunicationScore.Value:N0}/100" : "-"))</div></div>
+                                <div class="ai-report-stat"><div class="ai-report-stat-label">Professionalism</div><div class="ai-report-stat-value">@((turn.ProfessionalismScore.HasValue ? $"{turn.ProfessionalismScore.Value:N0}/100" : "-"))</div></div>
+                                <div class="ai-report-stat"><div class="ai-report-stat-label">Positive Attitude</div><div class="ai-report-stat-value">@((turn.PositiveAttitudeScore.HasValue ? $"{turn.PositiveAttitudeScore.Value:N0}/100" : "-"))</div></div>
+                            </div>
                             <div class="ai-report-meta">
                                 <span><strong>Score:</strong> @(turn.Score.HasValue ? $"{turn.Score.Value:N0}/100" : "-")</span>
                                 <span><strong>Asked:</strong> @turn.AskedOnUtc.ToString("g")</span>
