@@ -915,6 +915,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
         Assert.That(runtimeText, Does.Not.Contain("console.log(\"Settings Config\")"));
         Assert.That(runtimeText, Does.Not.Contain("console.log(config)"));
+        Assert.That(runtimeText, Does.Not.Contain("Body: ${text}"));
         Assert.That(runtimeText, Does.Contain("requestRecordingMediaForStart"));
         Assert.That(runtimeText, Does.Contain("await setCamera(true, true);"));
         Assert.That(runtimeText, Does.Contain("await setMic(true, true);"));
@@ -925,6 +926,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Interview cannot start because no active AI question is available."));
         Assert.That(runtimeText, Does.Contain("showUnavailableQuestionState"));
         Assert.That(runtimeText, Does.Contain("submitButton.disabled = !hasActiveQuestion();"));
+        Assert.That(runtimeText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeText, Does.Contain("if (auto && !trimmedAnswer)"));
         Assert.That(runtimeText, Does.Contain("Auto submitting..."));
         Assert.That(runtimeText, Does.Contain("Speaking question."));

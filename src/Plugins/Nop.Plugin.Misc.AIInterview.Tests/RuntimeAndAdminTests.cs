@@ -512,11 +512,13 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("stopInterview"));
         Assert.That(runtimeViewText, Does.Not.Contain("console.log(config)"));
         Assert.That(runtimeViewText, Does.Not.Contain("Settings Config"));
+        Assert.That(runtimeViewText, Does.Not.Contain("Body: ${text}"));
         Assert.That(runtimeViewText, Does.Contain("tokenRefreshPromise"));
         Assert.That(runtimeViewText, Does.Contain("if (tokenRefreshPromise)"));
         Assert.That(runtimeViewText, Does.Not.Contain("tokenRefreshInFlight"));
         Assert.That(runtimeViewText, Does.Contain("showUnavailableQuestionState"));
         Assert.That(runtimeViewText, Does.Contain("submitButton.disabled = !hasActiveQuestion();"));
+        Assert.That(runtimeViewText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = 'none';"));
 
         Assert.That(runtimeViewText, Does.Not.Contain("AgoraRTC"));
@@ -722,5 +724,14 @@ public class RuntimeAndAdminTests
 
         var content = System.IO.File.ReadAllText(path);
         Assert.That(content.Contains("AgoraRTC"), Is.False, "Runtime should not contain AgoraRTC usage.");
+    }
+
+    [Test]
+    public void Plugin_DoesNotShip_AIReferenceFiles()
+    {
+        var pluginRoot = TestFilePathHelper.GetPluginRootPath();
+        var referencePath = Path.Combine(pluginRoot, "AI_ReferenceFiles");
+
+        Assert.That(Directory.Exists(referencePath), Is.False, "AI_ReferenceFiles should not remain under the active plugin source.");
     }
 }
