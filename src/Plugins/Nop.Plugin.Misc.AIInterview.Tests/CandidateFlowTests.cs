@@ -913,11 +913,18 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("textContent"));
         Assert.That(runtimeText, Does.Not.Contain("card.innerHTML ="));
         Assert.That(runtimeText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
+        Assert.That(runtimeText, Does.Not.Contain("console.log(\"Settings Config\")"));
+        Assert.That(runtimeText, Does.Not.Contain("console.log(config)"));
         Assert.That(runtimeText, Does.Contain("requestRecordingMediaForStart"));
         Assert.That(runtimeText, Does.Contain("await setCamera(true, true);"));
         Assert.That(runtimeText, Does.Contain("await setMic(true, true);"));
         Assert.That(runtimeText, Does.Contain("refreshAt <= 0"));
-        Assert.That(runtimeText, Does.Contain("refreshTokenWithRetry(attempt + 1)"));
+        Assert.That(runtimeText, Does.Contain("tokenRefreshPromise"));
+        Assert.That(runtimeText, Does.Contain("if (tokenRefreshPromise)"));
+        Assert.That(runtimeText, Does.Not.Contain("tokenRefreshInFlight"));
+        Assert.That(runtimeText, Does.Contain("Interview cannot start because no active AI question is available."));
+        Assert.That(runtimeText, Does.Contain("showUnavailableQuestionState"));
+        Assert.That(runtimeText, Does.Contain("submitButton.disabled = !hasActiveQuestion();"));
         Assert.That(runtimeText, Does.Contain("if (auto && !trimmedAnswer)"));
         Assert.That(runtimeText, Does.Contain("Auto submitting..."));
         Assert.That(runtimeText, Does.Contain("Speaking question."));
@@ -926,6 +933,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Reminder shown."));
         Assert.That(runtimeText, Does.Contain("Reminder spoken."));
         Assert.That(runtimeText, Does.Contain("Reminder speech failed."));
+        Assert.That(runtimeText, Does.Contain("if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion()) return;"));
         Assert.That(runtimeText, Does.Contain("Recording ready."));
         Assert.That(runtimeText, Does.Contain("Recording waiting for camera or mic."));
         Assert.That(runtimeText, Does.Contain("Recording live."));

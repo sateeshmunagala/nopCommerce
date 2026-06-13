@@ -510,6 +510,14 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("speechTokenUrl"));
         Assert.That(runtimeViewText, Does.Contain("submitAnswer"));
         Assert.That(runtimeViewText, Does.Contain("stopInterview"));
+        Assert.That(runtimeViewText, Does.Not.Contain("console.log(config)"));
+        Assert.That(runtimeViewText, Does.Not.Contain("Settings Config"));
+        Assert.That(runtimeViewText, Does.Contain("tokenRefreshPromise"));
+        Assert.That(runtimeViewText, Does.Contain("if (tokenRefreshPromise)"));
+        Assert.That(runtimeViewText, Does.Not.Contain("tokenRefreshInFlight"));
+        Assert.That(runtimeViewText, Does.Contain("showUnavailableQuestionState"));
+        Assert.That(runtimeViewText, Does.Contain("submitButton.disabled = !hasActiveQuestion();"));
+        Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = 'none';"));
 
         Assert.That(runtimeViewText, Does.Not.Contain("AgoraRTC"));
         Assert.That(runtimeViewText, Does.Not.Contain("download.agora.io"));

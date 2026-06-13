@@ -21,7 +21,7 @@
     .runtime-meta { display: flex; align-items: center; gap: 12px; color: #667085; font-weight: 600; }
     .runtime-progress { height: 8px; border-radius: 999px; background: #dbe4f0; overflow: hidden; }
     .runtime-progress > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #0f5bd7, #ff7a1a); transition: width .2s ease; }
-    .runtime-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(320px, .9fr); gap: 18px; min-height: 70vh; }
+    .runtime-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(320px, .9fr); gap: 18px; min-height: 64vh; }
     .runtime-stage, .runtime-sidebar { display: grid; gap: 16px; padding: 18px; border-radius: 24px; background: #fff; border: 1px solid rgba(15, 23, 42, 0.08); }
     .runtime-video { position: relative; min-height: clamp(220px, 28vw, 252px); max-height: 252px; border-radius: 20px; background: linear-gradient(180deg, #d9e2f2 0%, #c8d7ea 100%); display: grid; place-items: center; color: #51627b; font-size: 28px; font-weight: 700; overflow: hidden; }
     .runtime-video video { width: 100%; height: 100%; object-fit: cover; display: none; }
@@ -143,9 +143,8 @@
 <script asp-location="Footer">
     (() => {
         const config = @Html.Raw(clientSettings);
-        console.log("Settings Config")
-        console.log(config)
         const turns = @Html.Raw(turns);
+        const debugRuntime = new URLSearchParams(window.location.search).get('debugRuntime') === '1';
         let sessionToken = config.token || '@Model.Token';
         let tokenExpiryUtc = config.tokenExpiryUtc ? new Date(config.tokenExpiryUtc) : null;
         const answerBox = document.getElementById('runtime-answer');
@@ -161,6 +160,9 @@
         const cameraPlaceholder = document.getElementById('camera-placeholder');
         const recordingStatus = document.getElementById('recording-status');
         const recordingButton = document.getElementById('toggle-recording');
+        const submitButton = document.getElementById('submit-answer');
+        const startButton = document.getElementById('start-or-next');
+        const runtimeLog = document.getElementById('runtime-log');
         const audioMeter = Array.from(document.querySelectorAll('#audio-meter span'));
         const reportButton = document.getElementById('view-report');
         let cameraStream = null;
@@ -177,7 +179,7 @@
         let recordingMimeType = 'video/webm';
         let recordingEnabled = false;
         let recordingUploadInFlight = false;
-        let tokenRefreshInFlight = false;
+        let tokenRefreshPromise = null;
         let interviewStarted = false;
         let completedRedirectTimer = null;
         let completedCountdown = null;
@@ -187,10 +189,13 @@
         let isSpeakingOrSubmitting = false;
         let isSubmittingAnswer = false;
 
+        if (runtimeLog && !debugRuntime)
+            runtimeLog.style.display = 'none';
+
         const resetTimers = () => {
             clearTimeout(silenceTimer);
             clearTimeout(reminderTimer);
-            if (!interviewStarted || isSpeakingOrSubmitting) return;
+            if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion()) return;
 
             const text = (answerBox.value || '').trim();
             if (text) {
@@ -255,6 +260,9 @@
         };
 
         const logActivity = (msg) => {
+            if (!debugRuntime)
+                return;
+
             console.debug(`[AIInterview Runtime] ${msg}`);
             const logPanel = document.getElementById('runtime-log-body');
             if (logPanel) {
@@ -282,7 +290,7 @@
             return getValue(result, "message", "Message") || getValue(result, "error", "Error") || fallback;
         };
 
-        logActivity('Runtime initialized.');
+        logActivity(`Runtime debug enabled. speechAvailable=${!!config.speechAvailable}, recordingAvailable=${!!config.recordingAvailable}, mockMode=${!!config.isMockMode}`);
 
         if (config.recordingAvailable)
             setRecordingStatus('Recording waiting for camera or mic.', false);
@@ -294,6 +302,24 @@
             return !normalized
                 || normalized === 'Welcome! Click Start Interview to begin.'
                 || normalized === 'AI service unavailable.';
+        };
+
+        const currentQuestionText = () => (questionBox.textContent || '').trim();
+
+        const hasActiveQuestion = () => !isPlaceholderSpeechText(currentQuestionText());
+
+        const updateSubmitAvailability = () => {
+            if (!submitButton || answerBox.disabled)
+                return;
+
+            submitButton.disabled = !hasActiveQuestion();
+        };
+
+        const showUnavailableQuestionState = (message = 'AI service unavailable. Please try again later.') => {
+            questionBox.textContent = message;
+            messageBox.textContent = message;
+            setStatus(message, true);
+            updateSubmitAvailability();
         };
 
         const applyTokenUpdate = (result) => {
@@ -318,35 +344,43 @@
             return (tokenExpiryUtc.getTime() - Date.now()) <= 120000;
         };
 
-        const refreshTokenWithRetry = async (attempt = 0) => {
-            if (!config.refreshTokenUrl || !sessionToken || tokenRefreshInFlight)
-                return false;
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-            tokenRefreshInFlight = true;
-            try {
-                const result = await postForm(config.refreshTokenUrl, new URLSearchParams({ token: sessionToken }));
-                const newToken = getValue(result, 'newToken', 'NewToken');
-                if (result && isSuccess(result) && newToken) {
-                    logActivity('Session token refreshed.');
-                    applyTokenUpdate(result);
-                    return true;
+        const refreshTokenWithRetry = (attempt = 0) => {
+            if (!config.refreshTokenUrl || !sessionToken)
+                return Promise.resolve(false);
+
+            if (tokenRefreshPromise)
+                return tokenRefreshPromise;
+
+            tokenRefreshPromise = (async () => {
+                let currentAttempt = attempt;
+                try {
+                    while (true) {
+                        const result = await postForm(config.refreshTokenUrl, new URLSearchParams({ token: sessionToken }));
+                        const newToken = getValue(result, 'newToken', 'NewToken');
+                        if (result && isSuccess(result) && newToken) {
+                            logActivity('Session token refreshed.');
+                            applyTokenUpdate(result);
+                            return true;
+                        }
+
+                        if (currentAttempt < 2 && isTokenRefreshNeeded()) {
+                            const backoff = (currentAttempt + 1) * 1500;
+                            logActivity(`Token refresh retry scheduled in ${backoff / 1000}s.`);
+                            currentAttempt += 1;
+                            await delay(backoff);
+                            continue;
+                        }
+
+                        return false;
+                    }
+                } finally {
+                    tokenRefreshPromise = null;
                 }
+            })();
 
-                if (attempt < 2 && isTokenRefreshNeeded()) {
-                    const backoff = (attempt + 1) * 1500;
-                    logActivity(`Token refresh retry scheduled in ${backoff / 1000}s.`);
-                    setTimeout(() => refreshTokenWithRetry(attempt + 1), backoff);
-                    return false;
-                }
-
-                if (tokenExpiryUtc && tokenExpiryUtc.getTime() <= Date.now()) {
-                    setStatus('Unable to continue the interview right now. Please reload and try again.', true);
-                }
-
-                return false;
-            } finally {
-                tokenRefreshInFlight = false;
-            }
+            return tokenRefreshPromise;
         };
 
         const ensureRuntimeTokenFresh = async () => {
@@ -365,7 +399,7 @@
         };
 
         const showReminder = async () => {
-            if (!interviewStarted || isSpeakingOrSubmitting)
+            if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion())
                 return;
 
             logActivity('Reminder shown.');
@@ -379,7 +413,7 @@
             }
 
             const currentText = (answerBox.value || '').trim();
-            if (!currentText && interviewStarted && !isSpeakingOrSubmitting)
+            if (!currentText && interviewStarted && !isSpeakingOrSubmitting && hasActiveQuestion())
                 resetTimers();
         };
 
@@ -417,9 +451,9 @@
                 ? `${completionText} You can open the report below, or you will be redirected shortly.`
                 : completionText;
             answerBox.disabled = true;
-            document.getElementById('submit-answer').disabled = true;
-            document.getElementById('start-or-next').disabled = true;
-            document.getElementById('start-or-next').textContent = 'Completed';
+            submitButton.disabled = true;
+            startButton.disabled = true;
+            startButton.textContent = 'Completed';
             if (reportUrl) {
                 reportButton.style.display = 'inline-flex';
                 reportButton.onclick = () => window.location.href = reportUrl;
@@ -499,7 +533,7 @@
         }, 1000);
 
         const postForm = async (url, formData) => {
-            logActivity(`Request started: ${url}`);
+            logActivity('Request started.');
             try {
                 const response = await fetch(url, {
                     method: 'POST',
@@ -514,30 +548,27 @@
                         const parsed = JSON.parse(text);
                         msg = getRuntimeMessage(parsed, msg);
                     } catch {}
-                    console.error(`[AIInterview] Request failed: ${url} (Status: ${response.status}) Body: ${text}`);
                     logActivity(`Request failed (${response.status}): ${msg}`);
                     return { success: false, message: msg, status: response.status };
                 }
 
                 try {
                     const result = await response.json();
-                    logActivity(`Request success: ${url}`);
+                    logActivity('Request success.');
                     applyTokenUpdate(result);
                     return result;
                 } catch {
-                    console.error(`[AIInterview] Request JSON parse failed: ${url}`);
                     logActivity(`Request failed: Invalid JSON response.`);
                     return { success: false, message: 'Invalid response from server.' };
                 }
             } catch (e) {
-                console.error(`[AIInterview] Request exception: ${url}`, e);
                 logActivity(`Request error: ${e.message}`);
                 return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
             }
         };
 
         const postMultipart = async (url, formData) => {
-            logActivity(`Multipart request started: ${url}`);
+            logActivity('Multipart request started.');
             try {
                 const response = await fetch(url, {
                     method: 'POST',
@@ -551,30 +582,26 @@
                         const parsed = JSON.parse(text);
                         msg = getRuntimeMessage(parsed, msg);
                     } catch {}
-                    console.error(`[AIInterview] Multipart request failed: ${url} (Status: ${response.status}) Body: ${text}`);
                     logActivity(`Multipart request failed (${response.status}): ${msg}`);
                     return { success: false, message: msg, status: response.status };
                 }
 
                 const contentType = response.headers.get('content-type') || '';
                 if (!contentType.includes('application/json')) {
-                    console.error(`[AIInterview] Multipart request non-JSON response: ${url}`);
                     logActivity(`Multipart request failed: non-JSON response.`);
                     return { success: false, message: 'Invalid response format from server.' };
                 }
 
                 try {
                     const result = await response.json();
-                    logActivity(`Multipart request success: ${url}`);
+                    logActivity('Multipart request success.');
                     applyTokenUpdate(result);
                     return result;
                 } catch {
-                    console.error(`[AIInterview] Multipart request JSON parse failed: ${url}`);
                     logActivity(`Multipart request failed: Invalid JSON response.`);
                     return { success: false, message: 'Invalid response from server.' };
                 }
             } catch (e) {
-                console.error(`[AIInterview] Multipart request exception: ${url}`, e);
                 logActivity(`Multipart request error: ${e.message}`);
                 return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
             }
@@ -1017,6 +1044,11 @@
                 return;
             }
 
+            if (!hasActiveQuestion()) {
+                showUnavailableQuestionState();
+                return;
+            }
+
             logActivity('Submitting answer...');
             isSpeakingOrSubmitting = true;
             isSubmittingAnswer = true;
@@ -1086,7 +1118,8 @@
                 return;
             }
 
-            document.getElementById('start-or-next').textContent = 'Next Question';
+            startButton.textContent = 'Next Question';
+            updateSubmitAvailability();
             if (config.speechAvailable && !isPlaceholderSpeechText(resultQuestion))
                 await speakText(resultQuestion, 'question');
             else
@@ -1152,19 +1185,25 @@
 
         const beginInterview = async () => {
             logActivity('Interview started clicked.');
-            interviewStarted = true;
-            setStatus('Interview started.', false);
-            document.getElementById('start-or-next').textContent = 'Next Question';
             if (!(await ensureRuntimeTokenFresh())) {
                 setStatus('Interview token refresh failed.', true);
+                return;
+            }
+            if (!hasActiveQuestion()) {
+                logActivity('Interview cannot start because no active AI question is available.');
+                showUnavailableQuestionState();
                 interviewStarted = false;
                 return;
             }
+
+            interviewStarted = true;
+            setStatus('Interview started.', false);
+            startButton.textContent = 'Next Question';
             if (config.recordingAvailable && recordingEnabled)
                 await requestRecordingMediaForStart();
             await syncRecording();
             if (questionBox.textContent) logActivity('Question shown: ' + questionBox.textContent);
-            if (config.speechAvailable && !isPlaceholderSpeechText(questionBox.textContent))
+            if (config.speechAvailable && hasActiveQuestion())
                 await speakText(questionBox.textContent, 'question');
             else
                 resetTimers();
@@ -1196,6 +1235,7 @@
         document.getElementById('close-transcript').addEventListener('click', () => transcript.classList.remove('is-open'));
 
         renderTranscript();
+        updateSubmitAvailability();
         scheduleTokenRefresh();
     })();
 </script>
