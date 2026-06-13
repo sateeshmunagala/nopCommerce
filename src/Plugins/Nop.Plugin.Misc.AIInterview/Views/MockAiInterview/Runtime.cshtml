@@ -109,7 +109,7 @@
             <aside class="runtime-sidebar">
                 <h3>Conversations</h3>
                 <div id="runtime-question" class="runtime-question">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? "Welcome! Click Start Interview to begin." : Model.CurrentQuestion)</div>
-                <div id="runtime-message" class="runtime-message is-info">Start the interview to load the first question.</div>
+                <div id="runtime-message" class="runtime-message is-info">Click Start Interview to begin.</div>
 
                 <div class="runtime-conversation" id="conversation"></div>
 
@@ -194,6 +194,9 @@
         let countdownValue = autoSubmitDelaySeconds;
         let isSpeakingOrSubmitting = false;
         let isSubmittingAnswer = false;
+        let runtimeTimerHandle = null;
+        let timerStartedAt = null;
+        let answerNeedsEditAfterFailure = false;
 
         if (runtimeLog && !debugRuntime)
             runtimeLog.style.display = 'none';
@@ -203,37 +206,64 @@
                 submitButton.textContent = 'Submit Answer';
         };
 
-        const clearInteractionTimers = () => {
+        const clearAnswerTimers = () => {
             clearTimeout(answerStageTimer);
             clearInterval(countdownTimer);
-            clearTimeout(tokenRefreshTimer);
             answerStageTimer = null;
             countdownTimer = null;
-            tokenRefreshTimer = null;
             countdownValue = autoSubmitDelaySeconds;
             resetSubmitButtonText();
         };
 
+        const clearTokenRefreshTimer = () => {
+            clearTimeout(tokenRefreshTimer);
+            tokenRefreshTimer = null;
+        };
+
+        const clearAllRuntimeTimers = () => {
+            clearAnswerTimers();
+            clearTokenRefreshTimer();
+            clearInterval(runtimeTimerHandle);
+            runtimeTimerHandle = null;
+            clearInterval(completedCountdown);
+            clearTimeout(completedRedirectTimer);
+            completedCountdown = null;
+            completedRedirectTimer = null;
+        };
+
+        const startRuntimeTimer = () => {
+            if (runtimeTimerHandle)
+                return;
+
+            timerStartedAt = Date.now();
+            runtimeTimerHandle = setInterval(() => {
+                const elapsedSeconds = Math.floor((Date.now() - timerStartedAt) / 1000);
+                const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+                const seconds = String(elapsedSeconds % 60).padStart(2, '0');
+                document.getElementById('runtime-timer').textContent = `${minutes}:${seconds}`;
+            }, 1000);
+        };
+
         const startAutoSubmitCountdown = () => {
-            clearInteractionTimers();
+            clearAnswerTimers();
             countdownValue = autoSubmitDelaySeconds;
             submitButton.textContent = `Auto submitting in ${countdownValue}`;
             countdownTimer = setInterval(() => {
                 if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion()) {
-                    clearInteractionTimers();
+                    clearAnswerTimers();
                     return;
                 }
 
                 const currentText = (answerBox.value || '').trim();
                 if (!currentText) {
-                    clearInteractionTimers();
+                    clearAnswerTimers();
                     showReminder();
                     return;
                 }
 
                 countdownValue -= 1;
                 if (countdownValue <= 0) {
-                    clearInteractionTimers();
+                    clearAnswerTimers();
                     submitAnswer({ auto: true });
                     return;
                 }
@@ -243,11 +273,11 @@
         };
 
         const resetTimers = () => {
-            clearInteractionTimers();
-            if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion()) return;
+            clearAnswerTimers();
+            if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure) return;
 
             answerStageTimer = setTimeout(() => {
-                if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion())
+                if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure)
                     return;
 
                 const text = (answerBox.value || '').trim();
@@ -260,7 +290,11 @@
             }, autoSubmitDelaySeconds * 1000);
         };
 
-        answerBox.addEventListener('input', resetTimers);
+        answerBox.addEventListener('input', () => {
+            answerNeedsEditAfterFailure = false;
+            updateSubmitAvailability();
+            resetTimers();
+        });
 
         recordingEnabled = !!config.recordingAvailable;
         if (recordingButton) {
@@ -356,14 +390,21 @@
             if (!submitButton || answerBox.disabled)
                 return;
 
-            submitButton.disabled = interviewUnavailable || !hasActiveQuestion();
+            const trimmedAnswer = (answerBox.value || '').trim();
+            submitButton.disabled = !interviewStarted
+                || runtimeStoppedOrCompleted
+                || stopInProgress
+                || interviewUnavailable
+                || !hasActiveQuestion()
+                || !trimmedAnswer;
         };
 
         const showUnavailableQuestionState = (message = 'AI service unavailable. Please try again later.') => {
             interviewUnavailable = true;
-            clearInteractionTimers();
+            clearAnswerTimers();
             questionBox.textContent = message;
             messageBox.textContent = message;
+            answerBox.disabled = true;
             setStatus(message, true);
             updateSubmitAvailability();
         };
@@ -412,6 +453,9 @@
                 let currentAttempt = attempt;
                 try {
                     while (true) {
+                        if (runtimeStoppedOrCompleted || stopInProgress)
+                            return false;
+
                         const result = await postForm(config.refreshTokenUrl, new URLSearchParams({ token: sessionToken }));
                         const newToken = getValue(result, 'newToken', 'NewToken');
                         if (result && isSuccess(result) && newToken) {
@@ -425,6 +469,8 @@
                             logActivity(`Token refresh retry scheduled in ${backoff / 1000}s.`);
                             currentAttempt += 1;
                             await delay(backoff);
+                            if (runtimeStoppedOrCompleted || stopInProgress)
+                                return false;
                             continue;
                         }
 
@@ -480,9 +526,9 @@
             stopInProgress = false;
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
             const completionText = getValue(result, 'completion', 'Completion') || getValue(result, 'message', 'Message') || 'Interview completed.';
-            clearInteractionTimers();
+            clearAllRuntimeTimers();
             isSpeakingOrSubmitting = true;
-            await stopRecording(true);
+            await stopRecording(false);
             recordingEnabled = false;
             interviewStarted = false;
             if (recordingButton)
@@ -504,7 +550,7 @@
             audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
             await stopSpeechRecognition();
             questionBox.textContent = completionText;
-            messageBox.textContent = result.feedback || result.message || '';
+            messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';
             completionBox.style.display = '';
             completionBox.textContent = reportUrl
                 ? `${completionText} You can open the report below, or you will be redirected shortly.`
@@ -531,22 +577,38 @@
             } else {
                 reportButton.style.display = 'none';
             }
-            clearTimeout(tokenRefreshTimer);
-            tokenRefreshTimer = null;
+            clearTokenRefreshTimer();
+        };
+
+        const normalizeTurn = (turn, index = 0) => {
+            if (!turn)
+                return null;
+
+            return {
+                turnId: getValue(turn, 'turnId', 'TurnId') ?? Date.now() + index,
+                sequenceNumber: getValue(turn, 'sequenceNumber', 'SequenceNumber') ?? index + 1,
+                questionText: getValue(turn, 'questionText', 'QuestionText') || '',
+                answerText: getValue(turn, 'answerText', 'AnswerText') || '',
+                score: getValue(turn, 'score', 'Score'),
+                feedback: getValue(turn, 'feedback', 'Feedback') || '',
+                askedOnUtc: getValue(turn, 'askedOnUtc', 'AskedOnUtc') || null,
+                answeredOnUtc: getValue(turn, 'answeredOnUtc', 'AnsweredOnUtc') || null
+            };
         };
 
         const buildTurnCard = (turn, index) => {
+            const normalizedTurn = normalizeTurn(turn, index) || {};
             const card = document.createElement('div');
             card.className = 'turn-card';
 
             const question = document.createElement('div');
             question.className = 'turn-question';
-            question.textContent = `Q${turn.sequenceNumber || index + 1}. ${turn.questionText || ''}`;
+            question.textContent = `Q${normalizedTurn.sequenceNumber || index + 1}. ${normalizedTurn.questionText || ''}`;
 
             const answer = document.createElement('div');
             answer.className = 'turn-answer';
-            if (turn.answerText) {
-                answer.textContent = turn.answerText;
+            if (normalizedTurn.answerText) {
+                answer.textContent = normalizedTurn.answerText;
             } else {
                 const pending = document.createElement('em');
                 pending.textContent = 'Awaiting answer...';
@@ -557,9 +619,9 @@
             meta.className = 'turn-meta';
 
             const score = document.createElement('span');
-            score.textContent = `Score: ${turn.score ?? '-'}`;
+            score.textContent = `Score: ${normalizedTurn.score ?? '-'}`;
             const feedback = document.createElement('span');
-            feedback.textContent = turn.feedback || '';
+            feedback.textContent = normalizedTurn.feedback || '';
 
             meta.appendChild(score);
             meta.appendChild(feedback);
@@ -572,25 +634,18 @@
         const renderTranscript = () => {
             transcriptBody.replaceChildren();
             conversation.replaceChildren();
-            (turns || []).forEach((turn, index) => {
+            const normalizedTurns = (turns || []).map((turn, index) => normalizeTurn(turn, index));
+            normalizedTurns.forEach((turn, index) => {
                 const conversationCard = buildTurnCard(turn, index);
                 const transcriptCard = buildTurnCard(turn, index);
                 conversation.appendChild(conversationCard);
                 transcriptBody.appendChild(transcriptCard);
             });
 
-            const answered = (turns || []).filter(turn => turn.answerText).length;
-            const progress = Math.min(100, Math.max(0, (answered / Math.max(1, turns.length)) * 100));
+            const answered = normalizedTurns.filter(turn => turn?.answerText).length;
+            const progress = Math.min(100, Math.max(0, (answered / Math.max(1, normalizedTurns.length)) * 100));
             progressBar.style.width = `${progress}%`;
         };
-
-        const timerStartedAt = Date.now();
-        setInterval(() => {
-            const elapsedSeconds = Math.floor((Date.now() - timerStartedAt) / 1000);
-            const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-            const seconds = String(elapsedSeconds % 60).padStart(2, '0');
-            document.getElementById('runtime-timer').textContent = `${minutes}:${seconds}`;
-        }, 1000);
 
         const postForm = async (url, formData) => {
             logActivity('Request started.');
@@ -733,19 +788,22 @@
 
         const stopRecording = async (upload = false) => {
             if (!mediaRecorder)
-                return;
+                return false;
 
             const recorder = mediaRecorder;
             const mimeType = recordingMimeType || 'video/webm';
             mediaRecorder = null;
+            let uploaded = false;
 
             await new Promise(resolve => {
                 recorder.addEventListener('stop', async () => {
                     try {
                         const blob = recordingChunks.length ? new Blob(recordingChunks, { type: mimeType }) : null;
                         recordingChunks = [];
-                        if (upload && blob)
+                        if (upload && blob) {
                             await uploadRecording(blob);
+                            uploaded = true;
+                        }
                     } catch {
                         setRecordingStatus('Recording upload failed.', true);
                     } finally {
@@ -763,6 +821,8 @@
                     resolve();
                 }
             });
+
+            return uploaded;
         };
 
         const startRecording = async () => {
@@ -809,13 +869,14 @@
 
             if (recordingEnabled && interviewStarted && getActiveRecordingStream())
                 await startRecording();
+            else if (!getActiveRecordingStream() && recordingEnabled && mediaPermissionDenied)
+                setRecordingStatus('Recording unavailable because camera or microphone permission was denied.', false);
             else if (!getActiveRecordingStream() && recordingEnabled)
                 setRecordingStatus('Recording waiting for camera or mic.', false);
         };
 
         const scheduleTokenRefresh = () => {
-            clearTimeout(tokenRefreshTimer);
-            tokenRefreshTimer = null;
+            clearTokenRefreshTimer();
             if (runtimeStoppedOrCompleted || stopInProgress)
                 return;
             if (!config.refreshTokenUrl || !tokenExpiryUtc || isNaN(tokenExpiryUtc.getTime()))
@@ -953,7 +1014,7 @@
                 logActivity('Speaking reminder.');
 
             isSpeakingOrSubmitting = true;
-            clearInteractionTimers();
+            clearAnswerTimers();
 
             const tokenResult = await requestSpeechToken();
             if (!tokenResult || !tokenResult.success) {
@@ -1025,6 +1086,7 @@
                 if (error?.name === 'NotAllowedError' || /denied|permission/i.test(error?.message || '')) {
                     mediaPermissionDenied = true;
                     setStatus('Camera permission was denied. You can continue by typing your answers.', false);
+                    setRecordingStatus('Recording unavailable because camera or microphone permission was denied.', false);
                 } else {
                     setStatus('Camera could not be started.', true);
                 }
@@ -1086,6 +1148,7 @@
                 if (error?.name === 'NotAllowedError' || /denied|permission/i.test(error?.message || '')) {
                     mediaPermissionDenied = true;
                     setStatus('Microphone permission was denied. You can continue by typing your answers.', false);
+                    setRecordingStatus('Recording unavailable because camera or microphone permission was denied.', false);
                 } else {
                     setStatus('Microphone could not be started.', true);
                 }
@@ -1098,15 +1161,22 @@
                 return;
             }
 
+            if (!interviewStarted) {
+                setStatus('Click Start Interview to begin.', false);
+                return;
+            }
+
             const submitBtn = document.getElementById('submit-answer');
             if (submitBtn.disabled || isSubmittingAnswer) return;
 
             const auto = options.auto === true;
             const trimmedAnswer = (answerBox.value || '').trim();
-            if (auto && !trimmedAnswer) {
-                logActivity('Auto-submit skipped; answer is empty.');
+            if (!trimmedAnswer) {
+                logActivity(`${auto ? 'Auto-submit' : 'Manual submit'} skipped; answer is empty.`);
                 setStatus('Please speak or type something.', false);
-                resetTimers();
+                updateSubmitAvailability();
+                if (auto)
+                    resetTimers();
                 return;
             }
 
@@ -1124,7 +1194,7 @@
             logActivity('Submitting answer...');
             isSpeakingOrSubmitting = true;
             isSubmittingAnswer = true;
-            clearInteractionTimers();
+            clearAnswerTimers();
             submitBtn.disabled = true;
             submitBtn.classList.add('is-loading');
             const originalText = submitBtn.textContent;
@@ -1142,14 +1212,19 @@
             if (!isSuccess(result)) {
                 logActivity('Submit response failure: ' + getRuntimeMessage(result, 'Unable to submit answer.'));
                 setStatus(getRuntimeMessage(result, 'Unable to submit answer.'), true);
-                resetTimers();
+                answerNeedsEditAfterFailure = true;
+                updateSubmitAvailability();
                 return;
             }
             logActivity('Submit response success: ' + getRuntimeMessage(result, 'Answer saved.'));
+            answerNeedsEditAfterFailure = false;
 
-            const currentTurn = getValue(result, "turn", "Turn") || turns[turns.length - 1];
+            const currentTurn = normalizeTurn(getValue(result, "turn", "Turn"), turns.length - 1) || normalizeTurn(turns[turns.length - 1], turns.length - 1);
             if (currentTurn) {
-                const targetIndex = turns.findIndex(turn => turn.turnId && currentTurn.turnId && turn.turnId === currentTurn.turnId);
+                const targetIndex = turns.findIndex((turn, index) => {
+                    const existing = normalizeTurn(turn, index);
+                    return existing?.turnId && currentTurn.turnId && existing.turnId === currentTurn.turnId;
+                });
                 if (targetIndex >= 0)
                     turns[targetIndex] = currentTurn;
                 else if (turns.length > 0)
@@ -1165,7 +1240,7 @@
             const resultCompletion = getValue(result, "completion", "Completion");
 
             if (!isTerminated && resultQuestion) {
-                turns.push({
+                turns.push(normalizeTurn({
                     turnId: Date.now(),
                     sequenceNumber: (currentTurn?.sequenceNumber || turns.length) + 1,
                     questionText: resultQuestion,
@@ -1174,7 +1249,7 @@
                     feedback: '',
                     askedOnUtc: new Date().toISOString(),
                     answeredOnUtc: null
-                });
+                }, turns.length));
             }
 
             questionBox.textContent = isTerminated ? (resultCompletion || 'Interview completed.') : resultQuestion;
@@ -1182,6 +1257,8 @@
             if (!isTerminated && resultQuestion)
                 interviewUnavailable = false;
             messageBox.textContent = resultMessage || resultFeedback || '';
+            if (!isTerminated)
+                messageBox.textContent = 'Please answer the question.';
             setStatus(resultFeedback || resultMessage || 'Answer saved.', false);
             answerBox.value = '';
             renderTranscript();
@@ -1192,7 +1269,7 @@
                 return;
             }
 
-            startButton.textContent = 'Next Question';
+            startButton.textContent = 'Repeat Question';
             updateSubmitAvailability();
             if (config.speechAvailable && !isPlaceholderSpeechText(resultQuestion))
                 await speakText(resultQuestion, 'question');
@@ -1215,9 +1292,7 @@
 
             logActivity('Stopping interview...');
             stopInProgress = true;
-            clearInteractionTimers();
-            clearTimeout(tokenRefreshTimer);
-            tokenRefreshTimer = null;
+            clearAllRuntimeTimers();
             let originalText = '';
             if (stopBtn) {
                 originalText = stopBtn.textContent;
@@ -1230,6 +1305,9 @@
                 stopTopBtn.classList.add('is-loading');
                 stopTopBtn.textContent = 'Stopping...';
             }
+
+            if (mediaRecorder && recordingEnabled)
+                await stopRecording(true);
 
             const body = new URLSearchParams({ token: sessionToken });
             const result = await postForm(config.stopInterviewUrl, body);
@@ -1259,11 +1337,16 @@
             setStatus(getRuntimeMessage(result, 'Interview completed.'), false);
             renderTranscript();
             await setCompletedState(result);
-            clearInteractionTimers();
+            clearAllRuntimeTimers();
         };
 
         const beginInterview = async () => {
             logActivity('Interview started clicked.');
+            if (interviewStarted) {
+                if (config.speechAvailable && hasActiveQuestion())
+                    await speakText(questionBox.textContent, 'question');
+                return;
+            }
             if (!(await ensureRuntimeTokenFresh())) {
                 setStatus('Interview token refresh failed.', true);
                 return;
@@ -1277,12 +1360,16 @@
 
             interviewUnavailable = false;
             interviewStarted = true;
-            setStatus('Interview started.', false);
-            startButton.textContent = 'Next Question';
+            answerBox.disabled = false;
+            startRuntimeTimer();
+            setStatus('Please answer the question.', false);
+            messageBox.textContent = 'Please answer the question.';
+            startButton.textContent = 'Repeat Question';
             if (config.recordingAvailable && recordingEnabled)
                 await requestRecordingMediaForStart();
             await syncRecording();
             if (questionBox.textContent) logActivity('Question shown: ' + questionBox.textContent);
+            updateSubmitAvailability();
             if (config.speechAvailable && hasActiveQuestion())
                 await speakText(questionBox.textContent, 'question');
             else
@@ -1313,8 +1400,11 @@
         document.getElementById('stop-interview-top').addEventListener('click', stopInterview);
         document.getElementById('open-transcript').addEventListener('click', () => transcript.classList.add('is-open'));
         document.getElementById('close-transcript').addEventListener('click', () => transcript.classList.remove('is-open'));
+        window.addEventListener('pagehide', clearAllRuntimeTimers);
+        window.addEventListener('beforeunload', clearAllRuntimeTimers);
 
         renderTranscript();
+        answerBox.disabled = true;
         updateSubmitAvailability();
         scheduleTokenRefresh();
     })();
