@@ -441,7 +441,10 @@ public class CreditService : ICreditService
 
     public async Task<CreditWallet> GetOrCreateWalletAsync(int customerId)
     {
-        var wallet = (await _walletRepository.GetAllAsync(query => query.Where(w => w.CustomerId == customerId))).FirstOrDefault();
+        var wallets = (await _walletRepository.GetAllAsync(query => query.Where(w => w.CustomerId == customerId)))
+            .OrderBy(wallet => wallet.Id)
+            .ToList();
+        var wallet = wallets.FirstOrDefault();
         if (wallet == null)
         {
             wallet = new CreditWallet { CustomerId = customerId, Balance = 0 };

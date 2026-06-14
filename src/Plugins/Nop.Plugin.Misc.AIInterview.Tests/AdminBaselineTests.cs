@@ -641,6 +641,7 @@ public class AdminBaselineTests
 
         Assert.That(model.AvailableCustomers, Has.Count.EqualTo(2));
         Assert.That(model.AvailableCustomers.First().Value, Is.EqualTo("0"));
+        Assert.That(model.AvailableCustomers.First().Text, Is.EqualTo("Plugins.Misc.AIInterview.Admin.Credits.SelectVendor"));
         Assert.That(model.AvailableCustomers.Last().Value, Is.EqualTo("101"));
     }
 
@@ -695,41 +696,46 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public async Task ApplicantCredits_Post_With_Deleted_Applicant_Does_Not_Call_AddCredit()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, VendorId = 0, Deleted = true });
+
+        await _controller.ApplicantCredits(new CreditManagementModel
+        {
+            CustomerId = 202,
+            Amount = 15
+        });
+
+        _notificationService.Verify(x => x.ErrorNotification("Customer is required."), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
+    public async Task VendorCredits_Post_With_Deleted_Vendor_Does_Not_Call_AddCredit()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(101))
+            .ReturnsAsync(new Customer { Id = 101, VendorId = 5, Deleted = true });
+
+        await _controller.VendorCredits(new CreditManagementModel
+        {
+            CustomerId = 101,
+            Amount = 15
+        });
+
+        _notificationService.Verify(x => x.ErrorNotification("Customer is required."), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
     public async Task ApplicantCredits_Get_Populates_Customer_Dropdown()
     {
-        _customerService.Setup(x => x.GetAllCustomersAsync(
-                It.IsAny<DateTime?>(),
-                It.IsAny<DateTime?>(),
-                It.IsAny<DateTime?>(),
-                It.IsAny<DateTime?>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<int[]>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<bool?>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<bool>()))
-            .ReturnsAsync(new Nop.Core.PagedList<Customer>(new List<Customer>
-            {
-                new() { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 }
-            }, 0, 1, 1));
-
         var result = await _controller.ApplicantCredits();
         var model = (CreditManagementModel)((ViewResult)result).Model;
 
-        Assert.That(model.AvailableCustomers, Has.Count.EqualTo(2));
+        Assert.That(model.AvailableCustomers, Has.Count.EqualTo(1));
         Assert.That(model.AvailableCustomers.First().Value, Is.EqualTo("0"));
-        Assert.That(model.AvailableCustomers.Last().Value, Is.EqualTo("202"));
+        Assert.That(model.AvailableCustomers.First().Text, Is.EqualTo("Plugins.Misc.AIInterview.Admin.Credits.SelectApplicant"));
     }
 
     [Test]
@@ -821,6 +827,22 @@ public class AdminBaselineTests
         Assert.That(model.WalletBalance, Is.Zero);
         Assert.That(model.LedgerEntries, Is.Empty);
         _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Get_Can_Load_Brand_New_Applicant_By_Email()
+    {
+        _customerService.Setup(x => x.GetCustomerByEmailAsync("jane@example.com"))
+            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
+
+        var result = await _controller.ApplicantCredits(loadCustomerEmail: "jane@example.com");
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.CustomerId, Is.EqualTo(202));
+        Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
+        Assert.That(model.WalletBalance, Is.Zero);
     }
 
     [Test]
@@ -962,6 +984,58 @@ public class AdminBaselineTests
         Assert.That(model.RecordsTotal, Is.EqualTo(1));
         Assert.That(model.Data, Has.Count.EqualTo(1));
         Assert.That(model.Data.Single().CustomerId, Is.EqualTo(202));
+    }
+
+    [Test]
+    public async Task ApplicantCreditActivityList_Duplicate_Wallets_Aggregate_Balance_Deterministically()
+    {
+        _customers.Add(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
+        _wallets.AddRange(new[]
+        {
+            new CreditWallet { Id = 1, CustomerId = 202, Balance = 2 },
+            new CreditWallet { Id = 2, CustomerId = 202, Balance = 3 }
+        });
+
+        var result = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { Start = 0, Length = 10, Draw = "1" });
+        var model = (ApplicantCreditActivityListModel)((JsonResult)result).Value;
+
+        Assert.That(model.Data.Single().WalletBalance, Is.EqualTo(5));
+    }
+
+    [Test]
+    public async Task CreditService_AddCreditAsync_Uses_Primary_Wallet_When_Duplicate_Wallets_Exist()
+    {
+        var wallets = new List<CreditWallet>
+        {
+            new() { Id = 1, CustomerId = 202, Balance = 2 },
+            new() { Id = 2, CustomerId = 202, Balance = 3 }
+        };
+        var ledgerEntries = new List<CreditLedgerEntry>();
+        var walletRepository = new Mock<IRepository<CreditWallet>>();
+        var ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
+
+        walletRepository.Setup(x => x.GetAllAsync(It.IsAny<Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>>>(), It.IsAny<Func<ICacheKeyService, CacheKey>>(), true))
+            .ReturnsAsync((Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>> func, Func<ICacheKeyService, CacheKey> _, bool __) =>
+                func == null ? wallets.ToList() : func(wallets.AsQueryable()).ToList());
+        walletRepository.Setup(x => x.UpdateAsync(It.IsAny<CreditWallet>(), true))
+            .Callback<CreditWallet, bool>((wallet, _) =>
+            {
+                var existing = wallets.Single(item => item.Id == wallet.Id);
+                existing.Balance = wallet.Balance;
+            })
+            .Returns(Task.CompletedTask);
+        walletRepository.Setup(x => x.InsertAsync(It.IsAny<CreditWallet>(), true)).Returns(Task.CompletedTask);
+        ledgerRepository.Setup(x => x.InsertAsync(It.IsAny<CreditLedgerEntry>(), true))
+            .Callback<CreditLedgerEntry, bool>((entry, _) => ledgerEntries.Add(entry))
+            .Returns(Task.CompletedTask);
+
+        var service = new CreditService(walletRepository.Object, ledgerRepository.Object);
+
+        await service.AddCreditAsync(202, 4, "topup");
+
+        Assert.That(wallets.Single(item => item.Id == 1).Balance, Is.EqualTo(6));
+        Assert.That(wallets.Single(item => item.Id == 2).Balance, Is.EqualTo(3));
+        Assert.That(ledgerEntries.Single().CreditWalletId, Is.EqualTo(1));
     }
 
     [Test]
@@ -1152,6 +1226,8 @@ public class AdminBaselineTests
         Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Type"));
         Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Remarks"));
         Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Utc"));
+        Assert.That(text, Does.Contain("asp-for=\"LoadCustomerId\""));
+        Assert.That(text, Does.Contain("asp-for=\"LoadCustomerEmail\""));
     }
 
     [Test]

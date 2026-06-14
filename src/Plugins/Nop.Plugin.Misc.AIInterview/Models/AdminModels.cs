@@ -142,6 +142,12 @@ public record CreditManagementModel : BaseNopModel
 
     public IList<SelectListItem> AvailableCustomers { get; set; } = new List<SelectListItem>();
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.LoadCustomerId")]
+    public int LoadCustomerId { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.LoadCustomerEmail")]
+    public string LoadCustomerEmail { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Amount")]
     public decimal Amount { get; set; }
 
