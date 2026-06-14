@@ -72,4 +72,13 @@ public class UpgradeTests
         Assert.That(migrationText, Does.Contain("nameof(InterviewSession.TokenExpiryUtc)"));
         Assert.That(migrationText, Does.Contain("AsDateTime2().Nullable()"));
     }
+
+    [Test]
+    public void CreditPurchaseGrantMigration_Guards_Index_Creation_And_Deletion()
+    {
+        var migrationText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Data", "CreditPurchaseGrantMigration.cs"));
+
+        Assert.That(migrationText, Does.Contain("Index(\"IX_AIInterview_CreditPurchaseGrant_OrderItemId\").Exists()"));
+        Assert.That(migrationText, Does.Contain("Delete.Index(\"IX_AIInterview_CreditPurchaseGrant_OrderItemId\")"));
+    }
 }

@@ -37,6 +37,10 @@ public class RouteProvider : IRouteProvider
             pattern: "Admin/AIInterview/ApplicantCredits",
             defaults: new { controller = "AIInterviewAdmin", action = "ApplicantCredits", area = AreaNames.ADMIN });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminApplicantCreditsListRouteName,
+            pattern: "Admin/AIInterview/ApplicantCredits/List",
+            defaults: new { controller = "AIInterviewAdmin", action = "ApplicantCreditActivityList", area = AreaNames.ADMIN });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.AdminScoreboardRouteName,
             pattern: "Admin/AIInterview/Scoreboard",
             defaults: new { controller = "AIInterviewAdmin", action = "Scoreboard", area = AreaNames.ADMIN });

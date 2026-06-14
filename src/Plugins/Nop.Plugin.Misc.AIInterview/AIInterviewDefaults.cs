@@ -23,6 +23,8 @@ public static class AIInterviewDefaults
 
     public static string AdminApplicantCreditsRouteName => "Plugin.Misc.AIInterview.Admin.ApplicantCredits";
 
+    public static string AdminApplicantCreditsListRouteName => "Plugin.Misc.AIInterview.Admin.ApplicantCredits.List";
+
     public static string AdminScoreboardRouteName => "Plugin.Misc.AIInterview.Admin.Scoreboard";
 
     public static string AdminScoreboardExportRouteName => "Plugin.Misc.AIInterview.Admin.Scoreboard.Export";

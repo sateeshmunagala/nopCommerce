@@ -1,10 +1,19 @@
 @model Nop.Plugin.Misc.AIInterview.Models.CreditManagementModel
 @using Nop.Plugin.Misc.AIInterview
+@using Microsoft.AspNetCore.Routing
+@using Nop.Web.Framework.Models.DataTables
+@inject Nop.Services.Common.IGenericAttributeService genericAttributeService
+@inject Nop.Core.IWorkContext workContext
 
 @{
     Layout = "_AdminLayout";
     ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle").Text;
     NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminApplicantCreditsMenuSystemName);
+}
+
+@{
+    const string hideSearchBlockAttributeName = "AIInterviewApplicantCredits.HideSearchBlock";
+    var hideSearchBlock = await genericAttributeService.GetAttributeAsync<bool>(await workContext.GetCurrentCustomerAsync(), hideSearchBlockAttributeName);
 }
 
 <div class="content-header clearfix">
@@ -14,67 +23,127 @@
 <section class="content">
     <div class="container-fluid">
         <div class="card card-default">
-            <div class="card-header">Applicant Credit Activity</div>
+            <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.Title")</div>
             <div class="card-body">
-                <form asp-controller="AIInterviewAdmin" asp-action="ApplicantCredits" method="get">
-                    <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="CustomerId" /></div>
-                        <div class="col-md-6"><nop-select asp-for="CustomerId" asp-items="Model.AvailableCustomers" /></div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-secondary">Load Applicant</button>
+                <div class="card card-default card-search">
+                    <div class="card-body">
+                        <div class="row search-row @(!hideSearchBlock ? "opened" : "")" data-hideAttribute="@hideSearchBlockAttributeName">
+                            <div class="search-text">@T("Admin.Common.Search")</div>
+                            <div class="icon-search"><i class="fas fa-magnifying-glass" aria-hidden="true"></i></div>
+                            <div class="icon-collapse"><i class="far fa-angle-@(!hideSearchBlock ? "up" : "down")" aria-hidden="true"></i></div>
+                        </div>
+
+                        <div class="search-body @(hideSearchBlock ? "closed" : "")">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row">
+                                        <div class="col-md-4">
+                                            <nop-label asp-for="ActivitySearchModel.SearchCustomerId" />
+                                        </div>
+                                        <div class="col-md-8">
+                                            <nop-editor asp-for="ActivitySearchModel.SearchCustomerId" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-md-4">
+                                            <nop-label asp-for="ActivitySearchModel.SearchKeyword" />
+                                        </div>
+                                        <div class="col-md-8">
+                                            <nop-editor asp-for="ActivitySearchModel.SearchKeyword" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-md-4">
+                                            <nop-label asp-for="ActivitySearchModel.SearchHasPositiveBalanceOnly" />
+                                        </div>
+                                        <div class="col-md-8">
+                                            <nop-editor asp-for="ActivitySearchModel.SearchHasPositiveBalanceOnly" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group row">
+                                        <div class="col-md-4">
+                                            <nop-label asp-for="ActivitySearchModel.SearchActivityDateFromUtc" />
+                                        </div>
+                                        <div class="col-md-8">
+                                            <nop-editor asp-for="ActivitySearchModel.SearchActivityDateFromUtc" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-md-4">
+                                            <nop-label asp-for="ActivitySearchModel.SearchActivityDateToUtc" />
+                                        </div>
+                                        <div class="col-md-8">
+                                            <nop-editor asp-for="ActivitySearchModel.SearchActivityDateToUtc" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="text-center col-12">
+                                    <button type="button" id="search-applicant-credits" class="btn btn-primary btn-search">
+                                        <i class="fas fa-magnifying-glass"></i>
+                                        @T("Admin.Common.Search")
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </form>
+                </div>
 
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>Customer</th>
-                            <th>Wallet Balance</th>
-                            <th>Total Deposited</th>
-                            <th>Total Withdrawn</th>
-                            <th>Last Credit Activity UTC</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.ActivityCustomers.Any())
+                @await Html.PartialAsync("Table", new DataTablesModel
+                {
+                    Name = "applicant-credits-grid",
+                    UrlRead = new DataUrl("ApplicantCreditActivityList", "AIInterviewAdmin", null),
+                    SearchButtonId = "search-applicant-credits",
+                    Length = Model.ActivitySearchModel.PageSize,
+                    LengthMenu = Model.ActivitySearchModel.AvailablePageSizes,
+                    Filters = new List<FilterParameter>
+                    {
+                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchCustomerId), nameof(Model.ActivitySearchModel)),
+                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchKeyword), nameof(Model.ActivitySearchModel)),
+                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchHasPositiveBalanceOnly), nameof(Model.ActivitySearchModel)),
+                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchActivityDateFromUtc), nameof(Model.ActivitySearchModel)),
+                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchActivityDateToUtc), nameof(Model.ActivitySearchModel))
+                    },
+                    ColumnCollection = new List<ColumnProperty>
+                    {
+                        new ColumnProperty(nameof(Nop.Plugin.Misc.AIInterview.Models.ApplicantCreditActivityRowModel.CustomerId))
                         {
-                            foreach (var customer in Model.ActivityCustomers)
-                            {
-                                <tr>
-                                    <td>
-                                        @if (!string.IsNullOrWhiteSpace(customer.CustomerAdminUrl))
-                                        {
-                                            <a href="@customer.CustomerAdminUrl">@customer.CustomerName</a>
-                                        }
-                                        else
-                                        {
-                                            @customer.CustomerName
-                                        }
-                                        @if (!string.IsNullOrWhiteSpace(customer.CustomerEmail))
-                                        {
-                                            <div class="text-muted">@customer.CustomerEmail</div>
-                                        }
-                                    </td>
-                                    <td>@customer.WalletBalance</td>
-                                    <td>@customer.TotalDeposited</td>
-                                    <td>@customer.TotalWithdrawn</td>
-                                    <td>@(customer.LastCreditActivityUtc.HasValue ? $"{customer.LastCreditActivityUtc.Value:yyyy-MM-dd HH:mm:ss}Z" : string.Empty)</td>
-                                    <td>
-                                        <a class="btn btn-sm btn-primary" asp-controller="AIInterviewAdmin" asp-action="ApplicantCredits" asp-route-customerId="@customer.CustomerId">View Ledger</a>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                        else
+                            Title = T("Plugins.Misc.AIInterview.Admin.Credits.CustomerId").Text
+                        },
+                        new ColumnProperty(nameof(Nop.Plugin.Misc.AIInterview.Models.ApplicantCreditActivityRowModel.CustomerName))
                         {
-                            <tr>
-                                <td colspan="6">No applicant credit activity found.</td>
-                            </tr>
+                            Title = T("Admin.Customers.Customers").Text,
+                            Render = new RenderCustom("renderApplicantCreditCustomer")
+                        },
+                        new ColumnProperty(nameof(Nop.Plugin.Misc.AIInterview.Models.ApplicantCreditActivityRowModel.WalletBalance))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.Credits.Activity.WalletBalance").Text
+                        },
+                        new ColumnProperty(nameof(Nop.Plugin.Misc.AIInterview.Models.ApplicantCreditActivityRowModel.TotalDeposited))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.Credits.Activity.TotalDeposited").Text
+                        },
+                        new ColumnProperty(nameof(Nop.Plugin.Misc.AIInterview.Models.ApplicantCreditActivityRowModel.TotalWithdrawn))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.Credits.Activity.TotalWithdrawn").Text
+                        },
+                        new ColumnProperty(nameof(Nop.Plugin.Misc.AIInterview.Models.ApplicantCreditActivityRowModel.LastCreditActivityUtc))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.Credits.Activity.LastCreditActivityUtc").Text,
+                            Render = new RenderCustom("renderApplicantCreditDate")
+                        },
+                        new ColumnProperty(nameof(Nop.Plugin.Misc.AIInterview.Models.ApplicantCreditActivityRowModel.ViewLedgerUrl))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.Credits.Activity.ViewLedger").Text,
+                            Width = "120",
+                            ClassName = NopColumnClassDefaults.Button,
+                            Render = new RenderCustom("renderApplicantCreditViewLedger")
                         }
-                    </tbody>
-                </table>
+                    }
+                })
             </div>
         </div>
 
@@ -82,10 +151,10 @@
             <input asp-for="CustomerId" type="hidden" />
 
             <div class="card card-default">
-                <div class="card-header">Selected Applicant</div>
+                <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.SelectedApplicant")</div>
                 <div class="card-body">
                     <div class="form-group row">
-                        <div class="col-md-3">Selected Customer</div>
+                        <div class="col-md-3">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.SelectedApplicant")</div>
                         <div class="col-md-9">
                             @if (!string.IsNullOrWhiteSpace(Model.CustomerAdminUrl))
                             {
@@ -97,7 +166,7 @@
                             }
                             else
                             {
-                                <span class="text-muted">Select applicant</span>
+                                <span class="text-muted">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.SelectApplicant")</span>
                             }
                             @if (!string.IsNullOrWhiteSpace(Model.CustomerEmail))
                             {
@@ -106,7 +175,7 @@
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3">Wallet Balance</div>
+                        <div class="col-md-3">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.WalletBalance")</div>
                         <div class="col-md-9"><strong>@Model.WalletBalance</strong></div>
                     </div>
                     <div class="form-group row">
@@ -120,7 +189,7 @@
             </div>
 
             <div class="card card-default">
-                <div class="card-header">Ledger</div>
+                <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Title")</div>
                 <div class="card-body">
                     <table class="table table-bordered table-striped">
                         <thead><tr><th>Customer</th><th>Amount</th><th>Type</th><th>Remarks</th><th>UTC</th></tr></thead>
@@ -150,7 +219,7 @@
                             else
                             {
                                 <tr>
-                                    <td colspan="5">No ledger entries found for the selected applicant.</td>
+                                    <td colspan="5">@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Empty")</td>
                                 </tr>
                             }
                         </tbody>
@@ -160,3 +229,39 @@
         </form>
     </div>
 </section>
+
+<script>
+    function renderApplicantCreditCustomer(data, type, row) {
+        if (type !== 'display') {
+            return data;
+        }
+
+        var name = row.CustomerName || '';
+        var email = row.CustomerEmail ? '<div class="text-muted">' + htmlEncode(row.CustomerEmail) + '</div>' : '';
+        if (row.CustomerAdminUrl) {
+            return '<a href="' + row.CustomerAdminUrl + '">' + htmlEncode(name) + '</a>' + email;
+        }
+
+        return htmlEncode(name) + email;
+    }
+
+    function renderApplicantCreditDate(data, type, row) {
+        if (type !== 'display') {
+            return data;
+        }
+
+        return row.LastCreditActivityUtc ? row.LastCreditActivityUtc : '';
+    }
+
+    function renderApplicantCreditViewLedger(data, type, row) {
+        if (type !== 'display') {
+            return data;
+        }
+
+        if (!row.ViewLedgerUrl) {
+            return '';
+        }
+
+        return '<a class="btn btn-default" href="' + row.ViewLedgerUrl + '">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.ViewLedger").Text</a>';
+    }
+</script>

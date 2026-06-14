@@ -221,7 +221,8 @@ public class CreditPurchaseService : ICreditPurchaseService
         while (exception != null)
         {
             var message = exception.Message ?? string.Empty;
-            if (message.Contains("IX_CreditPurchaseGrant_OrderItemId", StringComparison.OrdinalIgnoreCase) ||
+            if (message.Contains("IX_AIInterview_CreditPurchaseGrant_OrderItemId", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("IX_CreditPurchaseGrant_OrderItemId", StringComparison.OrdinalIgnoreCase) ||
                 message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) ||
                 message.Contains("duplicate", StringComparison.OrdinalIgnoreCase))
                 return true;

@@ -130,7 +130,7 @@ public record CreditManagementModel : BaseNopModel
     public CreditManagementModel()
     {
         LedgerEntries = new List<CreditLedgerRowModel>();
-        ActivityCustomers = new List<ApplicantCreditActivityRowModel>();
+        ActivitySearchModel = new ApplicantCreditActivitySearchModel();
     }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.CustomerId")]
@@ -148,7 +148,7 @@ public record CreditManagementModel : BaseNopModel
     public decimal WalletBalance { get; set; }
     public string ScopeTitle { get; set; }
     public IList<CreditLedgerRowModel> LedgerEntries { get; set; }
-    public IList<ApplicantCreditActivityRowModel> ActivityCustomers { get; set; }
+    public ApplicantCreditActivitySearchModel ActivitySearchModel { get; set; }
 }
 
 public record CreditLedgerRowModel : BaseNopModel
@@ -162,12 +162,33 @@ public record CreditLedgerRowModel : BaseNopModel
     public DateTime CreatedOnUtc { get; set; }
 }
 
+public record ApplicantCreditActivitySearchModel : BaseSearchModel
+{
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchCustomerId")]
+    public int SearchCustomerId { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchKeyword")]
+    public string SearchKeyword { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchHasPositiveBalanceOnly")]
+    public bool SearchHasPositiveBalanceOnly { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchActivityDateFromUtc")]
+    public DateTime? SearchActivityDateFromUtc { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchActivityDateToUtc")]
+    public DateTime? SearchActivityDateToUtc { get; set; }
+}
+
+public record ApplicantCreditActivityListModel : BasePagedListModel<ApplicantCreditActivityRowModel>;
+
 public record ApplicantCreditActivityRowModel : BaseNopModel
 {
     public int CustomerId { get; set; }
     public string CustomerName { get; set; }
     public string CustomerEmail { get; set; }
     public string CustomerAdminUrl { get; set; }
+    public string ViewLedgerUrl { get; set; }
     public decimal WalletBalance { get; set; }
     public decimal TotalDeposited { get; set; }
     public decimal TotalWithdrawn { get; set; }
