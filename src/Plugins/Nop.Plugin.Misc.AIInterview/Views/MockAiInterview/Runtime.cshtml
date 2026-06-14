@@ -114,11 +114,11 @@
                 <div class="runtime-conversation" id="conversation"></div>
 
                 <div class="runtime-answer">
-                    <textarea id="runtime-answer" placeholder="Enter your answer here..."></textarea>
+                    <textarea id="runtime-answer" placeholder="Enter your answer here..." disabled></textarea>
                 </div>
 
                 <div class="runtime-actions">
-                    <button type="button" id="submit-answer" class="button-1">Submit Answer</button>
+                    <button type="button" id="submit-answer" class="button-1" disabled>Submit Answer</button>
                     <button type="button" id="stop-interview" class="button-2">Stop Interview</button>
                     <button type="button" id="view-report" class="button-2" style="display:none;">View Report</button>
                 </div>
@@ -246,15 +246,23 @@
             tokenRefreshTimer = null;
         };
 
-        const clearAllRuntimeTimers = () => {
-            clearAnswerTimers();
-            clearTokenRefreshTimer();
-            clearInterval(runtimeTimerHandle);
-            runtimeTimerHandle = null;
+        const clearCompletedRedirectState = () => {
             clearInterval(completedCountdown);
             clearTimeout(completedRedirectTimer);
             completedCountdown = null;
             completedRedirectTimer = null;
+        };
+
+        const clearActiveInterviewTimers = () => {
+            clearAnswerTimers();
+            clearTokenRefreshTimer();
+            clearInterval(runtimeTimerHandle);
+            runtimeTimerHandle = null;
+        };
+
+        const clearAllRuntimeTimers = () => {
+            clearActiveInterviewTimers();
+            clearCompletedRedirectState();
         };
 
         const startRuntimeTimer = () => {
@@ -413,11 +421,12 @@
         const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());
 
         const updateSubmitAvailability = () => {
-            if (!submitButton || answerBox.disabled)
+            if (!submitButton)
                 return;
 
             const trimmedAnswer = (answerBox.value || '').trim();
-            submitButton.disabled = !interviewStarted
+            submitButton.disabled = answerBox.disabled
+                || !interviewStarted
                 || runtimeStoppedOrCompleted
                 || stopInProgress
                 || interviewUnavailable
@@ -552,7 +561,7 @@
             stopInProgress = false;
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
             const completionText = getValue(result, 'completion', 'Completion') || getValue(result, 'message', 'Message') || 'Interview completed.';
-            clearAllRuntimeTimers();
+            clearActiveInterviewTimers();
             isSpeakingOrSubmitting = true;
             await stopRecording(false);
             recordingEnabled = false;
@@ -588,8 +597,7 @@
                 reportButton.style.display = 'inline-flex';
                 reportButton.onclick = () => window.location.href = reportUrl;
                 let remaining = 5;
-                clearInterval(completedCountdown);
-                clearTimeout(completedRedirectTimer);
+                clearCompletedRedirectState();
                 completedCountdown = setInterval(() => {
                     if (remaining <= 0) return;
                     completionBox.textContent = `${completionText} Redirecting to report in ${remaining}s.`;
@@ -1369,7 +1377,6 @@
             setStatus(getRuntimeMessage(result, 'Interview completed.'), false);
             renderTranscript();
             await setCompletedState(result);
-            clearAllRuntimeTimers();
         };
 
         const beginInterview = async () => {
@@ -1437,6 +1444,7 @@
 
         renderTranscript();
         answerBox.disabled = true;
+        submitButton.disabled = true;
         updateStartButtonState();
         updateSubmitAvailability();
         scheduleTokenRefresh();
