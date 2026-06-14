@@ -444,7 +444,7 @@ public class AdminBaselineTests
     public async Task SaveProductRequirements_Saves_Job_Flags_For_Existing_Product()
     {
         var jobRequirementService = new Mock<IJobRequirementService>();
-        jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Product>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<decimal>()))
+        jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Product>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<decimal>(), It.IsAny<int>()))
             .Returns(Task.CompletedTask);
         _productService.Setup(x => x.GetProductByIdAsync(55))
             .ReturnsAsync(new Product { Id = 55, ProductTemplateId = 7 });
@@ -473,11 +473,12 @@ public class AdminBaselineTests
             ProductId = 55,
             ResumeRequired = true,
             InterviewRequired = false,
-            MinimumScore = 88
+            MinimumScore = 88,
+            QuestionCount = 4
         });
 
         Assert.That(result, Is.TypeOf<JsonResult>());
-        jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Product>(product => product.Id == 55), true, false, 88m), Times.Once);
+        jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Product>(product => product.Id == 55), true, false, 88m, 4), Times.Once);
     }
 
     [Test]
@@ -507,7 +508,7 @@ public class AdminBaselineTests
     {
         var jobRequirementService = new Mock<IJobRequirementService>();
         jobRequirementService.Setup(x => x.IsJobProductAsync(It.IsAny<Product>())).ReturnsAsync(true);
-        jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Product>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<decimal>()))
+        jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Product>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<decimal>(), It.IsAny<int>()))
             .Returns(Task.CompletedTask);
 
         var context = new DefaultHttpContext();
@@ -517,7 +518,8 @@ public class AdminBaselineTests
             {
                 ["AIInterviewJobResumeRequired"] = new StringValues(new[] { "false", "true" }),
                 ["AIInterviewJobInterviewRequired"] = new StringValues("false"),
-                ["AIInterviewJobMinimumScore"] = new StringValues("77.5")
+                ["AIInterviewJobMinimumScore"] = new StringValues("77.5"),
+                ["AIInterviewJobQuestionCount"] = new StringValues("6")
             })));
 
         var consumer = new ProductRequirementsEventConsumer(new HttpContextAccessor { HttpContext = context }, jobRequirementService.Object);
@@ -526,7 +528,7 @@ public class AdminBaselineTests
         await consumer.HandleEventAsync(new Nop.Core.Events.EntityInsertedEvent<Product>(product));
         await consumer.HandleEventAsync(new Nop.Core.Events.EntityUpdatedEvent<Product>(product));
 
-        jobRequirementService.Verify(x => x.SaveRequirementsAsync(product, true, false, 77.5m), Times.Exactly(2));
+        jobRequirementService.Verify(x => x.SaveRequirementsAsync(product, true, false, 77.5m, 6), Times.Exactly(2));
     }
 
     [Test]

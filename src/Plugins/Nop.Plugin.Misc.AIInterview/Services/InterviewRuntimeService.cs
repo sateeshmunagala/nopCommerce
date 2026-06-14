@@ -167,7 +167,7 @@ public class InterviewAiClient : IAIInterviewClient
                         role = "system",
                         content = mode == "generate"
                             ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
-                            : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, nextQuestion, completion, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. nextQuestion must be present unless complete=true. rubricJson should be a JSON object that repeats the category scores and score."
+                            : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, nextQuestion, completion, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. nextQuestion must be present unless complete=true. rubricJson should be a JSON object that repeats the category scores and score. Copied question text, irrelevant content, and no-answer responses must receive score 0 and feedback must clearly say the answer was not substantive."
                     },
                     new { role = "user", content = prompt }
                 },
@@ -280,6 +280,7 @@ Previous answered turns:
 Current question: {request.Question}
 Candidate answer: {request.Answer}
 Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100,\"feedback\":\"string\",\"complete\":false,\"nextQuestion\":\"string or null\",\"completion\":\"string or null\",\"rubricJson\":{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100}}")}
+Scoring rule: copied question text, irrelevant content, or non-substantive answers must receive score 0 with feedback that tells the candidate to answer in their own words.
 """;
     }
 
@@ -817,7 +818,18 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (session == null)
             return null;
 
-        return await EnsureInterviewStartedAsync(session);
+        var customer = session.CustomerId > 0 ? await _customerService.GetCustomerByIdAsync(session.CustomerId) : null;
+        var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
+        return await BuildRuntimeModelAsync(session, turns, customer);
+    }
+
+    public async Task<InterviewRuntimeModel> BeginInterviewAsync(string token, Customer customer = null)
+    {
+        var session = await _sessionService.GetSessionByTokenAsync(token);
+        if (!IsSessionUsable(session, DateTime.UtcNow))
+            return null;
+
+        return await EnsureInterviewStartedAsync(session, customer);
     }
 
     public async Task<InterviewRuntimeModel> EnsureInterviewStartedAsync(InterviewSession session, Customer customer = null)
@@ -890,6 +902,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             turns.Add(currentTurn);
         }
 
+        var answerValidationMessage = await ValidateAnswerAsync(currentTurn.QuestionText, answer);
+        if (!string.IsNullOrWhiteSpace(answerValidationMessage))
+        {
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = false,
+                Message = answerValidationMessage
+            };
+        }
+
         var evaluation = await _aiClient.ScoreAnswerAsync(new AIInterviewClientRequest
         {
             JobTitle = await GetJobTitleAsync(session.ProductId),
@@ -930,7 +952,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         session.Score = averageScore;
         session.QuestionScores = JsonSerializer.Serialize(turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
 
-        var maxQuestions = GetMaxQuestions(session.Difficulty);
+        var maxQuestions = GetMaxQuestions(session);
         var answeredCount = turns.Count(turn => !string.IsNullOrWhiteSpace(turn.AnswerText));
         var aiRequestedCompletion = evaluation.Complete;
         var shouldComplete = aiRequestedCompletion || answeredCount >= maxQuestions;
@@ -978,7 +1000,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 IsTerminated = false,
                 Question = nextTurn.QuestionText,
                 Score = session.Score,
-                Feedback = evaluation.Feedback,
                 Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.NextQuestion"),
                 Interrupted = false,
                 Completion = string.Empty,
@@ -1007,7 +1028,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             IsTerminated = true,
             Completion = completion.Completion,
             Score = completion.Score,
-            Feedback = completion.Feedback,
             Message = completion.Message,
             ReportUrl = completion.ReportUrl,
             Interrupted = false,
@@ -1100,18 +1120,30 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var session = await _sessionService.GetSessionByTokenAsync(token);
         var now = DateTime.UtcNow;
         if (!CanUploadRecording(session, token, now))
+        {
+            await LogRecordingUploadFailureAsync(session, recording, null, "Invalid or expired session token.", "validation failed");
             return RecordingFailure("Invalid or expired session token.");
+        }
 
         if (recording == null || recording.Length <= 0)
+        {
+            await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is empty.", "empty recording");
             return RecordingFailure("Recording file is empty.");
+        }
 
         const long maxRecordingBytes = 100L * 1024L * 1024L;
         if (recording.Length > maxRecordingBytes)
+        {
+            await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is too large.", "recording too large");
             return RecordingFailure("Recording file is too large.");
+        }
 
         if (string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageContainerUrl) ||
             string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageSasToken))
+        {
+            await LogRecordingUploadFailureAsync(session, recording, null, "Recording storage is not configured.", "missing Azure Blob configuration");
             return RecordingFailure("Recording storage is not configured.");
+        }
 
         var containerUrl = _settings.AzureBlobStorageContainerUrl.Trim().TrimEnd('/');
         var sasToken = _settings.AzureBlobStorageSasToken.Trim();
@@ -1123,6 +1155,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         try
         {
+            await LogRecordingUploadStartAsync(session, recording, blobName);
             using var httpClient = CreateHttpClient();
             using var content = new StreamContent(recording.OpenReadStream());
             content.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(recording.ContentType) ? "video/webm" : recording.ContentType);
@@ -1135,13 +1168,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
             var response = await httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = TruncateSafe(await response.Content.ReadAsStringAsync(), 500);
+                await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", $"Azure Blob PUT returned {(int)response.StatusCode}.", (int)response.StatusCode, errorBody);
                 return RecordingFailure("Recording upload failed.");
+            }
 
             session.RecordingUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}";
-            if (!session.CompletedOnUtc.HasValue)
-                session.CompletedOnUtc = now;
-            session.IsActive = false;
             await _sessionService.UpdateInterviewSessionAsync(session);
+            await LogRecordingUploadSuccessAsync(session, recording, blobName, (int)response.StatusCode);
 
             return new RecordingUploadResponseModel
             {
@@ -1153,9 +1188,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Recording upload failed for session {SessionId}, customer {CustomerId}, product {ProductId}.",
-                session.Id, session.CustomerId, session.ProductId);
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Error, "AI Interview recording upload failure", $"Recording upload failed for session {session.Id}.");
+                session?.Id ?? 0, session?.CustomerId ?? 0, session?.ProductId ?? 0);
+            await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", ex.GetType().Name);
             return RecordingFailure("Recording upload failed.");
         }
     }
@@ -1189,7 +1223,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
         var candidate = customer ?? await _customerService.GetCustomerByIdAsync(session.CustomerId);
-        var lastQuestion = turns.LastOrDefault()?.QuestionText ?? string.Empty;
+        var currentTurn = turns.LastOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText)) ?? turns.LastOrDefault();
+        var lastQuestion = currentTurn?.QuestionText ?? string.Empty;
 
         return new InterviewRuntimeModel
         {
@@ -1212,12 +1247,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 SequenceNumber = turn.SequenceNumber,
                 QuestionText = turn.QuestionText,
                 AnswerText = turn.AnswerText,
-                Score = turn.Score,
-                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
-                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
-                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
-                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
-                Feedback = turn.Feedback,
                 AskedOnUtc = turn.AskedOnUtc,
                 AnsweredOnUtc = turn.AnsweredOnUtc
             }).ToList(),
@@ -1348,14 +1377,155 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }.Where(line => !string.IsNullOrWhiteSpace(line)));
     }
 
-    protected virtual int GetMaxQuestions(string difficulty)
+    protected virtual int GetMaxQuestions(InterviewSession session)
     {
-        return (difficulty ?? string.Empty).Trim().ToLowerInvariant() switch
+        if (session?.QuestionCount > 0)
+            return Math.Clamp(session.QuestionCount, 1, 10);
+
+        return (session?.Difficulty ?? string.Empty).Trim().ToLowerInvariant() switch
         {
             "easy" => 2,
             "hard" => 4,
             _ => 3
         };
+    }
+
+    protected virtual async Task<string> ValidateAnswerAsync(string question, string answer)
+    {
+        var trimmedAnswer = answer?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedAnswer))
+            return await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer", "Answer cannot be empty.");
+
+        var normalizedQuestion = NormalizeInterviewText(question);
+        var normalizedAnswer = NormalizeInterviewText(trimmedAnswer);
+        if (string.IsNullOrWhiteSpace(normalizedAnswer))
+            return "Please answer the question in your own words.";
+
+        var answerTokens = TokenizeInterviewText(normalizedAnswer);
+        var questionTokens = TokenizeInterviewText(normalizedQuestion);
+        if (answerTokens.Length < 2 || normalizedAnswer.Length < 8)
+            return "Please answer the question in your own words.";
+
+        if (!string.IsNullOrWhiteSpace(normalizedQuestion))
+        {
+            if (string.Equals(normalizedAnswer, normalizedQuestion, StringComparison.Ordinal))
+                return "Please answer the question in your own words.";
+
+            var jaccardSimilarity = CalculateJaccardSimilarity(questionTokens, answerTokens);
+            if (jaccardSimilarity >= 0.85m)
+                return "Please answer the question in your own words.";
+
+            if (normalizedAnswer.Contains(normalizedQuestion, StringComparison.Ordinal) && answerTokens.Length <= questionTokens.Length + 3)
+                return "Please answer the question in your own words.";
+
+            var overlapRatio = CalculateOverlapRatio(questionTokens, answerTokens);
+            if (overlapRatio >= 0.9m && answerTokens.Length <= questionTokens.Length + 5)
+                return "Please answer the question in your own words.";
+        }
+
+        return string.Empty;
+    }
+
+    protected static string NormalizeInterviewText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        var builder = new StringBuilder(text.Length);
+        var previousWasSpace = false;
+        foreach (var character in text.ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(character);
+                previousWasSpace = false;
+                continue;
+            }
+
+            if (!previousWasSpace)
+            {
+                builder.Append(' ');
+                previousWasSpace = true;
+            }
+        }
+
+        return builder.ToString().Trim();
+    }
+
+    protected static string[] TokenizeInterviewText(string normalizedText)
+    {
+        return string.IsNullOrWhiteSpace(normalizedText)
+            ? Array.Empty<string>()
+            : normalizedText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    protected static decimal CalculateJaccardSimilarity(IEnumerable<string> left, IEnumerable<string> right)
+    {
+        var leftSet = new HashSet<string>(left ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
+        var rightSet = new HashSet<string>(right ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
+        if (leftSet.Count == 0 || rightSet.Count == 0)
+            return 0m;
+
+        var intersectionCount = leftSet.Intersect(rightSet, StringComparer.Ordinal).Count();
+        var unionCount = leftSet.Union(rightSet, StringComparer.Ordinal).Count();
+        return unionCount == 0 ? 0m : (decimal)intersectionCount / unionCount;
+    }
+
+    protected static decimal CalculateOverlapRatio(IEnumerable<string> sourceTokens, IEnumerable<string> candidateTokens)
+    {
+        var source = sourceTokens?.ToArray() ?? Array.Empty<string>();
+        var candidate = candidateTokens?.ToArray() ?? Array.Empty<string>();
+        if (source.Length == 0 || candidate.Length == 0)
+            return 0m;
+
+        var overlap = source.Count(token => candidate.Contains(token, StringComparer.Ordinal));
+        return (decimal)overlap / source.Length;
+    }
+
+    protected virtual Task LogRecordingUploadStartAsync(InterviewSession session, IFormFile recording, string blobName)
+    {
+        var detail = BuildRecordingUploadLog(session, recording, blobName, "Start");
+        _logger?.LogInformation("AI Interview recording upload start. {Detail}", detail);
+        return _nopLogger == null ? Task.CompletedTask : _nopLogger.InsertLogAsync(NopLogLevel.Information, "AI Interview recording upload start", detail);
+    }
+
+    protected virtual Task LogRecordingUploadSuccessAsync(InterviewSession session, IFormFile recording, string blobName, int azureStatus)
+    {
+        var detail = BuildRecordingUploadLog(session, recording, blobName, "Success", azureStatus: azureStatus);
+        _logger?.LogInformation("AI Interview recording upload success. {Detail}", detail);
+        return _nopLogger == null ? Task.CompletedTask : _nopLogger.InsertLogAsync(NopLogLevel.Information, "AI Interview recording upload success", detail);
+    }
+
+    protected virtual Task LogRecordingUploadFailureAsync(InterviewSession session, IFormFile recording, string blobName, string message, string reason, int? azureStatus = null, string azureErrorBody = null)
+    {
+        var detail = BuildRecordingUploadLog(session, recording, blobName, "Failure", message, reason, azureStatus, azureErrorBody);
+        _logger?.LogWarning("AI Interview recording upload failure. {Detail}", detail);
+        return _nopLogger == null ? Task.CompletedTask : _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview recording upload failure", detail);
+    }
+
+    protected static string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null)
+    {
+        var details = new List<string>
+        {
+            $"Stage={stage}",
+            $"SessionId={session?.Id ?? 0}",
+            $"CustomerId={session?.CustomerId ?? 0}",
+            $"ProductId={session?.ProductId ?? 0}",
+            $"RecordingLength={recording?.Length ?? 0}",
+            $"ContentType={recording?.ContentType ?? string.Empty}",
+            $"BlobName={blobName ?? string.Empty}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(message))
+            details.Add($"Message={message}");
+        if (!string.IsNullOrWhiteSpace(reason))
+            details.Add($"Reason={reason}");
+        if (azureStatus.HasValue)
+            details.Add($"AzureHttpStatus={azureStatus.Value}");
+        if (!string.IsNullOrWhiteSpace(azureErrorBody))
+            details.Add($"AzureErrorBody={TruncateSafe(azureErrorBody, 300)}");
+
+        return string.Join("; ", details);
     }
 
     protected virtual RecordingUploadResponseModel RecordingFailure(string message)

@@ -461,11 +461,12 @@ public class ServiceTests
         genericAttributeService.Setup(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobMinimumScoreAttributeName, 87.5m, 0))
             .Returns(Task.CompletedTask);
 
-        await service.SaveRequirementsAsync(product, true, false, 87.5m);
+        await service.SaveRequirementsAsync(product, true, false, 87.5m, 5);
 
         genericAttributeService.Verify(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobResumeRequiredAttributeName, true, 0), Times.Once);
         genericAttributeService.Verify(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobInterviewRequiredAttributeName, false, 0), Times.Once);
         genericAttributeService.Verify(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobMinimumScoreAttributeName, 87.5m, 0), Times.Once);
+        genericAttributeService.Verify(x => x.SaveAttributeAsync(product, AIInterviewDefaults.JobQuestionCountAttributeName, 5, 0), Times.Once);
     }
 
     [Test]

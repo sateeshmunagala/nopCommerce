@@ -17,6 +17,9 @@ public record JobRequirementsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.ProductRequirements.MinimumScore")]
     public decimal MinimumScore { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.ProductRequirements.QuestionCount")]
+    public int QuestionCount { get; set; } = 3;
+
     public bool IsJobProduct { get; set; }
 }
 

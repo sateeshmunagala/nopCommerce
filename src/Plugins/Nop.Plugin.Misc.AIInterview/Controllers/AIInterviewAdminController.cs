@@ -167,7 +167,7 @@ public class AIInterviewAdminController : BasePluginController
         if (product == null)
             return Json(new { success = false });
 
-        await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, model.MinimumScore);
+        await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, model.MinimumScore, model.QuestionCount);
         return Json(new { success = true });
     }
 

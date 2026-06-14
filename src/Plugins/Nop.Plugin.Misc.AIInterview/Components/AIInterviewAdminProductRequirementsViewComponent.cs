@@ -49,6 +49,7 @@ public class AIInterviewAdminProductRequirementsViewComponent : NopViewComponent
             ViewBag.ResumeRequired = ResolvePostedBool("AIInterviewJobResumeRequired", requirements.ResumeRequired);
             ViewBag.InterviewRequired = ResolvePostedBool("AIInterviewJobInterviewRequired", requirements.InterviewRequired);
             ViewBag.MinimumScore = ResolvePostedDecimal("AIInterviewJobMinimumScore", requirements.MinimumScore);
+            ViewBag.QuestionCount = ResolvePostedInt("AIInterviewJobQuestionCount", requirements.QuestionCount);
         }
         else if (model.ProductTemplateId > 0)
         {
@@ -63,6 +64,7 @@ public class AIInterviewAdminProductRequirementsViewComponent : NopViewComponent
             ViewBag.ResumeRequired = ResolvePostedBool("AIInterviewJobResumeRequired", false);
             ViewBag.InterviewRequired = ResolvePostedBool("AIInterviewJobInterviewRequired", false);
             ViewBag.MinimumScore = ResolvePostedDecimal("AIInterviewJobMinimumScore", 0m);
+            ViewBag.QuestionCount = ResolvePostedInt("AIInterviewJobQuestionCount", 3);
         }
 
         ViewBag.ProductId = model.Id;
@@ -119,6 +121,31 @@ public class AIInterviewAdminProductRequirementsViewComponent : NopViewComponent
 
                 if (hasPostedValue)
                     return 0m;
+            }
+        }
+
+        return fallback;
+    }
+
+    protected virtual int ResolvePostedInt(string fieldName, int fallback)
+    {
+        var request = HttpContext?.Request;
+        if (request?.HasFormContentType == true)
+        {
+            var form = request.Form;
+            if (form.TryGetValue(fieldName, out var values))
+            {
+                foreach (var value in values)
+                {
+                    if (string.IsNullOrWhiteSpace(value))
+                        continue;
+
+                    if (int.TryParse(value, NumberStyles.Integer, CultureInfo.CurrentCulture, out var parsed) ||
+                        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed))
+                    {
+                        return parsed;
+                    }
+                }
             }
         }
 

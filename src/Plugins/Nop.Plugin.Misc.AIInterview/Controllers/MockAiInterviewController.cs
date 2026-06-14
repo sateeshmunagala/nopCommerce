@@ -36,6 +36,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IUrlRecordService _urlRecordService;
     private readonly IInterviewTurnService _turnService;
     private readonly IInterviewRuntimeService _interviewRuntimeService;
+    private readonly IJobRequirementService _jobRequirementService;
     private readonly NopLogger _nopLogger;
     private readonly ILogger<MockAiInterviewController> _logger;
 
@@ -53,6 +54,7 @@ public class MockAiInterviewController : BasePluginController
         IUrlRecordService urlRecordService = null,
         IInterviewTurnService turnService = null,
         IInterviewRuntimeService interviewRuntimeService = null,
+        IJobRequirementService jobRequirementService = null,
         NopLogger nopLogger = null,
         ILogger<MockAiInterviewController> logger = null)
     {
@@ -70,6 +72,7 @@ public class MockAiInterviewController : BasePluginController
         _urlRecordService = urlRecordService;
         _turnService = turnService;
         _interviewRuntimeService = interviewRuntimeService;
+        _jobRequirementService = jobRequirementService;
         _nopLogger = nopLogger;
         _logger = logger;
     }
@@ -127,6 +130,20 @@ public class MockAiInterviewController : BasePluginController
         return sessionId > 0
             ? Url?.RouteUrl(AIInterviewDefaults.MockReportRouteName, new { sessionId }) ?? string.Empty
             : string.Empty;
+    }
+
+    protected virtual int NormalizeQuestionCount(int questionCount)
+    {
+        return Math.Clamp(questionCount <= 0 ? 3 : questionCount, 1, 10);
+    }
+
+    protected virtual async Task<int> ResolveQuestionCountAsync(int productId)
+    {
+        if (productId <= 0 || _jobRequirementService == null)
+            return 3;
+
+        var requirements = await _jobRequirementService.GetRequirementsAsync(productId);
+        return NormalizeQuestionCount(requirements?.QuestionCount ?? 3);
     }
 
     protected virtual async Task<(InterviewSession Session, bool Renewed)> RenewActiveRuntimeTokenAsync(string token, bool forceRenew = false)
@@ -255,6 +272,7 @@ public class MockAiInterviewController : BasePluginController
             Token = Guid.NewGuid().ToString("N"),
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(30),
             IsActive = true,
+            QuestionCount = await ResolveQuestionCountAsync(productId),
             SponsorInviteId = sponsorInviteId,
             StartedOnUtc = DateTime.UtcNow,
             CreatedOnUtc = DateTime.UtcNow
@@ -293,10 +311,10 @@ public class MockAiInterviewController : BasePluginController
                 Token = session.Token,
                 Difficulty = session.Difficulty,
                 ProductName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview",
-                CurrentQuestion = "Tell me about your background for this role.",
+                CurrentQuestion = string.Empty,
                 IsMockMode = true
             }
-            : await _interviewRuntimeService.EnsureInterviewStartedAsync(session);
+            : await _interviewRuntimeService.GetRuntimeModelAsync(token);
 
         ApplyRuntimeClientSettings(model, session);
 
@@ -310,6 +328,7 @@ public class MockAiInterviewController : BasePluginController
 
         model.ClientSettings ??= new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel();
         model.ClientSettings.SubmitAnswerUrl = Url?.RouteUrl(AIInterviewDefaults.MockSubmitAnswerRouteName);
+        model.ClientSettings.BeginInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockBeginRouteName);
         model.ClientSettings.CompleteInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
         model.ClientSettings.RefreshTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockRefreshTokenRouteName);
         model.ClientSettings.StopInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
@@ -323,6 +342,48 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.SpeechAvailable = model.ClientSettings.SpeechAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.SpeechTokenUrl);
         model.ClientSettings.RecordingUploadUrl = Url?.RouteUrl(AIInterviewDefaults.MockRecordingUploadRouteName);
         model.ClientSettings.RecordingAvailable = model.ClientSettings.RecordingAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.RecordingUploadUrl);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Begin(string token)
+    {
+        if (_interviewRuntimeService == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Interview start is unavailable.");
+
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
+        if (tokenRenewal.Session != null && tokenRenewal.Renewed)
+            token = tokenRenewal.Session.Token;
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        var model = await _interviewRuntimeService.BeginInterviewAsync(token, customer);
+        if (model == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+
+        var currentQuestion = model.CurrentQuestion?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(currentQuestion) ||
+            string.Equals(currentQuestion, "AI service unavailable. Please try again later.", StringComparison.OrdinalIgnoreCase))
+        {
+            return Json(new
+            {
+                success = false,
+                message = string.IsNullOrWhiteSpace(currentQuestion) ? "AI service unavailable. Please try again later." : currentQuestion,
+                newToken = tokenRenewal.Renewed ? tokenRenewal.Session.Token : null,
+                tokenExpiryUtc = tokenRenewal.Renewed ? tokenRenewal.Session.TokenExpiryUtc : null
+            });
+        }
+
+        var currentTurn = model.Turns?.LastOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText))
+            ?? model.Turns?.LastOrDefault();
+
+        return Json(new
+        {
+            success = true,
+            message = "Interview started.",
+            question = currentQuestion,
+            turn = currentTurn,
+            newToken = tokenRenewal.Renewed ? tokenRenewal.Session.Token : null,
+            tokenExpiryUtc = tokenRenewal.Renewed ? tokenRenewal.Session.TokenExpiryUtc : null
+        });
     }
 
     protected async Task<string> GetRestartUrlAsync(InterviewSession session)

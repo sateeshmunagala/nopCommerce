@@ -8,6 +8,10 @@ namespace Nop.Plugin.Misc.AIInterview.Services;
 
 public class JobRequirementService : IJobRequirementService
 {
+    private const int DefaultQuestionCount = 3;
+    private const int MinQuestionCount = 1;
+    private const int MaxQuestionCount = 10;
+
     private readonly IGenericAttributeService _genericAttributeService;
     private readonly IProductService _productService;
     private readonly IProductTemplateService _productTemplateService;
@@ -51,6 +55,7 @@ public class JobRequirementService : IJobRequirementService
         model.ResumeRequired = await _genericAttributeService.GetAttributeAsync<bool>(product, AIInterviewDefaults.JobResumeRequiredAttributeName, defaultValue: false);
         model.InterviewRequired = await _genericAttributeService.GetAttributeAsync<bool>(product, AIInterviewDefaults.JobInterviewRequiredAttributeName, defaultValue: false);
         model.MinimumScore = await _genericAttributeService.GetAttributeAsync<decimal>(product, AIInterviewDefaults.JobMinimumScoreAttributeName, defaultValue: _aiInterviewSettings?.MinimumScore ?? 0);
+        model.QuestionCount = NormalizeQuestionCount(await _genericAttributeService.GetAttributeAsync<int>(product, AIInterviewDefaults.JobQuestionCountAttributeName, defaultValue: DefaultQuestionCount));
 
         return model;
     }
@@ -64,7 +69,7 @@ public class JobRequirementService : IJobRequirementService
         return await GetRequirementsAsync(product);
     }
 
-    public async Task SaveRequirementsAsync(Product product, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0)
+    public async Task SaveRequirementsAsync(Product product, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0, int questionCount = DefaultQuestionCount)
     {
         if (product == null || !await IsJobProductAsync(product))
             return;
@@ -72,9 +77,10 @@ public class JobRequirementService : IJobRequirementService
         await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobResumeRequiredAttributeName, resumeRequired);
         await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobInterviewRequiredAttributeName, interviewRequired);
         await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobMinimumScoreAttributeName, minimumScore);
+        await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobQuestionCountAttributeName, NormalizeQuestionCount(questionCount));
     }
 
-    public async Task SaveRequirementsAsync(int productId, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0)
+    public async Task SaveRequirementsAsync(int productId, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0, int questionCount = DefaultQuestionCount)
     {
         if (productId <= 0)
             return;
@@ -83,6 +89,11 @@ public class JobRequirementService : IJobRequirementService
         if (product == null)
             return;
 
-        await SaveRequirementsAsync(product, resumeRequired, interviewRequired, minimumScore);
+        await SaveRequirementsAsync(product, resumeRequired, interviewRequired, minimumScore, questionCount);
+    }
+
+    protected virtual int NormalizeQuestionCount(int questionCount)
+    {
+        return Math.Clamp(questionCount <= 0 ? DefaultQuestionCount : questionCount, MinQuestionCount, MaxQuestionCount);
     }
 }

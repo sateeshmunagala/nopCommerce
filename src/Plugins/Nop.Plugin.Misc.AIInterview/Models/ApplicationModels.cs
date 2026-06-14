@@ -106,6 +106,9 @@ public record VendorJobModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.MinimumScore")]
     public decimal MinimumScore { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.QuestionCount")]
+    public int QuestionCount { get; set; } = 3;
+
     public int? ExperienceLevelOptionId { get; set; }
 
     public int? WorkModeOptionId { get; set; }

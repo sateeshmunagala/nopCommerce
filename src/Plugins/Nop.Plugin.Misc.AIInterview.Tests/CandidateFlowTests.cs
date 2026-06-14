@@ -973,8 +973,8 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("tokenRefreshPromise"));
         Assert.That(runtimeText, Does.Contain("if (tokenRefreshPromise)"));
         Assert.That(runtimeText, Does.Not.Contain("tokenRefreshInFlight"));
-        Assert.That(runtimeText, Does.Contain("Interview cannot start because no active AI question is available."));
         Assert.That(runtimeText, Does.Contain("showUnavailableQuestionState"));
+        Assert.That(runtimeText, Does.Contain("const beginResult = await postForm(config.beginInterviewUrl"));
         Assert.That(runtimeText, Does.Contain("let interviewUnavailable = false;"));
         Assert.That(runtimeText, Does.Contain("normalized === 'AI service unavailable. Please try again later.'"));
         Assert.That(runtimeText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
@@ -1019,7 +1019,8 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Not.Contain("startButton.textContent = 'Next Question';"));
         Assert.That(runtimeText, Does.Contain("const normalizeTurn = (turn, index = 0) =>"));
         Assert.That(runtimeText, Does.Contain("getValue(turn, 'questionText', 'QuestionText')"));
-        Assert.That(runtimeText, Does.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
+        Assert.That(runtimeText, Does.Contain("messageBox.textContent = isTerminated ? 'Interview completed. Redirecting to report...' : 'Please answer the next question.';"));
+        Assert.That(runtimeText, Does.Not.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
         Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)\r\n                    await stopRecording(true);").Or.Contain("if (mediaRecorder && recordingEnabled)\n                    await stopRecording(true);"));
         Assert.That(runtimeText, Does.Contain("Recording ready."));
         Assert.That(runtimeText, Does.Contain("Recording waiting for screen share, camera, or microphone."));

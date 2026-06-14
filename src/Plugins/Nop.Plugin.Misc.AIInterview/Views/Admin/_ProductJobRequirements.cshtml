@@ -5,6 +5,7 @@
     var resumeRequired = ViewBag.ResumeRequired != null && (bool)ViewBag.ResumeRequired;
     var interviewRequired = ViewBag.InterviewRequired != null && (bool)ViewBag.InterviewRequired;
     var minimumScore = ViewBag.MinimumScore != null ? Convert.ToDecimal(ViewBag.MinimumScore) : 0m;
+    var questionCount = ViewBag.QuestionCount != null ? Convert.ToInt32(ViewBag.QuestionCount) : 3;
 }
 
 <nop-card asp-name="aiinterview-job-requirements"
@@ -61,4 +62,36 @@
             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.MinimumScore.Hint")</small>
         </div>
     </div>
+    <div class="form-group row aiinterview-question-count-row" @(interviewRequired ? string.Empty : "style=\"display:none;\"")>
+        <div class="col-md-3">
+            <label class="col-form-label" for="AIInterviewJobQuestionCount">@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.QuestionCount")</label>
+        </div>
+        <div class="col-md-9">
+            <input type="number"
+                   class="form-control"
+                   id="AIInterviewJobQuestionCount"
+                   name="AIInterviewJobQuestionCount"
+                   value="@questionCount"
+                   min="1"
+                   max="10"
+                   step="1" />
+            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.QuestionCount.Hint")</small>
+        </div>
+    </div>
 </nop-card>
+
+<script asp-location="Footer">
+    (() => {
+        const interviewRequired = document.getElementById('AIInterviewJobInterviewRequired');
+        const questionCountRow = document.querySelector('.aiinterview-question-count-row');
+        if (!interviewRequired || !questionCountRow)
+            return;
+
+        const updateVisibility = () => {
+            questionCountRow.style.display = interviewRequired.checked ? '' : 'none';
+        };
+
+        interviewRequired.addEventListener('change', updateVisibility);
+        updateVisibility();
+    })();
+</script>

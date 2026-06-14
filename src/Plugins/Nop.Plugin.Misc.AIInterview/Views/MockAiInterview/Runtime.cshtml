@@ -496,6 +496,13 @@
             }
         };
 
+        const getBlobByteSize = (parts) => {
+            if (!parts || !parts.length)
+                return 0;
+
+            return parts.reduce((total, part) => total + (part?.size || 0), 0);
+        };
+
         const getValue = (result, camel, pascal) => {
             if (!result) return null;
             if (camel in result) return result[camel];
@@ -763,7 +770,7 @@
             runtimeStoppedOrCompleted = true;
             stopInProgress = false;
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
-            const completionText = getValue(result, 'completion', 'Completion') || getValue(result, 'message', 'Message') || 'Interview completed.';
+            const completionText = 'Interview completed. Redirecting to report...';
             clearActiveInterviewTimers();
             isSpeakingOrSubmitting = true;
             await stopRecording(false);
@@ -789,10 +796,10 @@
             audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
             await stopSpeechRecognition();
             questionBox.textContent = completionText;
-            messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';
+            messageBox.textContent = completionText;
             completionBox.style.display = '';
             completionBox.textContent = reportUrl
-                ? `${completionText} You can open the report below, or you will be redirected shortly.`
+                ? 'Interview completed. Redirecting to report shortly.'
                 : completionText;
             answerBox.disabled = true;
             submitButton.disabled = true;
@@ -804,7 +811,7 @@
                 clearCompletedRedirectState();
                 completedCountdown = setInterval(() => {
                     if (remaining <= 0) return;
-                    completionBox.textContent = `${completionText} Redirecting to report in ${remaining}s.`;
+                    completionBox.textContent = `Interview completed. Redirecting to report in ${remaining}s.`;
                     remaining -= 1;
                 }, 1000);
                 completedRedirectTimer = setTimeout(() => {
@@ -855,13 +862,9 @@
             const meta = document.createElement('div');
             meta.className = 'turn-meta';
 
-            const score = document.createElement('span');
-            score.textContent = `Score: ${normalizedTurn.score ?? '-'}`;
-            const feedback = document.createElement('span');
-            feedback.textContent = normalizedTurn.feedback || '';
-
-            meta.appendChild(score);
-            meta.appendChild(feedback);
+            const status = document.createElement('span');
+            status.textContent = normalizedTurn.answerText ? 'Answer saved.' : 'Awaiting answer...';
+            meta.appendChild(status);
             card.appendChild(question);
             card.appendChild(answer);
             card.appendChild(meta);
@@ -1029,7 +1032,7 @@
                 return;
 
             recordingUploadInFlight = true;
-            logActivity('Uploading recording...');
+            logActivity(`Recording upload request start. blobBytes=${blob.size || 0}`);
             try {
                 const formData = new FormData();
                 formData.append('token', sessionToken);
@@ -1038,10 +1041,10 @@
                 const result = await postMultipart(config.recordingUploadUrl, formData);
                 const recordingUrl = getValue(result, 'recordingUrl', 'RecordingUrl');
                 if (isSuccess(result) && recordingUrl) {
-                    logActivity('Recording upload success.');
+                    logActivity(`Recording upload response success. url=${recordingUrl}`);
                     setRecordingStatus('Recording uploaded.', false);
                 } else {
-                    logActivity('Recording upload failure.');
+                    logActivity(`Recording upload response failure. message=${getRuntimeMessage(result, 'Recording upload failed.')}`);
                     setRecordingStatus(getRuntimeMessage(result, 'Recording upload failed.'), true);
                 }
             } finally {
@@ -1074,6 +1077,8 @@
                 recorder.addEventListener('stop', async () => {
                     try {
                         const blob = recordingChunks.length ? new Blob(recordingChunks, { type: mimeType }) : null;
+                        if (blob)
+                            logActivity(`Recording segment finalized. segmentBytes=${blob.size || 0}; preserve=${preserveSegment}; upload=${upload}`);
                         recordingChunks = [];
                         if (blob && preserveSegment)
                             preservedRecordingSegments.push(blob);
@@ -1085,6 +1090,7 @@
 
                             if (segments.length > 0) {
                                 const finalBlob = segments.length === 1 ? segments[0] : new Blob(segments, { type: mimeType });
+                                logActivity(`Recording final blob ready. segments=${segments.length}; totalBytes=${finalBlob.size || 0}`);
                                 await uploadRecording(finalBlob);
                                 uploaded = true;
                             }
@@ -1137,21 +1143,26 @@
                 const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
                     ? { mimeType: 'video/webm;codecs=vp9,opus' }
                     : (MediaRecorder.isTypeSupported('video/webm') ? { mimeType: 'video/webm' } : {});
+                logActivity(`MediaRecorder support confirmed. requestedMimeType=${options.mimeType || 'browser-default'}`);
                 mediaRecorder = new MediaRecorder(stream, options);
                 recordingMimeType = mediaRecorder.mimeType || options.mimeType || 'video/webm';
                 recordingChunks = [];
                 mediaRecorder.addEventListener('dataavailable', event => {
-                    if (event.data && event.data.size > 0)
+                    if (event.data && event.data.size > 0) {
                         recordingChunks.push(event.data);
+                        logActivity(`Recording chunk captured. chunkCount=${recordingChunks.length}; totalBytes=${getBlobByteSize(recordingChunks)}`);
+                    }
                 });
                 mediaRecorder.start(1000);
+                logActivity(`Recording start success. mimeType=${recordingMimeType}`);
                 setRecordingStatus('Recording live.', false);
                 const toggleRecording = document.getElementById('toggle-recording');
                 if (toggleRecording)
                     toggleRecording.textContent = 'Recording Live';
-            } catch {
+            } catch (error) {
                 mediaRecorder = null;
                 recordingChunks = [];
+                logActivity(`Recording start failure. reason=${error?.message || error?.name || 'unknown'}`);
                 setRecordingStatus('Recording could not be started.', true);
             }
         };
@@ -1542,8 +1553,6 @@
             const isTerminated = getValue(result, "isTerminated", "IsTerminated");
             const resultQuestion = getValue(result, "question", "Question");
             const resultMessage = getRuntimeMessage(result, '');
-            const resultFeedback = getValue(result, "feedback", "Feedback");
-            const resultCompletion = getValue(result, "completion", "Completion");
 
             if (!isTerminated && resultQuestion) {
                 turns.push(normalizeTurn({
@@ -1551,21 +1560,19 @@
                     sequenceNumber: (currentTurn?.sequenceNumber || turns.length) + 1,
                     questionText: resultQuestion,
                     answerText: '',
-                    score: null,
-                    feedback: '',
                     askedOnUtc: new Date().toISOString(),
                     answeredOnUtc: null
                 }, turns.length));
             }
 
-            questionBox.textContent = isTerminated ? (resultCompletion || 'Interview completed.') : resultQuestion;
+            questionBox.textContent = isTerminated ? 'Interview completed. Redirecting to report...' : resultQuestion;
             if (!isTerminated && resultQuestion) logActivity('Question shown: ' + resultQuestion);
             if (!isTerminated && resultQuestion)
                 interviewUnavailable = false;
-            messageBox.textContent = resultMessage || resultFeedback || '';
+            messageBox.textContent = isTerminated ? 'Interview completed. Redirecting to report...' : 'Please answer the next question.';
             if (!isTerminated)
-                messageBox.textContent = 'Please answer the question.';
-            setStatus(resultFeedback || resultMessage || 'Answer saved.', false);
+                messageBox.textContent = 'Please answer the next question.';
+            setStatus(isTerminated ? 'Interview completed. Redirecting to report...' : (resultMessage || 'Answer saved.'), false);
             answerBox.value = '';
             renderTranscript();
             updateSubmitAvailability();
@@ -1679,12 +1686,6 @@
                 updateStartButtonState();
                 return;
             }
-            if (!hasActiveQuestion()) {
-                logActivity('Interview cannot start because no active AI question is available.');
-                showUnavailableQuestionState();
-                interviewStarted = false;
-                return;
-            }
             if (!(await requestScreenShareForInterviewStart())) {
                 interviewStarted = false;
                 updateStartButtonState();
@@ -1697,6 +1698,42 @@
                 updateSubmitAvailability();
                 return;
             }
+            if (!config.beginInterviewUrl) {
+                stopScreenShare();
+                interviewStarted = false;
+                setStatus('Interview start endpoint is unavailable.', true);
+                updateStartButtonState();
+                return;
+            }
+
+            const beginResult = await postForm(config.beginInterviewUrl, new URLSearchParams({ token: sessionToken }));
+            if (!isSuccess(beginResult)) {
+                stopScreenShare();
+                interviewStarted = false;
+                const beginMessage = getRuntimeMessage(beginResult, 'AI service unavailable. Please try again later.');
+                logActivity(`Begin interview failed. message=${beginMessage}`);
+                showUnavailableQuestionState(beginMessage);
+                updateStartButtonState();
+                return;
+            }
+
+            const firstQuestion = getValue(beginResult, "question", "Question");
+            const firstTurn = normalizeTurn(getValue(beginResult, "turn", "Turn"), turns.length);
+            if (!firstQuestion) {
+                stopScreenShare();
+                interviewStarted = false;
+                showUnavailableQuestionState();
+                updateStartButtonState();
+                return;
+            }
+
+            if (firstTurn) {
+                const existingTurnIndex = turns.findIndex((turn, index) => normalizeTurn(turn, index)?.turnId === firstTurn.turnId);
+                if (existingTurnIndex >= 0)
+                    turns[existingTurnIndex] = firstTurn;
+                else
+                    turns.push(firstTurn);
+            }
 
             interviewUnavailable = false;
             interviewStarted = true;
@@ -1704,9 +1741,11 @@
             screenShareInterrupted = false;
             setScreenShareStatus('Screen sharing active', 'active');
             answerBox.disabled = false;
+            questionBox.textContent = firstQuestion;
             startRuntimeTimer();
             setStatus('Please answer the question.', false);
             messageBox.textContent = 'Please answer the question.';
+            renderTranscript();
             updateStartButtonState();
             if (config.recordingAvailable && recordingEnabled)
                 await requestRecordingMediaForStart();
@@ -1782,6 +1821,7 @@
         renderTranscript();
         answerBox.disabled = true;
         submitButton.disabled = true;
+        setStatus('Click Start Interview to begin.', false);
         setScreenShareStatus('Screen sharing required');
         updateGuidelinesAcknowledgementState();
         updateStartButtonState();

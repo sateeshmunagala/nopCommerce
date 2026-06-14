@@ -133,6 +133,31 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task GetRuntimeModelAsync_DoesNotCreate_First_Turn_On_Load()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession { Id = 3, ProductId = 10, CustomerId = 99, SessionKey = "key3", Token = "token3", Difficulty = "Medium", IsActive = true };
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token3")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(3)).ReturnsAsync(new List<InterviewTurn>());
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var model = await service.GetRuntimeModelAsync("token3");
+
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.CurrentQuestion, Is.Empty);
+        Assert.That(model.Turns, Is.Empty);
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+        turnService.Verify(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()), Times.Never);
+    }
+
+    [Test]
     public async Task EnsureInterviewStartedAsync_RealMode_Failure_DoesNotCreateTurn()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -272,6 +297,89 @@ public class RuntimeServiceTests
         Assert.That(store.Any(x => x.SequenceNumber == 1 && x.AnswerText != null), Is.True);
         Assert.That(store.Any(x => x.SequenceNumber == 2), Is.True);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Score > 0)), Times.Once);
+    }
+
+    [Test]
+    public async Task SubmitAnswerAsync_Rejects_Copied_Question_Text()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession { Id = 4, ProductId = 20, CustomerId = 5, SessionKey = "key4", Token = "token4", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var turn = new InterviewTurn { Id = 1, InterviewSessionId = 4, SequenceNumber = 1, QuestionText = "Describe a difficult bug you fixed recently.", AskedOnUtc = DateTime.UtcNow.AddMinutes(-1), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1) };
+        var store = new List<InterviewTurn> { turn };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token4")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(4)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var result = await service.SubmitAnswerAsync("token4", "Describe a difficult bug you fixed recently.");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Message, Is.EqualTo("Please answer the question in your own words."));
+        Assert.That(turn.AnswerText, Is.Null);
+        aiClient.Verify(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+        turnService.Verify(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SubmitAnswerAsync_Uses_Session_QuestionCount_Before_Difficulty_Fallback()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession
+        {
+            Id = 25,
+            ProductId = 20,
+            CustomerId = 5,
+            SessionKey = "key25",
+            Token = "token25",
+            Difficulty = "Hard",
+            QuestionCount = 1,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
+        var turn = new InterviewTurn { Id = 1, InterviewSessionId = 25, SequenceNumber = 1, QuestionText = "Q1", AskedOnUtc = DateTime.UtcNow.AddMinutes(-1), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1) };
+        var store = new List<InterviewTurn> { turn };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token25")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(25)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
+        aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse
+            {
+                Score = 80,
+                TechnicalScore = 80,
+                CommunicationScore = 80,
+                ProfessionalismScore = 80,
+                PositiveAttitudeScore = 80,
+                Feedback = "Solid",
+                Complete = false,
+                NextQuestion = "Q2",
+                RawJson = "{}",
+                RubricJson = "{\"technicalScore\":80,\"communicationScore\":80,\"professionalismScore\":80,\"positiveAttitudeScore\":80,\"score\":80}"
+            });
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>())).Returns(Task.CompletedTask);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, eventPublisher: eventPublisher);
+
+        var result = await service.SubmitAnswerAsync("token25", "I investigated the fault isolation path and fixed the rollback condition.");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.IsTerminated, Is.True);
+        turnService.Verify(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()), Times.Never);
     }
 
     [Test]
@@ -502,7 +610,7 @@ public class RuntimeServiceTests
             workContext: workContext,
             eventPublisher: eventPublisher);
 
-        var result = await service.SubmitAnswerAsync("token15", "answer");
+        var result = await service.SubmitAnswerAsync("token15", "I would diagnose the issue by checking logs and isolating the failing dependency.");
 
         Assert.That(result.Success, Is.False);
         Assert.That(result.Message, Does.Contain("temporarily unavailable"));
@@ -599,7 +707,7 @@ public class RuntimeServiceTests
             workContext: workContext,
             eventPublisher: eventPublisher);
 
-        var result = await service.SubmitAnswerAsync("token13", "answer");
+        var result = await service.SubmitAnswerAsync("token13", "I would explain the production issue, the root cause, and how I fixed it.");
 
         Assert.That(result.Success, Is.False);
         Assert.That(result.Message, Does.Contain("temporarily unavailable"));
@@ -1246,7 +1354,11 @@ public class RuntimeServiceTests
 
         Assert.That(result.Success, Is.True);
         Assert.That(session.RecordingUrl, Is.EqualTo(result.RecordingUrl));
-        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Id == 22 && s.RecordingUrl == result.RecordingUrl && s.CompletedOnUtc.HasValue)), Times.Once);
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
+            s.Id == 22 &&
+            s.RecordingUrl == result.RecordingUrl &&
+            s.CompletedOnUtc == completedAt &&
+            s.IsActive == false)), Times.Once);
     }
 
     [Test]
@@ -1363,6 +1475,8 @@ public class RuntimeServiceTests
         Assert.That(result.Success, Is.True);
         Assert.That(result.RecordingUrl, Does.Contain("https://storage.blob.core.windows.net/container/recordings-session-success-"));
         Assert.That(session.RecordingUrl, Is.EqualTo(result.RecordingUrl));
+        Assert.That(session.CompletedOnUtc, Is.Null);
+        Assert.That(session.IsActive, Is.True);
         Assert.That(httpHandler.Requests.Count, Is.EqualTo(1));
         Assert.That(httpHandler.Requests[0].Method, Is.EqualTo(HttpMethod.Put));
         Assert.That(httpHandler.Requests[0].Headers.Contains("x-ms-blob-type"), Is.True);
@@ -1488,6 +1602,7 @@ public class RuntimeServiceTests
         Assert.That(requestBody, Does.Contain("professionalismScore"));
         Assert.That(requestBody, Does.Contain("positiveAttitudeScore"));
         Assert.That(requestBody, Does.Contain("rubricJson should be a JSON object"));
+        Assert.That(requestBody, Does.Contain("must receive score 0"));
     }
 
     [Test]

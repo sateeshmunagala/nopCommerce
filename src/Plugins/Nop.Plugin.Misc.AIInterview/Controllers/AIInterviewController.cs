@@ -1069,7 +1069,7 @@ public class AIInterviewController : BasePluginController
         if (_jobInterviewExperienceService != null)
             await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
         if (_jobRequirementService != null)
-            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, model.MinimumScore);
+            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, model.MinimumScore, model.QuestionCount);
         var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
         await _urlRecordService.SaveSlugAsync(product, seName, 0);
 

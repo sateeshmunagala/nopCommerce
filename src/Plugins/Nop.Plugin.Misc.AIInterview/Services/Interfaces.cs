@@ -45,6 +45,7 @@ public interface IInterviewTurnService
 public interface IInterviewRuntimeService
 {
     Task<InterviewRuntimeModel> GetRuntimeModelAsync(string token);
+    Task<InterviewRuntimeModel> BeginInterviewAsync(string token, Customer customer = null);
     Task<InterviewRuntimeModel> EnsureInterviewStartedAsync(InterviewSession session, Customer customer = null);
     Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(string token, string answer);
     Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null);
@@ -131,6 +132,6 @@ public interface IJobRequirementService
     Task<bool> IsJobProductAsync(Product product);
     Task<JobRequirementsModel> GetRequirementsAsync(Product product);
     Task<JobRequirementsModel> GetRequirementsAsync(int productId);
-    Task SaveRequirementsAsync(Product product, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0);
-    Task SaveRequirementsAsync(int productId, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0);
+    Task SaveRequirementsAsync(Product product, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0, int questionCount = 3);
+    Task SaveRequirementsAsync(int productId, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0, int questionCount = 3);
 }

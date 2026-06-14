@@ -99,6 +99,10 @@ public class RouteProvider : IRouteProvider
             pattern: "mockaiinterview/runtime",
             defaults: new { controller = "MockAiInterview", action = "Runtime" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockBeginRouteName,
+            pattern: "mockaiinterview/begin",
+            defaults: new { controller = "MockAiInterview", action = "Begin" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockSubmitAnswerRouteName,
             pattern: "mockaiinterview/submit-answer",
             defaults: new { controller = "MockAiInterview", action = "SubmitAnswer" });

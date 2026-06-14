@@ -13,6 +13,7 @@ public class ProductRequirementsEventConsumer : IConsumer<EntityInsertedEvent<Pr
     private const string ResumeRequiredFieldName = "AIInterviewJobResumeRequired";
     private const string InterviewRequiredFieldName = "AIInterviewJobInterviewRequired";
     private const string MinimumScoreFieldName = "AIInterviewJobMinimumScore";
+    private const string QuestionCountFieldName = "AIInterviewJobQuestionCount";
 
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IJobRequirementService _jobRequirementService;
@@ -46,7 +47,8 @@ public class ProductRequirementsEventConsumer : IConsumer<EntityInsertedEvent<Pr
 
         if (!request.Form.ContainsKey(ResumeRequiredFieldName) &&
             !request.Form.ContainsKey(InterviewRequiredFieldName) &&
-            !request.Form.ContainsKey(MinimumScoreFieldName))
+            !request.Form.ContainsKey(MinimumScoreFieldName) &&
+            !request.Form.ContainsKey(QuestionCountFieldName))
         {
             return;
         }
@@ -57,8 +59,9 @@ public class ProductRequirementsEventConsumer : IConsumer<EntityInsertedEvent<Pr
         var resumeRequired = IsTrue(request.Form[ResumeRequiredFieldName]);
         var interviewRequired = IsTrue(request.Form[InterviewRequiredFieldName]);
         var minimumScore = ParseDecimal(request.Form[MinimumScoreFieldName]);
+        var questionCount = ParseInt(request.Form[QuestionCountFieldName], 3);
 
-        await _jobRequirementService.SaveRequirementsAsync(product, resumeRequired, interviewRequired, minimumScore);
+        await _jobRequirementService.SaveRequirementsAsync(product, resumeRequired, interviewRequired, minimumScore, questionCount);
     }
 
     protected static bool IsTrue(StringValues values)
@@ -87,5 +90,22 @@ public class ProductRequirementsEventConsumer : IConsumer<EntityInsertedEvent<Pr
         }
 
         return 0m;
+    }
+
+    protected static int ParseInt(StringValues values, int fallback)
+    {
+        foreach (var value in values)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            if (int.TryParse(value, NumberStyles.Integer, CultureInfo.CurrentCulture, out var parsed) ||
+                int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed))
+            {
+                return parsed;
+            }
+        }
+
+        return fallback;
     }
 }

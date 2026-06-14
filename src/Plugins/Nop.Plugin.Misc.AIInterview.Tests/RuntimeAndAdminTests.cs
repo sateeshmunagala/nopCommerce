@@ -55,7 +55,7 @@ public class RuntimeAndAdminTests
         _creditService = new Mock<ICreditService>();
         _inviteService = new Mock<ISponsorInviteService>();
         _productService = new Mock<IProductService>();
-        _runtimeController = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, null, _nopLogger.Object);
+        _runtimeController = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, null, null, _nopLogger.Object);
 
         _notificationService = new Mock<INotificationService>();
         _settingService = new Mock<ISettingService>();
@@ -538,7 +538,7 @@ public class RuntimeAndAdminTests
             Token = "token",
             TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
         });
-        _interviewRuntimeService.Setup(x => x.EnsureInterviewStartedAsync(It.IsAny<InterviewSession>(), It.IsAny<Customer>()))
+        _interviewRuntimeService.Setup(x => x.GetRuntimeModelAsync("token"))
             .ReturnsAsync(runtimeModel);
 
         var controller = new MockAiInterviewController(
@@ -696,6 +696,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("getUserMedia"));
         Assert.That(runtimeViewText, Does.Contain("SpeechSDK"));
         Assert.That(runtimeViewText, Does.Contain("speechTokenUrl"));
+        Assert.That(runtimeViewText, Does.Contain("beginInterviewUrl"));
         Assert.That(runtimeViewText, Does.Contain("submitAnswer"));
         Assert.That(runtimeViewText, Does.Contain("stopInterview"));
         Assert.That(runtimeViewText, Does.Not.Contain("console.log(config)"));
@@ -736,6 +737,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("startButton.textContent = 'Interview Started';"));
         Assert.That(runtimeViewText, Does.Contain("const updateStartButtonState = () =>"));
         Assert.That(runtimeViewText, Does.Contain("const normalizeTurn = (turn, index = 0) =>"));
+        Assert.That(runtimeViewText, Does.Not.Contain("Score: ${normalizedTurn.score ?? '-'}"));
         Assert.That(runtimeViewText, Does.Contain("await stopRecording(true);"));
         Assert.That(runtimeViewText, Does.Not.Contain("clearAllRuntimeTimers();\r\n            let originalText = ''").And.Not.Contain("clearAllRuntimeTimers();\n            let originalText = ''"));
         Assert.That(runtimeViewText, Does.Contain("clearAnswerTimers();"));
@@ -792,11 +794,20 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("Enable screen share, camera, or microphone before recording."));
         Assert.That(runtimeViewText, Does.Contain("Recording waiting for screen share, camera, or microphone."));
         Assert.That(runtimeViewText, Does.Contain("Recording paused until screen sharing resumes."));
+        Assert.That(runtimeViewText, Does.Contain("Recording upload request start. blobBytes="));
+        Assert.That(runtimeViewText, Does.Contain("Recording upload response success. url="));
+        Assert.That(runtimeViewText, Does.Contain("Recording chunk captured. chunkCount="));
+        Assert.That(runtimeViewText, Does.Contain("MediaRecorder support confirmed. requestedMimeType="));
         Assert.That(runtimeViewText, Does.Contain("acknowledgeGuidelinesUrl"));
         Assert.That(runtimeViewText, Does.Contain("sendGuidelinesAcknowledgementAudit"));
         Assert.That(runtimeViewText, Does.Contain("console.info('[AIInterview Runtime] Guidelines acknowledged', payload);"));
         Assert.That(runtimeViewText, Does.Contain("console.warn('[AIInterview Runtime] Guidelines acknowledgement audit failed.', result);"));
         Assert.That(runtimeViewText, Does.Contain("stopScreenShare();"));
+        Assert.That(runtimeViewText, Does.Contain("const beginResult = await postForm(config.beginInterviewUrl"));
+        Assert.That(runtimeViewText, Does.Contain("showUnavailableQuestionState(beginMessage);"));
+        Assert.That(runtimeViewText, Does.Contain("questionBox.textContent = firstQuestion;"));
+        Assert.That(runtimeViewText, Does.Contain("Interview completed. Redirecting to report..."));
+        Assert.That(runtimeViewText, Does.Not.Contain("getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
 
         Assert.That(runtimeViewText, Does.Not.Contain("AgoraRTC"));
         Assert.That(runtimeViewText, Does.Not.Contain("download.agora.io"));

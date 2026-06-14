@@ -182,6 +182,11 @@
                     <input asp-for="MinimumScore" type="number" min="0" step="0.01" />
                     <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.VendorJobCreation.MinimumScore.Hint")</small>
                 </div>
+                <div class="inputs aiinterview-question-count-row">
+                    <label asp-for="QuestionCount" asp-postfix=":"></label>
+                    <input asp-for="QuestionCount" type="number" min="1" max="10" step="1" />
+                    <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionCount.Hint")</small>
+                </div>
             </div>
 
             <div class="buttons">
@@ -190,3 +195,19 @@
         </form>
     </div>
 </div>
+
+<script asp-location="Footer">
+    (() => {
+        const interviewRequired = document.getElementById('InterviewRequired');
+        const questionCountRow = document.querySelector('.aiinterview-question-count-row');
+        if (!interviewRequired || !questionCountRow)
+            return;
+
+        const updateVisibility = () => {
+            questionCountRow.style.display = interviewRequired.checked ? '' : 'none';
+        };
+
+        interviewRequired.addEventListener('change', updateVisibility);
+        updateVisibility();
+    })();
+</script>
