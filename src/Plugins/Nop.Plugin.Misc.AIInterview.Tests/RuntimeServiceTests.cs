@@ -1739,7 +1739,7 @@ public class RuntimeServiceTests
             path = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "src", "Plugins", "Nop.Plugin.Misc.AIInterview", "Views", "MockAiInterview", "Runtime.cshtml"); // CI/CD path fallback
 
         var content = System.IO.File.ReadAllText(path);
-        Assert.That(content.Contains("if (!currentText && interviewStarted && !isSpeakingOrSubmitting && hasActiveQuestion())"), Is.True, "Runtime view should contain repeating reminder scheduling logic");
+        Assert.That(content.Contains("if (!currentText && interviewStarted && !isSpeakingOrSubmitting && hasActiveQuestion() && !isScreenShareBlockingInterview())"), Is.True, "Runtime view should contain repeating reminder scheduling logic");
         Assert.That(content.Contains("resetTimers();"), Is.True, "Runtime view should contain resetTimers logic in the timer interval");
     }
 

@@ -678,6 +678,9 @@ public class RuntimeAndAdminTests
     public void RuntimeView_Contains_Recording_And_Upload_Hooks()
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+        var beginInterviewStart = runtimeViewText.IndexOf("const beginInterview = async () =>", StringComparison.Ordinal);
+        var beginInterviewScreenShareIndex = runtimeViewText.IndexOf("if (!(await requestScreenShareForInterviewStart()))", beginInterviewStart, StringComparison.Ordinal);
+        var beginInterviewTokenRefreshIndex = runtimeViewText.IndexOf("if (!(await ensureRuntimeTokenFresh()))", beginInterviewStart, StringComparison.Ordinal);
 
         Assert.That(runtimeViewText, Does.Contain("recordingUploadUrl"));
         Assert.That(runtimeViewText, Does.Contain("MediaRecorder"));
@@ -698,11 +701,16 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("normalized === 'AI service unavailable. Please try again later.'"));
         Assert.That(runtimeViewText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
         Assert.That(runtimeViewText, Does.Contain("submitButton.disabled = answerBox.disabled"));
+        Assert.That(runtimeViewText, Does.Contain("|| !interviewStarted"));
         Assert.That(runtimeViewText, Does.Contain("|| runtimeStoppedOrCompleted"));
         Assert.That(runtimeViewText, Does.Contain("|| stopInProgress"));
+        Assert.That(runtimeViewText, Does.Contain("|| isScreenShareBlockingInterview()"));
         Assert.That(runtimeViewText, Does.Contain("interviewUnavailable = true;"));
         Assert.That(runtimeViewText, Does.Contain("let runtimeStoppedOrCompleted = false;"));
         Assert.That(runtimeViewText, Does.Contain("let stopInProgress = false;"));
+        Assert.That(runtimeViewText, Does.Contain("let screenShareRequired = true;"));
+        Assert.That(runtimeViewText, Does.Contain("let screenShareActive = false;"));
+        Assert.That(runtimeViewText, Does.Contain("let screenShareInterrupted = false;"));
         Assert.That(runtimeViewText, Does.Contain("if (runtimeStoppedOrCompleted || stopInProgress)"));
         Assert.That(runtimeViewText, Does.Contain("const autoSubmitDelaySeconds = 10;"));
         Assert.That(runtimeViewText, Does.Contain("const clearAnswerTimers = () =>"));
@@ -729,7 +737,8 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("window.addEventListener('beforeunload', () => {"));
         Assert.That(runtimeViewText, Does.Contain("Camera permission was denied. You can continue by typing your answers."));
         Assert.That(runtimeViewText, Does.Contain("Microphone permission was denied. You can continue by typing your answers."));
-        Assert.That(runtimeViewText, Does.Contain("Recording unavailable because camera or microphone permission was denied."));
+        Assert.That(runtimeViewText, Does.Contain("Recording is waiting for screen share because camera or microphone permission was denied."));
+        Assert.That(runtimeViewText, Does.Contain("Recording remains available with screen share."));
         Assert.That(runtimeViewText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = 'none';"));
         Assert.That(runtimeViewText, Does.Contain("Interview Guidelines"));
@@ -738,10 +747,27 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("Screen sharing is required when the interview starts."));
         Assert.That(runtimeViewText, Does.Contain("let guidelinesAcknowledged = false;"));
         Assert.That(runtimeViewText, Does.Contain("startButton.disabled = !guidelinesAcknowledged;"));
+        Assert.That(runtimeViewText, Does.Contain("startButton.textContent = 'Resume Screen Share';"));
         Assert.That(runtimeViewText, Does.Contain("guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);"));
         Assert.That(runtimeViewText, Does.Contain("navigator.mediaDevices?.getDisplayMedia"));
         Assert.That(runtimeViewText, Does.Contain("screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });"));
         Assert.That(runtimeViewText, Does.Contain("Screen sharing is required to start the interview."));
+        Assert.That(runtimeViewText, Does.Contain("Screen sharing ended. Resume screen sharing to continue the interview."));
+        Assert.That(runtimeViewText, Does.Contain("Screen sharing resumed. You can continue the interview."));
+        Assert.That(runtimeViewText, Does.Contain("const isScreenShareBlockingInterview = () => screenShareRequired && interviewStarted && (!screenShareActive || screenShareInterrupted);"));
+        Assert.That(runtimeViewText, Does.Contain("screenShareInterrupted = true;"));
+        Assert.That(runtimeViewText, Does.Contain("screenShareInterrupted = false;"));
+        Assert.That(runtimeViewText, Does.Contain("await stopSpeechRecognition();"));
+        Assert.That(runtimeViewText, Does.Contain("logActivity(`${auto ? 'Auto-submit' : 'Manual submit'} blocked; screen sharing is inactive.`);"));
+        Assert.That(runtimeViewText, Does.Contain("Resume screen sharing to continue the interview."));
+        Assert.That(runtimeViewText, Does.Contain("stopScreenShare();\r\n                setStatus('Interview token refresh failed.', true);").Or.Contain("stopScreenShare();\n                setStatus('Interview token refresh failed.', true);"));
+        Assert.That(beginInterviewStart, Is.GreaterThanOrEqualTo(0));
+        Assert.That(beginInterviewScreenShareIndex, Is.GreaterThan(beginInterviewStart));
+        Assert.That(beginInterviewTokenRefreshIndex, Is.GreaterThan(beginInterviewStart));
+        Assert.That(beginInterviewScreenShareIndex, Is.LessThan(beginInterviewTokenRefreshIndex));
+        Assert.That(runtimeViewText, Does.Contain("tracks.push(...screenShareStream.getTracks().filter("));
+        Assert.That(runtimeViewText, Does.Contain("Enable screen share, camera, or microphone before recording."));
+        Assert.That(runtimeViewText, Does.Contain("Recording waiting for screen share, camera, or microphone."));
         Assert.That(runtimeViewText, Does.Contain("console.info('[AIInterview Runtime] Guidelines acknowledged', payload);"));
         Assert.That(runtimeViewText, Does.Contain("stopScreenShare();"));
 
@@ -753,6 +779,8 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Not.Contain("agora-token"));
         Assert.That(runtimeViewText, Does.Not.Contain("live interviewer"));
         Assert.That(runtimeViewText, Does.Not.Contain("participant flow"));
+        Assert.That(runtimeViewText, Does.Not.Contain("mobileDetect"));
+        Assert.That(runtimeViewText, Does.Not.Contain("userAgentData.mobile"));
     }
 
     [Test]

@@ -978,10 +978,12 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("let interviewUnavailable = false;"));
         Assert.That(runtimeText, Does.Contain("normalized === 'AI service unavailable. Please try again later.'"));
         Assert.That(runtimeText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
-        Assert.That(runtimeText, Does.Contain("submitButton.disabled = !interviewStarted"));
+        Assert.That(runtimeText, Does.Contain("submitButton.disabled = answerBox.disabled"));
+        Assert.That(runtimeText, Does.Contain("|| !interviewStarted"));
         Assert.That(runtimeText, Does.Contain("|| runtimeStoppedOrCompleted"));
         Assert.That(runtimeText, Does.Contain("|| stopInProgress"));
         Assert.That(runtimeText, Does.Contain("|| !hasActiveQuestion()"));
+        Assert.That(runtimeText, Does.Contain("|| isScreenShareBlockingInterview()"));
         Assert.That(runtimeText, Does.Contain("interviewUnavailable = true;"));
         Assert.That(runtimeText, Does.Contain("const autoSubmitDelaySeconds = 10;"));
         Assert.That(runtimeText, Does.Contain("const clearAnswerTimers = () =>"));
@@ -1001,7 +1003,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Reminder shown."));
         Assert.That(runtimeText, Does.Contain("Reminder spoken."));
         Assert.That(runtimeText, Does.Contain("Reminder speech failed."));
-        Assert.That(runtimeText, Does.Contain("if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure) return;"));
+        Assert.That(runtimeText, Does.Contain("if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure || isScreenShareBlockingInterview()) return;"));
         Assert.That(runtimeText, Does.Contain("startRuntimeTimer();"));
         Assert.That(runtimeText, Does.Contain("const updateStartButtonState = () =>"));
         Assert.That(runtimeText, Does.Contain("startButton.textContent = 'Repeat Question';"));
@@ -1012,7 +1014,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
         Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)\r\n                    await stopRecording(true);").Or.Contain("if (mediaRecorder && recordingEnabled)\n                    await stopRecording(true);"));
         Assert.That(runtimeText, Does.Contain("Recording ready."));
-        Assert.That(runtimeText, Does.Contain("Recording waiting for camera or mic."));
+        Assert.That(runtimeText, Does.Contain("Recording waiting for screen share, camera, or microphone."));
         Assert.That(runtimeText, Does.Contain("Recording live."));
         Assert.That(runtimeText, Does.Contain("clamp(220px, 28vw, 252px)"));
         Assert.That(runtimeText, Does.Contain("Development mock mode is enabled. Azure OpenAI is bypassed."));

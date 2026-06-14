@@ -226,6 +226,9 @@
         let runtimeStoppedOrCompleted = false;
         let stopInProgress = false;
         let mediaPermissionDenied = false;
+        let screenShareRequired = true;
+        let screenShareActive = false;
+        let screenShareInterrupted = false;
         let guidelinesAcknowledged = false;
         let guidelinesAcknowledgedAt = null;
         let completedRedirectTimer = null;
@@ -297,6 +300,12 @@
                 return;
             }
 
+            if (screenShareRequired && (!screenShareActive || screenShareInterrupted)) {
+                startButton.disabled = false;
+                startButton.textContent = 'Resume Screen Share';
+                return;
+            }
+
             if (config.speechAvailable) {
                 startButton.disabled = false;
                 startButton.textContent = 'Repeat Question';
@@ -324,6 +333,8 @@
         const stopScreenShare = () => {
             screenShareStream?.getTracks().forEach(track => track.stop());
             screenShareStream = null;
+            screenShareActive = false;
+            screenShareInterrupted = false;
         };
 
         const clearCompletedRedirectState = () => {
@@ -364,7 +375,7 @@
             countdownValue = autoSubmitDelaySeconds;
             submitButton.textContent = `Auto submitting in ${countdownValue}`;
             countdownTimer = setInterval(() => {
-                if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion()) {
+                if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || isScreenShareBlockingInterview()) {
                     clearAnswerTimers();
                     return;
                 }
@@ -389,10 +400,10 @@
 
         const resetTimers = () => {
             clearAnswerTimers();
-            if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure) return;
+            if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure || isScreenShareBlockingInterview()) return;
 
             answerStageTimer = setTimeout(() => {
-                if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure)
+                if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure || isScreenShareBlockingInterview())
                     return;
 
                 const text = (answerBox.value || '').trim();
@@ -485,7 +496,7 @@
         logActivity(`Runtime debug enabled. speechAvailable=${!!config.speechAvailable}, recordingAvailable=${!!config.recordingAvailable}, mockMode=${!!config.isMockMode}`);
 
         if (config.recordingAvailable)
-            setRecordingStatus('Recording waiting for camera or mic.', false);
+            setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);
         else
             setRecordingStatus('Recording unavailable.', false);
 
@@ -501,6 +512,8 @@
 
         const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());
 
+        const isScreenShareBlockingInterview = () => screenShareRequired && interviewStarted && (!screenShareActive || screenShareInterrupted);
+
         const updateSubmitAvailability = () => {
             if (!submitButton)
                 return;
@@ -510,9 +523,22 @@
                 || !interviewStarted
                 || runtimeStoppedOrCompleted
                 || stopInProgress
+                || isScreenShareBlockingInterview()
                 || interviewUnavailable
                 || !hasActiveQuestion()
                 || !trimmedAnswer;
+        };
+
+        const onScreenShareInterrupted = async () => {
+            screenShareActive = false;
+            screenShareInterrupted = true;
+            clearAnswerTimers();
+            await stopSpeechRecognition();
+            setStatus('Screen sharing ended. Resume screen sharing to continue the interview.', true);
+            updateStartButtonState();
+            updateSubmitAvailability();
+            if (recordingEnabled)
+                await syncRecording();
         };
 
         const updateGuidelinesAcknowledgementState = () => {
@@ -523,8 +549,11 @@
         };
 
         const requestScreenShareForInterviewStart = async () => {
-            if (screenShareStream)
+            if (screenShareStream?.getTracks?.().some(track => track.readyState === 'live')) {
+                screenShareActive = true;
+                screenShareInterrupted = false;
                 return true;
+            }
 
             if (!navigator.mediaDevices?.getDisplayMedia) {
                 setStatus('Screen sharing is required, but this browser does not support it.', true);
@@ -534,16 +563,22 @@
 
             try {
                 screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                screenShareActive = true;
+                screenShareInterrupted = false;
                 const [screenTrack] = screenShareStream.getVideoTracks();
                 if (screenTrack) {
-                    screenTrack.addEventListener('ended', () => {
+                    screenTrack.addEventListener('ended', async () => {
                         screenShareStream = null;
-                        if (!runtimeStoppedOrCompleted)
-                            setStatus('Screen sharing ended. Keep sharing your screen while the interview is in progress.', true);
+                        if (!runtimeStoppedOrCompleted && !stopInProgress)
+                            await onScreenShareInterrupted();
                     });
                 }
 
                 logActivity('Screen sharing started.');
+                updateStartButtonState();
+                updateSubmitAvailability();
+                if (recordingEnabled)
+                    await syncRecording();
                 return true;
             } catch (error) {
                 stopScreenShare();
@@ -657,7 +692,7 @@
         };
 
         const showReminder = async () => {
-            if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion())
+            if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || isScreenShareBlockingInterview())
                 return;
 
             logActivity('Reminder shown.');
@@ -671,7 +706,7 @@
             }
 
             const currentText = (answerBox.value || '').trim();
-            if (!currentText && interviewStarted && !isSpeakingOrSubmitting && hasActiveQuestion())
+            if (!currentText && interviewStarted && !isSpeakingOrSubmitting && hasActiveQuestion() && !isScreenShareBlockingInterview())
                 resetTimers();
         };
 
@@ -878,6 +913,8 @@
         const getActiveRecordingStream = () => {
             const tracks = [];
             const seenTrackIds = new Set();
+            if (screenShareStream?.getTracks)
+                tracks.push(...screenShareStream.getTracks().filter(track => track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
             if (cameraStream?.getTracks)
                 tracks.push(...cameraStream.getTracks().filter(track => track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
             if (micStream?.getTracks)
@@ -893,8 +930,13 @@
             if (getActiveRecordingStream())
                 return true;
 
+            if (screenShareActive && getActiveRecordingStream()) {
+                setRecordingStatus('Recording ready.', false);
+                return true;
+            }
+
             if (!navigator.mediaDevices?.getUserMedia) {
-                setRecordingStatus('Recording waiting for camera or mic.', false);
+                setRecordingStatus(screenShareActive ? 'Recording ready with screen share.' : 'Recording waiting for screen share, camera, or microphone.', false);
                 return false;
             }
 
@@ -910,7 +952,12 @@
                 return true;
             }
 
-            setRecordingStatus('Recording waiting for camera or mic.', false);
+            if (screenShareActive && getActiveRecordingStream()) {
+                setRecordingStatus('Recording ready with screen share.', false);
+                return true;
+            }
+
+            setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);
             return false;
         };
 
@@ -984,7 +1031,7 @@
 
             const stream = getActiveRecordingStream();
             if (!stream) {
-                setRecordingStatus('Enable camera or microphone before recording.', true);
+                setRecordingStatus('Enable screen share, camera, or microphone before recording.', true);
                 return;
             }
 
@@ -1022,10 +1069,10 @@
 
             if (recordingEnabled && interviewStarted && getActiveRecordingStream())
                 await startRecording();
-            else if (!getActiveRecordingStream() && recordingEnabled && mediaPermissionDenied)
-                setRecordingStatus('Recording unavailable because camera or microphone permission was denied.', false);
+            else if (!getActiveRecordingStream() && recordingEnabled && mediaPermissionDenied && !screenShareActive)
+                setRecordingStatus('Recording is waiting for screen share because camera or microphone permission was denied.', false);
             else if (!getActiveRecordingStream() && recordingEnabled)
-                setRecordingStatus('Recording waiting for camera or mic.', false);
+                setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);
         };
 
         const scheduleTokenRefresh = () => {
@@ -1239,7 +1286,7 @@
                 if (error?.name === 'NotAllowedError' || /denied|permission/i.test(error?.message || '')) {
                     mediaPermissionDenied = true;
                     setStatus('Camera permission was denied. You can continue by typing your answers.', false);
-                    setRecordingStatus('Recording unavailable because camera or microphone permission was denied.', false);
+                    setRecordingStatus(screenShareActive ? 'Recording remains available with screen share.' : 'Recording is waiting for screen share because camera or microphone permission was denied.', false);
                 } else {
                     setStatus('Camera could not be started.', true);
                 }
@@ -1301,7 +1348,7 @@
                 if (error?.name === 'NotAllowedError' || /denied|permission/i.test(error?.message || '')) {
                     mediaPermissionDenied = true;
                     setStatus('Microphone permission was denied. You can continue by typing your answers.', false);
-                    setRecordingStatus('Recording unavailable because camera or microphone permission was denied.', false);
+                    setRecordingStatus(screenShareActive ? 'Recording remains available with screen share.' : 'Recording is waiting for screen share because camera or microphone permission was denied.', false);
                 } else {
                     setStatus('Microphone could not be started.', true);
                 }
@@ -1323,6 +1370,13 @@
             if (submitBtn.disabled || isSubmittingAnswer) return;
 
             const auto = options.auto === true;
+            if (isScreenShareBlockingInterview()) {
+                logActivity(`${auto ? 'Auto-submit' : 'Manual submit'} blocked; screen sharing is inactive.`);
+                setStatus('Resume screen sharing to continue the interview.', true);
+                updateSubmitAvailability();
+                return;
+            }
+
             const trimmedAnswer = (answerBox.value || '').trim();
             if (!trimmedAnswer) {
                 logActivity(`${auto ? 'Auto-submit' : 'Manual submit'} skipped; answer is empty.`);
@@ -1502,6 +1556,15 @@
         const beginInterview = async () => {
             logActivity('Interview started clicked.');
             if (interviewStarted) {
+                if (screenShareRequired && (!screenShareActive || screenShareInterrupted)) {
+                    if (await requestScreenShareForInterviewStart()) {
+                        setStatus('Screen sharing resumed. You can continue the interview.', false);
+                        if (hasActiveQuestion() && !answerNeedsEditAfterFailure)
+                            resetTimers();
+                    }
+                    return;
+                }
+
                 if (config.speechAvailable && hasActiveQuestion())
                     await speakText(questionBox.textContent, 'question');
                 return;
@@ -1510,10 +1573,6 @@
                 openGuidelinesModal();
                 setStatus('Please review and accept the interview guidelines before starting.', false);
                 updateStartButtonState();
-                return;
-            }
-            if (!(await ensureRuntimeTokenFresh())) {
-                setStatus('Interview token refresh failed.', true);
                 return;
             }
             if (!hasActiveQuestion()) {
@@ -1527,9 +1586,18 @@
                 updateStartButtonState();
                 return;
             }
+            if (!(await ensureRuntimeTokenFresh())) {
+                stopScreenShare();
+                setStatus('Interview token refresh failed.', true);
+                updateStartButtonState();
+                updateSubmitAvailability();
+                return;
+            }
 
             interviewUnavailable = false;
             interviewStarted = true;
+            screenShareActive = true;
+            screenShareInterrupted = false;
             answerBox.disabled = false;
             startRuntimeTimer();
             setStatus('Please answer the question.', false);
