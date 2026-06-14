@@ -697,7 +697,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("showUnavailableQuestionState"));
         Assert.That(runtimeViewText, Does.Contain("normalized === 'AI service unavailable. Please try again later.'"));
         Assert.That(runtimeViewText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
-        Assert.That(runtimeViewText, Does.Contain("submitButton.disabled = !interviewStarted"));
+        Assert.That(runtimeViewText, Does.Contain("submitButton.disabled = answerBox.disabled"));
         Assert.That(runtimeViewText, Does.Contain("|| runtimeStoppedOrCompleted"));
         Assert.That(runtimeViewText, Does.Contain("|| stopInProgress"));
         Assert.That(runtimeViewText, Does.Contain("interviewUnavailable = true;"));
@@ -725,13 +725,25 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Not.Contain("clearAllRuntimeTimers();\r\n            let originalText = ''").And.Not.Contain("clearAllRuntimeTimers();\n            let originalText = ''"));
         Assert.That(runtimeViewText, Does.Contain("clearAnswerTimers();"));
         Assert.That(runtimeViewText, Does.Contain("if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)\r\n                    resetTimers();").Or.Contain("if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)\n                    resetTimers();"));
-        Assert.That(runtimeViewText, Does.Contain("window.addEventListener('pagehide', clearAllRuntimeTimers);"));
-        Assert.That(runtimeViewText, Does.Contain("window.addEventListener('beforeunload', clearAllRuntimeTimers);"));
+        Assert.That(runtimeViewText, Does.Contain("window.addEventListener('pagehide', () => {"));
+        Assert.That(runtimeViewText, Does.Contain("window.addEventListener('beforeunload', () => {"));
         Assert.That(runtimeViewText, Does.Contain("Camera permission was denied. You can continue by typing your answers."));
         Assert.That(runtimeViewText, Does.Contain("Microphone permission was denied. You can continue by typing your answers."));
         Assert.That(runtimeViewText, Does.Contain("Recording unavailable because camera or microphone permission was denied."));
         Assert.That(runtimeViewText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = 'none';"));
+        Assert.That(runtimeViewText, Does.Contain("Interview Guidelines"));
+        Assert.That(runtimeViewText, Does.Contain("I have read and agree to follow these interview guidelines."));
+        Assert.That(runtimeViewText, Does.Contain("Mobile phones and tablets are not recommended and are not allowed by policy, but they are not blocked technically."));
+        Assert.That(runtimeViewText, Does.Contain("Screen sharing is required when the interview starts."));
+        Assert.That(runtimeViewText, Does.Contain("let guidelinesAcknowledged = false;"));
+        Assert.That(runtimeViewText, Does.Contain("startButton.disabled = !guidelinesAcknowledged;"));
+        Assert.That(runtimeViewText, Does.Contain("guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);"));
+        Assert.That(runtimeViewText, Does.Contain("navigator.mediaDevices?.getDisplayMedia"));
+        Assert.That(runtimeViewText, Does.Contain("screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });"));
+        Assert.That(runtimeViewText, Does.Contain("Screen sharing is required to start the interview."));
+        Assert.That(runtimeViewText, Does.Contain("console.info('[AIInterview Runtime] Guidelines acknowledged', payload);"));
+        Assert.That(runtimeViewText, Does.Contain("stopScreenShare();"));
 
         Assert.That(runtimeViewText, Does.Not.Contain("AgoraRTC"));
         Assert.That(runtimeViewText, Does.Not.Contain("download.agora.io"));
@@ -739,6 +751,8 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Not.Contain("renewAgoraToken"));
         Assert.That(runtimeViewText, Does.Not.Contain("leaveAgoraSession"));
         Assert.That(runtimeViewText, Does.Not.Contain("agora-token"));
+        Assert.That(runtimeViewText, Does.Not.Contain("live interviewer"));
+        Assert.That(runtimeViewText, Does.Not.Contain("participant flow"));
     }
 
     [Test]

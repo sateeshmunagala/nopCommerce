@@ -55,6 +55,15 @@
     .runtime-transcript { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 9999; padding: 24px; }
     .runtime-transcript.is-open { display: grid; place-items: center; }
     .runtime-transcript-card { width: min(900px, 100%); max-height: 80vh; overflow: auto; background: #fff; border-radius: 20px; padding: 20px; }
+    .runtime-modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 10000; padding: 24px; }
+    .runtime-modal.is-open { display: grid; place-items: center; }
+    .runtime-modal-card { width: min(720px, 100%); max-height: 85vh; overflow: auto; background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2); }
+    .runtime-modal-card h3 { margin: 0 0 12px; color: #162033; }
+    .runtime-modal-card p { margin: 0 0 12px; color: #475467; line-height: 1.6; }
+    .runtime-guidelines { margin: 0; padding-left: 20px; color: #162033; display: grid; gap: 10px; }
+    .runtime-guidelines-ack { display: flex; align-items: flex-start; gap: 10px; margin-top: 18px; color: #162033; font-weight: 600; }
+    .runtime-guidelines-ack input { margin-top: 4px; }
+    .runtime-modal-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
     .runtime-meter { display: flex; align-items: end; gap: 4px; height: 34px; }
     .runtime-meter span { width: 8px; height: 8px; border-radius: 999px; background: #cbd5e1; transition: height .15s ease, background .15s ease; }
     @@media (max-width: 1024px) { .runtime-layout { grid-template-columns: 1fr; } }
@@ -90,7 +99,8 @@
                     <button type="button" id="toggle-camera" class="button-2">Camera On</button>
                     <button type="button" id="toggle-mic" class="button-2">Mic On</button>
                     <button type="button" id="toggle-recording" class="button-2">Recording Ready</button>
-                    <button type="button" id="start-or-next" class="button-1">Start Interview</button>
+                    <button type="button" id="view-guidelines" class="button-2">Interview Guidelines</button>
+                    <button type="button" id="start-or-next" class="button-1" disabled>Start Interview</button>
                     <span class="runtime-dot"></span>
                     <span class="runtime-dot"></span>
                 </div>
@@ -140,6 +150,31 @@
     </div>
 </div>
 
+<div id="guidelines-modal" class="runtime-modal" aria-hidden="true">
+    <div class="runtime-modal-card" role="dialog" aria-modal="true" aria-labelledby="guidelines-title">
+        <h3 id="guidelines-title">Interview Guidelines</h3>
+        <p>Please review these interview requirements before you begin.</p>
+        <ul class="runtime-guidelines">
+            <li>This interview must be taken from a personal laptop.</li>
+            <li>Corporate laptops are not allowed.</li>
+            <li>Mobile phones and tablets are not recommended and are not allowed by policy, but they are not blocked technically.</li>
+            <li>Camera and microphone access may be required.</li>
+            <li>Screen sharing is required when the interview starts.</li>
+            <li>Please be in a quiet place with stable internet.</li>
+            <li>Do not use outside help, another person, unauthorized notes, or AI tools during the interview.</li>
+            <li>Keep this interview tab open until the interview is completed.</li>
+        </ul>
+        <label class="runtime-guidelines-ack" for="guidelines-acknowledge">
+            <input type="checkbox" id="guidelines-acknowledge" />
+            <span>I have read and agree to follow these interview guidelines.</span>
+        </label>
+        <div class="runtime-modal-actions">
+            <button type="button" id="guidelines-agree" class="button-1" disabled>I Agree</button>
+            <button type="button" id="guidelines-cancel" class="button-2">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <script asp-location="Footer">
     (() => {
         const config = @Html.Raw(clientSettings);
@@ -162,15 +197,21 @@
         const recordingButton = document.getElementById('toggle-recording');
         const submitButton = document.getElementById('submit-answer');
         const startButton = document.getElementById('start-or-next');
+        const guidelinesButton = document.getElementById('view-guidelines');
+        const guidelinesModal = document.getElementById('guidelines-modal');
+        const guidelinesCheckbox = document.getElementById('guidelines-acknowledge');
+        const guidelinesAgreeButton = document.getElementById('guidelines-agree');
         const runtimeLog = document.getElementById('runtime-log');
         const audioMeter = Array.from(document.querySelectorAll('#audio-meter span'));
         const reportButton = document.getElementById('view-report');
         let cameraStream = null;
         let micStream = null;
+        let screenShareStream = null;
         let analyser = null;
         let audioContext = null;
         let meterFrame = null;
         let tokenRefreshTimer = null;
+        let guidelinesModalTimer = null;
         let speechRecognizer = null;
         let speechSdkLoading = null;
         let speechSdkLoaded = false;
@@ -185,6 +226,8 @@
         let runtimeStoppedOrCompleted = false;
         let stopInProgress = false;
         let mediaPermissionDenied = false;
+        let guidelinesAcknowledged = false;
+        let guidelinesAcknowledgedAt = null;
         let completedRedirectTimer = null;
         let completedCountdown = null;
         const autoSubmitDelaySeconds = 10;
@@ -206,6 +249,38 @@
                 submitButton.textContent = 'Submit Answer';
         };
 
+        const clearGuidelinesModalTimer = () => {
+            clearTimeout(guidelinesModalTimer);
+            guidelinesModalTimer = null;
+        };
+
+        const setGuidelinesModalOpen = (open) => {
+            if (!guidelinesModal)
+                return;
+
+            guidelinesModal.classList.toggle('is-open', open);
+            guidelinesModal.setAttribute('aria-hidden', open ? 'false' : 'true');
+        };
+
+        const openGuidelinesModal = () => {
+            clearGuidelinesModalTimer();
+            setGuidelinesModalOpen(true);
+        };
+
+        const closeGuidelinesModal = () => setGuidelinesModalOpen(false);
+
+        const logGuidelinesAcknowledgement = () => {
+            const payload = {
+                acknowledged: true,
+                acknowledgedTimestamp: guidelinesAcknowledgedAt,
+                userAgent: navigator.userAgent,
+                screenSize: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
+                viewportSize: `${window.innerWidth || 0}x${window.innerHeight || 0}`
+            };
+            logActivity(`Guidelines acknowledged: ${JSON.stringify(payload)}`);
+            console.info('[AIInterview Runtime] Guidelines acknowledged', payload);
+        };
+
         const updateStartButtonState = () => {
             if (!startButton)
                 return;
@@ -217,7 +292,7 @@
             }
 
             if (!interviewStarted) {
-                startButton.disabled = false;
+                startButton.disabled = !guidelinesAcknowledged;
                 startButton.textContent = 'Start Interview';
                 return;
             }
@@ -246,6 +321,11 @@
             tokenRefreshTimer = null;
         };
 
+        const stopScreenShare = () => {
+            screenShareStream?.getTracks().forEach(track => track.stop());
+            screenShareStream = null;
+        };
+
         const clearCompletedRedirectState = () => {
             clearInterval(completedCountdown);
             clearTimeout(completedRedirectTimer);
@@ -256,6 +336,7 @@
         const clearActiveInterviewTimers = () => {
             clearAnswerTimers();
             clearTokenRefreshTimer();
+            clearGuidelinesModalTimer();
             clearInterval(runtimeTimerHandle);
             runtimeTimerHandle = null;
         };
@@ -434,6 +515,44 @@
                 || !trimmedAnswer;
         };
 
+        const updateGuidelinesAcknowledgementState = () => {
+            if (!guidelinesAgreeButton || !guidelinesCheckbox)
+                return;
+
+            guidelinesAgreeButton.disabled = !guidelinesCheckbox.checked;
+        };
+
+        const requestScreenShareForInterviewStart = async () => {
+            if (screenShareStream)
+                return true;
+
+            if (!navigator.mediaDevices?.getDisplayMedia) {
+                setStatus('Screen sharing is required, but this browser does not support it.', true);
+                logActivity('Screen sharing unavailable in this browser.');
+                return false;
+            }
+
+            try {
+                screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                const [screenTrack] = screenShareStream.getVideoTracks();
+                if (screenTrack) {
+                    screenTrack.addEventListener('ended', () => {
+                        screenShareStream = null;
+                        if (!runtimeStoppedOrCompleted)
+                            setStatus('Screen sharing ended. Keep sharing your screen while the interview is in progress.', true);
+                    });
+                }
+
+                logActivity('Screen sharing started.');
+                return true;
+            } catch (error) {
+                stopScreenShare();
+                logActivity('Screen sharing was denied or cancelled.');
+                setStatus('Screen sharing is required to start the interview.', true);
+                return false;
+            }
+        };
+
         const showUnavailableQuestionState = (message = 'AI service unavailable. Please try again later.') => {
             interviewUnavailable = true;
             clearAnswerTimers();
@@ -566,6 +685,7 @@
             await stopRecording(false);
             recordingEnabled = false;
             interviewStarted = false;
+            stopScreenShare();
             if (recordingButton)
                 recordingButton.disabled = true;
             cameraStream?.getTracks().forEach(track => track.stop());
@@ -1386,6 +1506,12 @@
                     await speakText(questionBox.textContent, 'question');
                 return;
             }
+            if (!guidelinesAcknowledged) {
+                openGuidelinesModal();
+                setStatus('Please review and accept the interview guidelines before starting.', false);
+                updateStartButtonState();
+                return;
+            }
             if (!(await ensureRuntimeTokenFresh())) {
                 setStatus('Interview token refresh failed.', true);
                 return;
@@ -1394,6 +1520,11 @@
                 logActivity('Interview cannot start because no active AI question is available.');
                 showUnavailableQuestionState();
                 interviewStarted = false;
+                return;
+            }
+            if (!(await requestScreenShareForInterviewStart())) {
+                interviewStarted = false;
+                updateStartButtonState();
                 return;
             }
 
@@ -1417,6 +1548,28 @@
 
         document.getElementById('submit-answer').addEventListener('click', submitAnswer);
         document.getElementById('start-or-next').addEventListener('click', beginInterview);
+        if (guidelinesButton)
+            guidelinesButton.addEventListener('click', openGuidelinesModal);
+        if (guidelinesCheckbox)
+            guidelinesCheckbox.addEventListener('change', updateGuidelinesAcknowledgementState);
+        if (guidelinesAgreeButton) {
+            guidelinesAgreeButton.addEventListener('click', () => {
+                if (!guidelinesCheckbox?.checked)
+                    return;
+
+                guidelinesAcknowledged = true;
+                guidelinesAcknowledgedAt = new Date().toISOString();
+                closeGuidelinesModal();
+                updateStartButtonState();
+                setStatus('Guidelines acknowledged. You can start the interview.', false);
+                logGuidelinesAcknowledgement();
+            });
+        }
+        document.getElementById('guidelines-cancel').addEventListener('click', () => {
+            closeGuidelinesModal();
+            updateStartButtonState();
+            setStatus('Please acknowledge the interview guidelines before starting.', false);
+        });
         document.getElementById('toggle-camera').addEventListener('click', async () => await setCamera(!cameraStream));
         document.getElementById('toggle-mic').addEventListener('click', async () => await setMic(!micStream));
         if (recordingButton) {
@@ -1439,14 +1592,22 @@
         document.getElementById('stop-interview-top').addEventListener('click', stopInterview);
         document.getElementById('open-transcript').addEventListener('click', () => transcript.classList.add('is-open'));
         document.getElementById('close-transcript').addEventListener('click', () => transcript.classList.remove('is-open'));
-        window.addEventListener('pagehide', clearAllRuntimeTimers);
-        window.addEventListener('beforeunload', clearAllRuntimeTimers);
+        window.addEventListener('pagehide', () => {
+            stopScreenShare();
+            clearAllRuntimeTimers();
+        });
+        window.addEventListener('beforeunload', () => {
+            stopScreenShare();
+            clearAllRuntimeTimers();
+        });
 
         renderTranscript();
         answerBox.disabled = true;
         submitButton.disabled = true;
+        updateGuidelinesAcknowledgementState();
         updateStartButtonState();
         updateSubmitAvailability();
+        guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);
         scheduleTokenRefresh();
     })();
 </script>
