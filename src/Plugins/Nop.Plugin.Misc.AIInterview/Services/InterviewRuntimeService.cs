@@ -820,7 +820,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         var customer = session.CustomerId > 0 ? await _customerService.GetCustomerByIdAsync(session.CustomerId) : null;
         var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
-        return await BuildRuntimeModelAsync(session, turns, customer);
+        var model = await BuildRuntimeModelAsync(session, turns, customer);
+        if (model == null)
+            return null;
+
+        model.CurrentQuestion = string.Empty;
+        model.Turns = Array.Empty<InterviewTurnViewModel>();
+        return model;
     }
 
     public async Task<InterviewRuntimeModel> BeginInterviewAsync(string token, Customer customer = null)

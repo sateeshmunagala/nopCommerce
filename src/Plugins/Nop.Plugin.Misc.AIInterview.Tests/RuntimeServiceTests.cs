@@ -158,6 +158,86 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task GetRuntimeModelAsync_WithExistingUnansweredTurn_HidesQuestionAndTurns_UntilBegin()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession { Id = 31, ProductId = 10, CustomerId = 99, SessionKey = "key31", Token = "token31", Difficulty = "Medium", IsActive = true };
+        var unansweredTurn = new InterviewTurn
+        {
+            Id = 7,
+            InterviewSessionId = 31,
+            SequenceNumber = 1,
+            QuestionText = "Tell me about a time you improved reliability.",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-2),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-2)
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token31")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(31)).ReturnsAsync(new List<InterviewTurn> { unansweredTurn });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var model = await service.GetRuntimeModelAsync("token31");
+
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.CurrentQuestion, Is.Empty);
+        Assert.That(model.Turns, Is.Empty);
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task BeginInterviewAsync_WithExistingUnansweredTurn_ReturnsThatTurn_WithoutGeneratingDuplicate()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession
+        {
+            Id = 32,
+            ProductId = 10,
+            CustomerId = 99,
+            SessionKey = "key32",
+            Token = "token32",
+            Difficulty = "Medium",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
+        var unansweredTurn = new InterviewTurn
+        {
+            Id = 9,
+            InterviewSessionId = 32,
+            SequenceNumber = 1,
+            QuestionText = "Explain a production incident you handled.",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-2),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-2)
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token32")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(32)).ReturnsAsync(new List<InterviewTurn> { unansweredTurn });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var model = await service.BeginInterviewAsync("token32", new Customer { Id = 99 });
+
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.CurrentQuestion, Is.EqualTo("Explain a production incident you handled."));
+        Assert.That(model.Turns.Count(), Is.EqualTo(1));
+        Assert.That(model.Turns.Single().QuestionText, Is.EqualTo("Explain a production incident you handled."));
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+        turnService.Verify(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()), Times.Never);
+    }
+
+    [Test]
     public async Task EnsureInterviewStartedAsync_RealMode_Failure_DoesNotCreateTurn()
     {
         var sessionService = new Mock<IInterviewSessionService>();

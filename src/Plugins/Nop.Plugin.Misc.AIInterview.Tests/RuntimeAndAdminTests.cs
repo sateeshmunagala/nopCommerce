@@ -803,6 +803,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("if (!config.recordingUploadUrl || !blob || recordingUploadInFlight)"));
         Assert.That(runtimeViewText, Does.Contain("if (!interviewStarted) {"));
         Assert.That(runtimeViewText, Does.Contain("Click Start Interview to begin."));
+        Assert.That(runtimeViewText, Does.Contain("<div class=\"runtime-conversation\" id=\"conversation\"></div>"));
         Assert.That(runtimeViewText, Does.Not.Contain("startButton.textContent = 'Next Question';"));
         Assert.That(runtimeViewText, Does.Contain("startButton.textContent = 'Repeat Question';"));
         Assert.That(runtimeViewText, Does.Contain("startButton.textContent = 'Interview Started';"));
@@ -896,6 +897,52 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Not.Contain("participant flow"));
         Assert.That(runtimeViewText, Does.Not.Contain("mobileDetect"));
         Assert.That(runtimeViewText, Does.Not.Contain("userAgentData.mobile"));
+    }
+
+    [Test]
+    public async Task Runtime_Get_WithExistingUnansweredTurn_DoesNotExposeQuestionInInitialModel()
+    {
+        var runtimeModel = new InterviewRuntimeModel
+        {
+            SessionId = 15,
+            ProductId = 1,
+            SessionKey = "session-15",
+            Token = "token15",
+            CurrentQuestion = string.Empty,
+            Turns = Array.Empty<InterviewTurnViewModel>(),
+            ClientSettings = new RuntimeClientSettingsModel()
+        };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("token15")).ReturnsAsync(new InterviewSession
+        {
+            Id = 15,
+            CustomerId = 1,
+            IsActive = true,
+            Token = "token15",
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        _interviewRuntimeService.Setup(x => x.GetRuntimeModelAsync("token15")).ReturnsAsync(runtimeModel);
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            null,
+            null,
+            null,
+            _interviewRuntimeService.Object);
+
+        var result = (ViewResult)await controller.Runtime("token15");
+        var model = (InterviewRuntimeModel)result.Model;
+
+        Assert.That(model.CurrentQuestion, Is.Empty);
+        Assert.That(model.Turns, Is.Empty);
     }
 
     [Test]
