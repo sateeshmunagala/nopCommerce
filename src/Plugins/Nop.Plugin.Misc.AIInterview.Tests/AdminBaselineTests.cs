@@ -808,6 +808,54 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public async Task ApplicantCredits_Get_With_New_Applicant_Loads_Selected_Applicant_Without_Creating_Wallet()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
+
+        var result = await _controller.ApplicantCredits(202);
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.CustomerId, Is.EqualTo(202));
+        Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
+        Assert.That(model.WalletBalance, Is.Zero);
+        Assert.That(model.LedgerEntries, Is.Empty);
+        _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Get_With_VendorCustomer_Does_Not_Load_Selected_Data()
+    {
+        _wallets.Add(new CreditWallet { Id = 77, CustomerId = 301, Balance = 8 });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(301))
+            .ReturnsAsync(new Customer { Id = 301, FirstName = "Vendor", LastName = "Owner", Email = "vendor@example.com", VendorId = 12 });
+
+        var result = await _controller.ApplicantCredits(301);
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.CustomerId, Is.Zero);
+        Assert.That(model.CustomerName, Is.Null.Or.Empty);
+        Assert.That(model.WalletBalance, Is.Zero);
+        Assert.That(model.LedgerEntries, Is.Empty);
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Get_With_DeletedCustomer_Does_Not_Load_Selected_Data()
+    {
+        _wallets.Add(new CreditWallet { Id = 78, CustomerId = 302, Balance = 8 });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(302))
+            .ReturnsAsync(new Customer { Id = 302, FirstName = "Deleted", LastName = "Applicant", Email = "deleted@example.com", VendorId = 0, Deleted = true });
+
+        var result = await _controller.ApplicantCredits(302);
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.CustomerId, Is.Zero);
+        Assert.That(model.CustomerName, Is.Null.Or.Empty);
+        Assert.That(model.WalletBalance, Is.Zero);
+        Assert.That(model.LedgerEntries, Is.Empty);
+    }
+
+    [Test]
     public async Task ApplicantCredits_Activity_Does_Not_Show_Vendor_Customers()
     {
         _customers.Add(new Customer { Id = 301, FirstName = "Vendor", LastName = "Owner", Email = "vendor@example.com", VendorId = 55 });
@@ -819,6 +867,27 @@ public class AdminBaselineTests
             Amount = 7,
             TransactionType = "Deposit",
             Remarks = "Vendor credit row should stay out of applicant page",
+            CreatedOnUtc = DateTime.UtcNow
+        });
+
+        var result = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { Start = 0, Length = 10, Draw = "1" });
+        var model = (ApplicantCreditActivityListModel)((JsonResult)result).Value;
+
+        Assert.That(model.Data, Is.Empty);
+    }
+
+    [Test]
+    public async Task ApplicantCreditActivityList_Excludes_Deleted_Customers()
+    {
+        _customers.Add(new Customer { Id = 304, FirstName = "Deleted", LastName = "Customer", Email = "deleted@example.com", VendorId = 0, Deleted = true });
+        _wallets.Add(new CreditWallet { Id = 51, CustomerId = 304, Balance = 3 });
+        _ledgerEntries.Add(new CreditLedgerEntry
+        {
+            Id = 1,
+            CreditWalletId = 51,
+            Amount = 3,
+            TransactionType = "Deposit",
+            Remarks = "Should stay hidden",
             CreatedOnUtc = DateTime.UtcNow
         });
 
@@ -891,6 +960,88 @@ public class AdminBaselineTests
         var model = (ApplicantCreditActivityListModel)((JsonResult)result).Value;
 
         Assert.That(model.RecordsTotal, Is.EqualTo(1));
+        Assert.That(model.Data, Has.Count.EqualTo(1));
+        Assert.That(model.Data.Single().CustomerId, Is.EqualTo(202));
+    }
+
+    [Test]
+    public async Task ApplicantCreditActivityList_Keyword_Search_Is_Null_Safe_And_Matches_Email_First_And_Last_Name()
+    {
+        _customers.AddRange(new[]
+        {
+            new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 },
+            new Customer { Id = 203, FirstName = null, LastName = "Nullname", Email = null, VendorId = 0 },
+            new Customer { Id = 204, FirstName = "Alice", LastName = "Johnson", Email = "alice@example.com", VendorId = 0 }
+        });
+        _wallets.AddRange(new[]
+        {
+            new CreditWallet { Id = 1, CustomerId = 202, Balance = 5 },
+            new CreditWallet { Id = 2, CustomerId = 203, Balance = 2 },
+            new CreditWallet { Id = 3, CustomerId = 204, Balance = 1 }
+        });
+
+        var emailResult = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { SearchKeyword = "alice@", Start = 0, Length = 10, Draw = "1" });
+        var emailModel = (ApplicantCreditActivityListModel)((JsonResult)emailResult).Value;
+        Assert.That(emailModel.Data.Single().CustomerId, Is.EqualTo(204));
+
+        var firstNameResult = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { SearchKeyword = "Jane", Start = 0, Length = 10, Draw = "2" });
+        var firstNameModel = (ApplicantCreditActivityListModel)((JsonResult)firstNameResult).Value;
+        Assert.That(firstNameModel.Data.Single().CustomerId, Is.EqualTo(202));
+
+        var lastNameResult = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { SearchKeyword = "Nullname", Start = 0, Length = 10, Draw = "3" });
+        var lastNameModel = (ApplicantCreditActivityListModel)((JsonResult)lastNameResult).Value;
+        Assert.That(lastNameModel.Data.Single().CustomerId, Is.EqualTo(203));
+    }
+
+    [Test]
+    public async Task ApplicantCreditActivityList_Search_By_CustomerId_And_Positive_Balance_Filter_Works()
+    {
+        _customers.AddRange(new[]
+        {
+            new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 },
+            new Customer { Id = 203, FirstName = "John", LastName = "Smith", Email = "john@example.com", VendorId = 0 }
+        });
+        _wallets.AddRange(new[]
+        {
+            new CreditWallet { Id = 1, CustomerId = 202, Balance = 0 },
+            new CreditWallet { Id = 2, CustomerId = 203, Balance = 6 }
+        });
+        _ledgerEntries.Add(new CreditLedgerEntry { Id = 1, CreditWalletId = 1, Amount = 1, TransactionType = "Deposit", Remarks = "history", CreatedOnUtc = DateTime.UtcNow });
+
+        var customerIdResult = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { SearchCustomerId = 202, Start = 0, Length = 10, Draw = "1" });
+        var customerIdModel = (ApplicantCreditActivityListModel)((JsonResult)customerIdResult).Value;
+        Assert.That(customerIdModel.Data.Single().CustomerId, Is.EqualTo(202));
+
+        var positiveBalanceResult = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { SearchHasPositiveBalanceOnly = true, Start = 0, Length = 10, Draw = "2" });
+        var positiveBalanceModel = (ApplicantCreditActivityListModel)((JsonResult)positiveBalanceResult).Value;
+        Assert.That(positiveBalanceModel.RecordsTotal, Is.EqualTo(1));
+        Assert.That(positiveBalanceModel.Data.Single().CustomerId, Is.EqualTo(203));
+    }
+
+    [Test]
+    public async Task ApplicantCreditActivityList_End_Date_Filter_Includes_Same_Day_Activity()
+    {
+        _customers.Add(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
+        _wallets.Add(new CreditWallet { Id = 1, CustomerId = 202, Balance = 5 });
+        _ledgerEntries.Add(new CreditLedgerEntry
+        {
+            Id = 1,
+            CreditWalletId = 1,
+            Amount = 5,
+            TransactionType = "Deposit",
+            Remarks = "same-day activity",
+            CreatedOnUtc = new DateTime(2026, 6, 14, 10, 0, 0, DateTimeKind.Utc)
+        });
+
+        var result = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel
+        {
+            SearchActivityDateToUtc = new DateTime(2026, 6, 14, 0, 0, 0, DateTimeKind.Utc),
+            Start = 0,
+            Length = 10,
+            Draw = "1"
+        });
+        var model = (ApplicantCreditActivityListModel)((JsonResult)result).Value;
+
         Assert.That(model.Data, Has.Count.EqualTo(1));
         Assert.That(model.Data.Single().CustomerId, Is.EqualTo(202));
     }
@@ -986,6 +1137,21 @@ public class AdminBaselineTests
         Assert.That(model.Data, Has.Count.EqualTo(1));
         Assert.That(model.Data.Single().CustomerId, Is.EqualTo(404));
         Assert.That(model.Data.Single().WalletBalance, Is.EqualTo(10));
+    }
+
+    [Test]
+    public void ApplicantCredits_View_Uses_Local_Encoder_And_Localized_Ledger_Headers()
+    {
+        var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "ApplicantCredits.cshtml"));
+
+        Assert.That(text, Does.Contain("function applicantCreditEncodeHtml"));
+        Assert.That(text, Does.Contain("applicantCreditEncodeUrl"));
+        Assert.That(text, Does.Not.Contain("htmlEncode("));
+        Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Customer"));
+        Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Amount"));
+        Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Type"));
+        Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Remarks"));
+        Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Utc"));
     }
 
     [Test]

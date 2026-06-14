@@ -25,6 +25,16 @@
         <div class="card card-default">
             <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.Title")</div>
             <div class="card-body">
+                <form asp-controller="AIInterviewAdmin" asp-action="ApplicantCredits" method="get">
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="CustomerId" /></div>
+                        <div class="col-md-6"><nop-select asp-for="CustomerId" asp-items="Model.AvailableCustomers" /></div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-secondary">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.LoadApplicant")</button>
+                        </div>
+                    </div>
+                </form>
+
                 <div class="card card-default card-search">
                     <div class="card-body">
                         <div class="row search-row @(!hideSearchBlock ? "opened" : "")" data-hideAttribute="@hideSearchBlockAttributeName">
@@ -192,7 +202,15 @@
                 <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Title")</div>
                 <div class="card-body">
                     <table class="table table-bordered table-striped">
-                        <thead><tr><th>Customer</th><th>Amount</th><th>Type</th><th>Remarks</th><th>UTC</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Customer")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Amount")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Type")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Remarks")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Utc")</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             @if (Model.LedgerEntries.Any())
                             {
@@ -231,18 +249,35 @@
 </section>
 
 <script>
+    function applicantCreditEncodeHtml(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function applicantCreditEncodeUrl(value) {
+        return applicantCreditEncodeHtml(value);
+    }
+
     function renderApplicantCreditCustomer(data, type, row) {
         if (type !== 'display') {
             return data;
         }
 
         var name = row.CustomerName || '';
-        var email = row.CustomerEmail ? '<div class="text-muted">' + htmlEncode(row.CustomerEmail) + '</div>' : '';
+        var email = row.CustomerEmail ? '<div class="text-muted">' + applicantCreditEncodeHtml(row.CustomerEmail) + '</div>' : '';
         if (row.CustomerAdminUrl) {
-            return '<a href="' + row.CustomerAdminUrl + '">' + htmlEncode(name) + '</a>' + email;
+            return '<a href="' + applicantCreditEncodeUrl(row.CustomerAdminUrl) + '">' + applicantCreditEncodeHtml(name) + '</a>' + email;
         }
 
-        return htmlEncode(name) + email;
+        return applicantCreditEncodeHtml(name) + email;
     }
 
     function renderApplicantCreditDate(data, type, row) {
@@ -262,6 +297,6 @@
             return '';
         }
 
-        return '<a class="btn btn-default" href="' + row.ViewLedgerUrl + '">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.ViewLedger").Text</a>';
+        return '<a class="btn btn-default" href="' + applicantCreditEncodeUrl(row.ViewLedgerUrl) + '">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.ViewLedger").Text</a>';
     }
 </script>

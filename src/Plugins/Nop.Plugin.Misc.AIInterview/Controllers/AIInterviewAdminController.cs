@@ -34,6 +34,7 @@ public class AIInterviewAdminController : BasePluginController
     private sealed record CreditWalletSnapshot(int Id, int CustomerId, decimal Balance);
     private sealed record CreditLedgerSnapshot(int CustomerId, decimal Amount, DateTime CreatedOnUtc);
     private sealed record CreditGrantSnapshot(int CustomerId, DateTime CreatedOnUtc);
+    private sealed record ApplicantCreditActivityProjection(int CustomerId, string FirstName, string LastName, string Email, decimal WalletBalance, decimal TotalDeposited, decimal TotalWithdrawn, DateTime? LastCreditActivityUtc);
 
     private readonly ICreditService _creditService;
     private readonly ISponsorInviteService _inviteService;
@@ -449,12 +450,25 @@ public class AIInterviewAdminController : BasePluginController
             return model;
 
         var customer = await _customerService.GetCustomerByIdAsync(model.CustomerId);
-        if (customer != null)
+        var isValidSelectedCustomer = isVendorScope
+            ? customer != null && !customer.Deleted && customer.VendorId > 0
+            : customer != null && !customer.Deleted && customer.VendorId <= 0;
+        if (!isValidSelectedCustomer)
         {
-            model.CustomerName = GetCustomerName(customer);
-            model.CustomerEmail = customer.Email;
-            model.CustomerAdminUrl = BuildCustomerAdminUrl(customer.Id);
+            model.CustomerId = 0;
+            var resourceKey = isVendorScope
+                ? "Plugins.Misc.AIInterview.Admin.Credits.InvalidVendorScope"
+                : "Plugins.Misc.AIInterview.Admin.Credits.InvalidApplicantScope";
+            var defaultMessage = isVendorScope
+                ? "The selected customer is not a vendor account."
+                : "The selected customer is not an applicant account.";
+            _notificationService.WarningNotification(await GetLocalizedTextAsync(resourceKey, defaultMessage));
+            return model;
         }
+
+        model.CustomerName = GetCustomerName(customer);
+        model.CustomerEmail = customer.Email;
+        model.CustomerAdminUrl = BuildCustomerAdminUrl(customer.Id);
 
         var wallet = createWallet
             ? await _creditService.GetOrCreateWalletAsync(model.CustomerId)
@@ -494,7 +508,7 @@ public class AIInterviewAdminController : BasePluginController
     {
         ArgumentNullException.ThrowIfNull(searchModel);
 
-        var walletBalances = _walletRepository.Table
+        var walletBalancesQuery = _walletRepository.Table
             .GroupBy(wallet => wallet.CustomerId)
             .Select(group => new
             {
@@ -502,20 +516,20 @@ public class AIInterviewAdminController : BasePluginController
                 WalletBalance = group.Max(wallet => wallet.Balance)
             });
 
-        var ledgerAggregates = from entry in _ledgerRepository.Table
-                               join wallet in _walletRepository.Table on entry.CreditWalletId equals wallet.Id
-                               group entry by wallet.CustomerId
+        var ledgerAggregatesQuery = from entry in _ledgerRepository.Table
+                                    join wallet in _walletRepository.Table on entry.CreditWalletId equals wallet.Id
+                                    group entry by wallet.CustomerId
             into groupByCustomer
-                               select new
-                               {
-                                   CustomerId = groupByCustomer.Key,
-                                   TotalDeposited = groupByCustomer.Where(entry => entry.Amount > 0).Sum(entry => entry.Amount),
-                                   TotalWithdrawn = groupByCustomer.Where(entry => entry.Amount < 0).Sum(entry => -entry.Amount),
-                                   LastLedgerActivityUtc = groupByCustomer.Max(entry => (DateTime?)entry.CreatedOnUtc),
-                                   LedgerCount = groupByCustomer.Count()
-                               };
+                                    select new
+                                    {
+                                        CustomerId = groupByCustomer.Key,
+                                        TotalDeposited = groupByCustomer.Where(entry => entry.Amount > 0).Sum(entry => entry.Amount),
+                                        TotalWithdrawn = groupByCustomer.Where(entry => entry.Amount < 0).Sum(entry => -entry.Amount),
+                                        LastLedgerActivityUtc = groupByCustomer.Max(entry => (DateTime?)entry.CreatedOnUtc),
+                                        LedgerCount = groupByCustomer.Count()
+                                    };
 
-        var grantAggregates = _creditPurchaseGrantRepository.Table
+        var grantAggregatesQuery = _creditPurchaseGrantRepository.Table
             .GroupBy(grant => grant.CustomerId)
             .Select(group => new
             {
@@ -524,33 +538,32 @@ public class AIInterviewAdminController : BasePluginController
                 GrantCount = group.Count()
             });
 
+        var eligibleCustomerIds = walletBalancesQuery.Where(wallet => wallet.WalletBalance > 0).Select(wallet => wallet.CustomerId)
+            .Union(ledgerAggregatesQuery.Where(ledger => ledger.LedgerCount > 0).Select(ledger => ledger.CustomerId))
+            .Union(grantAggregatesQuery.Where(grant => grant.GrantCount > 0).Select(grant => grant.CustomerId));
+
         var activityQuery =
             from customer in _customerRepository.Table
-            join wallet in walletBalances on customer.Id equals wallet.CustomerId into walletJoin
+            join eligibleCustomerId in eligibleCustomerIds on customer.Id equals eligibleCustomerId
+            join wallet in walletBalancesQuery on customer.Id equals wallet.CustomerId into walletJoin
             from wallet in walletJoin.DefaultIfEmpty()
-            join ledger in ledgerAggregates on customer.Id equals ledger.CustomerId into ledgerJoin
+            join ledger in ledgerAggregatesQuery on customer.Id equals ledger.CustomerId into ledgerJoin
             from ledger in ledgerJoin.DefaultIfEmpty()
-            join grant in grantAggregates on customer.Id equals grant.CustomerId into grantJoin
+            join grant in grantAggregatesQuery on customer.Id equals grant.CustomerId into grantJoin
             from grant in grantJoin.DefaultIfEmpty()
             where !customer.Deleted
                   && customer.VendorId <= 0
-                  && ((wallet != null && wallet.WalletBalance > 0)
-                      || (ledger != null && ledger.LedgerCount > 0)
-                      || (grant != null && grant.GrantCount > 0))
-            select new
-            {
-                CustomerId = customer.Id,
+            select new ApplicantCreditActivityProjection(
+                customer.Id,
                 customer.FirstName,
                 customer.LastName,
                 customer.Email,
-                WalletBalance = wallet != null ? wallet.WalletBalance : 0m,
-                TotalDeposited = ledger != null ? ledger.TotalDeposited : 0m,
-                TotalWithdrawn = ledger != null ? ledger.TotalWithdrawn : 0m,
-                LastCreditActivityUtc =
-                    ledger != null && grant != null
-                        ? (ledger.LastLedgerActivityUtc >= grant.LastGrantActivityUtc ? ledger.LastLedgerActivityUtc : grant.LastGrantActivityUtc)
-                        : (ledger != null ? ledger.LastLedgerActivityUtc : grant.LastGrantActivityUtc)
-            };
+                wallet != null ? wallet.WalletBalance : 0m,
+                ledger != null ? ledger.TotalDeposited : 0m,
+                ledger != null ? ledger.TotalWithdrawn : 0m,
+                ledger != null && grant != null
+                    ? (ledger.LastLedgerActivityUtc >= grant.LastGrantActivityUtc ? ledger.LastLedgerActivityUtc : grant.LastGrantActivityUtc)
+                    : (ledger != null ? ledger.LastLedgerActivityUtc : (grant != null ? grant.LastGrantActivityUtc : null)));
 
         if (searchModel.SearchCustomerId > 0)
             activityQuery = activityQuery.Where(item => item.CustomerId == searchModel.SearchCustomerId);
@@ -559,10 +572,9 @@ public class AIInterviewAdminController : BasePluginController
         {
             var keyword = searchModel.SearchKeyword.Trim();
             activityQuery = activityQuery.Where(item =>
-                item.Email.Contains(keyword) ||
-                item.FirstName.Contains(keyword) ||
-                item.LastName.Contains(keyword) ||
-                ((item.FirstName + " " + item.LastName).Trim()).Contains(keyword));
+                (item.Email ?? string.Empty).Contains(keyword) ||
+                (item.FirstName ?? string.Empty).Contains(keyword) ||
+                (item.LastName ?? string.Empty).Contains(keyword));
         }
 
         if (searchModel.SearchHasPositiveBalanceOnly)
@@ -572,7 +584,13 @@ public class AIInterviewAdminController : BasePluginController
             activityQuery = activityQuery.Where(item => item.LastCreditActivityUtc.HasValue && item.LastCreditActivityUtc.Value >= searchModel.SearchActivityDateFromUtc.Value);
 
         if (searchModel.SearchActivityDateToUtc.HasValue)
-            activityQuery = activityQuery.Where(item => item.LastCreditActivityUtc.HasValue && item.LastCreditActivityUtc.Value <= searchModel.SearchActivityDateToUtc.Value);
+        {
+            var endDateUtc = searchModel.SearchActivityDateToUtc.Value;
+            if (endDateUtc.TimeOfDay == TimeSpan.Zero)
+                endDateUtc = endDateUtc.Date.AddDays(1).AddTicks(-1);
+
+            activityQuery = activityQuery.Where(item => item.LastCreditActivityUtc.HasValue && item.LastCreditActivityUtc.Value <= endDateUtc);
+        }
 
         activityQuery = activityQuery
             .OrderByDescending(item => item.LastCreditActivityUtc)
@@ -584,7 +602,7 @@ public class AIInterviewAdminController : BasePluginController
             .Take(searchModel.Length)
             .ToListAsync();
 
-        var pagedList = new Nop.Core.PagedList<dynamic>(pageItems.Cast<dynamic>().ToList(), searchModel.Page - 1, searchModel.PageSize, totalCount);
+        var pagedList = new Nop.Core.PagedList<ApplicantCreditActivityProjection>(pageItems, searchModel.Page - 1, searchModel.PageSize, totalCount);
 
         return await new ApplicantCreditActivityListModel().PrepareToGridAsync(searchModel, pagedList, () =>
         {
