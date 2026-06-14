@@ -679,6 +679,77 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task RuntimeController_DoesNotReturnFeedbackScoreOrCompletionToRuntimeJson()
+    {
+        var session = new InterviewSession
+        {
+            Id = 81,
+            CustomerId = 1,
+            Token = "runtime-json-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("runtime-json-token")).ReturnsAsync(session);
+        _interviewRuntimeService.Setup(x => x.SubmitAnswerAsync("runtime-json-token", "Answer"))
+            .ReturnsAsync(new SubmitInterviewAnswerResponse
+            {
+                Success = true,
+                IsTerminated = false,
+                Question = "Q2",
+                Message = "Answer saved.",
+                Completion = "hidden",
+                Feedback = "hidden",
+                Score = 88,
+                Turn = new InterviewTurnViewModel
+                {
+                    TurnId = 10,
+                    SequenceNumber = 1,
+                    QuestionText = "Q1",
+                    AnswerText = "Answer",
+                    Score = 88,
+                    Feedback = "hidden"
+                }
+            });
+        _interviewRuntimeService.Setup(x => x.CompleteInterviewAsync("runtime-json-token", "Stopped by user"))
+            .ReturnsAsync(new CompleteInterviewResponse
+            {
+                Success = true,
+                IsTerminated = true,
+                Message = "Interview completed.",
+                Completion = "hidden",
+                Feedback = "hidden",
+                Score = 91
+            });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            null,
+            null,
+            null,
+            _interviewRuntimeService.Object);
+
+        var submitResult = (JsonResult)await controller.SubmitAnswer("runtime-json-token", "Answer");
+        Assert.That(submitResult.Value.GetType().GetProperty("completion"), Is.Null);
+        Assert.That(submitResult.Value.GetType().GetProperty("feedback"), Is.Null);
+        Assert.That(submitResult.Value.GetType().GetProperty("score"), Is.Null);
+
+        var stopResult = (JsonResult)await controller.Stop("runtime-json-token");
+        Assert.That(stopResult.Value.GetType().GetProperty("Completion"), Is.Null);
+        Assert.That(stopResult.Value.GetType().GetProperty("Feedback"), Is.Null);
+        Assert.That(stopResult.Value.GetType().GetProperty("Score"), Is.Null);
+        Assert.That(stopResult.Value.GetType().GetProperty("Turns"), Is.Null);
+    }
+
+    [Test]
     public void RuntimeView_Contains_Recording_And_Upload_Hooks()
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
@@ -737,6 +808,12 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("startButton.textContent = 'Interview Started';"));
         Assert.That(runtimeViewText, Does.Contain("const updateStartButtonState = () =>"));
         Assert.That(runtimeViewText, Does.Contain("const normalizeTurn = (turn, index = 0) =>"));
+        Assert.That(runtimeViewText, Does.Not.Contain("score: getValue(turn, 'score', 'Score')"));
+        Assert.That(runtimeViewText, Does.Not.Contain("feedback: getValue(turn, 'feedback', 'Feedback')"));
+        Assert.That(runtimeViewText, Does.Contain("id=\"stop-interview-top\" class=\"button-2\" disabled"));
+        Assert.That(runtimeViewText, Does.Contain("id=\"stop-interview\" class=\"button-2\" disabled"));
+        Assert.That(runtimeViewText, Does.Contain("const updateStopButtonsState = () =>"));
+        Assert.That(runtimeViewText, Does.Contain("const disableStop = !interviewStarted || runtimeStoppedOrCompleted || stopInProgress;"));
         Assert.That(runtimeViewText, Does.Not.Contain("Score: ${normalizedTurn.score ?? '-'}"));
         Assert.That(runtimeViewText, Does.Contain("await stopRecording(true);"));
         Assert.That(runtimeViewText, Does.Not.Contain("clearAllRuntimeTimers();\r\n            let originalText = ''").And.Not.Contain("clearAllRuntimeTimers();\n            let originalText = ''"));

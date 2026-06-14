@@ -885,21 +885,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var currentTurn = turns.LastOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText)) ?? turns.LastOrDefault();
         if (currentTurn == null)
         {
-            currentTurn = await GenerateQuestionTurnAsync(session, 1, turns);
-            if (currentTurn == null)
+            if (_nopLogger != null)
+                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview submit before begin", $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=submit before begin.");
+            return new SubmitInterviewAnswerResponse
             {
-                if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview missing current turn", $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=current turn missing.");
-                return new SubmitInterviewAnswerResponse
-                {
-                    Success = false,
-                    Message = "The AI interview service is temporarily unavailable. Please try again later.",
-                    Feedback = "The AI interview service is temporarily unavailable. Please try again later."
-                };
-            }
-
-            await _turnService.InsertInterviewTurnAsync(currentTurn);
-            turns.Add(currentTurn);
+                Success = false,
+                Message = "Interview has not started. Click Start Interview to begin."
+            };
         }
 
         var answerValidationMessage = await ValidateAnswerAsync(currentTurn.QuestionText, answer);
@@ -934,8 +926,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
-                Message = "The AI interview service is temporarily unavailable. Please try again later.",
-                Feedback = "The AI interview service is temporarily unavailable. Please try again later."
+                Message = "The AI interview service is temporarily unavailable. Please try again later."
             };
         }
 
@@ -1009,12 +1000,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     SequenceNumber = currentTurn.SequenceNumber,
                     QuestionText = currentTurn.QuestionText,
                     AnswerText = currentTurn.AnswerText,
-                    Score = currentTurn.Score,
-                    TechnicalScore = ParseRubricScore(currentTurn.RubricJson, "technicalScore"),
-                    CommunicationScore = ParseRubricScore(currentTurn.RubricJson, "communicationScore"),
-                    ProfessionalismScore = ParseRubricScore(currentTurn.RubricJson, "professionalismScore"),
-                    PositiveAttitudeScore = ParseRubricScore(currentTurn.RubricJson, "positiveAttitudeScore"),
-                    Feedback = currentTurn.Feedback,
                     AskedOnUtc = currentTurn.AskedOnUtc,
                     AnsweredOnUtc = currentTurn.AnsweredOnUtc
                 }
@@ -1038,12 +1023,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 SequenceNumber = currentTurn.SequenceNumber,
                 QuestionText = currentTurn.QuestionText,
                 AnswerText = currentTurn.AnswerText,
-                Score = currentTurn.Score,
-                TechnicalScore = ParseRubricScore(currentTurn.RubricJson, "technicalScore"),
-                CommunicationScore = ParseRubricScore(currentTurn.RubricJson, "communicationScore"),
-                ProfessionalismScore = ParseRubricScore(currentTurn.RubricJson, "professionalismScore"),
-                PositiveAttitudeScore = ParseRubricScore(currentTurn.RubricJson, "positiveAttitudeScore"),
-                Feedback = currentTurn.Feedback,
                 AskedOnUtc = currentTurn.AskedOnUtc,
                 AnsweredOnUtc = currentTurn.AnsweredOnUtc
             }
@@ -1064,6 +1043,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
 
         var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
+        if (turns == null || !turns.Any())
+        {
+            return new CompleteInterviewResponse
+            {
+                Success = false,
+                Message = "Interview has not started. Click Start Interview to begin."
+            };
+        }
+
         return await CompleteInterviewInternalAsync(session, turns, reason);
     }
 

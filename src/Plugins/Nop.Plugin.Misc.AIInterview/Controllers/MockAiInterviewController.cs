@@ -475,13 +475,10 @@ public class MockAiInterviewController : BasePluginController
                 {
                     success = runtimeResponse?.Success == true,
                     isTerminated = runtimeResponse?.IsTerminated == true,
-                    completion = runtimeResponse?.Completion,
                     reportUrl,
                     question = runtimeResponse?.Question,
                     turn = runtimeResponse?.Turn,
                     interrupted = runtimeResponse?.Interrupted == true,
-                    score = runtimeResponse?.Score ?? 0,
-                    feedback = runtimeResponse?.Feedback,
                     message = runtimeResponse?.Message,
                     newToken = tokenRenewal.Session.Token,
                     tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
@@ -492,13 +489,10 @@ public class MockAiInterviewController : BasePluginController
             {
                 runtimeResponse.Success,
                 runtimeResponse.IsTerminated,
-                runtimeResponse.Completion,
                 ReportUrl = reportUrl,
                 runtimeResponse.Question,
                 runtimeResponse.Turn,
                 runtimeResponse.Interrupted,
-                runtimeResponse.Score,
-                runtimeResponse.Feedback,
                 runtimeResponse.Message
             });
         }
@@ -542,12 +536,8 @@ public class MockAiInterviewController : BasePluginController
                 {
                     success = response?.Success == true,
                     isTerminated = response?.IsTerminated == true,
-                    score = response?.Score ?? 0,
-                    feedback = response?.Feedback,
                     message = response?.Message,
-                    completion = response?.Completion,
                     reportUrl,
-                    turns = response?.Turns,
                     newToken = tokenRenewal.Session.Token,
                     tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
                 });
@@ -557,12 +547,8 @@ public class MockAiInterviewController : BasePluginController
             {
                 response.Success,
                 response.IsTerminated,
-                response.Score,
-                response.Feedback,
                 response.Message,
-                response.Completion,
-                ReportUrl = reportUrl,
-                response.Turns
+                ReportUrl = reportUrl
             });
         }
 

@@ -75,7 +75,7 @@
 <div class="runtime-shell">
     <div class="runtime-page">
         <div class="runtime-topbar">
-            <button type="button" id="stop-interview-top" class="button-2">Stop Interview</button>
+            <button type="button" id="stop-interview-top" class="button-2" disabled>Stop Interview</button>
             <h1>@Model.ProductName - @Model.Difficulty</h1>
             <div class="runtime-meta">
                 <span id="runtime-timer">00:00</span>
@@ -133,7 +133,7 @@
 
                 <div class="runtime-actions">
                     <button type="button" id="submit-answer" class="button-1" disabled>Submit Answer</button>
-                    <button type="button" id="stop-interview" class="button-2">Stop Interview</button>
+                    <button type="button" id="stop-interview" class="button-2" disabled>Stop Interview</button>
                     <button type="button" id="view-report" class="button-2" style="display:none;">View Report</button>
                 </div>
 
@@ -306,29 +306,45 @@
             if (runtimeStoppedOrCompleted) {
                 startButton.disabled = true;
                 startButton.textContent = 'Completed';
+                updateStopButtonsState();
                 return;
             }
 
             if (!interviewStarted) {
                 startButton.disabled = !guidelinesAcknowledged;
                 startButton.textContent = 'Start Interview';
+                updateStopButtonsState();
                 return;
             }
 
             if (screenShareRequired && (!screenShareActive || screenShareInterrupted)) {
                 startButton.disabled = false;
                 startButton.textContent = 'Resume Screen Share';
+                updateStopButtonsState();
                 return;
             }
 
             if (config.speechAvailable) {
                 startButton.disabled = false;
                 startButton.textContent = 'Repeat Question';
+                updateStopButtonsState();
                 return;
             }
 
             startButton.disabled = true;
             startButton.textContent = 'Interview Started';
+            updateStopButtonsState();
+        };
+
+        const updateStopButtonsState = () => {
+            const stopButtons = [document.getElementById('stop-interview'), document.getElementById('stop-interview-top')];
+            const disableStop = !interviewStarted || runtimeStoppedOrCompleted || stopInProgress;
+            stopButtons.forEach(button => {
+                if (!button)
+                    return;
+
+                button.disabled = disableStop;
+            });
         };
 
         const clearAnswerTimers = () => {
@@ -833,8 +849,6 @@
                 sequenceNumber: getValue(turn, 'sequenceNumber', 'SequenceNumber') ?? index + 1,
                 questionText: getValue(turn, 'questionText', 'QuestionText') || '',
                 answerText: getValue(turn, 'answerText', 'AnswerText') || '',
-                score: getValue(turn, 'score', 'Score'),
-                feedback: getValue(turn, 'feedback', 'Feedback') || '',
                 askedOnUtc: getValue(turn, 'askedOnUtc', 'AskedOnUtc') || null,
                 answeredOnUtc: getValue(turn, 'answeredOnUtc', 'AnsweredOnUtc') || null
             };
@@ -1821,6 +1835,7 @@
         renderTranscript();
         answerBox.disabled = true;
         submitButton.disabled = true;
+        updateStopButtonsState();
         setStatus('Click Start Interview to begin.', false);
         setScreenShareStatus('Screen sharing required');
         updateGuidelinesAcknowledgementState();

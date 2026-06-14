@@ -300,6 +300,44 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task SubmitAnswerAsync_BeforeBegin_DoesNotGenerateQuestionOrScore()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession
+        {
+            Id = 201,
+            ProductId = 20,
+            CustomerId = 5,
+            SessionKey = "key201",
+            Token = "token201",
+            Difficulty = "Medium",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token201")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(201)).ReturnsAsync(new List<InterviewTurn>());
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var result = await service.SubmitAnswerAsync("token201", "I would explain the issue, the impact, and my fix.");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Message, Is.EqualTo("Interview has not started. Click Start Interview to begin."));
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+        aiClient.Verify(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+        turnService.Verify(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()), Times.Never);
+        turnService.Verify(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()), Times.Never);
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
     public async Task SubmitAnswerAsync_Rejects_Copied_Question_Text()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -380,6 +418,44 @@ public class RuntimeServiceTests
         Assert.That(result.Success, Is.True);
         Assert.That(result.IsTerminated, Is.True);
         turnService.Verify(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CompleteInterviewAsync_BeforeBegin_DoesNotCompleteOrPublish()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession
+        {
+            Id = 301,
+            ProductId = 20,
+            CustomerId = 5,
+            SessionKey = "key301",
+            Token = "token301",
+            Difficulty = "Medium",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token301")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(301)).ReturnsAsync(new List<InterviewTurn>());
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, eventPublisher: eventPublisher);
+
+        var result = await service.CompleteInterviewAsync("token301", "Stopped by user");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Message, Is.EqualTo("Interview has not started. Click Start Interview to begin."));
+        Assert.That(session.CompletedOnUtc, Is.Null);
+        Assert.That(session.IsActive, Is.True);
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Never);
     }
 
     [Test]
@@ -556,7 +632,7 @@ public class RuntimeServiceTests
         var result = await service.SubmitAnswerAsync("token12", "answer");
 
         Assert.That(result.Success, Is.False);
-        Assert.That(result.Message, Does.Contain("temporarily unavailable"));
+        Assert.That(result.Message, Is.EqualTo("Interview has not started. Click Start Interview to begin."));
         Assert.That(inserted, Is.False);
     }
 
