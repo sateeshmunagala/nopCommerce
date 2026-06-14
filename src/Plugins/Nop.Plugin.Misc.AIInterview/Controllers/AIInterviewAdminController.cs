@@ -272,7 +272,7 @@ public class AIInterviewAdminController : BasePluginController
 
     public async Task<IActionResult> ApplicantCredits(int? customerId = null, int? loadCustomerId = null, string loadCustomerEmail = null)
     {
-        customerId ??= await ResolveApplicantCustomerIdAsync(loadCustomerId, loadCustomerEmail);
+        customerId = await ResolveApplicantCustomerIdAsync(customerId, loadCustomerId, loadCustomerEmail);
         var model = await PrepareCreditModelAsync("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle", customerId, false);
         model.LoadCustomerId = loadCustomerId ?? customerId ?? 0;
         model.LoadCustomerEmail = loadCustomerEmail ?? string.Empty;
@@ -473,6 +473,8 @@ public class AIInterviewAdminController : BasePluginController
         model.CustomerName = GetCustomerName(customer);
         model.CustomerEmail = customer.Email;
         model.CustomerAdminUrl = BuildCustomerAdminUrl(customer.Id);
+        if (!isVendorScope)
+            model.AvailableCustomers = await BuildApplicantCustomerSelectListAsync(model.CustomerId, model.CustomerName, model.CustomerEmail);
 
         if (createWallet)
             await _creditService.GetOrCreateWalletAsync(model.CustomerId);
@@ -482,6 +484,11 @@ public class AIInterviewAdminController : BasePluginController
             .ToList();
         if (!wallets.Any())
             return model;
+
+        if (wallets.Count > 1)
+        {
+            _logger.LogWarning("Multiple credit wallets detected for customer {CustomerId}. Applicant credit page is aggregating balances and ledger rows across {WalletCount} wallets.", model.CustomerId, wallets.Count);
+        }
 
         var walletIds = wallets.Select(item => item.Id).ToArray();
         model.WalletBalance = wallets.Sum(item => item.Balance);
@@ -675,16 +682,16 @@ public class AIInterviewAdminController : BasePluginController
         return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, true));
     }
 
-    protected virtual async Task<int?> ResolveApplicantCustomerIdAsync(int? loadCustomerId, string loadCustomerEmail)
+    protected virtual async Task<int?> ResolveApplicantCustomerIdAsync(int? customerId, int? loadCustomerId, string loadCustomerEmail)
     {
         if (loadCustomerId.GetValueOrDefault() > 0)
             return loadCustomerId.Value;
 
         if (string.IsNullOrWhiteSpace(loadCustomerEmail))
-            return null;
+            return customerId.GetValueOrDefault() > 0 ? customerId : null;
 
         var customer = await _customerService.GetCustomerByEmailAsync(loadCustomerEmail.Trim());
-        return customer?.Id;
+        return customer?.Id ?? (customerId.GetValueOrDefault() > 0 ? customerId : null);
     }
 
     protected virtual async Task<ScoreboardFilterModel> PrepareScoreboardModelAsync(ScoreboardFilterModel filter)

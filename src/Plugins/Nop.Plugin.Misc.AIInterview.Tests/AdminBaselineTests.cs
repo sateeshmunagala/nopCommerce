@@ -808,6 +808,8 @@ public class AdminBaselineTests
 
         Assert.That(model.CustomerId, Is.EqualTo(202));
         Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
+        Assert.That(model.AvailableCustomers.Last().Text, Does.Contain("Jane Doe"));
+        Assert.That(model.AvailableCustomers.Last().Text, Does.Contain("jane@example.com"));
         Assert.That(model.WalletBalance, Is.EqualTo(3));
         Assert.That(model.LedgerEntries, Has.Count.EqualTo(2));
         Assert.That(model.LedgerEntries.First().TransactionType, Is.EqualTo("Withdrawal"));
@@ -842,7 +844,52 @@ public class AdminBaselineTests
 
         Assert.That(model.CustomerId, Is.EqualTo(202));
         Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
+        Assert.That(model.AvailableCustomers.Last().Text, Does.Contain("Jane Doe"));
+        Assert.That(model.AvailableCustomers.Last().Text, Does.Contain("jane@example.com"));
         Assert.That(model.WalletBalance, Is.Zero);
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Get_With_CustomerIdZero_And_LoadCustomerEmail_Loads_By_Email()
+    {
+        _customerService.Setup(x => x.GetCustomerByEmailAsync("jane@example.com"))
+            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
+
+        var result = await _controller.ApplicantCredits(customerId: 0, loadCustomerEmail: "jane@example.com");
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.CustomerId, Is.EqualTo(202));
+        Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Get_With_CustomerIdZero_And_LoadCustomerId_Loads_By_Id()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
+
+        var result = await _controller.ApplicantCredits(customerId: 0, loadCustomerId: 202);
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.CustomerId, Is.EqualTo(202));
+        Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Get_Prefers_LoadCustomerId_Over_LoadCustomerEmail()
+    {
+        _customerService.Setup(x => x.GetCustomerByEmailAsync("jane@example.com"))
+            .ReturnsAsync(new Customer { Id = 203, FirstName = "Other", LastName = "Applicant", Email = "jane@example.com", VendorId = 0 });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
+
+        var result = await _controller.ApplicantCredits(customerId: 0, loadCustomerId: 202, loadCustomerEmail: "jane@example.com");
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.CustomerId, Is.EqualTo(202));
+        Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
     }
 
     [Test]
