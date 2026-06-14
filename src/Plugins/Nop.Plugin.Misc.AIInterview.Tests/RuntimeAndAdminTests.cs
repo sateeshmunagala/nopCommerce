@@ -685,6 +685,9 @@ public class RuntimeAndAdminTests
         var beginInterviewStart = runtimeViewText.IndexOf("const beginInterview = async () =>", StringComparison.Ordinal);
         var beginInterviewScreenShareIndex = runtimeViewText.IndexOf("if (!(await requestScreenShareForInterviewStart()))", beginInterviewStart, StringComparison.Ordinal);
         var beginInterviewTokenRefreshIndex = runtimeViewText.IndexOf("if (!(await ensureRuntimeTokenFresh()))", beginInterviewStart, StringComparison.Ordinal);
+        var onScreenShareInterruptedStart = runtimeViewText.IndexOf("const onScreenShareInterrupted = async () =>", StringComparison.Ordinal);
+        var onScreenShareInterruptedEnd = runtimeViewText.IndexOf("const updateGuidelinesAcknowledgementState = () =>", onScreenShareInterruptedStart, StringComparison.Ordinal);
+        var onScreenShareInterruptedBlock = runtimeViewText.Substring(onScreenShareInterruptedStart, onScreenShareInterruptedEnd - onScreenShareInterruptedStart);
 
         Assert.That(runtimeViewText, Does.Contain("recordingUploadUrl"));
         Assert.That(runtimeViewText, Does.Contain("MediaRecorder"));
@@ -780,8 +783,12 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("tracks.push(...screenShareStream.getTracks().filter("));
         Assert.That(runtimeViewText, Does.Contain("let preservedRecordingSegments = [];"));
         Assert.That(runtimeViewText, Does.Contain("await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording paused until screen sharing resumes.' });"));
+        Assert.That(onScreenShareInterruptedBlock, Does.Not.Contain("await syncRecording();"));
+        Assert.That(runtimeViewText, Does.Contain("const canStartRecording = () => {"));
+        Assert.That(runtimeViewText, Does.Contain("if (screenShareRequired && (!screenShareActive || screenShareInterrupted))"));
         Assert.That(runtimeViewText, Does.Contain("const segments = [...preservedRecordingSegments];"));
         Assert.That(runtimeViewText, Does.Contain("const preservedBlob = preservedRecordingSegments.length === 1"));
+        Assert.That(runtimeViewText, Does.Contain("await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording restarting with resumed screen share.' });"));
         Assert.That(runtimeViewText, Does.Contain("Enable screen share, camera, or microphone before recording."));
         Assert.That(runtimeViewText, Does.Contain("Recording waiting for screen share, camera, or microphone."));
         Assert.That(runtimeViewText, Does.Contain("Recording paused until screen sharing resumes."));

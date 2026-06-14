@@ -1025,7 +1025,10 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Recording waiting for screen share, camera, or microphone."));
         Assert.That(runtimeText, Does.Contain("Recording paused until screen sharing resumes."));
         Assert.That(runtimeText, Does.Contain("let preservedRecordingSegments = [];"));
+        Assert.That(runtimeText, Does.Contain("const canStartRecording = () => {"));
+        Assert.That(runtimeText, Does.Contain("if (screenShareRequired && (!screenShareActive || screenShareInterrupted))"));
         Assert.That(runtimeText, Does.Contain("const segments = [...preservedRecordingSegments];"));
+        Assert.That(runtimeText, Does.Contain("await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording restarting with resumed screen share.' });"));
         Assert.That(runtimeText, Does.Contain("acknowledgeGuidelinesUrl"));
         Assert.That(runtimeText, Does.Contain("sendGuidelinesAcknowledgementAudit"));
         Assert.That(runtimeText, Does.Contain("Mobile phones and tablets are not allowed by policy, but they are not blocked technically."));

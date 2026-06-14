@@ -585,7 +585,7 @@
             updateStartButtonState();
             updateSubmitAvailability();
             if (recordingEnabled)
-                await syncRecording();
+                setRecordingStatus('Recording paused until screen sharing resumes.', false);
         };
 
         const updateGuidelinesAcknowledgementState = () => {
@@ -976,6 +976,16 @@
             preservedRecordingSegments = [];
         };
 
+        const canStartRecording = () => {
+            if (!config.recordingAvailable || !recordingEnabled || !interviewStarted)
+                return false;
+
+            if (screenShareRequired && (!screenShareActive || screenShareInterrupted))
+                return false;
+
+            return !!getActiveRecordingStream();
+        };
+
         const requestRecordingMediaForStart = async () => {
             if (!config.recordingAvailable || !recordingEnabled)
                 return false;
@@ -1150,7 +1160,13 @@
             if (!config.recordingAvailable)
                 return;
 
-            if (recordingEnabled && interviewStarted && getActiveRecordingStream())
+            if (screenShareRequired && (!screenShareActive || screenShareInterrupted)) {
+                if (recordingEnabled)
+                    setRecordingStatus('Recording paused until screen sharing resumes.', false);
+                return;
+            }
+
+            if (canStartRecording())
                 await startRecording();
             else if (!getActiveRecordingStream() && recordingEnabled && mediaPermissionDenied && !screenShareActive)
                 setRecordingStatus('Recording is waiting for screen share because camera or microphone permission was denied.', false);
@@ -1641,7 +1657,9 @@
             if (interviewStarted) {
                 if (screenShareRequired && (!screenShareActive || screenShareInterrupted)) {
                     if (await requestScreenShareForInterviewStart()) {
-                        if (recordingEnabled && !mediaRecorder)
+                        if (recordingEnabled && mediaRecorder)
+                            await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording restarting with resumed screen share.' });
+                        if (recordingEnabled)
                             await syncRecording();
                         setScreenShareStatus('Screen sharing resumed', 'active');
                         setStatus('Screen sharing resumed. You can continue the interview.', false);
