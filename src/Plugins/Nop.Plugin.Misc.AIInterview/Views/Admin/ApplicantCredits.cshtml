@@ -164,7 +164,7 @@
         </div>
 
         <form asp-controller="AIInterviewAdmin" asp-action="ApplicantCredits" method="post">
-            <input asp-for="CustomerId" type="hidden" />
+            <input type="hidden" id="SelectedCustomerId" name="CustomerId" value="@Model.CustomerId" />
 
             <div class="card card-default">
                 <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.SelectedApplicant")</div>

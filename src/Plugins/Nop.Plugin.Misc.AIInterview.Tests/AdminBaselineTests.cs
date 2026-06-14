@@ -862,6 +862,8 @@ public class AdminBaselineTests
 
         Assert.That(model.CustomerId, Is.EqualTo(202));
         Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
+        Assert.That(model.AvailableCustomers.Count(item => item.Selected), Is.EqualTo(1));
+        Assert.That(model.AvailableCustomers.Single(item => item.Selected).Value, Is.EqualTo("202"));
     }
 
     [Test]
@@ -875,6 +877,8 @@ public class AdminBaselineTests
 
         Assert.That(model.CustomerId, Is.EqualTo(202));
         Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
+        Assert.That(model.AvailableCustomers.Count(item => item.Selected), Is.EqualTo(1));
+        Assert.That(model.AvailableCustomers.Single(item => item.Selected).Value, Is.EqualTo("202"));
     }
 
     [Test]
@@ -1275,6 +1279,31 @@ public class AdminBaselineTests
         Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Utc"));
         Assert.That(text, Does.Contain("asp-for=\"LoadCustomerId\""));
         Assert.That(text, Does.Contain("asp-for=\"LoadCustomerEmail\""));
+        Assert.That(text, Does.Contain("id=\"SelectedCustomerId\""));
+        Assert.That(text, Does.Contain("name=\"CustomerId\""));
+    }
+
+    [Test]
+    public void AdminScripts_Use_Published_Datatables_Bootstrap4_Assets()
+    {
+        var pluginRoot = TestFilePathHelper.GetPluginRootPath();
+        var srcRoot = Path.GetFullPath(Path.Combine(pluginRoot, "..", ".."));
+        var text = File.ReadAllText(Path.Combine(srcRoot, "Presentation", "Nop.Web", "Areas", "Admin", "Views", "Shared", "_AdminScripts.cshtml"));
+
+        Assert.That(text, Does.Contain("~/lib_npm/datatables.net-bs4/css/dataTables.bootstrap4.min.css"));
+        Assert.That(text, Does.Contain("~/lib_npm/datatables.net-bs4/js/dataTables.bootstrap4.min.js"));
+        Assert.That(text, Does.Not.Contain("datatables.net-buttons-bs4/node_modules/datatables.net-bs4"));
+    }
+
+    [Test]
+    public void CopyDependencies_Task_Copies_Datatables_Bootstrap4_To_Root_Folder()
+    {
+        var pluginRoot = TestFilePathHelper.GetPluginRootPath();
+        var srcRoot = Path.GetFullPath(Path.Combine(pluginRoot, "..", ".."));
+        var text = File.ReadAllText(Path.Combine(srcRoot, "Presentation", "Nop.Web", "gulp", "tasks", "copyDependencies.js"));
+
+        Assert.That(text, Does.Contain("datatables.net-bs4/{css,js}/*.min*"));
+        Assert.That(text, Does.Contain("targetPath + '/datatables.net-bs4'"));
     }
 
     [Test]

@@ -51,6 +51,9 @@ public class UpgradeTests
         Assert.That(typeof(AIInterviewSettings).GetProperty("InterviewRequired"), Is.Null);
         Assert.That(typeof(ConfigurationModel).GetProperty("ResumeRequired"), Is.Null);
         Assert.That(typeof(ConfigurationModel).GetProperty("InterviewRequired"), Is.Null);
+        localizationService.Verify(x => x.AddOrUpdateLocaleResourceAsync(It.Is<Dictionary<string, string>>(resources =>
+            resources.ContainsKey("Plugins.Misc.AIInterview.Admin.Credits.Activity.Title") &&
+            resources.ContainsKey("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Customer"))), Times.AtLeastOnce);
     }
 
     [Test]

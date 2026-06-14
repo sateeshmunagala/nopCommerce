@@ -33,6 +33,10 @@ export default function copyDependencies()
       .pipe(filter(['**/{css,js}/*.min*', '**/swf/*']))      
       .pipe(gulp.dest(targetPath)),
 
+    gulp
+      .src(nodeModules + 'datatables.net-bs4/{css,js}/*.min*')
+      .pipe(gulp.dest(targetPath + '/datatables.net-bs4')),
+
     //CLDR (unicode.org)
     gulp
       .src(nodeModules + 'cldrjs/dist/**')

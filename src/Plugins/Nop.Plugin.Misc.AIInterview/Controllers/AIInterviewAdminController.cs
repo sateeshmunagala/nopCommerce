@@ -274,7 +274,7 @@ public class AIInterviewAdminController : BasePluginController
     {
         customerId = await ResolveApplicantCustomerIdAsync(customerId, loadCustomerId, loadCustomerEmail);
         var model = await PrepareCreditModelAsync("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle", customerId, false);
-        model.LoadCustomerId = loadCustomerId ?? customerId ?? 0;
+        model.LoadCustomerId = loadCustomerId.GetValueOrDefault() > 0 ? loadCustomerId.Value : customerId ?? 0;
         model.LoadCustomerEmail = loadCustomerEmail ?? string.Empty;
         return View("~/Plugins/Misc.AIInterview/Views/Admin/ApplicantCredits.cshtml", model);
     }
@@ -687,11 +687,14 @@ public class AIInterviewAdminController : BasePluginController
         if (loadCustomerId.GetValueOrDefault() > 0)
             return loadCustomerId.Value;
 
-        if (string.IsNullOrWhiteSpace(loadCustomerEmail))
-            return customerId.GetValueOrDefault() > 0 ? customerId : null;
+        if (!string.IsNullOrWhiteSpace(loadCustomerEmail))
+        {
+            var customer = await _customerService.GetCustomerByEmailAsync(loadCustomerEmail.Trim());
+            if (customer != null)
+                return customer.Id;
+        }
 
-        var customer = await _customerService.GetCustomerByEmailAsync(loadCustomerEmail.Trim());
-        return customer?.Id ?? (customerId.GetValueOrDefault() > 0 ? customerId : null);
+        return customerId.GetValueOrDefault() > 0 ? customerId : null;
     }
 
     protected virtual async Task<ScoreboardFilterModel> PrepareScoreboardModelAsync(ScoreboardFilterModel filter)
