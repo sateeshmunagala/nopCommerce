@@ -30,6 +30,10 @@ public class AIInterviewAdminController : BasePluginController
 {
     private const string AzureOpenAiProviderValue = "Azure OpenAI";
 
+    private sealed record CreditWalletSnapshot(int Id, int CustomerId, decimal Balance);
+    private sealed record CreditLedgerSnapshot(int CustomerId, decimal Amount, DateTime CreatedOnUtc);
+    private sealed record CreditGrantSnapshot(int CustomerId, DateTime CreatedOnUtc);
+
     private readonly ICreditService _creditService;
     private readonly ISponsorInviteService _inviteService;
     private readonly IApplicationService _applicationService;
@@ -45,6 +49,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly ISettingService _settingService;
     private readonly IRepository<CreditWallet> _walletRepository;
     private readonly IRepository<CreditLedgerEntry> _ledgerRepository;
+    private readonly IRepository<CreditPurchaseGrant> _creditPurchaseGrantRepository;
     private readonly AIInterviewSettings _aiInterviewSettings;
     private readonly MockAIInterviewSettings _mockAIInterviewSettings;
 
@@ -62,6 +67,7 @@ public class AIInterviewAdminController : BasePluginController
         ISettingService settingService,
         IRepository<CreditWallet> walletRepository,
         IRepository<CreditLedgerEntry> ledgerRepository,
+        IRepository<CreditPurchaseGrant> creditPurchaseGrantRepository,
         AIInterviewSettings aiInterviewSettings,
         MockAIInterviewSettings mockAIInterviewSettings,
         IJobRequirementService jobRequirementService = null)
@@ -81,6 +87,7 @@ public class AIInterviewAdminController : BasePluginController
         _settingService = settingService;
         _walletRepository = walletRepository;
         _ledgerRepository = ledgerRepository;
+        _creditPurchaseGrantRepository = creditPurchaseGrantRepository;
         _aiInterviewSettings = aiInterviewSettings;
         _mockAIInterviewSettings = mockAIInterviewSettings;
     }
@@ -249,7 +256,7 @@ public class AIInterviewAdminController : BasePluginController
 
     public async Task<IActionResult> VendorCredits(int? customerId = null)
     {
-        return View("~/Plugins/Misc.AIInterview/Views/Admin/VendorCredits.cshtml", await PrepareCreditModelAsync("Plugins.Misc.AIInterview.Admin.Credits.VendorTitle", customerId));
+        return View("~/Plugins/Misc.AIInterview/Views/Admin/VendorCredits.cshtml", await PrepareCreditModelAsync("Plugins.Misc.AIInterview.Admin.Credits.VendorTitle", customerId, false));
     }
 
     [HttpPost]
@@ -260,7 +267,7 @@ public class AIInterviewAdminController : BasePluginController
 
     public async Task<IActionResult> ApplicantCredits(int? customerId = null)
     {
-        return View("~/Plugins/Misc.AIInterview/Views/Admin/ApplicantCredits.cshtml", await PrepareCreditModelAsync("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle", customerId));
+        return View("~/Plugins/Misc.AIInterview/Views/Admin/ApplicantCredits.cshtml", await PrepareCreditModelAsync("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle", customerId, false));
     }
 
     [HttpPost]
@@ -424,6 +431,9 @@ public class AIInterviewAdminController : BasePluginController
             ? await BuildVendorCustomerSelectListAsync(model.CustomerId)
             : await BuildApplicantCustomerSelectListAsync(model.CustomerId);
 
+        if (!isVendorScope)
+            model.ActivityCustomers = await BuildApplicantCreditActivityRowsAsync();
+
         if (model.CustomerId <= 0)
             return model;
 
@@ -435,10 +445,9 @@ public class AIInterviewAdminController : BasePluginController
             model.CustomerAdminUrl = BuildCustomerAdminUrl(customer.Id);
         }
 
-        if (!createWallet)
-            return model;
-
-        var wallet = await _creditService.GetOrCreateWalletAsync(model.CustomerId);
+        var wallet = createWallet
+            ? await _creditService.GetOrCreateWalletAsync(model.CustomerId)
+            : (await _walletRepository.GetAllAsync(query => query.Where(item => item.CustomerId == model.CustomerId))).FirstOrDefault();
         if (wallet == null)
             return model;
 
@@ -461,6 +470,84 @@ public class AIInterviewAdminController : BasePluginController
             .ToListAsync();
 
         return model;
+    }
+
+    protected virtual async Task<IList<ApplicantCreditActivityRowModel>> BuildApplicantCreditActivityRowsAsync()
+    {
+        var wallets = await _walletRepository.Table
+            .Select(wallet => new CreditWalletSnapshot(wallet.Id, wallet.CustomerId, wallet.Balance))
+            .ToListAsync();
+
+        var ledgerEntries = await (from entry in _ledgerRepository.Table
+                                   join wallet in _walletRepository.Table on entry.CreditWalletId equals wallet.Id
+                                   select new CreditLedgerSnapshot(wallet.CustomerId, entry.Amount, entry.CreatedOnUtc))
+            .ToListAsync();
+
+        var grants = await _creditPurchaseGrantRepository.Table
+            .Select(grant => new CreditGrantSnapshot(grant.CustomerId, grant.CreatedOnUtc))
+            .ToListAsync();
+
+        var customerIds = wallets.Select(wallet => wallet.CustomerId)
+            .Concat(ledgerEntries.Select(entry => entry.CustomerId))
+            .Concat(grants.Select(grant => grant.CustomerId))
+            .Where(id => id > 0)
+            .Distinct()
+            .ToArray();
+
+        if (customerIds.Length == 0)
+            return new List<ApplicantCreditActivityRowModel>();
+
+        var customers = await _customerService.GetCustomersByIdsAsync(customerIds) ?? new List<Customer>();
+        var applicantCustomers = customers
+            .Where(customer => customer != null && customer.VendorId <= 0 && !customer.Deleted)
+            .ToDictionary(customer => customer.Id, customer => customer);
+
+        var walletLookup = wallets
+            .Where(wallet => applicantCustomers.ContainsKey(wallet.CustomerId))
+            .GroupBy(wallet => wallet.CustomerId)
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.Id).First().Balance);
+
+        var ledgerLookup = ledgerEntries
+            .Where(entry => applicantCustomers.ContainsKey(entry.CustomerId))
+            .GroupBy(entry => entry.CustomerId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+
+        var grantLookup = grants
+            .Where(grant => applicantCustomers.ContainsKey(grant.CustomerId))
+            .GroupBy(grant => grant.CustomerId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+
+        return applicantCustomers.Values
+            .Select(customer =>
+            {
+                var customerLedgerEntries = ledgerLookup.TryGetValue(customer.Id, out var foundLedgerEntries)
+                    ? foundLedgerEntries
+                    : new List<CreditLedgerSnapshot>();
+                var customerGrants = grantLookup.TryGetValue(customer.Id, out var foundGrants)
+                    ? foundGrants
+                    : new List<CreditGrantSnapshot>();
+                var lastLedgerUtc = customerLedgerEntries.Any() ? customerLedgerEntries.Max(entry => (DateTime?)entry.CreatedOnUtc) : null;
+                var lastGrantUtc = customerGrants.Any() ? customerGrants.Max(grant => (DateTime?)grant.CreatedOnUtc) : null;
+
+                return new ApplicantCreditActivityRowModel
+                {
+                    CustomerId = customer.Id,
+                    CustomerName = GetCustomerName(customer),
+                    CustomerEmail = customer.Email,
+                    CustomerAdminUrl = BuildCustomerAdminUrl(customer.Id),
+                    WalletBalance = walletLookup.GetValueOrDefault(customer.Id),
+                    TotalDeposited = customerLedgerEntries
+                        .Where(entry => entry.Amount > 0)
+                        .Sum(entry => (decimal)entry.Amount),
+                    TotalWithdrawn = customerLedgerEntries
+                        .Where(entry => entry.Amount < 0)
+                        .Sum(entry => Math.Abs((decimal)entry.Amount)),
+                    LastCreditActivityUtc = new[] { lastLedgerUtc, lastGrantUtc }.Where(value => value.HasValue).OrderByDescending(value => value).FirstOrDefault()
+                };
+            })
+            .OrderByDescending(row => row.LastCreditActivityUtc ?? DateTime.MinValue)
+            .ThenBy(row => row.CustomerName)
+            .ToList();
     }
 
     protected virtual async Task<IActionResult> HandleCreditTopUpAsync(CreditManagementModel model, string scopeTitleResourceKey)
@@ -685,7 +772,7 @@ public class AIInterviewAdminController : BasePluginController
     protected virtual async Task<IList<SelectListItem>> BuildVendorCustomerSelectListAsync(int selectedCustomerId)
     {
         var vendors = await _vendorService.GetAllVendorsAsync(showHidden: true, pageSize: int.MaxValue) ?? new Nop.Core.PagedList<Vendor>(new List<Vendor>(), 0, 1, 1);
-        return vendors
+        var items = vendors
             .Where(vendor => vendor.PmCustomerId.HasValue)
             .OrderBy(vendor => vendor.Name)
             .Select(vendor => new SelectListItem
@@ -697,12 +784,21 @@ public class AIInterviewAdminController : BasePluginController
                 Selected = vendor.PmCustomerId == selectedCustomerId
             })
             .ToList();
+
+        items.Insert(0, new SelectListItem
+        {
+            Text = "Select vendor",
+            Value = "0",
+            Selected = selectedCustomerId <= 0
+        });
+
+        return items;
     }
 
     protected virtual async Task<IList<SelectListItem>> BuildApplicantCustomerSelectListAsync(int selectedCustomerId)
     {
         var customers = await _customerService.GetAllCustomersAsync(pageSize: int.MaxValue) ?? new Nop.Core.PagedList<Customer>(new List<Customer>(), 0, 1, 1);
-        return customers
+        var items = customers
             .Where(customer => customer.VendorId == 0 && !customer.Deleted)
             .OrderBy(customer => GetCustomerName(customer))
             .Select(customer => new SelectListItem
@@ -714,6 +810,15 @@ public class AIInterviewAdminController : BasePluginController
                 Selected = customer.Id == selectedCustomerId
             })
             .ToList();
+
+        items.Insert(0, new SelectListItem
+        {
+            Text = "Select applicant",
+            Value = "0",
+            Selected = selectedCustomerId <= 0
+        });
+
+        return items;
     }
 
     protected virtual IList<SelectListItem> BuildStatusSelectList(string selectedStatus)

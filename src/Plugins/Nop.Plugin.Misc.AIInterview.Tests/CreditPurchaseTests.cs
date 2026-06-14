@@ -232,6 +232,19 @@ public class CreditPurchaseTests
     }
 
     [Test]
+    public async Task Unregistered_Customer_Order_Is_Skipped()
+    {
+        var order = new Order { Id = 1011, CustomerId = 71 };
+        _customerService.Setup(x => x.GetCustomerByIdAsync(71)).ReturnsAsync(new Customer { Id = 71 });
+        _customerService.Setup(x => x.IsRegisteredAsync(It.IsAny<Customer>(), true)).ReturnsAsync(false);
+
+        await _service.GrantCreditsForPaidOrderAsync(order);
+
+        _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        _grantRepository.Verify(x => x.InsertAsync(It.IsAny<CreditPurchaseGrant>(), true), Times.Never);
+    }
+
+    [Test]
     public async Task OrderPaidEventConsumer_Forwards_Order_To_Service()
     {
         var creditPurchaseService = new Mock<ICreditPurchaseService>();

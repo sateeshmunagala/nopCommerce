@@ -130,6 +130,7 @@ public record CreditManagementModel : BaseNopModel
     public CreditManagementModel()
     {
         LedgerEntries = new List<CreditLedgerRowModel>();
+        ActivityCustomers = new List<ApplicantCreditActivityRowModel>();
     }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.CustomerId")]
@@ -147,6 +148,7 @@ public record CreditManagementModel : BaseNopModel
     public decimal WalletBalance { get; set; }
     public string ScopeTitle { get; set; }
     public IList<CreditLedgerRowModel> LedgerEntries { get; set; }
+    public IList<ApplicantCreditActivityRowModel> ActivityCustomers { get; set; }
 }
 
 public record CreditLedgerRowModel : BaseNopModel
@@ -158,6 +160,18 @@ public record CreditLedgerRowModel : BaseNopModel
     public string TransactionType { get; set; }
     public string Remarks { get; set; }
     public DateTime CreatedOnUtc { get; set; }
+}
+
+public record ApplicantCreditActivityRowModel : BaseNopModel
+{
+    public int CustomerId { get; set; }
+    public string CustomerName { get; set; }
+    public string CustomerEmail { get; set; }
+    public string CustomerAdminUrl { get; set; }
+    public decimal WalletBalance { get; set; }
+    public decimal TotalDeposited { get; set; }
+    public decimal TotalWithdrawn { get; set; }
+    public DateTime? LastCreditActivityUtc { get; set; }
 }
 
 public record ScoreboardFilterModel : BaseNopModel

@@ -50,10 +50,14 @@ public class AdminBaselineTests
     private Mock<ISettingService> _settingService;
     private Mock<IRepository<CreditWallet>> _walletRepository;
     private Mock<IRepository<CreditLedgerEntry>> _ledgerRepository;
+    private Mock<IRepository<CreditPurchaseGrant>> _creditPurchaseGrantRepository;
     private AIInterviewSettings _aiInterviewSettings;
     private MockAIInterviewSettings _mockAIInterviewSettings;
     private AIInterviewAdminController _controller;
     private MockAiInterviewAdminController _legacyController;
+    private List<CreditWallet> _wallets;
+    private List<CreditLedgerEntry> _ledgerEntries;
+    private List<CreditPurchaseGrant> _creditPurchaseGrants;
 
     [SetUp]
     public void SetUp()
@@ -72,6 +76,7 @@ public class AdminBaselineTests
         _settingService = new Mock<ISettingService>();
         _walletRepository = new Mock<IRepository<CreditWallet>>();
         _ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
+        _creditPurchaseGrantRepository = new Mock<IRepository<CreditPurchaseGrant>>();
         _aiInterviewSettings = new AIInterviewSettings
         {
             Enabled = true,
@@ -96,6 +101,21 @@ public class AdminBaselineTests
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
 
+        _wallets = new List<CreditWallet>();
+        _ledgerEntries = new List<CreditLedgerEntry>();
+        _creditPurchaseGrants = new List<CreditPurchaseGrant>();
+        _walletRepository.SetupGet(x => x.Table).Returns(() => _wallets.AsQueryable());
+        _ledgerRepository.SetupGet(x => x.Table).Returns(() => _ledgerEntries.AsQueryable());
+        _creditPurchaseGrantRepository.SetupGet(x => x.Table).Returns(() => _creditPurchaseGrants.AsQueryable());
+        _walletRepository.Setup(x => x.GetAllAsync(
+                It.IsAny<Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>>>(),
+                It.IsAny<Func<ICacheKeyService, CacheKey>>(),
+                true))
+            .ReturnsAsync((Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>> func, Func<ICacheKeyService, CacheKey> _, bool __) =>
+                func == null ? _wallets.ToList() : func(_wallets.AsQueryable()).ToList());
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>()))
+            .ReturnsAsync(new List<Customer>());
+
         _workContext.Setup(x => x.GetCurrentCustomerAsync())
             .ReturnsAsync(new Customer { Id = 42, VendorId = 0, Email = "admin@example.com", FirstName = "Admin" });
 
@@ -114,6 +134,7 @@ public class AdminBaselineTests
             _settingService.Object,
             _walletRepository.Object,
             _ledgerRepository.Object,
+            _creditPurchaseGrantRepository.Object,
             _aiInterviewSettings,
             _mockAIInterviewSettings);
 
@@ -464,6 +485,7 @@ public class AdminBaselineTests
             _settingService.Object,
             _walletRepository.Object,
             _ledgerRepository.Object,
+            _creditPurchaseGrantRepository.Object,
             _aiInterviewSettings,
             _mockAIInterviewSettings,
             jobRequirementService.Object);
@@ -610,8 +632,9 @@ public class AdminBaselineTests
         var result = await _controller.VendorCredits();
         var model = (CreditManagementModel)((ViewResult)result).Model;
 
-        Assert.That(model.AvailableCustomers, Has.Count.EqualTo(1));
-        Assert.That(model.AvailableCustomers.Single().Value, Is.EqualTo("101"));
+        Assert.That(model.AvailableCustomers, Has.Count.EqualTo(2));
+        Assert.That(model.AvailableCustomers.First().Value, Is.EqualTo("0"));
+        Assert.That(model.AvailableCustomers.Last().Value, Is.EqualTo("101"));
     }
 
     [Test]
@@ -697,8 +720,139 @@ public class AdminBaselineTests
         var result = await _controller.ApplicantCredits();
         var model = (CreditManagementModel)((ViewResult)result).Model;
 
-        Assert.That(model.AvailableCustomers, Has.Count.EqualTo(1));
-        Assert.That(model.AvailableCustomers.Single().Value, Is.EqualTo("202"));
+        Assert.That(model.AvailableCustomers, Has.Count.EqualTo(2));
+        Assert.That(model.AvailableCustomers.First().Value, Is.EqualTo("0"));
+        Assert.That(model.AvailableCustomers.Last().Value, Is.EqualTo("202"));
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Initial_Get_Shows_Credit_Active_Applicants()
+    {
+        _wallets.Add(new CreditWallet { Id = 9, CustomerId = 202, Balance = 4 });
+        _ledgerEntries.Add(new CreditLedgerEntry
+        {
+            Id = 1,
+            CreditWalletId = 9,
+            Amount = 4,
+            TransactionType = "Deposit",
+            Remarks = "Purchased credit pack: order #1002, SKU AI-CREDIT-1, credits 4",
+            CreatedOnUtc = new DateTime(2026, 6, 14, 8, 0, 0, DateTimeKind.Utc)
+        });
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.Is<int[]>(ids => ids.Contains(202))))
+            .ReturnsAsync(new List<Customer>
+            {
+                new() { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 }
+            });
+
+        var result = await _controller.ApplicantCredits();
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.CustomerId, Is.Zero);
+        Assert.That(model.CustomerName, Is.Null.Or.Empty);
+        Assert.That(model.ActivityCustomers, Has.Count.EqualTo(1));
+        Assert.That(model.ActivityCustomers.Single().CustomerId, Is.EqualTo(202));
+        Assert.That(model.ActivityCustomers.Single().WalletBalance, Is.EqualTo(4));
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Get_WithCustomerId_Loads_Selected_Wallet_And_Ledger()
+    {
+        _wallets.Add(new CreditWallet { Id = 12, CustomerId = 202, Balance = 3 });
+        _ledgerEntries.Add(new CreditLedgerEntry
+        {
+            Id = 1,
+            CreditWalletId = 12,
+            Amount = 5,
+            TransactionType = "Deposit",
+            Remarks = "Purchased credit pack: order #1010, SKU AI-CREDIT-1, credits 5",
+            CreatedOnUtc = new DateTime(2026, 6, 14, 8, 0, 0, DateTimeKind.Utc)
+        });
+        _ledgerEntries.Add(new CreditLedgerEntry
+        {
+            Id = 2,
+            CreditWalletId = 12,
+            Amount = -2,
+            TransactionType = "Withdrawal",
+            Remarks = "Interview charge",
+            CreatedOnUtc = new DateTime(2026, 6, 14, 9, 0, 0, DateTimeKind.Utc)
+        });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.Is<int[]>(ids => ids.Contains(202))))
+            .ReturnsAsync(new List<Customer>
+            {
+                new() { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 }
+            });
+
+        var result = await _controller.ApplicantCredits(202);
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.CustomerId, Is.EqualTo(202));
+        Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
+        Assert.That(model.WalletBalance, Is.EqualTo(3));
+        Assert.That(model.LedgerEntries, Has.Count.EqualTo(2));
+        Assert.That(model.LedgerEntries.First().TransactionType, Is.EqualTo("Withdrawal"));
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Activity_Does_Not_Show_Vendor_Customers()
+    {
+        _wallets.Add(new CreditWallet { Id = 50, CustomerId = 301, Balance = 7 });
+        _ledgerEntries.Add(new CreditLedgerEntry
+        {
+            Id = 1,
+            CreditWalletId = 50,
+            Amount = 7,
+            TransactionType = "Deposit",
+            Remarks = "Vendor credit row should stay out of applicant page",
+            CreatedOnUtc = DateTime.UtcNow
+        });
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.Is<int[]>(ids => ids.Contains(301))))
+            .ReturnsAsync(new List<Customer>
+            {
+                new() { Id = 301, FirstName = "Vendor", LastName = "Owner", Email = "vendor@example.com", VendorId = 55 }
+            });
+
+        var result = await _controller.ApplicantCredits();
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.ActivityCustomers, Is.Empty);
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Zero_Balance_Customer_Remains_Discoverable()
+    {
+        _wallets.Add(new CreditWallet { Id = 61, CustomerId = 202, Balance = 0 });
+        _ledgerEntries.Add(new CreditLedgerEntry
+        {
+            Id = 1,
+            CreditWalletId = 61,
+            Amount = 5,
+            TransactionType = "Deposit",
+            Remarks = "Initial grant",
+            CreatedOnUtc = new DateTime(2026, 6, 13, 8, 0, 0, DateTimeKind.Utc)
+        });
+        _ledgerEntries.Add(new CreditLedgerEntry
+        {
+            Id = 2,
+            CreditWalletId = 61,
+            Amount = -5,
+            TransactionType = "Withdrawal",
+            Remarks = "Spent all credits",
+            CreatedOnUtc = new DateTime(2026, 6, 13, 9, 0, 0, DateTimeKind.Utc)
+        });
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.Is<int[]>(ids => ids.Contains(202))))
+            .ReturnsAsync(new List<Customer>
+            {
+                new() { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 }
+            });
+
+        var result = await _controller.ApplicantCredits();
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.ActivityCustomers, Has.Count.EqualTo(1));
+        Assert.That(model.ActivityCustomers.Single().WalletBalance, Is.Zero);
+        Assert.That(model.ActivityCustomers.Single().TotalWithdrawn, Is.EqualTo(5));
     }
 
     [Test]

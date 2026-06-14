@@ -42,8 +42,17 @@ public class CreditPurchaseService : ICreditPurchaseService
 
     public async Task GrantCreditsForPaidOrderAsync(Order order)
     {
-        if (order == null || order.Id <= 0 || order.CustomerId <= 0)
+        if (order == null)
+        {
+            _logger.LogDebug("Skipping credit purchase grant because the paid order payload was null.");
             return;
+        }
+
+        if (order.Id <= 0 || order.CustomerId <= 0)
+        {
+            _logger.LogDebug("Skipping credit purchase grant because the order payload was invalid. OrderId: {OrderId}, CustomerId: {CustomerId}.", order.Id, order.CustomerId);
+            return;
+        }
 
         var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
         if (customer == null || !await _customerService.IsRegisteredAsync(customer))
@@ -63,7 +72,10 @@ public class CreditPurchaseService : ICreditPurchaseService
         foreach (var orderItem in orderItems ?? Array.Empty<OrderItem>())
         {
             if (orderItem == null)
+            {
+                _logger.LogDebug("Skipping null order item while granting credits for order {OrderId}.", order.Id);
                 continue;
+            }
 
             var processed = await _grantRepository.GetAllAsync(query => query.Where(grant => grant.OrderItemId == orderItem.Id));
             if (processed.Any())
@@ -73,16 +85,37 @@ public class CreditPurchaseService : ICreditPurchaseService
             }
 
             var product = await _orderService.GetProductByOrderItemIdAsync(orderItem.Id) ?? await _productService.GetProductByIdAsync(orderItem.ProductId);
-            if (product == null || string.IsNullOrWhiteSpace(product.Sku))
+            if (product == null)
+            {
+                _logger.LogWarning("Skipping credit purchase grant for order {OrderId}, orderItem {OrderItemId}: product {ProductId} could not be loaded.", order.Id, orderItem.Id, orderItem.ProductId);
                 continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(product.Sku))
+            {
+                _logger.LogDebug("Skipping credit purchase grant for order {OrderId}, orderItem {OrderItemId}: product {ProductId} has a blank SKU.", order.Id, orderItem.Id, product.Id);
+                continue;
+            }
 
             var sku = product.Sku.Trim();
-            if (!skuCreditsMap.TryGetValue(sku, out var creditsPerUnit) || creditsPerUnit <= 0)
+            if (!skuCreditsMap.TryGetValue(sku, out var creditsPerUnit))
+            {
+                _logger.LogDebug("Skipping credit purchase grant for order {OrderId}, orderItem {OrderItemId}: SKU {Sku} is not mapped for AI interview credits.", order.Id, orderItem.Id, sku);
                 continue;
+            }
+
+            if (creditsPerUnit <= 0)
+            {
+                _logger.LogWarning("Skipping credit purchase grant for order {OrderId}, orderItem {OrderItemId}: SKU {Sku} mapped to invalid credit amount {CreditsPerUnit}.", order.Id, orderItem.Id, sku, creditsPerUnit);
+                continue;
+            }
 
             var creditsToGrant = creditsPerUnit * orderItem.Quantity;
             if (creditsToGrant <= 0)
+            {
+                _logger.LogWarning("Skipping credit purchase grant for order {OrderId}, orderItem {OrderItemId}: computed credit amount {CreditsToGrant} was not positive.", order.Id, orderItem.Id, creditsToGrant);
                 continue;
+            }
 
             try
             {
@@ -163,7 +196,10 @@ public class CreditPurchaseService : ICreditPurchaseService
     protected virtual Dictionary<string, int> ParseMappings()
     {
         if (string.IsNullOrWhiteSpace(_settings.CreditProductSkuMappingsJson))
+        {
+            _logger.LogDebug("Credit product SKU mappings JSON is empty. Paid orders will not grant AI interview credits until mappings are configured.");
             return new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        }
 
         if (!TryParseSkuMappings(_settings.CreditProductSkuMappingsJson, out var mappings, out var errorMessage))
         {

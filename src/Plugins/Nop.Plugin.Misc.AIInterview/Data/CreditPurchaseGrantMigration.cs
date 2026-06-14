@@ -12,16 +12,22 @@ public class CreditPurchaseGrantMigration : Migration
     {
         this.CreateTableIfNotExists<CreditPurchaseGrant>();
 
-        Create.Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId")
-            .OnTable(nameof(CreditPurchaseGrant))
-            .OnColumn(nameof(CreditPurchaseGrant.OrderItemId)).Ascending()
-            .WithOptions().Unique();
+        if (!Schema.Table(nameof(CreditPurchaseGrant)).Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId").Exists())
+        {
+            Create.Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId")
+                .OnTable(nameof(CreditPurchaseGrant))
+                .OnColumn(nameof(CreditPurchaseGrant.OrderItemId)).Ascending()
+                .WithOptions().Unique();
+        }
     }
 
     public override void Down()
     {
-        Delete.Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId")
-            .OnTable(nameof(CreditPurchaseGrant))
-            .OnColumn(nameof(CreditPurchaseGrant.OrderItemId));
+        if (Schema.Table(nameof(CreditPurchaseGrant)).Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId").Exists())
+        {
+            Delete.Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId")
+                .OnTable(nameof(CreditPurchaseGrant))
+                .OnColumn(nameof(CreditPurchaseGrant.OrderItemId));
+        }
     }
 }
