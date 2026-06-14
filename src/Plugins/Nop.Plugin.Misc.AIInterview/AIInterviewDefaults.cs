@@ -100,6 +100,7 @@ public static class AIInterviewDefaults
     public static string MockRefreshTokenRouteName => "Plugin.Misc.AIInterview.Mock.RefreshToken";
     public static string MockSpeechTokenRouteName => "Plugin.Misc.AIInterview.Mock.SpeechToken";
     public static string MockRecordingUploadRouteName => "Plugin.Misc.AIInterview.Mock.RecordingUpload";
+    public static string MockAcknowledgeGuidelinesRouteName => "Plugin.Misc.AIInterview.Mock.AcknowledgeGuidelines";
     public static string MockHistoryRouteName => "Plugin.Misc.AIInterview.Mock.History";
     public static string MockReportRouteName => "Plugin.Misc.AIInterview.Mock.Report";
     public static string MockEmployerManageRouteName => "Plugin.Misc.AIInterview.Mock.EmployerManage";

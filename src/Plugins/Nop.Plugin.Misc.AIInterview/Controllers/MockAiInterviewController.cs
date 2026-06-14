@@ -314,6 +314,7 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.RefreshTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockRefreshTokenRouteName);
         model.ClientSettings.StopInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
         model.ClientSettings.SpeechTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechTokenRouteName);
+        model.ClientSettings.AcknowledgeGuidelinesUrl = Url?.RouteUrl(AIInterviewDefaults.MockAcknowledgeGuidelinesRouteName);
         model.ClientSettings.ProductName = model.ProductName;
         model.ClientSettings.Token = session?.Token;
         model.ReportUrl = GetMockReportUrl(session?.Id ?? model.SessionId);
@@ -354,6 +355,38 @@ public class MockAiInterviewController : BasePluginController
             StatusCode = statusCode,
             RestartUrl = restartUrl
         });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> AcknowledgeGuidelines(string token, string acknowledgedTimestamp, string userAgent, string screenSize, string viewportSize)
+    {
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
+        if (tokenRenewal.Session != null && tokenRenewal.Renewed)
+            token = tokenRenewal.Session.Token;
+
+        var session = tokenRenewal.Session ?? await _interviewSessionService.GetSessionByTokenAsync(token);
+        var maskedToken = MaskToken(token);
+        var fullMessage = $"Event=RuntimeGuidelinesAcknowledged; Token={maskedToken}; SessionId={session?.Id ?? 0}; CustomerId={session?.CustomerId ?? 0}; ProductId={session?.ProductId ?? 0}; AcknowledgedTimestamp={acknowledgedTimestamp ?? string.Empty}; UserAgent={userAgent ?? string.Empty}; ScreenSize={screenSize ?? string.Empty}; ViewportSize={viewportSize ?? string.Empty};";
+
+        await (_nopLogger?.InsertLogAsync(NopLogLevel.Information, "AI Interview runtime guidelines acknowledged", fullMessage) ?? Task.CompletedTask);
+        _logger?.LogInformation("AIInterview runtime guidelines acknowledged for session {SessionId}, customer {CustomerId}, product {ProductId}, token {Token}.",
+            session?.Id ?? 0, session?.CustomerId ?? 0, session?.ProductId ?? 0, maskedToken);
+
+        if (session == null)
+            return Json(new { success = false, message = "Guidelines acknowledgement logged without an active session." });
+
+        if (tokenRenewal.Renewed)
+        {
+            return Json(new
+            {
+                success = true,
+                message = "Guidelines acknowledgement logged.",
+                newToken = tokenRenewal.Session.Token,
+                tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+            });
+        }
+
+        return Json(new { success = true, message = "Guidelines acknowledgement logged." });
     }
 
     [HttpPost]

@@ -46,6 +46,7 @@ public record RuntimeClientSettingsModel
     public string TranscriptUrl { get; set; }
     public string SpeechTokenUrl { get; set; }
     public string RecordingUploadUrl { get; set; }
+    public string AcknowledgeGuidelinesUrl { get; set; }
     public string SpeechRegion { get; set; }
     public string SpeechVoiceName { get; set; }
     public string ProductName { get; set; }

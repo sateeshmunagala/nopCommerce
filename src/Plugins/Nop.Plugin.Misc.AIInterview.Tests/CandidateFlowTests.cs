@@ -989,6 +989,14 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("const clearAnswerTimers = () =>"));
         Assert.That(runtimeText, Does.Contain("const clearTokenRefreshTimer = () =>"));
         Assert.That(runtimeText, Does.Contain("const clearAllRuntimeTimers = () =>"));
+        Assert.That(runtimeText, Does.Contain("id=\"screen-share-status\""));
+        Assert.That(runtimeText, Does.Contain("Screen sharing required"));
+        Assert.That(runtimeText, Does.Contain("Screen sharing active"));
+        Assert.That(runtimeText, Does.Contain("Screen sharing ended. Resume screen sharing to continue."));
+        Assert.That(runtimeText, Does.Contain("Screen sharing resumed"));
+        Assert.That(runtimeText, Does.Contain("const shouldWarnBeforeUnload = () => interviewStarted && !runtimeStoppedOrCompleted && !stopInProgress;"));
+        Assert.That(runtimeText, Does.Contain("window.addEventListener('beforeunload', (event) => {"));
+        Assert.That(runtimeText, Does.Contain("if (!shouldWarnBeforeUnload())"));
         Assert.That(runtimeText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeText, Does.Contain("if (!trimmedAnswer)"));
         Assert.That(runtimeText, Does.Contain("Auto submitting..."));
@@ -1015,6 +1023,12 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)\r\n                    await stopRecording(true);").Or.Contain("if (mediaRecorder && recordingEnabled)\n                    await stopRecording(true);"));
         Assert.That(runtimeText, Does.Contain("Recording ready."));
         Assert.That(runtimeText, Does.Contain("Recording waiting for screen share, camera, or microphone."));
+        Assert.That(runtimeText, Does.Contain("Recording paused until screen sharing resumes."));
+        Assert.That(runtimeText, Does.Contain("let preservedRecordingSegments = [];"));
+        Assert.That(runtimeText, Does.Contain("const segments = [...preservedRecordingSegments];"));
+        Assert.That(runtimeText, Does.Contain("acknowledgeGuidelinesUrl"));
+        Assert.That(runtimeText, Does.Contain("sendGuidelinesAcknowledgementAudit"));
+        Assert.That(runtimeText, Does.Contain("Mobile phones and tablets are not allowed by policy, but they are not blocked technically."));
         Assert.That(runtimeText, Does.Contain("Recording live."));
         Assert.That(runtimeText, Does.Contain("clamp(220px, 28vw, 252px)"));
         Assert.That(runtimeText, Does.Contain("Development mock mode is enabled. Azure OpenAI is bypassed."));

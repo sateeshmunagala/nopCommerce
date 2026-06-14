@@ -32,6 +32,9 @@
     .runtime-controls { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 999px; background: rgba(255,255,255,0.9); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12); width: fit-content; margin: -40px auto 0; position: relative; flex-wrap: wrap; }
     .runtime-dot { width: 20px; height: 20px; border-radius: 50%; background: #d0d5dd; }
     .runtime-dot.is-live { width: 42px; height: 42px; background: #ffffff; border: 2px solid #d0d5dd; }
+    .runtime-screen-share-status { text-align: center; font-size: 13px; font-weight: 700; color: #475467; }
+    .runtime-screen-share-status.is-active { color: #027a48; }
+    .runtime-screen-share-status.is-warning { color: #b42318; }
     .runtime-sidebar h3 { margin: 0; color: #162033; }
     .runtime-question, .runtime-message { padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255, 122, 26, 0.35); background: #fff9f3; color: #a15c00; line-height: 1.6; }
     .runtime-message.is-info { background: #eef4ff; color: #0f5bd7; border-color: #c9dafd; }
@@ -104,6 +107,7 @@
                     <span class="runtime-dot"></span>
                     <span class="runtime-dot"></span>
                 </div>
+                <div id="screen-share-status" class="runtime-screen-share-status">Screen sharing required</div>
                 <div class="runtime-status" id="recording-status"></div>
                 @if (Model.IsMockMode)
                 {
@@ -157,7 +161,7 @@
         <ul class="runtime-guidelines">
             <li>This interview must be taken from a personal laptop.</li>
             <li>Corporate laptops are not allowed.</li>
-            <li>Mobile phones and tablets are not recommended and are not allowed by policy, but they are not blocked technically.</li>
+            <li>Mobile phones and tablets are not allowed by policy, but they are not blocked technically.</li>
             <li>Camera and microphone access may be required.</li>
             <li>Screen sharing is required when the interview starts.</li>
             <li>Please be in a quiet place with stable internet.</li>
@@ -194,6 +198,7 @@
         const video = document.getElementById('runtime-video');
         const cameraPlaceholder = document.getElementById('camera-placeholder');
         const recordingStatus = document.getElementById('recording-status');
+        const screenShareStatus = document.getElementById('screen-share-status');
         const recordingButton = document.getElementById('toggle-recording');
         const submitButton = document.getElementById('submit-answer');
         const startButton = document.getElementById('start-or-next');
@@ -218,6 +223,7 @@
         let mediaRecorder = null;
         let recordingChunks = [];
         let recordingMimeType = 'video/webm';
+        let preservedRecordingSegments = [];
         let recordingEnabled = false;
         let recordingUploadInFlight = false;
         let tokenRefreshPromise = null;
@@ -282,6 +288,15 @@
             };
             logActivity(`Guidelines acknowledged: ${JSON.stringify(payload)}`);
             console.info('[AIInterview Runtime] Guidelines acknowledged', payload);
+            return payload;
+        };
+
+        const setScreenShareStatus = (message, state = 'required') => {
+            if (!screenShareStatus)
+                return;
+
+            screenShareStatus.textContent = message;
+            screenShareStatus.className = `runtime-screen-share-status ${state === 'active' ? 'is-active' : state === 'warning' ? 'is-warning' : ''}`.trim();
         };
 
         const updateStartButtonState = () => {
@@ -335,6 +350,7 @@
             screenShareStream = null;
             screenShareActive = false;
             screenShareInterrupted = false;
+            setScreenShareStatus(runtimeStoppedOrCompleted ? 'Screen sharing ended' : 'Screen sharing required');
         };
 
         const clearCompletedRedirectState = () => {
@@ -356,6 +372,8 @@
             clearActiveInterviewTimers();
             clearCompletedRedirectState();
         };
+
+        const shouldWarnBeforeUnload = () => interviewStarted && !runtimeStoppedOrCompleted && !stopInProgress;
 
         const startRuntimeTimer = () => {
             if (runtimeTimerHandle)
@@ -529,11 +547,40 @@
                 || !trimmedAnswer;
         };
 
+        const sendGuidelinesAcknowledgementAudit = async (payload) => {
+            if (!config.acknowledgeGuidelinesUrl || !payload)
+                return;
+
+            try {
+                const result = await postForm(config.acknowledgeGuidelinesUrl, new URLSearchParams({
+                    token: sessionToken,
+                    acknowledgedTimestamp: payload.acknowledgedTimestamp || '',
+                    userAgent: payload.userAgent || '',
+                    screenSize: payload.screenSize || '',
+                    viewportSize: payload.viewportSize || ''
+                }));
+
+                if (!isSuccess(result)) {
+                    logActivity(`Guidelines acknowledgement audit failed: ${getRuntimeMessage(result, 'Unavailable')}`);
+                    console.warn('[AIInterview Runtime] Guidelines acknowledgement audit failed.', result);
+                    return;
+                }
+
+                logActivity('Guidelines acknowledgement audit logged.');
+            } catch (error) {
+                logActivity(`Guidelines acknowledgement audit exception: ${error?.message || 'unknown'}`);
+                console.warn('[AIInterview Runtime] Guidelines acknowledgement audit exception.', error);
+            }
+        };
+
         const onScreenShareInterrupted = async () => {
             screenShareActive = false;
             screenShareInterrupted = true;
             clearAnswerTimers();
             await stopSpeechRecognition();
+            if (recordingEnabled && mediaRecorder)
+                await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording paused until screen sharing resumes.' });
+            setScreenShareStatus('Screen sharing ended. Resume screen sharing to continue.', 'warning');
             setStatus('Screen sharing ended. Resume screen sharing to continue the interview.', true);
             updateStartButtonState();
             updateSubmitAvailability();
@@ -552,6 +599,7 @@
             if (screenShareStream?.getTracks?.().some(track => track.readyState === 'live')) {
                 screenShareActive = true;
                 screenShareInterrupted = false;
+                setScreenShareStatus('Screen sharing active', 'active');
                 return true;
             }
 
@@ -565,6 +613,7 @@
                 screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
                 screenShareActive = true;
                 screenShareInterrupted = false;
+                setScreenShareStatus('Screen sharing active', 'active');
                 const [screenTrack] = screenShareStream.getVideoTracks();
                 if (screenTrack) {
                     screenTrack.addEventListener('ended', async () => {
@@ -923,6 +972,10 @@
             return tracks.length ? new MediaStream(tracks) : null;
         };
 
+        const clearPreservedRecordingSegments = () => {
+            preservedRecordingSegments = [];
+        };
+
         const requestRecordingMediaForStart = async () => {
             if (!config.recordingAvailable || !recordingEnabled)
                 return false;
@@ -986,10 +1039,22 @@
             }
         };
 
-        const stopRecording = async (upload = false) => {
-            if (!mediaRecorder)
-                return false;
+        const stopRecording = async (upload = false, options = {}) => {
+            if (!mediaRecorder) {
+                if (upload && preservedRecordingSegments.length > 0) {
+                    const preservedBlob = preservedRecordingSegments.length === 1
+                        ? preservedRecordingSegments[0]
+                        : new Blob(preservedRecordingSegments, { type: recordingMimeType || 'video/webm' });
+                    await uploadRecording(preservedBlob);
+                    clearPreservedRecordingSegments();
+                    return true;
+                }
 
+                return false;
+            }
+
+            const preserveSegment = options.preserveSegment === true;
+            const statusMessage = options.statusMessage || '';
             const recorder = mediaRecorder;
             const mimeType = recordingMimeType || 'video/webm';
             mediaRecorder = null;
@@ -1000,9 +1065,23 @@
                     try {
                         const blob = recordingChunks.length ? new Blob(recordingChunks, { type: mimeType }) : null;
                         recordingChunks = [];
-                        if (upload && blob) {
-                            await uploadRecording(blob);
-                            uploaded = true;
+                        if (blob && preserveSegment)
+                            preservedRecordingSegments.push(blob);
+
+                        if (upload) {
+                            const segments = [...preservedRecordingSegments];
+                            if (blob && !preserveSegment)
+                                segments.push(blob);
+
+                            if (segments.length > 0) {
+                                const finalBlob = segments.length === 1 ? segments[0] : new Blob(segments, { type: mimeType });
+                                await uploadRecording(finalBlob);
+                                uploaded = true;
+                            }
+
+                            clearPreservedRecordingSegments();
+                        } else if (!preserveSegment) {
+                            clearPreservedRecordingSegments();
                         }
                     } catch {
                         setRecordingStatus('Recording upload failed.', true);
@@ -1010,6 +1089,8 @@
                         const toggleRecording = document.getElementById('toggle-recording');
                         if (toggleRecording)
                             toggleRecording.textContent = recordingEnabled ? 'Recording Ready' : 'Recording Off';
+                        if (statusMessage)
+                            setRecordingStatus(statusMessage, false);
                         resolve();
                     }
                 }, { once: true });
@@ -1018,6 +1099,8 @@
                     recorder.stop();
                 } catch {
                     recordingChunks = [];
+                    if (!preserveSegment && !upload)
+                        clearPreservedRecordingSegments();
                     resolve();
                 }
             });
@@ -1558,6 +1641,9 @@
             if (interviewStarted) {
                 if (screenShareRequired && (!screenShareActive || screenShareInterrupted)) {
                     if (await requestScreenShareForInterviewStart()) {
+                        if (recordingEnabled && !mediaRecorder)
+                            await syncRecording();
+                        setScreenShareStatus('Screen sharing resumed', 'active');
                         setStatus('Screen sharing resumed. You can continue the interview.', false);
                         if (hasActiveQuestion() && !answerNeedsEditAfterFailure)
                             resetTimers();
@@ -1598,6 +1684,7 @@
             interviewStarted = true;
             screenShareActive = true;
             screenShareInterrupted = false;
+            setScreenShareStatus('Screen sharing active', 'active');
             answerBox.disabled = false;
             startRuntimeTimer();
             setStatus('Please answer the question.', false);
@@ -1621,7 +1708,7 @@
         if (guidelinesCheckbox)
             guidelinesCheckbox.addEventListener('change', updateGuidelinesAcknowledgementState);
         if (guidelinesAgreeButton) {
-            guidelinesAgreeButton.addEventListener('click', () => {
+            guidelinesAgreeButton.addEventListener('click', async () => {
                 if (!guidelinesCheckbox?.checked)
                     return;
 
@@ -1630,7 +1717,8 @@
                 closeGuidelinesModal();
                 updateStartButtonState();
                 setStatus('Guidelines acknowledged. You can start the interview.', false);
-                logGuidelinesAcknowledgement();
+                const payload = logGuidelinesAcknowledgement();
+                await sendGuidelinesAcknowledgementAudit(payload);
             });
         }
         document.getElementById('guidelines-cancel').addEventListener('click', () => {
@@ -1660,11 +1748,15 @@
         document.getElementById('stop-interview-top').addEventListener('click', stopInterview);
         document.getElementById('open-transcript').addEventListener('click', () => transcript.classList.add('is-open'));
         document.getElementById('close-transcript').addEventListener('click', () => transcript.classList.remove('is-open'));
-        window.addEventListener('pagehide', () => {
-            stopScreenShare();
-            clearAllRuntimeTimers();
+        window.addEventListener('beforeunload', (event) => {
+            if (!shouldWarnBeforeUnload())
+                return;
+
+            event.preventDefault();
+            event.returnValue = '';
+            return '';
         });
-        window.addEventListener('beforeunload', () => {
+        window.addEventListener('pagehide', () => {
             stopScreenShare();
             clearAllRuntimeTimers();
         });
@@ -1672,6 +1764,7 @@
         renderTranscript();
         answerBox.disabled = true;
         submitButton.disabled = true;
+        setScreenShareStatus('Screen sharing required');
         updateGuidelinesAcknowledgementState();
         updateStartButtonState();
         updateSubmitAvailability();

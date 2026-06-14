@@ -4,6 +4,7 @@ using Moq;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
+using Nop.Core.Domain.Logging;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Models;
@@ -13,6 +14,7 @@ using Nop.Services.Catalog;
 using Nop.Services.Configuration;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
+using Nop.Services.Logging;
 using Nop.Services.Messages;
 using NUnit.Framework;
 
@@ -26,6 +28,7 @@ public class RuntimeAndAdminTests
     private Mock<IWorkContext> _workContext;
     private Mock<ICustomerService> _customerService;
     private Mock<Nop.Core.Events.IEventPublisher> _eventPublisher;
+    private Mock<ILogger> _nopLogger;
     private MockAiInterviewController _runtimeController;
 
     private Mock<ICreditService> _creditService;
@@ -48,10 +51,11 @@ public class RuntimeAndAdminTests
         _workContext = new Mock<IWorkContext>();
         _customerService = new Mock<ICustomerService>();
         _eventPublisher = new Mock<Nop.Core.Events.IEventPublisher>();
+        _nopLogger = new Mock<ILogger>();
         _creditService = new Mock<ICreditService>();
         _inviteService = new Mock<ISponsorInviteService>();
         _productService = new Mock<IProductService>();
-        _runtimeController = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object);
+        _runtimeController = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, null, _nopLogger.Object);
 
         _notificationService = new Mock<INotificationService>();
         _settingService = new Mock<ISettingService>();
@@ -734,16 +738,21 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("clearAnswerTimers();"));
         Assert.That(runtimeViewText, Does.Contain("if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)\r\n                    resetTimers();").Or.Contain("if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)\n                    resetTimers();"));
         Assert.That(runtimeViewText, Does.Contain("window.addEventListener('pagehide', () => {"));
-        Assert.That(runtimeViewText, Does.Contain("window.addEventListener('beforeunload', () => {"));
+        Assert.That(runtimeViewText, Does.Contain("const shouldWarnBeforeUnload = () => interviewStarted && !runtimeStoppedOrCompleted && !stopInProgress;"));
+        Assert.That(runtimeViewText, Does.Contain("window.addEventListener('beforeunload', (event) => {"));
+        Assert.That(runtimeViewText, Does.Contain("if (!shouldWarnBeforeUnload())"));
+        Assert.That(runtimeViewText, Does.Contain("event.returnValue = '';"));
         Assert.That(runtimeViewText, Does.Contain("Camera permission was denied. You can continue by typing your answers."));
         Assert.That(runtimeViewText, Does.Contain("Microphone permission was denied. You can continue by typing your answers."));
         Assert.That(runtimeViewText, Does.Contain("Recording is waiting for screen share because camera or microphone permission was denied."));
         Assert.That(runtimeViewText, Does.Contain("Recording remains available with screen share."));
         Assert.That(runtimeViewText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = 'none';"));
+        Assert.That(runtimeViewText, Does.Contain("id=\"screen-share-status\""));
+        Assert.That(runtimeViewText, Does.Contain("Screen sharing required"));
         Assert.That(runtimeViewText, Does.Contain("Interview Guidelines"));
         Assert.That(runtimeViewText, Does.Contain("I have read and agree to follow these interview guidelines."));
-        Assert.That(runtimeViewText, Does.Contain("Mobile phones and tablets are not recommended and are not allowed by policy, but they are not blocked technically."));
+        Assert.That(runtimeViewText, Does.Contain("Mobile phones and tablets are not allowed by policy, but they are not blocked technically."));
         Assert.That(runtimeViewText, Does.Contain("Screen sharing is required when the interview starts."));
         Assert.That(runtimeViewText, Does.Contain("let guidelinesAcknowledged = false;"));
         Assert.That(runtimeViewText, Does.Contain("startButton.disabled = !guidelinesAcknowledged;"));
@@ -752,7 +761,10 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("navigator.mediaDevices?.getDisplayMedia"));
         Assert.That(runtimeViewText, Does.Contain("screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });"));
         Assert.That(runtimeViewText, Does.Contain("Screen sharing is required to start the interview."));
+        Assert.That(runtimeViewText, Does.Contain("setScreenShareStatus('Screen sharing active', 'active');"));
         Assert.That(runtimeViewText, Does.Contain("Screen sharing ended. Resume screen sharing to continue the interview."));
+        Assert.That(runtimeViewText, Does.Contain("setScreenShareStatus('Screen sharing ended. Resume screen sharing to continue.', 'warning');"));
+        Assert.That(runtimeViewText, Does.Contain("setScreenShareStatus('Screen sharing resumed', 'active');"));
         Assert.That(runtimeViewText, Does.Contain("Screen sharing resumed. You can continue the interview."));
         Assert.That(runtimeViewText, Does.Contain("const isScreenShareBlockingInterview = () => screenShareRequired && interviewStarted && (!screenShareActive || screenShareInterrupted);"));
         Assert.That(runtimeViewText, Does.Contain("screenShareInterrupted = true;"));
@@ -766,9 +778,17 @@ public class RuntimeAndAdminTests
         Assert.That(beginInterviewTokenRefreshIndex, Is.GreaterThan(beginInterviewStart));
         Assert.That(beginInterviewScreenShareIndex, Is.LessThan(beginInterviewTokenRefreshIndex));
         Assert.That(runtimeViewText, Does.Contain("tracks.push(...screenShareStream.getTracks().filter("));
+        Assert.That(runtimeViewText, Does.Contain("let preservedRecordingSegments = [];"));
+        Assert.That(runtimeViewText, Does.Contain("await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording paused until screen sharing resumes.' });"));
+        Assert.That(runtimeViewText, Does.Contain("const segments = [...preservedRecordingSegments];"));
+        Assert.That(runtimeViewText, Does.Contain("const preservedBlob = preservedRecordingSegments.length === 1"));
         Assert.That(runtimeViewText, Does.Contain("Enable screen share, camera, or microphone before recording."));
         Assert.That(runtimeViewText, Does.Contain("Recording waiting for screen share, camera, or microphone."));
+        Assert.That(runtimeViewText, Does.Contain("Recording paused until screen sharing resumes."));
+        Assert.That(runtimeViewText, Does.Contain("acknowledgeGuidelinesUrl"));
+        Assert.That(runtimeViewText, Does.Contain("sendGuidelinesAcknowledgementAudit"));
         Assert.That(runtimeViewText, Does.Contain("console.info('[AIInterview Runtime] Guidelines acknowledged', payload);"));
+        Assert.That(runtimeViewText, Does.Contain("console.warn('[AIInterview Runtime] Guidelines acknowledgement audit failed.', result);"));
         Assert.That(runtimeViewText, Does.Contain("stopScreenShare();"));
 
         Assert.That(runtimeViewText, Does.Not.Contain("AgoraRTC"));
@@ -781,6 +801,42 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Not.Contain("participant flow"));
         Assert.That(runtimeViewText, Does.Not.Contain("mobileDetect"));
         Assert.That(runtimeViewText, Does.Not.Contain("userAgentData.mobile"));
+    }
+
+    [Test]
+    public async Task Runtime_AcknowledgeGuidelines_LogsAuditTrail()
+    {
+        var session = new InterviewSession
+        {
+            Id = 77,
+            CustomerId = 12,
+            ProductId = 34,
+            Token = "guidelines-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("guidelines-token")).ReturnsAsync(session);
+
+        var result = await _runtimeController.AcknowledgeGuidelines("guidelines-token", "2026-06-14T10:15:00Z", "test-agent", "1920x1080", "1280x720");
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success")?.GetValue(json.Value, null);
+        Assert.That(success, Is.EqualTo(true));
+        _nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Information,
+            "AI Interview runtime guidelines acknowledged",
+            It.Is<string>(message =>
+                message.Contains("Event=RuntimeGuidelinesAcknowledged") &&
+                message.Contains("Token=guidel...") &&
+                message.Contains("SessionId=77") &&
+                message.Contains("CustomerId=12") &&
+                message.Contains("ProductId=34") &&
+                message.Contains("AcknowledgedTimestamp=2026-06-14T10:15:00Z") &&
+                message.Contains("UserAgent=test-agent") &&
+                message.Contains("ScreenSize=1920x1080") &&
+                message.Contains("ViewportSize=1280x720")),
+            It.IsAny<Customer>()), Times.Once);
     }
 
     [Test]

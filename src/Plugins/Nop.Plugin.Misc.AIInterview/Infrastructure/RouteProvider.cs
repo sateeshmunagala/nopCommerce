@@ -119,6 +119,10 @@ public class RouteProvider : IRouteProvider
             pattern: "mockaiinterview/upload-recording",
             defaults: new { controller = "MockAiInterview", action = "UploadRecording" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockAcknowledgeGuidelinesRouteName,
+            pattern: "mockaiinterview/acknowledge-guidelines",
+            defaults: new { controller = "MockAiInterview", action = "AcknowledgeGuidelines" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockHistoryRouteName,
             pattern: "mockaiinterview/history",
             defaults: new { controller = "MockAiInterview", action = "History" });
