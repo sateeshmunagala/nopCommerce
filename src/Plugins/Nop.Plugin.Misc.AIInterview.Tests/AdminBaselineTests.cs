@@ -1307,6 +1307,20 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public void NopWeb_Project_Verifies_Datatables_Bootstrap4_Assets_Before_Publish()
+    {
+        var pluginRoot = TestFilePathHelper.GetPluginRootPath();
+        var srcRoot = Path.GetFullPath(Path.Combine(pluginRoot, "..", ".."));
+        var text = File.ReadAllText(Path.Combine(srcRoot, "Presentation", "Nop.Web", "Nop.Web.csproj"));
+
+        Assert.That(text, Does.Contain("Target Name=\"VerifyRequiredAdminStaticAssets\""));
+        Assert.That(text, Does.Contain("BeforeTargets=\"PrepareForPublish\""));
+        Assert.That(text, Does.Contain("wwwroot\\lib_npm\\datatables.net-bs4\\css\\dataTables.bootstrap4.min.css"));
+        Assert.That(text, Does.Contain("wwwroot\\lib_npm\\datatables.net-bs4\\js\\dataTables.bootstrap4.min.js"));
+        Assert.That(text, Does.Contain("npx gulp"));
+    }
+
+    [Test]
     public async Task ApplicantCredits_InvalidAmount_Returns_Error()
     {
         _customerService.Setup(x => x.GetCustomerByIdAsync(202))

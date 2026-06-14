@@ -7,6 +7,9 @@ using Nop.Services.Messages;
 using Nop.Services.Helpers;
 using System.Threading.Tasks;
 using Nop.Plugin.Misc.AIInterview.Models;
+using Nop.Web.Framework.Mvc.ModelBinding;
+using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
 
@@ -92,40 +95,30 @@ public class PluginDefaultsTests
         var adminMethod = typeof(AIInterviewPlugin).GetMethod("GetAdminLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
         var adminResources = (Dictionary<string, string>)adminMethod.Invoke(null, null);
 
-        var requiredKeys = new[]
+        var usedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var filePath in new[]
+                 {
+                     TestFilePathHelper.GetPluginFilePath("Views", "Admin", "ApplicantCredits.cshtml"),
+                     TestFilePathHelper.GetPluginFilePath("Controllers", "AIInterviewAdminController.cs")
+                 })
         {
-            "Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle",
-            "Plugins.Misc.AIInterview.Admin.Credits.CustomerId",
-            "Plugins.Misc.AIInterview.Admin.Credits.LoadCustomerId",
-            "Plugins.Misc.AIInterview.Admin.Credits.LoadCustomerEmail",
-            "Plugins.Misc.AIInterview.Admin.Credits.Amount",
-            "Plugins.Misc.AIInterview.Admin.Credits.TopUp",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.Title",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.LoadApplicant",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.SelectedApplicant",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.SelectApplicant",
-            "Plugins.Misc.AIInterview.Admin.Credits.SelectApplicant",
-            "Plugins.Misc.AIInterview.Admin.Credits.SelectVendor",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.WalletBalance",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.TotalDeposited",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.TotalWithdrawn",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.LastCreditActivityUtc",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.ViewLedger",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchCustomerId",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchKeyword",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchHasPositiveBalanceOnly",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchActivityDateFromUtc",
-            "Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchActivityDateToUtc",
-            "Plugins.Misc.AIInterview.Admin.Credits.Ledger.Title",
-            "Plugins.Misc.AIInterview.Admin.Credits.Ledger.Empty",
-            "Plugins.Misc.AIInterview.Admin.Credits.Ledger.Customer",
-            "Plugins.Misc.AIInterview.Admin.Credits.Ledger.Amount",
-            "Plugins.Misc.AIInterview.Admin.Credits.Ledger.Type",
-            "Plugins.Misc.AIInterview.Admin.Credits.Ledger.Remarks",
-            "Plugins.Misc.AIInterview.Admin.Credits.Ledger.Utc"
-        };
+            foreach (System.Text.RegularExpressions.Match match in Regex.Matches(File.ReadAllText(filePath), "\"(Plugins\\.Misc\\.AIInterview\\.Admin\\.Credits\\.[^\"]+)\""))
+                usedKeys.Add(match.Groups[1].Value);
+        }
 
-        foreach (var key in requiredKeys)
+        foreach (var modelType in new[] { typeof(CreditManagementModel), typeof(ApplicantCreditActivitySearchModel) })
+        {
+            foreach (var property in modelType.GetProperties(BindingFlags.Instance | BindingFlags.Public))
+            {
+                var attribute = property.GetCustomAttribute<NopResourceDisplayNameAttribute>();
+                if (attribute?.ResourceKey?.StartsWith("Plugins.Misc.AIInterview.Admin.Credits.", StringComparison.OrdinalIgnoreCase) == true)
+                    usedKeys.Add(attribute.ResourceKey);
+            }
+        }
+
+        Assert.That(usedKeys, Is.Not.Empty, "Applicant Credits resource usage scan did not find any keys.");
+
+        foreach (var key in usedKeys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase))
             Assert.That(adminResources.ContainsKey(key), Is.True, $"Missing admin locale resource: {key}");
     }
 
