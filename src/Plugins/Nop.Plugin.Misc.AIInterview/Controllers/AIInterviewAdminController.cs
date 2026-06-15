@@ -270,12 +270,9 @@ public class AIInterviewAdminController : BasePluginController
         return await HandleCreditTopUpAsync(model, "Plugins.Misc.AIInterview.Admin.Credits.VendorTitle");
     }
 
-    public async Task<IActionResult> ApplicantCredits(int? customerId = null, int? loadCustomerId = null, string loadCustomerEmail = null)
+    public async Task<IActionResult> ApplicantCredits(int? customerId = null)
     {
-        customerId = await ResolveApplicantCustomerIdAsync(customerId, loadCustomerId, loadCustomerEmail);
         var model = await PrepareCreditModelAsync("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle", customerId, false);
-        model.LoadCustomerId = loadCustomerId.GetValueOrDefault() > 0 ? loadCustomerId.Value : customerId ?? 0;
-        model.LoadCustomerEmail = loadCustomerEmail ?? string.Empty;
         return View("~/Plugins/Misc.AIInterview/Views/Admin/ApplicantCredits.cshtml", model);
     }
 
@@ -582,20 +579,15 @@ public class AIInterviewAdminController : BasePluginController
                     : (ledger != null ? ledger.LastLedgerActivityUtc : (grant != null ? grant.LastGrantActivityUtc : null))
             };
 
-        if (searchModel.SearchCustomerId > 0)
-            activityQuery = activityQuery.Where(item => item.CustomerId == searchModel.SearchCustomerId);
-
         if (!string.IsNullOrWhiteSpace(searchModel.SearchKeyword))
         {
             var keyword = searchModel.SearchKeyword.Trim();
             activityQuery = activityQuery.Where(item =>
                 (item.Email ?? string.Empty).Contains(keyword) ||
                 (item.FirstName ?? string.Empty).Contains(keyword) ||
-                (item.LastName ?? string.Empty).Contains(keyword));
+                (item.LastName ?? string.Empty).Contains(keyword) ||
+                (((item.FirstName ?? string.Empty) + " " + (item.LastName ?? string.Empty)).Trim()).Contains(keyword));
         }
-
-        if (searchModel.SearchHasPositiveBalanceOnly)
-            activityQuery = activityQuery.Where(item => item.WalletBalance > 0);
 
         if (searchModel.SearchActivityDateFromUtc.HasValue)
             activityQuery = activityQuery.Where(item => item.LastCreditActivityUtc.HasValue && item.LastCreditActivityUtc.Value >= searchModel.SearchActivityDateFromUtc.Value);
@@ -681,22 +673,6 @@ public class AIInterviewAdminController : BasePluginController
 
         return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, true));
     }
-
-    protected virtual async Task<int?> ResolveApplicantCustomerIdAsync(int? customerId, int? loadCustomerId, string loadCustomerEmail)
-    {
-        if (loadCustomerId.GetValueOrDefault() > 0)
-            return loadCustomerId.Value;
-
-        if (!string.IsNullOrWhiteSpace(loadCustomerEmail))
-        {
-            var customer = await _customerService.GetCustomerByEmailAsync(loadCustomerEmail.Trim());
-            if (customer != null)
-                return customer.Id;
-        }
-
-        return customerId.GetValueOrDefault() > 0 ? customerId : null;
-    }
-
     protected virtual async Task<ScoreboardFilterModel> PrepareScoreboardModelAsync(ScoreboardFilterModel filter)
     {
         filter ??= new ScoreboardFilterModel();

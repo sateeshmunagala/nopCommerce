@@ -25,22 +25,6 @@
         <div class="card card-default">
             <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.Title")</div>
             <div class="card-body">
-                <form asp-controller="AIInterviewAdmin" asp-action="ApplicantCredits" method="get">
-                    <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="LoadCustomerId" /></div>
-                        <div class="col-md-3"><nop-editor asp-for="LoadCustomerId" /></div>
-                        <div class="col-md-3"><nop-label asp-for="LoadCustomerEmail" /></div>
-                        <div class="col-md-3"><nop-editor asp-for="LoadCustomerEmail" /></div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="CustomerId" /></div>
-                        <div class="col-md-6"><nop-select asp-for="CustomerId" asp-items="Model.AvailableCustomers" /></div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-secondary">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.LoadApplicant")</button>
-                        </div>
-                    </div>
-                </form>
-
                 <div class="card card-default card-search">
                     <div class="card-body">
                         <div class="row search-row @(!hideSearchBlock ? "opened" : "")" data-hideAttribute="@hideSearchBlockAttributeName">
@@ -51,47 +35,13 @@
 
                         <div class="search-body @(hideSearchBlock ? "closed" : "")">
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <div class="form-group row">
-                                        <div class="col-md-4">
-                                            <nop-label asp-for="ActivitySearchModel.SearchCustomerId" />
+                                        <div class="col-md-3">
+                                            <label for="ActivitySearchModel_SearchKeyword">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchKeyword")</label>
                                         </div>
-                                        <div class="col-md-8">
-                                            <nop-editor asp-for="ActivitySearchModel.SearchCustomerId" />
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <div class="col-md-4">
-                                            <nop-label asp-for="ActivitySearchModel.SearchKeyword" />
-                                        </div>
-                                        <div class="col-md-8">
+                                        <div class="col-md-9">
                                             <nop-editor asp-for="ActivitySearchModel.SearchKeyword" />
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <div class="col-md-4">
-                                            <nop-label asp-for="ActivitySearchModel.SearchHasPositiveBalanceOnly" />
-                                        </div>
-                                        <div class="col-md-8">
-                                            <nop-editor asp-for="ActivitySearchModel.SearchHasPositiveBalanceOnly" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group row">
-                                        <div class="col-md-4">
-                                            <nop-label asp-for="ActivitySearchModel.SearchActivityDateFromUtc" />
-                                        </div>
-                                        <div class="col-md-8">
-                                            <nop-editor asp-for="ActivitySearchModel.SearchActivityDateFromUtc" />
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <div class="col-md-4">
-                                            <nop-label asp-for="ActivitySearchModel.SearchActivityDateToUtc" />
-                                        </div>
-                                        <div class="col-md-8">
-                                            <nop-editor asp-for="ActivitySearchModel.SearchActivityDateToUtc" />
                                         </div>
                                     </div>
                                 </div>
@@ -117,11 +67,7 @@
                     LengthMenu = Model.ActivitySearchModel.AvailablePageSizes,
                     Filters = new List<FilterParameter>
                     {
-                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchCustomerId), nameof(Model.ActivitySearchModel)),
-                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchKeyword), nameof(Model.ActivitySearchModel)),
-                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchHasPositiveBalanceOnly), nameof(Model.ActivitySearchModel)),
-                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchActivityDateFromUtc), nameof(Model.ActivitySearchModel)),
-                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchActivityDateToUtc), nameof(Model.ActivitySearchModel))
+                        new FilterParameter(nameof(Model.ActivitySearchModel.SearchKeyword), nameof(Model.ActivitySearchModel))
                     },
                     ColumnCollection = new List<ColumnProperty>
                     {
@@ -195,7 +141,7 @@
                         <div class="col-md-9"><strong>@Model.WalletBalance</strong></div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="Amount" /></div>
+                        <div class="col-md-3">@T("Plugins.Misc.AIInterview.Admin.Credits.Credits")</div>
                         <div class="col-md-6"><nop-editor asp-for="Amount" /></div>
                         <div class="col-md-3">
                             <button type="submit" class="btn btn-primary">@T("Plugins.Misc.AIInterview.Admin.Credits.TopUp")</button>

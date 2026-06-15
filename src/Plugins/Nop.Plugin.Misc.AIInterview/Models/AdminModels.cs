@@ -142,12 +142,6 @@ public record CreditManagementModel : BaseNopModel
 
     public IList<SelectListItem> AvailableCustomers { get; set; } = new List<SelectListItem>();
 
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.LoadCustomerId")]
-    public int LoadCustomerId { get; set; }
-
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.LoadCustomerEmail")]
-    public string LoadCustomerEmail { get; set; }
-
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Amount")]
     public decimal Amount { get; set; }
 
@@ -170,14 +164,8 @@ public record CreditLedgerRowModel : BaseNopModel
 
 public record ApplicantCreditActivitySearchModel : BaseSearchModel
 {
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchCustomerId")]
-    public int SearchCustomerId { get; set; }
-
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchKeyword")]
     public string SearchKeyword { get; set; }
-
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchHasPositiveBalanceOnly")]
-    public bool SearchHasPositiveBalanceOnly { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchActivityDateFromUtc")]
     public DateTime? SearchActivityDateFromUtc { get; set; }

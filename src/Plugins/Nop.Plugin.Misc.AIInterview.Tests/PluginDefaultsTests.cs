@@ -123,10 +123,19 @@ public class PluginDefaultsTests
     }
 
     [Test]
-    public void PluginJson_Version_Is_1_24()
+    public void ApplicantCredits_Models_Remove_Deprecated_Load_And_Search_Fields()
+    {
+        Assert.That(typeof(CreditManagementModel).GetProperty("LoadCustomerId"), Is.Null);
+        Assert.That(typeof(CreditManagementModel).GetProperty("LoadCustomerEmail"), Is.Null);
+        Assert.That(typeof(ApplicantCreditActivitySearchModel).GetProperty("SearchCustomerId"), Is.Null);
+        Assert.That(typeof(ApplicantCreditActivitySearchModel).GetProperty("SearchHasPositiveBalanceOnly"), Is.Null);
+    }
+
+    [Test]
+    public void PluginJson_Version_Is_1_25()
     {
         var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("plugin.json"));
 
-        Assert.That(text, Does.Contain("\"Version\": \"1.24\""));
+        Assert.That(text, Does.Contain("\"Version\": \"1.25\""));
     }
 }

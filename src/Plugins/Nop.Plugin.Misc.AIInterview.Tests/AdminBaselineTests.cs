@@ -832,71 +832,6 @@ public class AdminBaselineTests
     }
 
     [Test]
-    public async Task ApplicantCredits_Get_Can_Load_Brand_New_Applicant_By_Email()
-    {
-        _customerService.Setup(x => x.GetCustomerByEmailAsync("jane@example.com"))
-            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
-        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
-            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
-
-        var result = await _controller.ApplicantCredits(loadCustomerEmail: "jane@example.com");
-        var model = (CreditManagementModel)((ViewResult)result).Model;
-
-        Assert.That(model.CustomerId, Is.EqualTo(202));
-        Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
-        Assert.That(model.AvailableCustomers.Last().Text, Does.Contain("Jane Doe"));
-        Assert.That(model.AvailableCustomers.Last().Text, Does.Contain("jane@example.com"));
-        Assert.That(model.WalletBalance, Is.Zero);
-    }
-
-    [Test]
-    public async Task ApplicantCredits_Get_With_CustomerIdZero_And_LoadCustomerEmail_Loads_By_Email()
-    {
-        _customerService.Setup(x => x.GetCustomerByEmailAsync("jane@example.com"))
-            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
-        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
-            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
-
-        var result = await _controller.ApplicantCredits(customerId: 0, loadCustomerEmail: "jane@example.com");
-        var model = (CreditManagementModel)((ViewResult)result).Model;
-
-        Assert.That(model.CustomerId, Is.EqualTo(202));
-        Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
-        Assert.That(model.AvailableCustomers.Count(item => item.Selected), Is.EqualTo(1));
-        Assert.That(model.AvailableCustomers.Single(item => item.Selected).Value, Is.EqualTo("202"));
-    }
-
-    [Test]
-    public async Task ApplicantCredits_Get_With_CustomerIdZero_And_LoadCustomerId_Loads_By_Id()
-    {
-        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
-            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
-
-        var result = await _controller.ApplicantCredits(customerId: 0, loadCustomerId: 202);
-        var model = (CreditManagementModel)((ViewResult)result).Model;
-
-        Assert.That(model.CustomerId, Is.EqualTo(202));
-        Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
-        Assert.That(model.AvailableCustomers.Count(item => item.Selected), Is.EqualTo(1));
-        Assert.That(model.AvailableCustomers.Single(item => item.Selected).Value, Is.EqualTo("202"));
-    }
-
-    [Test]
-    public async Task ApplicantCredits_Get_Prefers_LoadCustomerId_Over_LoadCustomerEmail()
-    {
-        _customerService.Setup(x => x.GetCustomerByEmailAsync("jane@example.com"))
-            .ReturnsAsync(new Customer { Id = 203, FirstName = "Other", LastName = "Applicant", Email = "jane@example.com", VendorId = 0 });
-        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
-            .ReturnsAsync(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
-
-        var result = await _controller.ApplicantCredits(customerId: 0, loadCustomerId: 202, loadCustomerEmail: "jane@example.com");
-        var model = (CreditManagementModel)((ViewResult)result).Model;
-
-        Assert.That(model.CustomerId, Is.EqualTo(202));
-        Assert.That(model.CustomerName, Is.EqualTo("Jane Doe"));
-    }
-
-    [Test]
     public async Task ApplicantCredits_Get_With_VendorCustomer_Does_Not_Load_Selected_Data()
     {
         _wallets.Add(new CreditWallet { Id = 77, CustomerId = 301, Balance = 8 });
@@ -1024,7 +959,6 @@ public class AdminBaselineTests
         var result = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel
         {
             SearchKeyword = "jane",
-            SearchHasPositiveBalanceOnly = true,
             SearchActivityDateFromUtc = new DateTime(2026, 6, 14, 0, 0, 0, DateTimeKind.Utc),
             Start = 0,
             Length = 1,
@@ -1119,7 +1053,7 @@ public class AdminBaselineTests
     }
 
     [Test]
-    public async Task ApplicantCreditActivityList_Search_By_CustomerId_And_Positive_Balance_Filter_Works()
+    public async Task ApplicantCreditActivityList_Keyword_Search_Matches_Full_Name()
     {
         _customers.AddRange(new[]
         {
@@ -1128,19 +1062,15 @@ public class AdminBaselineTests
         });
         _wallets.AddRange(new[]
         {
-            new CreditWallet { Id = 1, CustomerId = 202, Balance = 0 },
+            new CreditWallet { Id = 1, CustomerId = 202, Balance = 1 },
             new CreditWallet { Id = 2, CustomerId = 203, Balance = 6 }
         });
-        _ledgerEntries.Add(new CreditLedgerEntry { Id = 1, CreditWalletId = 1, Amount = 1, TransactionType = "Deposit", Remarks = "history", CreatedOnUtc = DateTime.UtcNow });
 
-        var customerIdResult = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { SearchCustomerId = 202, Start = 0, Length = 10, Draw = "1" });
-        var customerIdModel = (ApplicantCreditActivityListModel)((JsonResult)customerIdResult).Value;
-        Assert.That(customerIdModel.Data.Single().CustomerId, Is.EqualTo(202));
+        var result = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { SearchKeyword = "Jane Doe", Start = 0, Length = 10, Draw = "1" });
+        var model = (ApplicantCreditActivityListModel)((JsonResult)result).Value;
 
-        var positiveBalanceResult = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { SearchHasPositiveBalanceOnly = true, Start = 0, Length = 10, Draw = "2" });
-        var positiveBalanceModel = (ApplicantCreditActivityListModel)((JsonResult)positiveBalanceResult).Value;
-        Assert.That(positiveBalanceModel.RecordsTotal, Is.EqualTo(1));
-        Assert.That(positiveBalanceModel.Data.Single().CustomerId, Is.EqualTo(203));
+        Assert.That(model.RecordsTotal, Is.EqualTo(1));
+        Assert.That(model.Data.Single().CustomerId, Is.EqualTo(202));
     }
 
     [Test]
@@ -1252,7 +1182,7 @@ public class AdminBaselineTests
 
         var result = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel
         {
-            SearchCustomerId = 404,
+            SearchKeyword = "alice@example.com",
             Start = 0,
             Length = 10,
             Draw = "3"
@@ -1277,47 +1207,18 @@ public class AdminBaselineTests
         Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Type"));
         Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Remarks"));
         Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Utc"));
-        Assert.That(text, Does.Contain("asp-for=\"LoadCustomerId\""));
-        Assert.That(text, Does.Contain("asp-for=\"LoadCustomerEmail\""));
+        Assert.That(text, Does.Not.Contain("asp-for=\"LoadCustomerId\""));
+        Assert.That(text, Does.Not.Contain("asp-for=\"LoadCustomerEmail\""));
+        Assert.That(text, Does.Not.Contain("asp-for=\"CustomerId\""));
+        Assert.That(text, Does.Not.Contain("Load Applicant"));
+        Assert.That(text, Does.Not.Contain("SearchCustomerId"));
+        Assert.That(text, Does.Not.Contain("SearchHasPositiveBalanceOnly"));
+        Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchKeyword"));
+        Assert.That(text, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Credits"));
+        Assert.That(text, Does.Contain("card-search"));
+        Assert.That(text, Does.Contain("applicant-credits-grid"));
         Assert.That(text, Does.Contain("id=\"SelectedCustomerId\""));
         Assert.That(text, Does.Contain("name=\"CustomerId\""));
-    }
-
-    [Test]
-    public void AdminScripts_Use_Published_Datatables_Bootstrap4_Assets()
-    {
-        var pluginRoot = TestFilePathHelper.GetPluginRootPath();
-        var srcRoot = Path.GetFullPath(Path.Combine(pluginRoot, "..", ".."));
-        var text = File.ReadAllText(Path.Combine(srcRoot, "Presentation", "Nop.Web", "Areas", "Admin", "Views", "Shared", "_AdminScripts.cshtml"));
-
-        Assert.That(text, Does.Contain("~/lib_npm/datatables.net-bs4/css/dataTables.bootstrap4.min.css"));
-        Assert.That(text, Does.Contain("~/lib_npm/datatables.net-bs4/js/dataTables.bootstrap4.min.js"));
-        Assert.That(text, Does.Not.Contain("datatables.net-buttons-bs4/node_modules/datatables.net-bs4"));
-    }
-
-    [Test]
-    public void CopyDependencies_Task_Copies_Datatables_Bootstrap4_To_Root_Folder()
-    {
-        var pluginRoot = TestFilePathHelper.GetPluginRootPath();
-        var srcRoot = Path.GetFullPath(Path.Combine(pluginRoot, "..", ".."));
-        var text = File.ReadAllText(Path.Combine(srcRoot, "Presentation", "Nop.Web", "gulp", "tasks", "copyDependencies.js"));
-
-        Assert.That(text, Does.Contain("datatables.net-bs4/{css,js}/*.min*"));
-        Assert.That(text, Does.Contain("targetPath + '/datatables.net-bs4'"));
-    }
-
-    [Test]
-    public void NopWeb_Project_Verifies_Datatables_Bootstrap4_Assets_Before_Publish()
-    {
-        var pluginRoot = TestFilePathHelper.GetPluginRootPath();
-        var srcRoot = Path.GetFullPath(Path.Combine(pluginRoot, "..", ".."));
-        var text = File.ReadAllText(Path.Combine(srcRoot, "Presentation", "Nop.Web", "Nop.Web.csproj"));
-
-        Assert.That(text, Does.Contain("Target Name=\"VerifyRequiredAdminStaticAssets\""));
-        Assert.That(text, Does.Contain("BeforeTargets=\"PrepareForPublish\""));
-        Assert.That(text, Does.Contain("wwwroot\\lib_npm\\datatables.net-bs4\\css\\dataTables.bootstrap4.min.css"));
-        Assert.That(text, Does.Contain("wwwroot\\lib_npm\\datatables.net-bs4\\js\\dataTables.bootstrap4.min.js"));
-        Assert.That(text, Does.Contain("npx gulp"));
     }
 
     [Test]
