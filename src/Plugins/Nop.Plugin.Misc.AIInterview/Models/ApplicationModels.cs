@@ -97,10 +97,10 @@ public record VendorJobModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Published")]
     public bool Published { get; set; } = true;
 
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.ProductRequirements.ResumeRequired")]
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.ResumeRequired")]
     public bool ResumeRequired { get; set; }
 
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.ProductRequirements.InterviewRequired")]
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired")]
     public bool InterviewRequired { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.MinimumScore")]

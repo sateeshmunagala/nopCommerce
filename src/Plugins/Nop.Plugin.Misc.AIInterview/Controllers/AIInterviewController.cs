@@ -681,7 +681,7 @@ public class AIInterviewController : BasePluginController
         {
             var items = new List<SelectListItem>
             {
-                new() { Text = "Select", Value = string.Empty }
+                new() { Text = _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Select").GetAwaiter().GetResult(), Value = string.Empty }
             };
 
             items.AddRange(options.Select(option => new SelectListItem
@@ -1005,8 +1005,19 @@ public class AIInterviewController : BasePluginController
         if (customer.VendorId <= 0)
             return Challenge();
 
+        NormalizeVendorJobModel(model);
+
         if (string.IsNullOrWhiteSpace(model.Name))
             ModelState.AddModelError(nameof(model.Name), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Name.Required"));
+
+        if (model.ApplyUntilUtc.HasValue && model.ApplyUntilUtc.Value.Date < DateTime.UtcNow.Date)
+            ModelState.AddModelError(nameof(model.ApplyUntilUtc), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc.Past"));
+
+        if (model.MinimumScore < 0 || model.MinimumScore > 100)
+            ModelState.AddModelError(nameof(model.MinimumScore), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.MinimumScore.Range"));
+
+        if (model.InterviewRequired && (model.QuestionCount < 1 || model.QuestionCount > 10))
+            ModelState.AddModelError(nameof(model.QuestionCount), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.QuestionCount.Range"));
 
         if (_productTemplateService == null || _urlRecordService == null)
             ModelState.AddModelError(string.Empty, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Unavailable"));
@@ -1017,6 +1028,35 @@ public class AIInterviewController : BasePluginController
                 string.Equals(template.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase));
         if (productTemplate == null)
             ModelState.AddModelError(string.Empty, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Unavailable"));
+
+        var experienceAttribute = await GetSpecificationAttributeByNameAsync("Experience Level", "Experience");
+        var workModeAttribute = await GetSpecificationAttributeByNameAsync("Work Mode", "Work Arrangement", "Work Type");
+        var employmentTypeAttribute = await GetSpecificationAttributeByNameAsync("Employment Type");
+
+        if (!await IsValidSpecificationOptionSelectionAsync(model.ExperienceLevelOptionId, experienceAttribute))
+            ModelState.AddModelError(nameof(model.ExperienceLevelOptionId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.ExperienceLevel.Invalid"));
+
+        if (!await IsValidSpecificationOptionSelectionAsync(model.WorkModeOptionId, workModeAttribute))
+            ModelState.AddModelError(nameof(model.WorkModeOptionId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.WorkMode.Invalid"));
+
+        if (!await IsValidSpecificationOptionSelectionAsync(model.EmploymentTypeOptionId, employmentTypeAttribute))
+            ModelState.AddModelError(nameof(model.EmploymentTypeOptionId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.EmploymentType.Invalid"));
+
+        var jobLocationOptionId = 0;
+        if (!string.IsNullOrWhiteSpace(model.JobLocation))
+        {
+            jobLocationOptionId = await ResolveCustomTextSpecificationOptionIdAsync("Job Location", "Location");
+            if (jobLocationOptionId <= 0)
+                ModelState.AddModelError(nameof(model.JobLocation), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Unsupported"));
+        }
+
+        var salaryRangeOptionId = 0;
+        if (!string.IsNullOrWhiteSpace(model.SalaryRange))
+        {
+            salaryRangeOptionId = await ResolveCustomTextSpecificationOptionIdAsync("Salary Range", "Compensation");
+            if (salaryRangeOptionId <= 0)
+                ModelState.AddModelError(nameof(model.SalaryRange), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange.Unsupported"));
+        }
 
         if (!ModelState.IsValid)
         {
@@ -1041,7 +1081,7 @@ public class AIInterviewController : BasePluginController
             ManageInventoryMethod = ManageInventoryMethod.DontManageStock,
             OrderMinimumQuantity = 1,
             OrderMaximumQuantity = 1,
-            AvailableEndDateTimeUtc = model.ApplyUntilUtc?.Date,
+            AvailableEndDateTimeUtc = GetInclusiveApplyUntilUtc(model.ApplyUntilUtc),
             CreatedOnUtc = now,
             UpdatedOnUtc = now
         };
@@ -1052,28 +1092,65 @@ public class AIInterviewController : BasePluginController
         await InsertProductSpecificationAttributeAsync(product.Id, model.WorkModeOptionId ?? 0, displayOrder: 1);
         await InsertProductSpecificationAttributeAsync(product.Id, model.EmploymentTypeOptionId ?? 0, displayOrder: 2);
 
-        var jobLocationOptionId = await ResolveCustomTextSpecificationOptionIdAsync("Job Location", "Location");
         if (!string.IsNullOrWhiteSpace(model.JobLocation))
         {
             await InsertProductSpecificationAttributeAsync(product.Id, jobLocationOptionId,
-                SpecificationAttributeType.CustomText, model.JobLocation.Trim(), 3);
+                SpecificationAttributeType.CustomText, model.JobLocation, 3);
         }
 
-        var salaryRangeOptionId = await ResolveCustomTextSpecificationOptionIdAsync("Salary Range", "Compensation");
         if (!string.IsNullOrWhiteSpace(model.SalaryRange))
         {
             await InsertProductSpecificationAttributeAsync(product.Id, salaryRangeOptionId,
-                SpecificationAttributeType.CustomText, model.SalaryRange.Trim(), 4);
+                SpecificationAttributeType.CustomText, model.SalaryRange, 4);
         }
 
         if (_jobInterviewExperienceService != null)
             await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
         if (_jobRequirementService != null)
-            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, model.MinimumScore, model.QuestionCount);
+            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, model.InterviewRequired ? model.MinimumScore : 0m, model.InterviewRequired ? model.QuestionCount : 3);
         var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
         await _urlRecordService.SaveSlugAsync(product, seName, 0);
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Success"));
         return RedirectToRoute(AIInterviewDefaults.VendorScoreboardRouteName);
+    }
+
+    protected virtual void NormalizeVendorJobModel(VendorJobModel model)
+    {
+        if (model == null)
+            return;
+
+        model.Name = model.Name?.Trim();
+        model.Sku = model.Sku?.Trim();
+        model.ShortDescription = model.ShortDescription?.Trim();
+        model.FullDescription = model.FullDescription?.Trim();
+        model.JobLocation = model.JobLocation?.Trim();
+        model.SalaryRange = model.SalaryRange?.Trim();
+
+        if (!model.InterviewRequired)
+        {
+            model.MinimumScore = 0m;
+            model.QuestionCount = 3;
+        }
+    }
+
+    protected virtual DateTime? GetInclusiveApplyUntilUtc(DateTime? applyUntilUtc)
+    {
+        if (!applyUntilUtc.HasValue)
+            return null;
+
+        return applyUntilUtc.Value.Date.AddDays(1).AddTicks(-1);
+    }
+
+    protected virtual async Task<bool> IsValidSpecificationOptionSelectionAsync(int? optionId, SpecificationAttribute specificationAttribute)
+    {
+        if (!optionId.HasValue || optionId.Value <= 0)
+            return true;
+
+        if (_specificationAttributeService == null || specificationAttribute == null)
+            return false;
+
+        var option = await _specificationAttributeService.GetSpecificationAttributeOptionByIdAsync(optionId.Value);
+        return option != null && option.SpecificationAttributeId == specificationAttribute.Id;
     }
 }
