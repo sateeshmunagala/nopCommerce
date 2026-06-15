@@ -132,10 +132,48 @@ public class PluginDefaultsTests
     }
 
     [Test]
-    public void PluginJson_Version_Is_1_25()
+    public void VendorJobModel_Uses_Localized_Display_Attributes_For_Metadata_Fields()
+    {
+        Assert.That(typeof(VendorJobModel).GetProperty("ApplyUntilUtc")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc"));
+        Assert.That(typeof(VendorJobModel).GetProperty("ExperienceLevelOptionId")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.ExperienceLevel"));
+        Assert.That(typeof(VendorJobModel).GetProperty("WorkModeOptionId")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.WorkMode"));
+        Assert.That(typeof(VendorJobModel).GetProperty("EmploymentTypeOptionId")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.EmploymentType"));
+        Assert.That(typeof(VendorJobModel).GetProperty("JobLocation")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation"));
+        Assert.That(typeof(VendorJobModel).GetProperty("SalaryRange")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange"));
+    }
+
+    [Test]
+    public void VendorJobCreation_Locale_Resources_Contain_New_Metadata_Keys()
+    {
+        var method = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var resources = (Dictionary<string, string>)method.Invoke(null, null);
+
+        foreach (var key in new[]
+                 {
+                     "Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.ExperienceLevel",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.WorkMode",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.EmploymentType",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.JobLocation",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.Settings"
+                 })
+        {
+            Assert.That(resources.ContainsKey(key), Is.True, $"Missing vendor job locale resource: {key}");
+        }
+    }
+
+    [Test]
+    public void PluginJson_Version_Is_1_26()
     {
         var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("plugin.json"));
 
-        Assert.That(text, Does.Contain("\"Version\": \"1.25\""));
+        Assert.That(text, Does.Contain("\"Version\": \"1.26\""));
     }
 }

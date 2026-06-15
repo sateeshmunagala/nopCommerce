@@ -352,6 +352,11 @@ public class EmployerTests
     {
         var viewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorJobCreation.cshtml"));
 
+        Assert.That(viewText, Does.Contain("vendor-job-form-row"));
+        Assert.That(viewText, Does.Contain("vendor-job-form-label"));
+        Assert.That(viewText, Does.Contain("vendor-job-form-control"));
+        Assert.That(viewText, Does.Contain("vendor-job-form-checkbox-list"));
+        Assert.That(viewText, Does.Contain("vendor-job-form-actions"));
         Assert.That(viewText, Does.Contain("aiinterview-minimum-score-row"));
         Assert.That(viewText, Does.Contain("aiinterview-question-count-row"));
         Assert.That(viewText, Does.Contain("const minimumScoreRow = document.querySelector('.aiinterview-minimum-score-row');"));
@@ -362,5 +367,11 @@ public class EmployerTests
         Assert.That(viewText, Does.Contain("questionCountHidden.disabled = enabled;"));
         Assert.That(viewText, Does.Contain("minimumScoreRow.style.display = enabled ? '' : 'none';"));
         Assert.That(viewText, Does.Contain("questionCountRow.style.display = enabled ? '' : 'none';"));
+        Assert.That(viewText, Does.Not.Contain("Apply Until:"));
+        Assert.That(viewText, Does.Not.Contain("Experience Level:"));
+        Assert.That(viewText, Does.Not.Contain("Work Mode:"));
+        Assert.That(viewText, Does.Not.Contain("Employment Type:"));
+        Assert.That(viewText, Does.Not.Contain("Job Location:"));
+        Assert.That(viewText, Does.Not.Contain("Salary Range:"));
     }
 }

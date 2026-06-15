@@ -109,16 +109,22 @@ public record VendorJobModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.QuestionCount")]
     public int QuestionCount { get; set; } = 3;
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.ExperienceLevel")]
     public int? ExperienceLevelOptionId { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.WorkMode")]
     public int? WorkModeOptionId { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.EmploymentType")]
     public int? EmploymentTypeOptionId { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation")]
     public string JobLocation { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange")]
     public string SalaryRange { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc")]
     public DateTime? ApplyUntilUtc { get; set; }
 
     public IList<SelectListItem> AvailableExperienceLevels { get; set; } = new List<SelectListItem>();
