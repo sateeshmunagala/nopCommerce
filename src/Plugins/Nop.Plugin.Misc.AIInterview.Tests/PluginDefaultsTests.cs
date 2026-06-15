@@ -134,6 +134,10 @@ public class PluginDefaultsTests
     [Test]
     public void VendorJobModel_Uses_Localized_Display_Attributes_For_Metadata_Fields()
     {
+        Assert.That(typeof(VendorJobModel).GetProperty("ResumeRequired")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.ResumeRequired"));
+        Assert.That(typeof(VendorJobModel).GetProperty("InterviewRequired")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired"));
         Assert.That(typeof(VendorJobModel).GetProperty("ApplyUntilUtc")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
             Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc"));
         Assert.That(typeof(VendorJobModel).GetProperty("ExperienceLevelOptionId")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
@@ -162,7 +166,8 @@ public class PluginDefaultsTests
                      "Plugins.Misc.AIInterview.VendorJobCreation.EmploymentType",
                      "Plugins.Misc.AIInterview.VendorJobCreation.JobLocation",
                      "Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange",
-                     "Plugins.Misc.AIInterview.VendorJobCreation.Settings"
+                     "Plugins.Misc.AIInterview.VendorJobCreation.Settings",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.Select"
                  })
         {
             Assert.That(resources.ContainsKey(key), Is.True, $"Missing vendor job locale resource: {key}");
@@ -170,10 +175,24 @@ public class PluginDefaultsTests
     }
 
     [Test]
-    public void PluginJson_Version_Is_1_26()
+    public void NopWeb_Project_No_Longer_Contains_Admin_Static_Asset_Publish_Blocker()
+    {
+        var pluginRoot = TestFilePathHelper.GetPluginRootPath();
+        var srcRoot = Path.GetFullPath(Path.Combine(pluginRoot, "..", ".."));
+        var text = File.ReadAllText(Path.Combine(srcRoot, "Presentation", "Nop.Web", "Nop.Web.csproj"));
+
+        Assert.That(text, Does.Not.Contain("RequiredAdminStaticAsset"));
+        Assert.That(text, Does.Not.Contain("VerifyRequiredAdminStaticAssets"));
+        Assert.That(text, Does.Not.Contain("Missing required admin static asset"));
+        Assert.That(text, Does.Not.Contain("npm ci"));
+        Assert.That(text, Does.Not.Contain("npx gulp"));
+    }
+
+    [Test]
+    public void PluginJson_Version_Is_1_27()
     {
         var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("plugin.json"));
 
-        Assert.That(text, Does.Contain("\"Version\": \"1.26\""));
+        Assert.That(text, Does.Contain("\"Version\": \"1.27\""));
     }
 }

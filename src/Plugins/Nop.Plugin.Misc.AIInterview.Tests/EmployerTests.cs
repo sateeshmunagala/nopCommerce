@@ -6,6 +6,7 @@ using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
+using Nop.Core.Domain.Catalog;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
@@ -32,6 +33,7 @@ public class EmployerTests
     private Mock<IDownloadService> _downloadService;
     private Mock<IProductTemplateService> _productTemplateService;
     private Mock<IUrlRecordService> _urlRecordService;
+    private Mock<ISpecificationAttributeService> _specificationAttributeService;
     private AIInterviewController _controller;
     private MockAiInterviewController _mockAiController;
     private Customer _employer;
@@ -56,6 +58,7 @@ public class EmployerTests
         _downloadService = new Mock<IDownloadService>();
         _productTemplateService = new Mock<IProductTemplateService>();
         _urlRecordService = new Mock<IUrlRecordService>();
+        _specificationAttributeService = new Mock<ISpecificationAttributeService>();
 
         _employer = new Customer { Id = 123, VendorId = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_employer);
@@ -63,6 +66,10 @@ public class EmployerTests
         _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>(), It.IsAny<bool>())).ReturnsAsync(false);
         _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>())).ReturnsAsync(false);
         _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
+        _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .ReturnsAsync((string key, int _, bool __, string ___, bool ____) => key);
+        _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
+            .ReturnsAsync((string key) => key);
 
         _creditService.Setup(x => x.GetOrCreateWalletAsync(It.IsAny<int>())).ReturnsAsync(new CreditWallet { Balance = 500 });
 
@@ -82,7 +89,8 @@ public class EmployerTests
             _jobRequirementService.Object,
             _productTemplateService.Object,
             _urlRecordService.Object,
-            null);
+            null,
+            _specificationAttributeService.Object);
 
         _mockAiController = new MockAiInterviewController(
             _interviewSessionService.Object,
@@ -286,6 +294,7 @@ public class EmployerTests
                 new() { Id = 1, Name = "Simple product", ViewPath = "ProductTemplate.Simple" },
                 new() { Id = 7, Name = AIInterviewDefaults.JobProductTemplateName, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath }
             });
+        SetupVendorSpecificationAttributes();
         _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), string.Empty, "Platform Engineer", true))
             .ReturnsAsync("platform-engineer");
 
@@ -309,6 +318,22 @@ public class EmployerTests
         _urlRecordService.Verify(x => x.SaveSlugAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), "platform-engineer", 0), Times.Once);
     }
 
+    [Test]
+    public async Task VendorJobCreation_Rejects_Empty_Name_And_Does_Not_Insert_Product()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes();
+
+        var result = await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "   "
+        });
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
+    }
+
     [TestCase(true, true)]
     [TestCase(true, false)]
     [TestCase(false, true)]
@@ -320,6 +345,7 @@ public class EmployerTests
                 new() { Id = 1, Name = "Simple product", ViewPath = "ProductTemplate.Simple" },
                 new() { Id = 7, Name = AIInterviewDefaults.JobProductTemplateName, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath }
             });
+        SetupVendorSpecificationAttributes();
         _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), string.Empty, "Platform Engineer", true))
             .ReturnsAsync("platform-engineer");
 
@@ -342,9 +368,169 @@ public class EmployerTests
             product.ProductTemplateId == 7 &&
             product.Published &&
             product.DisableBuyButton)), Times.Once);
+        var expectedMinimumScore = interviewRequired ? 82m : 0m;
+        var expectedQuestionCount = interviewRequired ? 5 : 3;
         _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Nop.Core.Domain.Catalog.Product>(product =>
-            product.Name == "Platform Engineer"), resumeRequired, interviewRequired, 82m, 5), Times.Once);
+            product.Name == "Platform Engineer"), resumeRequired, interviewRequired, expectedMinimumScore, expectedQuestionCount), Times.Once);
         _urlRecordService.Verify(x => x.SaveSlugAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), "platform-engineer", 0), Times.Once);
+    }
+
+    [Test]
+    public async Task VendorJobCreation_Invalid_QuestionCount_When_InterviewRequired_Does_Not_Insert_Product()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes();
+
+        var result = await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            InterviewRequired = true,
+            QuestionCount = 11
+        });
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
+    }
+
+    [TestCase(-1)]
+    [TestCase(101)]
+    public async Task VendorJobCreation_Invalid_MinimumScore_Does_Not_Insert_Product(decimal minimumScore)
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes();
+
+        var result = await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            InterviewRequired = true,
+            MinimumScore = minimumScore,
+            QuestionCount = 5
+        });
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
+    }
+
+    [Test]
+    public async Task VendorJobCreation_InterviewNotRequired_Normalizes_Requirements_Before_Save()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes();
+        _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Product>(), string.Empty, "Platform Engineer", true))
+            .ReturnsAsync("platform-engineer");
+
+        await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            InterviewRequired = false,
+            MinimumScore = 91,
+            QuestionCount = 8
+        });
+
+        _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.IsAny<Product>(), false, false, 0m, 3), Times.Once);
+    }
+
+    [Test]
+    public async Task VendorJobCreation_Trims_Text_Fields_Before_Saving()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes();
+        _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Product>(), string.Empty, "Platform Engineer", true))
+            .ReturnsAsync("platform-engineer");
+
+        await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "  Platform Engineer  ",
+            Sku = "  REF-1  ",
+            ShortDescription = "  Summary  ",
+            FullDescription = "  Description  "
+        });
+
+        _productService.Verify(x => x.InsertProductAsync(It.Is<Product>(product =>
+            product.Name == "Platform Engineer" &&
+            product.Sku == "REF-1" &&
+            product.ShortDescription == "Summary" &&
+            product.FullDescription == "Description")), Times.Once);
+    }
+
+    [Test]
+    public async Task VendorJobCreation_Saves_ApplyUntil_As_End_Of_Day_Utc()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes();
+        _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Product>(), string.Empty, "Platform Engineer", true))
+            .ReturnsAsync("platform-engineer");
+        var applyUntil = new DateTime(2026, 6, 20);
+
+        await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            ApplyUntilUtc = applyUntil
+        });
+
+        _productService.Verify(x => x.InsertProductAsync(It.Is<Product>(product =>
+            product.AvailableEndDateTimeUtc == applyUntil.Date.AddDays(1).AddTicks(-1))), Times.Once);
+    }
+
+    [Test]
+    public async Task VendorJobCreation_Rejects_Past_ApplyUntil_Date()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes();
+
+        var result = await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            ApplyUntilUtc = DateTime.UtcNow.Date.AddDays(-1)
+        });
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
+    }
+
+    [Test]
+    public async Task VendorJobCreation_Rejects_Invalid_Specification_Option_Id_And_Repopulates_Dropdowns()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes();
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionByIdAsync(999))
+            .ReturnsAsync(new SpecificationAttributeOption { Id = 999, SpecificationAttributeId = 99, Name = "Invalid" });
+
+        var result = await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            ExperienceLevelOptionId = 999
+        });
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (VendorJobModel)((ViewResult)result).Model;
+        Assert.That(model.AvailableExperienceLevels, Is.Not.Empty);
+        _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
+    }
+
+    [Test]
+    public async Task VendorJobCreation_Rejects_CustomText_Metadata_When_Unsupported()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes(includeJobLocation: false, includeSalaryRange: false);
+
+        var result = await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            JobLocation = "London",
+            SalaryRange = "80k-90k"
+        });
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
     }
 
     [Test]
@@ -357,6 +543,7 @@ public class EmployerTests
         Assert.That(viewText, Does.Contain("vendor-job-form-control"));
         Assert.That(viewText, Does.Contain("vendor-job-form-checkbox-list"));
         Assert.That(viewText, Does.Contain("vendor-job-form-actions"));
+        Assert.That(viewText, Does.Contain("vendor-job-form-row vendor-job-form-actions"));
         Assert.That(viewText, Does.Contain("aiinterview-minimum-score-row"));
         Assert.That(viewText, Does.Contain("aiinterview-question-count-row"));
         Assert.That(viewText, Does.Contain("const minimumScoreRow = document.querySelector('.aiinterview-minimum-score-row');"));
@@ -373,5 +560,53 @@ public class EmployerTests
         Assert.That(viewText, Does.Not.Contain("Employment Type:"));
         Assert.That(viewText, Does.Not.Contain("Job Location:"));
         Assert.That(viewText, Does.Not.Contain("Salary Range:"));
+    }
+
+    private void SetupVendorSpecificationAttributes(bool includeJobLocation = true, bool includeSalaryRange = true)
+    {
+        var experience = new SpecificationAttribute { Id = 10, Name = "Experience Level" };
+        var workMode = new SpecificationAttribute { Id = 11, Name = "Work Mode" };
+        var employmentType = new SpecificationAttribute { Id = 12, Name = "Employment Type" };
+        var jobLocation = new SpecificationAttribute { Id = 13, Name = "Job Location" };
+        var salaryRange = new SpecificationAttribute { Id = 14, Name = "Salary Range" };
+
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Experience Level", 0, 1))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute> { experience }, 0, 1));
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Experience", 0, 1))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute>(), 0, 1));
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Work Mode", 0, 1))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute> { workMode }, 0, 1));
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Work Arrangement", 0, 1))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute>(), 0, 1));
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Work Type", 0, 1))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute>(), 0, 1));
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Employment Type", 0, 1))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute> { employmentType }, 0, 1));
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Job Location", 0, 1))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(includeJobLocation ? new List<SpecificationAttribute> { jobLocation } : new List<SpecificationAttribute>(), 0, 1));
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Location", 0, 1))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute>(), 0, 1));
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Salary Range", 0, 1))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(includeSalaryRange ? new List<SpecificationAttribute> { salaryRange } : new List<SpecificationAttribute>(), 0, 1));
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Compensation", 0, 1))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute>(), 0, 1));
+
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(experience.Id))
+            .ReturnsAsync(new List<SpecificationAttributeOption> { new() { Id = 101, SpecificationAttributeId = experience.Id, Name = "Senior" } });
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(workMode.Id))
+            .ReturnsAsync(new List<SpecificationAttributeOption> { new() { Id = 201, SpecificationAttributeId = workMode.Id, Name = "Remote" } });
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(employmentType.Id))
+            .ReturnsAsync(new List<SpecificationAttributeOption> { new() { Id = 301, SpecificationAttributeId = employmentType.Id, Name = "Full-time" } });
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(jobLocation.Id))
+            .ReturnsAsync(new List<SpecificationAttributeOption> { new() { Id = 401, SpecificationAttributeId = jobLocation.Id, Name = "Value" } });
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(salaryRange.Id))
+            .ReturnsAsync(new List<SpecificationAttributeOption> { new() { Id = 501, SpecificationAttributeId = salaryRange.Id, Name = "Value" } });
+
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionByIdAsync(101))
+            .ReturnsAsync(new SpecificationAttributeOption { Id = 101, SpecificationAttributeId = experience.Id, Name = "Senior" });
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionByIdAsync(201))
+            .ReturnsAsync(new SpecificationAttributeOption { Id = 201, SpecificationAttributeId = workMode.Id, Name = "Remote" });
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionByIdAsync(301))
+            .ReturnsAsync(new SpecificationAttributeOption { Id = 301, SpecificationAttributeId = employmentType.Id, Name = "Full-time" });
     }
 }

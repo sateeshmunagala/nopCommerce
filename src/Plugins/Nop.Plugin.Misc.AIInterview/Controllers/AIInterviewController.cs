@@ -677,11 +677,13 @@ public class AIInterviewController : BasePluginController
         if (model == null || _specificationAttributeService == null)
             return;
 
-        static IList<SelectListItem> BuildSelectList(IEnumerable<SpecificationAttributeOption> options, int? selectedId)
+        var selectText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Select");
+
+        IList<SelectListItem> BuildSelectList(IEnumerable<SpecificationAttributeOption> options, int? selectedId)
         {
             var items = new List<SelectListItem>
             {
-                new() { Text = _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Select").GetAwaiter().GetResult(), Value = string.Empty }
+                new() { Text = selectText, Value = string.Empty }
             };
 
             items.AddRange(options.Select(option => new SelectListItem
