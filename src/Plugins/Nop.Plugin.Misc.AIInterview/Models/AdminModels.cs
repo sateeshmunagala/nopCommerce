@@ -166,12 +166,6 @@ public record ApplicantCreditActivitySearchModel : BaseSearchModel
 {
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchKeyword")]
     public string SearchKeyword { get; set; }
-
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchActivityDateFromUtc")]
-    public DateTime? SearchActivityDateFromUtc { get; set; }
-
-    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Credits.Activity.SearchActivityDateToUtc")]
-    public DateTime? SearchActivityDateToUtc { get; set; }
 }
 
 public record ApplicantCreditActivityListModel : BasePagedListModel<ApplicantCreditActivityRowModel>;

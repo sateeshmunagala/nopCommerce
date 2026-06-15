@@ -959,7 +959,6 @@ public class AdminBaselineTests
         var result = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel
         {
             SearchKeyword = "jane",
-            SearchActivityDateFromUtc = new DateTime(2026, 6, 14, 0, 0, 0, DateTimeKind.Utc),
             Start = 0,
             Length = 1,
             Draw = "2"
@@ -1074,31 +1073,45 @@ public class AdminBaselineTests
     }
 
     [Test]
-    public async Task ApplicantCreditActivityList_End_Date_Filter_Includes_Same_Day_Activity()
+    public async Task ApplicantCreditActivityList_Orders_By_Most_Recent_Activity()
     {
-        _customers.Add(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
-        _wallets.Add(new CreditWallet { Id = 1, CustomerId = 202, Balance = 5 });
-        _ledgerEntries.Add(new CreditLedgerEntry
+        _customers.AddRange(new[]
         {
-            Id = 1,
-            CreditWalletId = 1,
-            Amount = 5,
-            TransactionType = "Deposit",
-            Remarks = "same-day activity",
-            CreatedOnUtc = new DateTime(2026, 6, 14, 10, 0, 0, DateTimeKind.Utc)
+            new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 },
+            new Customer { Id = 203, FirstName = "John", LastName = "Smith", Email = "john@example.com", VendorId = 0 }
+        });
+        _wallets.AddRange(new[]
+        {
+            new CreditWallet { Id = 1, CustomerId = 202, Balance = 5 },
+            new CreditWallet { Id = 2, CustomerId = 203, Balance = 4 }
+        });
+        _ledgerEntries.AddRange(new[]
+        {
+            new CreditLedgerEntry
+            {
+                Id = 1,
+                CreditWalletId = 1,
+                Amount = 5,
+                TransactionType = "Deposit",
+                Remarks = "older activity",
+                CreatedOnUtc = new DateTime(2026, 6, 13, 10, 0, 0, DateTimeKind.Utc)
+            },
+            new CreditLedgerEntry
+            {
+                Id = 2,
+                CreditWalletId = 2,
+                Amount = 4,
+                TransactionType = "Deposit",
+                Remarks = "newer activity",
+                CreatedOnUtc = new DateTime(2026, 6, 14, 10, 0, 0, DateTimeKind.Utc)
+            }
         });
 
-        var result = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel
-        {
-            SearchActivityDateToUtc = new DateTime(2026, 6, 14, 0, 0, 0, DateTimeKind.Utc),
-            Start = 0,
-            Length = 10,
-            Draw = "1"
-        });
+        var result = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel { Start = 0, Length = 10, Draw = "1" });
         var model = (ApplicantCreditActivityListModel)((JsonResult)result).Value;
 
-        Assert.That(model.Data, Has.Count.EqualTo(1));
-        Assert.That(model.Data.Single().CustomerId, Is.EqualTo(202));
+        Assert.That(model.Data, Has.Count.EqualTo(2));
+        Assert.That(model.Data.First().CustomerId, Is.EqualTo(203));
     }
 
     [Test]

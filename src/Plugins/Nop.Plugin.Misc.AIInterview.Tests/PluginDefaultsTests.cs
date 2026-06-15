@@ -65,6 +65,8 @@ public class PluginDefaultsTests
 
         Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Runtime.Error.Unavailable"), Is.True);
         Assert.That(resources["Plugins.Misc.AIInterview.Runtime.Error.Unavailable"], Is.EqualTo("The interview service is temporarily unavailable. Please try again."));
+        Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Interview.NextQuestion"), Is.True);
+        Assert.That(resources["Plugins.Misc.AIInterview.Interview.NextQuestion"], Is.EqualTo("Next question ready."));
     }
 
     [Test]
@@ -129,6 +131,8 @@ public class PluginDefaultsTests
         Assert.That(typeof(CreditManagementModel).GetProperty("LoadCustomerEmail"), Is.Null);
         Assert.That(typeof(ApplicantCreditActivitySearchModel).GetProperty("SearchCustomerId"), Is.Null);
         Assert.That(typeof(ApplicantCreditActivitySearchModel).GetProperty("SearchHasPositiveBalanceOnly"), Is.Null);
+        Assert.That(typeof(ApplicantCreditActivitySearchModel).GetProperty("SearchActivityDateFromUtc"), Is.Null);
+        Assert.That(typeof(ApplicantCreditActivitySearchModel).GetProperty("SearchActivityDateToUtc"), Is.Null);
     }
 
     [Test]
@@ -175,6 +179,17 @@ public class PluginDefaultsTests
     }
 
     [Test]
+    public void Runtime_Localization_Resources_Contain_Directly_Used_NextQuestion_Key()
+    {
+        var upgradeMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var resources = (Dictionary<string, string>)upgradeMethod.Invoke(null, null);
+        var runtimeServiceText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Services", "InterviewRuntimeService.cs"));
+
+        Assert.That(runtimeServiceText, Does.Contain("Plugins.Misc.AIInterview.Interview.NextQuestion"));
+        Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Interview.NextQuestion"), Is.True);
+    }
+
+    [Test]
     public void NopWeb_Project_No_Longer_Contains_Admin_Static_Asset_Publish_Blocker()
     {
         var pluginRoot = TestFilePathHelper.GetPluginRootPath();
@@ -189,10 +204,10 @@ public class PluginDefaultsTests
     }
 
     [Test]
-    public void PluginJson_Version_Is_1_27()
+    public void PluginJson_Version_Is_1_28()
     {
         var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("plugin.json"));
 
-        Assert.That(text, Does.Contain("\"Version\": \"1.27\""));
+        Assert.That(text, Does.Contain("\"Version\": \"1.28\""));
     }
 }

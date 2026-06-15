@@ -589,18 +589,6 @@ public class AIInterviewAdminController : BasePluginController
                 (((item.FirstName ?? string.Empty) + " " + (item.LastName ?? string.Empty)).Trim()).Contains(keyword));
         }
 
-        if (searchModel.SearchActivityDateFromUtc.HasValue)
-            activityQuery = activityQuery.Where(item => item.LastCreditActivityUtc.HasValue && item.LastCreditActivityUtc.Value >= searchModel.SearchActivityDateFromUtc.Value);
-
-        if (searchModel.SearchActivityDateToUtc.HasValue)
-        {
-            var endDateUtc = searchModel.SearchActivityDateToUtc.Value;
-            if (endDateUtc.TimeOfDay == TimeSpan.Zero)
-                endDateUtc = endDateUtc.Date.AddDays(1).AddTicks(-1);
-
-            activityQuery = activityQuery.Where(item => item.LastCreditActivityUtc.HasValue && item.LastCreditActivityUtc.Value <= endDateUtc);
-        }
-
         activityQuery = activityQuery
             .OrderByDescending(item => item.LastCreditActivityUtc)
             .ThenBy(item => item.CustomerId);
