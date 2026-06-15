@@ -31,7 +31,7 @@
     <Content Remove="App_Data\*.json" />
     <Content Remove="App_Data\Installation\SampleData.json" />
     <None Include="App_Data\Installation\SampleData.json" CopyToPublishDirectory="PreserveNewest" />
-    <None Include="wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\js\dataTables.bootstrap4.min.js" />
+    <Content Include="wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\js\dataTables.bootstrap4.min.js" CopyToPublishDirectory="PreserveNewest" />
     <None Include="wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\js\dataTables.bootstrap4.min.mjs" />
     <None Include="wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net\js\dataTables.min.js" />
     <None Include="wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net\js\dataTables.min.mjs" />
