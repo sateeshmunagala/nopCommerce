@@ -31,6 +31,10 @@
     <Content Remove="App_Data\*.json" />
     <Content Remove="App_Data\Installation\SampleData.json" />
     <None Include="App_Data\Installation\SampleData.json" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\js\dataTables.bootstrap4.min.js" />
+    <None Include="wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\js\dataTables.bootstrap4.min.mjs" />
+    <None Include="wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net\js\dataTables.min.js" />
+    <None Include="wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net\js\dataTables.min.mjs" />
     <Content Update="App_Data\DataProtectionKeys\*.xml" CopyToPublishDirectory="Never" />
 
     <Compile Remove="Plugins\**;Themes\**" />
@@ -50,6 +54,7 @@
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+    <Content Include="wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\css\dataTables.bootstrap4.min.css" />
 
     <None Update="Areas\Admin\sitemap.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
