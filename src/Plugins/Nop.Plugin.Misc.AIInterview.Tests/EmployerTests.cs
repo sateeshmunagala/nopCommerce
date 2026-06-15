@@ -346,4 +346,21 @@ public class EmployerTests
             product.Name == "Platform Engineer"), resumeRequired, interviewRequired, 82m, 5), Times.Once);
         _urlRecordService.Verify(x => x.SaveSlugAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), "platform-engineer", 0), Times.Once);
     }
+
+    [Test]
+    public void VendorJobCreation_View_Toggles_MinimumScore_And_QuestionCount_With_InterviewRequired()
+    {
+        var viewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorJobCreation.cshtml"));
+
+        Assert.That(viewText, Does.Contain("aiinterview-minimum-score-row"));
+        Assert.That(viewText, Does.Contain("aiinterview-question-count-row"));
+        Assert.That(viewText, Does.Contain("const minimumScoreRow = document.querySelector('.aiinterview-minimum-score-row');"));
+        Assert.That(viewText, Does.Contain("const questionCountRow = document.querySelector('.aiinterview-question-count-row');"));
+        Assert.That(viewText, Does.Contain("minimumScoreInput.disabled = !enabled;"));
+        Assert.That(viewText, Does.Contain("questionCountInput.disabled = !enabled;"));
+        Assert.That(viewText, Does.Contain("minimumScoreHidden.disabled = enabled;"));
+        Assert.That(viewText, Does.Contain("questionCountHidden.disabled = enabled;"));
+        Assert.That(viewText, Does.Contain("minimumScoreRow.style.display = enabled ? '' : 'none';"));
+        Assert.That(viewText, Does.Contain("questionCountRow.style.display = enabled ? '' : 'none';"));
+    }
 }

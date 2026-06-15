@@ -177,14 +177,24 @@
                     </div>
                 </div>
 
-                <div class="inputs">
+                <div class="inputs aiinterview-minimum-score-row" @(Model.InterviewRequired ? string.Empty : "style=\"display:none;\"")>
                     <label asp-for="MinimumScore" asp-postfix=":"></label>
-                    <input asp-for="MinimumScore" type="number" min="0" step="0.01" />
+                    <input asp-for="MinimumScore" type="number" min="0" step="0.01" @(Model.InterviewRequired ? null : "disabled") />
+                    <input type="hidden"
+                           id="MinimumScoreHidden"
+                           name="MinimumScore"
+                           value="@Model.MinimumScore.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                           @(Model.InterviewRequired ? "disabled" : null) />
                     <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.VendorJobCreation.MinimumScore.Hint")</small>
                 </div>
-                <div class="inputs aiinterview-question-count-row">
+                <div class="inputs aiinterview-question-count-row" @(Model.InterviewRequired ? string.Empty : "style=\"display:none;\"")>
                     <label asp-for="QuestionCount" asp-postfix=":"></label>
-                    <input asp-for="QuestionCount" type="number" min="1" max="10" step="1" />
+                    <input asp-for="QuestionCount" type="number" min="1" max="10" step="1" @(Model.InterviewRequired ? null : "disabled") />
+                    <input type="hidden"
+                           id="QuestionCountHidden"
+                           name="QuestionCount"
+                           value="@Model.QuestionCount"
+                           @(Model.InterviewRequired ? "disabled" : null) />
                     <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionCount.Hint")</small>
                 </div>
             </div>
@@ -199,14 +209,37 @@
 <script asp-location="Footer">
     (() => {
         const interviewRequired = document.getElementById('InterviewRequired');
+        const minimumScoreRow = document.querySelector('.aiinterview-minimum-score-row');
         const questionCountRow = document.querySelector('.aiinterview-question-count-row');
-        if (!interviewRequired || !questionCountRow)
+        const minimumScoreInput = document.getElementById('MinimumScore');
+        const questionCountInput = document.getElementById('QuestionCount');
+        const minimumScoreHidden = document.getElementById('MinimumScoreHidden');
+        const questionCountHidden = document.getElementById('QuestionCountHidden');
+
+        if (!interviewRequired || !minimumScoreRow || !questionCountRow || !minimumScoreInput || !questionCountInput || !minimumScoreHidden || !questionCountHidden)
             return;
 
-        const updateVisibility = () => {
-            questionCountRow.style.display = interviewRequired.checked ? '' : 'none';
+        const syncHiddenValues = () => {
+            minimumScoreHidden.value = minimumScoreInput.value;
+            questionCountHidden.value = questionCountInput.value;
         };
 
+        const updateVisibility = () => {
+            const enabled = interviewRequired.checked;
+
+            minimumScoreRow.style.display = enabled ? '' : 'none';
+            questionCountRow.style.display = enabled ? '' : 'none';
+
+            minimumScoreInput.disabled = !enabled;
+            questionCountInput.disabled = !enabled;
+            minimumScoreHidden.disabled = enabled;
+            questionCountHidden.disabled = enabled;
+
+            syncHiddenValues();
+        };
+
+        minimumScoreInput.addEventListener('input', syncHiddenValues);
+        questionCountInput.addEventListener('input', syncHiddenValues);
         interviewRequired.addEventListener('change', updateVisibility);
         updateVisibility();
     })();
