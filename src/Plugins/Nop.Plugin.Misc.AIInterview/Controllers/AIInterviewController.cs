@@ -20,6 +20,8 @@ using Nop.Services.Common;
 using Nop.Web.Framework.Controllers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.WebUtilities;
+using Nop.Web.Framework.Mvc.Routing;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
@@ -41,6 +43,7 @@ public class AIInterviewController : BasePluginController
     private readonly ISpecificationAttributeService _specificationAttributeService;
     private readonly IInterviewTurnService _interviewTurnService;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly INopUrlHelper _nopUrlHelper;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -57,7 +60,8 @@ public class AIInterviewController : BasePluginController
         IJobInterviewExperienceService jobInterviewExperienceService = null,
         ISpecificationAttributeService specificationAttributeService = null,
         IInterviewTurnService interviewTurnService = null,
-        IHttpClientFactory httpClientFactory = null)
+        IHttpClientFactory httpClientFactory = null,
+        INopUrlHelper nopUrlHelper = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -75,6 +79,7 @@ public class AIInterviewController : BasePluginController
         _specificationAttributeService = specificationAttributeService;
         _interviewTurnService = interviewTurnService;
         _httpClientFactory = httpClientFactory;
+        _nopUrlHelper = nopUrlHelper;
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -89,7 +94,8 @@ public class AIInterviewController : BasePluginController
         IProductTemplateService productTemplateService = null,
         IUrlRecordService urlRecordService = null,
         IJobInterviewExperienceService jobInterviewExperienceService = null,
-        ISpecificationAttributeService specificationAttributeService = null)
+        ISpecificationAttributeService specificationAttributeService = null,
+        INopUrlHelper nopUrlHelper = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -105,8 +111,25 @@ public class AIInterviewController : BasePluginController
             jobInterviewExperienceService,
             specificationAttributeService,
             null,
-            null)
+            null,
+            nopUrlHelper)
     {
+    }
+
+    protected virtual async Task<string> BuildProductRedirectUrlAsync(Product product, IDictionary<string, string> query = null)
+    {
+        if (product == null || _nopUrlHelper == null)
+            return null;
+
+        var url = await _nopUrlHelper.RouteGenericUrlAsync(product);
+        if (string.IsNullOrWhiteSpace(url) || query == null || !query.Any(item => !string.IsNullOrWhiteSpace(item.Value)))
+            return url;
+
+        var filteredQuery = query
+            .Where(item => !string.IsNullOrWhiteSpace(item.Value))
+            .ToDictionary(item => item.Key, item => item.Value, StringComparer.OrdinalIgnoreCase);
+
+        return filteredQuery.Count == 0 ? url : QueryHelpers.AddQueryString(url, filteredQuery);
     }
 
     protected static bool SessionMatchesApplication(InterviewSession session, JobApplication application)
@@ -488,11 +511,18 @@ public class AIInterviewController : BasePluginController
         if (!_aiInterviewSettings.Enabled)
             return RedirectToRoute("Homepage");
 
-        if (productId > 0 && _urlRecordService != null)
+        if (productId > 0)
         {
             var product = await _productService.GetProductByIdAsync(productId);
             if (product != null)
-                return RedirectToRoute("Product", new { SeName = await _urlRecordService.GetSeNameAsync(product) });
+            {
+                var redirectUrl = await BuildProductRedirectUrlAsync(product, new Dictionary<string, string>
+                {
+                    ["jobTitle"] = jobTitle
+                });
+                if (!string.IsNullOrWhiteSpace(redirectUrl))
+                    return Redirect(redirectUrl);
+            }
         }
 
         return RedirectToRoute("Homepage");

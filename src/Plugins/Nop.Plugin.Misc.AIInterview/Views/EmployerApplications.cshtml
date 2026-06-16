@@ -263,13 +263,13 @@
             <form method="get" asp-action="EmployerApplications">
                 <div class="employer-filter-grid">
                     <div class="employer-field">
-                        <label for="CandidateNameOrEmail">Candidate</label>
+                        <label for="CandidateNameOrEmail">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Candidate")</label>
                         <input id="CandidateNameOrEmail" name="CandidateNameOrEmail" value="@Model.CandidateNameOrEmail" />
                     </div>
                     <div class="employer-field">
-                        <label for="Status">Status</label>
+                        <label for="Status">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Status")</label>
                         <select id="Status" name="Status">
-                            <option value="">All</option>
+                            <option value="">@T("Admin.Common.All")</option>
                             @foreach (var status in JobApplicationStatuses.All)
                             {
                                 <option value="@status" selected="@(Model.Status == status)">@GetStatusLabel(status)</option>
@@ -277,31 +277,31 @@
                         </select>
                     </div>
                     <div class="employer-field">
-                        <label for="InterviewSort">Interview sorting</label>
+                        <label for="InterviewSort">@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewSort")</label>
                         <select id="InterviewSort" name="InterviewSort">
-                            <option value="TopScorersFirst" selected="@(Model.InterviewSort == "TopScorersFirst")">Top scorers first</option>
-                            <option value="LowestScorersFirst" selected="@(Model.InterviewSort == "LowestScorersFirst")">Lowest scorers first</option>
-                            <option value="LatestApplied" selected="@(Model.InterviewSort == "LatestApplied")">Latest applied first</option>
+                            <option value="TopScorersFirst" selected="@(Model.InterviewSort == "TopScorersFirst")">@T("Plugins.Misc.AIInterview.Employer.Applications.Sort.TopScorersFirst")</option>
+                            <option value="LowestScorersFirst" selected="@(Model.InterviewSort == "LowestScorersFirst")">@T("Plugins.Misc.AIInterview.Employer.Applications.Sort.LowestScorersFirst")</option>
+                            <option value="LatestApplied" selected="@(Model.InterviewSort == "LatestApplied")">@T("Plugins.Misc.AIInterview.Employer.Applications.Sort.LatestApplied")</option>
                         </select>
                     </div>
                     <div class="employer-field">
-                        <label for="MinScore">Minimum score</label>
+                        <label for="MinScore">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.MinScore")</label>
                         <input id="MinScore" name="MinScore" type="number" min="0" max="100" value="@Model.MinScore" />
                     </div>
                     <div class="employer-field">
-                        <label for="MaxScore">Maximum score</label>
+                        <label for="MaxScore">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.MaxScore")</label>
                         <input id="MaxScore" name="MaxScore" type="number" min="0" max="100" value="@Model.MaxScore" />
                     </div>
                     <div class="employer-field">
-                        <label for="StartDate">Applied from (UTC)</label>
+                        <label for="StartDate">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedFromUtc")</label>
                         <input id="StartDate" name="StartDate" type="date" value="@(Model.StartDate?.ToString("yyyy-MM-dd"))" />
                     </div>
                     <div class="employer-field">
-                        <label for="EndDate">Applied to (UTC)</label>
+                        <label for="EndDate">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedToUtc")</label>
                         <input id="EndDate" name="EndDate" type="date" value="@(Model.EndDate?.ToString("yyyy-MM-dd"))" />
                     </div>
                     <div class="employer-field">
-                        <label for="PageSize">Page size</label>
+                        <label for="PageSize">@T("Admin.Common.PageSize")</label>
                         <select id="PageSize" name="PageSize">
                             <option value="10" selected="@(Model.PageSize == 10)">10</option>
                             <option value="20" selected="@(Model.PageSize == 20)">20</option>
@@ -313,13 +313,13 @@
                 <div class="employer-filter-actions">
                     <label>
                         <input type="checkbox" name="OnlyWithInterviewScore" value="true" checked="@Model.OnlyWithInterviewScore" />
-                        Only candidates with interview score
+                        @T("Plugins.Misc.AIInterview.Employer.Applications.OnlyWithInterviewScore")
                     </label>
                 </div>
 
                 <div class="employer-filter-actions">
-                    <button type="submit" class="button-1">Apply filters</button>
-                    <a class="button-2" href="@Url.Action("EmployerApplications")">Reset</a>
+                    <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Filter")</button>
+                    <a class="button-2" href="@Url.Action("EmployerApplications")">@T("Admin.Common.Reset")</a>
                     <a class="button-2" href="@Url.RouteUrl("Plugin.Misc.AIInterview.ExportCsv", new {
                         CandidateNameOrEmail = Model.CandidateNameOrEmail,
                         Status = Model.Status,
@@ -334,27 +334,27 @@
 
             <div class="results-toolbar">
                 <div class="filter-summary">
-                    Showing @Model.TotalCount filtered result(s)
+                    @string.Format(T("Plugins.Misc.AIInterview.Employer.Applications.ResultsSummary").Text, Model.TotalCount)
                 </div>
                 <div class="page-size-wrap">
-                    Page size @Model.PageSize
+                    @T("Admin.Common.PageSize") @Model.PageSize
                 </div>
             </div>
 
             <table class="employer-table">
                 <thead>
                     <tr>
-                        <th>Candidate</th>
-                        <th>Email</th>
-                        <th>Phone</th>
-                        <th>Charge mode</th>
-                        <th>Prompt source</th>
-                        <th>Interview score</th>
-                        <th>Attempts</th>
-                        <th>Applied on</th>
-                        <th>Cover message</th>
-                        <th>Status</th>
-                        <th>Report</th>
+                        <th>@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Candidate")</th>
+                        <th>@T("Admin.Customers.Customers.Fields.Email")</th>
+                        <th>@T("Admin.Customers.Customers.Fields.Phone")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Applications.PromptSource")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewScore")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedOn")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Applications.CoverMessage")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Status")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report")</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -395,7 +395,7 @@
                             <td>
                                 @if (!string.IsNullOrWhiteSpace(app.InterviewReportUrl))
                                 {
-                                    <a href="@app.InterviewReportUrl">Open report</a>
+                                    <a href="@app.InterviewReportUrl">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report")</a>
                                 }
                                 else
                                 {

@@ -91,11 +91,6 @@ public class MockAiInterviewAdminController : BasePluginController
         return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml");
     }
 
-    public IActionResult Report()
-    {
-        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Report.cshtml");
-    }
-
     [HttpPost]
     public async Task<IActionResult> TopUpCredits(int customerId, decimal amount)
     {

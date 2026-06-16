@@ -266,7 +266,10 @@ public class AdminBaselineTests
         Assert.That(getModel.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-1"));
         Assert.That(getModel.CreditPurchasePageUrl, Is.EqualTo("keep-credits"));
         Assert.That(getModel.AzureBlobStorageContainerUrl, Is.EqualTo("keep-container"));
-        Assert.That(getModel.AzureBlobStorageSasToken, Is.EqualTo("keep-sas"));
+        Assert.That(getModel.ApiKey, Is.Empty);
+        Assert.That(getModel.AzureOpenAiApiKey, Is.Empty);
+        Assert.That(getModel.AzureSpeechKey, Is.Empty);
+        Assert.That(getModel.AzureBlobStorageSasToken, Is.Empty);
 
         var postResult = await _controller.AiService(new AiServiceSettingsModel
         {
@@ -279,9 +282,9 @@ public class AdminBaselineTests
             CreditProductSkuMappingsJson = "{\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}",
             CreditPurchasePageUrl = "/credits",
             AzureOpenAiEndpointUrl = "https://endpoint",
-            AzureOpenAiApiKey = "aoai-key",
+            AzureOpenAiApiKey = "",
             AzureOpenAiDeploymentOrModel = "deployment",
-            AzureSpeechKey = "speech",
+            AzureSpeechKey = "",
             AzureSpeechRegion = "eastus",
             AzureBlobStorageContainerUrl = "",
             AzureBlobStorageSasToken = ""
@@ -297,13 +300,17 @@ public class AdminBaselineTests
         Assert.That(_aiInterviewSettings.Provider, Is.EqualTo("Azure OpenAI"));
         Assert.That(_aiInterviewSettings.AzureSpeechRegion, Is.EqualTo("eastus"));
         Assert.That(_aiInterviewSettings.AzureBlobStorageContainerUrl, Is.EqualTo(string.Empty));
-        Assert.That(_aiInterviewSettings.AzureBlobStorageSasToken, Is.EqualTo(string.Empty));
+        Assert.That(_aiInterviewSettings.ApiKey, Is.EqualTo("key"));
+        Assert.That(_aiInterviewSettings.AzureOpenAiApiKey, Is.EqualTo("keep-aoai-key"));
+        Assert.That(_aiInterviewSettings.AzureSpeechKey, Is.EqualTo("keep-speech"));
+        Assert.That(_aiInterviewSettings.AzureBlobStorageSasToken, Is.EqualTo("keep-sas"));
         Assert.That(_aiInterviewSettings.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-10"));
         Assert.That(_aiInterviewSettings.CreditPurchasePageUrl, Is.EqualTo("/credits"));
         Assert.That(refreshedModel.AzureOpenAiEndpointUrl, Is.EqualTo("https://endpoint"));
-        Assert.That(refreshedModel.AzureOpenAiApiKey, Is.EqualTo("aoai-key"));
+        Assert.That(refreshedModel.ApiKey, Is.Empty);
+        Assert.That(refreshedModel.AzureOpenAiApiKey, Is.Empty);
         Assert.That(refreshedModel.AzureOpenAiDeploymentOrModel, Is.EqualTo("deployment"));
-        Assert.That(refreshedModel.AzureSpeechKey, Is.EqualTo("speech"));
+        Assert.That(refreshedModel.AzureSpeechKey, Is.Empty);
         Assert.That(refreshedModel.AzureSpeechRegion, Is.EqualTo("eastus"));
         Assert.That(refreshedModel.AzureBlobStorageContainerUrl, Is.Empty);
         Assert.That(refreshedModel.AzureBlobStorageSasToken, Is.Empty);
@@ -361,6 +368,37 @@ public class AdminBaselineTests
         Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"), Is.True);
         Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"), Is.True);
         Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"), Is.True);
+    }
+
+    [Test]
+    public void AiService_View_Uses_Password_Inputs_For_Secrets()
+    {
+        var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "AiService.cshtml"));
+
+        Assert.That(text, Does.Contain("asp-for=\"ApiKey\""));
+        Assert.That(text, Does.Contain("asp-for=\"AzureOpenAiApiKey\""));
+        Assert.That(text, Does.Contain("asp-for=\"AzureSpeechKey\""));
+        Assert.That(text, Does.Contain("asp-for=\"AzureBlobStorageSasToken\""));
+        Assert.That(text, Does.Contain("type=\"password\""));
+        Assert.That(text, Does.Contain("placeholder=\"********\""));
+    }
+
+    [Test]
+    public void Scoreboard_View_Uses_Nopcommerce_DataTables_Helper()
+    {
+        var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "Scoreboard.cshtml"));
+
+        Assert.That(text, Does.Contain("@await Html.PartialAsync(\"Table\", new DataTablesModel"));
+        Assert.That(text, Does.Contain("UrlRead = new DataUrl(\"ScoreboardList\", \"AIInterviewAdmin\", null)"));
+        Assert.That(text, Does.Contain("ColumnCollection = new List<ColumnProperty>"));
+    }
+
+    [Test]
+    public void Admin_Mock_Report_Placeholder_Is_Removed()
+    {
+        Assert.That(typeof(AIInterviewDefaults).GetProperty("AdminMockReportRouteName"), Is.Null);
+        Assert.That(typeof(MockAiInterviewAdminController).GetMethod("Report"), Is.Null);
+        Assert.That(File.Exists(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterviewAdmin", "Report.cshtml")), Is.False);
     }
 
     [Test]

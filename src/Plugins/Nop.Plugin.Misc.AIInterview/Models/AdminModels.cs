@@ -183,7 +183,7 @@ public record ApplicantCreditActivityRowModel : BaseNopModel
     public DateTime? LastCreditActivityUtc { get; set; }
 }
 
-public record ScoreboardFilterModel : BaseNopModel
+public record ScoreboardFilterModel : BaseSearchModel
 {
     public ScoreboardFilterModel()
     {
@@ -218,6 +218,8 @@ public record ScoreboardFilterModel : BaseNopModel
 
     public IList<ScoreboardRowModel> Rows { get; set; }
 }
+
+public record ScoreboardListModel : BasePagedListModel<ScoreboardRowModel>;
 
 public record ScoreboardRowModel : BaseNopModel
 {

@@ -48,7 +48,6 @@
     <None Remove="Views\MockAiInterview\Report.cshtml" />
     <None Remove="Views\MockAiInterview\EmployerManage.cshtml" />
     <None Remove="Views\MockAiInterviewAdmin\Configure.cshtml" />
-    <None Remove="Views\MockAiInterviewAdmin\Report.cshtml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -125,9 +124,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\MockAiInterviewAdmin\Configure.cshtml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Views\MockAiInterviewAdmin\Report.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\_ViewImports.cshtml">

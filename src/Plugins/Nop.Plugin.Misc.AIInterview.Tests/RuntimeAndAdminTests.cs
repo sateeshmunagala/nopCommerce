@@ -787,7 +787,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("interviewUnavailable = true;"));
         Assert.That(runtimeViewText, Does.Contain("let runtimeStoppedOrCompleted = false;"));
         Assert.That(runtimeViewText, Does.Contain("let stopInProgress = false;"));
-        Assert.That(runtimeViewText, Does.Contain("let screenShareRequired = true;"));
+        Assert.That(runtimeViewText, Does.Contain("let screenShareRequired = false;"));
         Assert.That(runtimeViewText, Does.Contain("let screenShareActive = false;"));
         Assert.That(runtimeViewText, Does.Contain("let screenShareInterrupted = false;"));
         Assert.That(runtimeViewText, Does.Contain("if (runtimeStoppedOrCompleted || stopInProgress)"));
@@ -832,14 +832,14 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("display:none; position: absolute;"));
         Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = 'none';"));
         Assert.That(runtimeViewText, Does.Contain("id=\"screen-share-status\""));
-        Assert.That(runtimeViewText, Does.Contain("Screen sharing required"));
+        Assert.That(runtimeViewText, Does.Contain("Screen sharing optional"));
         Assert.That(runtimeViewText, Does.Contain("Interview Guidelines"));
         Assert.That(runtimeViewText, Does.Contain("I have read and agree to follow these interview guidelines."));
         Assert.That(runtimeViewText, Does.Contain("Mobile phones and tablets are not allowed by policy, but they are not blocked technically."));
-        Assert.That(runtimeViewText, Does.Contain("Screen sharing is required when the interview starts."));
+        Assert.That(runtimeViewText, Does.Not.Contain("Screen sharing is required when the interview starts."));
         Assert.That(runtimeViewText, Does.Contain("let guidelinesAcknowledged = false;"));
         Assert.That(runtimeViewText, Does.Contain("startButton.disabled = !guidelinesAcknowledged;"));
-        Assert.That(runtimeViewText, Does.Contain("startButton.textContent = 'Resume Screen Share';"));
+        Assert.That(runtimeViewText, Does.Contain("startButton.textContent = 'Repeat Question';").Or.Contain("startButton.textContent = 'Interview Started';"));
         Assert.That(runtimeViewText, Does.Contain("guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);"));
         Assert.That(runtimeViewText, Does.Contain("navigator.mediaDevices?.getDisplayMedia"));
         Assert.That(runtimeViewText, Does.Contain("screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });"));

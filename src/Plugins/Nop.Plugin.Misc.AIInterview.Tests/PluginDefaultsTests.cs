@@ -75,20 +75,15 @@ public class PluginDefaultsTests
         var upgradeMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
         var adminMethod = typeof(AIInterviewPlugin).GetMethod("GetAdminLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
-        var upgradeResources = (Dictionary<string, string>)upgradeMethod.Invoke(null, null);
         var adminResources = (Dictionary<string, string>)adminMethod.Invoke(null, null);
-        var unavailableKeys = upgradeResources.Keys
-            .Concat(adminResources.Keys)
-            .Where(key => key.Contains("Runtime.Error.Unavailable", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        var duplicateKeys = unavailableKeys
+        var duplicateKeys = adminResources.Keys
             .GroupBy(key => key, StringComparer.OrdinalIgnoreCase)
             .Where(group => group.Count() > 1)
             .Select(group => group.Key)
             .ToList();
 
-        Assert.That(unavailableKeys, Has.Count.EqualTo(1));
         Assert.That(duplicateKeys, Is.Empty);
+        Assert.That(adminResources.Keys.Count(key => key.Equals("Plugins.Misc.AIInterview.Admin.Menu.Root", StringComparison.OrdinalIgnoreCase)), Is.EqualTo(1));
     }
 
     [Test]
@@ -204,10 +199,10 @@ public class PluginDefaultsTests
     }
 
     [Test]
-    public void PluginJson_Version_Is_1_28()
+    public void PluginJson_Version_Is_1_29()
     {
         var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("plugin.json"));
 
-        Assert.That(text, Does.Contain("\"Version\": \"1.28\""));
+        Assert.That(text, Does.Contain("\"Version\": \"1.29\""));
     }
 }

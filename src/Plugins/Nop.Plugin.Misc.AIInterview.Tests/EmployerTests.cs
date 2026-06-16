@@ -199,6 +199,9 @@ public class EmployerTests
     [Test]
     public async Task CreateInvite_Flow_Success()
     {
+        _productService.Setup(x => x.GetProductByIdAsync(10))
+            .ReturnsAsync(new Product { Id = 10, VendorId = _employer.VendorId, Name = "AI Developer" });
+
         var result = await _mockAiController.CreateInvite("invited@test.com", 10, 1, null);
 
         _inviteService.Verify(x => x.CreateInviteAsync(123, "invited@test.com", 10, 1, null), Times.Once);
@@ -211,6 +214,9 @@ public class EmployerTests
     [Test]
     public async Task CreateInvite_InvalidEmail_ReturnsFailure()
     {
+        _productService.Setup(x => x.GetProductByIdAsync(10))
+            .ReturnsAsync(new Product { Id = 10, VendorId = _employer.VendorId, Name = "AI Developer" });
+
         var result = await _mockAiController.CreateInvite("not-an-email", 10, 1, null);
 
         Assert.That(result, Is.TypeOf<JsonResult>());
@@ -225,6 +231,9 @@ public class EmployerTests
     [Test]
     public async Task CreateInvite_ServiceFailure_ReturnsFailureReason()
     {
+        _productService.Setup(x => x.GetProductByIdAsync(10))
+            .ReturnsAsync(new Product { Id = 10, VendorId = _employer.VendorId, Name = "AI Developer" });
+
         _inviteService.Setup(x => x.CreateInviteAsync(123, "invited@test.com", 10, 1, null))
             .ThrowsAsync(new NopException("Product is not owned by the sponsor."));
 

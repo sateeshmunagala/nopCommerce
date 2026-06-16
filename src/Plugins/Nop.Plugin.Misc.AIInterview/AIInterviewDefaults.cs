@@ -113,7 +113,6 @@ public static class AIInterviewDefaults
     /// Admin Mock routes
     /// </summary>
     public static string AdminMockConfigureRouteName => "Plugin.Misc.AIInterview.Admin.Mock.Configure";
-    public static string AdminMockReportRouteName => "Plugin.Misc.AIInterview.Admin.Mock.Report";
 
     /// <summary>
     /// Gets the prefix for locale resources

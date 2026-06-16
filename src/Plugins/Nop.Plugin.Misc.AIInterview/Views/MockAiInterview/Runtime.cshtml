@@ -107,7 +107,7 @@
                     <span class="runtime-dot"></span>
                     <span class="runtime-dot"></span>
                 </div>
-                <div id="screen-share-status" class="runtime-screen-share-status">Screen sharing required</div>
+                <div id="screen-share-status" class="runtime-screen-share-status">Screen sharing optional</div>
                 <div class="runtime-status" id="recording-status"></div>
                 @if (Model.IsMockMode)
                 {
@@ -163,7 +163,7 @@
             <li>Corporate laptops are not allowed.</li>
             <li>Mobile phones and tablets are not allowed by policy, but they are not blocked technically.</li>
             <li>Camera and microphone access may be required.</li>
-            <li>Screen sharing is required when the interview starts.</li>
+            <li>Screen sharing is optional and can be enabled if requested by your interviewer or employer workflow.</li>
             <li>Please be in a quiet place with stable internet.</li>
             <li>Do not use outside help, another person, unauthorized notes, or AI tools during the interview.</li>
             <li>Keep this interview tab open until the interview is completed.</li>
@@ -232,7 +232,7 @@
         let runtimeStoppedOrCompleted = false;
         let stopInProgress = false;
         let mediaPermissionDenied = false;
-        let screenShareRequired = true;
+        let screenShareRequired = false;
         let screenShareActive = false;
         let screenShareInterrupted = false;
         let guidelinesAcknowledged = false;
@@ -619,6 +619,11 @@
         };
 
         const requestScreenShareForInterviewStart = async () => {
+            if (!screenShareRequired) {
+                setScreenShareStatus('Screen sharing optional');
+                return true;
+            }
+
             if (screenShareStream?.getTracks?.().some(track => track.readyState === 'live')) {
                 screenShareActive = true;
                 screenShareInterrupted = false;
@@ -1837,7 +1842,7 @@
         submitButton.disabled = true;
         updateStopButtonsState();
         setStatus('Click Start Interview to begin.', false);
-        setScreenShareStatus('Screen sharing required');
+        setScreenShareStatus('Screen sharing optional');
         updateGuidelinesAcknowledgementState();
         updateStartButtonState();
         updateSubmitAvailability();

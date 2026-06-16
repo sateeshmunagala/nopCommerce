@@ -19,6 +19,7 @@ using Nop.Services.Messages;
 using Nop.Services.Vendors;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
+using Nop.Web.Framework.Models.DataTables;
 using Nop.Web.Framework.Models.Extensions;
 using Nop.Web.Framework.Mvc.Filters;
 
@@ -30,6 +31,7 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 public class AIInterviewAdminController : BasePluginController
 {
     private const string AzureOpenAiProviderValue = "Azure OpenAI";
+    private const string SecretMask = "********";
 
     private sealed record CreditWalletSnapshot(int Id, int CustomerId, decimal Balance);
     private sealed record CreditLedgerSnapshot(int CustomerId, decimal Amount, DateTime CreatedOnUtc);
@@ -137,24 +139,26 @@ public class AIInterviewAdminController : BasePluginController
 
         try
         {
+            var currentAiInterviewSettings = await _settingService.LoadSettingAsync<AIInterviewSettings>() ?? _aiInterviewSettings;
+
             _mockAIInterviewSettings.UseMockResponses = settingsModel.UseMockResponses;
             await _settingService.SaveSettingAsync(_mockAIInterviewSettings);
 
-            _aiInterviewSettings.Provider = AzureOpenAiProviderValue;
-            _aiInterviewSettings.ApiKey = settingsModel.ApiKey;
-            _aiInterviewSettings.Model = settingsModel.Model;
-            _aiInterviewSettings.Prompt = settingsModel.Prompt;
-            _aiInterviewSettings.ServiceSettings = settingsModel.ServiceSettings;
-            _aiInterviewSettings.CreditProductSkuMappingsJson = settingsModel.CreditProductSkuMappingsJson;
-            _aiInterviewSettings.CreditPurchasePageUrl = settingsModel.CreditPurchasePageUrl;
-            _aiInterviewSettings.AzureOpenAiEndpointUrl = settingsModel.AzureOpenAiEndpointUrl;
-            _aiInterviewSettings.AzureOpenAiApiKey = settingsModel.AzureOpenAiApiKey;
-            _aiInterviewSettings.AzureOpenAiDeploymentOrModel = settingsModel.AzureOpenAiDeploymentOrModel;
-            _aiInterviewSettings.AzureSpeechKey = settingsModel.AzureSpeechKey;
-            _aiInterviewSettings.AzureSpeechRegion = settingsModel.AzureSpeechRegion;
-            _aiInterviewSettings.AzureBlobStorageContainerUrl = settingsModel.AzureBlobStorageContainerUrl;
-            _aiInterviewSettings.AzureBlobStorageSasToken = settingsModel.AzureBlobStorageSasToken;
-            await _settingService.SaveSettingAsync(_aiInterviewSettings);
+            currentAiInterviewSettings.Provider = AzureOpenAiProviderValue;
+            currentAiInterviewSettings.ApiKey = PreserveSecretIfBlank(settingsModel.ApiKey, currentAiInterviewSettings.ApiKey);
+            currentAiInterviewSettings.Model = settingsModel.Model;
+            currentAiInterviewSettings.Prompt = settingsModel.Prompt;
+            currentAiInterviewSettings.ServiceSettings = settingsModel.ServiceSettings;
+            currentAiInterviewSettings.CreditProductSkuMappingsJson = settingsModel.CreditProductSkuMappingsJson;
+            currentAiInterviewSettings.CreditPurchasePageUrl = settingsModel.CreditPurchasePageUrl;
+            currentAiInterviewSettings.AzureOpenAiEndpointUrl = settingsModel.AzureOpenAiEndpointUrl;
+            currentAiInterviewSettings.AzureOpenAiApiKey = PreserveSecretIfBlank(settingsModel.AzureOpenAiApiKey, currentAiInterviewSettings.AzureOpenAiApiKey);
+            currentAiInterviewSettings.AzureOpenAiDeploymentOrModel = settingsModel.AzureOpenAiDeploymentOrModel;
+            currentAiInterviewSettings.AzureSpeechKey = PreserveSecretIfBlank(settingsModel.AzureSpeechKey, currentAiInterviewSettings.AzureSpeechKey);
+            currentAiInterviewSettings.AzureSpeechRegion = settingsModel.AzureSpeechRegion;
+            currentAiInterviewSettings.AzureBlobStorageContainerUrl = settingsModel.AzureBlobStorageContainerUrl;
+            currentAiInterviewSettings.AzureBlobStorageSasToken = PreserveSecretIfBlank(settingsModel.AzureBlobStorageSasToken, currentAiInterviewSettings.AzureBlobStorageSasToken);
+            await _settingService.SaveSettingAsync(currentAiInterviewSettings);
         }
         catch (Exception exception)
         {
@@ -296,6 +300,21 @@ public class AIInterviewAdminController : BasePluginController
     }
 
     [HttpPost]
+    public async Task<IActionResult> ScoreboardList(ScoreboardFilterModel searchModel)
+    {
+        var prepared = await PrepareScoreboardModelAsync(searchModel);
+        var rows = prepared.Rows ?? new List<ScoreboardRowModel>();
+        var totalCount = rows.Count;
+        var pageRows = rows
+            .Skip(searchModel.Start)
+            .Take(searchModel.Length > 0 ? searchModel.Length : searchModel.PageSize)
+            .ToList();
+        var pagedList = new Nop.Core.PagedList<ScoreboardRowModel>(pageRows, searchModel.Page - 1, searchModel.PageSize, totalCount);
+
+        return Json(await new ScoreboardListModel().PrepareToGridAsync(searchModel, pagedList, () => pageRows.ToAsyncEnumerable()));
+    }
+
+    [HttpPost]
     public async Task<IActionResult> ScoreboardExportCsv(ScoreboardFilterModel model)
     {
         var prepared = await PrepareScoreboardModelAsync(model);
@@ -327,6 +346,14 @@ public class AIInterviewAdminController : BasePluginController
     protected virtual bool TryValidateCreditProductSkuMappingsJson(string json)
     {
         return CreditPurchaseService.TryParseSkuMappings(json, out _, out _);
+    }
+
+    protected virtual string PreserveSecretIfBlank(string candidateValue, string existingValue)
+    {
+        if (string.IsNullOrWhiteSpace(candidateValue) || string.Equals(candidateValue, SecretMask, StringComparison.Ordinal))
+            return existingValue;
+
+        return candidateValue.Trim();
     }
 
     protected virtual List<string> ParseEmails(string text)
@@ -664,6 +691,7 @@ public class AIInterviewAdminController : BasePluginController
     protected virtual async Task<ScoreboardFilterModel> PrepareScoreboardModelAsync(ScoreboardFilterModel filter)
     {
         filter ??= new ScoreboardFilterModel();
+        filter.SetGridPageSize();
         filter.AvailableStatuses = BuildStatusSelectList(filter.Status);
 
         var applications = await _applicationService.GetApplicationsAsync(pageSize: int.MaxValue) ?? new Nop.Core.PagedList<JobApplication>(new List<JobApplication>(), 0, 1, 1);
@@ -769,19 +797,19 @@ public class AIInterviewAdminController : BasePluginController
         model ??= new AiServiceSettingsModel
         {
             UseMockResponses = mockAIInterviewSettings.UseMockResponses,
-            ApiKey = aiInterviewSettings.ApiKey,
+            ApiKey = string.Empty,
             Model = aiInterviewSettings.Model,
             Prompt = aiInterviewSettings.Prompt,
             ServiceSettings = aiInterviewSettings.ServiceSettings,
             CreditProductSkuMappingsJson = aiInterviewSettings.CreditProductSkuMappingsJson,
             CreditPurchasePageUrl = aiInterviewSettings.CreditPurchasePageUrl,
             AzureOpenAiEndpointUrl = aiInterviewSettings.AzureOpenAiEndpointUrl,
-            AzureOpenAiApiKey = aiInterviewSettings.AzureOpenAiApiKey,
+            AzureOpenAiApiKey = string.Empty,
             AzureOpenAiDeploymentOrModel = aiInterviewSettings.AzureOpenAiDeploymentOrModel,
-            AzureSpeechKey = aiInterviewSettings.AzureSpeechKey,
+            AzureSpeechKey = string.Empty,
             AzureSpeechRegion = aiInterviewSettings.AzureSpeechRegion,
             AzureBlobStorageContainerUrl = aiInterviewSettings.AzureBlobStorageContainerUrl,
-            AzureBlobStorageSasToken = aiInterviewSettings.AzureBlobStorageSasToken
+            AzureBlobStorageSasToken = string.Empty
         };
 
         model.Provider = AzureOpenAiProviderValue;

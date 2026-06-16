@@ -17,6 +17,10 @@ using NopLogger = Nop.Services.Logging.ILogger;
 using Nop.Web.Framework.Controllers;
 using Microsoft.Extensions.Logging;
 using NopLogLevel = Nop.Core.Domain.Logging.LogLevel;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Nop.Core.Domain.Catalog;
+using Nop.Web.Framework.Mvc.Routing;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
@@ -39,6 +43,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IJobRequirementService _jobRequirementService;
     private readonly NopLogger _nopLogger;
     private readonly ILogger<MockAiInterviewController> _logger;
+    private readonly INopUrlHelper _nopUrlHelper;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -56,7 +61,8 @@ public class MockAiInterviewController : BasePluginController
         IInterviewRuntimeService interviewRuntimeService = null,
         IJobRequirementService jobRequirementService = null,
         NopLogger nopLogger = null,
-        ILogger<MockAiInterviewController> logger = null)
+        ILogger<MockAiInterviewController> logger = null,
+        INopUrlHelper nopUrlHelper = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -75,6 +81,7 @@ public class MockAiInterviewController : BasePluginController
         _jobRequirementService = jobRequirementService;
         _nopLogger = nopLogger;
         _logger = logger;
+        _nopUrlHelper = nopUrlHelper;
     }
 
     protected virtual Task LogRuntimeIssueAsync(string shortMessage, string fullMessage = "")
@@ -112,6 +119,22 @@ public class MockAiInterviewController : BasePluginController
         return session != null &&
                session.TokenExpiryUtc.HasValue &&
                session.TokenExpiryUtc.Value <= now;
+    }
+
+    protected virtual async Task<string> BuildProductRedirectUrlAsync(Product product, IDictionary<string, string> query = null)
+    {
+        if (product == null || _nopUrlHelper == null)
+            return null;
+
+        var url = await _nopUrlHelper.RouteGenericUrlAsync(product);
+        if (string.IsNullOrWhiteSpace(url) || query == null || !query.Any(item => !string.IsNullOrWhiteSpace(item.Value)))
+            return url;
+
+        var filteredQuery = query
+            .Where(item => !string.IsNullOrWhiteSpace(item.Value))
+            .ToDictionary(item => item.Key, item => item.Value, StringComparer.OrdinalIgnoreCase);
+
+        return filteredQuery.Count == 0 ? url : QueryHelpers.AddQueryString(url, filteredQuery);
     }
 
     protected virtual bool IsSessionUsable(InterviewSession session, DateTime? currentUtc = null)
@@ -169,11 +192,18 @@ public class MockAiInterviewController : BasePluginController
 
     public async Task<IActionResult> Start(int productId = 0, string sponsorToken = null)
     {
-        if (productId > 0 && _urlRecordService != null)
+        if (productId > 0)
         {
             var product = await _productService.GetProductByIdAsync(productId);
             if (product != null)
-                return RedirectToRoute("Product", new { SeName = await _urlRecordService.GetSeNameAsync(product), sponsorToken });
+            {
+                var redirectUrl = await BuildProductRedirectUrlAsync(product, new Dictionary<string, string>
+                {
+                    ["sponsorToken"] = sponsorToken
+                });
+                if (!string.IsNullOrWhiteSpace(redirectUrl))
+                    return Redirect(redirectUrl);
+            }
         }
 
         return RedirectToRoute("Homepage");
@@ -793,6 +823,8 @@ public class MockAiInterviewController : BasePluginController
         foreach (var invite in invites)
             inviteStatuses[invite.Id] = await GetInviteStatusTextAsync(invite);
 
+        ViewBag.AvailableProducts = await BuildEmployerInviteProductSelectListAsync(customer);
+
         ViewBag.CreditBalance = wallet.Balance;
         ViewBag.SponsorInviteStatuses = inviteStatuses;
 
@@ -817,6 +849,13 @@ public class MockAiInterviewController : BasePluginController
         try
         {
             var customer = await _workContext.GetCurrentCustomerAsync();
+            var product = await _productService.GetProductByIdAsync(productId);
+            if (product == null)
+                return Json(new { success = false, error = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound", "Product not found.") });
+
+            if (customer?.VendorId > 0 && product.VendorId != customer.VendorId)
+                return Json(new { success = false, error = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound", "Product not found.") });
+
             var emails = email.Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
                               .Select(e => e.Trim())
                               .Where(e => !string.IsNullOrEmpty(e))
@@ -915,5 +954,38 @@ public class MockAiInterviewController : BasePluginController
                         : "Plugins.Misc.AIInterview.Employer.Invite.Active";
 
         return await GetLocalizedTextAsync(statusKey, statusKey);
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildEmployerInviteProductSelectListAsync(Nop.Core.Domain.Customers.Customer customer)
+    {
+        var products = await _productService.SearchProductsAsync(pageSize: int.MaxValue, showHidden: true)
+            ?? new Nop.Core.PagedList<Product>(new List<Product>(), 0, 1, 1);
+
+        var filteredProducts = products.AsEnumerable();
+        if (customer?.VendorId > 0)
+            filteredProducts = filteredProducts.Where(product => product.VendorId == customer.VendorId);
+
+        var items = new List<SelectListItem>
+        {
+            new()
+            {
+                Value = string.Empty,
+                Text = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.VendorJobCreation.Select", "Select")
+            }
+        };
+
+        foreach (var product in filteredProducts.OrderBy(product => product.Name))
+        {
+            if (_jobRequirementService != null && !await _jobRequirementService.IsJobProductAsync(product))
+                continue;
+
+            items.Add(new SelectListItem
+            {
+                Value = product.Id.ToString(),
+                Text = $"{product.Name} (ID: {product.Id})"
+            });
+        }
+
+        return items;
     }
 }

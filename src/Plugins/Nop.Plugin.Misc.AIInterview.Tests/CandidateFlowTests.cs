@@ -18,6 +18,7 @@ using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Messages;
+using Nop.Web.Framework.Mvc.Routing;
 using NUnit.Framework;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
@@ -253,6 +254,77 @@ public class CandidateFlowTests
         _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
         Assert.That(token, Is.Not.EqualTo("expired-token"));
         Assert.That(runtimeUrl, Is.EqualTo("/mockaiinterview/runtime?token=generated"));
+    }
+
+    [Test]
+    public async Task Apply_With_ProductId_Redirects_To_Generic_Product_Url()
+    {
+        var product = new Product { Id = 9, Name = "Net Developer" };
+        var nopUrlHelper = new Mock<INopUrlHelper>();
+        nopUrlHelper.Setup(x => x.RouteGenericUrlAsync(product, null, null, null))
+            .ReturnsAsync("/jobs/net-developer");
+        _productService.Setup(x => x.GetProductByIdAsync(9)).ReturnsAsync(product);
+
+        var controller = new AIInterviewController(
+            _applicationService.Object,
+            _sessionService.Object,
+            _settings,
+            _workContext.Object,
+            _notificationService.Object,
+            _localizationService.Object,
+            _downloadService.Object,
+            _customerService.Object,
+            _productService.Object,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null,
+            null,
+            _turnService.Object,
+            null,
+            nopUrlHelper.Object);
+
+        var result = await controller.Apply("Net Developer", 9);
+
+        Assert.That(result, Is.TypeOf<RedirectResult>());
+        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/jobs/net-developer?jobTitle=Net%20Developer"));
+        nopUrlHelper.Verify(x => x.RouteGenericUrlAsync(product, null, null, null), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_Start_Get_Redirects_To_Generic_Product_Url_And_Preserves_SponsorToken()
+    {
+        var product = new Product { Id = 5, Name = "AI Developer" };
+        var nopUrlHelper = new Mock<INopUrlHelper>();
+        nopUrlHelper.Setup(x => x.RouteGenericUrlAsync(product, null, null, null))
+            .ReturnsAsync("/jobs/ai-developer");
+        _productService.Setup(x => x.GetProductByIdAsync(5)).ReturnsAsync(product);
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            _applicationService.Object,
+            null,
+            _jobInterviewExperienceService.Object,
+            null,
+            null,
+            null,
+            _jobRequirementService.Object,
+            null,
+            null,
+            nopUrlHelper.Object);
+
+        var result = await controller.Start(5, "invite-token");
+
+        Assert.That(result, Is.TypeOf<RedirectResult>());
+        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/jobs/ai-developer?sponsorToken=invite-token"));
+        nopUrlHelper.Verify(x => x.RouteGenericUrlAsync(product, null, null, null), Times.Once);
     }
 
     [Test]
@@ -990,7 +1062,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("const clearTokenRefreshTimer = () =>"));
         Assert.That(runtimeText, Does.Contain("const clearAllRuntimeTimers = () =>"));
         Assert.That(runtimeText, Does.Contain("id=\"screen-share-status\""));
-        Assert.That(runtimeText, Does.Contain("Screen sharing required"));
+        Assert.That(runtimeText, Does.Contain("Screen sharing optional"));
         Assert.That(runtimeText, Does.Contain("Screen sharing active"));
         Assert.That(runtimeText, Does.Contain("Screen sharing ended. Resume screen sharing to continue."));
         Assert.That(runtimeText, Does.Contain("Screen sharing resumed"));

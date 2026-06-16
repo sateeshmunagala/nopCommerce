@@ -1,10 +1,12 @@
 @model IList<Nop.Plugin.Misc.AIInterview.Domain.SponsorInvite>
 @using Nop.Plugin.Misc.AIInterview
+@using Microsoft.AspNetCore.Mvc.Rendering
 @using Nop.Web.Models.Customer
 
 @{
     Layout = "_ColumnsTwo";
     var inviteStatuses = ViewBag.SponsorInviteStatuses as IDictionary<int, string> ?? new Dictionary<int, string>();
+    var availableProducts = ViewBag.AvailableProducts as IList<SelectListItem> ?? new List<SelectListItem>();
 }
 
 @section left {
@@ -33,7 +35,12 @@
                         </div>
                         <div class="inputs">
                             <label>@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
-                            <input type="number" name="productId" required class="form-control" />
+                            <select id="productId" name="productId" required class="form-control">
+                                @foreach (var option in availableProducts)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
                         </div>
                         <div class="inputs">
                             <label>@T("Plugins.Misc.AIInterview.Employer.Invite.MaxAttempts"):</label>

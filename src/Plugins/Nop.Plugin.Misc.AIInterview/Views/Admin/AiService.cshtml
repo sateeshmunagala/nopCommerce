@@ -43,7 +43,12 @@
                         });
                     </script>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Provider" /></div><div class="col-md-9"><nop-select asp-for="Provider" asp-items="Model.AvailableProviders" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ApiKey" /></div><div class="col-md-9"><nop-editor asp-for="ApiKey" /></div></div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="ApiKey" /></div>
+                        <div class="col-md-9">
+                            <input asp-for="ApiKey" class="form-control" type="password" autocomplete="new-password" placeholder="********" />
+                        </div>
+                    </div>
                     <div class="form-group row">
                         <div class="col-md-3">
                             <label class="col-form-label">@T("Plugins.Misc.AIInterview.Model")</label>
@@ -57,11 +62,21 @@
                     <hr />
                     <h4>Azure OpenAI</h4>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureOpenAiEndpointUrl" /></div><div class="col-md-9"><nop-editor asp-for="AzureOpenAiEndpointUrl" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureOpenAiApiKey" /></div><div class="col-md-9"><nop-editor asp-for="AzureOpenAiApiKey" /></div></div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="AzureOpenAiApiKey" /></div>
+                        <div class="col-md-9">
+                            <input asp-for="AzureOpenAiApiKey" class="form-control" type="password" autocomplete="new-password" placeholder="********" />
+                        </div>
+                    </div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureOpenAiDeploymentOrModel" /></div><div class="col-md-9"><nop-editor asp-for="AzureOpenAiDeploymentOrModel" /></div></div>
                     <hr />
                     <h4>Azure Speech</h4>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureSpeechKey" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechKey" /></div></div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="AzureSpeechKey" /></div>
+                        <div class="col-md-9">
+                            <input asp-for="AzureSpeechKey" class="form-control" type="password" autocomplete="new-password" placeholder="********" />
+                        </div>
+                    </div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureSpeechRegion" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechRegion" /></div></div>
                     <h4>Azure Blob storage</h4>
                     <div class="form-group row">
@@ -74,7 +89,7 @@
                     <div class="form-group row">
                         <div class="col-md-3"><nop-label asp-for="AzureBlobStorageSasToken" /></div>
                         <div class="col-md-9">
-                            <nop-textarea asp-for="AzureBlobStorageSasToken" />
+                            <input asp-for="AzureBlobStorageSasToken" class="form-control" type="password" autocomplete="new-password" placeholder="********" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint")</small>
                         </div>
                     </div>
