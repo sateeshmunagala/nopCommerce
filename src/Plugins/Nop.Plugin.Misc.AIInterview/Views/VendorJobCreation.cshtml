@@ -11,18 +11,6 @@
 }
 
 <style>
-    .vendor-job-creation-page .page-body {
-        display: grid;
-        gap: 20px;
-    }
-
-    .vendor-job-form {
-        padding: 24px;
-        border: 1px solid #d9e1ec;
-        border-radius: 8px;
-        background: #fff;
-    }
-
     .vendor-job-form-grid {
         display: grid;
         gap: 16px;
@@ -113,10 +101,6 @@
     }
 
     @@media (max-width: 820px) {
-        .vendor-job-form {
-            padding: 20px;
-        }
-
         .vendor-job-form-row {
             grid-template-columns: 1fr;
             gap: 8px;
@@ -141,10 +125,14 @@
         <h1>@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")</h1>
     </div>
     <div class="page-body">
-        <form asp-route="@AIInterviewDefaults.VendorJobCreationRouteName" method="post" class="vendor-job-form">
-            <div asp-validation-summary="ModelOnly" class="message-error"></div>
-
-            <div class="vendor-job-form-grid">
+        <div class="section">
+            <div class="title">
+                <strong>@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")</strong>
+            </div>
+            <form asp-route="@AIInterviewDefaults.VendorJobCreationRouteName" method="post">
+                <div class="fieldset">
+                    <div asp-validation-summary="ModelOnly" class="message-error"></div>
+                    <div class="vendor-job-form-grid">
                 <div class="vendor-job-form-row">
                     <div class="vendor-job-form-label">
                         <label asp-for="Name" asp-postfix=":"></label>
@@ -330,15 +318,17 @@
                         <span asp-validation-for="QuestionCount"></span>
                     </div>
                 </div>
-            </div>
 
-            <div class="vendor-job-form-row vendor-job-form-actions">
-                <div class="vendor-job-form-label"></div>
-                <div class="vendor-job-form-control">
-                    <button type="submit" class="button-1 vendor-job-submit">@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")</button>
+                <div class="vendor-job-form-row vendor-job-form-actions">
+                    <div class="vendor-job-form-label"></div>
+                    <div class="vendor-job-form-control">
+                        <button type="submit" class="button-1 vendor-job-submit">@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")</button>
+                    </div>
                 </div>
-            </div>
-        </form>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

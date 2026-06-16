@@ -41,15 +41,15 @@
                         <div class="mock-report-stat-value" style="font-size:16px;color:#162033;">@Model.CreatedOnUtc.ToString("f")</div>
                     </div>
                     <div class="mock-report-stat">
-                        <div class="mock-report-stat-label">Questions</div>
+                        <div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Questions")</div>
                         <div class="mock-report-stat-value">@((Model.Turns?.Count ?? 0).ToString())</div>
                     </div>
                     <div class="mock-report-stat">
-                        <div class="mock-report-stat-label">Recording</div>
+                        <div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Recording")</div>
                         <div class="mock-report-stat-value" style="font-size:16px;color:#162033;">
                             @if (!string.IsNullOrWhiteSpace(Model.RecordingUrl))
                             {
-                                <a href="@Model.RecordingUrl" target="_blank" rel="noopener">Open recording</a>
+                                <a href="@Model.RecordingUrl" target="_blank" rel="noopener">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>
                             }
                             else
                             {
@@ -58,19 +58,19 @@
                         </div>
                     </div>
                     <div class="mock-report-stat">
-                        <div class="mock-report-stat-label">Average Technical Score</div>
+                        <div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.AverageTechnicalScore")</div>
                         <div class="mock-report-stat-value">@((avgTechnical.HasValue ? $"{avgTechnical.Value:N0}/100" : "-"))</div>
                     </div>
                     <div class="mock-report-stat">
-                        <div class="mock-report-stat-label">Average Communication</div>
+                        <div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.AverageCommunication")</div>
                         <div class="mock-report-stat-value">@((avgCommunication.HasValue ? $"{avgCommunication.Value:N0}/100" : "-"))</div>
                     </div>
                     <div class="mock-report-stat">
-                        <div class="mock-report-stat-label">Average Professionalism</div>
+                        <div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.AverageProfessionalism")</div>
                         <div class="mock-report-stat-value">@((avgProfessionalism.HasValue ? $"{avgProfessionalism.Value:N0}/100" : "-"))</div>
                     </div>
                     <div class="mock-report-stat">
-                        <div class="mock-report-stat-label">Average Positive Attitude</div>
+                        <div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.AveragePositiveAttitude")</div>
                         <div class="mock-report-stat-value">@((avgPositiveAttitude.HasValue ? $"{avgPositiveAttitude.Value:N0}/100" : "-"))</div>
                     </div>
                 </div>
@@ -79,12 +79,12 @@
             @if (Model.ParsedQuestionScores?.Any() == true)
             {
                 <section class="mock-report-card">
-                    <h3>Question Scores</h3>
+                    <h3>@T("Plugins.Misc.AIInterview.Report.QuestionScores")</h3>
                     <div class="mock-report-grid">
                         @for (var i = 0; i < Model.ParsedQuestionScores.Count; i++)
                         {
                             <div class="mock-report-stat">
-                                <div class="mock-report-stat-label">Question @(i + 1)</div>
+                                <div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Question") @(i + 1)</div>
                                 <div class="mock-report-stat-value">@Model.ParsedQuestionScores[i].ToString("N0")/100</div>
                             </div>
                         }
@@ -95,25 +95,25 @@
             @if (Model.Turns?.Any() == true)
             {
                 <section class="mock-report-card">
-                    <h3>Interview Turns</h3>
+                    <h3>@T("Plugins.Misc.AIInterview.Report.InterviewTurns")</h3>
                     @foreach (var turn in Model.Turns)
                     {
                         <div class="mock-report-turn">
                             <div class="mock-report-turn-title">Q@(turn.SequenceNumber). @turn.QuestionText</div>
-                            <div class="mock-report-answer"><strong>Answer:</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? "(pending)" : turn.AnswerText)</div>
-                            <div class="mock-report-feedback"><strong>Feedback:</strong> @(string.IsNullOrWhiteSpace(turn.Feedback) ? "-" : turn.Feedback)</div>
+                            <div class="mock-report-answer"><strong>@T("Plugins.Misc.AIInterview.Report.Answer"):</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? T("Plugins.Misc.AIInterview.Report.Pending").Text : turn.AnswerText)</div>
+                            <div class="mock-report-feedback"><strong>@T("Plugins.Misc.AIInterview.Report.Feedback"):</strong> @(string.IsNullOrWhiteSpace(turn.Feedback) ? "-" : turn.Feedback)</div>
                             <div class="mock-report-grid">
-                                <div class="mock-report-stat"><div class="mock-report-stat-label">Technical Score</div><div class="mock-report-stat-value">@((turn.TechnicalScore.HasValue ? $"{turn.TechnicalScore.Value:N0}/100" : "-"))</div></div>
-                                <div class="mock-report-stat"><div class="mock-report-stat-label">Communication</div><div class="mock-report-stat-value">@((turn.CommunicationScore.HasValue ? $"{turn.CommunicationScore.Value:N0}/100" : "-"))</div></div>
-                                <div class="mock-report-stat"><div class="mock-report-stat-label">Professionalism</div><div class="mock-report-stat-value">@((turn.ProfessionalismScore.HasValue ? $"{turn.ProfessionalismScore.Value:N0}/100" : "-"))</div></div>
-                                <div class="mock-report-stat"><div class="mock-report-stat-label">Positive Attitude</div><div class="mock-report-stat-value">@((turn.PositiveAttitudeScore.HasValue ? $"{turn.PositiveAttitudeScore.Value:N0}/100" : "-"))</div></div>
+                                <div class="mock-report-stat"><div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.TechnicalScore")</div><div class="mock-report-stat-value">@((turn.TechnicalScore.HasValue ? $"{turn.TechnicalScore.Value:N0}/100" : "-"))</div></div>
+                                <div class="mock-report-stat"><div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Communication")</div><div class="mock-report-stat-value">@((turn.CommunicationScore.HasValue ? $"{turn.CommunicationScore.Value:N0}/100" : "-"))</div></div>
+                                <div class="mock-report-stat"><div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Professionalism")</div><div class="mock-report-stat-value">@((turn.ProfessionalismScore.HasValue ? $"{turn.ProfessionalismScore.Value:N0}/100" : "-"))</div></div>
+                                <div class="mock-report-stat"><div class="mock-report-stat-label">@T("Plugins.Misc.AIInterview.Report.PositiveAttitude")</div><div class="mock-report-stat-value">@((turn.PositiveAttitudeScore.HasValue ? $"{turn.PositiveAttitudeScore.Value:N0}/100" : "-"))</div></div>
                             </div>
                             <div class="mock-report-meta">
-                                <span><strong>Score:</strong> @(turn.Score.HasValue ? $"{turn.Score.Value:N0}/100" : "-")</span>
-                                <span><strong>Asked:</strong> @turn.AskedOnUtc.ToString("g")</span>
+                                <span><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @(turn.Score.HasValue ? $"{turn.Score.Value:N0}/100" : "-")</span>
+                                <span><strong>@T("Plugins.Misc.AIInterview.Report.Asked"):</strong> @turn.AskedOnUtc.ToString("g")</span>
                                 @if (turn.AnsweredOnUtc.HasValue)
                                 {
-                                    <span><strong>Answered:</strong> @turn.AnsweredOnUtc.Value.ToString("g")</span>
+                                    <span><strong>@T("Plugins.Misc.AIInterview.Report.Answered"):</strong> @turn.AnsweredOnUtc.Value.ToString("g")</span>
                                 }
                             </div>
                         </div>

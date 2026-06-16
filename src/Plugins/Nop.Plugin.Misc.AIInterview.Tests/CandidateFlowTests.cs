@@ -910,8 +910,8 @@ public class CandidateFlowTests
         var mockReportText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Report.cshtml"));
         var historyText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml"));
 
-        Assert.That(reportText, Does.Contain("Recording"));
-        Assert.That(mockReportText, Does.Contain("Recording"));
+        Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Recording"));
+        Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.Recording"));
         Assert.That(historyText, Does.Contain("Open recording"));
         Assert.That(historyText, Does.Contain("Open report"));
     }
@@ -1119,14 +1119,16 @@ public class CandidateFlowTests
         Assert.That(reportText, Does.Not.Contain("Q@turn.SequenceNumber"));
         Assert.That(mockReportText, Does.Contain("Q@(turn.SequenceNumber)"));
         Assert.That(reportText, Does.Contain("Q@(turn.SequenceNumber)"));
-        Assert.That(mockReportText, Does.Contain("Technical Score"));
-        Assert.That(mockReportText, Does.Contain("Communication"));
-        Assert.That(mockReportText, Does.Contain("Professionalism"));
-        Assert.That(mockReportText, Does.Contain("Positive Attitude"));
-        Assert.That(reportText, Does.Contain("Technical Score"));
-        Assert.That(reportText, Does.Contain("Communication"));
-        Assert.That(reportText, Does.Contain("Professionalism"));
-        Assert.That(reportText, Does.Contain("Positive Attitude"));
+        Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.TechnicalScore"));
+        Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.Communication"));
+        Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.Professionalism"));
+        Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.PositiveAttitude"));
+        Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.TechnicalScore"));
+        Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Communication"));
+        Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Professionalism"));
+        Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.PositiveAttitude"));
+        Assert.That(mockReportText, Does.Not.Contain(">Technical Score<"));
+        Assert.That(reportText, Does.Not.Contain(">Technical Score<"));
     }
 
     [Test]

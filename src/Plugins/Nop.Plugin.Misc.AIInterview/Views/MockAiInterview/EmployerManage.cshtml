@@ -30,11 +30,11 @@
                 <div class="fieldset">
                     <div class="form-fields">
                         <div class="inputs">
-                            <label>@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
-                            <input type="email" name="email" required class="form-control" />
+                            <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
+                            <input id="invite-email" type="email" name="email" required class="form-control" />
                         </div>
                         <div class="inputs">
-                            <label>@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
+                            <label for="productId">@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
                             <select id="productId" name="productId" required class="form-control">
                                 @foreach (var option in availableProducts)
                                 {
@@ -43,12 +43,12 @@
                             </select>
                         </div>
                         <div class="inputs">
-                            <label>@T("Plugins.Misc.AIInterview.Employer.Invite.MaxAttempts"):</label>
-                            <input type="number" name="maxAttempts" value="1" required class="form-control" />
+                            <label for="maxAttempts">@T("Plugins.Misc.AIInterview.Employer.Invite.MaxAttempts"):</label>
+                            <input id="maxAttempts" type="number" name="maxAttempts" value="1" required class="form-control" />
                         </div>
                         <div class="inputs">
-                            <label>@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
-                            <input type="datetime-local" name="expiryDateUtc" class="form-control" />
+                            <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
+                            <input id="expiryDateUtc" type="datetime-local" name="expiryDateUtc" class="form-control" />
                         </div>
                     </div>
                 </div>

@@ -15,13 +15,20 @@
         <h1>@T("Plugins.Misc.AIInterview.VendorScoreboard.Title")</h1>
     </div>
     <div class="page-body">
-        <div class="vendor-scoreboard-summary">
-            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.TotalJobs"):</strong> @Model.TotalJobs</div>
-            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.TotalApplications"):</strong> @Model.TotalApplications</div>
-            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.CompletedInterviews"):</strong> @Model.CompletedInterviews</div>
-            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.Shortlisted"):</strong> @Model.ShortlistedApplications</div>
-            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.AverageScore"):</strong> @(Model.AverageScore?.ToString("N2") ?? "-")</div>
-            <div><strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.HighestScore"):</strong> @(Model.HighestScore?.ToString("N2") ?? "-")</div>
+        <div class="section">
+            <div class="title">
+                <strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.Title")</strong>
+            </div>
+            <div class="fieldset">
+                <div class="form-fields vendor-scoreboard-summary">
+                    <div class="inputs"><label>@T("Plugins.Misc.AIInterview.VendorScoreboard.TotalJobs")</label><span>@Model.TotalJobs</span></div>
+                    <div class="inputs"><label>@T("Plugins.Misc.AIInterview.VendorScoreboard.TotalApplications")</label><span>@Model.TotalApplications</span></div>
+                    <div class="inputs"><label>@T("Plugins.Misc.AIInterview.VendorScoreboard.CompletedInterviews")</label><span>@Model.CompletedInterviews</span></div>
+                    <div class="inputs"><label>@T("Plugins.Misc.AIInterview.VendorScoreboard.Shortlisted")</label><span>@Model.ShortlistedApplications</span></div>
+                    <div class="inputs"><label>@T("Plugins.Misc.AIInterview.VendorScoreboard.AverageScore")</label><span>@(Model.AverageScore?.ToString("N2") ?? "-")</span></div>
+                    <div class="inputs"><label>@T("Plugins.Misc.AIInterview.VendorScoreboard.HighestScore")</label><span>@(Model.HighestScore?.ToString("N2") ?? "-")</span></div>
+                </div>
+            </div>
         </div>
 
         <div class="buttons">
@@ -30,32 +37,38 @@
             <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.MockEmployerManageRouteName)">@T("Plugins.Misc.AIInterview.Employer.Invite.Title")</a>
         </div>
 
-        <h2>@T("Plugins.Misc.AIInterview.VendorScoreboard.RecentApplications")</h2>
-        @if (Model.RecentApplications.Any())
-        {
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>@T("Plugins.Misc.AIInterview.MyApplications.JobTitle")</th>
-                        <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
-                        <th>@T("Plugins.Misc.AIInterview.MyApplications.AppliedDate")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var application in Model.RecentApplications)
-                    {
-                        <tr>
-                            <td>@application.JobTitle</td>
-                            <td>@T($"Plugins.Misc.AIInterview.Status.{application.RawStatus}")</td>
-                            <td>@application.CreatedOn.ToString("g")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-        else
-        {
-            <p>@T("Plugins.Misc.AIInterview.VendorScoreboard.NoApplications")</p>
-        }
+        <div class="section">
+            <div class="title">
+                <strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.RecentApplications")</strong>
+            </div>
+            @if (Model.RecentApplications.Any())
+            {
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>@T("Plugins.Misc.AIInterview.MyApplications.JobTitle")</th>
+                                <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
+                                <th>@T("Plugins.Misc.AIInterview.MyApplications.AppliedDate")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var application in Model.RecentApplications)
+                            {
+                                <tr>
+                                    <td>@application.JobTitle</td>
+                                    <td>@T($"Plugins.Misc.AIInterview.Status.{application.RawStatus}")</td>
+                                    <td>@application.CreatedOn.ToString("g")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p>@T("Plugins.Misc.AIInterview.VendorScoreboard.NoApplications")</p>
+            }
+        </div>
     </div>
 </div>

@@ -67,6 +67,9 @@ public class PluginDefaultsTests
         Assert.That(resources["Plugins.Misc.AIInterview.Runtime.Error.Unavailable"], Is.EqualTo("The interview service is temporarily unavailable. Please try again."));
         Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Interview.NextQuestion"), Is.True);
         Assert.That(resources["Plugins.Misc.AIInterview.Interview.NextQuestion"], Is.EqualTo("Next question ready."));
+        Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Report.TechnicalScore"), Is.True);
+        Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Report.Recording"), Is.True);
+        Assert.That(resources.ContainsKey("Plugins.Misc.AIInterview.Report.OpenRecording"), Is.True);
     }
 
     [Test]

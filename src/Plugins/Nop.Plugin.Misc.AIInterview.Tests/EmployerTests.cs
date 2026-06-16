@@ -571,6 +571,37 @@ public class EmployerTests
         Assert.That(viewText, Does.Not.Contain("Salary Range:"));
     }
 
+    [Test]
+    public void VendorAndEmployerViews_Use_Standard_Nop_Page_Structure()
+    {
+        var vendorJobCreation = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorJobCreation.cshtml"));
+        var employerApplications = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "EmployerApplications.cshtml"));
+        var vendorScoreboard = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorScoreboard.cshtml"));
+        var employerManage = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "EmployerManage.cshtml"));
+
+        Assert.That(vendorJobCreation, Does.Contain("Layout = \"_ColumnsTwo\""));
+        Assert.That(vendorJobCreation, Does.Contain("class=\"section\""));
+        Assert.That(vendorJobCreation, Does.Contain("class=\"fieldset\""));
+
+        Assert.That(employerApplications, Does.Contain("Layout = \"_ColumnsTwo\""));
+        Assert.That(employerApplications, Does.Contain("class=\"section\""));
+        Assert.That(employerApplications, Does.Contain("class=\"fieldset\""));
+        Assert.That(employerApplications, Does.Contain("class=\"table-wrapper\""));
+        Assert.That(employerApplications, Does.Contain("class=\"data-table employer-table\""));
+
+        Assert.That(vendorScoreboard, Does.Contain("Layout = \"_ColumnsTwo\""));
+        Assert.That(vendorScoreboard, Does.Contain("class=\"section\""));
+        Assert.That(vendorScoreboard, Does.Contain("class=\"table-wrapper\""));
+        Assert.That(vendorScoreboard, Does.Contain("class=\"data-table\""));
+
+        Assert.That(employerManage, Does.Contain("Layout = \"_ColumnsTwo\""));
+        Assert.That(employerManage, Does.Contain("class=\"section create-invite\""));
+        Assert.That(employerManage, Does.Contain("class=\"fieldset\""));
+        Assert.That(employerManage, Does.Contain("class=\"table-wrapper\""));
+        Assert.That(employerManage, Does.Contain("label for=\"invite-email\""));
+        Assert.That(employerManage, Does.Contain("label for=\"productId\""));
+    }
+
     private void SetupVendorSpecificationAttributes(bool includeJobLocation = true, bool includeSalaryRange = true)
     {
         var experience = new SpecificationAttribute { Id = 10, Name = "Experience Level" };
