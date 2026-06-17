@@ -1,0 +1,37 @@
+@using Nop.Core.Domain.Catalog
+@using Nop.Services.Themes
+
+@inject CatalogSettings catalogSettings
+@inject IThemeContext themeContext
+
+@{
+    Layout ="";
+    var themeName = await themeContext.GetWorkingThemeNameAsync();
+    var supportRtl = await Html.ShouldUseRtlThemeAsync();
+
+    //add main CSS file
+    NopHtml.AppendCssFileParts($"~/Themes/{themeName}/Content/css/styles{(supportRtl ? ".rtl" : "")}.css");
+
+    //add JobBoardVenture custom CSS file (after main styles to override)
+    NopHtml.AppendCssFileParts($"~/Themes/{themeName}/Content/css/jobboard-venture.css");
+
+    //add JobBoardVenture custom JS file
+    NopHtml.AppendScriptParts(ResourceLocation.Footer, $"~/Themes/{themeName}/Content/js/jobboard-venture.js");
+
+    //add Google Fonts
+    // Added via external link for now, per Phase 1 instructions
+    NopHtml.AppendCssFileParts("https://fonts.googleapis.com/css2?family=Fjalla+One&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap");
+
+    //add Font Awesome
+    // Added via external link for now, per Phase 1 instructions
+    NopHtml.AppendCssFileParts("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css");
+
+    //add swiper css file
+    if (catalogSettings.DisplayAllPicturesOnCatalogPages)
+    {
+        NopHtml.AppendCssFileParts("~/lib_npm/swiper/swiper-bundle.min.css");
+    }
+
+    //add jQuery UI css file
+    NopHtml.AppendCssFileParts("~/lib_npm/jquery-ui-dist/jquery-ui.min.css");
+}
