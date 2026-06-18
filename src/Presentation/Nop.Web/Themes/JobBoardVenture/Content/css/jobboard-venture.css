@@ -1,18 +1,29 @@
-/*
- * Phase 1 scaffold for the JobBoardVenture theme.
- * This includes foundational variables and non-invasive defaults.
- */
 :root {
-  --page-bg: #fbfbfb;
-  --panel-white: #fff;
-  --ink: #2c2c2c;
-  --muted-text: #909090;
-  --border-color: #e7d7d7;
-  --accent-teal: #35d6b4;
-  --accent-hover: #24b99a;
+    --jb-bg: #f0f0f0;
+    --jb-ink: #2c2c2c;
+    --jb-muted: #909090;
+    --jb-accent: #35d6b4;
+    --jb-accent-dark: #24b99a;
+    --jb-white: #ffffff;
+    --jb-border: #dedede;
 }
 
 body {
-  background-color: var(--page-bg);
-  color: var(--ink);
+    background-color: var(--jb-bg);
+    color: var(--jb-ink);
+    font-family: "Lato", Arial, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.button-1,
+.button-2,
+.header-menu,
+.footer-title {
+    font-family: "Fjalla One", Arial, sans-serif;
+    letter-spacing: 0;
 }
