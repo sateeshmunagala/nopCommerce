@@ -27,3 +27,479 @@ h6,
     font-family: "Fjalla One", Arial, sans-serif;
     letter-spacing: 0;
 }
+/* =========================================
+   HEADER STYLES
+   ========================================= */
+.header {
+    background-color: var(--jb-white);
+    border-bottom: 1px solid var(--jb-border);
+    position: relative;
+    z-index: 100;
+}
+
+.header-upper {
+    display: none; /* Hide default upper header with links/selectors */
+}
+
+.header-lower {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    padding: 0 15px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.header-logo {
+    flex: 0 0 auto;
+}
+
+.header-logo a {
+    display: block;
+}
+
+.header-logo img {
+    max-height: 40px;
+    width: auto;
+}
+
+.jb-mobile-toggles {
+    display: none;
+    align-items: center;
+}
+
+.jb-mobile-toggles button {
+    background: none;
+    border: none;
+    color: var(--jb-ink);
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* SEARCH OVERLAY (DESKTOP AND MOBILE) */
+.store-search-box {
+    position: relative;
+}
+
+.jb-search-close {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--jb-ink);
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.search-box-text {
+    border: 1px solid var(--jb-border);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: "Lato", sans-serif;
+    color: var(--jb-ink);
+    outline: none;
+    width: 250px;
+}
+
+.search-box-text:focus {
+    border-color: var(--jb-accent);
+}
+
+.search-box-button {
+    background-color: var(--jb-accent);
+    color: var(--jb-white);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: "Fjalla One", sans-serif;
+    transition: background-color 0.2s;
+}
+
+.search-box-button:hover {
+    background-color: var(--jb-accent-dark);
+}
+
+/* =========================================
+   MOBILE DRAWER (MENU)
+   ========================================= */
+.jb-drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.jb-mobile-drawer {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 300px;
+    height: 100vh;
+    background-color: var(--jb-white);
+    z-index: 1001;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    transition: left 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.jb-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid var(--jb-border);
+}
+
+.jb-drawer-title {
+    font-family: "Fjalla One", sans-serif;
+    font-size: 1.2rem;
+    color: var(--jb-ink);
+}
+
+.jb-drawer-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--jb-ink);
+}
+
+.jb-drawer-content {
+    padding: 15px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.jb-drawer-account-links {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--jb-border);
+}
+
+.jb-drawer-account-links ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.jb-drawer-account-links li {
+    margin-bottom: 10px;
+}
+
+.jb-drawer-account-links a {
+    color: var(--jb-ink);
+    text-decoration: none;
+    font-family: "Lato", sans-serif;
+    display: flex;
+    align-items: center;
+}
+
+.jb-drawer-account-links a:hover {
+    color: var(--jb-accent);
+}
+
+/* STATE CLASSES */
+body.jb-menu-open {
+    overflow: hidden;
+}
+
+body.jb-menu-open .jb-drawer-overlay {
+    opacity: 1;
+    visibility: visible;
+}
+
+body.jb-menu-open .jb-mobile-drawer {
+    left: 0;
+}
+
+/* =========================================
+   FOOTER STYLES
+   ========================================= */
+.footer {
+    background-color: var(--jb-white);
+    border-top: 1px solid var(--jb-border);
+    padding: 40px 15px 20px;
+    color: var(--jb-muted);
+}
+
+.footer-upper {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 1200px;
+    margin: 0 auto;
+    justify-content: space-between;
+}
+
+.footer-block {
+    flex: 1;
+    min-width: 200px;
+    margin-bottom: 30px;
+}
+
+.footer-block .title {
+    font-family: "Fjalla One", sans-serif;
+    font-size: 1.2rem;
+    color: var(--jb-ink);
+    margin-bottom: 15px;
+    text-transform: uppercase;
+}
+
+.footer-block .listbox ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-block .listbox li {
+    margin-bottom: 8px;
+}
+
+.footer-block .listbox a {
+    color: var(--jb-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.footer-block .listbox a:hover {
+    color: var(--jb-accent);
+}
+
+.footer-lower {
+    border-top: 1px solid var(--jb-border);
+    max-width: 1200px;
+    margin: 20px auto 0;
+    padding-top: 20px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.footer-lower a {
+    color: var(--jb-accent);
+    text-decoration: none;
+}
+
+.footer-lower a:hover {
+    text-decoration: underline;
+}
+
+/* =========================================
+   RESPONSIVE (MOBILE VIEW)
+   ========================================= */
+@media (max-width: 1000px) {
+    /* Header mobile layout */
+    .header-lower {
+        justify-content: space-between;
+    }
+
+    .header-logo {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .jb-mobile-toggles {
+        display: flex;
+    }
+
+    .store-search-box.jb-search-overlay {
+        display: none; /* Hidden by default on mobile */
+        position: absolute;
+        top: 64px;
+        left: 0;
+        width: 100%;
+        background-color: var(--jb-white);
+        padding: 15px;
+        border-bottom: 1px solid var(--jb-border);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        z-index: 99;
+    }
+
+    .store-search-box.jb-search-overlay form {
+        display: flex;
+        align-items: center;
+    }
+
+    .store-search-box.jb-search-overlay .search-box-text {
+        width: 100%;
+        flex: 1;
+        margin-right: 10px;
+    }
+
+    .jb-search-close {
+        display: block;
+        position: relative;
+        right: auto;
+        top: auto;
+        transform: none;
+        margin-left: 10px;
+    }
+
+    /* Mobile search state */
+    body.jb-search-open .store-search-box.jb-search-overlay {
+        display: flex;
+    }
+
+    /* Footer mobile accordion layout */
+    .footer-upper {
+        flex-direction: column;
+    }
+
+    .footer-block {
+        border-bottom: 1px solid var(--jb-border);
+        margin-bottom: 0;
+        padding: 15px 0;
+    }
+
+    .footer-block:last-child {
+        border-bottom: none;
+    }
+
+    .footer-block .title {
+        margin-bottom: 0;
+        cursor: pointer;
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .footer-block .title::after {
+        content: '+';
+        font-family: monospace;
+        font-size: 1.5rem;
+    }
+
+    .footer-block.jb-footer-open .title::after {
+        content: '-';
+    }
+
+    .footer-block .listbox {
+        display: none;
+        padding-top: 15px;
+    }
+
+    .footer-block.jb-footer-open .listbox {
+        display: block;
+    }
+
+    /* Hide header links wrapper on mobile, as they are inside the drawer */
+    .header-links-wrapper {
+        display: none;
+    }
+}
+
+/* =========================================
+   RESPONSIVE (DESKTOP VIEW)
+   ========================================= */
+@media (min-width: 1001px) {
+    /* Show menu horizontally on desktop */
+    .header-menu.jb-mobile-drawer {
+        position: static;
+        height: auto;
+        width: auto;
+        box-shadow: none;
+        background: transparent;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .jb-drawer-header {
+        display: none;
+    }
+
+    .jb-drawer-content {
+        padding: 0;
+        overflow-y: visible;
+        display: flex;
+        align-items: center;
+    }
+
+    .jb-drawer-account-links {
+        display: none; /* Hide drawer account links, show header-upper ones instead (if we decide to show header-upper on desktop later, but for now we keep it hidden. We will add a header right area later or let the existing nop styles handle it) */
+    }
+
+    .header-lower {
+        /* On desktop, we want logo, menu, search */
+        justify-content: flex-start;
+    }
+
+    .header-logo {
+        margin-right: 40px;
+    }
+
+    .header-menu {
+        flex: 1;
+        display: flex !important; /* Override potential JS hide */
+    }
+
+    .store-search-box {
+        margin-left: auto;
+    }
+
+    .header-links-wrapper {
+        display: flex;
+        align-items: center;
+        margin-left: 20px;
+    }
+
+    .header-links ul {
+        display: flex;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 15px;
+    }
+
+    .header-links a {
+        color: var(--jb-ink);
+        text-decoration: none;
+        font-family: "Lato", sans-serif;
+    }
+
+    .header-links a:hover {
+        color: var(--jb-accent);
+    }
+
+    .menu-container .menu {
+        display: flex;
+        gap: 20px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .menu-container .menu__item {
+        font-family: "Fjalla One", sans-serif;
+    }
+
+    .menu-container .menu__item a {
+        color: var(--jb-ink);
+        text-decoration: none;
+    }
+
+    .menu-container .menu__item a:hover {
+        color: var(--jb-accent);
+    }
+
+    .menu-container .menu__toggle {
+        display: none;
+    }
+}

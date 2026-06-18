@@ -1,0 +1,54 @@
+﻿<header class="header">
+    <a class="skip" href="#main">@T("Header.SkipNavigation.Text")</a>
+    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderBefore })
+    <div class="header-upper">
+        <div class="header-selectors-wrapper">
+            @await Component.InvokeAsync(typeof(TaxTypeSelectorViewComponent))
+            @await Component.InvokeAsync(typeof(CurrencySelectorViewComponent))
+            @await Component.InvokeAsync(typeof(LanguageSelectorViewComponent))
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderSelectors })
+        </div>
+    </div>
+    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderMiddle })
+    <div class="header-lower">
+        <div class="jb-mobile-toggles left">
+            <button class="jb-menu-toggle" aria-label="Menu" type="button">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+            </button>
+        </div>
+
+        <div class="header-logo">
+            @await Component.InvokeAsync(typeof(LogoViewComponent))
+        </div>
+
+        <div class="header-menu jb-mobile-drawer">
+            <div class="jb-drawer-header">
+                <span class="jb-drawer-title">Menu</span>
+                <button class="jb-drawer-close" aria-label="Close menu" type="button">&times;</button>
+            </div>
+            <div class="jb-drawer-content">
+                @await Component.InvokeAsync(typeof(MainMenuViewComponent))
+                <div class="jb-drawer-account-links">
+                    @await Component.InvokeAsync(typeof(HeaderLinksViewComponent))
+                </div>
+            </div>
+        </div>
+
+        <div class="jb-mobile-toggles right">
+            <button class="jb-search-toggle" aria-label="Search" type="button">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </button>
+        </div>
+
+        <div role="search" class="search-box store-search-box jb-search-overlay">
+            @await Component.InvokeAsync(typeof(SearchBoxViewComponent))
+            <button class="jb-search-close" aria-label="Close search" type="button">&times;</button>
+        </div>
+
+        <div class="header-links-wrapper">
+            @await Component.InvokeAsync(typeof(HeaderLinksViewComponent))
+            @await Component.InvokeAsync(typeof(FlyoutShoppingCartViewComponent))
+        </div>
+    </div>
+    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderAfter })
+</header>
