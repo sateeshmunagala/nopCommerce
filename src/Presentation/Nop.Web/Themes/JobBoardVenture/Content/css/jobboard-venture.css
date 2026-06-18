@@ -518,3 +518,299 @@ body.jb-menu-open .jb-mobile-drawer {
         display: none;
     }
 }
+
+/* Homepage Styles */
+/* =========================================
+   HOMEPAGE STYLES
+   ========================================= */
+
+body.html-home-page {
+    background-color: #f0f0f0;
+}
+
+/* Hero Section */
+.jb-hero-section {
+    background-color: #111111;
+    padding: 60px 15px;
+    text-align: center;
+}
+
+.jb-hero-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.jb-hero-headline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.jb-hero-line {
+    font-family: "Fjalla One", sans-serif;
+    font-size: 2.5rem;
+    line-height: 1.2;
+    color: var(--jb-white);
+}
+
+.jb-hero-highlight {
+    color: var(--jb-accent);
+}
+
+.jb-hero-actions {
+    margin-top: 20px;
+}
+
+.jb-hero-cta {
+    background-color: var(--jb-accent);
+    color: var(--jb-white);
+    padding: 12px 24px;
+    font-size: 1.2rem;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.2s;
+}
+
+.jb-hero-cta:hover {
+    background-color: var(--jb-accent-dark);
+}
+
+/* Home Sections */
+.jb-home-section {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 15px;
+}
+
+/* Category Strip (Tiles) */
+.home-page-category-grid .item-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.home-page-category-grid .item-box {
+    background-color: var(--jb-white);
+    border: 1px solid var(--jb-border);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    flex: 1 1 200px;
+    max-width: 250px;
+    transition: box-shadow 0.2s;
+}
+
+.home-page-category-grid .item-box:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.home-page-category-grid .title a {
+    color: var(--jb-ink);
+    text-decoration: none;
+    font-family: "Fjalla One", sans-serif;
+    font-size: 1.2rem;
+}
+
+.home-page-category-grid .picture {
+    margin-top: 15px;
+}
+
+.home-page-category-grid .picture img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+/* Product/Job Cards (Home Grid & Bestsellers) */
+.home-page-product-grid .item-grid,
+.bestsellers .item-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.home-page-product-grid .item-box,
+.bestsellers .item-box {
+    background-color: var(--jb-white);
+    border: 1px solid var(--jb-border);
+    border-radius: 8px;
+    padding: 20px;
+    flex: 1 1 250px;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+.home-page-product-grid .product-title a,
+.bestsellers .product-title a {
+    color: var(--jb-ink);
+    text-decoration: none;
+    font-family: "Fjalla One", sans-serif;
+    font-size: 1.2rem;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.home-page-product-grid .prices,
+.bestsellers .prices {
+    color: var(--jb-muted);
+    font-family: "Lato", sans-serif;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
+
+.home-page-product-grid .buttons,
+.bestsellers .buttons {
+    margin-top: auto;
+}
+
+.home-page-product-grid .button-2.product-box-add-to-cart-button,
+.bestsellers .button-2.product-box-add-to-cart-button {
+    background-color: var(--jb-accent);
+    color: var(--jb-white);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: "Fjalla One", sans-serif;
+    width: 100%;
+    transition: background-color 0.2s;
+}
+
+.home-page-product-grid .button-2.product-box-add-to-cart-button:hover,
+.bestsellers .button-2.product-box-add-to-cart-button:hover {
+    background-color: var(--jb-accent-dark);
+}
+
+.home-page-product-grid .picture img,
+.bestsellers .picture img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+/* AI Value Band */
+.jb-ai-value-band {
+    background-color: var(--jb-white);
+    border-top: 1px solid var(--jb-border);
+    border-bottom: 1px solid var(--jb-border);
+    padding: 40px 15px;
+    text-align: center;
+    margin: 40px 0;
+}
+
+.jb-ai-value-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.jb-ai-value-content h2 {
+    font-family: "Fjalla One", sans-serif;
+    font-size: 2rem;
+    color: var(--jb-ink);
+    margin-bottom: 15px;
+}
+
+.jb-ai-value-content p {
+    font-family: "Lato", sans-serif;
+    color: var(--jb-muted);
+    font-size: 1.1rem;
+    margin-bottom: 25px;
+}
+
+.jb-ai-cta {
+    background-color: var(--jb-ink);
+    color: var(--jb-white);
+    padding: 10px 20px;
+    font-size: 1.1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.2s;
+}
+
+.jb-ai-cta:hover {
+    background-color: #333;
+}
+
+/* Filter Search Area */
+.jb-home-filters .search-input {
+    background-color: var(--jb-white);
+    border: 1px solid var(--jb-border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.jb-home-filters .page-title h1 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+}
+
+.jb-home-filters .advanced-search {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.jb-home-filters .inputs {
+    flex: 1;
+    min-width: 200px;
+}
+
+.jb-home-filters .inputs label {
+    display: block;
+    margin-bottom: 5px;
+    font-family: "Lato", sans-serif;
+    color: var(--jb-ink);
+}
+
+.jb-home-filters .filter-level-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--jb-border);
+    border-radius: 4px;
+    font-family: "Lato", sans-serif;
+}
+
+.jb-home-filters .buttons {
+    text-align: right;
+}
+
+.jb-home-filters .search-button-flv {
+    background-color: var(--jb-accent);
+    color: var(--jb-white);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: "Fjalla One", sans-serif;
+}
+
+.jb-home-filters .search-button-flv:hover:not(:disabled) {
+    background-color: var(--jb-accent-dark);
+}
+
+.jb-home-filters .search-button-flv:disabled {
+    background-color: var(--jb-muted);
+    cursor: not-allowed;
+}
+
+/* Responsive Desktop Hero */
+@media (min-width: 768px) {
+    .jb-hero-headline {
+        flex-direction: row;
+        justify-content: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .jb-hero-line {
+        font-size: 3.5rem;
+    }
+}

@@ -27,15 +27,54 @@
 }
 <div class="page home-page">
     <div class="page-body">
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop })
-        @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageText" })
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories })
-        @await Component.InvokeAsync(typeof(HomepageCategoriesViewComponent))
-        @await Component.InvokeAsync(typeof(FilterLevelValueSearchViewComponent))
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeProducts })
-        @await Component.InvokeAsync(typeof(HomepageProductsViewComponent))
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeBestSellers })
-        @await Component.InvokeAsync(typeof(HomepageBestSellersViewComponent))
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBottom })
+
+        <div class="jb-hero-section">
+            <div class="jb-hero-content">
+                <div class="jb-hero-headline">
+                    <span class="jb-hero-line">Find better jobs.</span>
+                    <span class="jb-hero-line">Apply smarter.</span>
+                    <span class="jb-hero-line jb-hero-highlight">Interview with AI.</span>
+                </div>
+                <div class="jb-hero-actions">
+                    <a href="@Url.RouteUrl("ProductSearch")" class="button-1 jb-hero-cta">Search Jobs</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="jb-home-section jb-home-top">
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop })
+            @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageText" })
+        </div>
+
+        <div class="jb-home-section jb-home-categories">
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories })
+            @await Component.InvokeAsync(typeof(HomepageCategoriesViewComponent))
+        </div>
+
+        <div class="jb-home-section jb-home-filters">
+            @await Component.InvokeAsync(typeof(FilterLevelValueSearchViewComponent))
+        </div>
+
+        <div class="jb-home-section jb-home-products">
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeProducts })
+            @await Component.InvokeAsync(typeof(HomepageProductsViewComponent))
+        </div>
+
+        <div class="jb-ai-value-band">
+            <div class="jb-ai-value-content">
+                <h2>Practice makes perfect.</h2>
+                <p>Stand out to top employers with AI-driven mock interviews. Get feedback on your answers and gain confidence before the real thing.</p>
+                <a href="@Url.RouteUrl("ProductSearch")" class="button-2 jb-ai-cta">Find Jobs to Practice For</a>
+            </div>
+        </div>
+
+        <div class="jb-home-section jb-home-bestsellers">
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeBestSellers })
+            @await Component.InvokeAsync(typeof(HomepageBestSellersViewComponent))
+        </div>
+
+        <div class="jb-home-section jb-home-bottom">
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBottom })
+        </div>
     </div>
 </div>
