@@ -26,12 +26,14 @@ jobs:
 
     - name: Compile and Publish Presentation Layer (Plugin-Free Build)
       run: |
-        # ❌ Added /p:CopyPluginDllsToOutput=false to stop plugins from ever entering the publish directory
         dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj -c Release -r win-x86 --self-contained false -o ./publish /p:PublishReadyToRun=false /p:DebugSymbols=false /p:DebugType=None /p:CopyPluginDllsToOutput=false
 
-    - name: Purge Heavy Assets for Fast Theme Testing
+    - name: Purge Heavy Assets and Force Delete Plugins Folder
       run: |
-        # Clean out any loose residual directory stubs safely without leaving empty folder traps
+        # ❌ Force remove the physical directory structure entirely so Node doesn't hit an EISDIR trap
+        if (Test-Path "./publish/Plugins") { Remove-Item -Path "./publish/Plugins" -Force -Recurse }
+        
+        # Strip out any remaining test nodes or root node structures
         Get-ChildItem -Path ./publish -Include *AllInterview.Tests*, *node_modules* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
       shell: pwsh
 
