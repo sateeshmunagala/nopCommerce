@@ -1,8 +1,7 @@
 (function () {
     'use strict';
 
-    document.addEventListener('DOMContentLoaded', function () {
-
+    function init() {
         // --- CLONE ACCOUNT LINKS FOR MOBILE DRAWER ---
         var headerLinksWrapper = document.querySelector('.header-links-wrapper .header-links ul');
         var drawerAccountLinks = document.querySelector('.jb-drawer-account-links');
@@ -123,5 +122,11 @@
                 });
             });
         }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();

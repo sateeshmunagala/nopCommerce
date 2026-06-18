@@ -9,11 +9,11 @@
     var themeName = await themeContext.GetWorkingThemeNameAsync();
     var supportRtl = await Html.ShouldUseRtlThemeAsync();
 
+    //add JobBoardVenture custom CSS file (must be appended FIRST so it renders AFTER main styles due to NopHtml insertion order)
+    NopHtml.AppendCssFileParts($"~/Themes/{themeName}/Content/css/jobboard-venture.css");
+
     //add main CSS file
     NopHtml.AppendCssFileParts($"~/Themes/{themeName}/Content/css/styles{(supportRtl ? ".rtl" : "")}.css");
-
-    //add JobBoardVenture custom CSS file (after main styles to override)
-    NopHtml.AppendCssFileParts($"~/Themes/{themeName}/Content/css/jobboard-venture.css");
 
     //add JobBoardVenture custom JS file
     NopHtml.AppendScriptParts(ResourceLocation.Footer, $"~/Themes/{themeName}/Content/js/jobboard-venture.js");

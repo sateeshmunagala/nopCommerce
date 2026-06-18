@@ -57,17 +57,17 @@
             @await Component.InvokeAsync(typeof(FilterLevelValueSearchViewComponent))
         </div>
 
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeProducts })
-
-        <div class="jb-home-products">
-            @await Component.InvokeAsync(typeof(HomepageProductsViewComponent))
-        </div>
-
         <div class="jb-ai-value-band">
             <div class="jb-ai-value-band-content">
                 <h2>AI Interview Ready</h2>
                 <p>Complete mock interviews and prepare for your next big role with our built-in AI platform.</p>
             </div>
+        </div>
+
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeProducts })
+
+        <div class="jb-home-products">
+            @await Component.InvokeAsync(typeof(HomepageProductsViewComponent))
         </div>
 
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeBestSellers })

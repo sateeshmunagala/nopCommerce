@@ -53,7 +53,7 @@ h6,
 }
 
 .header-lower {
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: space-between;
     height: 64px;
@@ -63,6 +63,7 @@ h6,
 }
 
 .header-logo {
+    display: block !important;
     flex: 0 0 auto;
 }
 
@@ -89,6 +90,10 @@ h6,
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.jb-mobile-toggles button svg {
+    pointer-events: none;
 }
 
 /* SEARCH OVERLAY (DESKTOP AND MOBILE) */
@@ -706,8 +711,8 @@ body.jb-menu-open .jb-mobile-drawer {
 
 /* Two Column Layout */
 @media (min-width: 1001px) {
-    .html-category-page .master-wrapper-content,
-    .html-search-page .master-wrapper-content {
+    .html-category-page .master-column-wrapper,
+    .html-search-page .master-column-wrapper {
         display: flex;
         flex-direction: row-reverse; /* Sidebar left, content right */
         max-width: 1200px;
@@ -719,25 +724,28 @@ body.jb-menu-open .jb-mobile-drawer {
 
     .html-category-page .side-2,
     .html-search-page .side-2 {
+        float: none !important;
         width: 280px;
         flex-shrink: 0;
     }
 
     .html-category-page .center-2,
     .html-search-page .center-2 {
+        float: none !important;
         flex: 1;
         min-width: 0;
     }
 }
 
 @media (max-width: 1000px) {
-    .html-category-page .master-wrapper-content,
-    .html-search-page .master-wrapper-content {
+    .html-category-page .master-column-wrapper,
+    .html-search-page .master-column-wrapper {
         padding: 15px;
     }
 
     .html-category-page .side-2, .html-category-page .center-2,
     .html-search-page .side-2, .html-search-page .center-2 {
+        float: none !important;
         width: 100%;
         margin-bottom: 20px;
     }
