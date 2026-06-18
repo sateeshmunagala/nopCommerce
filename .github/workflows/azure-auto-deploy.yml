@@ -3,33 +3,46 @@ name: Automated Multi-Branch Stream Deployment
 on:
   push:
     branches:
-      - '*'            # Catch ABSOLUTELY ANY new or existing branch pushed by Jules
-      - '!develop'     # PROTECT: Do not deploy if changes are pushed to develop
-      - '!production'  # PROTECT: Do not deploy if changes are pushed to production
-      - '!release-*'   # PROTECT: Do not deploy if changes are pushed to release lines
+      - '*'            # Track any feature or temporary branch
+      - '!develop'     # EXCLUDE: Do not run deployment if code hits develop
+      - '!production'  # EXCLUDE: Do not run deployment if code hits production
 
 jobs:
   build-and-stream-deploy:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout Repository Source
+    - name: Checkout Source Code
       uses: actions/checkout@v4
 
-    - name: Setup Core .NET SDK Engine
+    - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '10.0.x' # Tailor this to your nopCommerce target platform framework (e.g., 7.0.x or 8.0.x)
+        dotnet-version: '10.0.x' # Tailored for your cutting-edge .NET 10 upgrade
 
-    # Step A: Compile and Publish on GitHub Cloud Servers (Bypasses Azure 1GB storage limits)
-    - name: Pre-Compile nopCommerce Presentation Web Layer
+    - name: Restore Dependencies
+      run: dotnet restore src/Presentation/Nop.Web/Nop.Web.csproj
+
+    - name: Compile and Publish Presentation Layer (Optimized for Free Tier)
       run: |
-        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj -c Release -o ${{ github.workspace }}/pre_compiled_output
+        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj `
+          -c Release `
+          -r win-x86 `
+          --self-contained false `
+          -o ./publish `
+          /p:PublishReadyToRun=false `
+          /p:DebugSymbols=false `
+          /p:DebugType=None
 
-    # Step B: Push raw pre-extracted code blocks directly to Azure wwwroot
+    - name: Purge Heavy Non-Production Assets
+      run: |
+        # Recursively strip heavy node modules, test files, or media assets to protect the 1GB quota
+        Get-ChildItem -Path ./publish -Include *AllInterview.Tests*, *node_modules* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
+      shell: pwsh
+
     - name: Stream Raw Binary Structure to Azure App Service
       uses: azure/webapps-deploy@v3
       with:
-        app-name: 'nop5' # !!! REPLACE THIS with your exact Azure Web App Name
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }} 
-        package: '${{ github.workspace }}/pre_compiled_output' # Pushes folder contents, NOT a zip file
+        app-name: 'nop5'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ./publish
