@@ -25,21 +25,11 @@ jobs:
 
     - name: Compile and Publish Presentation Layer (Optimized for Free Tier)
       run: |
-        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj `
-          -c Release `
-          -r win-x86 `
-          --self-contained false `
-          -o ./publish `
-          /p:PublishReadyToRun=false `
-          /p:DebugSymbols=false `
-          /p:DebugType=None
+        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj -c Release -r win-x86 --self-contained false -o ./publish /p:PublishReadyToRun=false /p:DebugSymbols=false /p:DebugType=None
 
     - name: Purge Heavy Assets and Unused Plugins for Fast Theme Testing
       run: |
-        # ❌ Completely wipe out the compiled plugins folder to maximize space for theme building
         if (Test-Path "./publish/Plugins") { Remove-Item -Force -Recurse "./publish/Plugins" }
-        
-        # Strip out any remaining heavy test nodes or root node structures
         Get-ChildItem -Path ./publish -Include *AllInterview.Tests*, *node_modules* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
       shell: pwsh
 
