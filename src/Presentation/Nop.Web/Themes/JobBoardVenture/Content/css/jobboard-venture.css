@@ -38,7 +38,18 @@ h6,
 }
 
 .header-upper {
-    display: none; /* Hide default upper header with links/selectors */
+    display: flex;
+    justify-content: flex-end;
+    background-color: var(--jb-bg);
+    padding: 5px 15px;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--jb-border);
+}
+
+.header-selectors-wrapper {
+    display: flex;
+    gap: 15px;
+    align-items: center;
 }
 
 .header-lower {
@@ -147,8 +158,8 @@ h6,
 .jb-mobile-drawer {
     position: fixed;
     top: 0;
-    left: -300px;
-    width: 300px;
+    left: -100%;
+    width: min(320px, 86vw);
     height: 100vh;
     background-color: var(--jb-white);
     z-index: 1001;
@@ -304,6 +315,10 @@ body.jb-menu-open .jb-mobile-drawer {
    ========================================= */
 @media (max-width: 1000px) {
     /* Header mobile layout */
+    .header-upper {
+        justify-content: center;
+    }
+
     .header-lower {
         justify-content: space-between;
     }
@@ -433,7 +448,7 @@ body.jb-menu-open .jb-mobile-drawer {
     }
 
     .jb-drawer-account-links {
-        display: none; /* Hide drawer account links, show header-upper ones instead (if we decide to show header-upper on desktop later, but for now we keep it hidden. We will add a header right area later or let the existing nop styles handle it) */
+        display: none;
     }
 
     .header-lower {
