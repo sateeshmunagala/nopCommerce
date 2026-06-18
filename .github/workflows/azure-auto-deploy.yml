@@ -3,9 +3,10 @@ name: Automated Multi-Branch Stream Deployment
 on:
   push:
     branches:
-      - '*'            
+      - '**'           
       - '!develop'     
       - '!production'  
+  workflow_dispatch: 
 
 jobs:
   build-and-stream-deploy:
@@ -23,13 +24,14 @@ jobs:
     - name: Restore Dependencies
       run: dotnet restore src/Presentation/Nop.Web/Nop.Web.csproj
 
-    - name: Compile and Publish Presentation Layer (Optimized for Free Tier)
+    - name: Compile and Publish Presentation Layer (Plugin-Free Build)
       run: |
-        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj -c Release -r win-x86 --self-contained false -o ./publish /p:PublishReadyToRun=false /p:DebugSymbols=false /p:DebugType=None
+        # ❌ Added /p:CopyPluginDllsToOutput=false to stop plugins from ever entering the publish directory
+        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj -c Release -r win-x86 --self-contained false -o ./publish /p:PublishReadyToRun=false /p:DebugSymbols=false /p:DebugType=None /p:CopyPluginDllsToOutput=false
 
-    - name: Purge Heavy Assets and Unused Plugins for Fast Theme Testing
+    - name: Purge Heavy Assets for Fast Theme Testing
       run: |
-        if (Test-Path "./publish/Plugins") { Remove-Item -Force -Recurse "./publish/Plugins" }
+        # Clean out any loose residual directory stubs safely without leaving empty folder traps
         Get-ChildItem -Path ./publish -Include *AllInterview.Tests*, *node_modules* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
       shell: pwsh
 
