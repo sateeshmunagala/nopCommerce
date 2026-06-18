@@ -1,0 +1,52 @@
+name: Automated Multi-Branch Stream Deployment
+
+on:
+  push:
+    branches:
+      - '*'            
+      - '!develop'     
+      - '!production'  
+
+jobs:
+  build-and-stream-deploy:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x' 
+
+    - name: Restore Dependencies
+      run: dotnet restore src/Presentation/Nop.Web/Nop.Web.csproj
+
+    - name: Compile and Publish Presentation Layer (Optimized for Free Tier)
+      run: |
+        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj `
+          -c Release `
+          -r win-x86 `
+          --self-contained false `
+          -o ./publish `
+          /p:PublishReadyToRun=false `
+          /p:DebugSymbols=false `
+          /p:DebugType=None
+
+    - name: Purge Heavy Assets and Unused Plugins for Fast Theme Testing
+      run: |
+        # ❌ Completely wipe out the compiled plugins folder to maximize space for theme building
+        if (Test-Path "./publish/Plugins") { Remove-Item -Force -Recurse "./publish/Plugins" }
+        
+        # Strip out any remaining heavy test nodes or root node structures
+        Get-ChildItem -Path ./publish -Include *AllInterview.Tests*, *node_modules* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
+      shell: pwsh
+
+    - name: Stream Raw Binary Structure to Azure App Service
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: 'nop5'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ./publish
+        type: zip
