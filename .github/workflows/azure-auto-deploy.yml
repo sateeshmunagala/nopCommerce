@@ -3,7 +3,7 @@ name: Automated Multi-Branch Stream Deployment
 on:
   push:
     branches:
-      - '*'            
+      - '**'            
       - '!develop'     
       - '!production'  
 
