@@ -34,7 +34,7 @@ jobs:
         Get-ChildItem -Path ./publish -Include *AllInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
       shell: pwsh
 
-    # 🚀 Direct Native MSDeploy targeting your MilesWeb Plesk panel directly (Port 8172)
+    # 🚀 Fixed Native MSDeploy Argument Handling
     - name: Execute Native MSDeploy to Plesk
       run: |
         # 1. Parse the Plesk XML Profile text explicitly
@@ -48,15 +48,23 @@ jobs:
 
         Write-Host "Connecting natively to Plesk MSDeploy Engine at: $publishUrl"
 
-        # 2. Locate the native msdeploy.exe engine on the GitHub Windows Runner
+        # 2. Locate the native msdeploy.exe engine
         $msdeployPath = "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
         if (!(Test-Path $msdeployPath)) {
             $msdeployPath = "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
         }
 
-        # 3. Fire the deployment package straight to your IIS server instance
-        & $msdeployPath -source:contentPath="$(Get-Location)\publish" `
-          -dest:contentPath="$siteName",ComputerName="$publishUrl",UserName="$userName",Password="$password",AuthType="Basic" `
-          -verb:sync `
-          -allowUntrusted
+        # 3. Use an array to pass arguments explicitly without string quoting bugs
+        $sourcePath = "$(Get-Location)\publish"
+        $destParam = "contentPath=$siteName,ComputerName=$publishUrl,UserName=$userName,Password=$password,AuthType=Basic"
+
+        $msdeployArgs = @(
+            "-source:contentPath=$sourcePath",
+            "-dest:$destParam",
+            "-verb:sync",
+            "-allowUntrusted"
+        )
+
+        # 4. Fire the deployment payload natively
+        & $msdeployPath $msdeployArgs
       shell: pwsh
