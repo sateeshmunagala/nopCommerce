@@ -6,79 +6,51 @@
 @{
     Layout = "_ColumnsOne";
 
-    var homepageTitle = await localizationService.GetLocalizedAsync(await storeContext.GetCurrentStoreAsync(), s => s.HomepageTitle);
+    var currentStore = await storeContext.GetCurrentStoreAsync();
+    var homepageTitle = await localizationService.GetLocalizedAsync(currentStore, s => s.HomepageTitle);
 
-    //title
     if (!string.IsNullOrEmpty(homepageTitle))
     {
         NopHtml.AddTitleParts(homepageTitle);
     }
 
-    var homepageDescription = await localizationService.GetLocalizedAsync(await storeContext.GetCurrentStoreAsync(), s => s.HomepageDescription);
+    var homepageDescription = await localizationService.GetLocalizedAsync(currentStore, s => s.HomepageDescription);
 
-    //meta
     if (!string.IsNullOrEmpty(homepageDescription))
     {
         NopHtml.AddMetaDescriptionParts(homepageDescription);
     }
 
-    //page class
     NopHtml.AppendPageCssClassParts("html-home-page");
 }
 <div class="page home-page">
     <div class="page-body">
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop })
-
         <div class="jb-home-hero">
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop })
+
             <div class="jb-home-hero-shell">
                 <div class="jb-home-hero-content">
-                    <p class="jb-home-eyebrow">Public hiring marketplace</p>
-                    <h1>
-                        <span>Find better jobs.</span>
-                        <span>Apply smarter.</span>
-                        <span>Interview with AI.</span>
-                    </h1>
-                    <p class="jb-home-lede">Use the native search, filters, and listings to explore open roles while keeping application tools and interview prep close at hand.</p>
-                    <div class="jb-home-cta">
+                    <div class="jb-home-hero-brand">
+                        <span class="jb-brand-mark" aria-hidden="true"></span>
+                        <h1 class="jb-home-store-name">@currentStore.Name</h1>
+                    </div>
+                    <div class="jb-home-hero-topic">
+                        @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageText" })
+                    </div>
+                    <div class="jb-home-hero-search">
                         <form asp-route="@NopRouteNames.General.SEARCH" method="get" class="jb-home-search-form">
-                            <input type="text" class="search-box-text" name="q" placeholder="Search roles, skills, or keywords" aria-label="Search roles, skills, or keywords" />
-                            <button type="submit" class="search-box-button">@T("Search")</button>
+                            <input type="text" class="search-box-text" name="q" placeholder="@T("Search.SearchBox.Tooltip")" aria-label="@T("Search.SearchBox.Text.Label")" />
+                            <button type="submit" class="search-box-button">@T("Search.Button")</button>
                         </form>
                     </div>
-                    <div class="jb-home-quick-links">
-                        <a class="jb-home-quick-link" href="@Url.RouteUrl(NopRouteNames.General.SEARCH)">Browse all openings</a>
-                        <a class="jb-home-quick-link" href="@Url.RouteUrl(NopRouteNames.General.LOGIN)">Sign in to track applications</a>
-                    </div>
                 </div>
-                <aside class="jb-home-hero-panel" aria-label="Job board highlights">
-                    <div class="jb-home-panel-card">
-                        <span class="jb-home-panel-label">What this theme emphasizes</span>
-                        <ul class="jb-home-panel-list">
-                            <li>Readable role summaries and compensation metadata</li>
-                            <li>Visible filters, sorting, paging, and native actions</li>
-                            <li>Responsive search, shortlist, and apply workflows</li>
-                        </ul>
-                    </div>
-                    <div class="jb-home-panel-card jb-home-panel-card--accent">
-                        <span class="jb-home-panel-label">Native platform features remain active</span>
-                        <p>Wishlist, compare, add-to-cart style apply flows, widgets, and locale-driven text stay intact under the visual refresh.</p>
-                    </div>
-                </aside>
             </div>
         </div>
 
-        @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageText" })
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories })
 
         <div class="jb-home-filters">
             @await Component.InvokeAsync(typeof(FilterLevelValueSearchViewComponent))
-        </div>
-
-        <div class="jb-ai-value-band">
-            <div class="jb-ai-value-band-content">
-                <h2>AI Interview Ready</h2>
-                <p>Pair job discovery with interview preparation, profile management, and application follow-through in one public storefront experience.</p>
-            </div>
         </div>
 
         <div class="jb-home-native-components">

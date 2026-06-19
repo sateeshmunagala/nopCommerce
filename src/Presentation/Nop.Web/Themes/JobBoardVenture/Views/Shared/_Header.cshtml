@@ -1,4 +1,11 @@
-﻿<header class="header">
+@using Nop.Core
+@inject IStoreContext storeContext
+
+@{
+    var currentStore = await storeContext.GetCurrentStoreAsync();
+}
+
+<header class="header">
     <a class="skip" href="#main">@T("Header.SkipNavigation.Text")</a>
     @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderBefore })
     <div class="header-upper">
@@ -19,23 +26,23 @@
 
         <div class="header-logo">
             <a href="@Url.RouteUrl(NopRouteNames.General.HOMEPAGE)" class="jb-brand">
-                <span class="jb-brand-mark" aria-hidden="true">JV</span>
-                <span class="jb-brand-copy">
-                    <span class="jb-brand-name">JobBoardVenture</span>
-                    <span class="jb-brand-tag">Search, shortlist, and apply with confidence</span>
-                </span>
+                <span class="jb-brand-mark" aria-hidden="true"></span>
+                <span class="jb-brand-name">@currentStore.Name</span>
             </a>
         </div>
 
-        <div class="header-menu jb-mobile-drawer" id="jb-mobile-menu-drawer">
+        <div class="header-menu jb-mobile-drawer" id="jb-mobile-menu-drawer" aria-hidden="true">
             <div class="jb-drawer-header">
-                <span class="jb-drawer-title">@T("Common.Menu")</span>
+                <div class="jb-drawer-brand">
+                    <span class="jb-brand-mark" aria-hidden="true"></span>
+                    <span class="jb-drawer-title">@currentStore.Name</span>
+                </div>
                 <button class="jb-drawer-close" aria-label="@T("Common.Close")" type="button">&times;</button>
             </div>
             <div class="jb-drawer-content">
                 @await Component.InvokeAsync(typeof(MainMenuViewComponent))
-                <div class="jb-drawer-account-links">
-                </div>
+                <div class="jb-drawer-account-links"></div>
+                <div class="jb-drawer-selectors"></div>
             </div>
         </div>
 
