@@ -33,7 +33,7 @@ jobs:
         if (Test-Path "./publish/Plugins") { Remove-Item -Path "./publish/Plugins" -Force -Recurse }
         
         # Safe cleanup: Wipes out heavy test projects but leaves all node_modules (including datatables) completely intact
-        Get-ChildItem -Path ./publish -Include *AllInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
+        Get-ChildItem -Path ./publish -Include *AIInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
       shell: pwsh
 
     - name: Zip Deployment Artifact
@@ -45,5 +45,4 @@ jobs:
       with:
         app-name: 'nop5'
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        # Forces direct ZipDeploy API context to bypass OneDeploy memory limits
-        package: '${{ github.workspace }}/deployment.zip'
+        package: ./deployment.zip
