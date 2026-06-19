@@ -12,19 +12,25 @@
     @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderMiddle })
     <div class="header-lower">
         <div class="jb-mobile-toggles left">
-            <button class="jb-menu-toggle" aria-label="Menu" type="button" aria-expanded="false" aria-controls="jb-mobile-menu-drawer">
+            <button class="jb-menu-toggle" aria-label="@T("Common.Menu")" type="button" aria-expanded="false" aria-controls="jb-mobile-menu-drawer">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
             </button>
         </div>
 
         <div class="header-logo">
-            <a href="/" class="jb-brand">AI Venture Jobs</a>
+            <a href="@Url.RouteUrl(NopRouteNames.General.HOMEPAGE)" class="jb-brand">
+                <span class="jb-brand-mark" aria-hidden="true">JV</span>
+                <span class="jb-brand-copy">
+                    <span class="jb-brand-name">JobBoardVenture</span>
+                    <span class="jb-brand-tag">Search, shortlist, and apply with confidence</span>
+                </span>
+            </a>
         </div>
 
         <div class="header-menu jb-mobile-drawer" id="jb-mobile-menu-drawer">
             <div class="jb-drawer-header">
-                <span class="jb-drawer-title">Menu</span>
-                <button class="jb-drawer-close" aria-label="Close menu" type="button">&times;</button>
+                <span class="jb-drawer-title">@T("Common.Menu")</span>
+                <button class="jb-drawer-close" aria-label="@T("Common.Close")" type="button">&times;</button>
             </div>
             <div class="jb-drawer-content">
                 @await Component.InvokeAsync(typeof(MainMenuViewComponent))
@@ -34,14 +40,14 @@
         </div>
 
         <div class="jb-mobile-toggles right">
-            <button class="jb-search-toggle" aria-label="Search" type="button" aria-expanded="false" aria-controls="jb-mobile-search-overlay">
+            <button class="jb-search-toggle" aria-label="@T("Search")" type="button" aria-expanded="false" aria-controls="jb-mobile-search-overlay">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </button>
         </div>
 
-        <div role="search" class="search-box store-search-box jb-search-overlay" id="jb-mobile-search-overlay">
+        <div role="search" class="search-box store-search-box jb-search-overlay" id="jb-mobile-search-overlay" aria-hidden="true">
             @await Component.InvokeAsync(typeof(SearchBoxViewComponent))
-            <button class="jb-search-close" aria-label="Close search" type="button">&times;</button>
+            <button class="jb-search-close" aria-label="@T("Common.Close")" type="button">&times;</button>
         </div>
 
         <div class="header-links-wrapper">

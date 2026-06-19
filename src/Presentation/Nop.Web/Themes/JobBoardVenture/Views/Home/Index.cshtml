@@ -30,19 +30,40 @@
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop })
 
         <div class="jb-home-hero">
-            <div class="jb-home-hero-content">
-                <h1>
-                    <span>Find better jobs.</span>
-                    <span>Apply smarter.</span>
-                    <span>Interview with AI.</span>
-                </h1>
-                <p>Explore thousands of job opportunities and use our integrated AI interviews to stand out from the crowd.</p>
-                <div class="jb-home-cta">
-                    <form asp-route="@NopRouteNames.General.SEARCH" method="get" class="jb-home-search-form">
-                        <input type="text" class="search-box-text" name="q" placeholder="Search for jobs..." aria-label="Search for jobs" />
-                        <button type="submit" class="search-box-button">Search</button>
-                    </form>
+            <div class="jb-home-hero-shell">
+                <div class="jb-home-hero-content">
+                    <p class="jb-home-eyebrow">Public hiring marketplace</p>
+                    <h1>
+                        <span>Find better jobs.</span>
+                        <span>Apply smarter.</span>
+                        <span>Interview with AI.</span>
+                    </h1>
+                    <p class="jb-home-lede">Use the native search, filters, and listings to explore open roles while keeping application tools and interview prep close at hand.</p>
+                    <div class="jb-home-cta">
+                        <form asp-route="@NopRouteNames.General.SEARCH" method="get" class="jb-home-search-form">
+                            <input type="text" class="search-box-text" name="q" placeholder="Search roles, skills, or keywords" aria-label="Search roles, skills, or keywords" />
+                            <button type="submit" class="search-box-button">@T("Search")</button>
+                        </form>
+                    </div>
+                    <div class="jb-home-quick-links">
+                        <a class="jb-home-quick-link" href="@Url.RouteUrl(NopRouteNames.General.SEARCH)">Browse all openings</a>
+                        <a class="jb-home-quick-link" href="@Url.RouteUrl(NopRouteNames.General.LOGIN)">Sign in to track applications</a>
+                    </div>
                 </div>
+                <aside class="jb-home-hero-panel" aria-label="Job board highlights">
+                    <div class="jb-home-panel-card">
+                        <span class="jb-home-panel-label">What this theme emphasizes</span>
+                        <ul class="jb-home-panel-list">
+                            <li>Readable role summaries and compensation metadata</li>
+                            <li>Visible filters, sorting, paging, and native actions</li>
+                            <li>Responsive search, shortlist, and apply workflows</li>
+                        </ul>
+                    </div>
+                    <div class="jb-home-panel-card jb-home-panel-card--accent">
+                        <span class="jb-home-panel-label">Native platform features remain active</span>
+                        <p>Wishlist, compare, add-to-cart style apply flows, widgets, and locale-driven text stay intact under the visual refresh.</p>
+                    </div>
+                </aside>
             </div>
         </div>
 
@@ -56,7 +77,7 @@
         <div class="jb-ai-value-band">
             <div class="jb-ai-value-band-content">
                 <h2>AI Interview Ready</h2>
-                <p>Complete mock interviews and prepare for your next big role with our built-in AI platform.</p>
+                <p>Pair job discovery with interview preparation, profile management, and application follow-through in one public storefront experience.</p>
             </div>
         </div>
 
