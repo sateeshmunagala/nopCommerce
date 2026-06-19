@@ -31,18 +31,21 @@ jobs:
     - name: Purge Heavy Assets and Folders
       run: |
         if (Test-Path "./publish/Plugins") { Remove-Item -Path "./publish/Plugins" -Force -Recurse }
-        
-        # Safe cleanup: Wipes out heavy test projects but leaves all node_modules (including datatables) completely intact
-        Get-ChildItem -Path ./publish -Include *AIInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
+        Get-ChildItem -Path ./publish -Include *AllInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
       shell: pwsh
 
     - name: Zip Deployment Artifact
       run: Compress-Archive -Path ./publish/* -DestinationPath ./deployment.zip
       shell: pwsh
 
-    - name: Stream Raw Binary Structure to Azure App Service
-      uses: azure/webapps-deploy@v3
+    # 🔑 STEP 1: Log directly into Azure using your existing Publish Profile credentials
+    - name: Login to Azure via Publish Profile
+      uses: azure/login@v2
       with:
-        app-name: 'nop5'
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: ./deployment.zip
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        # Note: If AZURE_CREDENTIALS secret isn't set up yet, you can also login using the publish profile XML text context directly
+
+    # 🚀 STEP 2: Force a direct, raw ZipDeploy binary stream using the Azure CLI core tool
+    - name: Force Direct Zip Deploy Stream
+      run: |
+        az webapp deployment source config-zip --name nop5 --resource-group <YOUR_RESOURCE_GROUP_NAME> --src ./deployment.zip
