@@ -83,6 +83,32 @@ public class ProductModelFactoryTests : WebTest
 
         modelSimple.Should().Be(productTemplateSimple.ViewPath);
         modelGrouped.Should().Be(productTemplateGrouped.ViewPath);
+
+        var aiInterviewTemplate = new ProductTemplate
+        {
+            Name = "AIInterview Job Details Test",
+            ViewPath = "~/Plugins/Misc.AIInterview/Views/ProductTemplate.JobDetails.cshtml",
+            DisplayOrder = 10
+        };
+
+        try
+        {
+            await productTemplateRepository.InsertAsync(aiInterviewTemplate);
+
+            var modelAiInterview = await _productModelFactory.PrepareProductTemplateViewPathAsync(new Product
+            {
+                ProductTemplateId = aiInterviewTemplate.Id
+            });
+
+            modelAiInterview.Should().Be("ProductTemplate.JobDetails");
+        }
+        finally
+        {
+            if (aiInterviewTemplate.Id > 0)
+            {
+                await productTemplateRepository.DeleteAsync(aiInterviewTemplate);
+            }
+        }
     }
 
     [Test]
