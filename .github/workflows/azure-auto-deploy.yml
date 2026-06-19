@@ -1,4 +1,4 @@
-name: Automated VPS Web Deploy
+name: Automated Linux Stream Deployment
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch: 
 
 jobs:
-  build-and-deploy:
+  build-and-stream-deploy:
     runs-on: windows-latest
 
     steps:
@@ -24,21 +24,27 @@ jobs:
     - name: Restore Dependencies
       run: dotnet restore src/Presentation/Nop.Web/Nop.Web.csproj
 
-    # 🛠️ Compiles the core binaries for Windows Hosting architectures
-    - name: Compile and Publish Presentation Layer
+    # 🛠️ Step 1: Changed compilation target flag (-r) cleanly to linux-x64 architecture
+    - name: Compile and Publish Presentation Layer (Linux Optimized)
       run: |
-        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj -c Release -r win-x86 --self-contained false -o ./publish /p:PublishReadyToRun=false /p:DebugSymbols=false /p:DebugType=None /p:CopyPluginDllsToOutput=false
+        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj -c Release -r linux-x64 --self-contained false -o ./publish /p:PublishReadyToRun=false /p:DebugSymbols=false /p:DebugType=None /p:CopyPluginDllsToOutput=false
 
-    # 🧹 Clears out local heavy test binaries to optimize transit times
-    - name: Purge Heavy Assets
+    # 🧹 Step 2: Clear heavy internal tracking assets to keep transfer payloads light
+    - name: Purge Heavy Assets and Folders
       run: |
         if (Test-Path "./publish/Plugins") { Remove-Item -Path "./publish/Plugins" -Force -Recurse }
         Get-ChildItem -Path ./publish -Include *AllInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
       shell: pwsh
 
-    # 🚀 Streams files directly to your MilesWeb Plesk VPS with no memory ceilings!
-    - name: Stream Core Assets to Plesk IIS
+    # 📦 Step 3: Bundle assets into a standard deployment package
+    - name: Zip Deployment Artifact
+      run: Compress-Archive -Path ./publish/* -DestinationPath ./deployment.zip
+      shell: pwsh
+
+    # 🚀 Step 4: Stream zip straight to the Linux package container mount engine
+    - name: Stream Code to Linux App Service
       uses: azure/webapps-deploy@v3
       with:
-        publish-profile: ${{ secrets.PLESK_WEBDEPLOY_PROFILE }}
-        package: ./publish
+        app-name: 'nop51'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: './deployment.zip'
