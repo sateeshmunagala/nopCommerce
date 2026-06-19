@@ -34,10 +34,10 @@ jobs:
         Get-ChildItem -Path ./publish -Include *AllInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
       shell: pwsh
 
-    # 🚀 Direct Native MSDeploy to MilesWeb Plesk Panel
+    # 🚀 Direct Native MSDeploy targeting your MilesWeb Plesk panel directly (Port 8172)
     - name: Execute Native MSDeploy to Plesk
       run: |
-        # 1. Parse the Plesk XML Profile
+        # 1. Parse the Plesk XML Profile text explicitly
         $profileXml = [xml]'${{ secrets.PLESK_WEBDEPLOY_PROFILE }}'
         $publishProfile = $profileXml.publishData.publishProfile
         
@@ -48,13 +48,13 @@ jobs:
 
         Write-Host "Connecting natively to Plesk MSDeploy Engine at: $publishUrl"
 
-        # 2. Locate the native msdeploy.exe engine on the GitHub Runner
+        # 2. Locate the native msdeploy.exe engine on the GitHub Windows Runner
         $msdeployPath = "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
         if (!(Test-Path $msdeployPath)) {
             $msdeployPath = "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
         }
 
-        # 3. Fire the deployment payload directly across the web deployment port (8172)
+        # 3. Fire the deployment package straight to your IIS server instance
         & $msdeployPath -source:contentPath="$(Get-Location)\publish" `
           -dest:contentPath="$siteName",ComputerName="$publishUrl",UserName="$userName",Password="$password",AuthType="Basic" `
           -verb:sync `
