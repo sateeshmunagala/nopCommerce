@@ -1,9 +1,3 @@
-.jb-home-native-components {
-    opacity: 0.8;
-    padding-top: 40px;
-    border-top: 1px solid var(--jb-border);
-}
-
 :root {
     --jb-bg: #f0f0f0;
     --jb-ink: #2c2c2c;
@@ -1054,6 +1048,12 @@ body.jb-menu-open .jb-mobile-drawer {
     transition: background-color 0.2s, color 0.2s;
 }
 
+.jb-home-native-components {
+    opacity: 0.8;
+    padding-top: 40px;
+    border-top: 1px solid var(--jb-border);
+}
+
 /* The Apply / View Button */
 .html-category-page .product-item .buttons .product-box-add-to-cart-button,
 .html-search-page .product-item .buttons .product-box-add-to-cart-button,
@@ -1281,14 +1281,11 @@ body.jb-search-open #jb-mobile-search-overlay {
 }
 
 @media (max-width: 1000px) {
-    .footer-menu-list, .footer-menu__list {
+    .footer-menu__list {
         display: none !important;
     }
 
-    .footer-block.footer-menu--active .footer-menu__list,
-    .footer-block.footer-menu--active .footer-menu-list,
-    .footer-block.jb-footer-open .footer-menu__list,
-    .footer-block.jb-footer-open .footer-menu-list {
+    .footer-menu.footer-menu--active .footer-menu__list {
         display: block !important;
     }
 }

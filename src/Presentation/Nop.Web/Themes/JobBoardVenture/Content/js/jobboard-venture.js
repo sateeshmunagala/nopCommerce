@@ -46,10 +46,7 @@
                 e.preventDefault();
                 e.stopPropagation();
             }
-            if (document.body.classList.contains('jb-menu-open')) {
-                closeMenu(e);
-                return;
-            }
+            if (document.body.classList.contains('jb-menu-open')) return;
             document.body.classList.add('jb-menu-open');
             if (menuToggle) menuToggle.setAttribute('aria-expanded', 'true');
         }
@@ -65,32 +62,25 @@
 
         function handlePointerOrClick(element, handler) {
             if (!element) return;
-            var isPointerSupported = window.PointerEvent ? true : false;
-
-            if (isPointerSupported) {
+            if (window.PointerEvent) {
                 element.addEventListener('pointerup', function (e) {
-                    // Ignore right-clicks
                     if (e.button === 2) return;
                     e.preventDefault();
                     handler(e);
                 });
             } else {
-                var lastToggleTime = 0;
-                var threshold = 300; // milliseconds
-
-                var safeHandler = function(e) {
-                    var now = Date.now();
-                    if (now - lastToggleTime > threshold) {
-                        lastToggleTime = now;
-                        handler(e);
-                    }
-                };
-
-                element.addEventListener('click', safeHandler);
+                var isTouch = false;
                 element.addEventListener('touchstart', function(e) {
+                    isTouch = true;
                     e.preventDefault();
-                    safeHandler(e);
+                    handler(e);
+                    setTimeout(function() { isTouch = false; }, 500);
                 }, { passive: false });
+                element.addEventListener('click', function(e) {
+                    if (isTouch) return;
+                    e.preventDefault();
+                    handler(e);
+                });
             }
         }
 
@@ -107,10 +97,7 @@
                 e.preventDefault();
                 e.stopPropagation();
             }
-            if (document.body.classList.contains('jb-search-open')) {
-                closeSearch(e);
-                return;
-            }
+            if (document.body.classList.contains('jb-search-open')) return;
             document.body.classList.add('jb-search-open');
             if (searchToggle) searchToggle.setAttribute('aria-expanded', 'true');
             if (searchInput) {
