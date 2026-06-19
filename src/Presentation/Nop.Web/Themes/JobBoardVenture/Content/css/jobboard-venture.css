@@ -1063,11 +1063,22 @@ body.jb-menu-open .jb-mobile-drawer {
 .jb-home-native-components .picture,
 .jb-home-native-components .prices,
 .jb-home-native-components .buttons,
-.jb-home-native-components .product-rating-box {
+.jb-home-native-components .product-rating-box,
+.jb-home-native-components .sku,
+.jb-home-native-components .description,
+.jb-home-native-components .product-title {
     display: none !important;
 }
 
 /* The Apply / View Button */
+.jb-view-job-button { display: none; }
+.html-category-page .product-item .jb-view-job-button,
+.html-search-page .product-item .jb-view-job-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .html-category-page .product-item .buttons .product-box-add-to-cart-button,
 .html-search-page .product-item .buttons .product-box-add-to-cart-button,
 .html-category-page .product-item .buttons .button-2,
@@ -1083,23 +1094,10 @@ body.jb-menu-open .jb-mobile-drawer {
     background-color: var(--jb-accent-dark);
 }
 
-/* Change "Add to cart" text to "View Job" */
+/* Hide original Add to Cart button on listing pages to avoid duplicate actions since we have jb-view-job-button now */
 .html-category-page .product-item .buttons .product-box-add-to-cart-button,
 .html-search-page .product-item .buttons .product-box-add-to-cart-button {
-    color: transparent !important;
-    position: relative;
-}
-
-.html-category-page .product-item .buttons .product-box-add-to-cart-button::after,
-.html-search-page .product-item .buttons .product-box-add-to-cart-button::after {
-    content: "View Job";
-    color: var(--jb-white);
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    text-align: center;
+    display: none !important;
 }
 
 /* Secondary Buttons (Compare, Wishlist) */
