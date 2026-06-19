@@ -65,11 +65,33 @@
 
         function handlePointerOrClick(element, handler) {
             if (!element) return;
-            element.addEventListener('click', handler);
-            element.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                handler(e);
-            }, { passive: false });
+            var isPointerSupported = window.PointerEvent ? true : false;
+
+            if (isPointerSupported) {
+                element.addEventListener('pointerup', function (e) {
+                    // Ignore right-clicks
+                    if (e.button === 2) return;
+                    e.preventDefault();
+                    handler(e);
+                });
+            } else {
+                var lastToggleTime = 0;
+                var threshold = 300; // milliseconds
+
+                var safeHandler = function(e) {
+                    var now = Date.now();
+                    if (now - lastToggleTime > threshold) {
+                        lastToggleTime = now;
+                        handler(e);
+                    }
+                };
+
+                element.addEventListener('click', safeHandler);
+                element.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    safeHandler(e);
+                }, { passive: false });
+            }
         }
 
         handlePointerOrClick(menuToggle, openMenu);

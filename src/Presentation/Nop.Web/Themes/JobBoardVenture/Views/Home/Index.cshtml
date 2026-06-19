@@ -60,9 +60,11 @@
             </div>
         </div>
 
-        <div class="jb-home-native-components" style="opacity: 0.8; padding-top: 40px; border-top: 1px solid var(--jb-border);">
+        <div class="jb-home-native-components">
             @await Component.InvokeAsync(typeof(HomepageCategoriesViewComponent))
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeProducts })
             @await Component.InvokeAsync(typeof(HomepageProductsViewComponent))
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeBestSellers })
             @await Component.InvokeAsync(typeof(HomepageBestSellersViewComponent))
         </div>
 
