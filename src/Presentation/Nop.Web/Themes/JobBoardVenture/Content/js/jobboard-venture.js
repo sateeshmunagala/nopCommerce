@@ -41,29 +41,54 @@
         var menuClose = document.querySelector('.jb-drawer-close');
         var drawerOverlay = document.querySelector('.jb-drawer-overlay');
 
-        function openMenu() {
+        function openMenu(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (document.body.classList.contains('jb-menu-open')) {
+                closeMenu(e);
+                return;
+            }
             document.body.classList.add('jb-menu-open');
             if (menuToggle) menuToggle.setAttribute('aria-expanded', 'true');
         }
 
-        function closeMenu() {
+        function closeMenu(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             document.body.classList.remove('jb-menu-open');
             if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
         }
 
-        if (menuToggle) {
-            menuToggle.addEventListener('click', openMenu);
+        function handlePointerOrClick(element, handler) {
+            if (!element) return;
+            element.addEventListener('click', handler);
+            element.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                handler(e);
+            }, { passive: false });
         }
-        if (menuClose) {
-            menuClose.addEventListener('click', closeMenu);
-        }
+
+        handlePointerOrClick(menuToggle, openMenu);
+        handlePointerOrClick(menuClose, closeMenu);
 
         // --- MOBILE SEARCH OVERLAY ---
         var searchToggle = document.querySelector('.jb-search-toggle');
         var searchClose = document.querySelector('.jb-search-close');
         var searchInput = document.querySelector('.jb-search-overlay .search-box-text');
 
-        function openSearch() {
+        function openSearch(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (document.body.classList.contains('jb-search-open')) {
+                closeSearch(e);
+                return;
+            }
             document.body.classList.add('jb-search-open');
             if (searchToggle) searchToggle.setAttribute('aria-expanded', 'true');
             if (searchInput) {
@@ -72,17 +97,17 @@
             }
         }
 
-        function closeSearch() {
+        function closeSearch(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             document.body.classList.remove('jb-search-open');
             if (searchToggle) searchToggle.setAttribute('aria-expanded', 'false');
         }
 
-        if (searchToggle) {
-            searchToggle.addEventListener('click', openSearch);
-        }
-        if (searchClose) {
-            searchClose.addEventListener('click', closeSearch);
-        }
+        handlePointerOrClick(searchToggle, openSearch);
+        handlePointerOrClick(searchClose, closeSearch);
 
         if (drawerOverlay) {
             drawerOverlay.addEventListener('click', function() {

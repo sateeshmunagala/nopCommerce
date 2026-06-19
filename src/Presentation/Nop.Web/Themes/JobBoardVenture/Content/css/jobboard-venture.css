@@ -1207,3 +1207,170 @@ body.jb-menu-open .jb-mobile-drawer {
 .html-search-page .block .listbox ul {
     padding-left: 0;
 }
+
+/* Force mobile drawer visibility when open */
+body.jb-menu-open #jb-mobile-menu-drawer {
+    left: 0 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    display: flex !important;
+}
+
+body.jb-menu-open .jb-drawer-overlay {
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+body.jb-search-open #jb-mobile-search-overlay {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Hide the inner "Categories" toggle text so top-level links are usable without double clicking */
+#jb-mobile-menu-drawer .menu-toggle {
+    display: none !important;
+}
+#jb-mobile-menu-drawer .menu {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    top: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+/* Override default footer navigation styles */
+.footer-navigation {
+    background-color: transparent !important;
+    color: var(--jb-muted) !important;
+}
+
+.footer-menu {
+    background-color: transparent !important;
+    border: none !important;
+    margin-bottom: 20px !important;
+}
+
+.footer-menu-title, .footer-menu-toggle, .footer-menu__title, .footer-menu__toggle {
+    background-color: transparent !important;
+    color: var(--jb-ink) !important;
+    font-family: "Fjalla One", sans-serif !important;
+    font-size: 1.2rem !important;
+    padding: 0 0 10px 0 !important;
+    border-bottom: none !important;
+}
+
+.footer-menu-title::after, .footer-menu-toggle::after, .footer-menu__title::after, .footer-menu__toggle::after {
+    display: none !important;
+}
+
+.footer-menu-list, .footer-menu__list {
+    display: block !important;
+    padding: 0 !important;
+    background-color: transparent !important;
+    border: none !important;
+}
+
+.footer-menu-list .footer-menu-item a,
+.footer-menu-list .footer-menu-link,
+.footer-menu__list .footer-menu__item a {
+    color: var(--jb-muted) !important;
+    font-family: "Lato", sans-serif !important;
+    padding: 5px 0 !important;
+    display: block !important;
+    text-decoration: none !important;
+}
+
+.footer-menu-list .footer-menu-item a:hover,
+.footer-menu-list .footer-menu-link:hover,
+.footer-menu__list .footer-menu__item a:hover {
+    color: var(--jb-accent) !important;
+}
+
+#jb-mobile-menu-drawer .menu__toggle {
+    display: none !important;
+}
+
+@media (max-width: 1000px) {
+    .footer-upper {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    .footer-navigation {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .footer-menu {
+        margin-bottom: 0 !important;
+    }
+    .footer-block.follow-us {
+        margin-top: 20px;
+    }
+}
+
+/* Fix Mobile Listing Cards & Filters */
+@media (max-width: 600px) {
+    .html-category-page .item-grid,
+    .html-search-page .item-grid {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .html-category-page .item-box,
+    .html-search-page .item-box {
+        width: 100% !important;
+        margin: 0 0 20px 0 !important;
+        padding: 0 !important;
+    }
+
+    .html-category-page .product-item .buttons,
+    .html-search-page .product-item .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    /* Primary buttons get full width on mobile */
+    .html-category-page .product-item .buttons .product-box-add-to-cart-button,
+    .html-search-page .product-item .buttons .product-box-add-to-cart-button,
+    .html-category-page .product-item .buttons button[value="Apply"],
+    .html-search-page .product-item .buttons button[value="Apply"] {
+        width: 100% !important;
+        order: 1;
+    }
+
+    /* Secondary buttons (compare, wishlist) share the row and are compact */
+    .html-category-page .product-item .buttons .add-to-compare-list-button,
+    .html-search-page .product-item .buttons .add-to-compare-list-button,
+    .html-category-page .product-item .buttons .add-to-wishlist-button,
+    .html-search-page .product-item .buttons .add-to-wishlist-button {
+        flex: 1;
+        width: auto !important;
+        order: 2;
+        padding: 8px !important;
+        font-size: 0.9rem !important;
+        background-color: transparent !important;
+        border: 1px solid var(--jb-border) !important;
+        color: var(--jb-muted) !important;
+    }
+
+    /* Keep filters compact on mobile */
+    .html-category-page .block,
+    .html-search-page .block {
+        margin-bottom: 20px;
+    }
+
+    .html-category-page .product-selectors,
+    .html-search-page .product-selectors {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}
