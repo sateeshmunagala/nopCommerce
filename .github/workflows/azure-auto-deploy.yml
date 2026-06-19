@@ -24,21 +24,39 @@ jobs:
     - name: Restore Dependencies
       run: dotnet restore src/Presentation/Nop.Web/Nop.Web.csproj
 
-    # 🛠️ Compiles the core binaries for Windows Hosting architectures
     - name: Compile and Publish Presentation Layer
       run: |
         dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj -c Release -r win-x86 --self-contained false -o ./publish /p:PublishReadyToRun=false /p:DebugSymbols=false /p:DebugType=None /p:CopyPluginDllsToOutput=false
 
-    # 🧹 Clears out local heavy test binaries to optimize transit times
     - name: Purge Heavy Assets
       run: |
         if (Test-Path "./publish/Plugins") { Remove-Item -Path "./publish/Plugins" -Force -Recurse }
         Get-ChildItem -Path ./publish -Include *AllInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
       shell: pwsh
 
-    # 🚀 Streams files directly to your MilesWeb Plesk VPS with no memory ceilings!
-    - name: Stream Core Assets to Plesk IIS
-      uses: azure/webapps-deploy@v3
-      with:
-        publish-profile: ${{ secrets.PLESK_WEBDEPLOY_PROFILE }}
-        package: ./publish
+    # 🚀 Direct Native MSDeploy to MilesWeb Plesk Panel
+    - name: Execute Native MSDeploy to Plesk
+      run: |
+        # 1. Parse the Plesk XML Profile
+        $profileXml = [xml]'${{ secrets.PLESK_WEBDEPLOY_PROFILE }}'
+        $publishProfile = $profileXml.publishData.publishProfile
+        
+        $siteName = $publishProfile.msdeploySite
+        $userName = $publishProfile.userName
+        $password = $publishProfile.userPWD
+        $publishUrl = $publishProfile.publishUrl
+
+        Write-Host "Connecting natively to Plesk MSDeploy Engine at: $publishUrl"
+
+        # 2. Locate the native msdeploy.exe engine on the GitHub Runner
+        $msdeployPath = "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+        if (!(Test-Path $msdeployPath)) {
+            $msdeployPath = "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+        }
+
+        # 3. Fire the deployment payload directly across the web deployment port (8172)
+        & $msdeployPath -source:contentPath="$(Get-Location)\publish" `
+          -dest:contentPath="$siteName",ComputerName="$publishUrl",UserName="$userName",Password="$password",AuthType="Basic" `
+          -verb:sync `
+          -allowUntrusted
+      shell: pwsh
