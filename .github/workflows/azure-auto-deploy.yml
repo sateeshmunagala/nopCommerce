@@ -31,41 +31,18 @@ jobs:
     - name: Purge Heavy Assets and Folders
       run: |
         if (Test-Path "./publish/Plugins") { Remove-Item -Path "./publish/Plugins" -Force -Recurse }
-        Get-ChildItem -Path ./publish -Include *AllInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
+
+        # Safe cleanup: Wipes out heavy test projects but leaves all node_modules (including datatables) completely intact
+        Get-ChildItem -Path ./publish -Include *AIInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
       shell: pwsh
 
     - name: Zip Deployment Artifact
       run: Compress-Archive -Path ./publish/* -DestinationPath ./deployment.zip
       shell: pwsh
 
-    # 🚀 STEP 2: Extract publishing credentials and stream zip directly to Kudu API
-    - name: Direct Stream ZipDeploy to Azure API
-      run: |
-        # Load your existing publish profile XML secret
-        $profileXml = [xml]'${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}'
-        
-        # Extract the specialized Kudu deployment URL and base64 credentials
-        $publishProfile = $profileXml.publishData.publishProfile | Where-Object { $_.publishMethod -eq "MSDeploy" -or $_.publishMethod -eq "ZipDeploy" } | Select-Object -First 1
-        if (!$publishProfile) { $publishProfile = $profileXml.publishData.publishProfile[0] }
-        
-        $userName = $publishProfile.userName
-        $userPWD = $publishProfile.userPWD
-        $scmUrl = $publishProfile.publishUrl
-        
-        # Format the endpoint explicitly for the raw Kudu Zip Push API
-        $kuduUrl = "https://$scmUrl/api/zipdeploy"
-        if ($scmUrl -like "*.publish.azurewebsites.windows.net*") {
-            $siteName = $publishProfile.msdeploySite
-            $kuduUrl = "https://$siteName.scm.azurewebsites.net/api/zipdeploy"
-        }
-
-        Write-Host "Streaming deployment binary directly to Azure endpoint: $kuduUrl"
-        
-        # Build authentication headers
-        $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $userName, $userPWD)))
-        $headers = @{ Authorization = ("Basic {0}" -f $base64AuthInfo) }
-        
-        # Send the file via direct stream POST request
-        Invoke-RestMethod -Uri $kuduUrl -Headers $headers -Method Post -InFile ./deployment.zip -ContentType "application/zip" -TimeoutSec 600
-        Write-Host "Deployment streamed successfully!"
-      shell: pwsh
+    - name: Stream Raw Binary Structure to Azure App Service
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: 'nop5'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ./deployment.zip
