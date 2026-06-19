@@ -90,6 +90,8 @@ h6,
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: none !important;
+    animation: none !important;
 }
 
 .jb-mobile-toggles button svg {
@@ -1019,15 +1021,19 @@ body.jb-menu-open .jb-mobile-drawer {
 }
 
 .html-category-page .product-item .prices,
-.html-search-page .product-item .prices {
-    font-family: "Fjalla One", sans-serif;
-    color: var(--jb-ink);
+.html-search-page .product-item .prices,
+.html-category-page .product-item .add-to-compare-list-button,
+.html-search-page .product-item .add-to-compare-list-button,
+.html-category-page .product-item .add-to-wishlist-button,
+.html-search-page .product-item .add-to-wishlist-button,
+.html-category-page .price-range-filter,
+.html-search-page .price-range-filter {
+    display: none !important;
 }
 
-.html-category-page .product-item .actual-price,
-.html-search-page .product-item .actual-price {
-    font-size: 1.2rem;
-    color: var(--jb-ink);
+.html-category-page .product-sorting,
+.html-search-page .product-sorting {
+    opacity: 0.5;
 }
 
 .html-category-page .product-item .buttons,
@@ -1054,6 +1060,13 @@ body.jb-menu-open .jb-mobile-drawer {
     border-top: 1px solid var(--jb-border);
 }
 
+.jb-home-native-components .picture,
+.jb-home-native-components .prices,
+.jb-home-native-components .buttons,
+.jb-home-native-components .product-rating-box {
+    display: none !important;
+}
+
 /* The Apply / View Button */
 .html-category-page .product-item .buttons .product-box-add-to-cart-button,
 .html-search-page .product-item .buttons .product-box-add-to-cart-button,
@@ -1068,6 +1081,25 @@ body.jb-menu-open .jb-mobile-drawer {
 .html-category-page .product-item .buttons .button-2:hover,
 .html-search-page .product-item .buttons .button-2:hover {
     background-color: var(--jb-accent-dark);
+}
+
+/* Change "Add to cart" text to "View Job" */
+.html-category-page .product-item .buttons .product-box-add-to-cart-button,
+.html-search-page .product-item .buttons .product-box-add-to-cart-button {
+    color: transparent !important;
+    position: relative;
+}
+
+.html-category-page .product-item .buttons .product-box-add-to-cart-button::after,
+.html-search-page .product-item .buttons .product-box-add-to-cart-button::after {
+    content: "View Job";
+    color: var(--jb-white);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    text-align: center;
 }
 
 /* Secondary Buttons (Compare, Wishlist) */
@@ -1268,6 +1300,8 @@ body.jb-search-open #jb-mobile-search-overlay {
     font-size: 1.2rem !important;
     padding: 0 0 10px 0 !important;
     border-bottom: none !important;
+    transition: none !important;
+    animation: none !important;
 }
 
 .footer-menu-title::after, .footer-menu-toggle::after, .footer-menu__title::after, .footer-menu__toggle::after {
@@ -1282,11 +1316,13 @@ body.jb-search-open #jb-mobile-search-overlay {
 
 @media (max-width: 1000px) {
     .footer-menu__list {
-        display: none !important;
+        display: none;
+        transition: none !important;
+        animation: none !important;
     }
 
     .footer-menu.footer-menu--active .footer-menu__list {
-        display: block !important;
+        display: block;
     }
 }
 

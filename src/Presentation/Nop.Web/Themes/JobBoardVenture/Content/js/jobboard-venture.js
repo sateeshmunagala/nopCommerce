@@ -60,32 +60,15 @@
             if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
         }
 
-        function handlePointerOrClick(element, handler) {
+        function attachClick(element, handler) {
             if (!element) return;
-            if (window.PointerEvent) {
-                element.addEventListener('pointerup', function (e) {
-                    if (e.button === 2) return;
-                    e.preventDefault();
-                    handler(e);
-                });
-            } else {
-                var isTouch = false;
-                element.addEventListener('touchstart', function(e) {
-                    isTouch = true;
-                    e.preventDefault();
-                    handler(e);
-                    setTimeout(function() { isTouch = false; }, 500);
-                }, { passive: false });
-                element.addEventListener('click', function(e) {
-                    if (isTouch) return;
-                    e.preventDefault();
-                    handler(e);
-                });
-            }
+            element.addEventListener('click', function(e) {
+                handler(e);
+            });
         }
 
-        handlePointerOrClick(menuToggle, openMenu);
-        handlePointerOrClick(menuClose, closeMenu);
+        attachClick(menuToggle, openMenu);
+        attachClick(menuClose, closeMenu);
 
         // --- MOBILE SEARCH OVERLAY ---
         var searchToggle = document.querySelector('.jb-search-toggle');
@@ -115,8 +98,8 @@
             if (searchToggle) searchToggle.setAttribute('aria-expanded', 'false');
         }
 
-        handlePointerOrClick(searchToggle, openSearch);
-        handlePointerOrClick(searchClose, closeSearch);
+        attachClick(searchToggle, openSearch);
+        attachClick(searchClose, closeSearch);
 
         if (drawerOverlay) {
             drawerOverlay.addEventListener('click', function() {
@@ -140,22 +123,6 @@
             }
         });
 
-        // --- MOBILE FOOTER ACCORDION OVERRIDE ---
-        // Nopcommerce has a default footer script, but we want to ensure our jb-footer-open class handles the visual state if needed.
-        var footerTitles = document.querySelectorAll('.footer-block .title');
-        if (footerTitles.length > 0) {
-            footerTitles.forEach(function(title) {
-                // Ensure we don't interfere with desktop clicks by checking window width
-                title.addEventListener('click', function(e) {
-                    if (window.innerWidth <= 1000) {
-                        var block = this.closest('.footer-block');
-                        if (block) {
-                            block.classList.toggle('jb-footer-open');
-                        }
-                    }
-                });
-            });
-        }
     }
 
     if (document.readyState === 'loading') {
