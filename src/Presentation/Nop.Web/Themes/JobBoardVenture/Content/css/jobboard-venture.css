@@ -243,6 +243,9 @@ body.jb-menu-open .jb-drawer-overlay {
 
 body.jb-menu-open .jb-mobile-drawer {
     left: 0;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    display: flex !important;
 }
 
 /* =========================================
@@ -332,6 +335,12 @@ body.jb-menu-open .jb-mobile-drawer {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
+        max-width: 50%;
+    }
+
+    .header-logo img {
+        max-width: 100%;
+        height: auto;
     }
 
     .jb-mobile-toggles {
@@ -385,6 +394,7 @@ body.jb-menu-open .jb-mobile-drawer {
         border-bottom: 1px solid var(--jb-border);
         margin-bottom: 0;
         padding: 15px 0;
+        background-color: transparent !important;
     }
 
     .footer-block:last-child {
@@ -398,6 +408,9 @@ body.jb-menu-open .jb-mobile-drawer {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        background: transparent !important;
+        color: var(--jb-ink) !important;
+        font-family: "Fjalla One", Arial, sans-serif;
     }
 
     .footer-block .title::after {
@@ -714,7 +727,7 @@ body.jb-menu-open .jb-mobile-drawer {
     .html-category-page .master-column-wrapper,
     .html-search-page .master-column-wrapper {
         display: flex;
-        flex-direction: row-reverse; /* Sidebar left, content right */
+        flex-direction: row; /* Sidebar left, content right */
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
@@ -740,14 +753,14 @@ body.jb-menu-open .jb-mobile-drawer {
 @media (max-width: 1000px) {
     .html-category-page .master-column-wrapper,
     .html-search-page .master-column-wrapper {
-        padding: 15px;
+        padding: 0 15px 15px;
     }
 
     .html-category-page .side-2, .html-category-page .center-2,
     .html-search-page .side-2, .html-search-page .center-2 {
         float: none !important;
         width: 100%;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
     }
 }
 
@@ -908,6 +921,8 @@ body.jb-menu-open .jb-mobile-drawer {
     display: flex;
     flex-direction: column;
     transition: box-shadow 0.2s;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 @media (min-width: 600px) {
@@ -927,7 +942,7 @@ body.jb-menu-open .jb-mobile-drawer {
 /* Hide or shrink generic product images to match job board aesthetic */
 .html-category-page .product-item .picture,
 .html-search-page .product-item .picture {
-    display: none; /* Hide images for a cleaner job listing look */
+    display: none !important; /* Hide images for a cleaner job listing look */
 }
 
 @media (min-width: 600px) {
@@ -967,6 +982,8 @@ body.jb-menu-open .jb-mobile-drawer {
     font-size: 1.4rem;
     color: var(--jb-ink);
     text-decoration: none;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .html-category-page .product-item .product-title a:hover,
