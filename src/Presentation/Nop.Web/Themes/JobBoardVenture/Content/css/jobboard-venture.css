@@ -53,10 +53,10 @@ h6,
 }
 
 .header-lower {
-    height: 64px;
     display: flex !important;
     align-items: center;
     justify-content: space-between;
+    height: 64px;
     padding: 0 15px;
     max-width: 1200px;
     margin: 0 auto;
@@ -1603,33 +1603,5 @@ body.jb-search-open #jb-mobile-search-overlay {
     font-weight: 700;
 }
 .header-logo .jb-brand:hover {
-    color: var(--jb-accent);
-}
-
-/* Footer powered-by and tax-shipping adjustments */
-.footer-powered-by {
-    margin-top: 10px;
-    font-size: 0.85rem;
-    color: var(--jb-muted);
-}
-.footer-powered-by a {
-    color: var(--jb-muted);
-    text-decoration: underline;
-}
-.footer-powered-by a:hover {
-    color: var(--jb-accent);
-}
-
-.footer-tax-shipping {
-    display: block;
-    margin-top: 5px;
-    font-size: 0.85rem;
-    color: var(--jb-muted);
-}
-.footer-tax-shipping a {
-    color: var(--jb-muted);
-    text-decoration: underline;
-}
-.footer-tax-shipping a:hover {
     color: var(--jb-accent);
 }
