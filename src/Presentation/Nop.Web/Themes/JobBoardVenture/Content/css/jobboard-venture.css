@@ -421,19 +421,6 @@ body.jb-menu-open .jb-mobile-drawer {
         font-size: 1.5rem;
     }
 
-    .footer-block.jb-footer-open .title::after {
-        content: '-';
-    }
-
-    .footer-block .listbox {
-        display: none;
-        padding-top: 15px;
-    }
-
-    .footer-block.jb-footer-open .listbox {
-        display: block;
-    }
-
     /* Hide header links wrapper on mobile, as they are inside the drawer */
     .header-links-wrapper {
         display: none;
@@ -1422,4 +1409,21 @@ body.jb-search-open #jb-mobile-search-overlay {
         align-items: flex-start;
         gap: 10px;
     }
+}
+
+/* Custom Header & Branding Styles */
+.header-lower {
+    height: 64px;
+    display: flex;
+    align-items: center;
+}
+.header-logo .jb-brand {
+    font-family: "Fjalla One", sans-serif;
+    font-size: 1.5rem;
+    color: var(--jb-ink);
+    text-decoration: none;
+    font-weight: 700;
+}
+.header-logo .jb-brand:hover {
+    color: var(--jb-accent);
 }
