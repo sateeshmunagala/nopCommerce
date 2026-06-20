@@ -4,6 +4,36 @@
 @inject IWebHelper webHelper
 
 <div class="header-links">
+    <div class="jb-mobile-account">
+        <button class="jb-account-toggle" type="button" aria-expanded="false" aria-controls="jb-mobile-account-popup" aria-label="@T("Account.MyAccount")">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M4 20c1.8-3.6 5-5.4 8-5.4s6.2 1.8 8 5.4"></path>
+            </svg>
+        </button>
+        <div class="jb-account-popup" id="jb-mobile-account-popup" aria-hidden="true">
+            <ul>
+                @if (Model.IsAuthenticated)
+                {
+                    <li><a href="@Url.RouteUrl(NopRouteNames.General.CUSTOMER_INFO)" class="ico-account">@T("Account.MyAccount")</a></li>
+                    <li><a href="@Url.RouteUrl(NopRouteNames.Standard.LOGOUT)" class="ico-logout">@T("Account.Logout")</a></li>
+                }
+                else
+                {
+                    var returnUrl = Context.Request.Query.TryGetValue("returnUrl", out var popupUrl) && !StringValues.IsNullOrEmpty(popupUrl)
+                        ? popupUrl.ToString()
+                        : webHelper.GetRawUrl(Context.Request);
+
+                    @if (Model.RegistrationType != UserRegistrationType.Disabled)
+                    {
+                        <li><a href="@Url.RouteUrl(NopRouteNames.Standard.REGISTER, new { returnUrl = returnUrl })" class="ico-register">@T("Account.Register")</a></li>
+                    }
+                    <li><a href="@Url.RouteUrl(NopRouteNames.General.LOGIN, new { returnUrl = returnUrl })" class="ico-login">@T("Account.Login")</a></li>
+                }
+            </ul>
+        </div>
+    </div>
+
     <ul>
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderLinksBefore, additionalData = Model })
         @if (Model.IsAuthenticated)

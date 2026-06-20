@@ -29,6 +29,8 @@
         var searchClose = document.querySelector('.jb-search-close');
         var searchOverlay = document.querySelector('#jb-mobile-search-overlay');
         var searchInput = document.querySelector('.jb-search-overlay .search-box-text');
+        var accountToggle = document.querySelector('.jb-account-toggle');
+        var accountPopup = document.querySelector('#jb-mobile-account-popup');
         var drawerOverlay = document.querySelector('.jb-drawer-overlay');
 
         var headerLinksWrapper = document.querySelector('.header-links-wrapper .header-links ul');
@@ -84,6 +86,7 @@
         function syncExpandedState() {
             var menuOpen = document.body.classList.contains('jb-menu-open');
             var searchOpen = document.body.classList.contains('jb-search-open');
+            var accountOpen = document.body.classList.contains('jb-account-open');
 
             if (menuToggle) {
                 menuToggle.setAttribute('aria-expanded', menuOpen ? 'true' : 'false');
@@ -93,12 +96,20 @@
                 searchToggle.setAttribute('aria-expanded', searchOpen ? 'true' : 'false');
             }
 
+            if (accountToggle) {
+                accountToggle.setAttribute('aria-expanded', accountOpen ? 'true' : 'false');
+            }
+
             if (menuDrawer) {
                 menuDrawer.setAttribute('aria-hidden', menuOpen ? 'false' : 'true');
             }
 
             if (searchOverlay) {
                 searchOverlay.setAttribute('aria-hidden', searchOpen ? 'false' : 'true');
+            }
+
+            if (accountPopup) {
+                accountPopup.setAttribute('aria-hidden', accountOpen ? 'false' : 'true');
             }
         }
 
@@ -122,6 +133,16 @@
             syncExpandedState();
         }
 
+        function closeAccount(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            document.body.classList.remove('jb-account-open');
+            syncExpandedState();
+        }
+
         function openMenu(e) {
             if (e) {
                 e.preventDefault();
@@ -133,6 +154,7 @@
             }
 
             closeSearch();
+            closeAccount();
             document.body.classList.add('jb-menu-open');
             syncExpandedState();
         }
@@ -148,6 +170,7 @@
             }
 
             closeMenu();
+            closeAccount();
             document.body.classList.add('jb-search-open');
             syncExpandedState();
 
@@ -156,6 +179,23 @@
                     searchInput.focus();
                 }, 50);
             }
+        }
+
+        function toggleAccount(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            if (document.body.classList.contains('jb-account-open')) {
+                closeAccount();
+                return;
+            }
+
+            closeMenu();
+            closeSearch();
+            document.body.classList.add('jb-account-open');
+            syncExpandedState();
         }
 
         function attachClick(element, handler) {
@@ -172,11 +212,13 @@
         attachClick(menuClose, closeMenu);
         attachClick(searchToggle, openSearch);
         attachClick(searchClose, closeSearch);
+        attachClick(accountToggle, toggleAccount);
 
         if (drawerOverlay) {
             drawerOverlay.addEventListener('click', function () {
                 closeMenu();
                 closeSearch();
+                closeAccount();
             });
         }
 
@@ -192,13 +234,31 @@
             if (e.key === 'Escape') {
                 closeMenu();
                 closeSearch();
+                closeAccount();
             }
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!document.body.classList.contains('jb-account-open')) {
+                return;
+            }
+
+            if (accountToggle && accountToggle.contains(e.target)) {
+                return;
+            }
+
+            if (accountPopup && accountPopup.contains(e.target)) {
+                return;
+            }
+
+            closeAccount();
         });
 
         window.addEventListener('resize', function () {
             if (window.innerWidth > 1000) {
                 closeMenu();
                 closeSearch();
+                closeAccount();
             }
         });
 
