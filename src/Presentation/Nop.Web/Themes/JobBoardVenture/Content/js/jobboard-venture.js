@@ -72,6 +72,15 @@
 
         cloneForDrawer(selectorWrapper, drawerSelectors);
 
+        if (drawerSelectors) {
+            var selectorInputs = drawerSelectors.querySelectorAll('select, input, button, a');
+            var selectorText = drawerSelectors.textContent ? drawerSelectors.textContent.replace(/\s+/g, '') : '';
+
+            if (!selectorInputs.length && !selectorText.length) {
+                drawerSelectors.innerHTML = '';
+            }
+        }
+
         function syncExpandedState() {
             var menuOpen = document.body.classList.contains('jb-menu-open');
             var searchOpen = document.body.classList.contains('jb-search-open');

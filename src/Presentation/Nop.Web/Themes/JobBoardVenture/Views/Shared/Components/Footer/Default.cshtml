@@ -8,15 +8,21 @@
 
 <footer class="footer">
     <section class="footer-upper">
-        @await Component.InvokeAsync(typeof(FooterMenuViewComponent))
+        <div class="footer-main">
+            @await Component.InvokeAsync(typeof(FooterMenuViewComponent))
+            <div class="footer-menu footer-menu--newsletter" role="none">
+                <h2 id="footer-menu-newsletter" class="footer-menu__title footer-menu__toggle" aria-haspopup="menu" aria-expanded="false">
+                    @T("Newsletter.Title")
+                </h2>
+                <div class="footer-menu__list" role="menu" aria-labelledby="footer-menu-newsletter">
+                    @await Component.InvokeAsync(typeof(NewsLetterBoxViewComponent))
+                </div>
+            </div>
+        </div>
         <div class="footer-block follow-us">
             <div class="social">
-                <h2 class="title">
-                    @T("Footer.FollowUs")
-                </h2>
                 @await Component.InvokeAsync(typeof(SocialButtonsViewComponent))
             </div>
-            @await Component.InvokeAsync(typeof(NewsLetterBoxViewComponent))
         </div>
     </section>
     <section class="footer-lower">
@@ -42,3 +48,7 @@
     </section>
     @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.Footer, additionalData = Model })
 </footer>
+
+<script asp-location="Footer">
+    mainMenu.init('.footer-menu--newsletter .footer-menu__toggle', 'footer-menu--active');
+</script>
