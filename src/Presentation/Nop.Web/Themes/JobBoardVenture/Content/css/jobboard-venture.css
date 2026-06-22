@@ -7693,3 +7693,644 @@ body.jb-filter-panel-open .product-filters {
         grid-template-columns: 1fr;
     }
 }
+
+/* =========================================
+   AUTH ENTRY AND MOBILE ACCOUNT NAVIGATION
+   ========================================= */
+@media (max-width: 1000px) {
+    body.jb-account-nav-enhanced .jb-account-nav {
+        left: 0;
+        transform: translate3d(-100%, 0, 0);
+        transition: transform 0.3s ease;
+        will-change: transform;
+    }
+
+    body.jb-account-nav-enhanced .jb-account-nav.is-open,
+    body.jb-account-nav-enhanced.jb-account-nav-open .jb-account-nav {
+        left: 0;
+        transform: translate3d(0, 0, 0);
+    }
+
+    body.jb-account-nav-enhanced.jb-account-nav-open .jb-account-nav-overlay {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+}
+
+.html-login-page,
+.html-registration-page {
+    background: #f2f2f2;
+}
+
+.html-login-page .master-wrapper-content,
+.html-registration-page .master-wrapper-content {
+    max-width: 1200px;
+}
+
+.html-login-page .login-page,
+.html-registration-page .registration-page {
+    box-sizing: border-box;
+    margin: 0 auto;
+    padding: 34px 20px 52px;
+}
+
+.html-registration-page .registration-page {
+    max-width: 1040px;
+}
+
+.html-login-page .login-page .page-title,
+.html-registration-page .registration-page .page-title {
+    min-height: 0;
+    margin: 0 0 20px;
+    border: 0;
+    border-bottom: 1px solid #d8d8d8;
+    padding: 0 0 14px;
+    text-align: left;
+}
+
+.html-login-page .login-page .page-title h1,
+.html-registration-page .registration-page .page-title h1 {
+    margin: 0;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1.15;
+    text-transform: uppercase;
+}
+
+.html-login-page .login-page .page-body,
+.html-registration-page .registration-page .page-body {
+    margin: 0;
+}
+
+.html-login-page .login-page .customer-blocks {
+    display: grid;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+    align-items: stretch;
+    gap: 24px;
+    margin: 0;
+}
+
+.html-login-page .login-page .new-wrapper,
+.html-login-page .login-page .returning-wrapper,
+.html-registration-page .registration-page .fieldset {
+    box-sizing: border-box;
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    border-left: 2px solid var(--jb-accent);
+    border-radius: 0;
+    padding: 28px 30px;
+    background: #ffffff;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.html-login-page .login-page .new-wrapper,
+.html-login-page .login-page .returning-wrapper {
+    float: none;
+    width: auto;
+}
+
+.html-login-page .login-page .returning-wrapper {
+    order: 2;
+}
+
+.html-login-page .login-page .returning-wrapper {
+    border-left: 0;
+}
+
+.html-login-page .login-page .returning-wrapper form {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+}
+
+.html-login-page .login-page .new-wrapper {
+    display: flex;
+    flex-direction: column;
+    order: 1;
+}
+
+.html-login-page .login-page .new-wrapper .buttons {
+    margin-top: auto;
+}
+
+.html-login-page .login-page .title,
+.html-registration-page .registration-page .fieldset > .title {
+    margin: 0 0 18px;
+    border: 0;
+    border-bottom: 1px dashed #cfcfcf;
+    padding: 0 0 11px;
+    background: transparent;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+    line-height: 1.2;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.html-login-page .login-page .returning-wrapper .title {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.html-login-page .login-page .text,
+.html-login-page .login-page .topic-block,
+.html-login-page .login-page .topic-block-body {
+    color: #6a7177;
+    font-family: "Lato", Arial, sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+
+.html-login-page .login-page .form-fields,
+.html-registration-page .registration-page .form-fields {
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.html-login-page .login-page .inputs,
+.html-registration-page .registration-page .inputs {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 12px;
+    min-width: 0;
+    margin: 0 0 15px;
+    text-align: left;
+    white-space: normal;
+}
+
+.html-login-page .login-page .inputs > label:first-child,
+.html-registration-page .registration-page .inputs > label:first-of-type {
+    position: static;
+    box-sizing: border-box;
+    display: block;
+    width: auto;
+    height: auto;
+    margin: 0;
+    color: #30363c;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.82rem;
+    line-height: 1.3;
+    text-align: left;
+    text-transform: uppercase;
+    opacity: 1;
+    visibility: visible;
+    overflow: visible;
+    clip: auto;
+    transform: none;
+}
+
+.html-login-page .login-page input[type="text"],
+.html-login-page .login-page input[type="email"],
+.html-login-page .login-page input[type="tel"],
+.html-login-page .login-page input[type="password"],
+.html-registration-page .registration-page input[type="text"],
+.html-registration-page .registration-page input[type="email"],
+.html-registration-page .registration-page input[type="tel"],
+.html-registration-page .registration-page input[type="password"],
+.html-registration-page .registration-page select,
+.html-registration-page .registration-page textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 44px;
+    margin: 0;
+    border: 1px solid transparent;
+    border-radius: 0;
+    padding: 10px 12px;
+    background: #f0f0f0;
+    color: #626970;
+    font-family: "Lato", Arial, sans-serif;
+}
+
+.html-login-page .login-page input:focus,
+.html-registration-page .registration-page input:focus,
+.html-registration-page .registration-page select:focus,
+.html-registration-page .registration-page textarea:focus {
+    border-color: var(--jb-accent);
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(53, 214, 180, 0.16);
+}
+
+.html-login-page .login-page .login-password {
+    position: relative;
+    min-width: 0;
+}
+
+.html-login-page .login-page .login-password input {
+    padding-right: 46px;
+}
+
+.html-login-page .login-page .password-eye {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: #747b81;
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.html-login-page .login-page .password-eye::before {
+    content: "\f06e";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+}
+
+.html-login-page .login-page .password-eye.password-eye-open::before {
+    content: "\f070";
+}
+
+.html-login-page .login-page .inputs.reversed {
+    display: flex;
+    grid-template-columns: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.html-login-page .login-page .inputs.reversed > label {
+    width: auto;
+    margin: 0;
+    font-family: "Lato", Arial, sans-serif;
+    font-size: 0.9rem;
+    text-transform: none;
+}
+
+.html-login-page .login-page .forgot-password {
+    margin-left: auto;
+    white-space: normal;
+}
+
+.html-login-page .login-page input[type="checkbox"],
+.html-registration-page .registration-page input[type="checkbox"],
+.html-registration-page .registration-page input[type="radio"] {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    accent-color: var(--jb-accent);
+}
+
+.html-login-page .login-page .field-validation-error,
+.html-registration-page .registration-page .field-validation-error,
+.html-registration-page .registration-page .field-validation-valid,
+.html-registration-page .registration-page .vat-note,
+.html-registration-page .registration-page .phone-info,
+.html-registration-page .registration-page .please-wait {
+    grid-column: 2 / -1;
+    min-width: 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.html-login-page .login-page .message-error,
+.html-registration-page .registration-page .message-error {
+    margin: 0 0 18px;
+    border-left: 3px solid #c94747;
+    padding: 12px 14px;
+    background: #fff4f4;
+    color: #9f3535;
+    text-align: left;
+}
+
+.html-login-page .login-page .buttons,
+.html-registration-page .registration-page .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+    margin: 20px 0 0;
+    text-align: left;
+}
+
+.html-login-page .login-page .returning-wrapper .buttons {
+    justify-content: center;
+    margin-top: auto;
+    border-top: 1px dashed #cfcfcf;
+    padding-top: 26px;
+}
+
+.html-login-page .login-page .button-1,
+.html-login-page .login-page .mode-button,
+.html-registration-page .registration-page .register-next-step-button {
+    min-height: 44px;
+    border: 1px solid var(--jb-accent);
+    border-radius: 0;
+    padding: 10px 24px;
+    background: var(--jb-accent);
+    color: #ffffff;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.92rem;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.html-login-page .login-page .new-wrapper .button-1,
+.html-login-page .login-page .mode-button {
+    border-color: #d5d5d5;
+    background: #f2f2f2;
+    color: #3f464c;
+}
+
+.html-login-page .login-page .login-button:hover,
+.html-login-page .login-page .login-button:focus-visible,
+.html-registration-page .registration-page .register-next-step-button:hover,
+.html-registration-page .registration-page .register-next-step-button:focus-visible {
+    border-color: var(--jb-accent-dark);
+    background: var(--jb-accent-dark);
+}
+
+.html-login-page .login-page .external-authentication,
+.html-registration-page .registration-page .external-authentication {
+    max-width: 720px;
+    margin: 24px auto 0;
+    overflow-wrap: anywhere;
+}
+
+.html-registration-page .registration-page form {
+    display: grid;
+    gap: 20px;
+}
+
+.html-registration-page .registration-page .gender,
+.html-registration-page .registration-page .attributes ul,
+.html-registration-page .registration-page .accept-consent {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    min-width: 0;
+}
+
+.html-registration-page .registration-page .jb-auth-date-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    min-width: 0;
+}
+
+.html-registration-page .registration-page .inputs > .attributes:first-child {
+    grid-column: 1 / -1;
+}
+
+.html-registration-page .registration-page .attributes ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.html-registration-page .registration-page .inputs.accept-consent {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+}
+
+.html-registration-page .registration-page .accept-consent label {
+    width: auto;
+    margin: 0;
+    font-family: "Lato", Arial, sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    text-align: left;
+    text-transform: none;
+}
+
+@media (min-width: 1001px) {
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs {
+        grid-template-columns: 180px minmax(0, 1fr) 18px;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > label:first-of-type {
+        position: relative;
+        z-index: 1;
+        grid-column: 1;
+        grid-row: 1;
+        display: block;
+        width: 180px;
+        min-width: 180px;
+        height: auto;
+        margin: 0;
+        color: #30363c;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > select,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > textarea,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .gender,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .jb-auth-date-fields {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs {
+        display: block;
+        margin-bottom: 16px;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > label:first-of-type {
+        position: static;
+        display: block;
+        width: auto;
+        min-width: 0;
+        margin: 0 0 8px;
+        padding: 0;
+        background: transparent;
+        text-align: left;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > select,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > textarea,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .gender,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .jb-auth-date-fields {
+        display: block;
+        width: 100%;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > nop-required,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .required {
+        display: inline-block;
+        margin: 5px 0 0 6px;
+        vertical-align: top;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .field-validation-error,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .field-validation-valid {
+        display: block;
+        margin-top: 5px;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 18px;
+        align-items: center;
+        gap: 6px 8px;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > label:first-of-type {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        margin-bottom: 2px;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > select,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > textarea,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .gender,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .jb-auth-date-fields {
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > nop-required,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .required {
+        grid-column: 2;
+        grid-row: 2;
+        margin: 0;
+        text-align: center;
+    }
+
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .field-validation-error,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .field-validation-valid,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .vat-note,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .phone-info,
+    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .please-wait {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        margin-top: 0;
+    }
+
+    .html-login-page .login-page .returning-wrapper .inputs:not(.reversed) {
+        display: block;
+        margin-bottom: 18px;
+    }
+
+    .html-login-page .login-page .returning-wrapper .inputs:not(.reversed) > label:first-child {
+        display: block;
+        width: auto;
+        margin: 0 0 8px;
+    }
+
+    .html-login-page .login-page .returning-wrapper .inputs:not(.reversed) > input,
+    .html-login-page .login-page .returning-wrapper .login-password {
+        display: block;
+        width: 100%;
+    }
+
+    .html-login-page .login-page .returning-wrapper .field-validation-error,
+    .html-login-page .login-page .returning-wrapper .field-validation-valid {
+        display: block;
+        margin-top: 5px;
+    }
+}
+
+@media (max-width: 1000px) {
+    .html-login-page .login-page,
+    .html-registration-page .registration-page {
+        padding: 24px 20px 40px;
+    }
+
+    .html-login-page .login-page .customer-blocks {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+
+    .html-login-page .login-page .returning-wrapper {
+        order: 1;
+    }
+
+    .html-login-page .login-page .new-wrapper {
+        order: 2;
+    }
+}
+
+@media (max-width: 640px) {
+    .html-login-page .login-page,
+    .html-registration-page .registration-page {
+        width: 100%;
+        padding: 20px 12px 34px;
+        overflow-x: clip;
+    }
+
+    .html-login-page .login-page .page-title h1,
+    .html-registration-page .registration-page .page-title h1 {
+        font-size: 1.65rem;
+    }
+
+    .html-login-page .login-page .new-wrapper,
+    .html-login-page .login-page .returning-wrapper,
+    .html-registration-page .registration-page .fieldset {
+        padding: 22px 16px;
+    }
+
+    .html-login-page .login-page .inputs,
+    .html-registration-page .registration-page .inputs,
+    .html-registration-page .registration-page .date-of-birth {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+    }
+
+    .html-login-page .login-page .inputs > label:first-child,
+    .html-registration-page .registration-page .inputs > label:first-of-type,
+    .html-login-page .login-page .login-password,
+    .html-registration-page .registration-page .gender,
+    .html-registration-page .registration-page .jb-auth-date-fields {
+        grid-column: 1 / -1;
+    }
+
+    .html-login-page .login-page .inputs > input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .html-registration-page .registration-page .inputs > input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .html-registration-page .registration-page .inputs > select,
+    .html-registration-page .registration-page .inputs > textarea {
+        grid-column: 1;
+    }
+
+    .html-login-page .login-page .field-validation-error,
+    .html-registration-page .registration-page .field-validation-error,
+    .html-registration-page .registration-page .field-validation-valid,
+    .html-registration-page .registration-page .vat-note,
+    .html-registration-page .registration-page .phone-info,
+    .html-registration-page .registration-page .please-wait {
+        grid-column: 1 / -1;
+    }
+
+    .html-login-page .login-page .inputs.reversed {
+        display: flex;
+        grid-template-columns: none;
+    }
+
+    .html-login-page .login-page .forgot-password {
+        grid-column: auto;
+        margin-left: auto;
+        padding-left: 0;
+    }
+
+    .html-registration-page .registration-page .jb-auth-date-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .html-login-page .login-page .button-1,
+    .html-registration-page .registration-page .register-next-step-button {
+        width: 100%;
+    }
+}
