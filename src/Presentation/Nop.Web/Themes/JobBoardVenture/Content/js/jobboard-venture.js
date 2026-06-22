@@ -32,6 +32,14 @@
         var accountToggle = document.querySelector('.jb-account-toggle');
         var accountPopup = document.querySelector('#jb-mobile-account-popup');
         var drawerOverlay = document.querySelector('.jb-drawer-overlay');
+        var customerNavToggle = document.querySelector('.jb-account-nav-toggle');
+        var customerNavClose = document.querySelector('.jb-account-nav-close');
+        var customerNavDrawer = document.querySelector('#jb-account-navigation');
+        var customerNavOverlay = document.querySelector('.jb-account-nav-overlay');
+
+        if (customerNavToggle && customerNavDrawer) {
+            document.body.classList.add('jb-account-nav-enhanced');
+        }
 
         var headerLinksWrapper = document.querySelector('.header-links-wrapper .header-links ul');
         var drawerAccountLinks = document.querySelector('.jb-drawer-account-links');
@@ -111,6 +119,53 @@
             if (accountPopup) {
                 accountPopup.setAttribute('aria-hidden', accountOpen ? 'false' : 'true');
             }
+        }
+
+        function syncCustomerNavState() {
+            if (!customerNavToggle || !customerNavDrawer) {
+                return;
+            }
+
+            var isMobile = window.innerWidth <= 1000;
+            var isOpen = isMobile && document.body.classList.contains('jb-account-nav-open');
+
+            customerNavToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            customerNavDrawer.setAttribute('aria-hidden', isMobile && !isOpen ? 'true' : 'false');
+
+            if (customerNavOverlay) {
+                customerNavOverlay.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            }
+        }
+
+        function closeCustomerNav(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            document.body.classList.remove('jb-account-nav-open');
+            if (customerNavDrawer) {
+                customerNavDrawer.classList.remove('is-open');
+            }
+            syncCustomerNavState();
+        }
+
+        function openCustomerNav(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            if (!customerNavDrawer || window.innerWidth > 1000) {
+                return;
+            }
+
+            closeMenu();
+            closeSearch();
+            closeAccount();
+            document.body.classList.add('jb-account-nav-open');
+            customerNavDrawer.classList.add('is-open');
+            syncCustomerNavState();
         }
 
         function closeMenu(e) {
@@ -213,6 +268,8 @@
         attachClick(searchToggle, openSearch);
         attachClick(searchClose, closeSearch);
         attachClick(accountToggle, toggleAccount);
+        attachClick(customerNavToggle, openCustomerNav);
+        attachClick(customerNavClose, closeCustomerNav);
 
         if (drawerOverlay) {
             drawerOverlay.addEventListener('click', function () {
@@ -230,11 +287,25 @@
             });
         }
 
+        if (customerNavOverlay) {
+            customerNavOverlay.addEventListener('click', closeCustomerNav);
+        }
+
+        if (customerNavDrawer) {
+            var customerNavLinks = customerNavDrawer.querySelectorAll('a');
+            for (var customerNavIndex = 0; customerNavIndex < customerNavLinks.length; customerNavIndex++) {
+                customerNavLinks[customerNavIndex].addEventListener('click', function () {
+                    closeCustomerNav();
+                });
+            }
+        }
+
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 closeMenu();
                 closeSearch();
                 closeAccount();
+                closeCustomerNav();
             }
         });
 
@@ -475,11 +546,13 @@
                 closeSearch();
                 closeAccount();
                 closeFilterPanel();
+                closeCustomerNav();
             }
 
             syncFilterPanelMount();
             syncMobileFilters();
             syncSideBlocks();
+            syncCustomerNavState();
         });
 
         syncFilterPanelMount();
@@ -492,6 +565,7 @@
         syncMobileFilters();
         syncSideBlocks();
         syncExpandedState();
+        syncCustomerNavState();
     }
 
     if (document.readyState === 'loading') {

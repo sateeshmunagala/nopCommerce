@@ -70,12 +70,14 @@
                     {
                         <div class="inputs date-of-birth">
                             <label>@T("Account.Fields.DateOfBirth"):</label>
-                            <nop-date-picker asp-day-name="@Html.NameFor(x => x.DateOfBirthDay)"
-                                             asp-month-name="@Html.NameFor(x => x.DateOfBirthMonth)"
-                                             asp-year-name="@Html.NameFor(x => x.DateOfBirthYear)"
-                                             asp-begin-year="@(DateTime.Now.AddYears(-110))"
-                                             asp-end-year="@(DateTime.UtcNow)"
-                                             asp-selected-date="@Model.ParseDateOfBirth()" />
+                            <div class="jb-date-fields">
+                                <nop-date-picker asp-day-name="@Html.NameFor(x => x.DateOfBirthDay)"
+                                                 asp-month-name="@Html.NameFor(x => x.DateOfBirthMonth)"
+                                                 asp-year-name="@Html.NameFor(x => x.DateOfBirthYear)"
+                                                 asp-begin-year="@(DateTime.Now.AddYears(-110))"
+                                                 asp-end-year="@(DateTime.UtcNow)"
+                                                 asp-selected-date="@Model.ParseDateOfBirth()" />
+                            </div>
                             @if (Model.DateOfBirthRequired) { <nop-required /> }
                             <span asp-validation-for="DateOfBirthDay"></span>
                             <span asp-validation-for="DateOfBirthMonth"></span>

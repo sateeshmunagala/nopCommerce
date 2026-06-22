@@ -1,21 +1,43 @@
 @using Nop.Core
+@using Microsoft.AspNetCore.Html
+@using System.Text.Encodings.Web
 @inject IStoreContext storeContext
+
+@functions {
+    private static bool HasVisibleContent(IHtmlContent content)
+    {
+        using var writer = new StringWriter();
+        content.WriteTo(writer, HtmlEncoder.Default);
+        return !string.IsNullOrWhiteSpace(writer.ToString());
+    }
+}
 
 @{
     var currentStore = await storeContext.GetCurrentStoreAsync();
+    var taxSelector = await Component.InvokeAsync(typeof(TaxTypeSelectorViewComponent));
+    var currencySelector = await Component.InvokeAsync(typeof(CurrencySelectorViewComponent));
+    var languageSelector = await Component.InvokeAsync(typeof(LanguageSelectorViewComponent));
+    var selectorWidgets = await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderSelectors });
+    var hasHeaderSelectors = HasVisibleContent(taxSelector) ||
+        HasVisibleContent(currencySelector) ||
+        HasVisibleContent(languageSelector) ||
+        HasVisibleContent(selectorWidgets);
 }
 
 <header class="header">
     <a class="skip" href="#main">@T("Header.SkipNavigation.Text")</a>
     @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderBefore })
-    <div class="header-upper">
-        <div class="header-selectors-wrapper">
-            @await Component.InvokeAsync(typeof(TaxTypeSelectorViewComponent))
-            @await Component.InvokeAsync(typeof(CurrencySelectorViewComponent))
-            @await Component.InvokeAsync(typeof(LanguageSelectorViewComponent))
-            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderSelectors })
+    @if (hasHeaderSelectors)
+    {
+        <div class="header-upper">
+            <div class="header-selectors-wrapper">
+                @taxSelector
+                @currencySelector
+                @languageSelector
+                @selectorWidgets
+            </div>
         </div>
-    </div>
+    }
     @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderMiddle })
     <div class="header-lower">
         <div class="jb-mobile-toggles left">
