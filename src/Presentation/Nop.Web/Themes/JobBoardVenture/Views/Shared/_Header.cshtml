@@ -46,20 +46,21 @@
             </div>
         </div>
 
-        <div class="jb-mobile-toggles right">
-            <button class="jb-search-toggle" aria-label="@T("Search")" type="button" aria-expanded="false" aria-controls="jb-mobile-search-overlay">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            </button>
+        <div class="jb-header-actions">
+            <div class="jb-mobile-toggles right">
+                <button class="jb-search-toggle" aria-label="@T("Search")" type="button" aria-expanded="false" aria-controls="jb-mobile-search-overlay">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </button>
+            </div>
+
+            <div class="header-links-wrapper">
+                @await Component.InvokeAsync(typeof(HeaderLinksViewComponent))
+                @await Component.InvokeAsync(typeof(FlyoutShoppingCartViewComponent))
+            </div>
         </div>
 
         <div role="search" class="search-box store-search-box jb-search-overlay" id="jb-mobile-search-overlay" aria-hidden="true">
             @await Component.InvokeAsync(typeof(SearchBoxViewComponent))
-            <button class="jb-search-close" aria-label="@T("Common.Close")" type="button">&times;</button>
-        </div>
-
-        <div class="header-links-wrapper">
-            @await Component.InvokeAsync(typeof(HeaderLinksViewComponent))
-            @await Component.InvokeAsync(typeof(FlyoutShoppingCartViewComponent))
         </div>
     </div>
     @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderAfter })
