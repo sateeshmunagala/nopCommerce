@@ -6980,3 +6980,495 @@ body.jb-filter-panel-open .product-filters {
         white-space: nowrap;
     }
 }
+
+/* =========================================
+   ACCOUNT FOUNDATION
+   ========================================= */
+.html-account-page {
+    background: #f2f2f2;
+}
+
+.html-account-page .master-wrapper-content {
+    max-width: 1200px;
+}
+
+.html-account-page .master-column-wrapper {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    align-items: start;
+    gap: 26px;
+    padding: 28px 20px 48px;
+}
+
+.html-account-page .side-2,
+.html-account-page .center-2 {
+    float: none;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+}
+
+.html-account-page .block-account-navigation {
+    margin: 0;
+    border: 0;
+    background: #ffffff;
+}
+
+.html-account-page .block-account-navigation .title {
+    margin: 0;
+    padding: 22px 24px;
+    border: 0;
+    background: #20252b;
+    color: #ffffff;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.45rem;
+    font-weight: 400;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.html-account-page .block-account-navigation .listbox {
+    padding: 0;
+}
+
+.html-account-page .block-account-navigation .list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.html-account-page .block-account-navigation .list .item,
+.html-account-page .block-account-navigation .list > li {
+    margin: 0;
+    padding: 0;
+    border-bottom: 1px dashed #d7d7d7;
+}
+
+.html-account-page .block-account-navigation .list > li:last-child {
+    border-bottom: 0;
+}
+
+.html-account-page .block-account-navigation a {
+    display: block;
+    min-width: 0;
+    padding: 16px 22px;
+    color: #555d65;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.25;
+    text-decoration: none;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+    transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.html-account-page .block-account-navigation li.active a {
+    border-left: 3px solid var(--jb-accent);
+    padding-left: 19px;
+    background: #f5fbf9;
+    color: var(--jb-accent-dark);
+}
+
+.html-account-page .block-account-navigation li.inactive a:hover,
+.html-account-page .block-account-navigation li.inactive a:focus-visible {
+    background: #f5f5f5;
+    color: #20252b;
+    outline: 0;
+}
+
+.html-account-page .account-page .page-title {
+    min-height: 0;
+    margin: 0 0 16px;
+    padding: 0 0 14px;
+    border-bottom: 1px solid #d8d8d8;
+}
+
+.html-account-page .account-page .page-title h1 {
+    margin: 0;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1.15;
+    text-transform: uppercase;
+}
+
+.html-account-page .customer-info-page .page-body {
+    min-width: 0;
+}
+
+.html-account-page .customer-info-page form {
+    padding: 30px 36px 34px;
+    border-left: 2px solid var(--jb-accent);
+    background: #ffffff;
+}
+
+.html-account-page .customer-info-page .fieldset,
+.jb-account-panel {
+    min-width: 0;
+    margin: 0 0 26px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.html-account-page .customer-info-page .fieldset > .title,
+.jb-account-panel > .title {
+    margin: 0 0 16px;
+    padding: 0 0 10px;
+    border-bottom: 1px dashed #cfcfcf;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.2;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.html-account-page .customer-info-page .form-fields {
+    min-width: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.html-account-page .customer-info-page .inputs {
+    display: grid;
+    grid-template-columns: minmax(120px, 170px) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 14px;
+    min-width: 0;
+    margin: 0 0 14px;
+    text-align: left;
+    white-space: normal;
+}
+
+.html-account-page .customer-info-page .inputs > label:first-child {
+    width: auto;
+    margin: 0;
+    color: #30363c;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.78rem;
+    line-height: 1.25;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.html-account-page .customer-info-page input[type="text"],
+.html-account-page .customer-info-page input[type="email"],
+.html-account-page .customer-info-page input[type="tel"],
+.html-account-page .customer-info-page input[type="password"],
+.html-account-page .customer-info-page select,
+.html-account-page .customer-info-page textarea {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    min-height: 42px;
+    margin: 0;
+    border: 1px solid transparent;
+    border-radius: 0;
+    padding: 10px 12px;
+    background: #f0f0f0;
+    color: #626970;
+    font-family: "Lato", Arial, sans-serif;
+}
+
+.html-account-page .customer-info-page input:focus,
+.html-account-page .customer-info-page select:focus,
+.html-account-page .customer-info-page textarea:focus {
+    border-color: var(--jb-accent);
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(53, 214, 180, 0.16);
+}
+
+.html-account-page .customer-info-page nop-required,
+.html-account-page .customer-info-page .required {
+    align-self: center;
+    color: #d9534f;
+}
+
+.html-account-page .customer-info-page .field-validation-error,
+.html-account-page .customer-info-page .field-validation-valid,
+.html-account-page .customer-info-page .email-to-revalidate-note,
+.html-account-page .customer-info-page .vat-note,
+.html-account-page .customer-info-page .vat-status,
+.html-account-page .customer-info-page .phone-status,
+.html-account-page .customer-info-page .please-wait {
+    grid-column: 2 / -1;
+    min-width: 0;
+    color: #a13b3b;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.html-account-page .customer-info-page .message-error {
+    margin: 0 0 18px;
+    border-left: 3px solid #c94747;
+    padding: 12px 14px;
+    background: #fff4f4;
+    color: #9f3535;
+    text-align: left;
+}
+
+.html-account-page .customer-info-page .gender {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    min-width: 0;
+}
+
+.html-account-page .customer-info-page .gender > span,
+.html-account-page .customer-info-page .attributes li,
+.html-account-page .customer-info-page .accept-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.html-account-page .customer-info-page input[type="radio"],
+.html-account-page .customer-info-page input[type="checkbox"] {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin: 2px 0 0;
+    accent-color: var(--jb-accent);
+}
+
+.html-account-page .customer-info-page label.forcheckbox,
+.html-account-page .customer-info-page .attributes label,
+.html-account-page .customer-info-page .accept-consent label {
+    width: auto;
+    margin: 0;
+    color: #666d73;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.html-account-page .customer-info-page .date-of-birth {
+    grid-template-columns: minmax(120px, 170px) minmax(0, 1fr) auto;
+}
+
+.html-account-page .customer-info-page .date-of-birth > .date-picker-wrapper,
+.html-account-page .customer-info-page .date-of-birth > div {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    min-width: 0;
+}
+
+.html-account-page .customer-info-page .attributes ul {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.html-account-page .customer-info-page .inputs.accept-consent {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+}
+
+.html-account-page .customer-info-page .table-wrapper,
+.jb-account-table {
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid #dddddd;
+    background: #ffffff;
+}
+
+.html-account-page .customer-info-page .data-table,
+.jb-account-table .data-table {
+    width: 100%;
+    min-width: 620px;
+    border-collapse: collapse;
+}
+
+.html-account-page .customer-info-page .data-table th,
+.html-account-page .customer-info-page .data-table td,
+.jb-account-table th,
+.jb-account-table td {
+    padding: 11px 12px;
+    border-bottom: 1px solid #e3e3e3;
+    text-align: left;
+    vertical-align: top;
+}
+
+.html-account-page .customer-info-page .data-table th,
+.jb-account-table th {
+    background: #272d33;
+    color: #ffffff;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.html-account-page .customer-info-page .buttons,
+.jb-account-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+    margin: 0;
+    text-align: left;
+}
+
+.html-account-page .customer-info-page .save-customer-info-button,
+.html-account-page .customer-info-page .change-phone-btn,
+.jb-account-actions .button-1,
+.jb-account-actions .button-2 {
+    min-height: 42px;
+    border: 1px solid var(--jb-accent);
+    border-radius: 0;
+    padding: 10px 24px;
+    background: var(--jb-accent);
+    color: #ffffff;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.html-account-page .customer-info-page .change-phone-btn {
+    border-color: #d5d5d5;
+    background: #f2f2f2;
+    color: #4f565d;
+}
+
+.html-account-page .customer-info-page .save-customer-info-button:hover,
+.html-account-page .customer-info-page .save-customer-info-button:focus-visible {
+    border-color: var(--jb-accent-dark);
+    background: var(--jb-accent-dark);
+}
+
+.jb-account-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    border-radius: 999px;
+    padding: 3px 9px;
+    background: #e9f8f4;
+    color: #197f69;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.jb-account-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.jb-account-empty {
+    border: 1px dashed #cccccc;
+    padding: 28px 20px;
+    background: #fafafa;
+    color: #737a80;
+    text-align: center;
+}
+
+@media (max-width: 1000px) {
+    .html-account-page .master-wrapper-content {
+        padding-right: 20px !important;
+        padding-left: 20px !important;
+    }
+
+    .html-account-page .master-column-wrapper {
+        display: block;
+        padding: 20px 0 36px;
+    }
+
+    .html-account-page .side-2 {
+        margin: 0 0 18px;
+    }
+
+    .html-account-page .block-account-navigation .title {
+        padding: 16px 18px;
+        font-size: 1.2rem;
+    }
+
+    .html-account-page .block-account-navigation .list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .html-account-page .block-account-navigation .list > li {
+        border-right: 1px dashed #d7d7d7;
+    }
+
+    .html-account-page .block-account-navigation a {
+        min-height: 48px;
+        padding: 12px 14px;
+        font-size: 0.9rem;
+    }
+
+    .html-account-page .block-account-navigation li.active a {
+        padding-left: 11px;
+    }
+
+    .html-account-page .account-page .page-title h1 {
+        font-size: 1.65rem;
+    }
+
+    .html-account-page .customer-info-page form {
+        padding: 24px 20px 28px;
+    }
+
+    .html-account-page .customer-info-page .inputs,
+    .html-account-page .customer-info-page .date-of-birth {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+    }
+
+    .html-account-page .customer-info-page .inputs > label:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .html-account-page .customer-info-page .field-validation-error,
+    .html-account-page .customer-info-page .field-validation-valid,
+    .html-account-page .customer-info-page .email-to-revalidate-note,
+    .html-account-page .customer-info-page .vat-note,
+    .html-account-page .customer-info-page .vat-status,
+    .html-account-page .customer-info-page .phone-status,
+    .html-account-page .customer-info-page .please-wait {
+        grid-column: 1 / -1;
+    }
+
+    .html-account-page .customer-info-page .gender,
+    .html-account-page .customer-info-page .date-of-birth > .date-picker-wrapper,
+    .html-account-page .customer-info-page .date-of-birth > div,
+    .html-account-page .customer-info-page .attributes {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 520px) {
+    .html-account-page .master-wrapper-content {
+        padding-right: 12px !important;
+        padding-left: 12px !important;
+    }
+
+    .html-account-page .block-account-navigation .list {
+        grid-template-columns: 1fr;
+    }
+
+    .html-account-page .block-account-navigation .list > li {
+        border-right: 0;
+    }
+
+    .html-account-page .customer-info-page form {
+        padding: 20px 14px 24px;
+    }
+
+    .html-account-page .customer-info-page .date-of-birth > .date-picker-wrapper,
+    .html-account-page .customer-info-page .date-of-birth > div {
+        grid-template-columns: 1fr;
+    }
+
+    .html-account-page .customer-info-page .save-customer-info-button,
+    .html-account-page .customer-info-page .change-phone-btn {
+        width: 100%;
+    }
+}
