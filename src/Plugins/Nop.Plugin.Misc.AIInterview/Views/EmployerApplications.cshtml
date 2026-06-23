@@ -38,9 +38,9 @@
                 <strong>@T("Plugins.Misc.AIInterview.Employer.Applications.Title")</strong>
             </div>
             <div class="fieldset">
-                <form method="get" asp-action="EmployerApplications">
+                <form method="get" asp-action="EmployerApplications" class="employer-filter-form">
                 <div class="employer-filter-grid">
-                    <div class="employer-field">
+                    <div class="employer-field employer-field-wide">
                         <label for="CandidateNameOrEmail">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Candidate")</label>
                         <input id="CandidateNameOrEmail" name="CandidateNameOrEmail" value="@Model.CandidateNameOrEmail" />
                     </div>
@@ -88,8 +88,8 @@
                     </div>
                 </div>
 
-                <div class="employer-filter-actions">
-                    <label>
+                <div class="employer-filter-meta">
+                    <label class="employer-checkbox">
                         <input type="checkbox" name="OnlyWithInterviewScore" value="true" checked="@Model.OnlyWithInterviewScore" />
                         @T("Plugins.Misc.AIInterview.Employer.Applications.OnlyWithInterviewScore")
                     </label>
@@ -120,32 +120,33 @@
                 </div>
 
                 <div class="table-wrapper">
+                    <div class="employer-table-wrapper">
                     <table class="data-table employer-table">
                         <thead>
                             <tr>
-                                <th>@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Candidate")</th>
-                                <th>@T("Admin.Customers.Customers.Fields.Email")</th>
-                                <th>@T("Admin.Customers.Customers.Fields.Phone")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Employer.Applications.PromptSource")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewScore")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedOn")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Employer.Applications.CoverMessage")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Status")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report")</th>
+                                <th class="col-candidate">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Candidate")</th>
+                                <th class="col-email">@T("Admin.Customers.Customers.Fields.Email")</th>
+                                <th class="col-phone">@T("Admin.Customers.Customers.Fields.Phone")</th>
+                                <th class="col-charge">@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</th>
+                                <th class="col-prompt">@T("Plugins.Misc.AIInterview.Employer.Applications.PromptSource")</th>
+                                <th class="col-score">@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewScore")</th>
+                                <th class="col-attempts">@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>
+                                <th class="col-applied">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedOn")</th>
+                                <th class="col-message">@T("Plugins.Misc.AIInterview.Employer.Applications.CoverMessage")</th>
+                                <th class="col-status">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Status")</th>
+                                <th class="col-report">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report")</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var app in Model.Applications)
                             {
                                 <tr>
-                                    <td>@app.CandidateName</td>
-                                    <td>@app.CandidateEmail</td>
-                                    <td>@app.CandidatePhone</td>
-                                    <td><span class="charge-pill">@app.ChargeMode</span></td>
-                                    <td>@app.PromptSource</td>
-                                    <td>
+                                    <td class="col-candidate">@app.CandidateName</td>
+                                    <td class="col-email">@app.CandidateEmail</td>
+                                    <td class="col-phone">@app.CandidatePhone</td>
+                                    <td class="col-charge"><span class="charge-pill">@app.ChargeMode</span></td>
+                                    <td class="col-prompt">@app.PromptSource</td>
+                                    <td class="col-score">
                                         @if (app.InterviewScore.HasValue)
                                         {
                                             <span class="score-badge">@Math.Round(app.InterviewScore.Value)</span>
@@ -155,10 +156,10 @@
                                             <span>-</span>
                                         }
                                     </td>
-                                    <td>@app.AttemptCount</td>
-                                    <td>@app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
-                                    <td>@app.CoverMessage</td>
-                                    <td>
+                                    <td class="col-attempts">@app.AttemptCount</td>
+                                    <td class="col-applied">@app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                    <td class="col-message">@app.CoverMessage</td>
+                                    <td class="col-status">
                                         <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post" class="status-form">
                                             <input type="hidden" name="Id" value="@app.Id" />
                                             <select name="Status">
@@ -171,7 +172,7 @@
                                             <button type="submit" class="button-2">@T("Plugins.Misc.AIInterview.Employer.Applications.Update")</button>
                                         </form>
                                     </td>
-                                    <td>
+                                    <td class="col-report">
                                         @if (!string.IsNullOrWhiteSpace(app.InterviewReportUrl))
                                         {
                                             <a href="@app.InterviewReportUrl">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report")</a>
@@ -185,6 +186,7 @@
                             }
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </div>

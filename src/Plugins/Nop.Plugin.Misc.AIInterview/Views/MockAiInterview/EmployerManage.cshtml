@@ -30,14 +30,15 @@
             <div class="title">
                 <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateNew")</strong>
             </div>
-            <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post">
+            <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post" class="invite-create-form">
                 <div class="fieldset">
-                    <div class="form-fields">
-                        <div class="inputs">
+                    <div class="invite-fieldset">
+                    <div class="form-fields invite-form-grid">
+                        <div class="inputs invite-field invite-field-wide">
                             <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
                             <input id="invite-email" type="email" name="email" required class="form-control" />
                         </div>
-                        <div class="inputs">
+                        <div class="inputs invite-field">
                             <label for="productId">@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
                             <select id="productId" name="productId" required class="form-control">
                                 @foreach (var option in availableProducts)
@@ -46,17 +47,18 @@
                                 }
                             </select>
                         </div>
-                        <div class="inputs">
+                        <div class="inputs invite-field">
                             <label for="maxAttempts">@T("Plugins.Misc.AIInterview.Employer.Invite.MaxAttempts"):</label>
                             <input id="maxAttempts" type="number" name="maxAttempts" value="1" required class="form-control" />
                         </div>
-                        <div class="inputs">
+                        <div class="inputs invite-field">
                             <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
                             <input id="expiryDateUtc" type="datetime-local" name="expiryDateUtc" class="form-control" />
                         </div>
                     </div>
+                    </div>
                 </div>
-                <div class="buttons">
+                <div class="buttons invite-actions">
                     <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
                 </div>
             </form>
@@ -69,7 +71,8 @@
             @if (Model.Any())
             {
                 <div class="table-wrapper">
-                    <table class="data-table">
+                    <div class="invite-table-wrapper">
+                    <table class="data-table invite-table">
                         <thead>
                             <tr>
                                 <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Email")</th>
@@ -108,6 +111,7 @@
                             }
                         </tbody>
                     </table>
+                    </div>
                 </div>
             }
             else

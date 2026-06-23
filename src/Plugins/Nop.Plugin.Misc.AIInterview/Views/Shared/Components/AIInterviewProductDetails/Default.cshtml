@@ -1,4 +1,26 @@
 @model Nop.Web.Models.Catalog.ProductDetailsModel
+@using Nop.Core.Domain.Catalog
+@using Nop.Core.Domain.Orders
+@using Nop.Core.Domain.Seo
+@using Nop.Core
+@using Nop.Core.Http
+@using Nop.Services.Helpers
+@using Nop.Services.Html
+@using Nop.Services.Media
+@using Nop.Services.Orders
+@using Nop.Services.Stores
+@using Nop.Services.Vendors
+
+@inject Nop.Plugin.Misc.AIInterview.Services.IApplicationService applicationService
+@inject IHtmlFormatter htmlFormatter
+@inject IWebHelper webHelper
+@inject SeoSettings seoSettings
+@inject IWorkContext workContext
+@inject IStoreContext storeContext
+@inject IShoppingCartService shoppingCartService
+@inject IVendorService vendorService
+@inject IPictureService pictureService
+
 @{
     bool hasCredits = ViewBag.HasCredits != null && (bool)ViewBag.HasCredits;
     bool hasSponsorCredits = ViewBag.HasSponsorCredits != null && (bool)ViewBag.HasSponsorCredits;
@@ -8,88 +30,451 @@
     string sponsorToken = ViewBag.SponsorToken as string;
     string creditPurchasePageUrl = ViewBag.CreditPurchasePageUrl as string ?? "/pricing";
     string interviewError = Context?.Request?.Query["interviewError"].ToString();
+    string customWishlistId = webHelper.QueryString<string>("customwishlistid");
+    string panelKey = Guid.NewGuid().ToString("N");
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+
+    var specificationGroups = Model.ProductSpecificationModel?.Groups
+        ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeGroupModel>();
+    var specificationAttributes = specificationGroups
+        .SelectMany(group => group.Attributes ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeModel>())
+        .ToList();
+
+    Nop.Web.Models.Catalog.ProductSpecificationAttributeModel FindSpecificationAttribute(params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var match = specificationAttributes.FirstOrDefault(specificationAttribute =>
+                string.Equals(specificationAttribute.Name, key, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+                return match;
+        }
+
+        return null;
+    }
+
+    string GetSpecificationValue(Nop.Web.Models.Catalog.ProductSpecificationAttributeModel specificationAttribute)
+    {
+        if (specificationAttribute?.Values?.Any() != true)
+            return string.Empty;
+
+        return string.Join(", ", specificationAttribute.Values
+            .Select(value => htmlFormatter.StripTags(value.ValueRaw)?.Trim())
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    var heroAttributeNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "Experience Level",
+        "Experience",
+        "Work Arrangement",
+        "Work Mode",
+        "Work Type",
+        "Employment Type",
+        "Location",
+        "Job Location",
+        "Salary Range",
+        "Compensation"
+    };
+
+    var experienceLevel = GetSpecificationValue(FindSpecificationAttribute("Experience Level", "Experience"));
+    var workMode = GetSpecificationValue(FindSpecificationAttribute("Work Arrangement", "Work Mode", "Work Type"));
+    var employmentType = GetSpecificationValue(FindSpecificationAttribute("Employment Type"));
+    var location = GetSpecificationValue(FindSpecificationAttribute("Job Location", "Location"));
+    var salaryRange = GetSpecificationValue(FindSpecificationAttribute("Salary Range", "Compensation"));
+    var applyUntil = Model.AvailableEndDate?.ToString("yyyy-MM-dd");
+
+    var heroMetadata = new List<(string Label, string Value)>
+    {
+        ("Experience Level", experienceLevel),
+        ("Work Arrangement", workMode),
+        ("Employment Type", employmentType),
+        ("Apply Until", applyUntil),
+        ("Job Location", location),
+        ("Salary Range", salaryRange)
+    }.Where(item => !string.IsNullOrWhiteSpace(item.Value)).ToList();
+
+    var filteredSpecificationGroups = specificationGroups
+        .Select(group => new
+        {
+            GroupId = group.Id,
+            GroupName = group.Name,
+            Attributes = (group.Attributes ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeModel>())
+                .Where(specificationAttribute => !heroAttributeNames.Contains(specificationAttribute.Name ?? string.Empty))
+                .Where(specificationAttribute => specificationAttribute.Values?.Any(value =>
+                    !string.IsNullOrWhiteSpace(htmlFormatter.StripTags(value.ValueRaw)?.Trim()) ||
+                    (!string.IsNullOrWhiteSpace(value.ColorSquaresRgb) && value.AttributeTypeId == (int)SpecificationAttributeType.Option)) == true)
+                .ToList()
+        })
+        .Where(group => group.Attributes.Any())
+        .ToList();
+
+    var applications = await applicationService.GetApplicationsAsync(productId: Model.Id, pageSize: int.MaxValue);
+    var candidateCount = applications.Count;
+    var currentCustomer = await workContext.GetCurrentCustomerAsync();
+    var currentStore = await storeContext.GetCurrentStoreAsync();
+    var isSavedJob = currentCustomer != null
+        && (await shoppingCartService.GetShoppingCartAsync(currentCustomer, ShoppingCartType.Wishlist, currentStore.Id, Model.Id, customWishlistId: 0)).Any();
+
+    var highlights = System.Text.RegularExpressions.Regex.Matches(Model.FullDescription ?? string.Empty, "<li>(.*?)</li>", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+        .Select(match => htmlFormatter.StripTags(match.Groups[1].Value).Trim())
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Take(5)
+        .ToList();
+
+    if (!highlights.Any() && !string.IsNullOrWhiteSpace(Model.ShortDescription))
+        highlights.Add(htmlFormatter.StripTags(Model.ShortDescription));
+
+    var skillValues = GetSpecificationValue(FindSpecificationAttribute("Skills", "Skill Set"));
+    var skills = !string.IsNullOrWhiteSpace(skillValues)
+        ? skillValues.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+        : Model.ProductTags.Select(tag => tag.Name).Where(name => !string.IsNullOrWhiteSpace(name)).ToList();
+
+    var emailFriendUrl = Model.EmailAFriendEnabled
+        ? Url.RouteUrl(NopRouteNames.Standard.PRODUCT_EMAIL_FRIEND, new { productId = Model.Id })
+        : string.Empty;
+    var productPageUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol()) ?? webHelper.GetThisPageUrl(false);
+    var vendorPictureUrl = Model.DefaultPictureModel.ImageUrl;
+    var vendorDisplayName = Model.ShowVendor ? Model.VendorModel?.Name : string.Empty;
+
+    if (Model.ShowVendor && Model.VendorModel?.Id > 0)
+    {
+        var vendor = await vendorService.GetVendorByIdAsync(Model.VendorModel.Id);
+        if (vendor?.PictureId > 0)
+        {
+            var vendorPicture = await pictureService.GetPictureByIdAsync(vendor.PictureId);
+            if (vendorPicture != null)
+            {
+                (vendorPictureUrl, _) = await pictureService.GetPictureUrlAsync(vendorPicture, 220, true);
+            }
+        }
+    }
 }
 
-<div class="job-ai-panel ai-interview-product-details">
-    <div class="job-ai-grid">
-        <div>
-            <h2>@T("Plugins.Misc.AIInterview.Interview.Title")</h2>
-            <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.ApplyPanel.Description")</p>
-        </div>
+@{
+    var standaloneResumeInputId = $"job-resume-file-{panelKey}-standalone";
+    var fallbackResumeInputId = $"job-resume-file-{panelKey}-fallback";
+}
+<div class="job-ai-panel-standalone" data-aiinterview-standalone-panel>
+    <div class="job-ai-panel job-ai-surface" data-aiinterview-panel data-aiinterview-instance="@($"{panelKey}-standalone")" data-product-id="@productId">
+        <div class="job-ai-grid">
+            <div>
+                <h2>@T("Plugins.Misc.AIInterview.Interview.Title")</h2>
+                <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.ApplyPanel.Description")</p>
+            </div>
 
-        @if (hasSponsorCredits)
-        {
-            <div class="job-inline-message is-visible is-success">
-                @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
-            </div>
-        }
-        else if (string.Equals(interviewError, "expired", StringComparison.OrdinalIgnoreCase))
-        {
-            <div class="job-inline-message is-visible is-error">
-                @T("Plugins.Misc.AIInterview.Runtime.Error.ExpiredLink")
-            </div>
-        }
-        else if (!hasCredits)
-        {
-            <div class="job-inline-message is-visible is-error">
-                @T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits")
-                <a href="@creditPurchasePageUrl">@T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits.Link")</a>
-            </div>
-        }
-
-        @if (!isAuthenticated)
-        {
-            <div class="job-ai-card">
-                <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
-                <a class="button-1" href="@Url.RouteUrl("Login")">@T("Account.Login")</a>
-            </div>
-        }
-        else
-        {
-            @if (alreadyApplied)
+            @if (hasSponsorCredits)
             {
-                <div class="job-inline-message is-visible is-info">
-                    @T("Plugins.Misc.AIInterview.Apply.AlreadyApplied")
+                <div class="job-inline-message is-visible is-success">
+                    @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
+                </div>
+            }
+            else if (string.Equals(interviewError, "expired", StringComparison.OrdinalIgnoreCase))
+            {
+                <div class="job-inline-message is-visible is-error">
+                    @T("Plugins.Misc.AIInterview.Runtime.Error.ExpiredLink")
+                </div>
+            }
+            else if (!hasCredits)
+            {
+                <div class="job-inline-message is-visible is-error">
+                    @T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits")
+                    <a href="@creditPurchasePageUrl">@T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits.Link")</a>
                 </div>
             }
 
-            <div class="job-ai-card">
-                <h3>@T("Plugins.Misc.AIInterview.Apply.Title")</h3>
-                <div id="job-apply-panel">
-                    <input type="hidden" name="ProductId" value="@productId" />
-                    <input type="hidden" name="JobTitle" value="@Model.Name" />
-                    <label for="job-resume-file">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
-                    <input id="job-resume-file" name="ResumeFile" type="file" accept=".pdf,.docx" />
-                    <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
-                    <div class="job-ai-actions">
-                        <button type="button" class="button-1 apply-btn" id="job-apply-button" @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+            @if (!isAuthenticated)
+            {
+                <div class="job-ai-card">
+                    <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
+                    <a class="button-1" href="@Url.RouteUrl("Login")">@T("Account.Login")</a>
+                </div>
+            }
+            else
+            {
+                @if (alreadyApplied)
+                {
+                    <div class="job-inline-message is-visible is-info">
+                        @T("Plugins.Misc.AIInterview.Apply.AlreadyApplied")
+                    </div>
+                }
+
+                <div class="job-ai-card">
+                    <h3>@T("Plugins.Misc.AIInterview.Apply.Title")</h3>
+                    <div data-ai-apply-panel>
+                        <input type="hidden" name="ProductId" value="@productId" />
+                        <input type="hidden" name="JobTitle" value="@Model.Name" />
+                        <label for="@standaloneResumeInputId">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
+                        <input id="@standaloneResumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                        <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
+                        <div class="job-ai-actions">
+                            <button type="button" class="button-1 apply-btn" data-ai-apply-button @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                            <button type="button" class="button-2 start-interview-btn" data-ai-start-button data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div data-ai-feedback class="job-inline-message" role="status" aria-live="polite"></div>
+            }
+        </div>
+    </div>
+</div>
+
+<template data-aiinterview-fallback-shell-template>
+    <article data-productid="@Model.Id" class="job-shell" data-aiinterview-fallback-shell>
+        <section class="job-hero">
+            <div class="job-hero-copy">
+                <span class="job-kicker">AI Interview Role</span>
+                @if (!string.IsNullOrWhiteSpace(vendorDisplayName))
+                {
+                    <div class="job-company">
+                        <img class="job-company-logo" src="@vendorPictureUrl" alt="@vendorDisplayName" />
+                        <div>
+                            <div class="job-company-label">Hiring Company</div>
+                            <div class="job-company-name">@vendorDisplayName</div>
+                        </div>
+                    </div>
+                }
+                <div class="job-title">
+                    <h1>@Model.Name</h1>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.ShortDescription))
+                {
+                    <p class="job-summary">@Html.Raw(Model.ShortDescription)</p>
+                }
+
+                <div class="job-overview-meta">
+                    <span class="job-pill"><strong>Candidates</strong> @candidateCount applied</span>
+                </div>
+
+                @await Html.PartialAsync("_ProductReviewOverview", Model.ProductReviewOverview)
+
+                <div class="job-action-links">
+                    @if (!string.IsNullOrWhiteSpace(emailFriendUrl))
+                    {
+                        <a class="job-action-link" href="@emailFriendUrl">Email a friend</a>
+                    }
+                    @if (!Model.AddToCart.DisableWishlistButton)
+                    {
                         <button type="button"
-                                class="button-2 start-interview-btn"
-                                id="start-job-interview"
-                                data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                                class="job-action-link @(isSavedJob ? "is-saved" : null)"
+                                data-job-save-button
+                                data-saved-text="Saved job"
+                                data-default-text="Save job"
+                                data-url="@Url.RouteUrl(NopRouteNames.Ajax.ADD_PRODUCT_TO_CART_DETAILS, new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.Wishlist, customwishlistid = customWishlistId })"
+                                @(isSavedJob ? "disabled" : null)>
+                            @(isSavedJob ? "Saved job" : "Save job")
+                        </button>
+                        @await Html.PartialAsync("~/Views/Shared/_MoveToWishlistModal.cshtml", Model.AddToCart.ProductToWishlist)
+                        <button type="button"
+                                class="job-action-link"
+                                data-job-custom-wishlist-button
+                                @(isSavedJob ? null : "disabled")>
+                            Save to custom wishlist
+                        </button>
+                    }
+                    <button type="button" class="job-action-link" data-share-job-button data-share-url="@productPageUrl" data-share-title="@Model.Name">Share job</button>
+                </div>
+
+                @if (heroMetadata.Any())
+                {
+                    <div class="job-grid">
+                        @foreach (var item in heroMetadata)
+                        {
+                            <div class="job-meta-item">
+                                <div class="job-fact-label">@item.Label</div>
+                                <div class="job-fact-value small">@item.Value</div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div>
+                <div class="job-ai-panel job-ai-panel-inline job-ai-surface" data-aiinterview-panel data-aiinterview-instance="@($"{panelKey}-fallback")" data-product-id="@productId">
+                    <div class="job-ai-grid">
+                        <div>
+                            <h2>@T("Plugins.Misc.AIInterview.Interview.Title")</h2>
+                            <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.ApplyPanel.Description")</p>
+                        </div>
+
+                        @if (hasSponsorCredits)
+                        {
+                            <div class="job-inline-message is-visible is-success">
+                                @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
+                            </div>
+                        }
+                        else if (string.Equals(interviewError, "expired", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="job-inline-message is-visible is-error">
+                                @T("Plugins.Misc.AIInterview.Runtime.Error.ExpiredLink")
+                            </div>
+                        }
+                        else if (!hasCredits)
+                        {
+                            <div class="job-inline-message is-visible is-error">
+                                @T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits")
+                                <a href="@creditPurchasePageUrl">@T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits.Link")</a>
+                            </div>
+                        }
+
+                        @if (!isAuthenticated)
+                        {
+                            <div class="job-ai-card">
+                                <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
+                                <a class="button-1" href="@Url.RouteUrl("Login")">@T("Account.Login")</a>
+                            </div>
+                        }
+                        else
+                        {
+                            @if (alreadyApplied)
+                            {
+                                <div class="job-inline-message is-visible is-info">
+                                    @T("Plugins.Misc.AIInterview.Apply.AlreadyApplied")
+                                </div>
+                            }
+
+                            <div class="job-ai-card">
+                                <h3>@T("Plugins.Misc.AIInterview.Apply.Title")</h3>
+                                <div data-ai-apply-panel>
+                                    <input type="hidden" name="ProductId" value="@productId" />
+                                    <input type="hidden" name="JobTitle" value="@Model.Name" />
+                                    <label for="@fallbackResumeInputId">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
+                                    <input id="@fallbackResumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                                    <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
+                                    <div class="job-ai-actions">
+                                        <button type="button" class="button-1 apply-btn" data-ai-apply-button @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                                        <button type="button" class="button-2 start-interview-btn" data-ai-start-button data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div data-ai-feedback class="job-inline-message" role="status" aria-live="polite"></div>
+                        }
                     </div>
                 </div>
             </div>
+        </section>
 
-            <div id="job-ai-feedback" class="job-inline-message" role="status" aria-live="polite"></div>
+        <section class="job-content-grid">
+            <div class="job-main">
+                @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
+                {
+                    <section class="job-card">
+                        <h2 class="job-section-title">Job Description</h2>
+                        <div class="full-description">
+                            @Html.Raw(Model.FullDescription)
+                        </div>
+                    </section>
+                }
+
+                <section class="job-card">
+                    <h2 class="job-section-title">Role Highlights</h2>
+                    @if (highlights.Any())
+                    {
+                        <ul>
+                            @foreach (var highlight in highlights)
+                            {
+                                <li>@highlight</li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p>Key responsibilities and outcomes will be discussed during the interview process.</p>
+                    }
+                </section>
+            </div>
+
+            <div class="job-main">
+                <section class="job-card">
+                    <h2 class="job-section-title">Skills</h2>
+                    @if (skills.Any())
+                    {
+                        <div class="job-skills">
+                            @foreach (var skill in skills)
+                            {
+                                <span>@skill</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p>Skills will be evaluated during the AI interview.</p>
+                    }
+                </section>
+
+                <section class="job-card">
+                    <h2 class="job-section-title">Job Details</h2>
+                    @if (filteredSpecificationGroups.Any())
+                    {
+                        <div class="job-spec-groups">
+                            @foreach (var group in filteredSpecificationGroups)
+                            {
+                                <div class="job-spec-group">
+                                    @if (group.GroupId > 0 && !string.IsNullOrWhiteSpace(group.GroupName))
+                                    {
+                                        <div class="job-spec-group-name">@group.GroupName</div>
+                                    }
+                                    <div class="job-spec-grid">
+                                        @foreach (var specificationAttribute in group.Attributes)
+                                        {
+                                            <div class="job-spec-item">
+                                                <div class="job-spec-label">@specificationAttribute.Name</div>
+                                                <div class="job-spec-value">
+                                                    @for (int i = 0; i < specificationAttribute.Values.Count; i++)
+                                                    {
+                                                        var value = specificationAttribute.Values[i];
+
+                                                        if (!string.IsNullOrEmpty(value.ColorSquaresRgb) && value.AttributeTypeId == (int)SpecificationAttributeType.Option)
+                                                        {
+                                                            <div class="attribute-squares color-squares attribute-squares-padding">
+                                                                <span class="attribute-square-container" title="@Html.Raw(value.ValueRaw)">
+                                                                    <span class="attribute-square" style="background-color: @(value.ColorSquaresRgb);">&nbsp;</span>
+                                                                </span>
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            @Html.Raw(value.ValueRaw)
+                                                            if (i != specificationAttribute.Values.Count - 1)
+                                                            {
+                                                                <text>, </text>
+                                                            }
+                                                        }
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    @await Html.PartialAsync("_ProductTags", Model.ProductTags)
+                </section>
+            </div>
+        </section>
+
+        @if (Model.ProductReviewOverview.AllowCustomerReviews)
+        {
+            <div id="product-reviews" class="job-reviews-wrap">
+                @await Html.PartialAsync("_ProductReviews", Model.ProductReviews)
+            </div>
         }
-    </div>
-</div>
+    </article>
+</template>
 
 @if (isAuthenticated)
 {
     <script asp-location="Footer">
         (() => {
-            const feedback = document.getElementById('job-ai-feedback');
-            const applyPanel = document.getElementById('job-apply-panel');
-            const productForm = document.getElementById('product-details-form');
-            const startButton = document.getElementById('start-job-interview');
-            const applyButton = document.getElementById('job-apply-button');
-            const sponsorToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sponsorToken ?? string.Empty));
             const safeRequestError = 'Unable to reach the interview service. Please check your network and try again.';
+            const sponsorToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sponsorToken ?? string.Empty));
+            const productId = '@productId';
 
-            const setFeedback = (message, isError) => {
+            const setFeedback = (feedback, message, isError) => {
                 if (!feedback)
                     return;
 
@@ -99,8 +484,8 @@
                 feedback.classList.toggle('is-success', !isError);
             };
 
-            const setBusy = (isBusy) => {
-                [startButton, applyButton].filter(Boolean).forEach(button => {
+            const setBusy = (panel, isBusy) => {
+                panel.querySelectorAll('[data-ai-start-button], [data-ai-apply-button]').forEach(button => {
                     button.disabled = !!isBusy;
                 });
             };
@@ -129,9 +514,11 @@
                 }
             };
 
-            const startInterview = async () => {
-                setBusy(true);
+            const getFormData = panel => {
+                const productForm = document.getElementById('product-details-form');
+                const applyPanel = panel.querySelector('[data-ai-apply-panel]');
                 const formData = productForm ? new FormData(productForm) : new FormData();
+
                 if (!productForm && applyPanel) {
                     applyPanel.querySelectorAll('input').forEach(input => {
                         if (input.type === 'file') {
@@ -146,59 +533,222 @@
                     });
                 }
 
-                formData.set('productId', '@productId');
+                formData.set('productId', productId);
                 if (sponsorToken)
                     formData.set('sponsorToken', sponsorToken);
 
-                try {
-                    const result = await postJson('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)', formData);
-                    if (result.runtimeUrl) {
-                        window.location.href = result.runtimeUrl;
-                        return;
-                    }
-
-                    setFeedback(result.error || result.message || safeRequestError, true);
-                } finally {
-                    setBusy(false);
-                }
+                return formData;
             };
 
-            const applyInterview = async () => {
-                setBusy(true);
-                const formData = productForm ? new FormData(productForm) : new FormData();
-                if (!productForm && applyPanel) {
-                    applyPanel.querySelectorAll('input').forEach(input => {
-                        if (input.type === 'file') {
-                            Array.from(input.files || []).forEach(file => formData.append(input.name, file));
+            const wireAiPanel = panel => {
+                if (!panel || panel.dataset.aiinterviewBound === 'true')
+                    return;
+
+                panel.dataset.aiinterviewBound = 'true';
+                const feedback = panel.querySelector('[data-ai-feedback]');
+                const applyButton = panel.querySelector('[data-ai-apply-button]');
+                const startButton = panel.querySelector('[data-ai-start-button]');
+
+                applyButton?.addEventListener('click', async () => {
+                    setBusy(panel, true);
+                    try {
+                        const result = await postJson('@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)', getFormData(panel));
+                        setFeedback(feedback, result.message || result.error || safeRequestError, !result.success);
+                    } finally {
+                        setBusy(panel, false);
+                    }
+                });
+
+                startButton?.addEventListener('click', async () => {
+                    setBusy(panel, true);
+                    try {
+                        const result = await postJson('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)', getFormData(panel));
+                        if (result.runtimeUrl) {
+                            window.location.href = result.runtimeUrl;
                             return;
                         }
 
-                        if ((input.type === 'radio' || input.type === 'checkbox') && !input.checked)
-                            return;
-
-                        formData.append(input.name, input.value);
-                    });
-                }
-                try {
-                    const result = await postJson('@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)', formData);
-                    setFeedback(result.message || result.error || safeRequestError, !result.success);
-                } finally {
-                    setBusy(false);
-                }
+                        setFeedback(feedback, result.error || result.message || safeRequestError, true);
+                    } finally {
+                        setBusy(panel, false);
+                    }
+                });
             };
 
-            document.addEventListener('click', async (event) => {
-                const applyButton = event.target.closest?.('#job-apply-button');
-                if (applyButton) {
-                    await applyInterview();
+            const markSaved = container => {
+                const saveButton = container?.querySelector('[data-job-save-button]');
+                const customWishlistButton = container?.querySelector('[data-job-custom-wishlist-button]');
+                if (!saveButton)
                     return;
-                }
 
-                const startButton = event.target.closest?.('#start-job-interview, [data-start-interview-button="true"]');
-                if (startButton) {
-                    await startInterview();
-                }
+                saveButton.textContent = saveButton.dataset.savedText || 'Saved job';
+                saveButton.classList.add('is-saved');
+                saveButton.disabled = true;
+
+                if (customWishlistButton)
+                    customWishlistButton.disabled = false;
+            };
+
+            const wireJobActions = container => {
+                if (!container || container.dataset.jobActionsBound === 'true')
+                    return;
+
+                container.dataset.jobActionsBound = 'true';
+                const saveButton = container.querySelector('[data-job-save-button]');
+                const customWishlistButton = container.querySelector('[data-job-custom-wishlist-button]');
+                const shareButton = container.querySelector('[data-share-job-button]');
+
+                saveButton?.addEventListener('click', () => {
+                    window.__jobSavePending = true;
+                    AjaxCart.addproducttocart_details(saveButton.dataset.url, '#product-details-form');
+                    return false;
+                });
+
+                customWishlistButton?.addEventListener('click', () => {
+                    if (customWishlistButton.disabled) {
+                        displayBarNotification('Save the job first, then choose a custom wishlist.', 'warning', 3500);
+                        return false;
+                    }
+
+                    showMoveToWishlistModal(@Model.Id);
+                    return false;
+                });
+
+                shareButton?.addEventListener('click', async () => {
+                    const shareUrl = shareButton.dataset.shareUrl;
+                    const shareTitle = shareButton.dataset.shareTitle;
+
+                    if (navigator.share) {
+                        try {
+                            await navigator.share({ title: shareTitle, url: shareUrl });
+                            return;
+                        } catch {
+                        }
+                    }
+
+                    if (navigator.clipboard) {
+                        await navigator.clipboard.writeText(shareUrl);
+                        shareButton.textContent = 'Link copied';
+                        window.setTimeout(() => shareButton.textContent = 'Share job', 1800);
+                        return;
+                    }
+
+                    window.prompt('Copy this job link', shareUrl);
+                });
+            };
+
+            const upgradeNativeJobTemplate = () => {
+                const template = document.querySelector('[data-aiinterview-fallback-shell-template]');
+                const article = document.querySelector('#product-details-form > article');
+                const productEssential = article?.querySelector('.product-essential');
+
+                if (!template || !article || !productEssential || document.documentElement.classList.contains('html-aiinterview-job-details-page'))
+                    return;
+
+                const fragment = template.content.cloneNode(true);
+                const shell = fragment.querySelector('[data-aiinterview-fallback-shell]');
+                if (!shell)
+                    return;
+
+                article.prepend(fragment);
+                document.documentElement.classList.add('html-job-details-page', 'html-aiinterview-job-details-page');
+                document.body.classList.add('aiinterview-job-template-upgraded');
+                article.classList.add('aiinterview-native-job-hidden');
+
+                wireAiPanel(article.querySelector('[data-aiinterview-instance$="-fallback"]'));
+                wireJobActions(article.querySelector('[data-aiinterview-fallback-shell]'));
+            };
+
+            document.addEventListener('click', event => {
+                const delegatedButton = event.target.closest?.('[data-start-interview-button], [data-ai-apply-button]');
+                if (!delegatedButton)
+                    return;
             });
+
+            document.querySelectorAll('[data-aiinterview-panel]').forEach(wireAiPanel);
+            document.querySelectorAll('[data-aiinterview-fallback-shell]').forEach(wireJobActions);
+            upgradeNativeJobTemplate();
+
+            if (window.AjaxCart && !window.__jobWishlistHooked) {
+                const originalSuccess = AjaxCart.success_process;
+                AjaxCart.success_process = function(response) {
+                    const result = originalSuccess.call(this, response);
+                    if (window.__jobSavePending && response && response.success === true) {
+                        document.querySelectorAll('[data-aiinterview-fallback-shell]').forEach(markSaved);
+                    }
+
+                    window.__jobSavePending = false;
+                    return result;
+                };
+                window.__jobWishlistHooked = true;
+            }
+        })();
+    </script>
+}
+else
+{
+    <script asp-location="Footer">
+        (() => {
+            const wireJobActions = container => {
+                if (!container || container.dataset.jobActionsBound === 'true')
+                    return;
+
+                container.dataset.jobActionsBound = 'true';
+                const shareButton = container.querySelector('[data-share-job-button]');
+                const saveButton = container.querySelector('[data-job-save-button]');
+                const customWishlistButton = container.querySelector('[data-job-custom-wishlist-button]');
+
+                saveButton?.addEventListener('click', () => {
+                    window.__jobSavePending = true;
+                    AjaxCart.addproducttocart_details(saveButton.dataset.url, '#product-details-form');
+                    return false;
+                });
+
+                customWishlistButton?.addEventListener('click', () => {
+                    if (customWishlistButton.disabled) {
+                        displayBarNotification('Save the job first, then choose a custom wishlist.', 'warning', 3500);
+                        return false;
+                    }
+
+                    showMoveToWishlistModal(@Model.Id);
+                    return false;
+                });
+
+                shareButton?.addEventListener('click', async () => {
+                    const shareUrl = shareButton.dataset.shareUrl;
+                    const shareTitle = shareButton.dataset.shareTitle;
+
+                    if (navigator.share) {
+                        try {
+                            await navigator.share({ title: shareTitle, url: shareUrl });
+                            return;
+                        } catch {
+                        }
+                    }
+
+                    if (navigator.clipboard) {
+                        await navigator.clipboard.writeText(shareUrl);
+                        shareButton.textContent = 'Link copied';
+                        window.setTimeout(() => shareButton.textContent = 'Share job', 1800);
+                        return;
+                    }
+
+                    window.prompt('Copy this job link', shareUrl);
+                });
+            };
+
+            const template = document.querySelector('[data-aiinterview-fallback-shell-template]');
+            const article = document.querySelector('#product-details-form > article');
+            const productEssential = article?.querySelector('.product-essential');
+
+            if (!template || !article || !productEssential || document.documentElement.classList.contains('html-aiinterview-job-details-page'))
+                return;
+
+            article.prepend(template.content.cloneNode(true));
+            document.documentElement.classList.add('html-job-details-page', 'html-aiinterview-job-details-page');
+            document.body.classList.add('aiinterview-job-template-upgraded');
+            article.classList.add('aiinterview-native-job-hidden');
+            wireJobActions(article.querySelector('[data-aiinterview-fallback-shell]'));
         })();
     </script>
 }

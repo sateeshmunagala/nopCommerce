@@ -23,10 +23,13 @@
             <div class="title">
                 <strong>@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")</strong>
             </div>
-            <form asp-route="@AIInterviewDefaults.VendorJobCreationRouteName" method="post">
+            <form asp-route="@AIInterviewDefaults.VendorJobCreationRouteName" method="post" class="vendor-job-form-shell">
                 <div class="fieldset">
+                    <div class="vendor-job-fieldset">
                     <div asp-validation-summary="ModelOnly" class="message-error"></div>
                     <div class="vendor-job-form-grid">
+                <div class="vendor-job-form-section">
+                    <div class="vendor-job-form-section-title">Role Overview</div>
                 <div class="vendor-job-form-row">
                     <div class="vendor-job-form-label">
                         <label asp-for="Name" asp-postfix=":"></label>
@@ -116,7 +119,10 @@
                         <span asp-validation-for="SalaryRange"></span>
                     </div>
                 </div>
+                </div>
 
+                <div class="vendor-job-form-section">
+                    <div class="vendor-job-form-section-title">Job Content</div>
                 <div class="vendor-job-form-row">
                     <div class="vendor-job-form-label">
                         <label asp-for="ShortDescription" asp-postfix=":"></label>
@@ -136,7 +142,10 @@
                         <span asp-validation-for="FullDescription"></span>
                     </div>
                 </div>
+                </div>
 
+                <div class="vendor-job-form-section">
+                    <div class="vendor-job-form-section-title">Interview Settings</div>
                 <div class="vendor-job-form-row">
                     <div class="vendor-job-form-label">
                         @T("Plugins.Misc.AIInterview.VendorJobCreation.Settings")
@@ -219,6 +228,8 @@
                         <button type="submit" class="button-1 vendor-job-submit">@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")</button>
                     </div>
                 </div>
+                </div>
+                    </div>
                     </div>
                 </div>
             </form>

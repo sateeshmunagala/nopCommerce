@@ -8,6 +8,7 @@
 .ai-interview-report-page .page-body,
 .mock-report .page-body {
     min-width: 0;
+    max-width: 100%;
 }
 
 .aiinterview-public-page .page-body,
@@ -26,6 +27,7 @@
 .mock-start,
 .ai-interview-runtime-error-page {
     min-width: 0;
+    max-width: 100%;
 }
 
 .aiinterview-card,
@@ -120,7 +122,9 @@
 
 .applications-sort,
 .employer-field,
-.vendor-job-form-control {
+.vendor-job-form-control,
+.invite-field,
+.job-ai-grid > div {
     min-width: 0;
 }
 
@@ -130,10 +134,15 @@
 .status-form input,
 .status-form select,
 .vendor-job-form-control input[type="text"],
+.vendor-job-form-control input[type="email"],
 .vendor-job-form-control input[type="date"],
+.vendor-job-form-control input[type="datetime-local"],
 .vendor-job-form-control input[type="number"],
+.vendor-job-form-control input[type="file"],
 .vendor-job-form-control textarea,
 .vendor-job-form-control select,
+.invite-field input,
+.invite-field select,
 .mock-start select,
 .apply-job-page input[type="text"],
 .apply-job-page input[type="file"],
@@ -149,6 +158,22 @@
     color: #626970;
 }
 
+.html-aiinterview-view-page .inputs label,
+.vendor-job-form-control label,
+.employer-field label,
+.job-ai-card label {
+    color: #30363c;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.92rem;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-view-page .form-control {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+}
+
 .employer-filter-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(160px, 1fr));
@@ -157,9 +182,36 @@
     margin-bottom: 18px;
 }
 
+.employer-filter-form,
+.vendor-job-form-shell,
+.invite-create-form {
+    display: grid;
+    gap: 18px;
+}
+
 .employer-field {
     display: grid;
     gap: 8px;
+}
+
+.employer-field-wide {
+    grid-column: span 2;
+}
+
+.employer-filter-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.employer-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    color: #30363c;
+    line-height: 1.45;
 }
 
 .status-form {
@@ -171,6 +223,27 @@
 .vendor-job-form-grid {
     display: grid;
     gap: 16px;
+}
+
+.vendor-job-fieldset,
+.invite-fieldset {
+    padding: 0;
+}
+
+.vendor-job-form-section {
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+    border: 1px solid #dedede;
+    border-radius: 4px;
+    background: #fbfbfb;
+}
+
+.vendor-job-form-section-title {
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.05rem;
+    text-transform: uppercase;
 }
 
 .vendor-job-form-row {
@@ -200,6 +273,10 @@
     resize: vertical;
 }
 
+.vendor-job-form-control input[type="file"] {
+    padding: 10px 12px;
+}
+
 .vendor-job-form-hint,
 .applications-footnote,
 .filter-summary,
@@ -219,6 +296,25 @@
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.invite-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 16px 18px;
+}
+
+.invite-field {
+    display: grid;
+    gap: 8px;
+}
+
+.invite-field-wide {
+    grid-column: span 2;
+}
+
+.invite-actions {
+    justify-content: flex-start;
 }
 
 .applications-table,
@@ -263,6 +359,13 @@
 .mock-history .page-body {
     max-width: 100%;
     overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.applications-table-scroller,
+.employer-table-wrapper,
+.invite-table-wrapper {
+    -webkit-overflow-scrolling: touch;
 }
 
 .score-chip,
@@ -379,20 +482,35 @@
     display: grid;
     gap: 18px;
     border-left: 2px solid var(--jb-accent, #35d6b4);
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .job-ai-grid {
     display: grid;
     gap: 16px;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .job-ai-card {
     padding: 18px;
     background: #fafafa;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .job-ai-actions {
     margin-top: 14px;
+}
+
+.job-ai-actions .button-1,
+.job-ai-actions .button-2,
+.job-ai-card .button-1,
+.job-ai-card .button-2 {
+    min-width: 0;
 }
 
 .job-inline-message {
@@ -400,6 +518,7 @@
     border: 1px dashed #cfcfcf;
     padding: 14px 16px;
     line-height: 1.55;
+    overflow-wrap: anywhere;
 }
 
 .job-inline-message.is-visible {
@@ -1310,22 +1429,177 @@
     }
 
     @media (max-width: 1080px) {
-        .job-hero,
-        .job-content-grid {
-            grid-template-columns: 1fr;
-        }
+    .job-hero,
+    .job-content-grid {
+        grid-template-columns: 1fr;
     }
 
-    @media (max-width: 720px) {
-        .job-hero,
-        .job-fact,
+    .invite-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .job-hero,
+    .job-fact,
         .job-card,
         .job-reviews-wrap {
             padding: 20px;
         }
 
-        .job-grid {
-            grid-template-columns: 1fr;
-        }
+    .job-grid {
+        grid-template-columns: 1fr;
     }
 
+    .job-hero {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 640px) {
+    .employer-field-wide,
+    .invite-field-wide {
+        grid-column: auto;
+    }
+
+    .invite-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .job-ai-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .job-ai-panel,
+    .job-ai-card,
+    .job-inline-message,
+    .job-meta-item,
+    .report-preview {
+        max-width: 100%;
+    }
+}
+
+.html-aiinterview-employer-applications-page .fieldset,
+.html-aiinterview-vendor-job-creation-page .fieldset,
+.html-aiinterview-employer-manage-page .fieldset {
+    min-width: 0;
+}
+
+.html-aiinterview-employer-applications-page .section,
+.html-aiinterview-vendor-job-creation-page .section,
+.html-aiinterview-employer-manage-page .section {
+    min-width: 0;
+}
+
+.html-aiinterview-employer-applications-page .employer-table {
+    min-width: 1380px;
+    table-layout: fixed;
+}
+
+.html-aiinterview-employer-applications-page .employer-table .col-candidate {
+    width: 180px;
+    min-width: 180px;
+}
+
+.html-aiinterview-employer-applications-page .employer-table .col-email {
+    width: 210px;
+    min-width: 210px;
+}
+
+.html-aiinterview-employer-applications-page .employer-table .col-phone {
+    width: 150px;
+    min-width: 150px;
+}
+
+.html-aiinterview-employer-applications-page .employer-table .col-charge {
+    width: 130px;
+    min-width: 130px;
+}
+
+.html-aiinterview-employer-applications-page .employer-table .col-prompt {
+    width: 150px;
+    min-width: 150px;
+}
+
+.html-aiinterview-employer-applications-page .employer-table .col-score,
+.html-aiinterview-employer-applications-page .employer-table .col-attempts,
+.html-aiinterview-employer-applications-page .employer-table .col-report {
+    width: 110px;
+    min-width: 110px;
+}
+
+.html-aiinterview-employer-applications-page .employer-table .col-applied {
+    width: 170px;
+    min-width: 170px;
+}
+
+.html-aiinterview-employer-applications-page .employer-table .col-message {
+    width: 260px;
+    min-width: 260px;
+}
+
+.html-aiinterview-employer-applications-page .employer-table .col-status {
+    width: 250px;
+    min-width: 250px;
+}
+
+.html-aiinterview-employer-applications-page .status-form {
+    grid-template-columns: 1fr;
+}
+
+.html-aiinterview-employer-applications-page .status-form .button-2 {
+    justify-self: start;
+}
+
+.html-aiinterview-my-applications-page .applications-table-wrap,
+.html-aiinterview-employer-applications-page .table-wrapper,
+.html-aiinterview-employer-manage-page .table-wrapper {
+    width: 100%;
+    max-width: 100%;
+}
+
+.html-aiinterview-my-applications-page .applications-table {
+    min-width: 760px;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-submit,
+.html-aiinterview-employer-manage-page .invite-actions .button-1,
+.html-aiinterview-employer-applications-page .employer-filter-actions .button-1,
+.html-aiinterview-employer-applications-page .employer-filter-actions .button-2 {
+    min-height: 44px;
+    padding: 10px 18px;
+}
+
+.aiinterview-job-template-upgraded .product-essential,
+.aiinterview-job-template-upgraded .product-collateral,
+.aiinterview-job-template-upgraded [data-aiinterview-standalone-panel],
+.aiinterview-job-template-upgraded + #product-reviews,
+.aiinterview-job-template-upgraded ~ #product-reviews {
+    display: none;
+}
+
+.aiinterview-job-template-upgraded .job-shell {
+    width: 100%;
+}
+
+.aiinterview-job-template-upgraded #product-details-form > article {
+    display: grid;
+    gap: 24px;
+}
+
+.aiinterview-job-template-upgraded .job-shell .job-action-links,
+.aiinterview-job-template-upgraded .job-shell .job-content-grid,
+.aiinterview-job-template-upgraded .job-shell .job-hero,
+.aiinterview-job-template-upgraded .job-shell .job-main,
+.aiinterview-job-template-upgraded .job-shell .job-grid {
+    min-width: 0;
+}
+
+.aiinterview-job-template-upgraded .job-shell .job-company,
+.aiinterview-job-template-upgraded .job-shell .job-meta-item,
+.aiinterview-job-template-upgraded .job-shell .job-card,
+.aiinterview-job-template-upgraded .job-shell .job-reviews-wrap {
+    max-width: 100%;
+    box-sizing: border-box;
+}
