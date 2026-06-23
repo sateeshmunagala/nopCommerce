@@ -247,9 +247,6 @@
                     </div>
 
                     <div>
-                        @{
-                            Context.Items["AIInterview.FullJobTemplate"] = true;
-                        }
                         @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
                         {
                             widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,

@@ -1527,34 +1527,6 @@
     padding: 10px 18px;
 }
 
-.html-aiinterview-job-details-fallback-page .product-details-page #product-details-form > article > .product-essential,
-.html-aiinterview-job-details-fallback-page .product-details-page #product-details-form > article > .product-collateral,
-.html-aiinterview-job-details-fallback-page .product-details-page .page-body > .product-reviews {
-    display: none;
-}
-
-.html-aiinterview-job-details-fallback-page .product-details-page #product-details-form > article {
-    display: grid;
-    gap: 24px;
-}
-
-.html-aiinterview-job-details-fallback-page .aiinterview-server-fallback-shell,
-.html-aiinterview-job-details-fallback-page .job-shell .job-action-links,
-.html-aiinterview-job-details-fallback-page .job-shell .job-content-grid,
-.html-aiinterview-job-details-fallback-page .job-shell .job-hero,
-.html-aiinterview-job-details-fallback-page .job-shell .job-main,
-.html-aiinterview-job-details-fallback-page .job-shell .job-grid {
-    min-width: 0;
-}
-
-.html-aiinterview-job-details-fallback-page .job-shell .job-company,
-.html-aiinterview-job-details-fallback-page .job-shell .job-meta-item,
-.html-aiinterview-job-details-fallback-page .job-shell .job-card,
-.html-aiinterview-job-details-fallback-page .job-shell .job-reviews-wrap {
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
 @media (max-width: 1080px) {
     .job-hero,
     .job-content-grid {

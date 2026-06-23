@@ -336,6 +336,7 @@ public class CandidateFlowTests
         Assert.That(viewText, Does.Contain("postJson('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)'"));
         Assert.That(viewText, Does.Contain("window.location.href = result.runtimeUrl"));
         Assert.That(viewText, Does.Contain("document.addEventListener('click'"));
+        Assert.That(viewText, Does.Not.Contain("aiinterview-server-fallback-shell"));
     }
 
     [Test]
