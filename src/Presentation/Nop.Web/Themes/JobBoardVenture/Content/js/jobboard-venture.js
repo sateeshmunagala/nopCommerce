@@ -310,6 +310,18 @@
         });
 
         document.addEventListener('click', function (e) {
+            if (document.body.classList.contains('jb-search-open')) {
+                if (searchToggle && searchToggle.contains(e.target)) {
+                    return;
+                }
+
+                if (searchOverlay && searchOverlay.contains(e.target)) {
+                    return;
+                }
+
+                closeSearch();
+            }
+
             if (!document.body.classList.contains('jb-account-open')) {
                 return;
             }

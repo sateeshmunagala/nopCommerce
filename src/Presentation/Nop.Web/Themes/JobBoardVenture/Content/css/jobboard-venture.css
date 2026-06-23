@@ -2903,6 +2903,22 @@ body.jb-search-open .jb-drawer-overlay {
         width: 100%;
     }
 
+    .store-search-box.jb-search-overlay .search-box-button,
+    .store-search-box.jb-search-overlay .button-1.search-box-button {
+        background-color: var(--jb-accent) !important;
+        border-color: var(--jb-accent) !important;
+        color: var(--jb-white) !important;
+    }
+
+    .store-search-box.jb-search-overlay .search-box-button:hover,
+    .store-search-box.jb-search-overlay .button-1.search-box-button:hover,
+    .store-search-box.jb-search-overlay .search-box-button:focus,
+    .store-search-box.jb-search-overlay .button-1.search-box-button:focus {
+        background-color: var(--jb-accent-dark) !important;
+        border-color: var(--jb-accent-dark) !important;
+        color: var(--jb-white) !important;
+    }
+
     .store-search-box.jb-search-overlay .search-box-category {
         grid-column: 1 / -1;
     }
@@ -6979,6 +6995,22 @@ body.jb-filter-panel-open .product-filters {
         margin: 0 !important;
         white-space: nowrap;
     }
+
+    .store-search-box.jb-search-overlay .search-box-button,
+    .store-search-box.jb-search-overlay .button-1.search-box-button {
+        background-color: var(--jb-accent) !important;
+        border-color: var(--jb-accent) !important;
+        color: var(--jb-white) !important;
+    }
+
+    .store-search-box.jb-search-overlay .search-box-button:hover,
+    .store-search-box.jb-search-overlay .button-1.search-box-button:hover,
+    .store-search-box.jb-search-overlay .search-box-button:focus,
+    .store-search-box.jb-search-overlay .button-1.search-box-button:focus {
+        background-color: var(--jb-accent-dark) !important;
+        border-color: var(--jb-accent-dark) !important;
+        color: var(--jb-white) !important;
+    }
 }
 
 /* =========================================
@@ -8112,112 +8144,60 @@ body.jb-filter-panel-open .product-filters {
 }
 
 @media (min-width: 1001px) {
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs {
+    .html-registration-page .registration-page .inputs:not(.accept-consent) {
+        display: grid;
         grid-template-columns: 180px minmax(0, 1fr) 18px;
+        align-items: center;
+        gap: 6px 12px;
     }
 
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > label:first-of-type {
-        position: relative;
-        z-index: 1;
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > label[for] {
+        position: static;
         grid-column: 1;
         grid-row: 1;
         display: block;
         width: 180px;
         min-width: 180px;
-        height: auto;
         margin: 0;
+        padding: 0;
+        background: transparent;
         color: #30363c;
+        text-align: left;
         opacity: 1;
         visibility: visible;
     }
 
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > select,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > textarea,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .gender,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .jb-auth-date-fields {
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > select,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > textarea,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .gender,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .jb-auth-date-fields,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .form-input-wrapper {
         grid-column: 2;
         grid-row: 1;
+        width: 100%;
         min-width: 0;
     }
 
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs {
-        display: block;
-        margin-bottom: 16px;
-    }
-
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > label:first-of-type {
-        position: static;
-        display: block;
-        width: auto;
-        min-width: 0;
-        margin: 0 0 8px;
-        padding: 0;
-        background: transparent;
-        text-align: left;
-    }
-
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > select,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > textarea,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .gender,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .jb-auth-date-fields {
-        display: block;
-        width: 100%;
-    }
-
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > nop-required,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .required {
-        display: inline-block;
-        margin: 5px 0 0 6px;
-        vertical-align: top;
-    }
-
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .field-validation-error,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .field-validation-valid {
-        display: block;
-        margin-top: 5px;
-    }
-
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 18px;
-        align-items: center;
-        gap: 6px 8px;
-    }
-
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > label:first-of-type {
-        grid-column: 1 / -1;
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > nop-required,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .required {
+        grid-column: 3;
         grid-row: 1;
-        margin-bottom: 2px;
-    }
-
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > select,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > textarea,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .gender,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .jb-auth-date-fields {
-        grid-column: 1;
-        grid-row: 2;
-        width: 100%;
-    }
-
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > nop-required,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .required {
-        grid-column: 2;
-        grid-row: 2;
         margin: 0;
         text-align: center;
     }
 
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .field-validation-error,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .field-validation-valid,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .vat-note,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .phone-info,
-    .html-registration-page .registration-page form .fieldset .form-fields .inputs > .please-wait {
-        grid-column: 1 / -1;
-        grid-row: 3;
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .field-validation-error,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .field-validation-valid,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .vat-note,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .please-wait {
+        grid-column: 2 / -1;
+        grid-row: 2;
         margin-top: 0;
+    }
+
+    .html-registration-page .registration-page .inputs > .attributes:first-child {
+        grid-column: 1 / -1;
     }
 
     .html-login-page .login-page .returning-wrapper .inputs:not(.reversed) {
@@ -8291,7 +8271,7 @@ body.jb-filter-panel-open .product-filters {
     }
 
     .html-login-page .login-page .inputs > label:first-child,
-    .html-registration-page .registration-page .inputs > label:first-of-type,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > label[for],
     .html-login-page .login-page .login-password,
     .html-registration-page .registration-page .gender,
     .html-registration-page .registration-page .jb-auth-date-fields {
@@ -8332,5 +8312,1003 @@ body.jb-filter-panel-open .product-filters {
     .html-login-page .login-page .button-1,
     .html-registration-page .registration-page .register-next-step-button {
         width: 100%;
+    }
+}
+
+/* =========================================
+   SECONDARY ACCOUNT PAGES
+   ========================================= */
+.html-account-page .account-page:not(.customer-info-page) .page-body,
+.jb-account-content,
+.jb-account-panel,
+.jb-auth-panel {
+    box-sizing: border-box;
+    min-width: 0;
+    border-left: 2px solid var(--jb-accent);
+    padding: 28px 30px;
+    background: #ffffff;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .page-body {
+    color: #626970;
+    text-align: left;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .page-body > :first-child {
+    margin-top: 0;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .description,
+.html-account-page .account-page:not(.customer-info-page) .info,
+.html-account-page .account-page:not(.customer-info-page) .result,
+.html-account-page .account-page:not(.customer-info-page) .reward-points-overview {
+    margin: 0 0 20px;
+    color: #687078;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .section,
+.html-account-page .account-page:not(.customer-info-page) .fieldset {
+    min-width: 0;
+    margin: 0 0 22px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .section > .title,
+.html-account-page .account-page:not(.customer-info-page) .fieldset > .title,
+.jb-account-panel > .title,
+.jb-auth-panel > .title {
+    margin: 0 0 16px;
+    border: 0;
+    border-bottom: 1px dashed #cfcfcf;
+    padding: 0 0 10px;
+    background: transparent;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.05rem;
+    font-weight: 400;
+    line-height: 1.25;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .form-fields {
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .inputs {
+    min-width: 0;
+    margin: 0 0 15px;
+    text-align: left;
+    white-space: normal;
+}
+
+.html-account-page .account-page:not(.customer-info-page) input[type="text"],
+.html-account-page .account-page:not(.customer-info-page) input[type="email"],
+.html-account-page .account-page:not(.customer-info-page) input[type="tel"],
+.html-account-page .account-page:not(.customer-info-page) input[type="password"],
+.html-account-page .account-page:not(.customer-info-page) input[type="file"],
+.html-account-page .account-page:not(.customer-info-page) select,
+.html-account-page .account-page:not(.customer-info-page) textarea {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-height: 42px;
+    border: 1px solid transparent;
+    border-radius: 0;
+    padding: 9px 12px;
+    background: #f0f0f0;
+    color: #626970;
+}
+
+.html-account-page .account-page:not(.customer-info-page) input:focus,
+.html-account-page .account-page:not(.customer-info-page) select:focus,
+.html-account-page .account-page:not(.customer-info-page) textarea:focus {
+    border-color: var(--jb-accent);
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(53, 214, 180, 0.16);
+}
+
+.html-account-page .account-page:not(.customer-info-page) input[type="checkbox"],
+.html-account-page .account-page:not(.customer-info-page) input[type="radio"] {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--jb-accent);
+}
+
+.html-account-page .account-page:not(.customer-info-page) .field-validation-error,
+.html-account-page .account-page:not(.customer-info-page) .field-validation-valid,
+.html-account-page .account-page:not(.customer-info-page) .warning,
+.html-account-page .account-page:not(.customer-info-page) .warnings {
+    min-width: 0;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .message-error,
+.html-account-page .account-page:not(.customer-info-page) .message-success {
+    margin: 0 0 18px;
+    border-left: 3px solid #c94747;
+    padding: 12px 14px;
+    background: #fff4f4;
+    color: #9f3535;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .message-success {
+    border-left-color: var(--jb-accent);
+    background: #eefaf7;
+    color: #197f69;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .buttons,
+.html-account-page .account-page:not(.customer-info-page) .actions,
+.jb-account-actions,
+.jb-auth-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+    margin: 18px 0 0;
+    text-align: left;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .button-1,
+.html-account-page .account-page:not(.customer-info-page) .button-2,
+.jb-account-actions .button-1,
+.jb-account-actions .button-2,
+.jb-auth-actions .button-1,
+.jb-auth-actions .button-2 {
+    min-height: 42px;
+    border: 1px solid var(--jb-accent);
+    border-radius: 0;
+    padding: 9px 22px;
+    background: var(--jb-accent);
+    color: #ffffff;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .button-2,
+.jb-account-actions .button-2,
+.jb-auth-actions .button-2 {
+    border-color: #d5d5d5;
+    background: #f2f2f2;
+    color: #454c52;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .button-1:hover,
+.html-account-page .account-page:not(.customer-info-page) .button-1:focus-visible {
+    border-color: var(--jb-accent-dark);
+    background: var(--jb-accent-dark);
+}
+
+.html-account-page .account-page .table-wrapper,
+.jb-account-table {
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid #dddddd;
+    background: #ffffff;
+}
+
+.html-account-page .account-page .data-table,
+.html-account-page .account-page .cart,
+.jb-account-table table {
+    width: 100%;
+    min-width: 680px;
+    border-collapse: collapse;
+}
+
+.html-account-page .account-page .data-table th,
+.html-account-page .account-page .cart th,
+.jb-account-table th {
+    border: 0;
+    padding: 12px;
+    background: #272d33;
+    color: #ffffff;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-weight: 400;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.html-account-page .account-page .data-table td,
+.html-account-page .account-page .cart td,
+.jb-account-table td {
+    border: 0;
+    border-bottom: 1px solid #e2e2e2;
+    padding: 12px;
+    color: #626970;
+    text-align: left;
+    vertical-align: top;
+}
+
+.html-account-page .account-page .address-list .section,
+.html-account-page .account-page .order-list .order-item,
+.html-account-page .account-page .product-review-item,
+.html-account-page .account-page .recurring-payments .section {
+    margin: 0 0 16px;
+    border: 1px solid #dedede;
+    padding: 18px 20px;
+    background: #fafafa;
+}
+
+.html-account-page .account-page .order-item .title,
+.html-account-page .account-page .address-list .title,
+.html-account-page .account-page .product-review-item .review-title {
+    margin: 0 0 12px;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-weight: 400;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.html-account-page .account-page .no-data,
+.jb-account-empty {
+    margin: 0;
+    border: 1px dashed #cccccc;
+    padding: 28px 20px;
+    background: #fafafa;
+    color: #737a80;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.html-account-page .avatar-page .image {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0 18px;
+    border: 1px solid #dddddd;
+    padding: 12px;
+    background: #fafafa;
+}
+
+.html-account-page .reward-points-overview .current-balance {
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.15rem;
+}
+
+.jb-auth-page {
+    box-sizing: border-box;
+    max-width: 1040px;
+    margin: 0 auto;
+}
+
+@media (min-width: 1001px) {
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs {
+        display: grid;
+        grid-template-columns: 170px minmax(0, 1fr) 18px;
+        align-items: center;
+        gap: 6px 12px;
+    }
+
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > label[for] {
+        grid-column: 1;
+        width: 170px;
+        min-width: 170px;
+        margin: 0;
+        color: #30363c;
+        font-family: "Fjalla One", Arial, sans-serif;
+        font-size: 0.82rem;
+        line-height: 1.3;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > select,
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > textarea,
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > .form-input-wrapper {
+        grid-column: 2;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > .required,
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > nop-required {
+        grid-column: 3;
+        margin: 0;
+    }
+
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > .field-validation-error,
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > .field-validation-valid,
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > .warning,
+    .html-account-page .account-page:not(.customer-info-page) .fieldset .inputs > .warnings {
+        grid-column: 2 / -1;
+    }
+}
+
+@media (max-width: 1000px) {
+    .html-account-page .account-page:not(.customer-info-page) .page-body,
+    .jb-account-content,
+    .jb-account-panel,
+    .jb-auth-panel {
+        padding: 22px 18px;
+    }
+
+    .html-account-page .account-page:not(.customer-info-page) .inputs > label[for] {
+        display: block;
+        width: auto;
+        margin: 0 0 7px;
+        color: #30363c;
+        font-family: "Fjalla One", Arial, sans-serif;
+        font-size: 0.82rem;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .html-account-page .account-page:not(.customer-info-page) .inputs input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .html-account-page .account-page:not(.customer-info-page) .inputs select,
+    .html-account-page .account-page:not(.customer-info-page) .inputs textarea,
+    .html-account-page .account-page:not(.customer-info-page) .inputs .form-input-wrapper {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 520px) {
+    .html-account-page .account-page:not(.customer-info-page) .page-body,
+    .jb-account-content,
+    .jb-account-panel,
+    .jb-auth-panel {
+        padding: 18px 14px;
+    }
+
+    .html-account-page .account-page:not(.customer-info-page) .buttons,
+    .html-account-page .account-page:not(.customer-info-page) .actions,
+    .jb-account-actions,
+    .jb-auth-actions {
+        flex-direction: column;
+    }
+
+    .html-account-page .account-page:not(.customer-info-page) .button-1,
+    .html-account-page .account-page:not(.customer-info-page) .button-2,
+    .jb-account-actions .button-1,
+    .jb-account-actions .button-2,
+    .jb-auth-actions .button-1,
+    .jb-auth-actions .button-2 {
+        width: 100%;
+    }
+}
+
+/* Address, order history, and password form corrections. */
+.html-account-page .address-list-page .address-item > .title,
+.html-account-page .order-list-page .order-item > .title {
+    margin: 0;
+    border: 0;
+    border-bottom: 1px dotted #cfcfcf;
+    padding: 0 0 11px;
+}
+
+.html-account-page .address-list-page .address-item > .info,
+.html-account-page .order-list-page .order-item > .info {
+    margin: 0;
+    border: 0;
+    padding: 16px 0 4px;
+    background: transparent;
+}
+
+.html-account-page .address-list-page .address-item > .buttons,
+.html-account-page .order-list-page .order-item > .buttons {
+    position: static;
+    top: auto;
+    right: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+    margin: 14px 0 0;
+    border: 0;
+    padding: 0;
+}
+
+.html-account-page .address-list-page .address-item > .buttons .button-2,
+.html-account-page .order-list-page .order-item > .buttons .button-2 {
+    margin: 0;
+    background-image: none;
+}
+
+@media (min-width: 1001px) {
+    .html-account-page .change-password-page .jb-change-password-field {
+        display: grid;
+        grid-template-columns: minmax(150px, 190px) minmax(0, 1fr) 18px;
+        align-items: start;
+        gap: 8px 20px;
+        min-width: 0;
+        margin-bottom: 18px;
+        text-align: left;
+        white-space: normal;
+    }
+
+    .html-account-page .change-password-page .jb-change-password-field > .jb-account-field-label {
+        position: static;
+        grid-column: 1;
+        grid-row: 1;
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        min-height: 42px;
+        margin: 0;
+        padding: 11px 0 0;
+        color: #30363c;
+        font-family: "Fjalla One", Arial, sans-serif;
+        font-size: 0.82rem;
+        line-height: 1.35;
+        text-align: left;
+        white-space: normal;
+        overflow: visible;
+        overflow-wrap: anywhere;
+    }
+
+    .html-account-page .change-password-page .jb-change-password-field > .jb-account-field-control {
+        position: static;
+        grid-column: 2;
+        grid-row: 1;
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .jb-change-password-field > .jb-account-field-control input,
+    .html-account-page .change-password-page .jb-change-password-field > input.jb-account-field-control {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .jb-change-password-field > nop-required,
+    .html-account-page .change-password-page .jb-change-password-field > .required {
+        grid-column: 3;
+        grid-row: 1;
+        align-self: center;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .jb-change-password-field > .field-validation-error,
+    .html-account-page .change-password-page .jb-change-password-field > .field-validation-valid {
+        grid-column: 2 / -1;
+        grid-row: 2;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs {
+        display: grid;
+        grid-template-columns: 190px minmax(0, 1fr) 18px;
+        align-items: start;
+        gap: 6px 16px;
+        min-width: 0;
+        white-space: normal;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > label[for],
+    .html-account-page .change-password-page .fieldset .inputs > label:first-of-type {
+        position: static;
+        grid-column: 1;
+        grid-row: 1;
+        display: block;
+        box-sizing: border-box;
+        width: 190px;
+        min-width: 190px;
+        min-height: 42px;
+        margin: 0;
+        padding: 11px 8px 0 0;
+        color: #30363c;
+        line-height: 1.3;
+        text-align: left;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > input:not([type="hidden"]),
+    .html-account-page .change-password-page .fieldset .inputs > .form-input-wrapper {
+        grid-column: 2;
+        grid-row: 1;
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > .form-input-wrapper > input {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > nop-required,
+    .html-account-page .change-password-page .fieldset .inputs > .required {
+        grid-column: 3;
+        grid-row: 1;
+        align-self: center;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > .field-validation-error,
+    .html-account-page .change-password-page .fieldset .inputs > .field-validation-valid {
+        grid-column: 2 / -1;
+        grid-row: 2;
+        margin: 0;
+    }
+}
+
+@media (max-width: 1000px) {
+    .html-account-page .change-password-page .jb-change-password-field > .jb-account-field-label {
+        position: static;
+        display: block;
+        width: auto;
+        min-width: 0;
+        margin: 0 0 8px;
+        padding: 0;
+        white-space: normal;
+    }
+
+    .html-account-page .change-password-page .jb-change-password-field > .jb-account-field-control,
+    .html-account-page .change-password-page .jb-change-password-field > .jb-account-field-control input {
+        box-sizing: border-box;
+        display: block;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > label[for] {
+        display: block;
+        width: auto;
+        margin: 0 0 7px;
+        white-space: normal;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > input:not([type="hidden"]),
+    .html-account-page .change-password-page .fieldset .inputs > .form-input-wrapper,
+    .html-account-page .change-password-page .fieldset .inputs > .form-input-wrapper > input {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+    }
+}
+
+@media (min-width: 1001px) {
+    .html-account-page .change-password-page .fieldset .jb-change-password-field {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 18px;
+        align-items: center;
+        gap: 8px 10px;
+        min-width: 0;
+        margin: 0 0 18px;
+        white-space: normal;
+    }
+
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .jb-account-field-label {
+        position: static;
+        z-index: auto;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        display: block;
+        box-sizing: border-box;
+        width: auto;
+        min-width: 0;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        color: #30363c;
+        line-height: 1.35;
+        text-align: left;
+        white-space: normal;
+        overflow: visible;
+    }
+
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .jb-account-field-control {
+        position: static;
+        z-index: auto;
+        grid-column: 1;
+        grid-row: 2;
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .jb-account-field-control input,
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > input.jb-account-field-control {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > nop-required,
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .required {
+        grid-column: 2;
+        grid-row: 2;
+        align-self: center;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .field-validation-error,
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .field-validation-valid {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 18px;
+        align-items: center;
+        gap: 8px 10px;
+        min-width: 0;
+        margin: 0 0 18px;
+        white-space: normal;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > label[for],
+    .html-account-page .change-password-page .fieldset .inputs > label:first-of-type {
+        position: static;
+        z-index: auto;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        display: block;
+        box-sizing: border-box;
+        width: auto;
+        min-width: 0;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        color: #30363c;
+        line-height: 1.35;
+        text-align: left;
+        white-space: normal;
+        overflow: visible;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > input:not([type="hidden"]),
+    .html-account-page .change-password-page .fieldset .inputs > .form-input-wrapper {
+        position: static;
+        z-index: auto;
+        grid-column: 1;
+        grid-row: 2;
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > .form-input-wrapper > input {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > nop-required,
+    .html-account-page .change-password-page .fieldset .inputs > .required {
+        grid-column: 2;
+        grid-row: 2;
+        align-self: center;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .inputs > .field-validation-error,
+    .html-account-page .change-password-page .fieldset .inputs > .field-validation-valid {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        margin: 0;
+    }
+}
+
+/* Prompt 11: deterministic account drawer and secondary account shell hardening. */
+.html-account-page .account-page:not(.customer-info-page) .page-body {
+    box-sizing: border-box;
+    border-left: 2px solid var(--jb-accent);
+    padding: 28px 34px 32px;
+    background: #ffffff;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .page-body::after {
+    content: "";
+    display: block;
+    clear: both;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .fieldset,
+.html-account-page .account-page:not(.customer-info-page) .section,
+.html-account-page .account-page:not(.customer-info-page) .address-item,
+.html-account-page .account-page:not(.customer-info-page) .order-item,
+.html-account-page .account-page:not(.customer-info-page) .recurring-payments-box,
+.html-account-page .account-page:not(.customer-info-page) .gdpr-tools,
+.html-account-page .account-page:not(.customer-info-page) .reward-points-overview {
+    box-sizing: border-box;
+    margin: 0 0 22px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .fieldset > .title,
+.html-account-page .account-page:not(.customer-info-page) .section > .title,
+.html-account-page .account-page:not(.customer-info-page) .address-item > .title,
+.html-account-page .account-page:not(.customer-info-page) .order-item > .title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 14px;
+    border: 0;
+    border-bottom: 1px dotted #cfcfcf;
+    padding: 0 0 11px;
+    background: transparent;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .fieldset > .title strong,
+.html-account-page .account-page:not(.customer-info-page) .section > .title strong,
+.html-account-page .account-page:not(.customer-info-page) .address-item > .title strong,
+.html-account-page .account-page:not(.customer-info-page) .order-item > .title strong {
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    line-height: 1.25;
+    text-transform: uppercase;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .address-item > .buttons,
+.html-account-page .account-page:not(.customer-info-page) .order-item > .buttons,
+.html-account-page .account-page:not(.customer-info-page) .buttons,
+.html-account-page .account-page:not(.customer-info-page) .actions {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    margin: 16px 0 0;
+    border: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .table-wrapper {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 14px 0 0;
+    overflow-x: auto;
+    border: 1px solid #e1e1e1;
+    background: #ffffff;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .data-table {
+    width: 100%;
+    min-width: 620px;
+    border: 0;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .data-table th,
+.html-account-page .account-page:not(.customer-info-page) .data-table td {
+    border-color: #e5e5e5;
+    padding: 12px 14px;
+    vertical-align: top;
+    line-height: 1.45;
+}
+
+.html-account-page .account-page:not(.customer-info-page) .no-data,
+.html-account-page .account-page:not(.customer-info-page) .result,
+.html-account-page .account-page:not(.customer-info-page) .message-error,
+.html-account-page .account-page:not(.customer-info-page) .message-success {
+    box-sizing: border-box;
+    margin: 14px 0;
+    border: 1px dashed #cfcfcf;
+    padding: 18px;
+    background: #fafafa;
+    color: #636b72;
+    line-height: 1.5;
+}
+
+@media (min-width: 1001px) {
+    .html-account-page .change-password-page .fieldset .jb-change-password-field,
+    .html-account-page .change-password-page .fieldset .inputs,
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs {
+        display: grid;
+        grid-template-columns: minmax(190px, 230px) minmax(0, 1fr) 18px;
+        align-items: center;
+        gap: 8px 20px;
+        min-width: 0;
+        margin: 0 0 18px;
+        text-align: left;
+    }
+
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .jb-account-field-label,
+    .html-account-page .change-password-page .fieldset .inputs > label[for],
+    .html-account-page .change-password-page .fieldset .inputs > label:first-of-type,
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs > label[for] {
+        position: static;
+        grid-column: 1;
+        grid-row: 1;
+        display: block;
+        box-sizing: border-box;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        color: #30363c;
+        font-family: "Fjalla One", Arial, sans-serif;
+        font-size: 0.86rem;
+        line-height: 1.35;
+        text-align: left;
+        text-transform: uppercase;
+        white-space: normal;
+        overflow: visible;
+    }
+
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .jb-account-field-control,
+    .html-account-page .change-password-page .fieldset .inputs > input:not([type="hidden"]),
+    .html-account-page .change-password-page .fieldset .inputs > .form-input-wrapper,
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs > input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs > select,
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs > textarea,
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs > .form-input-wrapper {
+        position: static;
+        grid-column: 2;
+        grid-row: 1;
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .jb-account-field-control input,
+    .html-account-page .change-password-page .fieldset .inputs > .form-input-wrapper > input,
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs > .form-input-wrapper > input {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+    }
+
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > nop-required,
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .required,
+    .html-account-page .change-password-page .fieldset .inputs > nop-required,
+    .html-account-page .change-password-page .fieldset .inputs > .required,
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs > nop-required,
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs > .required {
+        grid-column: 3;
+        grid-row: 1;
+        align-self: center;
+        margin: 0;
+    }
+
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .field-validation-error,
+    .html-account-page .change-password-page .fieldset .jb-change-password-field > .field-validation-valid,
+    .html-account-page .change-password-page .fieldset .inputs > .field-validation-error,
+    .html-account-page .change-password-page .fieldset .inputs > .field-validation-valid,
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs > .field-validation-error,
+    .html-account-page .account-page:not(.customer-info-page):not(.address-list-page):not(.order-list-page) .fieldset .inputs > .field-validation-valid {
+        grid-column: 2 / -1;
+        grid-row: 2;
+        margin: 0;
+    }
+}
+
+@media (max-width: 1000px) {
+    body.jb-account-nav-enhanced .jb-account-nav-shell {
+        position: static;
+    }
+
+    body.jb-account-nav-enhanced #jb-account-navigation {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: auto;
+        z-index: 1105;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        width: min(280px, 88vw);
+        max-width: 88vw;
+        height: 100vh;
+        height: 100dvh;
+        margin: 0;
+        overflow: hidden;
+        background: #ffffff;
+        box-shadow: 8px 0 28px rgba(0, 0, 0, 0.22);
+        transform: translate3d(-105%, 0, 0);
+        transition: transform 0.28s ease;
+        will-change: transform;
+    }
+
+    body.jb-account-nav-enhanced.jb-account-nav-open #jb-account-navigation,
+    body.jb-account-nav-enhanced #jb-account-navigation.is-open {
+        left: 0;
+        right: auto;
+        transform: translate3d(0, 0, 0);
+    }
+
+    body.jb-account-nav-enhanced .jb-account-nav-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 1104;
+        background: rgba(0, 0, 0, 0.52);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.28s ease, visibility 0.28s ease;
+    }
+
+    body.jb-account-nav-enhanced.jb-account-nav-open .jb-account-nav-overlay {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    body.jb-account-nav-enhanced:not(.jb-account-nav-open) .jb-account-nav-overlay {
+        pointer-events: none;
+    }
+
+    body.jb-account-nav-enhanced.jb-account-nav-open {
+        overflow: hidden;
+        touch-action: none;
+    }
+
+    body.jb-account-nav-enhanced #jb-account-navigation .listbox {
+        display: block;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .html-account-page .master-wrapper-content {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+
+    .html-account-page .account-page:not(.customer-info-page) .page-body {
+        padding: 22px 16px 26px;
+    }
+
+    .html-account-page .account-page:not(.customer-info-page) .data-table {
+        min-width: 560px;
     }
 }
