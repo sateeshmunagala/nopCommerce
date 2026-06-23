@@ -31,8 +31,7 @@
                 <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateNew")</strong>
             </div>
             <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post" class="invite-create-form">
-                <div class="fieldset">
-                    <div class="invite-fieldset">
+                <div class="fieldset invite-fieldset">
                     <div class="form-fields invite-form-grid">
                         <div class="inputs invite-field invite-field-wide">
                             <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
@@ -55,7 +54,6 @@
                             <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
                             <input id="expiryDateUtc" type="datetime-local" name="expiryDateUtc" class="form-control" />
                         </div>
-                    </div>
                     </div>
                 </div>
                 <div class="buttons invite-actions">
