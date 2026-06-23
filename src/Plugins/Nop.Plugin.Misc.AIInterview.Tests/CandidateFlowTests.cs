@@ -1062,14 +1062,14 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("const clearTokenRefreshTimer = () =>"));
         Assert.That(runtimeText, Does.Contain("const clearAllRuntimeTimers = () =>"));
         Assert.That(runtimeText, Does.Contain("id=\"screen-share-status\""));
-        Assert.That(runtimeText, Does.Contain("Screen sharing optional"));
+        Assert.That(runtimeText, Does.Contain("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional"));
         Assert.That(runtimeText, Does.Contain("Screen sharing active"));
         Assert.That(runtimeText, Does.Contain("Screen sharing ended. Resume screen sharing to continue."));
         Assert.That(runtimeText, Does.Contain("Screen sharing resumed"));
         Assert.That(runtimeText, Does.Contain("const shouldWarnBeforeUnload = () => interviewStarted && !runtimeStoppedOrCompleted && !stopInProgress;"));
         Assert.That(runtimeText, Does.Contain("window.addEventListener('beforeunload', (event) => {"));
         Assert.That(runtimeText, Does.Contain("if (!shouldWarnBeforeUnload())"));
-        Assert.That(runtimeText, Does.Contain("display:none; position: absolute;"));
+        Assert.That(runtimeText, Does.Contain("runtime-log-panel"));
         Assert.That(runtimeText, Does.Contain("if (!trimmedAnswer)"));
         Assert.That(runtimeText, Does.Contain("Auto submitting..."));
         Assert.That(runtimeText, Does.Contain("Auto submitting in ${countdownValue}"));
@@ -1106,8 +1106,8 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("sendGuidelinesAcknowledgementAudit"));
         Assert.That(runtimeText, Does.Contain("Mobile phones and tablets are not allowed by policy, but they are not blocked technically."));
         Assert.That(runtimeText, Does.Contain("Recording live."));
-        Assert.That(runtimeText, Does.Contain("clamp(220px, 28vw, 252px)"));
-        Assert.That(runtimeText, Does.Contain("Development mock mode is enabled. Azure OpenAI is bypassed."));
+        Assert.That(runtimeText, Does.Contain("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css"));
+        Assert.That(runtimeText, Does.Contain("Plugins.Misc.AIInterview.Runtime.MockMode.Warning"));
         var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Relevancy"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Correctness"));

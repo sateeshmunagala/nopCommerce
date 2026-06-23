@@ -505,17 +505,510 @@
     }
 }
 
+/* Runtime interview room */
+.html-aiinterview-runtime-page body {
+    margin: 0;
+    background: #f0f0f0;
+}
+
+.runtime-shell {
+    min-height: 100vh;
+    padding: 12px;
+    box-sizing: border-box;
+    background: #f0f0f0;
+}
+
+.runtime-js-hidden {
+    display: none;
+}
+
+.runtime-page {
+    min-height: calc(100vh - 24px);
+    padding: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    display: grid;
+    gap: 16px;
+}
+
+.runtime-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-bottom: 1px dotted #cfcfcf;
+    padding-bottom: 14px;
+}
+
+.runtime-topbar h1 {
+    margin: 0;
+    color: #111827;
+    font-size: 22px;
+    line-height: 1.25;
+}
+
+.runtime-meta,
+.runtime-actions,
+.runtime-modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.runtime-meta {
+    color: #6b7280;
+    font-weight: 700;
+}
+
+.runtime-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: #dedede;
+    overflow: hidden;
+}
+
+.runtime-progress > span {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: #22d1b2;
+    transition: width 0.2s ease;
+}
+
+.runtime-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
+    gap: 16px;
+    min-height: 64vh;
+}
+
+.runtime-stage,
+.runtime-sidebar {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.runtime-video {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 220px;
+    max-height: 252px;
+    border: 1px solid #d8d8d8;
+    border-radius: 8px;
+    background: #ededed;
+    color: #6b7280;
+    font-size: 26px;
+    font-weight: 700;
+    overflow: hidden;
+}
+
+.runtime-video video {
+    display: none;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.runtime-log-panel {
+    display: none;
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+    max-width: 250px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #333;
+    font-size: 11px;
+    text-align: left;
+}
+
+.runtime-log-title {
+    margin-bottom: 4px;
+    color: #333;
+    font-weight: 700;
+}
+
+.runtime-avatar {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 96px;
+    height: 96px;
+    border: 1px solid #d8d8d8;
+    border-radius: 8px;
+    background: #f7f7f7;
+}
+
+.runtime-avatar::before,
+.runtime-avatar::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #b7b7b7;
+}
+
+.runtime-avatar::before {
+    top: 17px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+}
+
+.runtime-avatar::after {
+    bottom: 17px;
+    width: 52px;
+    height: 32px;
+    border-radius: 999px;
+}
+
+.runtime-controls {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    margin: -34px auto 0;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.runtime-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #d0d5dd;
+}
+
+.runtime-dot.is-live {
+    width: 34px;
+    height: 34px;
+    border: 2px solid #d0d5dd;
+    background: #fff;
+}
+
+.runtime-screen-share-status,
+.runtime-mock-warning {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #475467;
+}
+
+.runtime-screen-share-status.is-active {
+    color: #027a48;
+}
+
+.runtime-screen-share-status.is-warning,
+.runtime-status.message-error {
+    color: #b42318;
+}
+
+.runtime-sidebar h3 {
+    margin: 0;
+    color: #111827;
+}
+
+.runtime-question,
+.runtime-message {
+    padding: 12px 14px;
+    border: 1px solid #e3d3bb;
+    border-radius: 8px;
+    background: #fffaf2;
+    color: #7a4a0a;
+    line-height: 1.6;
+}
+
+.runtime-message.is-info {
+    border-color: #bdebdc;
+    background: #f2fffb;
+    color: #0f766e;
+}
+
+.runtime-conversation,
+.runtime-transcript-body {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+}
+
+.runtime-transcript-body {
+    margin-top: 16px;
+}
+
+.turn-card {
+    padding: 12px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.turn-question {
+    margin-bottom: 8px;
+    color: #111827;
+    font-weight: 700;
+}
+
+.turn-answer {
+    margin-bottom: 8px;
+    color: #374151;
+    white-space: pre-wrap;
+}
+
+.turn-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.runtime-answer textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f2f2f2;
+    resize: vertical;
+}
+
+.runtime-shell .button-1,
+.runtime-shell .button-2,
+.runtime-transcript .button-2,
+.runtime-modal .button-1,
+.runtime-modal .button-2 {
+    min-height: 42px;
+    min-width: 118px;
+    padding: 10px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.runtime-shell .button-1,
+.runtime-modal .button-1 {
+    border: 1px solid #22d1b2;
+    background: #22d1b2;
+    color: #fff;
+}
+
+.runtime-shell .button-1:hover:not(:disabled),
+.runtime-modal .button-1:hover:not(:disabled) {
+    border-color: #19b69a;
+    background: #19b69a;
+}
+
+.runtime-shell .button-2,
+.runtime-transcript .button-2,
+.runtime-modal .button-2 {
+    border: 1px solid #d8d8d8;
+    background: #f4f4f4;
+    color: #374151;
+}
+
+.runtime-shell .button-2:hover:not(:disabled),
+.runtime-transcript .button-2:hover:not(:disabled),
+.runtime-modal .button-2:hover:not(:disabled) {
+    border-color: #22d1b2;
+    color: #111827;
+}
+
+.runtime-shell .button-1:disabled,
+.runtime-shell .button-2:disabled,
+.runtime-modal .button-1:disabled,
+.runtime-modal .button-2:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.runtime-shell .button-1.is-loading,
+.runtime-shell .button-2.is-loading {
+    opacity: 0.8;
+    cursor: wait;
+}
+
+.runtime-status {
+    min-height: 24px;
+    font-weight: 700;
+}
+
+.runtime-status.message-success {
+    color: #027a48;
+}
+
+.runtime-transcript,
+.runtime-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 9999;
+}
+
+.runtime-modal {
+    z-index: 10000;
+}
+
+.runtime-transcript.is-open,
+.runtime-modal.is-open {
+    display: grid;
+    place-items: center;
+}
+
+.runtime-transcript-card,
+.runtime-modal-card {
+    width: min(900px, 100%);
+    max-height: 85vh;
+    overflow: auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.runtime-modal-card {
+    width: min(720px, 100%);
+}
+
+.runtime-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.runtime-modal-head h3,
+.runtime-modal-card h3 {
+    margin: 0;
+    color: #111827;
+}
+
+.runtime-modal-card p {
+    margin: 0 0 12px;
+    color: #475467;
+    line-height: 1.6;
+}
+
+.runtime-guidelines {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding-left: 20px;
+    color: #111827;
+}
+
+.runtime-guidelines-ack {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 18px;
+    color: #111827;
+    font-weight: 700;
+}
+
+.runtime-guidelines-ack input {
+    margin-top: 4px;
+}
+
+.runtime-modal-actions {
+    margin-top: 20px;
+}
+
+.runtime-meter {
+    display: flex;
+    align-items: end;
+    gap: 4px;
+    height: 34px;
+}
+
+.runtime-meter span {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    transition: height 0.15s ease, background 0.15s ease;
+}
+
+@media (max-width: 1024px) {
+    .runtime-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    .runtime-shell {
+        padding: 8px;
+    }
+
+    .runtime-page,
+    .runtime-stage,
+    .runtime-sidebar {
+        padding: 12px;
+    }
+
+    .runtime-topbar {
+        align-items: flex-start;
+    }
+
+    .runtime-topbar h1 {
+        width: 100%;
+        font-size: 20px;
+    }
+
+    .runtime-video {
+        min-height: 210px;
+        font-size: 22px;
+    }
+
+    .runtime-avatar {
+        width: 78px;
+        height: 78px;
+    }
+
+    .runtime-controls,
+    .runtime-actions,
+    .runtime-meta {
+        width: 100%;
+    }
+
+    .runtime-shell .button-1,
+    .runtime-shell .button-2 {
+        flex: 1 1 140px;
+    }
+}
+
 /* Product job detail layout moved from Razor. */
     .job-details-page {
-        --job-bg: #f5f7fb;
+        --job-bg: #f0f0f0;
         --job-card: #ffffff;
-        --job-border: #dbe3ef;
-        --job-text: #132238;
-        --job-muted: #5f6f85;
-        --job-primary: #0f5bd7;
-        --job-primary-strong: #0b47a8;
-        --job-secondary: #eef4ff;
-        --job-shadow: 0 18px 40px rgba(15, 35, 64, 0.08);
+        --job-border: #d8d8d8;
+        --job-text: #111827;
+        --job-muted: #6b7280;
+        --job-primary: #22d1b2;
+        --job-primary-strong: #0f766e;
+        --job-secondary: #f3fffb;
+        --job-shadow: none;
     }
 
     .job-details-page .page-body {
@@ -533,7 +1026,7 @@
     .job-shell button,
     .job-shell .btn {
         border: 0;
-        border-radius: 12px;
+        border-radius: 4px;
         font-weight: 600;
         transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
     }
@@ -542,7 +1035,7 @@
     .job-shell .btn-primary {
         background: var(--job-primary);
         color: #fff;
-        box-shadow: 0 10px 24px rgba(15, 91, 215, 0.18);
+        box-shadow: none;
     }
 
     .job-shell .button-1:hover,
@@ -554,7 +1047,7 @@
     .job-shell .btn-secondary {
         background: var(--job-secondary);
         color: var(--job-primary);
-        border: 1px solid #c9dafd;
+        border: 1px solid #bdebdc;
     }
 
     .job-shell .button-2:hover,
@@ -568,8 +1061,8 @@
         gap: 28px;
         padding: 32px;
         border: 1px solid var(--job-border);
-        border-radius: 28px;
-        background: linear-gradient(180deg, #ffffff 0%, var(--job-bg) 100%);
+        border-radius: 8px;
+        background: #fff;
         box-shadow: var(--job-shadow);
     }
 
@@ -599,15 +1092,15 @@
         width: fit-content;
         padding: 12px 16px;
         border: 1px solid var(--job-border);
-        border-radius: 18px;
+        border-radius: 8px;
         background: rgba(255, 255, 255, 0.98);
-        box-shadow: 0 12px 28px rgba(15, 35, 64, 0.06);
+        box-shadow: none;
     }
 
     .job-company-logo {
         width: 64px;
         height: 64px;
-        border-radius: 18px;
+        border-radius: 8px;
         object-fit: cover;
         border: 1px solid var(--job-border);
         background: #fff;
@@ -630,7 +1123,7 @@
     .job-title h1 {
         margin: 0;
         color: var(--job-text);
-        font-size: clamp(34px, 4vw, 50px);
+        font-size: 42px;
         line-height: 1.08;
     }
 
@@ -657,7 +1150,7 @@
         gap: 8px;
         padding: 10px 14px;
         border: 1px solid var(--job-border);
-        border-radius: 14px;
+        border-radius: 8px;
         background: #fff;
         color: var(--job-text);
         text-decoration: none;
@@ -669,7 +1162,7 @@
     }
 
     .job-action-link:hover {
-        border-color: #b8cdf7;
+        border-color: var(--job-primary);
         color: var(--job-primary);
     }
 
@@ -690,7 +1183,7 @@
     .job-reviews-wrap {
         padding: 24px;
         border: 1px solid var(--job-border);
-        border-radius: 24px;
+        border-radius: 8px;
         background: var(--job-card);
         box-shadow: var(--job-shadow);
     }
@@ -715,9 +1208,9 @@
         min-width: 180px;
         padding: 16px 18px;
         border: 1px solid var(--job-border);
-        border-radius: 18px;
+        border-radius: 8px;
         background: rgba(255, 255, 255, 0.95);
-        box-shadow: 0 12px 28px rgba(15, 35, 64, 0.06);
+        box-shadow: none;
     }
 
     .job-meta-item .job-fact-label {
@@ -781,8 +1274,8 @@
     .job-spec-item {
         padding: 16px 18px;
         border: 1px solid var(--job-border);
-        border-radius: 18px;
-        background: #f9fbff;
+        border-radius: 8px;
+        background: #f7f7f7;
     }
 
     .job-spec-label {

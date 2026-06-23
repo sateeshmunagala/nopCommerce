@@ -10,76 +10,18 @@
     };
     var clientSettings = JsonSerializer.Serialize(Model.ClientSettings ?? new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel(), jsonOptions);
     var turns = JsonSerializer.Serialize(Model.Turns ?? Array.Empty<InterviewTurnViewModel>(), jsonOptions);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-runtime-page");
 }
-
-<style>
-    body { margin: 0; background: #eef3fb; }
-    .runtime-shell { min-height: 100vh; padding: 12px; box-sizing: border-box; }
-    .runtime-page { min-height: calc(100vh - 24px); padding: 18px; border-radius: 28px; background: linear-gradient(180deg, #f8fafc 0%, #eef3fb 100%); box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12); display: grid; gap: 18px; }
-    .runtime-topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .runtime-topbar h1 { margin: 0; font-size: 22px; color: #162033; }
-    .runtime-meta { display: flex; align-items: center; gap: 12px; color: #667085; font-weight: 600; }
-    .runtime-progress { height: 8px; border-radius: 999px; background: #dbe4f0; overflow: hidden; }
-    .runtime-progress > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #0f5bd7, #ff7a1a); transition: width .2s ease; }
-    .runtime-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(320px, .9fr); gap: 18px; min-height: 64vh; }
-    .runtime-stage, .runtime-sidebar { display: grid; gap: 16px; padding: 18px; border-radius: 24px; background: #fff; border: 1px solid rgba(15, 23, 42, 0.08); }
-    .runtime-video { position: relative; min-height: clamp(220px, 28vw, 252px); max-height: 252px; border-radius: 20px; background: linear-gradient(180deg, #d9e2f2 0%, #c8d7ea 100%); display: grid; place-items: center; color: #51627b; font-size: 28px; font-weight: 700; overflow: hidden; }
-    .runtime-video video { width: 100%; height: 100%; object-fit: cover; display: none; }
-    .runtime-avatar { position: absolute; top: 20px; right: 20px; width: 108px; height: 108px; border-radius: 20px; background: linear-gradient(180deg, #f7f9fc 0%, #dce6f3 100%); border: 1px solid rgba(255,255,255,0.85); box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12); }
-    .runtime-avatar::before, .runtime-avatar::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); background: #b5c3d0; }
-    .runtime-avatar::before { top: 18px; width: 42px; height: 42px; border-radius: 50%; }
-    .runtime-avatar::after { bottom: 18px; width: 54px; height: 34px; border-radius: 999px; }
-    .runtime-controls { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 999px; background: rgba(255,255,255,0.9); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12); width: fit-content; margin: -40px auto 0; position: relative; flex-wrap: wrap; }
-    .runtime-dot { width: 20px; height: 20px; border-radius: 50%; background: #d0d5dd; }
-    .runtime-dot.is-live { width: 42px; height: 42px; background: #ffffff; border: 2px solid #d0d5dd; }
-    .runtime-screen-share-status { text-align: center; font-size: 13px; font-weight: 700; color: #475467; }
-    .runtime-screen-share-status.is-active { color: #027a48; }
-    .runtime-screen-share-status.is-warning { color: #b42318; }
-    .runtime-sidebar h3 { margin: 0; color: #162033; }
-    .runtime-question, .runtime-message { padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255, 122, 26, 0.35); background: #fff9f3; color: #a15c00; line-height: 1.6; }
-    .runtime-message.is-info { background: #eef4ff; color: #0f5bd7; border-color: #c9dafd; }
-    .runtime-conversation { display: grid; gap: 12px; align-content: start; }
-    .turn-card { padding: 14px 16px; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 18px; background: #fff; }
-    .turn-question { font-weight: 700; color: #162033; margin-bottom: 8px; }
-    .turn-answer { color: #334155; margin-bottom: 8px; white-space: pre-wrap; }
-    .turn-meta { color: #667085; font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
-    .runtime-answer textarea { width: 100%; min-height: 120px; padding: 14px 16px; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 16px; resize: vertical; }
-    .runtime-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-    .button-1, .button-2 { border-radius: 999px; padding: 10px 20px; font-weight: 600; min-height: 44px; min-width: 120px; cursor: pointer; transition: all 0.2s ease; border: none; }
-    .button-1 { background: #0f5bd7; color: #fff; border: 1px solid #0f5bd7; }
-    .button-1:hover:not(:disabled) { background: #0d4eb8; border-color: #0d4eb8; }
-    .button-2 { background: #eef4ff; color: #0f5bd7; border: 1px solid #c9dafd; }
-    .button-2:hover:not(:disabled) { background: #dce7fa; }
-    .button-1:disabled, .button-2:disabled { opacity: 0.6; cursor: not-allowed; }
-    .button-1.is-loading, .button-2.is-loading { opacity: 0.8; cursor: wait; }
-    .runtime-status { min-height: 24px; font-weight: 600; }
-    .runtime-status.message-error { color: #b42318; }
-    .runtime-status.message-success { color: #027a48; }
-    .runtime-transcript { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 9999; padding: 24px; }
-    .runtime-transcript.is-open { display: grid; place-items: center; }
-    .runtime-transcript-card { width: min(900px, 100%); max-height: 80vh; overflow: auto; background: #fff; border-radius: 20px; padding: 20px; }
-    .runtime-modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 10000; padding: 24px; }
-    .runtime-modal.is-open { display: grid; place-items: center; }
-    .runtime-modal-card { width: min(720px, 100%); max-height: 85vh; overflow: auto; background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2); }
-    .runtime-modal-card h3 { margin: 0 0 12px; color: #162033; }
-    .runtime-modal-card p { margin: 0 0 12px; color: #475467; line-height: 1.6; }
-    .runtime-guidelines { margin: 0; padding-left: 20px; color: #162033; display: grid; gap: 10px; }
-    .runtime-guidelines-ack { display: flex; align-items: flex-start; gap: 10px; margin-top: 18px; color: #162033; font-weight: 600; }
-    .runtime-guidelines-ack input { margin-top: 4px; }
-    .runtime-modal-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
-    .runtime-meter { display: flex; align-items: end; gap: 4px; height: 34px; }
-    .runtime-meter span { width: 8px; height: 8px; border-radius: 999px; background: #cbd5e1; transition: height .15s ease, background .15s ease; }
-    @@media (max-width: 1024px) { .runtime-layout { grid-template-columns: 1fr; } }
-</style>
 
 <div class="runtime-shell">
     <div class="runtime-page">
         <div class="runtime-topbar">
-            <button type="button" id="stop-interview-top" class="button-2" disabled>Stop Interview</button>
+            <button type="button" id="stop-interview-top" class="button-2" disabled>@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
             <h1>@Model.ProductName - @Model.Difficulty</h1>
             <div class="runtime-meta">
                 <span id="runtime-timer">00:00</span>
-                <button type="button" id="open-transcript" class="button-2">Transcript</button>
+                <button type="button" id="open-transcript" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.Transcript")</button>
             </div>
         </div>
 
@@ -88,31 +30,31 @@
         <div class="runtime-layout">
             <section class="runtime-stage">
                 <div class="runtime-video">
-                    <div id="runtime-log" style="display:none; position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(255,255,255,0.85); border-radius: 8px; padding: 8px; font-size: 11px; max-width: 250px; max-height: 200px; overflow-y: auto; text-align: left;">
-                        <div style="font-weight: 700; color: #333; margin-bottom: 4px;">Runtime Log</div>
+                    <div id="runtime-log" class="runtime-log-panel">
+                        <div class="runtime-log-title">@T("Plugins.Misc.AIInterview.Runtime.Log")</div>
                         <div id="runtime-log-body"></div>
                     </div>
                     <video id="runtime-video" autoplay playsinline muted></video>
-                    <span id="camera-placeholder">Camera Off</span>
+                    <span id="camera-placeholder">@T("Plugins.Misc.AIInterview.Runtime.CameraOff")</span>
                     <div class="runtime-avatar"></div>
                 </div>
                 <div class="runtime-controls">
                     <span class="runtime-dot is-live"></span>
                     <span class="runtime-dot"></span>
-                    <button type="button" id="toggle-camera" class="button-2">Camera On</button>
-                    <button type="button" id="toggle-mic" class="button-2">Mic On</button>
-                    <button type="button" id="toggle-recording" class="button-2">Recording Ready</button>
-                    <button type="button" id="view-guidelines" class="button-2">Interview Guidelines</button>
-                    <button type="button" id="start-or-next" class="button-1" disabled>Start Interview</button>
+                    <button type="button" id="toggle-camera" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.CameraOn")</button>
+                    <button type="button" id="toggle-mic" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.MicOn")</button>
+                    <button type="button" id="toggle-recording" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.RecordingReady")</button>
+                    <button type="button" id="view-guidelines" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Title")</button>
+                    <button type="button" id="start-or-next" class="button-1" disabled>@T("Plugins.Misc.AIInterview.Runtime.StartInterview")</button>
                     <span class="runtime-dot"></span>
                     <span class="runtime-dot"></span>
                 </div>
-                <div id="screen-share-status" class="runtime-screen-share-status">Screen sharing optional</div>
+                <div id="screen-share-status" class="runtime-screen-share-status">@T("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional")</div>
                 <div class="runtime-status" id="recording-status"></div>
                 @if (Model.IsMockMode)
                 {
-                    <div class="runtime-status message-info" style="color: #0f5bd7; text-align: center; margin-top: 10px; font-size: 13px; font-weight: 700;">
-                        Development mock mode is enabled. Azure OpenAI is bypassed.
+                    <div class="runtime-status message-info runtime-mock-warning">
+                        @T("Plugins.Misc.AIInterview.Runtime.MockMode.Warning")
                     </div>
                 }
                 <div class="runtime-meter" id="audio-meter" aria-label="microphone level">
@@ -121,24 +63,24 @@
             </section>
 
             <aside class="runtime-sidebar">
-                <h3>Conversations</h3>
-                <div id="runtime-question" class="runtime-question">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? "Welcome! Click Start Interview to begin." : Model.CurrentQuestion)</div>
-                <div id="runtime-message" class="runtime-message is-info">Click Start Interview to begin.</div>
+                <h3>@T("Plugins.Misc.AIInterview.Runtime.Conversations")</h3>
+                <div id="runtime-question" class="runtime-question">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
+                <div id="runtime-message" class="runtime-message is-info">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
 
                 <div class="runtime-conversation" id="conversation"></div>
 
                 <div class="runtime-answer">
-                    <textarea id="runtime-answer" placeholder="Enter your answer here..." disabled></textarea>
+                    <textarea id="runtime-answer" placeholder="@T("Plugins.Misc.AIInterview.Runtime.AnswerPlaceholder")" disabled></textarea>
                 </div>
 
                 <div class="runtime-actions">
-                    <button type="button" id="submit-answer" class="button-1" disabled>Submit Answer</button>
-                    <button type="button" id="stop-interview" class="button-2" disabled>Stop Interview</button>
-                    <button type="button" id="view-report" class="button-2" style="display:none;">View Report</button>
+                    <button type="button" id="submit-answer" class="button-1" disabled>@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</button>
+                    <button type="button" id="stop-interview" class="button-2" disabled>@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
+                    <button type="button" id="view-report" class="button-2 runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</button>
                 </div>
 
                 <div id="runtime-status" class="runtime-status"></div>
-                <div id="runtime-completion" class="runtime-message is-info" style="display:none;"></div>
+                <div id="runtime-completion" class="runtime-message is-info runtime-js-hidden"></div>
             </aside>
         </div>
     </div>
@@ -146,18 +88,18 @@
 
 <div id="runtime-transcript" class="runtime-transcript">
     <div class="runtime-transcript-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
-            <h3 style="margin:0;">Transcript</h3>
-            <button type="button" id="close-transcript" class="button-2">Close</button>
+        <div class="runtime-modal-head">
+            <h3>@T("Plugins.Misc.AIInterview.Runtime.Transcript")</h3>
+            <button type="button" id="close-transcript" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.Close")</button>
         </div>
-        <div id="transcript-body" style="margin-top:16px;display:grid;gap:12px;"></div>
+        <div id="transcript-body" class="runtime-transcript-body"></div>
     </div>
 </div>
 
 <div id="guidelines-modal" class="runtime-modal" aria-hidden="true">
     <div class="runtime-modal-card" role="dialog" aria-modal="true" aria-labelledby="guidelines-title">
-        <h3 id="guidelines-title">Interview Guidelines</h3>
-        <p>Please review these interview requirements before you begin.</p>
+        <h3 id="guidelines-title">@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Title")</h3>
+        <p>@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Intro")</p>
         <ul class="runtime-guidelines">
             <li>This interview must be taken from a personal laptop.</li>
             <li>Corporate laptops are not allowed.</li>
@@ -170,11 +112,11 @@
         </ul>
         <label class="runtime-guidelines-ack" for="guidelines-acknowledge">
             <input type="checkbox" id="guidelines-acknowledge" />
-            <span>I have read and agree to follow these interview guidelines.</span>
+            <span>@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Acknowledge")</span>
         </label>
         <div class="runtime-modal-actions">
-            <button type="button" id="guidelines-agree" class="button-1" disabled>I Agree</button>
-            <button type="button" id="guidelines-cancel" class="button-2">Cancel</button>
+            <button type="button" id="guidelines-agree" class="button-1" disabled>@T("Plugins.Misc.AIInterview.Runtime.IAgree")</button>
+            <button type="button" id="guidelines-cancel" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.Cancel")</button>
         </div>
     </div>
 </div>
@@ -250,8 +192,8 @@
         let timerStartedAt = null;
         let answerNeedsEditAfterFailure = false;
 
-        if (runtimeLog && !debugRuntime)
-            runtimeLog.style.display = 'none';
+        if (runtimeLog)
+            runtimeLog.style.display = debugRuntime ? 'block' : 'none';
 
         const resetSubmitButtonText = () => {
             if (submitButton && !submitButton.classList.contains('is-loading'))
@@ -818,6 +760,7 @@
             await stopSpeechRecognition();
             questionBox.textContent = completionText;
             messageBox.textContent = completionText;
+            completionBox.classList.remove('runtime-js-hidden');
             completionBox.style.display = '';
             completionBox.textContent = reportUrl
                 ? 'Interview completed. Redirecting to report shortly.'

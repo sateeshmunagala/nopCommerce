@@ -829,12 +829,12 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("Microphone permission was denied. You can continue by typing your answers."));
         Assert.That(runtimeViewText, Does.Contain("Recording is waiting for screen share because camera or microphone permission was denied."));
         Assert.That(runtimeViewText, Does.Contain("Recording remains available with screen share."));
-        Assert.That(runtimeViewText, Does.Contain("display:none; position: absolute;"));
-        Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = 'none';"));
+        Assert.That(runtimeViewText, Does.Contain("runtime-log-panel"));
+        Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = debugRuntime ? 'block' : 'none';"));
         Assert.That(runtimeViewText, Does.Contain("id=\"screen-share-status\""));
-        Assert.That(runtimeViewText, Does.Contain("Screen sharing optional"));
-        Assert.That(runtimeViewText, Does.Contain("Interview Guidelines"));
-        Assert.That(runtimeViewText, Does.Contain("I have read and agree to follow these interview guidelines."));
+        Assert.That(runtimeViewText, Does.Contain("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional"));
+        Assert.That(runtimeViewText, Does.Contain("Plugins.Misc.AIInterview.Runtime.Guidelines.Title"));
+        Assert.That(runtimeViewText, Does.Contain("Plugins.Misc.AIInterview.Runtime.Guidelines.Acknowledge"));
         Assert.That(runtimeViewText, Does.Contain("Mobile phones and tablets are not allowed by policy, but they are not blocked technically."));
         Assert.That(runtimeViewText, Does.Not.Contain("Screen sharing is required when the interview starts."));
         Assert.That(runtimeViewText, Does.Contain("let guidelinesAcknowledged = false;"));
