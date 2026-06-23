@@ -104,6 +104,11 @@ public static partial class NopRouteNames
         /// Gets the gift card balance route name
         /// </summary>
         public const string CHECK_GIFT_CARD_BALANCE = "CheckGiftCardBalance";
+
+        /// <summary>
+        /// Gets the return request find route name
+        /// </summary>
+        public const string WITHDRAWAL_REQUEST_FORM = "WithdrawalRequestForm";
     }
 
     /// <summary>

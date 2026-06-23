@@ -84,10 +84,11 @@ public partial interface IMessageTokenProvider
     /// </summary>
     /// <param name="tokens">List of already added tokens</param>
     /// <param name="returnRequest">Return request</param>
+    /// <param name="order">Order</param>
     /// <param name="orderItem">Order item</param>
     /// <param name="languageId">Language identifier</param>
     /// <returns>A task that represents the asynchronous operation</returns>
-    Task AddReturnRequestTokensAsync(IList<Token> tokens, ReturnRequest returnRequest, OrderItem orderItem, int languageId);
+    Task AddReturnRequestTokensAsync(IList<Token> tokens, ReturnRequest returnRequest, Order order, OrderItem orderItem, int languageId);
 
     /// <summary>
     /// Add gift card tokens

@@ -1176,6 +1176,7 @@ public partial class SettingModelFactory : ISettingModelFactory
 
         //fill in model values from the entity
         model ??= catalogSettings.ToSettingsModel<CatalogSettingsModel>();
+        model.PriceListStrategyValues = await catalogSettings.PriceListStrategy.ToSelectListAsync();
 
         //fill in additional values (not existing in the entity)
         model.ActiveStoreScopeConfiguration = storeId;
@@ -1290,6 +1291,7 @@ public partial class SettingModelFactory : ISettingModelFactory
             model.ProductUrlStructureTypeId_OverrideForStore = await _settingService.SettingExistsAsync(catalogSettings, x => x.ProductUrlStructureTypeId, storeId);
             model.ShowSearchTermHistory_OverrideForStore = await _settingService.SettingExistsAsync(catalogSettings, x => x.ShowSearchTermHistory, storeId);
             model.NumberOfSearchTermHistoryItems_OverrideForStore = await _settingService.SettingExistsAsync(catalogSettings, x => x.NumberOfSearchTermHistoryItems, storeId);
+            model.PriceListStrategy_OverrideForStore = await _settingService.SettingExistsAsync(catalogSettings, x => x.PriceListStrategy, storeId);
         }
 
         //prepare nested search model
@@ -1493,6 +1495,8 @@ public partial class SettingModelFactory : ISettingModelFactory
         model.ActiveStoreScopeConfiguration = storeId;
         model.PrimaryStoreCurrencyCode = (await _currencyService.GetCurrencyByIdAsync(_currencySettings.PrimaryStoreCurrencyId))?.CurrencyCode;
         model.OrderIdent = await _dataProvider.GetTableIdentAsync<Order>();
+        
+        await PrepareReturnRequestSettingsModelAsync(model.ReturnRequestSettings);
 
         var paymentMethods = await _paymentPluginManager.LoadAllPluginsAsync(storeId: storeId);
 
@@ -1520,10 +1524,6 @@ public partial class SettingModelFactory : ISettingModelFactory
             model.AttachPdfInvoiceToOrderPaidEmail_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.AttachPdfInvoiceToOrderPaidEmail, storeId);
             model.AttachPdfInvoiceToOrderProcessingEmail_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.AttachPdfInvoiceToOrderProcessingEmail, storeId);
             model.AttachPdfInvoiceToOrderCompletedEmail_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.AttachPdfInvoiceToOrderCompletedEmail, storeId);
-            model.ReturnRequestsEnabled_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.ReturnRequestsEnabled, storeId);
-            model.ReturnRequestsAllowFiles_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.ReturnRequestsAllowFiles, storeId);
-            model.ReturnRequestNumberMask_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.ReturnRequestNumberMask, storeId);
-            model.NumberOfDaysReturnRequestAvailable_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.NumberOfDaysReturnRequestAvailable, storeId);
             model.CustomOrderNumberMask_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.CustomOrderNumberMask, storeId);
             model.ExportWithProducts_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.ExportWithProducts, storeId);
             model.AllowAdminsToBuyCallForPriceProducts_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.AllowAdminsToBuyCallForPriceProducts, storeId);
@@ -1534,6 +1534,53 @@ public partial class SettingModelFactory : ISettingModelFactory
             model.AutoCancelDelay_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.AutoCancelDelay, storeId);
             model.AutoCancelIgnoredPaymentMethods_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.AutoCancelIgnoredPaymentMethods, storeId);
             model.AutoCancelRestoreShoppingCart_OverrideForStore = await _settingService.SettingExistsAsync(orderSettings, x => x.AutoCancelRestoreShoppingCart, storeId);
+        }
+
+        return model;
+    }
+
+    /// <summary>
+    /// Prepare return request settings model
+    /// </summary>
+    /// <param name="model">Return request settings model</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation
+    /// The task result contains the return request settings model
+    /// </returns>
+    public virtual async Task<ReturnRequestSettingsModel> PrepareReturnRequestSettingsModelAsync(ReturnRequestSettingsModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        //load settings for a chosen store scope
+        var storeId = await _storeContext.GetActiveStoreScopeConfigurationAsync();
+        var returnRequestSettings = await _settingService.LoadSettingAsync<ReturnRequestSettings>(storeId);
+
+        //fill in model values from the entity
+        model.GuestReturnRequestsAllowed = returnRequestSettings.GuestReturnRequestsAllowed;
+        model.NumberOfDaysReturnRequestAvailable = returnRequestSettings.NumberOfDaysReturnRequestAvailable;
+        model.ReturnActionsEnabled = returnRequestSettings.ReturnActionsEnabled;
+        model.ReturnReasonsEnabled = returnRequestSettings.ReturnReasonsEnabled;
+        model.ReturnRequestNumberMask = returnRequestSettings.ReturnRequestNumberMask;
+        model.ReturnRequestsAllowFiles = returnRequestSettings.ReturnRequestsAllowFiles;
+        model.ReturnRequestsEnabled = returnRequestSettings.ReturnRequestsEnabled;
+        model.UseEuWithdrawalLocales = returnRequestSettings.UseEuWithdrawalLocales;
+        model.WithdrawalLinkDaysValid = returnRequestSettings.WithdrawalLinkDaysValid;
+
+        //fill in additional values (not existing in the entity)
+        model.ActiveStoreScopeConfiguration = storeId;
+
+        //fill in overridden values
+        if (storeId > 0)
+        {
+            model.ReturnRequestsEnabled_OverrideForStore = await _settingService.SettingExistsAsync(returnRequestSettings, x => x.ReturnRequestsEnabled, storeId);
+            model.ReturnRequestsAllowFiles_OverrideForStore = await _settingService.SettingExistsAsync(returnRequestSettings, x => x.ReturnRequestsAllowFiles, storeId);
+            model.ReturnRequestNumberMask_OverrideForStore = await _settingService.SettingExistsAsync(returnRequestSettings, x => x.ReturnRequestNumberMask, storeId);
+            model.NumberOfDaysReturnRequestAvailable_OverrideForStore = await _settingService.SettingExistsAsync(returnRequestSettings, x => x.NumberOfDaysReturnRequestAvailable, storeId);
+            model.UseEuWithdrawalLocales_OverrideForStore = await _settingService.SettingExistsAsync(returnRequestSettings, x => x.UseEuWithdrawalLocales, storeId);
+            model.WithdrawalLinkDaysValid_OverrideForStore = await _settingService.SettingExistsAsync(returnRequestSettings, x => x.WithdrawalLinkDaysValid, storeId);
+            model.GuestReturnRequestsAllowed_OverrideForStore = await _settingService.SettingExistsAsync(returnRequestSettings, x => x.GuestReturnRequestsAllowed, storeId);
+            model.ReturnReasonsEnabled_OverrideForStore = await _settingService.SettingExistsAsync(returnRequestSettings, x => x.ReturnReasonsEnabled, storeId);
+            model.ReturnActionsEnabled_OverrideForStore = await _settingService.SettingExistsAsync(returnRequestSettings, x => x.ReturnActionsEnabled, storeId);
         }
 
         //prepare nested search models

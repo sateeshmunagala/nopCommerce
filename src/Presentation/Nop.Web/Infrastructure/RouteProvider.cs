@@ -466,6 +466,10 @@ public partial class RouteProvider : BaseRouteProvider, IRouteProvider
             pattern: $"{lang}/returnrequest/{{orderId:min(0)}}",
             defaults: new { controller = "ReturnRequest", action = "ReturnRequest" });
 
+        endpointRouteBuilder.MapControllerRoute(name: NopRouteNames.General.WITHDRAWAL_REQUEST_FORM,
+            pattern: $"{lang}/returnrequest/find",
+            defaults: new { controller = "ReturnRequest", action = "Find" });
+
         endpointRouteBuilder.MapControllerRoute(name: NopRouteNames.Standard.RE_ORDER,
             pattern: $"{lang}/reorder/{{orderId:min(0)}}",
             defaults: new { controller = "Order", action = "ReOrder" });

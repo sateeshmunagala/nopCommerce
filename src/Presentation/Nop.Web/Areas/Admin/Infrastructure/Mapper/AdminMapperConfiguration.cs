@@ -17,6 +17,7 @@ using Nop.Core.Domain.Media;
 using Nop.Core.Domain.Menus;
 using Nop.Core.Domain.Messages;
 using Nop.Core.Domain.Orders;
+using Nop.Core.Domain.PriceLists;
 using Nop.Core.Domain.ScheduleTasks;
 using Nop.Core.Domain.Security;
 using Nop.Core.Domain.Seo;
@@ -53,6 +54,7 @@ using Nop.Web.Areas.Admin.Models.MultiFactorAuthentication;
 using Nop.Web.Areas.Admin.Models.Orders;
 using Nop.Web.Areas.Admin.Models.Payments;
 using Nop.Web.Areas.Admin.Models.Plugins;
+using Nop.Web.Areas.Admin.Models.PriceLists;
 using Nop.Web.Areas.Admin.Models.Settings;
 using Nop.Web.Areas.Admin.Models.Shipping;
 using Nop.Web.Areas.Admin.Models.ShoppingCart;
@@ -99,6 +101,7 @@ public partial class AdminMapperConfiguration : Profile, IOrderedMapperProfile
         CreateOrdersMaps();
         CreatePaymentsMaps();
         CreatePluginsMaps();
+        CreatePriceListMaps();
         CreateSecurityMaps();
         CreateSeoMaps();
         CreateShippingMaps();
@@ -415,7 +418,9 @@ public partial class AdminMapperConfiguration : Profile, IOrderedMapperProfile
             .ForMember(model => model.ProductUrlStructureTypes, mo => mo.Ignore())
             .ForMember(model => model.ShowSearchBoxCategories_OverrideForStore, mo => mo.Ignore())
             .ForMember(model => model.ArtificialIntelligenceSettingsModel, mo => mo.Ignore())
-            .ForMember(model => model.GpsrSettingsModel, mo => mo.Ignore());
+            .ForMember(model => model.GpsrSettingsModel, mo => mo.Ignore())
+            .ForMember(model => model.PriceListStrategyValues, options => options.Ignore())
+            .ForMember(model => model.PriceListStrategy_OverrideForStore, options => options.Ignore());
         CreateMap<CatalogSettingsModel, CatalogSettings>()
             .ForMember(settings => settings.AjaxProcessAttributeChange, options => options.Ignore())
             .ForMember(settings => settings.CompareProductsNumber, options => options.Ignore())
@@ -1330,16 +1335,10 @@ public partial class AdminMapperConfiguration : Profile, IOrderedMapperProfile
             .ForMember(model => model.MinOrderSubtotalAmountIncludingTax_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.MinOrderSubtotalAmount_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.MinOrderTotalAmount_OverrideForStore, options => options.Ignore())
-            .ForMember(model => model.NumberOfDaysReturnRequestAvailable_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.OnePageCheckoutEnabled_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.OrderIdent, options => options.Ignore())
             .ForMember(model => model.PrimaryStoreCurrencyCode, options => options.Ignore())
-            .ForMember(model => model.ReturnRequestActionSearchModel, options => options.Ignore())
-            .ForMember(model => model.ReturnRequestNumberMask_OverrideForStore, options => options.Ignore())
-            .ForMember(model => model.ReturnRequestReasonSearchModel, options => options.Ignore())
-            .ForMember(model => model.ReturnRequestsAllowFiles_OverrideForStore, options => options.Ignore())
-            .ForMember(model => model.ReturnRequestsEnabled_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.TermsOfServiceOnOrderConfirmPage_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.TermsOfServiceOnShoppingCartPage_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.PrimaryStoreCurrencyCode, options => options.Ignore())
@@ -1347,12 +1346,13 @@ public partial class AdminMapperConfiguration : Profile, IOrderedMapperProfile
             .ForMember(model => model.AutoCancelDelay_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.AutoCancelIgnoredPaymentMethods_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.AutoCancelRestoreShoppingCart_OverrideForStore, options => options.Ignore())
-            .ForMember(model => model.AvailablePaymentMethods, options => options.Ignore());
+            .ForMember(model => model.NextRecurringPaymentNotificationDays_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.AvailablePaymentMethods, options => options.Ignore())
+            .ForMember(model => model.ReturnRequestSettings, options => options.Ignore());
         CreateMap<OrderSettingsModel, OrderSettings>()
             .ForMember(settings => settings.GeneratePdfInvoiceInCustomerLanguage, options => options.Ignore())
             .ForMember(settings => settings.MinimumOrderPlacementInterval, options => options.Ignore())
             .ForMember(settings => settings.DisplayCustomerCurrencyOnOrders, options => options.Ignore())
-            .ForMember(settings => settings.ReturnRequestsFileMaximumSize, options => options.Ignore())
             .ForMember(settings => settings.DisplayOrderSummary, options => options.Ignore())
             .ForMember(settings => settings.PlaceOrderWithLock, options => options.Ignore())
             .ForMember(settings => settings.CustomerOrdersPageSize, options => options.Ignore())
@@ -1384,6 +1384,21 @@ public partial class AdminMapperConfiguration : Profile, IOrderedMapperProfile
             .ForMember(entity => entity.ReturnRequestStatus, options => options.Ignore())
             .ForMember(entity => entity.CustomerId, options => options.Ignore())
             .ForMember(entity => entity.UpdatedOnUtc, options => options.Ignore());
+
+        CreateMap<ReturnRequestSettings, ReturnRequestSettingsModel>()
+            .ForMember(model => model.NumberOfDaysReturnRequestAvailable_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.ReturnRequestNumberMask_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.ReturnRequestActionSearchModel, options => options.Ignore())
+            .ForMember(model => model.ReturnRequestReasonSearchModel, options => options.Ignore())
+            .ForMember(model => model.ReturnRequestsAllowFiles_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.ReturnRequestsEnabled_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.UseEuWithdrawalLocales_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.GuestReturnRequestsAllowed_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.WithdrawalLinkDaysValid_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.ReturnReasonsEnabled_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.ReturnActionsEnabled_OverrideForStore, options => options.Ignore());
+        CreateMap<ReturnRequestSettingsModel, ReturnRequestSettings>()
+            .ForMember(settings => settings.ReturnRequestsFileMaximumSize, options => options.Ignore());
 
         CreateMap<ShoppingCartSettings, ShoppingCartSettingsModel>()
             .ForMember(model => model.AllowAnonymousUsersToEmailWishlist_OverrideForStore, options => options.Ignore())
@@ -1469,6 +1484,33 @@ public partial class AdminMapperConfiguration : Profile, IOrderedMapperProfile
     }
 
     /// <summary>
+    /// Create price list maps 
+    /// </summary>
+    protected virtual void CreatePriceListMaps()
+    {
+        CreateMap<PriceList, PriceListModel>()
+            .ForMember(model => model.HidePriority, options => options.Ignore())
+            .ForMember(model => model.CustomerRoleNames, options => options.Ignore())
+            .ForMember(model => model.PriceCalculationValueFormatted, options => options.Ignore())
+            .ForMember(model => model.PriceCalculationTypeName, options => options.Ignore())
+            .ForMember(model => model.PriceListItemSearchModel, options => options.Ignore())
+            .ForMember(model => model.PriceListCustomerSearchModel, options => options.Ignore());
+        CreateMap<PriceListModel, PriceList>()
+            .ForMember(entity => entity.PriceCalculationType, options => options.Ignore());
+
+        CreateMap<PriceListItemModel, PriceListItem>();
+        CreateMap<PriceListItem, PriceListItemModel>()
+            .ForMember(model => model.ProductName, options => options.Ignore())
+            .ForMember(model => model.StandardPrice, options => options.Ignore())
+            .ForMember(model => model.CalculatedPrice, options => options.Ignore())
+            .ForMember(model => model.ManualPrice, options => options.Ignore());
+
+        CreateMap<PriceListCustomerModel, PriceListCustomer>();
+        CreateMap<PriceListCustomer, PriceListCustomerModel>()
+            .ForMember(model => model.CustomerEmail, options => options.Ignore());
+    }
+
+    /// <summary>
     /// Create security maps 
     /// </summary>
     protected virtual void CreateSecurityMaps()
@@ -1489,6 +1531,7 @@ public partial class AdminMapperConfiguration : Profile, IOrderedMapperProfile
             .ForMember(model => model.ShowOnForgotPasswordPage_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.ShowOnCheckoutPageForGuests_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.ShowOnCheckGiftCardBalance_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.ShowOnWithdrawalForm_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.CaptchaType_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.ReCaptchaV3ScoreThreshold_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.CaptchaTypeValues, options => options.Ignore());

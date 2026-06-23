@@ -411,7 +411,7 @@ public static class ApplicationBuilderExtensions
         if (!DataSettingsManager.IsDatabaseInstalled())
             return;
 
-        application.UseMiddleware<AuthenticationMiddleware>();
+        application.UseAuthentication();
     }
 
     /// <summary>

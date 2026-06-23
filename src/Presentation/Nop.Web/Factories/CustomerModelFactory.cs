@@ -75,8 +75,8 @@ public partial class CustomerModelFactory : ICustomerModelFactory
     protected readonly IWorkContext _workContext;
     protected readonly MediaSettings _mediaSettings;
     protected readonly MessagesSettings _messagesSettings;
-    protected readonly OrderSettings _orderSettings;
     protected readonly OtpSettings _otpSettings;
+    protected readonly ReturnRequestSettings _returnRequestSettings;
     protected readonly RewardPointsSettings _rewardPointsSettings;
     protected readonly SecuritySettings _securitySettings;
     protected readonly TaxSettings _taxSettings;
@@ -121,8 +121,8 @@ public partial class CustomerModelFactory : ICustomerModelFactory
         IWorkContext workContext,
         MediaSettings mediaSettings,
         MessagesSettings messagesSettings,
-        OrderSettings orderSettings,
         OtpSettings otpSettings,
+        ReturnRequestSettings returnRequestSettings,
         RewardPointsSettings rewardPointsSettings,
         SecuritySettings securitySettings,
         TaxSettings taxSettings,
@@ -163,8 +163,8 @@ public partial class CustomerModelFactory : ICustomerModelFactory
         _workContext = workContext;
         _mediaSettings = mediaSettings;
         _messagesSettings = messagesSettings;
-        _orderSettings = orderSettings;
         _otpSettings = otpSettings;
+        _returnRequestSettings = returnRequestSettings;
         _rewardPointsSettings = rewardPointsSettings;
         _securitySettings = securitySettings;
         _taxSettings = taxSettings;
@@ -683,14 +683,16 @@ public partial class CustomerModelFactory : ICustomerModelFactory
         var store = await _storeContext.GetCurrentStoreAsync();
         var customer = await _workContext.GetCurrentCustomerAsync();
 
-        if (_orderSettings.ReturnRequestsEnabled &&
+        if (_returnRequestSettings.ReturnRequestsEnabled &&
             (await _returnRequestService.SearchReturnRequestsAsync(store.Id,
                 customer.Id, pageIndex: 0, pageSize: 1)).Any())
         {
             model.CustomerNavigationItems.Add(new CustomerNavigationItemModel
             {
                 RouteName = NopRouteNames.Standard.CUSTOMER_RETURN_REQUESTS,
-                Title = await _localizationService.GetResourceAsync("Account.CustomerReturnRequests"),
+                Title = _returnRequestSettings.UseEuWithdrawalLocales ?
+                    await _localizationService.GetResourceAsync("Account.CustomerReturnRequests.Withdrawals") :
+                    await _localizationService.GetResourceAsync("Account.CustomerReturnRequests"),
                 Tab = (int)CustomerNavigationEnum.ReturnRequests,
                 ItemClass = "return-requests"
             });
