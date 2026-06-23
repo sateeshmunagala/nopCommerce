@@ -912,8 +912,8 @@ public class CandidateFlowTests
 
         Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Recording"));
         Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.Recording"));
-        Assert.That(historyText, Does.Contain("Open recording"));
-        Assert.That(historyText, Does.Contain("Open report"));
+        Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.OpenRecording"));
+        Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.OpenReport"));
     }
 
     [Test]
@@ -1112,7 +1112,7 @@ public class CandidateFlowTests
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Relevancy"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Correctness"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Answer Score"));
-        Assert.That(myApplicationsText, Does.Contain("Question Count"));
+        Assert.That(myApplicationsText, Does.Contain("Plugins.Misc.AIInterview.Report.QuestionCount"));
         Assert.That(mockReportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
         Assert.That(reportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
         Assert.That(mockReportText, Does.Not.Contain("Q@turn.SequenceNumber"));

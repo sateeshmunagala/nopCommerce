@@ -8,120 +8,14 @@
     string sponsorToken = ViewBag.SponsorToken as string;
     string creditPurchasePageUrl = ViewBag.CreditPurchasePageUrl as string ?? "/pricing";
     string interviewError = Context?.Request?.Query["interviewError"].ToString();
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
 }
-
-<style>
-    .job-ai-panel {
-        display: grid;
-        gap: 22px;
-        padding: 28px;
-        border: 1px solid rgba(16, 24, 40, 0.08);
-        border-radius: 24px;
-        background: linear-gradient(180deg, #ffffff 0%, #fff8f1 100%);
-        box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
-    }
-
-    .job-ai-panel h2,
-    .job-ai-panel h3 {
-        margin: 0;
-        color: #162033;
-    }
-
-    .job-ai-lead {
-        margin: 0;
-        color: #667085;
-        line-height: 1.7;
-    }
-
-    .job-ai-grid {
-        display: grid;
-        gap: 18px;
-    }
-
-    .job-ai-card {
-        padding: 18px;
-        border: 1px solid rgba(16, 24, 40, 0.08);
-        border-radius: 18px;
-        background: #ffffff;
-    }
-
-    .job-ai-card label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: 600;
-        color: #162033;
-    }
-
-    .job-ai-card input[type="file"] {
-        width: 100%;
-    }
-
-    .job-ai-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        align-items: center;
-    }
-
-    .job-ai-actions .button-1,
-    .job-ai-actions .button-2 {
-        min-width: 180px;
-        border-radius: 999px;
-    }
-
-    .job-ai-actions .button-1 {
-        background: #0f5bd7;
-        color: #fff;
-    }
-
-    .job-ai-actions .button-2 {
-        background: #eef4ff;
-        color: #0f5bd7;
-        border: 1px solid #c9dafd;
-    }
-
-    .job-inline-message {
-        display: none;
-        padding: 14px 16px;
-        border-radius: 14px;
-        font-size: 14px;
-        line-height: 1.6;
-    }
-
-    .job-inline-message.is-visible {
-        display: block;
-    }
-
-    .job-inline-message.is-error {
-        background: #fef3f2;
-        color: #b42318;
-        border: 1px solid #fecdca;
-    }
-
-    .job-inline-message.is-success {
-        background: #ecfdf3;
-        color: #027a48;
-        border: 1px solid #abefc6;
-    }
-
-    .job-inline-message.is-info {
-        background: #eef4ff;
-        color: #0f5bd7;
-        border: 1px solid #c9dafd;
-    }
-
-    .job-ai-note {
-        margin: 0;
-        color: #667085;
-        font-size: 13px;
-    }
-</style>
 
 <div class="job-ai-panel ai-interview-product-details">
     <div class="job-ai-grid">
         <div>
             <h2>@T("Plugins.Misc.AIInterview.Interview.Title")</h2>
-            <p class="job-ai-lead">Apply for this role and start the mock interview directly from this page. Interview difficulty is now handled automatically in the backend.</p>
+            <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.ApplyPanel.Description")</p>
         </div>
 
         @if (hasSponsorCredits)
@@ -147,8 +41,8 @@
         @if (!isAuthenticated)
         {
             <div class="job-ai-card">
-                <p class="job-ai-lead">Sign in to apply and start the interview for this role.</p>
-                <a class="button-1" href="@Url.RouteUrl("Login")">Sign In</a>
+                <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
+                <a class="button-1" href="@Url.RouteUrl("Login")">@T("Account.Login")</a>
             </div>
         }
         else

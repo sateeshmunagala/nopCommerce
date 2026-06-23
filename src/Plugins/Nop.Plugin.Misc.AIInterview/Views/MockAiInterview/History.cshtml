@@ -2,6 +2,10 @@
 @using Nop.Web.Models.Customer
 @{
     Layout = "_ColumnsTwo";
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-history-page");
 }
 
 @section left
@@ -22,8 +26,8 @@
                         <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
                         <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
                         <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
-                        <th>Report</th>
-                        <th>Recording</th>
+                        <th>@T("Plugins.Misc.AIInterview.Report.Title")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Report.Recording")</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -31,12 +35,12 @@
                     {
                         <tr>
                             <td>@session.CreatedOnUtc.ToString("yyyy-MM-dd")</td>
-                            <td>@(session.CompletedOnUtc.HasValue ? "Completed" : "Active")</td>
+                            <td>@(session.CompletedOnUtc.HasValue ? T("Plugins.Misc.AIInterview.Status.Completed").Text : T("Plugins.Misc.AIInterview.Status.Active").Text)</td>
                             <td>@session.Score</td>
                             <td>
                                 @if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
                                 {
-                                    <a href="@Url.Action("Report", "AIInterview", new { sessionId = session.Id })">Open report</a>
+                                    <a href="@Url.Action("Report", "AIInterview", new { sessionId = session.Id })">@T("Plugins.Misc.AIInterview.Report.OpenReport")</a>
                                 }
                                 else
                                 {
@@ -46,7 +50,7 @@
                             <td>
                                 @if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.RecordingUrl))
                                 {
-                                    <a href="@Url.Action("Recording", "AIInterview", new { sessionId = session.Id })">Open recording</a>
+                                    <a href="@Url.Action("Recording", "AIInterview", new { sessionId = session.Id })">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>
                                 }
                                 else
                                 {

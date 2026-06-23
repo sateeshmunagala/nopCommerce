@@ -474,7 +474,7 @@ public class EmployerTests
         SetupVendorSpecificationAttributes();
         _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Product>(), string.Empty, "Platform Engineer", true))
             .ReturnsAsync("platform-engineer");
-        var applyUntil = new DateTime(2026, 6, 20);
+        var applyUntil = DateTime.UtcNow.Date.AddDays(7);
 
         await _controller.VendorJobCreation(new VendorJobModel
         {

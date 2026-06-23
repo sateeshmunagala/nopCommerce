@@ -3,26 +3,14 @@
 @{
     Layout = "_ColumnsOne";
     NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.Report.Title").Text);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-report-page");
     var categoryTurns = (Model.Turns ?? Enumerable.Empty<Nop.Plugin.Misc.AIInterview.Models.InterviewTurnViewModel>()).ToList();
     decimal? avgTechnical = categoryTurns.Any(x => x.TechnicalScore.HasValue) ? categoryTurns.Where(x => x.TechnicalScore.HasValue).Average(x => x.TechnicalScore.Value) : null;
     decimal? avgCommunication = categoryTurns.Any(x => x.CommunicationScore.HasValue) ? categoryTurns.Where(x => x.CommunicationScore.HasValue).Average(x => x.CommunicationScore.Value) : null;
     decimal? avgProfessionalism = categoryTurns.Any(x => x.ProfessionalismScore.HasValue) ? categoryTurns.Where(x => x.ProfessionalismScore.HasValue).Average(x => x.ProfessionalismScore.Value) : null;
     decimal? avgPositiveAttitude = categoryTurns.Any(x => x.PositiveAttitudeScore.HasValue) ? categoryTurns.Where(x => x.PositiveAttitudeScore.HasValue).Average(x => x.PositiveAttitudeScore.Value) : null;
 }
-
-<style>
-    .ai-report-wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 20px; }
-    .ai-report-hero, .ai-report-card, .ai-report-turn { background: #fff; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 18px; padding: 20px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05); }
-    .ai-report-hero h2, .ai-report-card h3 { margin: 0 0 12px; color: #162033; }
-    .ai-report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
-    .ai-report-stat { padding: 14px; border-radius: 14px; background: #f8fafc; border: 1px solid rgba(15, 23, 42, 0.08); }
-    .ai-report-stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #667085; margin-bottom: 6px; }
-    .ai-report-stat-value { font-size: 24px; font-weight: 700; color: #0f5bd7; }
-    .ai-report-turn { display: grid; gap: 10px; }
-    .ai-report-turn-title { font-weight: 700; color: #162033; }
-    .ai-report-answer, .ai-report-feedback, .report-data { white-space: pre-line; color: #334155; }
-    .ai-report-meta { display: flex; gap: 16px; flex-wrap: wrap; color: #667085; font-size: 13px; }
-</style>
 
 <div class="page ai-interview-report-page">
     <div class="page-title">
@@ -39,7 +27,7 @@
                     </div>
                     <div class="ai-report-stat">
                         <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Date")</div>
-                        <div class="ai-report-stat-value" style="font-size:16px;color:#162033;">@Model.CreatedOnUtc.ToString("g")</div>
+                        <div class="ai-report-stat-value is-muted">@Model.CreatedOnUtc.ToString("g")</div>
                     </div>
                     <div class="ai-report-stat">
                         <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Questions")</div>
@@ -47,7 +35,7 @@
                     </div>
                     <div class="ai-report-stat">
                         <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Recording")</div>
-                        <div class="ai-report-stat-value" style="font-size:16px;color:#162033;">
+                        <div class="ai-report-stat-value is-muted">
                             @if (!string.IsNullOrWhiteSpace(Model.RecordingUrl))
                             {
                                 <a href="@Model.RecordingUrl" target="_blank" rel="noopener">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>

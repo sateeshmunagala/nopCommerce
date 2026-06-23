@@ -3,6 +3,10 @@
 @{
     Layout = "_ColumnsTwo";
     NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.VendorScoreboard.Title").Text);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-vendor-scoreboard-page");
 }
 
 @section left

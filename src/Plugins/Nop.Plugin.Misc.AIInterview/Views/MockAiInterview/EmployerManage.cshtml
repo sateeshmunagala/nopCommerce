@@ -5,6 +5,10 @@
 
 @{
     Layout = "_ColumnsTwo";
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-employer-manage-page");
     var inviteStatuses = ViewBag.SponsorInviteStatuses as IDictionary<int, string> ?? new Dictionary<int, string>();
     var availableProducts = ViewBag.AvailableProducts as IList<SelectListItem> ?? new List<SelectListItem>();
 }

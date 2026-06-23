@@ -1,0 +1,838 @@
+/* AIInterview public/account UI. Scoped to plugin page classes. */
+.html-aiinterview-view-page .master-column-wrapper {
+    min-width: 0;
+}
+
+.html-aiinterview-view-page .page-body,
+.aiinterview-public-page .page-body,
+.ai-interview-report-page .page-body,
+.mock-report .page-body {
+    min-width: 0;
+}
+
+.aiinterview-public-page .page-body,
+.html-aiinterview-view-page .account-page .page-body,
+.html-aiinterview-view-page .page-body {
+    box-sizing: border-box;
+}
+
+.aiinterview-shell,
+.ai-applications-page,
+.employer-applications-page,
+.vendor-scoreboard-page,
+.vendor-job-creation-page,
+.vendor-account-page,
+.mock-history,
+.mock-start,
+.ai-interview-runtime-error-page {
+    min-width: 0;
+}
+
+.aiinterview-card,
+.applications-card,
+.report-preview,
+.ai-report-hero,
+.ai-report-card,
+.ai-report-turn,
+.mock-report-hero,
+.mock-report-card,
+.mock-report-turn,
+.job-ai-panel,
+.job-ai-card {
+    box-sizing: border-box;
+    border: 1px solid #dedede;
+    border-radius: 4px;
+    background: #ffffff;
+    box-shadow: none;
+}
+
+.applications-card,
+.ai-report-hero,
+.ai-report-card,
+.mock-report-hero,
+.mock-report-card,
+.job-ai-panel {
+    padding: 24px;
+}
+
+.aiinterview-public-page .page-title h1,
+.html-aiinterview-view-page .page-title h1,
+.ai-report-hero h2,
+.ai-report-card h3,
+.mock-report-hero h2,
+.mock-report-card h3,
+.job-ai-panel h2,
+.job-ai-panel h3 {
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-weight: 400;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.aiinterview-public-page .buttons,
+.html-aiinterview-view-page .buttons,
+.job-ai-actions,
+.employer-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.aiinterview-public-page .button-1,
+.aiinterview-public-page .button-2,
+.html-aiinterview-view-page .button-1,
+.html-aiinterview-view-page .button-2,
+.job-ai-actions .button-1,
+.job-ai-actions .button-2 {
+    border-radius: 0;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.aiinterview-public-page .button-1,
+.html-aiinterview-view-page .button-1,
+.job-ai-actions .button-1 {
+    border-color: var(--jb-accent, #35d6b4);
+    background: var(--jb-accent, #35d6b4);
+    color: #ffffff;
+}
+
+.aiinterview-public-page .button-2,
+.html-aiinterview-view-page .button-2,
+.job-ai-actions .button-2 {
+    border-color: #d5d5d5;
+    background: #f2f2f2;
+    color: #454c52;
+}
+
+.applications-toolbar,
+.results-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.applications-sort,
+.employer-field,
+.vendor-job-form-control {
+    min-width: 0;
+}
+
+.applications-sort select,
+.employer-field input,
+.employer-field select,
+.status-form input,
+.status-form select,
+.vendor-job-form-control input[type="text"],
+.vendor-job-form-control input[type="date"],
+.vendor-job-form-control input[type="number"],
+.vendor-job-form-control textarea,
+.vendor-job-form-control select,
+.mock-start select,
+.apply-job-page input[type="text"],
+.apply-job-page input[type="file"],
+.job-ai-card input[type="file"] {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-height: 42px;
+    border: 1px solid transparent;
+    border-radius: 0;
+    padding: 9px 12px;
+    background: #f0f0f0;
+    color: #626970;
+}
+
+.employer-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    gap: 16px 18px;
+    align-items: end;
+    margin-bottom: 18px;
+}
+
+.employer-field {
+    display: grid;
+    gap: 8px;
+}
+
+.status-form {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.vendor-job-form-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.vendor-job-form-row {
+    display: grid;
+    grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+    gap: 12px 18px;
+    align-items: start;
+}
+
+.vendor-job-form-row-top {
+    align-items: center;
+}
+
+.vendor-job-form-label {
+    padding-top: 10px;
+    color: #30363c;
+    font-family: "Fjalla One", Arial, sans-serif;
+    text-transform: uppercase;
+}
+
+.vendor-job-form-label label {
+    margin: 0;
+}
+
+.vendor-job-form-control textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.vendor-job-form-hint,
+.applications-footnote,
+.filter-summary,
+.page-size-wrap,
+.job-ai-note,
+.job-ai-lead {
+    color: #687078;
+    line-height: 1.55;
+}
+
+.vendor-job-form-checkbox-list {
+    display: grid;
+    gap: 10px;
+}
+
+.vendor-job-form-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.applications-table,
+.employer-table,
+.mock-history .history-table,
+.html-aiinterview-view-page .data-table {
+    width: 100%;
+    min-width: 680px;
+    border-collapse: collapse;
+}
+
+.applications-table th,
+.applications-table td,
+.employer-table th,
+.employer-table td,
+.mock-history .history-table th,
+.mock-history .history-table td,
+.html-aiinterview-view-page .data-table th,
+.html-aiinterview-view-page .data-table td {
+    border: 0;
+    border-bottom: 1px solid #e2e2e2;
+    padding: 12px;
+    text-align: left;
+    vertical-align: top;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.applications-table th,
+.employer-table th,
+.mock-history .history-table th,
+.html-aiinterview-view-page .data-table th {
+    background: #272d33;
+    color: #ffffff;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-view-page .table-wrapper,
+.applications-table-wrap,
+.mock-history .page-body {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.score-chip,
+.score-badge,
+.charge-pill,
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: #eefaf7;
+    color: #197f69;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.score-chip {
+    min-width: 40px;
+    min-height: 40px;
+}
+
+.status-pill {
+    background: #f5fbf9;
+}
+
+.report-preview {
+    margin-top: 12px;
+    padding: 18px;
+    background: #fafafa;
+}
+
+.report-metrics,
+.ai-report-grid,
+.mock-report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.report-metric,
+.ai-report-stat,
+.mock-report-stat {
+    border: 1px solid #dedede;
+    border-radius: 4px;
+    padding: 14px;
+    background: #fafafa;
+}
+
+.report-metric-label,
+.ai-report-stat-label,
+.mock-report-stat-label {
+    margin-bottom: 6px;
+    color: #687078;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+}
+
+.report-metric-value,
+.ai-report-stat-value,
+.mock-report-stat-value {
+    color: var(--jb-accent-dark, #24b99a);
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.35rem;
+}
+
+.ai-report-stat-value.is-muted,
+.mock-report-stat-value.is-muted {
+    color: #20252b;
+    font-size: 1rem;
+}
+
+.ai-report-wrap,
+.mock-report-wrap {
+    display: grid;
+    max-width: 980px;
+    margin: 0 auto;
+    gap: 20px;
+}
+
+.ai-report-turn,
+.mock-report-turn,
+.ai-turn-card {
+    display: grid;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 14px;
+}
+
+.ai-report-answer,
+.ai-report-feedback,
+.mock-report-answer,
+.mock-report-feedback,
+.report-data,
+.report-copy,
+.ai-turn-card {
+    color: #334155;
+    line-height: 1.6;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.ai-report-meta,
+.mock-report-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    color: #667085;
+    font-size: 0.85rem;
+}
+
+.job-ai-panel {
+    display: grid;
+    gap: 18px;
+    border-left: 2px solid var(--jb-accent, #35d6b4);
+}
+
+.job-ai-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.job-ai-card {
+    padding: 18px;
+    background: #fafafa;
+}
+
+.job-ai-actions {
+    margin-top: 14px;
+}
+
+.job-inline-message {
+    display: none;
+    border: 1px dashed #cfcfcf;
+    padding: 14px 16px;
+    line-height: 1.55;
+}
+
+.job-inline-message.is-visible {
+    display: block;
+}
+
+.job-inline-message.is-error {
+    border-color: #e3b4b4;
+    background: #fff4f4;
+    color: #9f3535;
+}
+
+.job-inline-message.is-success {
+    border-color: #b9ded4;
+    background: #eefaf7;
+    color: #197f69;
+}
+
+.job-inline-message.is-info {
+    border-color: #cfcfcf;
+    background: #fafafa;
+    color: #454c52;
+}
+
+.mock-start .page-body,
+.ai-interview-runtime-error-page .page-body,
+.apply-job-page .page-body,
+.aiinterview-index-page .page-body {
+    box-sizing: border-box;
+    max-width: 900px;
+    margin: 0 auto;
+    border-left: 2px solid var(--jb-accent, #35d6b4);
+    padding: 28px;
+    background: #ffffff;
+}
+
+.mock-start form,
+.apply-job-page form {
+    display: grid;
+    gap: 16px;
+}
+
+.aiinterview-success-message {
+    border-color: #b9ded4;
+    background: #eefaf7;
+    color: #197f69;
+}
+
+.aiinterview-hidden {
+    display: none;
+}
+
+@media (max-width: 1000px) {
+    .employer-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .vendor-job-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .vendor-job-form-label {
+        padding-top: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .applications-card,
+    .ai-report-hero,
+    .ai-report-card,
+    .mock-report-hero,
+    .mock-report-card,
+    .job-ai-panel,
+    .mock-start .page-body,
+    .ai-interview-runtime-error-page .page-body,
+    .apply-job-page .page-body,
+    .aiinterview-index-page .page-body {
+        padding: 16px;
+    }
+
+    .employer-filter-grid,
+    .report-metrics,
+    .ai-report-grid,
+    .mock-report-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aiinterview-public-page .buttons,
+    .html-aiinterview-view-page .buttons,
+    .job-ai-actions,
+    .employer-filter-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .aiinterview-public-page .button-1,
+    .aiinterview-public-page .button-2,
+    .html-aiinterview-view-page .button-1,
+    .html-aiinterview-view-page .button-2,
+    .job-ai-actions .button-1,
+    .job-ai-actions .button-2 {
+        width: 100%;
+    }
+}
+
+/* Product job detail layout moved from Razor. */
+    .job-details-page {
+        --job-bg: #f5f7fb;
+        --job-card: #ffffff;
+        --job-border: #dbe3ef;
+        --job-text: #132238;
+        --job-muted: #5f6f85;
+        --job-primary: #0f5bd7;
+        --job-primary-strong: #0b47a8;
+        --job-secondary: #eef4ff;
+        --job-shadow: 0 18px 40px rgba(15, 35, 64, 0.08);
+    }
+
+    .job-details-page .page-body {
+        display: grid;
+        gap: 28px;
+    }
+
+    .job-shell {
+        display: grid;
+        gap: 24px;
+    }
+
+    .job-shell .button-1,
+    .job-shell .button-2,
+    .job-shell button,
+    .job-shell .btn {
+        border: 0;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .job-shell .button-1,
+    .job-shell .btn-primary {
+        background: var(--job-primary);
+        color: #fff;
+        box-shadow: 0 10px 24px rgba(15, 91, 215, 0.18);
+    }
+
+    .job-shell .button-1:hover,
+    .job-shell .btn-primary:hover {
+        background: var(--job-primary-strong);
+    }
+
+    .job-shell .button-2,
+    .job-shell .btn-secondary {
+        background: var(--job-secondary);
+        color: var(--job-primary);
+        border: 1px solid #c9dafd;
+    }
+
+    .job-shell .button-2:hover,
+    .job-shell .btn-secondary:hover {
+        background: #dfeafe;
+    }
+
+    .job-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(330px, 420px);
+        gap: 28px;
+        padding: 32px;
+        border: 1px solid var(--job-border);
+        border-radius: 28px;
+        background: linear-gradient(180deg, #ffffff 0%, var(--job-bg) 100%);
+        box-shadow: var(--job-shadow);
+    }
+
+    .job-hero-copy,
+    .job-main {
+        display: grid;
+        gap: 20px;
+    }
+
+    .job-kicker {
+        display: inline-flex;
+        width: fit-content;
+        padding: 7px 14px;
+        border-radius: 999px;
+        background: #e8f0ff;
+        color: var(--job-primary);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .job-company {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        width: fit-content;
+        padding: 12px 16px;
+        border: 1px solid var(--job-border);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 12px 28px rgba(15, 35, 64, 0.06);
+    }
+
+    .job-company-logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+        object-fit: cover;
+        border: 1px solid var(--job-border);
+        background: #fff;
+    }
+
+    .job-company-label {
+        margin-bottom: 4px;
+        color: var(--job-muted);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .job-company-name {
+        color: var(--job-text);
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .job-title h1 {
+        margin: 0;
+        color: var(--job-text);
+        font-size: clamp(34px, 4vw, 50px);
+        line-height: 1.08;
+    }
+
+    .job-summary {
+        margin: 0;
+        color: var(--job-muted);
+        font-size: 17px;
+        line-height: 1.8;
+    }
+
+    .job-overview-meta,
+    .job-action-links,
+    .job-skills,
+    .job-meta-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .job-pill,
+    .job-action-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border: 1px solid var(--job-border);
+        border-radius: 14px;
+        background: #fff;
+        color: var(--job-text);
+        text-decoration: none;
+    }
+
+    .job-action-link {
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .job-action-link:hover {
+        border-color: #b8cdf7;
+        color: var(--job-primary);
+    }
+
+    .job-action-link.is-saved {
+        background: #ecfdf3;
+        border-color: #abefc6;
+        color: #027a48;
+    }
+
+    .job-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .job-fact,
+    .job-card,
+    .job-reviews-wrap {
+        padding: 24px;
+        border: 1px solid var(--job-border);
+        border-radius: 24px;
+        background: var(--job-card);
+        box-shadow: var(--job-shadow);
+    }
+
+    .job-fact-label {
+        margin-bottom: 8px;
+        color: var(--job-muted);
+        font-size: 14px;
+    }
+
+    .job-fact-value {
+        color: var(--job-text);
+        font-size: 30px;
+        font-weight: 700;
+    }
+
+    .job-fact-value.small {
+        font-size: 20px;
+    }
+
+    .job-meta-item {
+        min-width: 180px;
+        padding: 16px 18px;
+        border: 1px solid var(--job-border);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 12px 28px rgba(15, 35, 64, 0.06);
+    }
+
+    .job-meta-item .job-fact-label {
+        margin-bottom: 6px;
+    }
+
+    .job-section-title {
+        margin: 0 0 14px;
+        color: var(--job-text);
+        font-size: 28px;
+    }
+
+    .job-card p,
+    .job-card li {
+        color: var(--job-text);
+        line-height: 1.8;
+    }
+
+    .job-card ul {
+        margin: 0;
+        padding-left: 22px;
+    }
+
+    .job-skills span {
+        display: inline-flex;
+        padding: 9px 14px;
+        border-radius: 999px;
+        background: #edf3ff;
+        color: var(--job-primary-strong);
+        font-weight: 600;
+    }
+
+    .job-content-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.9fr);
+        gap: 24px;
+    }
+
+    .job-spec-groups {
+        display: grid;
+        gap: 18px;
+    }
+
+    .job-spec-group {
+        display: grid;
+        gap: 12px;
+    }
+
+    .job-spec-group-name {
+        color: var(--job-text);
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .job-spec-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+    }
+
+    .job-spec-item {
+        padding: 16px 18px;
+        border: 1px solid var(--job-border);
+        border-radius: 18px;
+        background: #f9fbff;
+    }
+
+    .job-spec-label {
+        margin-bottom: 8px;
+        color: var(--job-muted);
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .job-spec-value {
+        color: var(--job-text);
+        line-height: 1.7;
+    }
+
+    .job-spec-value .attribute-squares {
+        margin-top: 4px;
+    }
+
+    .job-reviews-wrap .product-reviews {
+        padding: 0;
+        border: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    .job-review-overview {
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
+    @media (max-width: 1080px) {
+        .job-hero,
+        .job-content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .job-hero,
+        .job-fact,
+        .job-card,
+        .job-reviews-wrap {
+            padding: 20px;
+        }
+
+        .job-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+

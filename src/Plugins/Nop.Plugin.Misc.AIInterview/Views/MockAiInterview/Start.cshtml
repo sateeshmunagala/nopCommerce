@@ -1,8 +1,18 @@
 @{
     Layout = "_ColumnsTwo";
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-mock-start-page");
     var sponsorToken = Context.Request.Query["sponsorToken"].ToString();
     var productId = Context.Request.Query["productId"].ToString();
 }
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MyApplicationsNavigationTab })
+}
+
 <div class="page mock-start">
     <div class="page-title">
         <h1>@T("Plugins.Misc.AIInterview.Index.StartInterview.Title")</h1>
@@ -10,7 +20,7 @@
     <div class="page-body">
         @if (!string.IsNullOrEmpty(sponsorToken))
         {
-            <div class="message-error" style="background-color: #dff0d8; color: #3c763d; border-color: #d6e9c6; padding: 15px; margin-bottom: 20px;">
+            <div class="message-error aiinterview-success-message">
                 @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
             </div>
         }
@@ -26,7 +36,7 @@
             </select>
             <button id="start-mock-btn" type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
         </form>
-        <div id="start-mock-error" class="message-error" style="display:none"></div>
+        <div id="start-mock-error" class="message-error aiinterview-hidden"></div>
     </div>
 </div>
 

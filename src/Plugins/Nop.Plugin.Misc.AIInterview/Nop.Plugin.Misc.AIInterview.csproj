@@ -22,6 +22,7 @@
     <Compile Remove="AI_ReferenceFiles\**\*" />
     <Content Remove="AI_ReferenceFiles\**\*" />
     <None Remove="AI_ReferenceFiles\**\*" />
+    <None Remove="Content\css\aiinterview-public.css" />
     <None Remove="logo.png" />
     <None Remove="plugin.json" />
     <None Remove="Views\_ViewImports.cshtml" />
@@ -51,6 +52,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Content\css\aiinterview-public.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="logo.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
