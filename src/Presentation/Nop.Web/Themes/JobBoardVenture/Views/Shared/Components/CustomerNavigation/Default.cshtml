@@ -1,0 +1,28 @@
+@model CustomerNavigationModel
+
+<div class="jb-account-nav-shell">
+    <button class="jb-account-nav-toggle" type="button" aria-expanded="false" aria-controls="jb-account-navigation">
+        @T("Account.Navigation")
+    </button>
+    <div class="jb-account-nav-overlay" aria-hidden="true"></div>
+    <section class="block block-account-navigation jb-account-nav" id="jb-account-navigation" aria-hidden="false">
+        <header class="jb-account-nav-header">
+            <h2 class="title">
+                @T("Account.Navigation")
+            </h2>
+            <button class="jb-account-nav-close" type="button" aria-label="@T("Common.Close")">&times;</button>
+        </header>
+        <div class="listbox">
+            <ul class="list">
+                @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.AccountNavigationBefore, additionalData = Model })
+                @foreach (var item in Model.CustomerNavigationItems)
+                {
+                    <li class="@item.ItemClass @(Model.SelectedTab == item.Tab ? "active" : "inactive")">
+                        <a href="@Url.RouteUrl(item.RouteName)">@(item.Title)</a>
+                    </li>
+                }
+                @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.AccountNavigationAfter, additionalData = Model })
+            </ul>
+        </div>
+    </section>
+</div>

@@ -6,58 +6,51 @@
 @{
     Layout = "_ColumnsOne";
 
-    var homepageTitle = await localizationService.GetLocalizedAsync(await storeContext.GetCurrentStoreAsync(), s => s.HomepageTitle);
+    var currentStore = await storeContext.GetCurrentStoreAsync();
+    var homepageTitle = await localizationService.GetLocalizedAsync(currentStore, s => s.HomepageTitle);
 
-    //title
     if (!string.IsNullOrEmpty(homepageTitle))
     {
         NopHtml.AddTitleParts(homepageTitle);
     }
 
-    var homepageDescription = await localizationService.GetLocalizedAsync(await storeContext.GetCurrentStoreAsync(), s => s.HomepageDescription);
+    var homepageDescription = await localizationService.GetLocalizedAsync(currentStore, s => s.HomepageDescription);
 
-    //meta
     if (!string.IsNullOrEmpty(homepageDescription))
     {
         NopHtml.AddMetaDescriptionParts(homepageDescription);
     }
 
-    //page class
     NopHtml.AppendPageCssClassParts("html-home-page");
 }
 <div class="page home-page">
     <div class="page-body">
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop })
-
         <div class="jb-home-hero">
-            <div class="jb-home-hero-content">
-                <h1>
-                    <span>Find better jobs.</span>
-                    <span>Apply smarter.</span>
-                    <span>Interview with AI.</span>
-                </h1>
-                <p>Explore thousands of job opportunities and use our integrated AI interviews to stand out from the crowd.</p>
-                <div class="jb-home-cta">
-                    <form asp-route="@NopRouteNames.General.SEARCH" method="get" class="jb-home-search-form">
-                        <input type="text" class="search-box-text" name="q" placeholder="Search for jobs..." aria-label="Search for jobs" />
-                        <button type="submit" class="search-box-button">Search</button>
-                    </form>
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop })
+
+            <div class="jb-home-hero-shell">
+                <div class="jb-home-hero-content">
+                    <div class="jb-home-hero-brand">
+                        <span class="jb-brand-mark" aria-hidden="true"></span>
+                        <h1 class="jb-home-store-name">@currentStore.Name</h1>
+                    </div>
+                    <div class="jb-home-hero-topic">
+                        @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageText" })
+                    </div>
+                    <div class="jb-home-hero-search">
+                        <form asp-route="@NopRouteNames.General.SEARCH" method="get" class="jb-home-search-form">
+                            <input type="text" class="search-box-text" name="q" placeholder="@T("Search.SearchBox.Tooltip")" aria-label="@T("Search.SearchBox.Text.Label")" />
+                            <button type="submit" class="search-box-button">@T("Search.Button")</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
 
-        @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageText" })
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories })
 
         <div class="jb-home-filters">
             @await Component.InvokeAsync(typeof(FilterLevelValueSearchViewComponent))
-        </div>
-
-        <div class="jb-ai-value-band">
-            <div class="jb-ai-value-band-content">
-                <h2>AI Interview Ready</h2>
-                <p>Complete mock interviews and prepare for your next big role with our built-in AI platform.</p>
-            </div>
         </div>
 
         <div class="jb-home-native-components">
