@@ -1,7 +1,6 @@
 @model Nop.Web.Models.Catalog.ProductDetailsModel
 @using Nop.Core.Domain.Catalog
 @using Nop.Core.Domain.Orders
-@using Nop.Core.Domain.Seo
 @using Nop.Core
 @using Nop.Core.Http
 @using Nop.Services.Helpers
@@ -14,7 +13,6 @@
 @inject Nop.Plugin.Misc.AIInterview.Services.IApplicationService applicationService
 @inject IHtmlFormatter htmlFormatter
 @inject IWebHelper webHelper
-@inject SeoSettings seoSettings
 @inject IWorkContext workContext
 @inject IStoreContext storeContext
 @inject IShoppingCartService shoppingCartService
@@ -26,6 +24,7 @@
     bool hasSponsorCredits = ViewBag.HasSponsorCredits != null && (bool)ViewBag.HasSponsorCredits;
     bool isAuthenticated = ViewBag.IsAuthenticated != null && (bool)ViewBag.IsAuthenticated;
     bool alreadyApplied = ViewBag.AlreadyApplied != null && (bool)ViewBag.AlreadyApplied;
+    bool renderFullJobShell = ViewBag.RenderFullJobShell != null && (bool)ViewBag.RenderFullJobShell;
     int productId = ViewBag.ProductId != null ? (int)ViewBag.ProductId : 0;
     string sponsorToken = ViewBag.SponsorToken as string;
     string creditPurchasePageUrl = ViewBag.CreditPurchasePageUrl as string ?? "/pricing";
@@ -33,6 +32,13 @@
     string customWishlistId = webHelper.QueryString<string>("customwishlistid");
     string panelKey = Guid.NewGuid().ToString("N");
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+
+    if (renderFullJobShell)
+    {
+        NopHtml.AppendPageCssClassParts("html-job-details-page");
+        NopHtml.AppendPageCssClassParts("html-aiinterview-job-details-page");
+        NopHtml.AppendPageCssClassParts("html-aiinterview-job-details-fallback-page");
+    }
 
     var specificationGroups = Model.ProductSpecificationModel?.Groups
         ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeGroupModel>();
@@ -149,79 +155,80 @@
             }
         }
     }
+
+    var resumeInputId = $"job-resume-file-{panelKey}";
 }
 
-@{
-    var standaloneResumeInputId = $"job-resume-file-{panelKey}-standalone";
-    var fallbackResumeInputId = $"job-resume-file-{panelKey}-fallback";
-}
-<div class="job-ai-panel-standalone" data-aiinterview-standalone-panel>
-    <div class="job-ai-panel job-ai-surface" data-aiinterview-panel data-aiinterview-instance="@($"{panelKey}-standalone")" data-product-id="@productId">
-        <div class="job-ai-grid">
-            <div>
-                <h2>@T("Plugins.Misc.AIInterview.Interview.Title")</h2>
-                <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.ApplyPanel.Description")</p>
-            </div>
+@if (!renderFullJobShell)
+{
+    <div class="job-ai-panel-standalone" data-aiinterview-standalone-panel>
+        <div class="job-ai-panel job-ai-surface" data-aiinterview-panel data-aiinterview-instance="@panelKey" data-product-id="@productId">
+            <div class="job-ai-grid">
+                <div>
+                    <h2>@T("Plugins.Misc.AIInterview.Interview.Title")</h2>
+                    <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.ApplyPanel.Description")</p>
+                </div>
 
-            @if (hasSponsorCredits)
-            {
-                <div class="job-inline-message is-visible is-success">
-                    @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
-                </div>
-            }
-            else if (string.Equals(interviewError, "expired", StringComparison.OrdinalIgnoreCase))
-            {
-                <div class="job-inline-message is-visible is-error">
-                    @T("Plugins.Misc.AIInterview.Runtime.Error.ExpiredLink")
-                </div>
-            }
-            else if (!hasCredits)
-            {
-                <div class="job-inline-message is-visible is-error">
-                    @T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits")
-                    <a href="@creditPurchasePageUrl">@T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits.Link")</a>
-                </div>
-            }
-
-            @if (!isAuthenticated)
-            {
-                <div class="job-ai-card">
-                    <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
-                    <a class="button-1" href="@Url.RouteUrl("Login")">@T("Account.Login")</a>
-                </div>
-            }
-            else
-            {
-                @if (alreadyApplied)
+                @if (hasSponsorCredits)
                 {
-                    <div class="job-inline-message is-visible is-info">
-                        @T("Plugins.Misc.AIInterview.Apply.AlreadyApplied")
+                    <div class="job-inline-message is-visible is-success">
+                        @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
+                    </div>
+                }
+                else if (string.Equals(interviewError, "expired", StringComparison.OrdinalIgnoreCase))
+                {
+                    <div class="job-inline-message is-visible is-error">
+                        @T("Plugins.Misc.AIInterview.Runtime.Error.ExpiredLink")
+                    </div>
+                }
+                else if (!hasCredits)
+                {
+                    <div class="job-inline-message is-visible is-error">
+                        @T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits")
+                        <a href="@creditPurchasePageUrl">@T("Plugins.Misc.AIInterview.Runtime.Error.NoCredits.Link")</a>
                     </div>
                 }
 
-                <div class="job-ai-card">
-                    <h3>@T("Plugins.Misc.AIInterview.Apply.Title")</h3>
-                    <div data-ai-apply-panel>
-                        <input type="hidden" name="ProductId" value="@productId" />
-                        <input type="hidden" name="JobTitle" value="@Model.Name" />
-                        <label for="@standaloneResumeInputId">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
-                        <input id="@standaloneResumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
-                        <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
-                        <div class="job-ai-actions">
-                            <button type="button" class="button-1 apply-btn" data-ai-apply-button @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
-                            <button type="button" class="button-2 start-interview-btn" data-ai-start-button data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                @if (!isAuthenticated)
+                {
+                    <div class="job-ai-card">
+                        <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
+                        <a class="button-1" href="@Url.RouteUrl("Login")">@T("Account.Login")</a>
+                    </div>
+                }
+                else
+                {
+                    @if (alreadyApplied)
+                    {
+                        <div class="job-inline-message is-visible is-info">
+                            @T("Plugins.Misc.AIInterview.Apply.AlreadyApplied")
+                        </div>
+                    }
+
+                    <div class="job-ai-card">
+                        <h3>@T("Plugins.Misc.AIInterview.Apply.Title")</h3>
+                        <div data-ai-apply-panel>
+                            <input type="hidden" name="ProductId" value="@productId" />
+                            <input type="hidden" name="JobTitle" value="@Model.Name" />
+                            <label for="@resumeInputId">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
+                            <input id="@resumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                            <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
+                            <div class="job-ai-actions">
+                                <button type="button" class="button-1 apply-btn" data-ai-apply-button @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                                <button type="button" class="button-2 start-interview-btn" data-ai-start-button data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div data-ai-feedback class="job-inline-message" role="status" aria-live="polite"></div>
-            }
+                    <div data-ai-feedback class="job-inline-message" role="status" aria-live="polite"></div>
+                }
+            </div>
         </div>
     </div>
-</div>
-
-<template data-aiinterview-fallback-shell-template>
-    <article data-productid="@Model.Id" class="job-shell" data-aiinterview-fallback-shell>
+}
+else
+{
+    <article data-productid="@Model.Id" class="job-shell aiinterview-server-fallback-shell" data-aiinterview-fallback-shell>
         <section class="job-hero">
             <div class="job-hero-copy">
                 <span class="job-kicker">AI Interview Role</span>
@@ -292,7 +299,7 @@
             </div>
 
             <div>
-                <div class="job-ai-panel job-ai-panel-inline job-ai-surface" data-aiinterview-panel data-aiinterview-instance="@($"{panelKey}-fallback")" data-product-id="@productId">
+                <div class="job-ai-panel job-ai-surface" data-aiinterview-panel data-aiinterview-instance="@panelKey" data-product-id="@productId">
                     <div class="job-ai-grid">
                         <div>
                             <h2>@T("Plugins.Misc.AIInterview.Interview.Title")</h2>
@@ -340,8 +347,8 @@
                                 <div data-ai-apply-panel>
                                     <input type="hidden" name="ProductId" value="@productId" />
                                     <input type="hidden" name="JobTitle" value="@Model.Name" />
-                                    <label for="@fallbackResumeInputId">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
-                                    <input id="@fallbackResumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                                    <label for="@resumeInputId">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
+                                    <input id="@resumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
                                     <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
                                     <div class="job-ai-actions">
                                         <button type="button" class="button-1 apply-btn" data-ai-apply-button @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
@@ -464,7 +471,93 @@
             </div>
         }
     </article>
-</template>
+}
+
+<script asp-location="Footer">
+    (() => {
+        const wireJobActions = container => {
+            if (!container || container.dataset.jobActionsBound === 'true')
+                return;
+
+            container.dataset.jobActionsBound = 'true';
+            const saveButton = container.querySelector('[data-job-save-button]');
+            const customWishlistButton = container.querySelector('[data-job-custom-wishlist-button]');
+            const shareButton = container.querySelector('[data-share-job-button]');
+
+            saveButton?.addEventListener('click', () => {
+                window.__jobSavePending = true;
+                AjaxCart.addproducttocart_details(saveButton.dataset.url, '#product-details-form');
+                return false;
+            });
+
+            customWishlistButton?.addEventListener('click', () => {
+                if (customWishlistButton.disabled) {
+                    displayBarNotification('Save the job first, then choose a custom wishlist.', 'warning', 3500);
+                    return false;
+                }
+
+                showMoveToWishlistModal(@Model.Id);
+                return false;
+            });
+
+            shareButton?.addEventListener('click', async () => {
+                const shareUrl = shareButton.dataset.shareUrl;
+                const shareTitle = shareButton.dataset.shareTitle;
+
+                if (navigator.share) {
+                    try {
+                        await navigator.share({ title: shareTitle, url: shareUrl });
+                        return;
+                    } catch {
+                    }
+                }
+
+                if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(shareUrl);
+                    shareButton.textContent = 'Link copied';
+                    window.setTimeout(() => shareButton.textContent = 'Share job', 1800);
+                    return;
+                }
+
+                window.prompt('Copy this job link', shareUrl);
+            });
+        };
+
+        document.addEventListener('click', event => {
+            const delegatedButton = event.target.closest?.('[data-start-interview-button], [data-ai-apply-button]');
+            if (!delegatedButton)
+                return;
+        });
+
+        if (window.AjaxCart && !window.__jobWishlistHooked) {
+            const originalSuccess = AjaxCart.success_process;
+            AjaxCart.success_process = function(response) {
+                const result = originalSuccess.call(this, response);
+                if (window.__jobSavePending && response && response.success === true) {
+                    document.querySelectorAll('[data-aiinterview-fallback-shell]').forEach(container => {
+                        const saveButton = container.querySelector('[data-job-save-button]');
+                        const customWishlistButton = container.querySelector('[data-job-custom-wishlist-button]');
+                        if (!saveButton)
+                            return;
+
+                        saveButton.textContent = saveButton.dataset.savedText || 'Saved job';
+                        saveButton.classList.add('is-saved');
+                        saveButton.disabled = true;
+
+                        if (customWishlistButton)
+                            customWishlistButton.disabled = false;
+                    });
+                }
+
+                window.__jobSavePending = false;
+                return result;
+            };
+            window.__jobWishlistHooked = true;
+        }
+
+        document.querySelectorAll('[data-aiinterview-fallback-shell]').forEach(wireJobActions);
+    })();
+</script>
 
 @if (isAuthenticated)
 {
@@ -575,180 +668,7 @@
                 });
             };
 
-            const markSaved = container => {
-                const saveButton = container?.querySelector('[data-job-save-button]');
-                const customWishlistButton = container?.querySelector('[data-job-custom-wishlist-button]');
-                if (!saveButton)
-                    return;
-
-                saveButton.textContent = saveButton.dataset.savedText || 'Saved job';
-                saveButton.classList.add('is-saved');
-                saveButton.disabled = true;
-
-                if (customWishlistButton)
-                    customWishlistButton.disabled = false;
-            };
-
-            const wireJobActions = container => {
-                if (!container || container.dataset.jobActionsBound === 'true')
-                    return;
-
-                container.dataset.jobActionsBound = 'true';
-                const saveButton = container.querySelector('[data-job-save-button]');
-                const customWishlistButton = container.querySelector('[data-job-custom-wishlist-button]');
-                const shareButton = container.querySelector('[data-share-job-button]');
-
-                saveButton?.addEventListener('click', () => {
-                    window.__jobSavePending = true;
-                    AjaxCart.addproducttocart_details(saveButton.dataset.url, '#product-details-form');
-                    return false;
-                });
-
-                customWishlistButton?.addEventListener('click', () => {
-                    if (customWishlistButton.disabled) {
-                        displayBarNotification('Save the job first, then choose a custom wishlist.', 'warning', 3500);
-                        return false;
-                    }
-
-                    showMoveToWishlistModal(@Model.Id);
-                    return false;
-                });
-
-                shareButton?.addEventListener('click', async () => {
-                    const shareUrl = shareButton.dataset.shareUrl;
-                    const shareTitle = shareButton.dataset.shareTitle;
-
-                    if (navigator.share) {
-                        try {
-                            await navigator.share({ title: shareTitle, url: shareUrl });
-                            return;
-                        } catch {
-                        }
-                    }
-
-                    if (navigator.clipboard) {
-                        await navigator.clipboard.writeText(shareUrl);
-                        shareButton.textContent = 'Link copied';
-                        window.setTimeout(() => shareButton.textContent = 'Share job', 1800);
-                        return;
-                    }
-
-                    window.prompt('Copy this job link', shareUrl);
-                });
-            };
-
-            const upgradeNativeJobTemplate = () => {
-                const template = document.querySelector('[data-aiinterview-fallback-shell-template]');
-                const article = document.querySelector('#product-details-form > article');
-                const productEssential = article?.querySelector('.product-essential');
-
-                if (!template || !article || !productEssential || document.documentElement.classList.contains('html-aiinterview-job-details-page'))
-                    return;
-
-                const fragment = template.content.cloneNode(true);
-                const shell = fragment.querySelector('[data-aiinterview-fallback-shell]');
-                if (!shell)
-                    return;
-
-                article.prepend(fragment);
-                document.documentElement.classList.add('html-job-details-page', 'html-aiinterview-job-details-page');
-                document.body.classList.add('aiinterview-job-template-upgraded');
-                article.classList.add('aiinterview-native-job-hidden');
-
-                wireAiPanel(article.querySelector('[data-aiinterview-instance$="-fallback"]'));
-                wireJobActions(article.querySelector('[data-aiinterview-fallback-shell]'));
-            };
-
-            document.addEventListener('click', event => {
-                const delegatedButton = event.target.closest?.('[data-start-interview-button], [data-ai-apply-button]');
-                if (!delegatedButton)
-                    return;
-            });
-
             document.querySelectorAll('[data-aiinterview-panel]').forEach(wireAiPanel);
-            document.querySelectorAll('[data-aiinterview-fallback-shell]').forEach(wireJobActions);
-            upgradeNativeJobTemplate();
-
-            if (window.AjaxCart && !window.__jobWishlistHooked) {
-                const originalSuccess = AjaxCart.success_process;
-                AjaxCart.success_process = function(response) {
-                    const result = originalSuccess.call(this, response);
-                    if (window.__jobSavePending && response && response.success === true) {
-                        document.querySelectorAll('[data-aiinterview-fallback-shell]').forEach(markSaved);
-                    }
-
-                    window.__jobSavePending = false;
-                    return result;
-                };
-                window.__jobWishlistHooked = true;
-            }
-        })();
-    </script>
-}
-else
-{
-    <script asp-location="Footer">
-        (() => {
-            const wireJobActions = container => {
-                if (!container || container.dataset.jobActionsBound === 'true')
-                    return;
-
-                container.dataset.jobActionsBound = 'true';
-                const shareButton = container.querySelector('[data-share-job-button]');
-                const saveButton = container.querySelector('[data-job-save-button]');
-                const customWishlistButton = container.querySelector('[data-job-custom-wishlist-button]');
-
-                saveButton?.addEventListener('click', () => {
-                    window.__jobSavePending = true;
-                    AjaxCart.addproducttocart_details(saveButton.dataset.url, '#product-details-form');
-                    return false;
-                });
-
-                customWishlistButton?.addEventListener('click', () => {
-                    if (customWishlistButton.disabled) {
-                        displayBarNotification('Save the job first, then choose a custom wishlist.', 'warning', 3500);
-                        return false;
-                    }
-
-                    showMoveToWishlistModal(@Model.Id);
-                    return false;
-                });
-
-                shareButton?.addEventListener('click', async () => {
-                    const shareUrl = shareButton.dataset.shareUrl;
-                    const shareTitle = shareButton.dataset.shareTitle;
-
-                    if (navigator.share) {
-                        try {
-                            await navigator.share({ title: shareTitle, url: shareUrl });
-                            return;
-                        } catch {
-                        }
-                    }
-
-                    if (navigator.clipboard) {
-                        await navigator.clipboard.writeText(shareUrl);
-                        shareButton.textContent = 'Link copied';
-                        window.setTimeout(() => shareButton.textContent = 'Share job', 1800);
-                        return;
-                    }
-
-                    window.prompt('Copy this job link', shareUrl);
-                });
-            };
-
-            const template = document.querySelector('[data-aiinterview-fallback-shell-template]');
-            const article = document.querySelector('#product-details-form > article');
-            const productEssential = article?.querySelector('.product-essential');
-
-            if (!template || !article || !productEssential || document.documentElement.classList.contains('html-aiinterview-job-details-page'))
-                return;
-
-            article.prepend(template.content.cloneNode(true));
-            document.documentElement.classList.add('html-job-details-page', 'html-aiinterview-job-details-page');
-            document.body.classList.add('aiinterview-job-template-upgraded');
-            article.classList.add('aiinterview-native-job-hidden');
-            wireJobActions(article.querySelector('[data-aiinterview-fallback-shell]'));
         })();
     </script>
 }

@@ -65,6 +65,8 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
             !string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase))
             return Content("");
 
+        var isFullJobTemplate = HttpContext?.Items?.ContainsKey("AIInterview.FullJobTemplate") == true;
+
         await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
         await EnsureDifficultyAttributeModelAsync(model, productId);
 
@@ -93,6 +95,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         ViewBag.ProductId = productId;
         ViewBag.IsAuthenticated = customer != null;
         ViewBag.CreditPurchasePageUrl = NormalizeCreditPurchasePageUrl(_aiInterviewSettings?.CreditPurchasePageUrl);
+        ViewBag.RenderFullJobShell = !isFullJobTemplate;
 
         var sponsorToken = HttpContext?.Request?.Query?["sponsorToken"].ToString() ?? "";
         ViewBag.SponsorToken = sponsorToken;
