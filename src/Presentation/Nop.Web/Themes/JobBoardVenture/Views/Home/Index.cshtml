@@ -1,0 +1,66 @@
+@using Nop.Services.Localization
+@using Nop.Core
+@inject ILocalizationService localizationService
+@inject IStoreContext storeContext
+
+@{
+    Layout = "_ColumnsOne";
+
+    var currentStore = await storeContext.GetCurrentStoreAsync();
+    var homepageTitle = await localizationService.GetLocalizedAsync(currentStore, s => s.HomepageTitle);
+
+    if (!string.IsNullOrEmpty(homepageTitle))
+    {
+        NopHtml.AddTitleParts(homepageTitle);
+    }
+
+    var homepageDescription = await localizationService.GetLocalizedAsync(currentStore, s => s.HomepageDescription);
+
+    if (!string.IsNullOrEmpty(homepageDescription))
+    {
+        NopHtml.AddMetaDescriptionParts(homepageDescription);
+    }
+
+    NopHtml.AppendPageCssClassParts("html-home-page");
+}
+<div class="page home-page">
+    <div class="page-body">
+        <div class="jb-home-hero">
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop })
+
+            <div class="jb-home-hero-shell">
+                <div class="jb-home-hero-content">
+                    <div class="jb-home-hero-brand">
+                        <span class="jb-brand-mark" aria-hidden="true"></span>
+                        <h1 class="jb-home-store-name">@currentStore.Name</h1>
+                    </div>
+                    <div class="jb-home-hero-topic">
+                        @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageText" })
+                    </div>
+                    <div class="jb-home-hero-search">
+                        <form asp-route="@NopRouteNames.General.SEARCH" method="get" class="jb-home-search-form">
+                            <input type="text" class="search-box-text" name="q" placeholder="@T("Search.SearchBox.Tooltip")" aria-label="@T("Search.SearchBox.Text.Label")" />
+                            <button type="submit" class="search-box-button">@T("Search.Button")</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories })
+
+        <div class="jb-home-filters">
+            @await Component.InvokeAsync(typeof(FilterLevelValueSearchViewComponent))
+        </div>
+
+        <div class="jb-home-native-components">
+            @await Component.InvokeAsync(typeof(HomepageCategoriesViewComponent))
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeProducts })
+            @await Component.InvokeAsync(typeof(HomepageProductsViewComponent))
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeBestSellers })
+            @await Component.InvokeAsync(typeof(HomepageBestSellersViewComponent))
+        </div>
+
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBottom })
+    </div>
+</div>

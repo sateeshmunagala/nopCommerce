@@ -1,35 +1,50 @@
-name: Automated Multi-Branch Stream Deployment
+name: Automated Linux Stream Deployment
 
 on:
   push:
     branches:
-      - '*'            # Catch ABSOLUTELY ANY new or existing branch pushed by Jules
-      - '!develop'     # PROTECT: Do not deploy if changes are pushed to develop
-      - '!production'  # PROTECT: Do not deploy if changes are pushed to production
-      - '!release-*'   # PROTECT: Do not deploy if changes are pushed to release lines
+      - '**'           
+      - '!develop'     
+      - '!production'  
+  workflow_dispatch: 
 
 jobs:
   build-and-stream-deploy:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout Repository Source
+    - name: Checkout Source Code
       uses: actions/checkout@v4
 
-    - name: Setup Core .NET SDK Engine
+    - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '10.0.x' # Tailor this to your nopCommerce target platform framework (e.g., 7.0.x or 8.0.x)
+        dotnet-version: '10.0.x' 
 
-    # Step A: Compile and Publish on GitHub Cloud Servers (Bypasses Azure 1GB storage limits)
-    - name: Pre-Compile nopCommerce Presentation Web Layer
+    - name: Restore Dependencies
+      run: dotnet restore src/Presentation/Nop.Web/Nop.Web.csproj
+
+    # 🛠️ Step 1: Changed compilation target flag (-r) cleanly to linux-x64 architecture
+    - name: Compile and Publish Presentation Layer (Linux Optimized)
       run: |
-        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj -c Release -o ${{ github.workspace }}/pre_compiled_output
+        dotnet publish src/Presentation/Nop.Web/Nop.Web.csproj -c Release -r linux-x64 --self-contained false -o ./publish /p:PublishReadyToRun=false /p:DebugSymbols=false /p:DebugType=None /p:CopyPluginDllsToOutput=false
 
-    # Step B: Push raw pre-extracted code blocks directly to Azure wwwroot
-    - name: Stream Raw Binary Structure to Azure App Service
+    # 🧹 Step 2: Clear heavy internal tracking assets to keep transfer payloads light
+    - name: Purge Heavy Assets and Folders
+      run: |
+        if (Test-Path "./publish/Plugins") { Remove-Item -Path "./publish/Plugins" -Force -Recurse }
+        Get-ChildItem -Path ./publish -Include *AllInterview.Tests* -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse
+      shell: pwsh
+
+    # 📦 Step 3: Bundle assets into a standard deployment package
+    - name: Zip Deployment Artifact
+      run: Compress-Archive -Path ./publish/* -DestinationPath ./deployment.zip
+      shell: pwsh
+
+    # 🚀 Step 4: Stream zip straight to the Linux package container mount engine
+    - name: Stream Code to Linux App Service
       uses: azure/webapps-deploy@v3
       with:
-        app-name: 'nop5' # !!! REPLACE THIS with your exact Azure Web App Name
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }} 
-        package: '${{ github.workspace }}/pre_compiled_output' # Pushes folder contents, NOT a zip file
+        app-name: 'nop5'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: './deployment.zip'

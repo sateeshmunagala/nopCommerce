@@ -1,0 +1,89 @@
+@using Nop.Core
+@using Microsoft.AspNetCore.Html
+@using System.Text.Encodings.Web
+@inject IStoreContext storeContext
+
+@functions {
+    private static bool HasVisibleContent(IHtmlContent content)
+    {
+        using var writer = new StringWriter();
+        content.WriteTo(writer, HtmlEncoder.Default);
+        return !string.IsNullOrWhiteSpace(writer.ToString());
+    }
+}
+
+@{
+    var currentStore = await storeContext.GetCurrentStoreAsync();
+    var taxSelector = await Component.InvokeAsync(typeof(TaxTypeSelectorViewComponent));
+    var currencySelector = await Component.InvokeAsync(typeof(CurrencySelectorViewComponent));
+    var languageSelector = await Component.InvokeAsync(typeof(LanguageSelectorViewComponent));
+    var selectorWidgets = await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderSelectors });
+    var hasHeaderSelectors = HasVisibleContent(taxSelector) ||
+        HasVisibleContent(currencySelector) ||
+        HasVisibleContent(languageSelector) ||
+        HasVisibleContent(selectorWidgets);
+}
+
+<header class="header">
+    <a class="skip" href="#main">@T("Header.SkipNavigation.Text")</a>
+    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderBefore })
+    @if (hasHeaderSelectors)
+    {
+        <div class="header-upper">
+            <div class="header-selectors-wrapper">
+                @taxSelector
+                @currencySelector
+                @languageSelector
+                @selectorWidgets
+            </div>
+        </div>
+    }
+    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderMiddle })
+    <div class="header-lower">
+        <div class="jb-mobile-toggles left">
+            <button class="jb-menu-toggle" aria-label="@T("Common.Menu")" type="button" aria-expanded="false" aria-controls="jb-mobile-menu-drawer">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+            </button>
+        </div>
+
+        <div class="header-logo">
+            <a href="@Url.RouteUrl(NopRouteNames.General.HOMEPAGE)" class="jb-brand">
+                <span class="jb-brand-mark" aria-hidden="true"></span>
+                <span class="jb-brand-name">@currentStore.Name</span>
+            </a>
+        </div>
+
+        <div class="header-menu jb-mobile-drawer jb-header-nav" id="jb-mobile-menu-drawer" aria-hidden="true">
+            <div class="jb-drawer-header">
+                <div class="jb-drawer-brand">
+                    <span class="jb-brand-mark" aria-hidden="true"></span>
+                    <span class="jb-drawer-title">@currentStore.Name</span>
+                </div>
+                <button class="jb-drawer-close" aria-label="@T("Common.Close")" type="button">&times;</button>
+            </div>
+            <div class="jb-drawer-content">
+                @await Component.InvokeAsync(typeof(MainMenuViewComponent))
+                <div class="jb-drawer-account-links"></div>
+                <div class="jb-drawer-selectors"></div>
+            </div>
+        </div>
+
+        <div class="jb-header-actions">
+            <div class="jb-mobile-toggles right">
+                <button class="jb-search-toggle" aria-label="@T("Search")" type="button" aria-expanded="false" aria-controls="jb-mobile-search-overlay">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </button>
+            </div>
+
+            <div class="header-links-wrapper">
+                @await Component.InvokeAsync(typeof(HeaderLinksViewComponent))
+                @await Component.InvokeAsync(typeof(FlyoutShoppingCartViewComponent))
+            </div>
+        </div>
+
+        <div role="search" class="search-box store-search-box jb-search-overlay" id="jb-mobile-search-overlay" aria-hidden="true">
+            @await Component.InvokeAsync(typeof(SearchBoxViewComponent))
+        </div>
+    </div>
+    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderAfter })
+</header>
