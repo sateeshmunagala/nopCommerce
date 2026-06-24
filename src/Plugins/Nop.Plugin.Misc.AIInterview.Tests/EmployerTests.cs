@@ -289,6 +289,7 @@ public class EmployerTests
             Assert.That(model.TotalApplications, Is.EqualTo(1));
             Assert.That(model.CompletedInterviews, Is.EqualTo(1));
             Assert.That(model.ShortlistedApplications, Is.EqualTo(1));
+            Assert.That(model.ActiveFlaggedViolations, Is.EqualTo(0));
             Assert.That(model.AverageScore, Is.EqualTo(88));
             Assert.That(model.HighestScore, Is.EqualTo(88));
         });
@@ -590,9 +591,18 @@ public class EmployerTests
         Assert.That(employerApplications, Does.Contain("class=\"data-table employer-table\""));
 
         Assert.That(vendorScoreboard, Does.Contain("Layout = \"_ColumnsTwo\""));
-        Assert.That(vendorScoreboard, Does.Contain("class=\"section\""));
-        Assert.That(vendorScoreboard, Does.Contain("class=\"table-wrapper\""));
-        Assert.That(vendorScoreboard, Does.Contain("class=\"data-table\""));
+        Assert.That(vendorScoreboard, Does.Contain("class=\"section scoreboard-deck-shell\""));
+        Assert.That(vendorScoreboard, Does.Contain("Employer Scoreboard"));
+        Assert.That(vendorScoreboard, Does.Contain("Recruitment Analytics Desk"));
+        Assert.That(vendorScoreboard, Does.Contain("html-aiinterview-scoreboard-page"));
+        Assert.That(vendorScoreboard, Does.Contain("class=\"table-wrapper scoreboard-deck-table-wrapper\""));
+        Assert.That(vendorScoreboard, Does.Contain("class=\"data-table scoreboard-deck-table\""));
+        Assert.That(vendorScoreboard, Does.Contain("Total Completed Assessments"));
+        Assert.That(vendorScoreboard, Does.Contain("Average Analytical Score"));
+        Assert.That(vendorScoreboard, Does.Contain("Active Flagged Violations"));
+        Assert.That(vendorScoreboard, Does.Contain("Candidate Assessment Matrix"));
+        Assert.That(vendorScoreboard, Does.Contain("scoreboard-deck-status"));
+        Assert.That(vendorScoreboard, Does.Not.Contain("Vendor Dashboard"));
 
         Assert.That(employerManage, Does.Contain("Layout = \"_ColumnsTwo\""));
         Assert.That(employerManage, Does.Contain("class=\"section create-invite\""));

@@ -1770,7 +1770,227 @@
     padding: 10px 18px;
 }
 
+.html-aiinterview-scoreboard-page .master-wrapper-content,
+.html-aiinterview-scoreboard-page .page,
+.html-aiinterview-scoreboard-page .page-body,
+.html-aiinterview-scoreboard-page .scoreboard-deck-shell,
+.html-aiinterview-scoreboard-page .scoreboard-deck-table-section {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-page {
+    display: grid;
+    gap: 20px;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-shell,
+.html-aiinterview-scoreboard-page .scoreboard-deck-table-section {
+    display: grid;
+    gap: 18px;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 16px 20px;
+    align-items: end;
+    padding: 20px;
+    border: 1px solid #dedede;
+    border-radius: 6px;
+    background: #ffffff;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-eyebrow,
+.html-aiinterview-scoreboard-page .scoreboard-deck-metric-label,
+.html-aiinterview-scoreboard-page .scoreboard-deck-overview-label,
+.html-aiinterview-scoreboard-page .scoreboard-deck-cell-secondary {
+    display: block;
+    color: #687078;
+    line-height: 1.5;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-eyebrow {
+    margin-bottom: 8px;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.88rem;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-title {
+    margin: 0 0 10px;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.9rem;
+    font-weight: 400;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-copy {
+    max-width: 780px;
+    margin: 0;
+    color: #4f5963;
+    line-height: 1.6;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-actions {
+    justify-content: flex-start;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-actions .button-1,
+.html-aiinterview-scoreboard-page .scoreboard-deck-actions .button-2,
+.html-aiinterview-scoreboard-page .scoreboard-deck-row-actions .button-2 {
+    min-height: 42px;
+    padding: 10px 16px;
+    border-radius: 4px;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-summary,
+.html-aiinterview-scoreboard-page .scoreboard-deck-overview,
+.html-aiinterview-scoreboard-page .scoreboard-deck-empty-state {
+    padding: 0;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-metrics,
+.html-aiinterview-scoreboard-page .scoreboard-deck-overview {
+    display: grid;
+    gap: 16px;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-overview {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-metric,
+.html-aiinterview-scoreboard-page .scoreboard-deck-overview-card,
+.html-aiinterview-scoreboard-page .scoreboard-deck-empty-state {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid #dedede;
+    border-radius: 6px;
+    background: #ffffff;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-metric-label,
+.html-aiinterview-scoreboard-page .scoreboard-deck-overview-label {
+    margin-bottom: 10px;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.84rem;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-metric-value,
+.html-aiinterview-scoreboard-page .scoreboard-deck-overview-value {
+    display: block;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.8rem;
+    font-weight: 400;
+    line-height: 1.1;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-metric-detail {
+    display: block;
+    margin-top: 10px;
+    color: #4f5963;
+    line-height: 1.5;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-table {
+    width: 100%;
+    min-width: 980px;
+    table-layout: fixed;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-table th,
+.html-aiinterview-scoreboard-page .scoreboard-deck-table td {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-cell-primary {
+    color: #20252b;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-cell-secondary {
+    margin-top: 4px;
+    font-size: 0.9rem;
+    word-break: break-word;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-score {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
+    min-height: 34px;
+    padding: 6px 12px;
+    border: 1px solid #cfe4de;
+    border-radius: 4px;
+    background: #f5fbf9;
+    color: #145f50;
+    font-weight: 700;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-score-muted {
+    border-color: #dfdfdf;
+    background: #f5f5f5;
+    color: #687078;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-status.is-verified {
+    background: #dbf5e8;
+    color: #12603d;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-status.is-flagged {
+    background: #f6d8dd;
+    color: #781a28;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-status.is-evaluating {
+    background: #f5e6bb;
+    color: #6c4a00;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-row-actions {
+    justify-content: flex-start;
+}
+
 @media (max-width: 1080px) {
+    .html-aiinterview-scoreboard-page .scoreboard-deck-metrics,
+    .html-aiinterview-scoreboard-page .scoreboard-deck-overview {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .job-hero,
     .job-content-grid {
         grid-template-columns: 1fr;
@@ -1782,6 +2002,14 @@
 }
 
 @media (max-width: 720px) {
+    .html-aiinterview-scoreboard-page .scoreboard-deck-header {
+        padding: 18px;
+    }
+
+    .html-aiinterview-scoreboard-page .scoreboard-deck-title {
+        font-size: 1.6rem;
+    }
+
     .job-hero,
     .job-fact,
     .job-card,
@@ -1799,6 +2027,24 @@
 }
 
 @media (max-width: 640px) {
+    .html-aiinterview-scoreboard-page .scoreboard-deck-metrics,
+    .html-aiinterview-scoreboard-page .scoreboard-deck-overview {
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-scoreboard-page .scoreboard-deck-actions,
+    .html-aiinterview-scoreboard-page .scoreboard-deck-row-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-scoreboard-page .scoreboard-deck-actions .button-1,
+    .html-aiinterview-scoreboard-page .scoreboard-deck-actions .button-2,
+    .html-aiinterview-scoreboard-page .scoreboard-deck-row-actions .button-2 {
+        width: 100%;
+        text-align: center;
+    }
+
     .employer-field-wide,
     .invite-field-wide {
         grid-column: auto;

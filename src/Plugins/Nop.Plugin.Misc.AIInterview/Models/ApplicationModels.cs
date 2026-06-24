@@ -75,6 +75,7 @@ public record VendorScoreboardModel : BaseNopModel
     public int TotalApplications { get; set; }
     public int CompletedInterviews { get; set; }
     public int ShortlistedApplications { get; set; }
+    public int ActiveFlaggedViolations { get; set; }
     public decimal? AverageScore { get; set; }
     public decimal? HighestScore { get; set; }
     public IList<ApplicationModel> RecentApplications { get; set; } = new List<ApplicationModel>();

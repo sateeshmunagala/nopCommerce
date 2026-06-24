@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Http;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
+using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Media;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
@@ -980,6 +981,9 @@ public class AIInterviewController : BasePluginController
         var applications = await _applicationService.GetApplicationsAsync(vendorId: vendorId);
         var products = await _productService.SearchProductsAsync(vendorId: vendorId, showHidden: true);
         var completedScores = new List<decimal>();
+        var customers = (await _customerService.GetCustomersByIdsAsync(applications.Select(application => application.CustomerId).Distinct().ToArray()))?.ToList()
+            ?? new List<Customer>();
+        var unknownCandidate = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
 
         foreach (var application in applications)
         {
@@ -989,18 +993,38 @@ public class AIInterviewController : BasePluginController
                 .Select(s => s.Score));
         }
 
-        var recentApplications = applications
+        var recentApplications = await Task.WhenAll(applications
             .OrderByDescending(application => application.CreatedOnUtc)
-            .Take(5)
-            .Select(application => new ApplicationModel
+            .Select(async application =>
             {
-                Id = application.Id,
-                JobTitle = application.JobTitle,
-                RawStatus = JobApplicationStatuses.Normalize(application.Status),
-                Status = application.Status,
-                CreatedOn = application.CreatedOnUtc
-            })
-            .ToList();
+                var appCustomer = customers.FirstOrDefault(entry => entry.Id == application.CustomerId);
+                var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
+                var appSessions = sessions.Where(session => SessionMatchesApplication(session, application)).ToList();
+                var latestCompletedSession = appSessions
+                    .Where(session => session.CompletedOnUtc.HasValue)
+                    .OrderByDescending(session => session.CompletedOnUtc)
+                    .ThenByDescending(session => session.Id)
+                    .FirstOrDefault();
+                var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
+                var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : string.Empty;
+
+                return new ApplicationModel
+                {
+                    Id = application.Id,
+                    JobTitle = application.JobTitle,
+                    CandidateName = string.IsNullOrWhiteSpace(candidateName) ? unknownCandidate : candidateName,
+                    CandidateEmail = appCustomer?.Email ?? unknownCandidate,
+                    RawStatus = normalizedStatus,
+                    Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
+                    InterviewScore = latestCompletedSession?.Score,
+                    InterviewReportUrl = latestCompletedSession != null ? Url?.Action("Report", "AIInterview", new { sessionId = latestCompletedSession.Id }) : null,
+                    RecordingUrl = latestCompletedSession != null && !string.IsNullOrWhiteSpace(latestCompletedSession.RecordingUrl)
+                        ? Url?.Action("Recording", "AIInterview", new { sessionId = latestCompletedSession.Id })
+                        : null,
+                    CreatedOn = application.CreatedOnUtc,
+                    CompletedOn = latestCompletedSession?.CompletedOnUtc
+                };
+            }));
 
         var model = new VendorScoreboardModel
         {
@@ -1009,9 +1033,15 @@ public class AIInterviewController : BasePluginController
             CompletedInterviews = completedScores.Count,
             ShortlistedApplications = applications.Count(application =>
                 string.Equals(JobApplicationStatuses.Normalize(application.Status), JobApplicationStatuses.Shortlisted, StringComparison.OrdinalIgnoreCase)),
+            ActiveFlaggedViolations = applications.Count(application =>
+            {
+                var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
+                return string.Equals(normalizedStatus, JobApplicationStatuses.Rejected, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(normalizedStatus, JobApplicationStatuses.Withdrawn, StringComparison.OrdinalIgnoreCase);
+            }),
             AverageScore = completedScores.Any() ? completedScores.Average() : null,
             HighestScore = completedScores.Any() ? completedScores.Max() : null,
-            RecentApplications = recentApplications
+            RecentApplications = recentApplications.ToList()
         };
 
         return View("~/Plugins/Misc.AIInterview/Views/VendorScoreboard.cshtml", model);
