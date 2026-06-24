@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
@@ -42,6 +43,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly ISponsorInviteService _inviteService;
     private readonly IApplicationService _applicationService;
     private readonly IInterviewSessionService _sessionService;
+    private readonly IInterviewTurnService _interviewTurnService;
     private readonly ICustomerService _customerService;
     private readonly IProductService _productService;
     private readonly IVendorService _vendorService;
@@ -76,12 +78,14 @@ public class AIInterviewAdminController : BasePluginController
         IRepository<CreditPurchaseGrant> creditPurchaseGrantRepository,
         AIInterviewSettings aiInterviewSettings,
         MockAIInterviewSettings mockAIInterviewSettings,
-        IJobRequirementService jobRequirementService = null)
+        IJobRequirementService jobRequirementService = null,
+        IInterviewTurnService interviewTurnService = null)
     {
         _creditService = creditService;
         _inviteService = inviteService;
         _applicationService = applicationService;
         _sessionService = sessionService;
+        _interviewTurnService = interviewTurnService;
         _customerService = customerService;
         _productService = productService;
         _vendorService = vendorService;
@@ -338,6 +342,109 @@ public class AIInterviewAdminController : BasePluginController
         return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "aiinterview-scoreboard.csv");
     }
 
+    public async Task<IActionResult> CandidateDetails(int sessionId, int applicationId = 0)
+    {
+        var session = await _sessionService.GetInterviewSessionByIdAsync(sessionId);
+        if (session == null)
+        {
+            _notificationService.ErrorNotification("Candidate assessment session was not found.");
+            return RedirectToRoute(AIInterviewDefaults.AdminScoreboardRouteName);
+        }
+
+        JobApplication application = null;
+        if (session.JobApplicationId > 0)
+            application = await _applicationService.GetJobApplicationByIdAsync(session.JobApplicationId);
+
+        if (application == null && applicationId > 0)
+            application = await _applicationService.GetJobApplicationByIdAsync(applicationId);
+
+        var customer = await _customerService.GetCustomerByIdAsync(session.CustomerId);
+        var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+        var vendor = product?.VendorId > 0 ? await _vendorService.GetVendorByIdAsync(product.VendorId) : null;
+        var turns = _interviewTurnService == null
+            ? new List<InterviewTurn>()
+            : ((await _interviewTurnService.GetTurnsBySessionIdAsync(session.Id)) ?? new List<InterviewTurn>())
+                .OrderBy(turn => turn.SequenceNumber)
+                .ToList();
+
+        var parsedQuestionScores = ParseQuestionScores(session.QuestionScores);
+        var reportSections = SplitReportSections(session.ReportData);
+        var questionCount = Math.Max(session.QuestionCount, turns.Count);
+        var answeredQuestionCount = turns.Count(turn => !string.IsNullOrWhiteSpace(turn.AnswerText));
+        var scoredTurns = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score!.Value).ToList();
+
+        var model = new CandidateDetailsModel
+        {
+            SessionId = session.Id,
+            ApplicationId = application?.Id ?? session.JobApplicationId,
+            ProductId = session.ProductId,
+            CandidateCustomerId = session.CustomerId,
+            CandidateName = GetCustomerName(customer),
+            CandidateEmail = customer?.Email ?? string.Empty,
+            CandidatePhone = customer?.Phone ?? string.Empty,
+            CandidateAdminUrl = customer != null ? BuildCustomerAdminUrl(customer.Id) : string.Empty,
+            TargetRole = application?.JobTitle ?? product?.Name ?? string.Empty,
+            ProductName = product?.Name ?? string.Empty,
+            ProductAdminUrl = product != null ? BuildProductAdminUrl(product.Id) : string.Empty,
+            VendorName = vendor?.Name ?? string.Empty,
+            VendorAdminUrl = vendor != null ? BuildVendorAdminUrl(vendor.Id) : string.Empty,
+            Difficulty = session.Difficulty,
+            Status = await GetCandidateDetailsStatusAsync(application, session),
+            StatusBadgeClass = BuildStatusBadgeClass(application?.Status, session),
+            LifecycleState = BuildLifecycleState(session),
+            LifecycleBadgeClass = BuildLifecycleBadgeClass(session),
+            ComplianceStatus = BuildComplianceState(session, turns),
+            ComplianceBadgeClass = BuildComplianceBadgeClass(session, turns),
+            SystemState = BuildSystemState(session),
+            SystemBadgeClass = BuildSystemBadgeClass(session),
+            Score = session.Score,
+            AverageQuestionScore = scoredTurns.Count > 0 ? scoredTurns.Average() : null,
+            AverageTechnicalScore = CalculateAverageRubricScore(turns, "technicalScore"),
+            AverageCommunicationScore = CalculateAverageRubricScore(turns, "communicationScore"),
+            AverageProfessionalismScore = CalculateAverageRubricScore(turns, "professionalismScore"),
+            AveragePositiveAttitudeScore = CalculateAverageRubricScore(turns, "positiveAttitudeScore"),
+            QuestionCount = questionCount,
+            AnsweredQuestionCount = answeredQuestionCount,
+            HasRecording = !string.IsNullOrWhiteSpace(session.RecordingUrl),
+            RecordingUrl = session.RecordingUrl,
+            ReportUrl = Url.RouteUrl(AIInterviewDefaults.ReportRouteName, new { sessionId = session.Id }) ?? string.Empty,
+            AppliedOnUtc = application?.CreatedOnUtc,
+            CreatedOnUtc = session.CreatedOnUtc,
+            StartedOnUtc = session.StartedOnUtc,
+            CompletedOnUtc = session.CompletedOnUtc,
+            SummaryText = reportSections.Summary,
+            FeedbackText = reportSections.Feedback,
+            ReportData = session.ReportData,
+            QuestionScores = session.QuestionScores,
+            SessionKey = session.SessionKey,
+            InternalSessionToken = MaskToken(session.Token),
+            AzureMediaReference = ExtractMediaReference(session.RecordingUrl),
+            ApplicationTrackingReference = application != null ? $"APP-{application.Id}" : $"SESSION-{session.Id}",
+            StatusComment = application?.StatusComment ?? string.Empty,
+            ParsedQuestionScores = parsedQuestionScores,
+            Turns = turns.Select(turn => new CandidateDetailsTurnModel
+            {
+                TurnId = turn.Id,
+                SequenceNumber = turn.SequenceNumber,
+                QuestionLabel = $"Question {turn.SequenceNumber}",
+                QuestionText = turn.QuestionText,
+                AnswerText = turn.AnswerText,
+                Feedback = turn.Feedback,
+                Score = turn.Score,
+                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
+                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
+                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
+                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
+                AskedOnUtc = turn.AskedOnUtc,
+                AnsweredOnUtc = turn.AnsweredOnUtc,
+                RubricJson = turn.RubricJson,
+                RawAiResponseJson = turn.RawAIResponseJson
+            }).ToList()
+        };
+
+        return View("~/Plugins/Misc.AIInterview/Areas/Admin/Views/AIInterviewAdmin/CandidateDetails.cshtml", model);
+    }
+
     protected virtual string Csv(string value)
     {
         return $"\"{(value ?? string.Empty).Replace("\"", "\"\"")}\"";
@@ -364,6 +471,190 @@ public class AIInterviewAdminController : BasePluginController
             .Where(email => !string.IsNullOrWhiteSpace(email))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    protected static IList<decimal> ParseQuestionScores(string questionScores)
+    {
+        if (string.IsNullOrWhiteSpace(questionScores))
+            return new List<decimal>();
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<decimal>>(questionScores) ?? new List<decimal>();
+        }
+        catch
+        {
+            return new List<decimal>();
+        }
+    }
+
+    protected static decimal? ParseRubricScore(string rubricJson, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(rubricJson))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(rubricJson);
+            if (!document.RootElement.TryGetProperty(propertyName, out var property))
+                return null;
+
+            if (property.ValueKind == JsonValueKind.Number && property.TryGetDecimal(out var numeric))
+                return numeric;
+
+            if (property.ValueKind == JsonValueKind.String && decimal.TryParse(property.GetString(), out var parsed))
+                return parsed;
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
+    protected static (string Summary, string Feedback) SplitReportSections(string reportData)
+    {
+        if (string.IsNullOrWhiteSpace(reportData))
+            return (string.Empty, string.Empty);
+
+        var lines = reportData
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .ToList();
+
+        if (!lines.Any())
+            return (reportData, string.Empty);
+
+        return (lines.FirstOrDefault() ?? string.Empty, lines.Skip(1).FirstOrDefault() ?? string.Empty);
+    }
+
+    protected virtual async Task<string> GetCandidateDetailsStatusAsync(JobApplication application, InterviewSession session)
+    {
+        if (application != null && !string.IsNullOrWhiteSpace(application.Status))
+            return await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{JobApplicationStatuses.Normalize(application.Status)}");
+
+        return session.CompletedOnUtc.HasValue ? "Completed" : session.IsActive ? "Active" : "Pending";
+    }
+
+    protected virtual decimal? CalculateAverageRubricScore(IList<InterviewTurn> turns, string propertyName)
+    {
+        var scores = turns.Select(turn => ParseRubricScore(turn.RubricJson, propertyName))
+            .Where(score => score.HasValue)
+            .Select(score => score!.Value)
+            .ToList();
+
+        return scores.Count == 0 ? null : scores.Average();
+    }
+
+    protected virtual string BuildLifecycleState(InterviewSession session)
+    {
+        if (session.CompletedOnUtc.HasValue)
+            return "Completed";
+
+        if (session.StartedOnUtc.HasValue || session.IsActive)
+            return "In Progress";
+
+        return "Pending";
+    }
+
+    protected virtual string BuildLifecycleBadgeClass(InterviewSession session)
+    {
+        if (session.CompletedOnUtc.HasValue)
+            return "is-success";
+
+        if (session.StartedOnUtc.HasValue || session.IsActive)
+            return "is-warning";
+
+        return "is-pending";
+    }
+
+    protected virtual string BuildComplianceState(InterviewSession session, IList<InterviewTurn> turns)
+    {
+        if (session.CompletedOnUtc.HasValue && turns.Any(turn => !string.IsNullOrWhiteSpace(turn.AnswerText)))
+            return "Passed";
+
+        if (session.StartedOnUtc.HasValue)
+            return "Pending Review";
+
+        return "Awaiting Interview";
+    }
+
+    protected virtual string BuildComplianceBadgeClass(InterviewSession session, IList<InterviewTurn> turns)
+    {
+        if (session.CompletedOnUtc.HasValue && turns.Any(turn => !string.IsNullOrWhiteSpace(turn.AnswerText)))
+            return "is-success";
+
+        if (session.StartedOnUtc.HasValue)
+            return "is-warning";
+
+        return "is-pending";
+    }
+
+    protected virtual string BuildSystemState(InterviewSession session)
+    {
+        if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
+            return "Processed";
+
+        if (session.StartedOnUtc.HasValue)
+            return "Evaluating";
+
+        return "Pending";
+    }
+
+    protected virtual string BuildSystemBadgeClass(InterviewSession session)
+    {
+        if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
+            return "is-success";
+
+        if (session.StartedOnUtc.HasValue)
+            return "is-warning";
+
+        return "is-pending";
+    }
+
+    protected virtual string BuildStatusBadgeClass(string status, InterviewSession session)
+    {
+        var normalizedStatus = JobApplicationStatuses.Normalize(status);
+        if (normalizedStatus.Contains("shortlist", StringComparison.OrdinalIgnoreCase)
+            || normalizedStatus.Contains("complete", StringComparison.OrdinalIgnoreCase)
+            || normalizedStatus.Contains("success", StringComparison.OrdinalIgnoreCase)
+            || session.CompletedOnUtc.HasValue)
+            return "is-success";
+
+        if (normalizedStatus.Contains("reject", StringComparison.OrdinalIgnoreCase)
+            || normalizedStatus.Contains("fail", StringComparison.OrdinalIgnoreCase)
+            || normalizedStatus.Contains("suspend", StringComparison.OrdinalIgnoreCase))
+            return "is-danger";
+
+        return "is-warning";
+    }
+
+    protected virtual string MaskToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return string.Empty;
+
+        if (token.Length <= 6)
+            return new string('*', token.Length);
+
+        return $"{token[..3]}...{token[^3..]}";
+    }
+
+    protected virtual string ExtractMediaReference(string recordingUrl)
+    {
+        if (string.IsNullOrWhiteSpace(recordingUrl))
+            return "Not available";
+
+        try
+        {
+            var uri = new Uri(recordingUrl, UriKind.RelativeOrAbsolute);
+            var path = uri.IsAbsoluteUri ? uri.AbsolutePath : recordingUrl;
+            return path.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? recordingUrl;
+        }
+        catch
+        {
+            return recordingUrl;
+        }
     }
 
     protected virtual async Task<SponsorInviteAdminModel> PrepareSponsorInviteModelAsync(SponsorInviteAdminModel model)

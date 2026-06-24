@@ -1,0 +1,292 @@
+@model Nop.Plugin.Misc.AIInterview.Models.CandidateDetailsModel
+@using Nop.Plugin.Misc.AIInterview
+@{
+    Layout = "_AdminLayout";
+    ViewBag.PageTitle = "Candidate Assessment Details";
+    NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminScoreboardMenuSystemName);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-admin.css");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-admin-candidate-page");
+}
+
+<div class="content-header clearfix">
+    <h1 class="float-left">Candidate Assessment Details</h1>
+    <div class="float-right">
+        <a class="btn btn-secondary" href="@Url.RouteUrl(AIInterviewDefaults.AdminScoreboardRouteName)">
+            <i class="fas fa-arrow-left"></i> Back To Scoreboard
+        </a>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="candidate-dashboard-shell">
+            <div class="candidate-dashboard-hero">
+                <div class="candidate-dashboard-identity">
+                    <div class="candidate-dashboard-kicker">Assessment Workspace</div>
+                    <h2>@(string.IsNullOrWhiteSpace(Model.CandidateName) ? Model.CandidateEmail : Model.CandidateName)</h2>
+                    <div class="candidate-dashboard-subtitle">@Model.TargetRole</div>
+                </div>
+                <div class="candidate-dashboard-badges">
+                    <span class="candidate-dashboard-badge @Model.StatusBadgeClass">@Model.Status</span>
+                    <span class="candidate-dashboard-badge @Model.LifecycleBadgeClass">@Model.LifecycleState</span>
+                    <span class="candidate-dashboard-badge @Model.ComplianceBadgeClass">@Model.ComplianceStatus</span>
+                    <span class="candidate-dashboard-badge @Model.SystemBadgeClass">@Model.SystemState</span>
+                </div>
+            </div>
+
+            <ul class="nav nav-tabs candidate-dashboard-tabs" id="candidate-details-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="candidate-overview-tab" data-toggle="tab" data-bs-toggle="tab" href="#candidate-overview" role="tab" aria-controls="candidate-overview" aria-selected="true">Overview</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="candidate-analysis-tab" data-toggle="tab" data-bs-toggle="tab" href="#candidate-analysis" role="tab" aria-controls="candidate-analysis" aria-selected="false">AI Feedback &amp; Analysis</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="candidate-questions-tab" data-toggle="tab" data-bs-toggle="tab" href="#candidate-questions" role="tab" aria-controls="candidate-questions" aria-selected="false">Question-by-Question Breakdown</a>
+                </li>
+            </ul>
+
+            <div class="tab-content candidate-dashboard-content" id="candidate-details-tab-content">
+                <div class="tab-pane fade show active" id="candidate-overview" role="tabpanel" aria-labelledby="candidate-overview-tab">
+                    <div class="candidate-dashboard-grid">
+                        <div class="candidate-dashboard-card">
+                            <h3>Candidate Profile</h3>
+                            <div class="candidate-dashboard-matrix">
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Full Name</div>
+                                    <div class="candidate-dashboard-value">@Model.CandidateName</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Email</div>
+                                    <div class="candidate-dashboard-value candidate-dashboard-wrap">@Model.CandidateEmail</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Applied Date</div>
+                                    <div class="candidate-dashboard-value">@(Model.AppliedOnUtc?.ToString("g") ?? "-")</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Target Role</div>
+                                    <div class="candidate-dashboard-value">@Model.TargetRole</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Phone</div>
+                                    <div class="candidate-dashboard-value">@(!string.IsNullOrWhiteSpace(Model.CandidatePhone) ? Model.CandidatePhone : "-")</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Difficulty</div>
+                                    <div class="candidate-dashboard-value">@(!string.IsNullOrWhiteSpace(Model.Difficulty) ? Model.Difficulty : "-")</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="candidate-dashboard-card">
+                            <h3>Summary Metrics</h3>
+                            <div class="candidate-dashboard-stats">
+                                <div class="candidate-dashboard-stat">
+                                    <div class="candidate-dashboard-stat-label">Overall Score</div>
+                                    <div class="candidate-dashboard-stat-value">@Model.Score.ToString("N0")</div>
+                                </div>
+                                <div class="candidate-dashboard-stat">
+                                    <div class="candidate-dashboard-stat-label">Questions</div>
+                                    <div class="candidate-dashboard-stat-value">@Model.QuestionCount</div>
+                                </div>
+                                <div class="candidate-dashboard-stat">
+                                    <div class="candidate-dashboard-stat-label">Answered</div>
+                                    <div class="candidate-dashboard-stat-value">@Model.AnsweredQuestionCount</div>
+                                </div>
+                                <div class="candidate-dashboard-stat">
+                                    <div class="candidate-dashboard-stat-label">Recording</div>
+                                    <div class="candidate-dashboard-stat-value">@(Model.HasRecording ? "Available" : "Unavailable")</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="candidate-dashboard-card">
+                            <h3>Timeline Trackers</h3>
+                            <div class="candidate-dashboard-timeline">
+                                <div class="candidate-dashboard-timeline-item">
+                                    <span class="candidate-dashboard-timeline-label">Created</span>
+                                    <span class="candidate-dashboard-timeline-value">@Model.CreatedOnUtc.ToString("g")</span>
+                                </div>
+                                <div class="candidate-dashboard-timeline-item">
+                                    <span class="candidate-dashboard-timeline-label">Started</span>
+                                    <span class="candidate-dashboard-timeline-value">@(Model.StartedOnUtc?.ToString("g") ?? "-")</span>
+                                </div>
+                                <div class="candidate-dashboard-timeline-item">
+                                    <span class="candidate-dashboard-timeline-label">Completed</span>
+                                    <span class="candidate-dashboard-timeline-value">@(Model.CompletedOnUtc?.ToString("g") ?? "-")</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="candidate-dashboard-card">
+                            <h3>Candidate Scoring Profile</h3>
+                            <div class="candidate-dashboard-matrix candidate-dashboard-matrix-compact">
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Average Question Score</div>
+                                    <div class="candidate-dashboard-value">@(Model.AverageQuestionScore?.ToString("N0") ?? "-")</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Technical Accuracy</div>
+                                    <div class="candidate-dashboard-value">@(Model.AverageTechnicalScore?.ToString("N0") ?? "-")</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Clarity Level</div>
+                                    <div class="candidate-dashboard-value">@(Model.AverageCommunicationScore?.ToString("N0") ?? "-")</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Professionalism</div>
+                                    <div class="candidate-dashboard-value">@(Model.AverageProfessionalismScore?.ToString("N0") ?? "-")</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Positive Attitude</div>
+                                    <div class="candidate-dashboard-value">@(Model.AveragePositiveAttitudeScore?.ToString("N0") ?? "-")</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="candidate-dashboard-card candidate-dashboard-card-diagnostics">
+                        <div class="candidate-dashboard-card-header">
+                            <h3>Advanced Diagnostics</h3>
+                            <button class="btn btn-link candidate-dashboard-collapse" type="button" data-toggle="collapse" data-bs-toggle="collapse" data-target="#candidate-diagnostics" data-bs-target="#candidate-diagnostics" aria-expanded="false" aria-controls="candidate-diagnostics">Toggle</button>
+                        </div>
+                        <div class="collapse" id="candidate-diagnostics">
+                            <div class="candidate-dashboard-matrix">
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Internal Session Token</div>
+                                    <div class="candidate-dashboard-value candidate-dashboard-wrap">@Model.InternalSessionToken</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Application Tracking Reference</div>
+                                    <div class="candidate-dashboard-value">@Model.ApplicationTrackingReference</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Azure Media Reference</div>
+                                    <div class="candidate-dashboard-value candidate-dashboard-wrap">@Model.AzureMediaReference</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Lifecycle State</div>
+                                    <div class="candidate-dashboard-value">@Model.LifecycleState</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Session Key</div>
+                                    <div class="candidate-dashboard-value candidate-dashboard-wrap">@Model.SessionKey</div>
+                                </div>
+                                <div class="candidate-dashboard-field">
+                                    <div class="candidate-dashboard-label">Report Route</div>
+                                    <div class="candidate-dashboard-value candidate-dashboard-wrap">
+                                        @if (!string.IsNullOrWhiteSpace(Model.ReportUrl))
+                                        {
+                                            <a href="@Model.ReportUrl" target="_blank" rel="noopener">@Model.ReportUrl</a>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="candidate-analysis" role="tabpanel" aria-labelledby="candidate-analysis-tab">
+                    <div class="candidate-dashboard-grid candidate-dashboard-grid-analysis">
+                        <div class="candidate-dashboard-card">
+                            <h3>Assessment Summary</h3>
+                            <div class="candidate-dashboard-textbox">@(!string.IsNullOrWhiteSpace(Model.SummaryText) ? Model.SummaryText : "No summary available.")</div>
+                        </div>
+                        <div class="candidate-dashboard-card">
+                            <h3>Linguistic Compliance Review</h3>
+                            <div class="candidate-dashboard-textbox">@(!string.IsNullOrWhiteSpace(Model.FeedbackText) ? Model.FeedbackText : "No separate compliance review available.")</div>
+                        </div>
+                        <div class="candidate-dashboard-card">
+                            <h3>Behavior Notes</h3>
+                            <div class="candidate-dashboard-textbox">@(!string.IsNullOrWhiteSpace(Model.StatusComment) ? Model.StatusComment : "No behavior notes or status comments captured.")</div>
+                        </div>
+                        <div class="candidate-dashboard-card">
+                            <h3>System Text Logs</h3>
+                            <div class="candidate-dashboard-logbox">@(!string.IsNullOrWhiteSpace(Model.ReportData) ? Model.ReportData : "No report payload generated.")</div>
+                        </div>
+                    </div>
+
+                    @if (Model.Turns.Any())
+                    {
+                        <div class="candidate-dashboard-card">
+                            <h3>Per-Question AI Feedback</h3>
+                            <div class="candidate-dashboard-analysis-list">
+                                @foreach (var turn in Model.Turns)
+                                {
+                                    <div class="candidate-dashboard-analysis-item">
+                                        <div class="candidate-dashboard-analysis-head">@turn.QuestionLabel</div>
+                                        <div class="candidate-dashboard-textbox">@(!string.IsNullOrWhiteSpace(turn.Feedback) ? turn.Feedback : "No AI feedback captured for this turn.")</div>
+                                        <div class="candidate-dashboard-metric-grid">
+                                            <div><span class="candidate-dashboard-label">Technical Accuracy Score</span><strong>@(turn.TechnicalScore?.ToString("N0") ?? "-")</strong></div>
+                                            <div><span class="candidate-dashboard-label">Clarity Level</span><strong>@(turn.CommunicationScore?.ToString("N0") ?? "-")</strong></div>
+                                            <div><span class="candidate-dashboard-label">Professionalism</span><strong>@(turn.ProfessionalismScore?.ToString("N0") ?? "-")</strong></div>
+                                            <div><span class="candidate-dashboard-label">Positive Attitude</span><strong>@(turn.PositiveAttitudeScore?.ToString("N0") ?? "-")</strong></div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="tab-pane fade" id="candidate-questions" role="tabpanel" aria-labelledby="candidate-questions-tab">
+                    <div class="candidate-dashboard-question-timeline">
+                        @if (Model.Turns.Any())
+                        {
+                            @foreach (var turn in Model.Turns)
+                            {
+                                <div class="candidate-dashboard-question-card">
+                                    <div class="candidate-dashboard-question-head">
+                                        <h3>@turn.QuestionLabel</h3>
+                                        <span class="candidate-dashboard-badge candidate-dashboard-badge-inline @(turn.Score.HasValue ? "is-success" : "is-pending")">Score @(turn.Score?.ToString("N0") ?? "-")</span>
+                                    </div>
+                                    <div class="candidate-dashboard-question-block">
+                                        <div class="candidate-dashboard-label">Prompt</div>
+                                        <div class="candidate-dashboard-textbox">@turn.QuestionText</div>
+                                    </div>
+                                    <div class="candidate-dashboard-question-block">
+                                        <div class="candidate-dashboard-label">Captured Text Response</div>
+                                        <div class="candidate-dashboard-answerbox">@(!string.IsNullOrWhiteSpace(turn.AnswerText) ? turn.AnswerText : "No answer captured.")</div>
+                                    </div>
+                                    <div class="candidate-dashboard-metric-grid">
+                                        <div><span class="candidate-dashboard-label">Technical Accuracy Score</span><strong>@(turn.TechnicalScore?.ToString("N0") ?? "-")</strong></div>
+                                        <div><span class="candidate-dashboard-label">Clarity Level</span><strong>@(turn.CommunicationScore?.ToString("N0") ?? "-")</strong></div>
+                                        <div><span class="candidate-dashboard-label">Professionalism</span><strong>@(turn.ProfessionalismScore?.ToString("N0") ?? "-")</strong></div>
+                                        <div><span class="candidate-dashboard-label">Positive Attitude</span><strong>@(turn.PositiveAttitudeScore?.ToString("N0") ?? "-")</strong></div>
+                                    </div>
+                                    <div class="candidate-dashboard-question-meta">
+                                        <span>Asked @(turn.AskedOnUtc.ToString("g"))</span>
+                                        <span>Answered @(turn.AnsweredOnUtc?.ToString("g") ?? "-")</span>
+                                        @if (!string.IsNullOrWhiteSpace(Model.RecordingUrl))
+                                        {
+                                            <a href="@Model.RecordingUrl" target="_blank" rel="noopener">Playback Asset</a>
+                                        }
+                                    </div>
+                                    <div class="candidate-dashboard-question-block">
+                                        <div class="candidate-dashboard-label">Raw Rubric JSON</div>
+                                        <div class="candidate-dashboard-logbox">@(!string.IsNullOrWhiteSpace(turn.RubricJson) ? turn.RubricJson : "{}")</div>
+                                    </div>
+                                    <div class="candidate-dashboard-question-block">
+                                        <div class="candidate-dashboard-label">Raw AI Response Log</div>
+                                        <div class="candidate-dashboard-logbox">@(!string.IsNullOrWhiteSpace(turn.RawAiResponseJson) ? turn.RawAiResponseJson : "No raw AI response captured.")</div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="candidate-dashboard-card">
+                                <div class="candidate-dashboard-textbox">No question-level assessment records are available for this session.</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

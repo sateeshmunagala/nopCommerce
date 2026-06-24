@@ -1195,4 +1195,26 @@ public class RuntimeAndAdminTests
         Assert.That(projectText, Does.Contain("<Content Remove=\"AI_ReferenceFiles\\**\\*\" />"));
         Assert.That(projectText, Does.Contain("<None Remove=\"AI_ReferenceFiles\\**\\*\" />"));
     }
+
+    [Test]
+    public void AdminCandidateDetailsView_Uses_Tabbed_Dashboard_Layout()
+    {
+        var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Areas", "Admin", "Views", "AIInterviewAdmin", "CandidateDetails.cshtml"));
+        var cssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-admin.css"));
+
+        Assert.That(viewText, Does.Contain("candidate-overview-tab"));
+        Assert.That(viewText, Does.Contain("candidate-analysis-tab"));
+        Assert.That(viewText, Does.Contain("candidate-questions-tab"));
+        Assert.That(viewText, Does.Contain("candidate-dashboard-shell"));
+        Assert.That(viewText, Does.Contain("candidate-dashboard-question-timeline"));
+        Assert.That(viewText, Does.Contain("Internal Session Token"));
+        Assert.That(viewText, Does.Contain("Question-by-Question Breakdown"));
+        Assert.That(viewText, Does.Contain("data-bs-toggle=\"tab\"").Or.Contain("data-toggle=\"tab\""));
+        Assert.That(cssText, Does.Contain(".html-aiinterview-admin-candidate-page"));
+        Assert.That(cssText, Does.Contain(".candidate-dashboard-badge.is-success"));
+        Assert.That(cssText, Does.Contain(".candidate-dashboard-badge.is-danger"));
+        Assert.That(cssText, Does.Contain(".candidate-dashboard-badge.is-warning"));
+        Assert.That(cssText, Does.Contain("word-break: break-word"));
+        Assert.That(cssText, Does.Contain("overflow-x: auto"));
+    }
 }

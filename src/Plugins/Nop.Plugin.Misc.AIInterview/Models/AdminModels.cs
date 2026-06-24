@@ -240,3 +240,74 @@ public record ScoreboardRowModel : BaseNopModel
     public DateTime? CompletedOnUtc { get; set; }
     public string ReportUrl { get; set; }
 }
+
+public record CandidateDetailsModel : BaseNopModel
+{
+    public int SessionId { get; set; }
+    public int ApplicationId { get; set; }
+    public int ProductId { get; set; }
+    public int CandidateCustomerId { get; set; }
+    public string CandidateName { get; set; }
+    public string CandidateEmail { get; set; }
+    public string CandidatePhone { get; set; }
+    public string CandidateAdminUrl { get; set; }
+    public string TargetRole { get; set; }
+    public string ProductName { get; set; }
+    public string ProductAdminUrl { get; set; }
+    public string VendorName { get; set; }
+    public string VendorAdminUrl { get; set; }
+    public string Difficulty { get; set; }
+    public string Status { get; set; }
+    public string StatusBadgeClass { get; set; }
+    public string LifecycleState { get; set; }
+    public string LifecycleBadgeClass { get; set; }
+    public string ComplianceStatus { get; set; }
+    public string ComplianceBadgeClass { get; set; }
+    public string SystemState { get; set; }
+    public string SystemBadgeClass { get; set; }
+    public decimal Score { get; set; }
+    public decimal? AverageQuestionScore { get; set; }
+    public decimal? AverageTechnicalScore { get; set; }
+    public decimal? AverageCommunicationScore { get; set; }
+    public decimal? AverageProfessionalismScore { get; set; }
+    public decimal? AveragePositiveAttitudeScore { get; set; }
+    public int QuestionCount { get; set; }
+    public int AnsweredQuestionCount { get; set; }
+    public bool HasRecording { get; set; }
+    public string RecordingUrl { get; set; }
+    public string ReportUrl { get; set; }
+    public DateTime? AppliedOnUtc { get; set; }
+    public DateTime CreatedOnUtc { get; set; }
+    public DateTime? StartedOnUtc { get; set; }
+    public DateTime? CompletedOnUtc { get; set; }
+    public string SummaryText { get; set; }
+    public string FeedbackText { get; set; }
+    public string ReportData { get; set; }
+    public string QuestionScores { get; set; }
+    public string SessionKey { get; set; }
+    public string InternalSessionToken { get; set; }
+    public string AzureMediaReference { get; set; }
+    public string ApplicationTrackingReference { get; set; }
+    public string StatusComment { get; set; }
+    public IList<decimal> ParsedQuestionScores { get; set; } = new List<decimal>();
+    public IList<CandidateDetailsTurnModel> Turns { get; set; } = new List<CandidateDetailsTurnModel>();
+}
+
+public record CandidateDetailsTurnModel : BaseNopModel
+{
+    public int TurnId { get; set; }
+    public int SequenceNumber { get; set; }
+    public string QuestionLabel { get; set; }
+    public string QuestionText { get; set; }
+    public string AnswerText { get; set; }
+    public string Feedback { get; set; }
+    public decimal? Score { get; set; }
+    public decimal? TechnicalScore { get; set; }
+    public decimal? CommunicationScore { get; set; }
+    public decimal? ProfessionalismScore { get; set; }
+    public decimal? PositiveAttitudeScore { get; set; }
+    public DateTime AskedOnUtc { get; set; }
+    public DateTime? AnsweredOnUtc { get; set; }
+    public string RubricJson { get; set; }
+    public string RawAiResponseJson { get; set; }
+}
