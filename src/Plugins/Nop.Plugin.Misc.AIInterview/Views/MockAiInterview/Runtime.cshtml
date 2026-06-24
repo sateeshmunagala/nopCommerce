@@ -17,11 +17,19 @@
 <div class="runtime-shell">
     <div class="runtime-page">
         <div class="runtime-topbar">
-            <button type="button" id="stop-interview-top" class="button-2" disabled>@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
-            <h1>@Model.ProductName - @Model.Difficulty</h1>
+            <div class="runtime-topbar-main">
+                <button type="button" id="runtime-back" class="runtime-icon-button runtime-back-button" aria-label="Back" title="Back">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span class="sr-only">Back</span>
+                </button>
+                <div class="runtime-title-block">
+                    <p class="runtime-eyebrow">AI Interview Room</p>
+                    <h1>@Model.ProductName - @Model.Difficulty</h1>
+                </div>
+            </div>
             <div class="runtime-meta">
-                <span id="runtime-timer">00:00</span>
-                <button type="button" id="open-transcript" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.Transcript")</button>
+                <span class="runtime-timer-chip"><i class="fa-regular fa-clock" aria-hidden="true"></i><span id="runtime-timer">00:00</span></span>
+                <button type="button" id="stop-interview-top" class="button-2 runtime-stop-button" disabled>@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
             </div>
         </div>
 
@@ -35,21 +43,48 @@
                         <div id="runtime-log-body"></div>
                     </div>
                     <video id="runtime-video" autoplay playsinline muted></video>
-                    <span id="camera-placeholder">@T("Plugins.Misc.AIInterview.Runtime.CameraOff")</span>
-                    <div class="runtime-avatar"></div>
+                    <div id="camera-placeholder" class="runtime-camera-placeholder">
+                        <i class="fa-solid fa-video-slash" aria-hidden="true"></i>
+                        <span>Camera preview</span>
+                    </div>
+                    <div class="runtime-avatar">
+                        <div class="runtime-avatar-label"><i class="fa-solid fa-robot" aria-hidden="true"></i><span>AI Interviewer</span></div>
+                    </div>
                 </div>
                 <div class="runtime-controls">
-                    <span class="runtime-dot is-live"></span>
-                    <span class="runtime-dot"></span>
-                    <button type="button" id="toggle-camera" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.CameraOn")</button>
-                    <button type="button" id="toggle-mic" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.MicOn")</button>
-                    <button type="button" id="toggle-recording" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.RecordingReady")</button>
-                    <button type="button" id="view-guidelines" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Title")</button>
+                    <div class="runtime-control-icons">
+                        <button type="button" id="toggle-camera" class="runtime-icon-button button-2" aria-label="Turn camera on" title="Turn camera on">
+                            <i class="fa-solid fa-video" aria-hidden="true"></i>
+                            <span class="sr-only">Turn camera on</span>
+                        </button>
+                        <button type="button" id="toggle-mic" class="runtime-icon-button button-2" aria-label="Turn microphone on" title="Turn microphone on">
+                            <i class="fa-solid fa-microphone" aria-hidden="true"></i>
+                            <span class="sr-only">Turn microphone on</span>
+                        </button>
+                        <button type="button" id="toggle-screen-share" class="runtime-icon-button button-2" aria-label="Enable screen share" title="Enable screen share">
+                            <i class="fa-solid fa-display" aria-hidden="true"></i>
+                            <span class="sr-only">Enable screen share</span>
+                        </button>
+                        <button type="button" id="toggle-recording" class="runtime-icon-button button-2" aria-label="Recording status" title="Recording status">
+                            <i class="fa-solid fa-circle" aria-hidden="true"></i>
+                            <span class="sr-only">Recording status</span>
+                        </button>
+                        <button type="button" id="view-guidelines" class="runtime-icon-button button-2" aria-label="Guidelines" title="Guidelines">
+                            <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+                            <span class="sr-only">@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Title")</span>
+                        </button>
+                        <button type="button" id="open-transcript" class="runtime-icon-button button-2" aria-label="Transcript" title="Transcript">
+                            <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                            <span class="sr-only">@T("Plugins.Misc.AIInterview.Runtime.Transcript")</span>
+                        </button>
+                        <button type="button" id="repeat-question" class="runtime-icon-button button-2" aria-label="Repeat question" title="Repeat question">
+                            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+                            <span class="sr-only">Repeat question</span>
+                        </button>
+                    </div>
                     <button type="button" id="start-or-next" class="button-1" disabled>@T("Plugins.Misc.AIInterview.Runtime.StartInterview")</button>
-                    <span class="runtime-dot"></span>
-                    <span class="runtime-dot"></span>
                 </div>
-                <div id="screen-share-status" class="runtime-screen-share-status">@T("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional")</div>
+                <div id="screen-share-status" class="runtime-screen-share-status runtime-js-hidden" aria-live="polite">@T("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional")</div>
                 <div class="runtime-status" id="recording-status"></div>
                 @if (Model.IsMockMode)
                 {
@@ -63,19 +98,25 @@
             </section>
 
             <aside class="runtime-sidebar">
-                <h3>@T("Plugins.Misc.AIInterview.Runtime.Conversations")</h3>
-                <div id="runtime-question" class="runtime-question">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
+                <div class="runtime-sidebar-head">
+                    <div>
+                        <h3>Interview chat</h3>
+                        <p>Questions and answers appear here in order.</p>
+                    </div>
+                </div>
+                <div id="runtime-question" class="runtime-question runtime-js-hidden">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
                 <div id="runtime-message" class="runtime-message is-info">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
 
                 <div class="runtime-conversation" id="conversation"></div>
 
-                <div class="runtime-answer">
+                <div class="runtime-answer runtime-answer-panel">
+                    <label class="sr-only" for="runtime-answer">Your answer</label>
                     <textarea id="runtime-answer" placeholder="@T("Plugins.Misc.AIInterview.Runtime.AnswerPlaceholder")" disabled></textarea>
                 </div>
 
                 <div class="runtime-actions">
-                    <button type="button" id="submit-answer" class="button-1" disabled>@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</button>
-                    <button type="button" id="stop-interview" class="button-2" disabled>@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
+                    <button type="button" id="submit-answer" class="button-1 runtime-js-hidden" disabled>@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</button>
+                    <button type="button" id="stop-interview" class="button-2 runtime-js-hidden" disabled tabindex="-1" aria-hidden="true">@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
                     <button type="button" id="view-report" class="button-2 runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</button>
                 </div>
 
@@ -104,8 +145,9 @@
             <li>This interview must be taken from a personal laptop.</li>
             <li>Corporate laptops are not allowed.</li>
             <li>Mobile phones and tablets are not allowed by policy, but they are not blocked technically.</li>
-            <li>Camera and microphone access may be required.</li>
-            <li>Screen sharing is optional and can be enabled if requested by your interviewer or employer workflow.</li>
+            <li>Camera access is required before the interview starts and must remain on during the interview.</li>
+            <li>Microphone access is required before the interview starts and must remain on during the interview.</li>
+            <li>Screen sharing is required before the interview starts and must remain active while answering.</li>
             <li>Please be in a quiet place with stable internet.</li>
             <li>Do not use outside help, another person, unauthorized notes, or AI tools during the interview.</li>
             <li>Keep this interview tab open until the interview is completed.</li>
@@ -142,9 +184,13 @@
         const recordingStatus = document.getElementById('recording-status');
         const screenShareStatus = document.getElementById('screen-share-status');
         const recordingButton = document.getElementById('toggle-recording');
-        const submitButton = document.getElementById('submit-answer');
         const startButton = document.getElementById('start-or-next');
+        const submitButton = document.getElementById('submit-answer');
+        const primaryActionButton = startButton;
         const guidelinesButton = document.getElementById('view-guidelines');
+        const screenShareButton = document.getElementById('toggle-screen-share');
+        const repeatQuestionButton = document.getElementById('repeat-question');
+        const runtimeBackButton = document.getElementById('runtime-back');
         const guidelinesModal = document.getElementById('guidelines-modal');
         const guidelinesCheckbox = document.getElementById('guidelines-acknowledge');
         const guidelinesAgreeButton = document.getElementById('guidelines-agree');
@@ -174,7 +220,7 @@
         let runtimeStoppedOrCompleted = false;
         let stopInProgress = false;
         let mediaPermissionDenied = false;
-        let screenShareRequired = false;
+        let screenShareRequired = true;
         let screenShareActive = false;
         let screenShareInterrupted = false;
         let guidelinesAcknowledged = false;
@@ -192,12 +238,60 @@
         let timerStartedAt = null;
         let answerNeedsEditAfterFailure = false;
 
+        const setButtonLabel = (button, text) => {
+            if (!button)
+                return;
+
+            button.textContent = text;
+        };
+
+        const setIconButtonState = (button, options) => {
+            if (!button)
+                return;
+
+            const {
+                icon,
+                label,
+                title,
+                active = false,
+                hidden = false,
+                disabled = false
+            } = options;
+
+            button.classList.toggle('is-active', active);
+            button.classList.toggle('runtime-js-hidden', hidden);
+            button.disabled = disabled;
+            button.setAttribute('aria-label', label);
+            button.setAttribute('title', title || label);
+
+            const iconNode = button.querySelector('i');
+            if (iconNode && icon)
+                iconNode.className = icon;
+
+            const hiddenText = button.querySelector('.sr-only');
+            if (hiddenText)
+                hiddenText.textContent = label;
+        };
+
         if (runtimeLog)
             runtimeLog.style.display = debugRuntime ? 'block' : 'none';
 
         const resetSubmitButtonText = () => {
-            if (submitButton && !submitButton.classList.contains('is-loading'))
-                submitButton.textContent = 'Submit Answer';
+            if (!primaryActionButton || primaryActionButton.classList.contains('is-loading'))
+                return;
+
+            if (!interviewStarted) {
+                setButtonLabel(primaryActionButton, 'Start Interview');
+                return;
+            }
+
+            if (isRequiredMediaBlockingInterview()) {
+                setButtonLabel(primaryActionButton, getRequiredMediaResumeLabel());
+                return;
+            }
+
+            if (hasActiveQuestion())
+                setButtonLabel(primaryActionButton, 'Submit Answer');
         };
 
         const clearGuidelinesModalTimer = () => {
@@ -238,44 +332,42 @@
                 return;
 
             screenShareStatus.textContent = message;
-            screenShareStatus.className = `runtime-screen-share-status ${state === 'active' ? 'is-active' : state === 'warning' ? 'is-warning' : ''}`.trim();
+            const isVisible = state === 'warning' || state === 'error';
+            screenShareStatus.className = `runtime-screen-share-status ${state === 'active' ? 'is-active' : state === 'warning' ? 'is-warning' : ''} ${isVisible ? '' : 'runtime-js-hidden'}`.trim();
         };
 
         const updateStartButtonState = () => {
-            if (!startButton)
+            if (!primaryActionButton)
                 return;
 
             if (runtimeStoppedOrCompleted) {
-                startButton.disabled = true;
-                startButton.textContent = 'Completed';
+                primaryActionButton.disabled = true;
+                setButtonLabel(primaryActionButton, 'Completed');
                 updateStopButtonsState();
+                updateAuxiliaryControlsState();
                 return;
             }
 
             if (!interviewStarted) {
-                startButton.disabled = !guidelinesAcknowledged;
-                startButton.textContent = 'Start Interview';
+                primaryActionButton.disabled = !guidelinesAcknowledged;
+                setButtonLabel(primaryActionButton, 'Start Interview');
                 updateStopButtonsState();
+                updateAuxiliaryControlsState();
                 return;
             }
 
-            if (screenShareRequired && (!screenShareActive || screenShareInterrupted)) {
-                startButton.disabled = false;
-                startButton.textContent = 'Resume Screen Share';
+            if (isRequiredMediaBlockingInterview()) {
+                primaryActionButton.disabled = false;
+                setButtonLabel(primaryActionButton, getRequiredMediaResumeLabel());
                 updateStopButtonsState();
+                updateAuxiliaryControlsState();
                 return;
             }
 
-            if (config.speechAvailable) {
-                startButton.disabled = false;
-                startButton.textContent = 'Repeat Question';
-                updateStopButtonsState();
-                return;
-            }
-
-            startButton.disabled = true;
-            startButton.textContent = 'Interview Started';
+            primaryActionButton.disabled = !hasActiveQuestion() || !(answerBox.value || '').trim();
+            setButtonLabel(primaryActionButton, hasActiveQuestion() ? 'Submit Answer' : 'Interview Started');
             updateStopButtonsState();
+            updateAuxiliaryControlsState();
         };
 
         const updateStopButtonsState = () => {
@@ -309,6 +401,7 @@
             screenShareActive = false;
             screenShareInterrupted = false;
             setScreenShareStatus(runtimeStoppedOrCompleted ? 'Screen sharing ended' : 'Screen sharing required');
+            updateAuxiliaryControlsState();
         };
 
         const clearCompletedRedirectState = () => {
@@ -349,7 +442,7 @@
         const startAutoSubmitCountdown = () => {
             clearAnswerTimers();
             countdownValue = autoSubmitDelaySeconds;
-            submitButton.textContent = `Auto submitting in ${countdownValue}`;
+            primaryActionButton.textContent = `Submit Answer (${countdownValue})`;
             countdownTimer = setInterval(() => {
                 if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || isScreenShareBlockingInterview()) {
                     clearAnswerTimers();
@@ -370,7 +463,7 @@
                     return;
                 }
 
-                submitButton.textContent = `Auto submitting in ${countdownValue}`;
+                primaryActionButton.textContent = `Submit Answer (${countdownValue})`;
             }, 1000);
         };
 
@@ -401,7 +494,7 @@
         recordingEnabled = !!config.recordingAvailable;
         if (recordingButton) {
             recordingButton.disabled = !config.recordingAvailable;
-            recordingButton.textContent = config.recordingAvailable ? 'Recording Ready' : 'Recording Unavailable';
+            updateAuxiliaryControlsState();
         }
 
         const loadScriptOnce = (src) => {
@@ -427,7 +520,7 @@
 
         const setStatus = (message, isError) => {
             statusBox.textContent = message || '';
-            statusBox.className = `runtime-status ${isError ? 'message-error' : 'message-success'}`;
+            statusBox.className = `runtime-status ${message ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
         };
 
         const setRecordingStatus = (message, isError) => {
@@ -435,7 +528,8 @@
                 return;
 
             recordingStatus.textContent = message || '';
-            recordingStatus.className = `runtime-status ${isError ? 'message-error' : 'message-success'}`;
+            const isVisible = !!message && !!config.recordingAvailable;
+            recordingStatus.className = `runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
         };
 
         const logActivity = (msg) => {
@@ -481,7 +575,7 @@
         if (config.recordingAvailable)
             setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);
         else
-            setRecordingStatus('Recording unavailable.', false);
+            setRecordingStatus('', false);
 
         const isPlaceholderSpeechText = (text) => {
             const normalized = (text || '').trim();
@@ -495,21 +589,86 @@
 
         const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());
 
-        const isScreenShareBlockingInterview = () => screenShareRequired && interviewStarted && (!screenShareActive || screenShareInterrupted);
+        function isCameraActive() {
+            return !!cameraStream?.getVideoTracks?.().some(track => track.readyState === 'live');
+        }
+
+        function isMicActive() {
+            return !!micStream?.getAudioTracks?.().some(track => track.readyState === 'live');
+        }
+
+        function isRequiredMediaBlockingInterview() {
+            return interviewStarted && (!isCameraActive() || !isMicActive() || isScreenShareBlockingInterview());
+        }
+
+        function getRequiredMediaResumeLabel() {
+            if (!isCameraActive() || !isMicActive())
+                return 'Enable Camera And Mic';
+
+            return 'Resume Screen Share';
+        }
+
+        function isScreenShareBlockingInterview() {
+            return screenShareRequired && interviewStarted && (!screenShareActive || screenShareInterrupted);
+        }
+
+        function updateAuxiliaryControlsState() {
+            setIconButtonState(document.getElementById('toggle-camera'), {
+                icon: isCameraActive() ? 'fa-solid fa-video' : 'fa-solid fa-video-slash',
+                label: isCameraActive() ? 'Turn camera off' : 'Turn camera on',
+                title: isCameraActive() ? 'Turn camera off' : 'Turn camera on',
+                active: isCameraActive()
+            });
+
+            setIconButtonState(document.getElementById('toggle-mic'), {
+                icon: isMicActive() ? 'fa-solid fa-microphone' : 'fa-solid fa-microphone-slash',
+                label: isMicActive() ? 'Turn microphone off' : 'Turn microphone on',
+                title: isMicActive() ? 'Turn microphone off' : 'Turn microphone on',
+                active: isMicActive()
+            });
+
+            setIconButtonState(screenShareButton, {
+                icon: 'fa-solid fa-display',
+                label: screenShareActive && !screenShareInterrupted ? 'Screen share active' : 'Enable screen share',
+                title: screenShareActive && !screenShareInterrupted ? 'Screen share active' : 'Enable screen share',
+                active: screenShareActive && !screenShareInterrupted
+            });
+
+            setIconButtonState(recordingButton, {
+                icon: 'fa-solid fa-circle',
+                label: mediaRecorder ? 'Recording live' : 'Recording status',
+                title: mediaRecorder ? 'Recording live' : 'Recording status',
+                active: !!mediaRecorder,
+                hidden: !config.recordingAvailable,
+                disabled: !config.recordingAvailable
+            });
+
+            setIconButtonState(repeatQuestionButton, {
+                icon: 'fa-solid fa-rotate-right',
+                label: 'Repeat question',
+                title: 'Repeat question',
+                disabled: !config.speechAvailable || !interviewStarted || !hasActiveQuestion()
+            });
+        }
 
         const updateSubmitAvailability = () => {
             if (!submitButton)
                 return;
 
             const trimmedAnswer = (answerBox.value || '').trim();
-            submitButton.disabled = answerBox.disabled
+            const disableSubmit = answerBox.disabled
                 || !interviewStarted
                 || runtimeStoppedOrCompleted
                 || stopInProgress
+                || !isCameraActive()
+                || !isMicActive()
                 || isScreenShareBlockingInterview()
                 || interviewUnavailable
                 || !hasActiveQuestion()
                 || !trimmedAnswer;
+            submitButton.disabled = disableSubmit;
+            if (primaryActionButton && interviewStarted && !runtimeStoppedOrCompleted && !isRequiredMediaBlockingInterview())
+                primaryActionButton.disabled = disableSubmit;
         };
 
         const sendGuidelinesAcknowledgementAudit = async (payload) => {
@@ -549,6 +708,7 @@
             setStatus('Screen sharing ended. Resume screen sharing to continue the interview.', true);
             updateStartButtonState();
             updateSubmitAvailability();
+            updateAuxiliaryControlsState();
             if (recordingEnabled)
                 setRecordingStatus('Recording paused until screen sharing resumes.', false);
         };
@@ -570,6 +730,7 @@
                 screenShareActive = true;
                 screenShareInterrupted = false;
                 setScreenShareStatus('Screen sharing active', 'active');
+                updateAuxiliaryControlsState();
                 return true;
             }
 
@@ -596,6 +757,7 @@
                 logActivity('Screen sharing started.');
                 updateStartButtonState();
                 updateSubmitAvailability();
+                updateAuxiliaryControlsState();
                 if (recordingEnabled)
                     await syncRecording();
                 return true;
@@ -603,6 +765,7 @@
                 stopScreenShare();
                 logActivity('Screen sharing was denied or cancelled.');
                 setStatus('Screen sharing is required to start the interview.', true);
+                updateAuxiliaryControlsState();
                 return false;
             }
         };
@@ -754,8 +917,6 @@
             video.srcObject = null;
             video.style.display = 'none';
             cameraPlaceholder.style.display = '';
-            document.getElementById('toggle-camera').textContent = 'Camera On';
-            document.getElementById('toggle-mic').textContent = 'Mic On';
             audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
             await stopSpeechRecognition();
             questionBox.textContent = completionText;
@@ -786,6 +947,7 @@
                 reportButton.style.display = 'none';
             }
             clearTokenRefreshTimer();
+            updateAuxiliaryControlsState();
         };
 
         const normalizeTurn = (turn, index = 0) => {
@@ -800,6 +962,43 @@
                 askedOnUtc: getValue(turn, 'askedOnUtc', 'AskedOnUtc') || null,
                 answeredOnUtc: getValue(turn, 'answeredOnUtc', 'AnsweredOnUtc') || null
             };
+        };
+
+        const buildChatMessage = (role, text, options = {}) => {
+            const message = document.createElement('div');
+            message.className = `runtime-chat-message is-${role}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'runtime-chat-avatar';
+            const icon = document.createElement('i');
+            icon.className = role === 'bot' ? 'fa-solid fa-robot' : 'fa-solid fa-user';
+            icon.setAttribute('aria-hidden', 'true');
+            avatar.appendChild(icon);
+
+            const bubble = document.createElement('div');
+            bubble.className = 'runtime-chat-bubble';
+
+            const label = document.createElement('div');
+            label.className = 'runtime-chat-label';
+            label.textContent = role === 'bot' ? 'AI Interviewer' : 'You';
+
+            const body = document.createElement('div');
+            body.className = 'runtime-chat-text';
+            body.textContent = text || '';
+
+            bubble.appendChild(label);
+            bubble.appendChild(body);
+
+            if (options.pending) {
+                const pending = document.createElement('div');
+                pending.className = 'runtime-chat-meta';
+                pending.textContent = 'Awaiting answer...';
+                bubble.appendChild(pending);
+            }
+
+            message.appendChild(avatar);
+            message.appendChild(bubble);
+            return message;
         };
 
         const buildTurnCard = (turn, index) => {
@@ -838,15 +1037,19 @@
             conversation.replaceChildren();
             const normalizedTurns = (turns || []).map((turn, index) => normalizeTurn(turn, index));
             normalizedTurns.forEach((turn, index) => {
-                const conversationCard = buildTurnCard(turn, index);
                 const transcriptCard = buildTurnCard(turn, index);
-                conversation.appendChild(conversationCard);
+                if (turn?.questionText)
+                    conversation.appendChild(buildChatMessage('bot', turn.questionText, { pending: !turn.answerText }));
+                if (turn?.answerText)
+                    conversation.appendChild(buildChatMessage('user', turn.answerText));
                 transcriptBody.appendChild(transcriptCard);
             });
 
             const answered = normalizedTurns.filter(turn => turn?.answerText).length;
             const progress = Math.min(100, Math.max(0, (answered / Math.max(1, normalizedTurns.length)) * 100));
             progressBar.style.width = `${progress}%`;
+            conversation.scrollTop = conversation.scrollHeight;
+            transcriptBody.scrollTop = transcriptBody.scrollHeight;
         };
 
         const postForm = async (url, formData) => {
@@ -989,6 +1192,29 @@
             return false;
         };
 
+        const ensureRequiredMediaReady = async () => {
+            await setCamera(true, true);
+            await setMic(true, true);
+
+            if (!isCameraActive() || !isMicActive()) {
+                const missingCamera = !isCameraActive();
+                const missingMic = !isMicActive();
+                let message = 'Camera and microphone access are required to start the interview.';
+                if (missingCamera && !missingMic)
+                    message = 'Camera access is required to start the interview.';
+                else if (!missingCamera && missingMic)
+                    message = 'Microphone access is required to start the interview.';
+
+                setStatus(message, true);
+                updateSubmitAvailability();
+                updateStartButtonState();
+                updateAuxiliaryControlsState();
+                return false;
+            }
+
+            return true;
+        };
+
         const uploadRecording = async (blob) => {
             if (!config.recordingUploadUrl || !blob || recordingUploadInFlight)
                 return;
@@ -1066,7 +1292,7 @@
                     } finally {
                         const toggleRecording = document.getElementById('toggle-recording');
                         if (toggleRecording)
-                            toggleRecording.textContent = recordingEnabled ? 'Recording Ready' : 'Recording Off';
+                            updateAuxiliaryControlsState();
                         if (statusMessage)
                             setRecordingStatus(statusMessage, false);
                         resolve();
@@ -1120,7 +1346,7 @@
                 setRecordingStatus('Recording live.', false);
                 const toggleRecording = document.getElementById('toggle-recording');
                 if (toggleRecording)
-                    toggleRecording.textContent = 'Recording Live';
+                    updateAuxiliaryControlsState();
             } catch (error) {
                 mediaRecorder = null;
                 recordingChunks = [];
@@ -1337,8 +1563,12 @@
                 cameraStream = null;
                 video.style.display = 'none';
                 cameraPlaceholder.style.display = '';
-                document.getElementById('toggle-camera').textContent = 'Camera On';
                 logActivity('Camera stopped.');
+                if (interviewStarted)
+                    setStatus('Camera must remain on during the interview.', true);
+                updateAuxiliaryControlsState();
+                updateStartButtonState();
+                updateSubmitAvailability();
                 if (recordingEnabled && mediaRecorder)
                     setRecordingStatus('Recording remains enabled. Turn recording off to discard or stop the interview to upload.', false);
                 return;
@@ -1349,19 +1579,22 @@
                 video.srcObject = cameraStream;
                 video.style.display = 'block';
                 cameraPlaceholder.style.display = 'none';
-                document.getElementById('toggle-camera').textContent = 'Camera Off';
                 logActivity('Camera started.');
+                updateAuxiliaryControlsState();
+                updateStartButtonState();
+                updateSubmitAvailability();
                 if (!skipRecordingSync)
                     await syncRecording();
             } catch (error) {
                 logActivity('Camera failed to start.');
                 if (error?.name === 'NotAllowedError' || /denied|permission/i.test(error?.message || '')) {
                     mediaPermissionDenied = true;
-                    setStatus('Camera permission was denied. You can continue by typing your answers.', false);
+                    setStatus('Camera permission was denied. Camera access is required for this interview.', true);
                     setRecordingStatus(screenShareActive ? 'Recording remains available with screen share.' : 'Recording is waiting for screen share because camera or microphone permission was denied.', false);
                 } else {
                     setStatus('Camera could not be started.', true);
                 }
+                updateAuxiliaryControlsState();
             }
         };
 
@@ -1380,9 +1613,13 @@
                 audioContext = null;
                 analyser = null;
                 audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
-                document.getElementById('toggle-mic').textContent = 'Mic On';
                 logActivity('Mic stopped.');
                 await stopSpeechRecognition();
+                if (interviewStarted)
+                    setStatus('Microphone must remain on during the interview.', true);
+                updateAuxiliaryControlsState();
+                updateStartButtonState();
+                updateSubmitAvailability();
                 if (recordingEnabled && mediaRecorder)
                     setRecordingStatus('Recording remains enabled. Turn recording off to discard or stop the interview to upload.', false);
                 return;
@@ -1410,20 +1647,23 @@
                     meterFrame = requestAnimationFrame(updateMeter);
                 };
                 updateMeter();
-                document.getElementById('toggle-mic').textContent = 'Mic Off';
                 logActivity('Mic started.');
                 await startSpeechRecognition();
+                updateAuxiliaryControlsState();
+                updateStartButtonState();
+                updateSubmitAvailability();
                 if (!skipRecordingSync)
                     await syncRecording();
             } catch (error) {
                 logActivity('Mic failed to start.');
                 if (error?.name === 'NotAllowedError' || /denied|permission/i.test(error?.message || '')) {
                     mediaPermissionDenied = true;
-                    setStatus('Microphone permission was denied. You can continue by typing your answers.', false);
+                    setStatus('Microphone permission was denied. Microphone access is required for this interview.', true);
                     setRecordingStatus(screenShareActive ? 'Recording remains available with screen share.' : 'Recording is waiting for screen share because camera or microphone permission was denied.', false);
                 } else {
                     setStatus('Microphone could not be started.', true);
                 }
+                updateAuxiliaryControlsState();
             }
         };
 
@@ -1438,8 +1678,8 @@
                 return;
             }
 
-            const submitBtn = document.getElementById('submit-answer');
-            if (submitBtn.disabled || isSubmittingAnswer) return;
+            const submitBtn = primaryActionButton;
+            if (submitButton.disabled || isSubmittingAnswer) return;
 
             const auto = options.auto === true;
             if (isScreenShareBlockingInterview()) {
@@ -1482,9 +1722,7 @@
             const body = new URLSearchParams({ token: sessionToken, answer: trimmedAnswer });
             const result = await postForm(config.submitAnswerUrl, body);
 
-            submitBtn.disabled = false;
             submitBtn.classList.remove('is-loading');
-            submitBtn.textContent = originalText;
             isSpeakingOrSubmitting = false;
             isSubmittingAnswer = false;
 
@@ -1493,6 +1731,7 @@
                 setStatus(getRuntimeMessage(result, 'Unable to submit answer.'), true);
                 answerNeedsEditAfterFailure = true;
                 updateSubmitAvailability();
+                resetSubmitButtonText();
                 return;
             }
             logActivity('Submit response success: ' + getRuntimeMessage(result, 'Answer saved.'));
@@ -1538,6 +1777,7 @@
             answerBox.value = '';
             renderTranscript();
             updateSubmitAvailability();
+            resetSubmitButtonText();
 
             if (isTerminated) {
                 if (mediaRecorder && recordingEnabled)
@@ -1624,6 +1864,18 @@
         const beginInterview = async () => {
             logActivity('Interview started clicked.');
             if (interviewStarted) {
+                if (!isCameraActive() || !isMicActive()) {
+                    const mediaReady = await ensureRequiredMediaReady();
+                    if (mediaReady) {
+                        setStatus('Camera and microphone are active. You can continue the interview.', false);
+                        if (recordingEnabled)
+                            await syncRecording();
+                        if (hasActiveQuestion() && !answerNeedsEditAfterFailure)
+                            resetTimers();
+                    }
+                    return;
+                }
+
                 if (screenShareRequired && (!screenShareActive || screenShareInterrupted)) {
                     if (await requestScreenShareForInterviewStart()) {
                         if (recordingEnabled && mediaRecorder)
@@ -1638,7 +1890,12 @@
                     return;
                 }
 
-                if (config.speechAvailable && hasActiveQuestion())
+                if (hasActiveQuestion()) {
+                    await submitAnswer();
+                    return;
+                }
+
+                if (config.speechAvailable && currentQuestionText())
                     await speakText(questionBox.textContent, 'question');
                 return;
             }
@@ -1646,6 +1903,10 @@
                 openGuidelinesModal();
                 setStatus('Please review and accept the interview guidelines before starting.', false);
                 updateStartButtonState();
+                return;
+            }
+            if (!(await ensureRequiredMediaReady())) {
+                interviewStarted = false;
                 return;
             }
             if (!(await requestScreenShareForInterviewStart())) {
@@ -1714,14 +1975,13 @@
             await syncRecording();
             if (questionBox.textContent) logActivity('Question shown: ' + questionBox.textContent);
             updateSubmitAvailability();
+            updateAuxiliaryControlsState();
             if (config.speechAvailable && hasActiveQuestion())
                 await speakText(questionBox.textContent, 'question');
             else
                 resetTimers();
         };
 
-        document.getElementById('submit-answer').addEventListener('click', submitAnswer);
-        document.getElementById('start-or-next').addEventListener('click', beginInterview);
         if (guidelinesButton)
             guidelinesButton.addEventListener('click', openGuidelinesModal);
         if (guidelinesCheckbox)
@@ -1745,8 +2005,21 @@
             updateStartButtonState();
             setStatus('Please acknowledge the interview guidelines before starting.', false);
         });
-        document.getElementById('toggle-camera').addEventListener('click', async () => await setCamera(!cameraStream));
-        document.getElementById('toggle-mic').addEventListener('click', async () => await setMic(!micStream));
+        document.getElementById('toggle-camera').addEventListener('click', async () => await setCamera(!isCameraActive()));
+        document.getElementById('toggle-mic').addEventListener('click', async () => await setMic(!isMicActive()));
+        if (screenShareButton) {
+            screenShareButton.addEventListener('click', async () => {
+                await requestScreenShareForInterviewStart();
+            });
+        }
+        if (repeatQuestionButton) {
+            repeatQuestionButton.addEventListener('click', async () => {
+                if (!config.speechAvailable || !hasActiveQuestion())
+                    return;
+
+                await speakText(questionBox.textContent, 'question');
+            });
+        }
         if (recordingButton) {
             recordingButton.addEventListener('click', async () => {
                 if (!config.recordingAvailable)
@@ -1757,16 +2030,38 @@
                     await stopRecording(false);
                     setRecordingStatus('Recording disabled.', false);
                 } else {
-                    recordingButton.textContent = 'Recording Ready';
                     setRecordingStatus('Recording ready.', false);
                     await syncRecording();
                 }
+                updateAuxiliaryControlsState();
             });
         }
+        submitButton.addEventListener('click', submitAnswer);
+        primaryActionButton.addEventListener('click', beginInterview);
         document.getElementById('stop-interview').addEventListener('click', stopInterview);
         document.getElementById('stop-interview-top').addEventListener('click', stopInterview);
         document.getElementById('open-transcript').addEventListener('click', () => transcript.classList.add('is-open'));
         document.getElementById('close-transcript').addEventListener('click', () => transcript.classList.remove('is-open'));
+        if (runtimeBackButton) {
+            runtimeBackButton.addEventListener('click', () => {
+                if (window.history.length > 1) {
+                    window.history.back();
+                    return;
+                }
+
+                if (document.referrer) {
+                    try {
+                        const referrerUrl = new URL(document.referrer, window.location.origin);
+                        if (referrerUrl.origin === window.location.origin) {
+                            window.location.href = referrerUrl.href;
+                            return;
+                        }
+                    } catch {}
+                }
+
+                window.location.href = '/';
+            });
+        }
         window.addEventListener('beforeunload', (event) => {
             if (!shouldWarnBeforeUnload())
                 return;
@@ -1785,10 +2080,11 @@
         submitButton.disabled = true;
         updateStopButtonsState();
         setStatus('Click Start Interview to begin.', false);
-        setScreenShareStatus('Screen sharing optional');
+        setScreenShareStatus('Screen sharing required');
         updateGuidelinesAcknowledgementState();
         updateStartButtonState();
         updateSubmitAvailability();
+        updateAuxiliaryControlsState();
         guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);
         scheduleTokenRefresh();
     })();

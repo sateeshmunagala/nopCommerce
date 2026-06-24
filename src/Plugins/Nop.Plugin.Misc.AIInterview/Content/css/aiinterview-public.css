@@ -634,14 +634,26 @@
 /* Runtime interview room */
 .html-aiinterview-runtime-page body {
     margin: 0;
-    background: #f0f0f0;
+    background: #e5e7eb;
+}
+
+.html-aiinterview-runtime-page .master-wrapper-content,
+.html-aiinterview-runtime-page .master-column-wrapper,
+.html-aiinterview-runtime-page .center-2,
+.html-aiinterview-runtime-page .page-body {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .runtime-shell {
     min-height: 100vh;
     padding: 12px;
     box-sizing: border-box;
-    background: #f0f0f0;
+    background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.55), transparent 36%),
+        linear-gradient(180deg, #e5e7eb 0%, #d1d5db 100%);
+    overflow-x: hidden;
 }
 
 .runtime-js-hidden {
@@ -650,12 +662,22 @@
 
 .runtime-page {
     min-height: calc(100vh - 24px);
+    max-width: 1440px;
+    margin: 0 auto;
     padding: 16px;
-    border: 1px solid #ddd;
+    border: 1px solid #cfd4dc;
     border-radius: 8px;
-    background: #fff;
+    background: #f8fafc;
     display: grid;
-    gap: 16px;
+    gap: 14px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.runtime-topbar-main,
+.runtime-title-block,
+.runtime-sidebar-head {
+    min-width: 0;
 }
 
 .runtime-topbar {
@@ -664,15 +686,36 @@
     align-items: center;
     gap: 14px;
     flex-wrap: wrap;
-    border-bottom: 1px dotted #cfcfcf;
     padding-bottom: 14px;
+    border-bottom: 1px solid #d7dde6;
+}
+
+.runtime-topbar-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.runtime-title-block {
+    display: grid;
+    gap: 3px;
+}
+
+.runtime-eyebrow {
+    margin: 0;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
 }
 
 .runtime-topbar h1 {
     margin: 0;
     color: #111827;
-    font-size: 22px;
+    font-size: 21px;
     line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 
 .runtime-meta,
@@ -685,14 +728,31 @@
 }
 
 .runtime-meta {
-    color: #6b7280;
+    justify-content: flex-end;
+    color: #4b5563;
     font-weight: 700;
+}
+
+.runtime-timer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 14px;
+    border: 1px solid #d0d7e2;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #111827;
+}
+
+.runtime-stop-button {
+    min-width: 148px;
 }
 
 .runtime-progress {
     height: 6px;
     border-radius: 999px;
-    background: #dedede;
+    background: #d1d5db;
     overflow: hidden;
 }
 
@@ -700,39 +760,43 @@
     display: block;
     width: 0;
     height: 100%;
-    background: #22d1b2;
+    background: #0f766e;
     transition: width 0.2s ease;
 }
 
 .runtime-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
+    grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.95fr);
     gap: 16px;
-    min-height: 64vh;
+    min-height: 0;
+    align-items: start;
 }
 
 .runtime-stage,
 .runtime-sidebar {
     display: grid;
-    gap: 14px;
+    gap: 12px;
+    min-width: 0;
+    min-height: 0;
     padding: 16px;
-    border: 1px solid #ddd;
+    border: 1px solid #d8dee8;
     border-radius: 8px;
-    background: #fff;
+    background: #ffffff;
+    box-sizing: border-box;
 }
 
 .runtime-video {
     position: relative;
     display: grid;
     place-items: center;
-    min-height: 220px;
-    max-height: 252px;
-    border: 1px solid #d8d8d8;
+    min-height: 300px;
+    max-height: min(48vh, 420px);
+    border: 1px solid #bfc7d2;
     border-radius: 8px;
-    background: #ededed;
-    color: #6b7280;
-    font-size: 26px;
-    font-weight: 700;
+    background: linear-gradient(180deg, #747f8c 0%, #59626c 100%);
+    color: #e5e7eb;
+    font-size: 18px;
+    font-weight: 600;
     overflow: hidden;
 }
 
@@ -761,6 +825,18 @@
     text-align: left;
 }
 
+.runtime-camera-placeholder {
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    text-align: center;
+    color: #e5e7eb;
+}
+
+.runtime-camera-placeholder i {
+    font-size: 36px;
+}
+
 .runtime-log-title {
     margin-bottom: 4px;
     color: #333;
@@ -769,78 +845,120 @@
 
 .runtime-avatar {
     position: absolute;
-    top: 18px;
-    right: 18px;
-    width: 96px;
-    height: 96px;
-    border: 1px solid #d8d8d8;
+    top: 16px;
+    right: 16px;
+    width: 130px;
+    min-height: 96px;
+    padding: 12px;
+    border: 1px solid #c7d0da;
     border-radius: 8px;
-    background: #f7f7f7;
+    background: rgba(248, 250, 252, 0.95);
+    box-sizing: border-box;
 }
 
-.runtime-avatar::before,
+.runtime-avatar-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.runtime-avatar::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 40px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    transform: translateX(-50%);
+    background: #94a3b8;
+}
+
 .runtime-avatar::after {
     content: "";
     position: absolute;
     left: 50%;
+    bottom: 16px;
+    width: 50px;
+    height: 28px;
+    border-radius: 999px 999px 10px 10px;
     transform: translateX(-50%);
-    background: #b7b7b7;
-}
-
-.runtime-avatar::before {
-    top: 17px;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-}
-
-.runtime-avatar::after {
-    bottom: 17px;
-    width: 52px;
-    height: 32px;
-    border-radius: 999px;
+    background: #94a3b8;
 }
 
 .runtime-controls {
-    position: relative;
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    width: fit-content;
+    width: 100%;
     max-width: 100%;
-    margin: -34px auto 0;
-    padding: 12px;
-    border: 1px solid #ddd;
+    padding: 12px 14px;
+    border: 1px solid #d8dee8;
     border-radius: 8px;
-    background: #fff;
+    background: #111827;
     gap: 10px;
     flex-wrap: wrap;
+    box-sizing: border-box;
 }
 
-.runtime-dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #d0d5dd;
+.runtime-control-icons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
 }
 
-.runtime-dot.is-live {
-    width: 34px;
-    height: 34px;
-    border: 2px solid #d0d5dd;
-    background: #fff;
+.runtime-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+}
+
+.runtime-icon-button i {
+    font-size: 15px;
+}
+
+.runtime-control-icons .runtime-icon-button {
+    border-color: #374151;
+    background: #1f2937;
+    color: #f8fafc;
+}
+
+.runtime-control-icons .runtime-icon-button:hover:not(:disabled) {
+    border-color: #4b5563;
+    background: #374151;
+    color: #ffffff;
+}
+
+.runtime-control-icons .runtime-icon-button.is-active {
+    border-color: #0f766e;
+    background: #115e59;
+    color: #ffffff;
 }
 
 .runtime-screen-share-status,
 .runtime-mock-warning {
-    text-align: center;
+    padding: 8px 10px;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    background: #fff7ed;
+    text-align: left;
     font-size: 13px;
     font-weight: 700;
-    color: #475467;
+    color: #9a3412;
 }
 
 .runtime-screen-share-status.is-active {
-    color: #027a48;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
 }
 
 .runtime-screen-share-status.is-warning,
@@ -848,25 +966,46 @@
     color: #b42318;
 }
 
+.runtime-sidebar {
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    min-height: min(78vh, 860px);
+    max-height: min(78vh, 860px);
+}
+
+.runtime-sidebar-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
 .runtime-sidebar h3 {
     margin: 0;
     color: #111827;
+    font-size: 18px;
+}
+
+.runtime-sidebar-head p {
+    margin: 4px 0 0;
+    color: #6b7280;
+    line-height: 1.5;
 }
 
 .runtime-question,
 .runtime-message {
-    padding: 12px 14px;
-    border: 1px solid #e3d3bb;
-    border-radius: 8px;
-    background: #fffaf2;
-    color: #7a4a0a;
-    line-height: 1.6;
+    min-height: 22px;
+    padding: 10px 12px;
+    border: 1px solid #dbe3ec;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #334155;
+    line-height: 1.5;
 }
 
 .runtime-message.is-info {
-    border-color: #bdebdc;
-    background: #f2fffb;
-    color: #0f766e;
+    border-color: #dbe3ec;
+    background: #f8fafc;
+    color: #475569;
 }
 
 .runtime-conversation,
@@ -874,10 +1013,77 @@
     display: grid;
     gap: 12px;
     align-content: start;
+    min-height: 0;
+    padding-right: 4px;
+    overflow-y: auto;
 }
 
 .runtime-transcript-body {
     margin-top: 16px;
+    max-height: 60vh;
+}
+
+.runtime-conversation {
+    padding: 4px;
+    border: 1px solid #d8dee8;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.runtime-chat-message {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+}
+
+.runtime-chat-avatar {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.runtime-chat-message.is-user .runtime-chat-avatar {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.runtime-chat-bubble {
+    padding: 12px 14px;
+    border: 1px solid #d5dde8;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #0f172a;
+    overflow-wrap: anywhere;
+}
+
+.runtime-chat-message.is-user .runtime-chat-bubble {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+
+.runtime-chat-label {
+    margin-bottom: 6px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.runtime-chat-text {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+.runtime-chat-meta {
+    margin-top: 8px;
+    color: #9ca3af;
+    font-size: 12px;
 }
 
 .turn-card {
@@ -909,12 +1115,14 @@
 
 .runtime-answer textarea {
     width: 100%;
-    min-height: 120px;
+    min-height: 96px;
+    max-height: 160px;
     padding: 12px 14px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #f2f2f2;
+    border: 1px solid #d0d7e2;
+    border-radius: 6px;
+    background: #ffffff;
     resize: vertical;
+    box-sizing: border-box;
 }
 
 .runtime-shell .button-1,
@@ -933,22 +1141,22 @@
 
 .runtime-shell .button-1,
 .runtime-modal .button-1 {
-    border: 1px solid #22d1b2;
-    background: #22d1b2;
+    border: 1px solid #0f766e;
+    background: #0f766e;
     color: #fff;
 }
 
 .runtime-shell .button-1:hover:not(:disabled),
 .runtime-modal .button-1:hover:not(:disabled) {
-    border-color: #19b69a;
-    background: #19b69a;
+    border-color: #115e59;
+    background: #115e59;
 }
 
 .runtime-shell .button-2,
 .runtime-transcript .button-2,
 .runtime-modal .button-2 {
-    border: 1px solid #d8d8d8;
-    background: #f4f4f4;
+    border: 1px solid #d0d7e2;
+    background: #f8fafc;
     color: #374151;
 }
 
@@ -976,10 +1184,12 @@
 .runtime-status {
     min-height: 24px;
     font-weight: 700;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 .runtime-status.message-success {
-    color: #027a48;
+    color: #166534;
 }
 
 .runtime-transcript,
@@ -1061,6 +1271,18 @@
     margin-top: 20px;
 }
 
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .runtime-meter {
     display: flex;
     align-items: end;
@@ -1080,6 +1302,11 @@
     .runtime-layout {
         grid-template-columns: 1fr;
     }
+
+    .runtime-sidebar {
+        min-height: 62vh;
+        max-height: none;
+    }
 }
 
 @media (max-width: 520px) {
@@ -1097,30 +1324,46 @@
         align-items: flex-start;
     }
 
-    .runtime-topbar h1 {
+    .runtime-topbar-main,
+    .runtime-meta,
+    .runtime-controls,
+    .runtime-control-icons {
         width: 100%;
-        font-size: 20px;
+    }
+
+    .runtime-topbar h1 {
+        font-size: 18px;
     }
 
     .runtime-video {
-        min-height: 210px;
-        font-size: 22px;
+        min-height: 220px;
+        max-height: 260px;
     }
 
     .runtime-avatar {
-        width: 78px;
-        height: 78px;
+        width: 108px;
+        min-height: 82px;
     }
 
-    .runtime-controls,
-    .runtime-actions,
-    .runtime-meta {
-        width: 100%;
+    .runtime-controls {
+        align-items: stretch;
+    }
+
+    .runtime-control-icons {
+        justify-content: space-between;
     }
 
     .runtime-shell .button-1,
     .runtime-shell .button-2 {
-        flex: 1 1 140px;
+        flex: 1 1 auto;
+    }
+
+    .runtime-icon-button {
+        flex: 0 0 42px;
+    }
+
+    .runtime-sidebar {
+        min-height: 58vh;
     }
 }
 
