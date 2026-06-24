@@ -113,7 +113,7 @@
                     <textarea id="runtime-answer" placeholder="@T("Plugins.Misc.AIInterview.Runtime.AnswerPlaceholder")" disabled></textarea>
                 </div>
 
-                <div class="runtime-actions">
+                <div id="runtime-actions" class="runtime-actions runtime-js-hidden">
                     <button type="button" id="submit-answer" class="button-1 runtime-js-hidden" disabled>@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</button>
                     <button type="button" id="stop-interview" class="button-2 runtime-js-hidden" disabled tabindex="-1" aria-hidden="true">@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
                     <button type="button" id="view-report" class="button-2 runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</button>
@@ -196,6 +196,7 @@
         const runtimeLog = document.getElementById('runtime-log');
         const audioMeter = Array.from(document.querySelectorAll('#audio-meter span'));
         const reportButton = document.getElementById('view-report');
+        const actionsPanel = document.getElementById('runtime-actions');
         let cameraStream = null;
         let micStream = null;
         let screenShareStream = null;
@@ -917,6 +918,7 @@
             submitButton.disabled = true;
             updateStartButtonState();
             if (reportUrl) {
+                actionsPanel?.classList.remove('runtime-js-hidden');
                 reportButton.style.display = 'inline-flex';
                 reportButton.onclick = () => window.location.href = reportUrl;
                 let remaining = 5;
@@ -931,6 +933,7 @@
                     window.location.href = reportUrl;
                 }, 5000);
             } else {
+                actionsPanel?.classList.add('runtime-js-hidden');
                 reportButton.style.display = 'none';
             }
             clearTokenRefreshTimer();

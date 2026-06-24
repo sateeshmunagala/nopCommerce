@@ -771,7 +771,7 @@
     gap: 16px;
     height: 100%;
     min-height: 0;
-    align-items: start;
+    align-items: stretch;
 }
 
 .runtime-stage,
@@ -780,7 +780,6 @@
     gap: 12px;
     min-width: 0;
     min-height: 0;
-    align-content: start;
     padding: 16px;
     border: 1px solid #d8dee8;
     border-radius: 8px;
@@ -788,12 +787,18 @@
     box-sizing: border-box;
 }
 
+.runtime-stage {
+    grid-template-rows: minmax(0, 1fr) auto;
+    height: 100%;
+    align-content: stretch;
+}
+
 .runtime-video {
     position: relative;
     display: grid;
     place-items: center;
-    min-height: 300px;
-    max-height: min(48vh, 420px);
+    min-height: 0;
+    height: 100%;
     border: 1px solid #bfc7d2;
     border-radius: 8px;
     background: linear-gradient(180deg, #747f8c 0%, #59626c 100%);
@@ -882,11 +887,13 @@
 }
 
 .runtime-controls {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    justify-content: center;
     align-items: center;
-    width: 100%;
+    flex-wrap: nowrap;
+    width: fit-content;
     max-width: 100%;
+    margin: 0 auto;
     padding: 12px 14px;
     border: 1px solid #d8dee8;
     border-radius: 8px;
@@ -897,13 +904,18 @@
 
 .runtime-control-icons {
     display: flex;
+    flex: 0 1 auto;
     flex-wrap: nowrap;
     gap: 8px;
     min-width: 0;
     justify-content: center;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: thin;
+    overflow-x: visible;
+    overflow-y: visible;
+}
+
+.runtime-controls #start-or-next {
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .runtime-icon-button {
@@ -967,8 +979,9 @@
 }
 
 .runtime-sidebar {
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr);
     height: 100%;
+    align-content: stretch;
 }
 
 .runtime-sidebar-head {
@@ -1330,6 +1343,7 @@
         grid-template-columns: 1fr;
     }
 
+    .runtime-stage,
     .runtime-sidebar {
         height: auto;
     }
@@ -1362,7 +1376,7 @@
 
     .runtime-video {
         min-height: 220px;
-        max-height: 260px;
+        height: auto;
     }
 
     .runtime-avatar {
@@ -1371,13 +1385,16 @@
     }
 
     .runtime-controls {
-        grid-template-columns: 1fr;
-        justify-items: stretch;
+        justify-content: flex-start;
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: thin;
     }
 
     .runtime-control-icons {
-        flex-wrap: wrap;
-        justify-content: center;
+        flex: 0 0 auto;
+        justify-content: flex-start;
     }
 
     .runtime-shell .button-1,
