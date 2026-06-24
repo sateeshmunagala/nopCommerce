@@ -798,14 +798,18 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const clearTokenRefreshTimer = () =>"));
         Assert.That(runtimeViewText, Does.Contain("const clearAllRuntimeTimers = () =>"));
         Assert.That(runtimeViewText, Does.Contain("Submit Answer (${countdownValue})"));
+        Assert.That(runtimeViewText, Does.Not.Contain("answerStageTimer = setTimeout(() => {"));
+        Assert.That(runtimeViewText, Does.Not.Contain("}, autoSubmitDelaySeconds * 1000);"));
         Assert.That(runtimeViewText, Does.Contain("Please speak or type something."));
         Assert.That(runtimeViewText, Does.Contain("stopInProgress = true;"));
         Assert.That(runtimeViewText, Does.Contain("runtimeStoppedOrCompleted = true;"));
         Assert.That(runtimeViewText, Does.Contain("clearTokenRefreshTimer();"));
         Assert.That(runtimeViewText, Does.Contain("if (!config.recordingUploadUrl || !blob || recordingUploadInFlight)"));
         Assert.That(runtimeViewText, Does.Contain("if (!interviewStarted) {"));
-        Assert.That(runtimeViewText, Does.Contain("Click Start Interview to begin."));
         Assert.That(runtimeViewText, Does.Contain("<div class=\"runtime-conversation\" id=\"conversation\"></div>"));
+        Assert.That(runtimeViewText, Does.Contain("runtime-chat-message"));
+        Assert.That(runtimeViewText, Does.Contain("runtime-chat-avatar"));
+        Assert.That(runtimeViewText, Does.Not.Contain("Questions and answers appear here in order."));
         Assert.That(runtimeViewText, Does.Not.Contain("startButton.textContent = 'Next Question';"));
         Assert.That(runtimeViewText, Does.Contain("primaryActionButton"));
         Assert.That(runtimeViewText, Does.Contain("setButtonLabel(primaryActionButton, 'Submit Answer');"));
@@ -834,7 +838,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("runtime-log-panel"));
         Assert.That(runtimeViewText, Does.Contain("runtimeLog.style.display = debugRuntime ? 'block' : 'none';"));
         Assert.That(runtimeViewText, Does.Contain("id=\"screen-share-status\""));
-        Assert.That(runtimeViewText, Does.Contain("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional"));
+        Assert.That(runtimeViewText, Does.Not.Contain("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional"));
         Assert.That(runtimeViewText, Does.Contain("Plugins.Misc.AIInterview.Runtime.Guidelines.Title"));
         Assert.That(runtimeViewText, Does.Contain("Plugins.Misc.AIInterview.Runtime.Guidelines.Acknowledge"));
         Assert.That(runtimeViewText, Does.Contain("Mobile phones and tablets are not allowed by policy, but they are not blocked technically."));
@@ -873,7 +877,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const preservedBlob = preservedRecordingSegments.length === 1"));
         Assert.That(runtimeViewText, Does.Contain("await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording restarting with resumed screen share.' });"));
         Assert.That(runtimeViewText, Does.Contain("Enable screen share, camera, or microphone before recording."));
-        Assert.That(runtimeViewText, Does.Contain("Recording waiting for screen share, camera, or microphone."));
+        Assert.That(runtimeViewText, Does.Not.Contain("setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);"));
         Assert.That(runtimeViewText, Does.Contain("Recording paused until screen sharing resumes."));
         Assert.That(runtimeViewText, Does.Contain("Recording upload request start. blobBytes="));
         Assert.That(runtimeViewText, Does.Contain("Recording upload response success. url="));
@@ -905,6 +909,9 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("toggle-screen-share"));
         Assert.That(runtimeViewText, Does.Contain("repeat-question"));
         Assert.That(runtimeViewText, Does.Contain("runtime-back"));
+        Assert.That(runtimeViewText, Does.Contain("id=\"runtime-message\" class=\"runtime-message is-info runtime-js-hidden\""));
+        Assert.That(runtimeViewText, Does.Contain("id=\"runtime-status\" class=\"runtime-status runtime-js-hidden\""));
+        Assert.That(runtimeViewText, Does.Contain("id=\"recording-status\""));
     }
 
     [Test]

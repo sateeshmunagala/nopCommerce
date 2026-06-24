@@ -1065,11 +1065,12 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("const clearTokenRefreshTimer = () =>"));
         Assert.That(runtimeText, Does.Contain("const clearAllRuntimeTimers = () =>"));
         Assert.That(runtimeText, Does.Contain("id=\"screen-share-status\""));
-        Assert.That(runtimeText, Does.Contain("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional"));
+        Assert.That(runtimeText, Does.Not.Contain("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional"));
         Assert.That(runtimeText, Does.Contain("Screen sharing active"));
         Assert.That(runtimeText, Does.Contain("Screen sharing ended. Resume screen sharing to continue."));
         Assert.That(runtimeText, Does.Contain("Screen sharing resumed"));
         Assert.That(runtimeText, Does.Contain("let screenShareRequired = true;"));
+        Assert.That(runtimeText, Does.Contain("const ensureRequiredMediaReady = async () =>"));
         Assert.That(runtimeText, Does.Contain("const shouldWarnBeforeUnload = () => interviewStarted && !runtimeStoppedOrCompleted && !stopInProgress;"));
         Assert.That(runtimeText, Does.Contain("window.addEventListener('beforeunload', (event) => {"));
         Assert.That(runtimeText, Does.Contain("if (!shouldWarnBeforeUnload())"));
@@ -1077,8 +1078,13 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("if (!trimmedAnswer)"));
         Assert.That(runtimeText, Does.Contain("Auto submitting..."));
         Assert.That(runtimeText, Does.Contain("Submit Answer (${countdownValue})"));
+        Assert.That(runtimeText, Does.Not.Contain("answerStageTimer = setTimeout(() => {"));
+        Assert.That(runtimeText, Does.Not.Contain("}, autoSubmitDelaySeconds * 1000);"));
         Assert.That(runtimeText, Does.Contain("fa-solid fa-robot"));
         Assert.That(runtimeText, Does.Contain("fa-solid fa-user"));
+        Assert.That(runtimeText, Does.Contain("runtime-chat-message"));
+        Assert.That(runtimeText, Does.Contain("runtime-chat-avatar"));
+        Assert.That(runtimeText, Does.Contain("id=\"conversation\""));
         Assert.That(runtimeText, Does.Contain("toggle-screen-share"));
         Assert.That(runtimeText, Does.Contain("Please speak or type something."));
         Assert.That(runtimeText, Does.Contain("answerNeedsEditAfterFailure = true;"));
@@ -1090,7 +1096,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Reminder shown."));
         Assert.That(runtimeText, Does.Contain("Reminder spoken."));
         Assert.That(runtimeText, Does.Contain("Reminder speech failed."));
-        Assert.That(runtimeText, Does.Contain("if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure || isScreenShareBlockingInterview()) return;"));
+        Assert.That(runtimeText, Does.Contain("if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure || isScreenShareBlockingInterview())"));
         Assert.That(runtimeText, Does.Contain("startRuntimeTimer();"));
         Assert.That(runtimeText, Does.Contain("const updateStartButtonState = () =>"));
         Assert.That(runtimeText, Does.Contain("setButtonLabel(primaryActionButton, 'Submit Answer');"));
@@ -1101,8 +1107,8 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("messageBox.textContent = isTerminated ? 'Interview completed. Redirecting to report...' : 'Please answer the next question.';"));
         Assert.That(runtimeText, Does.Not.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
         Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)\r\n                    await stopRecording(true);").Or.Contain("if (mediaRecorder && recordingEnabled)\n                    await stopRecording(true);"));
-        Assert.That(runtimeText, Does.Contain("Recording ready."));
-        Assert.That(runtimeText, Does.Contain("Recording waiting for screen share, camera, or microphone."));
+        Assert.That(runtimeText, Does.Not.Contain("setRecordingStatus('Recording ready.', false);"));
+        Assert.That(runtimeText, Does.Not.Contain("setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);"));
         Assert.That(runtimeText, Does.Contain("Recording paused until screen sharing resumes."));
         Assert.That(runtimeText, Does.Contain("let preservedRecordingSegments = [];"));
         Assert.That(runtimeText, Does.Contain("const canStartRecording = () => {"));
@@ -1113,6 +1119,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("sendGuidelinesAcknowledgementAudit"));
         Assert.That(runtimeText, Does.Contain("Mobile phones and tablets are not allowed by policy, but they are not blocked technically."));
         Assert.That(runtimeText, Does.Contain("Recording live."));
+        Assert.That(runtimeText, Does.Not.Contain("Questions and answers appear here in order."));
         Assert.That(runtimeText, Does.Contain("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css"));
         Assert.That(runtimeText, Does.Contain("Plugins.Misc.AIInterview.Runtime.MockMode.Warning"));
         var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml"));

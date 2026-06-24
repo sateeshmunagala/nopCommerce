@@ -84,8 +84,8 @@
                     </div>
                     <button type="button" id="start-or-next" class="button-1" disabled>@T("Plugins.Misc.AIInterview.Runtime.StartInterview")</button>
                 </div>
-                <div id="screen-share-status" class="runtime-screen-share-status runtime-js-hidden" aria-live="polite">@T("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional")</div>
-                <div class="runtime-status" id="recording-status"></div>
+                <div id="screen-share-status" class="runtime-screen-share-status runtime-js-hidden" aria-live="polite"></div>
+                <div class="runtime-status runtime-js-hidden" id="recording-status"></div>
                 @if (Model.IsMockMode)
                 {
                     <div class="runtime-status message-info runtime-mock-warning">
@@ -101,15 +101,14 @@
                 <div class="runtime-sidebar-head">
                     <div>
                         <h3>Interview chat</h3>
-                        <p>Questions and answers appear here in order.</p>
                     </div>
                 </div>
                 <div id="runtime-question" class="runtime-question runtime-js-hidden">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
-                <div id="runtime-message" class="runtime-message is-info">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
+                <div id="runtime-message" class="runtime-message is-info runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
 
                 <div class="runtime-conversation" id="conversation"></div>
 
-                <div class="runtime-answer runtime-answer-panel">
+                <div class="runtime-answer runtime-answer-hidden runtime-js-hidden">
                     <label class="sr-only" for="runtime-answer">Your answer</label>
                     <textarea id="runtime-answer" placeholder="@T("Plugins.Misc.AIInterview.Runtime.AnswerPlaceholder")" disabled></textarea>
                 </div>
@@ -120,7 +119,7 @@
                     <button type="button" id="view-report" class="button-2 runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</button>
                 </div>
 
-                <div id="runtime-status" class="runtime-status"></div>
+                <div id="runtime-status" class="runtime-status runtime-js-hidden"></div>
                 <div id="runtime-completion" class="runtime-message is-info runtime-js-hidden"></div>
             </aside>
         </div>
@@ -229,7 +228,6 @@
         let completedCountdown = null;
         const autoSubmitDelaySeconds = 10;
 
-        let answerStageTimer = null;
         let countdownTimer = null;
         let countdownValue = autoSubmitDelaySeconds;
         let isSpeakingOrSubmitting = false;
@@ -382,9 +380,7 @@
         };
 
         const clearAnswerTimers = () => {
-            clearTimeout(answerStageTimer);
             clearInterval(countdownTimer);
-            answerStageTimer = null;
             countdownTimer = null;
             countdownValue = autoSubmitDelaySeconds;
             resetSubmitButtonText();
@@ -441,10 +437,14 @@
 
         const startAutoSubmitCountdown = () => {
             clearAnswerTimers();
+            const currentText = (answerBox.value || '').trim();
+            if (!currentText || !interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure || isScreenShareBlockingInterview())
+                return;
+
             countdownValue = autoSubmitDelaySeconds;
             primaryActionButton.textContent = `Submit Answer (${countdownValue})`;
             countdownTimer = setInterval(() => {
-                if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || isScreenShareBlockingInterview()) {
+                if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure || isScreenShareBlockingInterview()) {
                     clearAnswerTimers();
                     return;
                 }
@@ -452,7 +452,6 @@
                 const currentText = (answerBox.value || '').trim();
                 if (!currentText) {
                     clearAnswerTimers();
-                    showReminder();
                     return;
                 }
 
@@ -469,20 +468,13 @@
 
         const resetTimers = () => {
             clearAnswerTimers();
-            if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure || isScreenShareBlockingInterview()) return;
+            if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure || isScreenShareBlockingInterview())
+                return;
 
-            answerStageTimer = setTimeout(() => {
-                if (!interviewStarted || isSpeakingOrSubmitting || !hasActiveQuestion() || answerNeedsEditAfterFailure || isScreenShareBlockingInterview())
-                    return;
+            if (!(answerBox.value || '').trim())
+                return;
 
-                const text = (answerBox.value || '').trim();
-                if (!text) {
-                    showReminder();
-                    return;
-                }
-
-                startAutoSubmitCountdown();
-            }, autoSubmitDelaySeconds * 1000);
+            startAutoSubmitCountdown();
         };
 
         answerBox.addEventListener('input', () => {
@@ -520,7 +512,8 @@
 
         const setStatus = (message, isError) => {
             statusBox.textContent = message || '';
-            statusBox.className = `runtime-status ${message ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
+            const isVisible = !!message && (isError || runtimeStoppedOrCompleted || stopInProgress);
+            statusBox.className = `runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
         };
 
         const setRecordingStatus = (message, isError) => {
@@ -528,7 +521,7 @@
                 return;
 
             recordingStatus.textContent = message || '';
-            const isVisible = !!message && !!config.recordingAvailable;
+            const isVisible = !!message && !!config.recordingAvailable && !!isError;
             recordingStatus.className = `runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
         };
 
@@ -572,10 +565,7 @@
 
         logActivity(`Runtime debug enabled. speechAvailable=${!!config.speechAvailable}, recordingAvailable=${!!config.recordingAvailable}, mockMode=${!!config.isMockMode}`);
 
-        if (config.recordingAvailable)
-            setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);
-        else
-            setRecordingStatus('', false);
+        setRecordingStatus('', false);
 
         const isPlaceholderSpeechText = (text) => {
             const normalized = (text || '').trim();
@@ -710,7 +700,7 @@
             updateSubmitAvailability();
             updateAuxiliaryControlsState();
             if (recordingEnabled)
-                setRecordingStatus('Recording paused until screen sharing resumes.', false);
+                logActivity('Recording paused until screen sharing resumes.');
         };
 
         const updateGuidelinesAcknowledgementState = () => {
@@ -721,11 +711,6 @@
         };
 
         const requestScreenShareForInterviewStart = async () => {
-            if (!screenShareRequired) {
-                setScreenShareStatus('Screen sharing optional');
-                return true;
-            }
-
             if (screenShareStream?.getTracks?.().some(track => track.readyState === 'live')) {
                 screenShareActive = true;
                 screenShareInterrupted = false;
@@ -775,6 +760,7 @@
             clearAnswerTimers();
             questionBox.textContent = message;
             messageBox.textContent = message;
+            messageBox.classList.add('runtime-js-hidden');
             answerBox.disabled = true;
             setStatus(message, true);
             updateSubmitAvailability();
@@ -921,6 +907,7 @@
             await stopSpeechRecognition();
             questionBox.textContent = completionText;
             messageBox.textContent = completionText;
+            messageBox.classList.add('runtime-js-hidden');
             completionBox.classList.remove('runtime-js-hidden');
             completionBox.style.display = '';
             completionBox.textContent = reportUrl
@@ -1162,33 +1149,33 @@
                 return true;
 
             if (screenShareActive && getActiveRecordingStream()) {
-                setRecordingStatus('Recording ready.', false);
+                logActivity('Recording ready.');
                 return true;
             }
 
             if (!navigator.mediaDevices?.getUserMedia) {
-                setRecordingStatus(screenShareActive ? 'Recording ready with screen share.' : 'Recording waiting for screen share, camera, or microphone.', false);
+                logActivity(screenShareActive ? 'Recording ready with screen share.' : 'Recording waiting for screen share, camera, or microphone.');
                 return false;
             }
 
             await setCamera(true, true);
             if (getActiveRecordingStream()) {
-                setRecordingStatus('Recording ready.', false);
+                logActivity('Recording ready.');
                 return true;
             }
 
             await setMic(true, true);
             if (getActiveRecordingStream()) {
-                setRecordingStatus('Recording ready.', false);
+                logActivity('Recording ready.');
                 return true;
             }
 
             if (screenShareActive && getActiveRecordingStream()) {
-                setRecordingStatus('Recording ready with screen share.', false);
+                logActivity('Recording ready with screen share.');
                 return true;
             }
 
-            setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);
+            logActivity('Recording waiting for screen share, camera, or microphone.');
             return false;
         };
 
@@ -1230,7 +1217,7 @@
                 const recordingUrl = getValue(result, 'recordingUrl', 'RecordingUrl');
                 if (isSuccess(result) && recordingUrl) {
                     logActivity(`Recording upload response success. url=${recordingUrl}`);
-                    setRecordingStatus('Recording uploaded.', false);
+                    logActivity('Recording uploaded.');
                 } else {
                     logActivity(`Recording upload response failure. message=${getRuntimeMessage(result, 'Recording upload failed.')}`);
                     setRecordingStatus(getRuntimeMessage(result, 'Recording upload failed.'), true);
@@ -1294,7 +1281,7 @@
                         if (toggleRecording)
                             updateAuxiliaryControlsState();
                         if (statusMessage)
-                            setRecordingStatus(statusMessage, false);
+                            logActivity(statusMessage);
                         resolve();
                     }
                 }, { once: true });
@@ -1361,16 +1348,16 @@
 
             if (screenShareRequired && (!screenShareActive || screenShareInterrupted)) {
                 if (recordingEnabled)
-                    setRecordingStatus('Recording paused until screen sharing resumes.', false);
+                    logActivity('Recording paused until screen sharing resumes.');
                 return;
             }
 
             if (canStartRecording())
                 await startRecording();
             else if (!getActiveRecordingStream() && recordingEnabled && mediaPermissionDenied && !screenShareActive)
-                setRecordingStatus('Recording is waiting for screen share because camera or microphone permission was denied.', false);
+                logActivity('Recording is waiting for screen share because camera or microphone permission was denied.');
             else if (!getActiveRecordingStream() && recordingEnabled)
-                setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);
+                logActivity('Recording waiting for screen share, camera, or microphone.');
         };
 
         const scheduleTokenRefresh = () => {
@@ -1570,7 +1557,7 @@
                 updateStartButtonState();
                 updateSubmitAvailability();
                 if (recordingEnabled && mediaRecorder)
-                    setRecordingStatus('Recording remains enabled. Turn recording off to discard or stop the interview to upload.', false);
+                    logActivity('Recording remains enabled. Turn recording off to discard or stop the interview to upload.');
                 return;
             }
 
@@ -1590,7 +1577,7 @@
                 if (error?.name === 'NotAllowedError' || /denied|permission/i.test(error?.message || '')) {
                     mediaPermissionDenied = true;
                     setStatus('Camera permission was denied. Camera access is required for this interview.', true);
-                    setRecordingStatus(screenShareActive ? 'Recording remains available with screen share.' : 'Recording is waiting for screen share because camera or microphone permission was denied.', false);
+                    logActivity(screenShareActive ? 'Recording remains available with screen share.' : 'Recording is waiting for screen share because camera or microphone permission was denied.');
                 } else {
                     setStatus('Camera could not be started.', true);
                 }
@@ -1621,7 +1608,7 @@
                 updateStartButtonState();
                 updateSubmitAvailability();
                 if (recordingEnabled && mediaRecorder)
-                    setRecordingStatus('Recording remains enabled. Turn recording off to discard or stop the interview to upload.', false);
+                    logActivity('Recording remains enabled. Turn recording off to discard or stop the interview to upload.');
                 return;
             }
 
@@ -1659,7 +1646,7 @@
                 if (error?.name === 'NotAllowedError' || /denied|permission/i.test(error?.message || '')) {
                     mediaPermissionDenied = true;
                     setStatus('Microphone permission was denied. Microphone access is required for this interview.', true);
-                    setRecordingStatus(screenShareActive ? 'Recording remains available with screen share.' : 'Recording is waiting for screen share because camera or microphone permission was denied.', false);
+                    logActivity(screenShareActive ? 'Recording remains available with screen share.' : 'Recording is waiting for screen share because camera or microphone permission was denied.');
                 } else {
                     setStatus('Microphone could not be started.', true);
                 }
@@ -1771,6 +1758,7 @@
             if (!isTerminated && resultQuestion)
                 interviewUnavailable = false;
             messageBox.textContent = isTerminated ? 'Interview completed. Redirecting to report...' : 'Please answer the next question.';
+            messageBox.classList.add('runtime-js-hidden');
             if (!isTerminated)
                 messageBox.textContent = 'Please answer the next question.';
             setStatus(isTerminated ? 'Interview completed. Redirecting to report...' : (resultMessage || 'Answer saved.'), false);
@@ -1968,6 +1956,7 @@
             startRuntimeTimer();
             setStatus('Please answer the question.', false);
             messageBox.textContent = 'Please answer the question.';
+            messageBox.classList.add('runtime-js-hidden');
             renderTranscript();
             updateStartButtonState();
             if (config.recordingAvailable && recordingEnabled)
@@ -2028,9 +2017,9 @@
                 recordingEnabled = !recordingEnabled;
                 if (!recordingEnabled) {
                     await stopRecording(false);
-                    setRecordingStatus('Recording disabled.', false);
+                    logActivity('Recording disabled.');
                 } else {
-                    setRecordingStatus('Recording ready.', false);
+                    logActivity('Recording ready.');
                     await syncRecording();
                 }
                 updateAuxiliaryControlsState();

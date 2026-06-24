@@ -661,7 +661,7 @@
 }
 
 .runtime-page {
-    min-height: calc(100vh - 24px);
+    height: calc(100vh - 24px);
     max-width: 1440px;
     margin: 0 auto;
     padding: 16px;
@@ -669,6 +669,7 @@
     border-radius: 8px;
     background: #f8fafc;
     display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
     gap: 14px;
     box-sizing: border-box;
     overflow: hidden;
@@ -768,6 +769,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.95fr);
     gap: 16px;
+    height: 100%;
     min-height: 0;
     align-items: start;
 }
@@ -778,6 +780,7 @@
     gap: 12px;
     min-width: 0;
     min-height: 0;
+    align-content: start;
     padding: 16px;
     border: 1px solid #d8dee8;
     border-radius: 8px;
@@ -853,72 +856,65 @@
     border: 1px solid #c7d0da;
     border-radius: 8px;
     background: rgba(248, 250, 252, 0.95);
+    display: grid;
+    place-items: center;
     box-sizing: border-box;
 }
 
 .runtime-avatar-label {
-    display: inline-flex;
-    align-items: center;
+    display: grid;
+    justify-items: center;
     gap: 8px;
     color: #0f172a;
     font-size: 13px;
     font-weight: 700;
 }
 
-.runtime-avatar::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 40px;
-    width: 30px;
-    height: 30px;
+.runtime-avatar-label i {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    transform: translateX(-50%);
-    background: #94a3b8;
-}
-
-.runtime-avatar::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: 16px;
-    width: 50px;
-    height: 28px;
-    border-radius: 999px 999px 10px 10px;
-    transform: translateX(-50%);
-    background: #94a3b8;
+    background: #d8f8f1;
+    color: #0f766e;
+    font-size: 18px;
 }
 
 .runtime-controls {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     width: 100%;
     max-width: 100%;
     padding: 12px 14px;
     border: 1px solid #d8dee8;
     border-radius: 8px;
-    background: #111827;
-    gap: 10px;
-    flex-wrap: wrap;
+    background: #f1f5f9;
+    gap: 12px;
     box-sizing: border-box;
 }
 
 .runtime-control-icons {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
     min-width: 0;
+    justify-content: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
 }
 
 .runtime-icon-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 42px;
-    width: 42px;
-    height: 42px;
+    min-width: 40px;
+    width: 40px;
+    height: 40px;
     padding: 0;
+    flex: 0 0 40px;
 }
 
 .runtime-icon-button i {
@@ -926,21 +922,25 @@
 }
 
 .runtime-control-icons .runtime-icon-button {
-    border-color: #374151;
-    background: #1f2937;
-    color: #f8fafc;
+    border-color: #cbd5e1;
+    background: #ffffff;
+    color: #334155;
 }
 
 .runtime-control-icons .runtime-icon-button:hover:not(:disabled) {
-    border-color: #4b5563;
-    background: #374151;
-    color: #ffffff;
+    border-color: #24b99a;
+    background: #ecfdf8;
+    color: #0f766e;
 }
 
 .runtime-control-icons .runtime-icon-button.is-active {
-    border-color: #0f766e;
-    background: #115e59;
+    border-color: #24b99a;
+    background: #d8f8f1;
     color: #ffffff;
+}
+
+.runtime-control-icons .runtime-icon-button.is-active i {
+    color: #0f766e;
 }
 
 .runtime-screen-share-status,
@@ -968,8 +968,7 @@
 
 .runtime-sidebar {
     grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
-    min-height: min(78vh, 860px);
-    max-height: min(78vh, 860px);
+    height: 100%;
 }
 
 .runtime-sidebar-head {
@@ -1028,6 +1027,7 @@
     border: 1px solid #d8dee8;
     border-radius: 8px;
     background: #f8fafc;
+    min-height: 0;
 }
 
 .runtime-chat-message {
@@ -1048,8 +1048,8 @@
 }
 
 .runtime-chat-message.is-user .runtime-chat-avatar {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: #d8f8f1;
+    color: #0f766e;
 }
 
 .runtime-chat-bubble {
@@ -1062,8 +1062,8 @@
 }
 
 .runtime-chat-message.is-user .runtime-chat-bubble {
-    border-color: #bfdbfe;
-    background: #eff6ff;
+    border-color: #9fe7d8;
+    background: #ecfdf8;
 }
 
 .runtime-chat-label {
@@ -1165,6 +1165,33 @@
 .runtime-modal .button-2:hover:not(:disabled) {
     border-color: #22d1b2;
     color: #111827;
+}
+
+.runtime-icon-button.button-2 {
+    min-width: 40px;
+    min-height: 40px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 6px;
+}
+
+.runtime-back-button {
+    border-color: transparent;
+    background: transparent;
+    color: #0f766e;
+}
+
+.runtime-back-button:hover:not(:disabled),
+.runtime-back-button:focus-visible {
+    border-color: #7cdcca;
+    background: #ecfdf8;
+    color: #0f766e;
+    outline: none;
+}
+
+.runtime-answer-hidden {
+    display: none;
 }
 
 .runtime-shell .button-1:disabled,
@@ -1304,8 +1331,7 @@
     }
 
     .runtime-sidebar {
-        min-height: 62vh;
-        max-height: none;
+        height: auto;
     }
 }
 
@@ -1326,8 +1352,7 @@
 
     .runtime-topbar-main,
     .runtime-meta,
-    .runtime-controls,
-    .runtime-control-icons {
+    .runtime-controls {
         width: 100%;
     }
 
@@ -1346,11 +1371,13 @@
     }
 
     .runtime-controls {
-        align-items: stretch;
+        grid-template-columns: 1fr;
+        justify-items: stretch;
     }
 
     .runtime-control-icons {
-        justify-content: space-between;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
     .runtime-shell .button-1,
