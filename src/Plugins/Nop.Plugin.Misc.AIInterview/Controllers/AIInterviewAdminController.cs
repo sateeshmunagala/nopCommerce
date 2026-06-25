@@ -1088,19 +1088,19 @@ public class AIInterviewAdminController : BasePluginController
         model ??= new AiServiceSettingsModel
         {
             UseMockResponses = mockAIInterviewSettings.UseMockResponses,
-            ApiKey = string.Empty,
+            ApiKey = aiInterviewSettings.ApiKey,
             Model = aiInterviewSettings.Model,
             Prompt = aiInterviewSettings.Prompt,
             ServiceSettings = aiInterviewSettings.ServiceSettings,
             CreditProductSkuMappingsJson = aiInterviewSettings.CreditProductSkuMappingsJson,
             CreditPurchasePageUrl = aiInterviewSettings.CreditPurchasePageUrl,
             AzureOpenAiEndpointUrl = aiInterviewSettings.AzureOpenAiEndpointUrl,
-            AzureOpenAiApiKey = string.Empty,
+            AzureOpenAiApiKey = aiInterviewSettings.AzureOpenAiApiKey,
             AzureOpenAiDeploymentOrModel = aiInterviewSettings.AzureOpenAiDeploymentOrModel,
-            AzureSpeechKey = string.Empty,
+            AzureSpeechKey = aiInterviewSettings.AzureSpeechKey,
             AzureSpeechRegion = aiInterviewSettings.AzureSpeechRegion,
             AzureBlobStorageContainerUrl = aiInterviewSettings.AzureBlobStorageContainerUrl,
-            AzureBlobStorageSasToken = string.Empty
+            AzureBlobStorageSasToken = aiInterviewSettings.AzureBlobStorageSasToken
         };
 
         model.Provider = AzureOpenAiProviderValue;

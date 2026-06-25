@@ -266,10 +266,10 @@ public class AdminBaselineTests
         Assert.That(getModel.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-1"));
         Assert.That(getModel.CreditPurchasePageUrl, Is.EqualTo("keep-credits"));
         Assert.That(getModel.AzureBlobStorageContainerUrl, Is.EqualTo("keep-container"));
-        Assert.That(getModel.ApiKey, Is.Empty);
-        Assert.That(getModel.AzureOpenAiApiKey, Is.Empty);
-        Assert.That(getModel.AzureSpeechKey, Is.Empty);
-        Assert.That(getModel.AzureBlobStorageSasToken, Is.Empty);
+        Assert.That(getModel.ApiKey, Is.EqualTo("keep-api"));
+        Assert.That(getModel.AzureOpenAiApiKey, Is.EqualTo("keep-aoai-key"));
+        Assert.That(getModel.AzureSpeechKey, Is.EqualTo("keep-speech"));
+        Assert.That(getModel.AzureBlobStorageSasToken, Is.EqualTo("keep-sas"));
 
         var postResult = await _controller.AiService(new AiServiceSettingsModel
         {
@@ -307,13 +307,13 @@ public class AdminBaselineTests
         Assert.That(_aiInterviewSettings.CreditProductSkuMappingsJson, Does.Contain("AI-CREDIT-10"));
         Assert.That(_aiInterviewSettings.CreditPurchasePageUrl, Is.EqualTo("/credits"));
         Assert.That(refreshedModel.AzureOpenAiEndpointUrl, Is.EqualTo("https://endpoint"));
-        Assert.That(refreshedModel.ApiKey, Is.Empty);
-        Assert.That(refreshedModel.AzureOpenAiApiKey, Is.Empty);
+        Assert.That(refreshedModel.ApiKey, Is.EqualTo("key"));
+        Assert.That(refreshedModel.AzureOpenAiApiKey, Is.EqualTo("keep-aoai-key"));
         Assert.That(refreshedModel.AzureOpenAiDeploymentOrModel, Is.EqualTo("deployment"));
-        Assert.That(refreshedModel.AzureSpeechKey, Is.Empty);
+        Assert.That(refreshedModel.AzureSpeechKey, Is.EqualTo("keep-speech"));
         Assert.That(refreshedModel.AzureSpeechRegion, Is.EqualTo("eastus"));
         Assert.That(refreshedModel.AzureBlobStorageContainerUrl, Is.Empty);
-        Assert.That(refreshedModel.AzureBlobStorageSasToken, Is.Empty);
+        Assert.That(refreshedModel.AzureBlobStorageSasToken, Is.EqualTo("keep-sas"));
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<AIInterviewSettings>()), Times.AtLeastOnce);
         _settingService.Verify(x => x.SaveSettingAsync(It.IsAny<MockAIInterviewSettings>()), Times.Once);
     }
@@ -371,7 +371,7 @@ public class AdminBaselineTests
     }
 
     [Test]
-    public void AiService_View_Uses_Password_Inputs_For_Secrets()
+    public void AiService_View_Uses_Plain_Text_Inputs_For_Development_Secrets()
     {
         var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "AiService.cshtml"));
 
@@ -379,8 +379,9 @@ public class AdminBaselineTests
         Assert.That(text, Does.Contain("asp-for=\"AzureOpenAiApiKey\""));
         Assert.That(text, Does.Contain("asp-for=\"AzureSpeechKey\""));
         Assert.That(text, Does.Contain("asp-for=\"AzureBlobStorageSasToken\""));
-        Assert.That(text, Does.Contain("type=\"password\""));
-        Assert.That(text, Does.Contain("placeholder=\"********\""));
+        Assert.That(text, Does.Contain("type=\"text\""));
+        Assert.That(text, Does.Not.Contain("type=\"password\""));
+        Assert.That(text, Does.Not.Contain("placeholder=\"********\""));
     }
 
     [Test]
