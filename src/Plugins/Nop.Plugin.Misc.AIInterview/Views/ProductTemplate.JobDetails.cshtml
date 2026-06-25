@@ -26,6 +26,7 @@
 @inject IShoppingCartService shoppingCartService
 @inject IVendorService vendorService
 @inject IPictureService pictureService
+@inject IAIInterviewJobDisplayService aiInterviewJobDisplayService
 
 @{
     Layout = "_ColumnsOne";
@@ -51,6 +52,7 @@
     var specificationAttributes = specificationGroups
         .SelectMany(group => group.Attributes ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeModel>())
         .ToList();
+    var compactSpecifications = await aiInterviewJobDisplayService.GetSpecificationSnapshotAsync(Model.Id, Model.ProductSpecificationModel);
 
     Nop.Web.Models.Catalog.ProductSpecificationAttributeModel FindSpecificationAttribute(params string[] keys)
     {
@@ -75,35 +77,17 @@
             .Where(value => !string.IsNullOrWhiteSpace(value)));
     }
 
-    var heroAttributeNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "Experience Level",
-        "Experience",
-        "Work Arrangement",
-        "Work Mode",
-        "Work Type",
-        "Employment Type",
-        "Location",
-        "Job Location",
-        "Salary Range",
-        "Compensation"
-    };
-
-    var experienceLevel = GetSpecificationValue(FindSpecificationAttribute("Experience Level", "Experience"));
-    var workMode = GetSpecificationValue(FindSpecificationAttribute("Work Arrangement", "Work Mode", "Work Type"));
-    var employmentType = GetSpecificationValue(FindSpecificationAttribute("Employment Type"));
-    var location = GetSpecificationValue(FindSpecificationAttribute("Job Location", "Location"));
-    var salaryRange = GetSpecificationValue(FindSpecificationAttribute("Salary Range", "Compensation"));
+    var heroAttributeNames = AIInterviewJobDisplayService.CompactSpecificationAliases;
     var applyUntil = Model.AvailableEndDate?.ToString("yyyy-MM-dd");
 
     var heroMetadata = new List<(string Label, string Value)>
     {
-        ("Experience Level", experienceLevel),
-        ("Work Arrangement", workMode),
-        ("Employment Type", employmentType),
+        ("Experience Level", compactSpecifications.ExperienceLevel),
+        ("Work Arrangement", compactSpecifications.WorkArrangement),
+        ("Employment Type", compactSpecifications.EmploymentType),
         ("Apply Until", applyUntil),
-        ("Job Location", location),
-        ("Salary Range", salaryRange)
+        ("Job Location", compactSpecifications.JobLocation),
+        ("Salary Range", compactSpecifications.SalaryRange)
     }.Where(item => !string.IsNullOrWhiteSpace(item.Value)).ToList();
 
     var filteredSpecificationGroups = specificationGroups

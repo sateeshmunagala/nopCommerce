@@ -1204,6 +1204,21 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void Plugin_Copies_JobCard_Assets_To_Output()
+    {
+        var projectText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Nop.Plugin.Misc.AIInterview.csproj"));
+        var jobCardScript = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "js", "aiinterview-job-card.js"));
+
+        Assert.That(projectText, Does.Contain("<None Remove=\"Content\\js\\aiinterview-job-card.js\" />"));
+        Assert.That(projectText, Does.Contain("<Content Include=\"Content\\js\\aiinterview-job-card.js\">"));
+        Assert.That(projectText, Does.Contain("<None Remove=\"Views\\Shared\\Components\\AIInterviewJobProductCard\\Default.cshtml\" />"));
+        Assert.That(projectText, Does.Contain("<Content Include=\"Views\\Shared\\Components\\AIInterviewJobProductCard\\Default.cshtml\">"));
+        Assert.That(jobCardScript, Does.Contain("data-ai-job-preview-open"));
+        Assert.That(jobCardScript, Does.Contain("lookupWishlistItemId"));
+        Assert.That(jobCardScript, Does.Contain("data-ai-job-save-status"));
+    }
+
+    [Test]
     public void AdminCandidateDetailsView_Uses_Tabbed_Dashboard_Layout()
     {
         var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Areas", "Admin", "Views", "AIInterviewAdmin", "CandidateDetails.cshtml"));

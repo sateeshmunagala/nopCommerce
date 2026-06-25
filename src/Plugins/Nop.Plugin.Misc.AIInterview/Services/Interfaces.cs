@@ -4,6 +4,7 @@ using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Core.Domain.Catalog;
 using Microsoft.AspNetCore.Http;
 using Nop.Plugin.Misc.AIInterview.Models;
+using Nop.Web.Models.Catalog;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
@@ -136,4 +137,10 @@ public interface IJobRequirementService
     Task<JobRequirementsModel> GetRequirementsAsync(int productId);
     Task SaveRequirementsAsync(Product product, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0, int questionCount = 3);
     Task SaveRequirementsAsync(int productId, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0, int questionCount = 3);
+}
+
+public interface IAIInterviewJobDisplayService
+{
+    Task<AIInterviewJobProductCardModel> PrepareJobProductCardModelAsync(ProductOverviewModel productOverviewModel);
+    Task<AIInterviewJobSpecificationSnapshotModel> GetSpecificationSnapshotAsync(int productId, ProductSpecificationModel preparedSpecificationModel = null);
 }

@@ -23,6 +23,7 @@
     <Content Remove="AI_ReferenceFiles\**\*" />
     <None Remove="AI_ReferenceFiles\**\*" />
     <None Remove="Content\css\aiinterview-public.css" />
+    <None Remove="Content\js\aiinterview-job-card.js" />
     <None Remove="logo.png" />
     <None Remove="plugin.json" />
     <None Remove="Views\_ViewImports.cshtml" />
@@ -44,6 +45,7 @@
     <None Remove="Views\Admin\_ProductJobRequirements.cshtml" />
     <None Remove="Views\Shared\_CandidateReportDrawer.cshtml" />
     <None Remove="Views\Shared\_InterviewReportContent.cshtml" />
+    <None Remove="Views\Shared\Components\AIInterviewJobProductCard\Default.cshtml" />
     <None Remove="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml" />
     <None Remove="Views\MockAiInterview\Start.cshtml" />
     <None Remove="Views\MockAiInterview\Runtime.cshtml" />
@@ -55,6 +57,9 @@
 
   <ItemGroup>
     <Content Include="Content\css\aiinterview-public.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\js\aiinterview-job-card.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="logo.png">
@@ -115,6 +120,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\_InterviewReportContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\Components\AIInterviewJobProductCard\Default.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml">

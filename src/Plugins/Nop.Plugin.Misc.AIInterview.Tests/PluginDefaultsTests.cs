@@ -189,6 +189,35 @@ public class PluginDefaultsTests
     }
 
     [Test]
+    public void JobCard_Locale_Resources_Contain_All_Required_Keys()
+    {
+        var method = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var resources = (Dictionary<string, string>)method.Invoke(null, null);
+
+        foreach (var key in new[]
+                 {
+                     "Plugins.Misc.AIInterview.JobCard.Kicker",
+                     "Plugins.Misc.AIInterview.JobCard.WorkArrangement",
+                     "Plugins.Misc.AIInterview.JobCard.EmploymentType",
+                     "Plugins.Misc.AIInterview.JobCard.JobLocation",
+                     "Plugins.Misc.AIInterview.JobCard.SalaryRange",
+                     "Plugins.Misc.AIInterview.JobCard.ExperienceLevel",
+                     "Plugins.Misc.AIInterview.JobCard.Posted",
+                     "Plugins.Misc.AIInterview.JobCard.AppliedCount",
+                     "Plugins.Misc.AIInterview.JobCard.ViewJob",
+                     "Plugins.Misc.AIInterview.JobCard.SaveJob",
+                     "Plugins.Misc.AIInterview.JobCard.RemoveSavedJob",
+                     "Plugins.Misc.AIInterview.JobCard.SavedToSavedJobs",
+                     "Plugins.Misc.AIInterview.JobCard.RemovedFromSavedJobs",
+                     "Plugins.Misc.AIInterview.JobCard.JobPreview",
+                     "Plugins.Misc.AIInterview.JobCard.CloseJobPreview"
+                 })
+        {
+            Assert.That(resources.ContainsKey(key), Is.True, $"Missing job card locale resource: {key}");
+        }
+    }
+
+    [Test]
     public void Runtime_Localization_Resources_Contain_Directly_Used_NextQuestion_Key()
     {
         var upgradeMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);

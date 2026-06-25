@@ -675,6 +675,43 @@ public class EmployerTests
         Assert.That(historyView, Does.Not.Contain("@T(\"Plugins.Misc.AIInterview.Report.OpenReport\")"));
     }
 
+    [Test]
+    public void JobCard_Rendering_Uses_Plugin_Component_And_Shared_Spec_Mapping()
+    {
+        var productBox = File.ReadAllText(Path.Combine(TestFilePathHelper.GetPluginRootPath(), "..", "..", "Presentation", "Nop.Web", "Themes", "JobBoardVenture", "Views", "Shared", "_ProductBox.cshtml"));
+        var jobCardView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "Components", "AIInterviewJobProductCard", "Default.cshtml"));
+        var jobDetailView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "ProductTemplate.JobDetails.cshtml"));
+        var cssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
+        var serviceText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Services", "AIInterviewJobDisplayService.cs"));
+
+        Assert.That(productBox, Does.Contain("Component.InvokeAsync(\"AIInterviewJobProductCard\""));
+        Assert.That(productBox, Does.Contain("if (!string.IsNullOrWhiteSpace(aiInterviewCardMarkup))"));
+        Assert.That(productBox, Does.Contain("<article class=\"product-item\" data-productid=\"@Model.Id\">"));
+
+        Assert.That(jobCardView, Does.Contain("ai-job-product-card"));
+        Assert.That(jobCardView, Does.Contain("ai-job-card-title-link"));
+        Assert.That(jobCardView, Does.Contain("ai-job-preview-drawer"));
+        Assert.That(jobCardView, Does.Contain("ai-job-card-summary"));
+        Assert.That(jobCardView, Does.Contain("ai-job-card-save"));
+        Assert.That(jobCardView, Does.Contain("aria-pressed"));
+        Assert.That(jobCardView, Does.Contain("fa-bookmark"));
+        Assert.That(jobCardView, Does.Not.Contain("Prompt Source"));
+
+        Assert.That(jobDetailView, Does.Contain("@inject IAIInterviewJobDisplayService aiInterviewJobDisplayService"));
+        Assert.That(jobDetailView, Does.Contain("AIInterviewJobDisplayService.CompactSpecificationAliases"));
+        Assert.That(jobDetailView, Does.Contain("GetSpecificationSnapshotAsync(Model.Id, Model.ProductSpecificationModel)"));
+
+        Assert.That(serviceText, Does.Contain("WorkArrangementAliases = [\"Work Arrangement\", \"Work Mode\", \"Work Type\"]"));
+        Assert.That(serviceText, Does.Contain("JobLocationAliases = [\"Job Location\", \"Location\"]"));
+        Assert.That(serviceText, Does.Contain("ExperienceLevelAliases = [\"Experience Level\", \"Experience\"]"));
+
+        Assert.That(cssText, Does.Contain(".ai-job-product-card"));
+        Assert.That(cssText, Does.Contain("grid-template-columns: 132px minmax(0, 1fr);"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-summary"));
+        Assert.That(cssText, Does.Contain("text-overflow: ellipsis;"));
+        Assert.That(cssText, Does.Contain(".ai-job-preview-drawer"));
+    }
+
     private void SetupVendorSpecificationAttributes(bool includeJobLocation = true, bool includeSalaryRange = true)
     {
         var experience = new SpecificationAttribute { Id = 10, Name = "Experience Level" };
