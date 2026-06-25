@@ -67,14 +67,16 @@ public class InterviewAiClient : IAIInterviewClient
     private readonly AIInterviewSettings _settings;
     private readonly MockAIInterviewSettings _mockSettings;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IWorkContext _workContext;
     private readonly NopLogger _nopLogger;
     private readonly ILogger<InterviewAiClient> _logger;
 
-    public InterviewAiClient(AIInterviewSettings settings, MockAIInterviewSettings mockSettings, IHttpClientFactory httpClientFactory = null, NopLogger nopLogger = null, ILogger<InterviewAiClient> logger = null)
+    public InterviewAiClient(AIInterviewSettings settings, MockAIInterviewSettings mockSettings, IHttpClientFactory httpClientFactory = null, IWorkContext workContext = null, NopLogger nopLogger = null, ILogger<InterviewAiClient> logger = null)
     {
         _settings = settings;
         _mockSettings = mockSettings;
         _httpClientFactory = httpClientFactory;
+        _workContext = workContext;
         _nopLogger = nopLogger;
         _logger = logger;
     }
@@ -85,14 +87,14 @@ public class InterviewAiClient : IAIInterviewClient
             return BuildMockQuestion(request);
 
         var response = await CallAzureAsync(request, "generate");
-        if (response == null)
-            return BuildUnavailableResponse();
+        if (response == null || !response.Success)
+            return response ?? BuildUnavailableResponse();
 
         if (string.IsNullOrWhiteSpace(response.Question))
         {
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview question validation failure", "Mode=generate; Reason=empty question.");
-            return BuildValidationFailureResponse(response, "AI service unavailable.");
+            var detail = $"Mode=generate; Reason=empty question; QuestionMissing=true; Sample={TruncateSafe(response.RawJson, 300)}.";
+            await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview question validation failure", detail);
+            return BuildValidationFailureResponse(response, detail);
         }
 
         return response;
@@ -104,8 +106,8 @@ public class InterviewAiClient : IAIInterviewClient
             return BuildMockScore(request);
 
         var response = await CallAzureAsync(request, "score");
-        if (response == null)
-            return BuildUnavailableResponse();
+        if (response == null || !response.Success)
+            return response ?? BuildUnavailableResponse();
 
         if (!response.Score.HasValue ||
             string.IsNullOrWhiteSpace(response.Feedback) ||
@@ -115,20 +117,26 @@ public class InterviewAiClient : IAIInterviewClient
             !response.PositiveAttitudeScore.HasValue ||
             (!response.Complete && string.IsNullOrWhiteSpace(response.NextQuestion)))
         {
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview score validation failure", BuildScoreValidationFailureLog(response));
-            return BuildValidationFailureResponse(response, "AI service unavailable.");
+            var detail = BuildScoreValidationFailureLog(response);
+            await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview score validation failure", detail);
+            return BuildValidationFailureResponse(response, detail);
         }
 
         return response;
     }
 
-    protected virtual AIInterviewClientResponse BuildUnavailableResponse()
+    protected virtual AIInterviewClientResponse BuildUnavailableResponse(string errorMessage = "AI service unavailable.")
     {
+        var normalizedErrorMessage = string.IsNullOrWhiteSpace(errorMessage)
+            ? "AI service unavailable."
+            : errorMessage.Contains("AI service unavailable", StringComparison.OrdinalIgnoreCase)
+                ? errorMessage
+                : $"AI service unavailable. {errorMessage}";
+
         return new AIInterviewClientResponse
         {
             Success = false,
-            ErrorMessage = "AI service unavailable.",
+            ErrorMessage = normalizedErrorMessage,
             Feedback = "AI service unavailable.",
             Completion = "AI service unavailable.",
             RawJson = string.Empty,
@@ -139,14 +147,15 @@ public class InterviewAiClient : IAIInterviewClient
 
     protected virtual async Task<AIInterviewClientResponse> CallAzureAsync(AIInterviewClientRequest request, string mode)
     {
-        if (string.IsNullOrWhiteSpace(_settings?.AzureOpenAiEndpointUrl) ||
-            string.IsNullOrWhiteSpace(_settings?.AzureOpenAiApiKey) ||
-            string.IsNullOrWhiteSpace(_settings?.AzureOpenAiDeploymentOrModel))
+        var endpointConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiEndpointUrl);
+        var apiKeyConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiApiKey);
+        var deploymentConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiDeploymentOrModel);
+        if (!endpointConfigured || !apiKeyConfigured || !deploymentConfigured)
         {
+            var detail = BuildConfigurationIncompleteLog(mode, endpointConfigured, apiKeyConfigured, deploymentConfigured);
             _logger?.LogWarning("AI service unavailable: Azure OpenAI configuration is incomplete.");
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI unavailable", $"Mode={mode}; Reason=configuration incomplete.");
-            return null;
+            await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI unavailable", detail);
+            return BuildUnavailableResponse(detail);
         }
 
         try
@@ -185,36 +194,36 @@ public class InterviewAiClient : IAIInterviewClient
 
             if (!result.IsSuccessStatusCode)
             {
+                var detail = BuildAzureHttpFailureLog(mode, endpoint, (int)result.StatusCode, result.ReasonPhrase, json);
                 _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}.", result.StatusCode);
-                if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", BuildAzureHttpFailureLog(mode, (int)result.StatusCode, json));
-                return null;
+                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", detail);
+                return BuildUnavailableResponse(detail);
             }
 
             using var document = JsonDocument.Parse(json);
             if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
             {
+                var detail = $"Mode={mode}; Reason=empty response choices; Endpoint={BuildSanitizedEndpointValue(endpoint)}; Sample={BuildResponseSnippet(json)}.";
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty choices.", mode);
-                if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Mode={mode}; Reason=empty response choices.");
-                return null;
+                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
+                return BuildUnavailableResponse(detail);
             }
 
             if (!choices[0].TryGetProperty("message", out var message) || !message.TryGetProperty("content", out var contentProperty))
             {
+                var detail = $"Mode={mode}; Reason=missing message content; Endpoint={BuildSanitizedEndpointValue(endpoint)}; Sample={BuildResponseSnippet(json)}.";
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Missing message content.", mode);
-                if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Mode={mode}; Reason=missing message content.");
-                return null;
+                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
+                return BuildUnavailableResponse(detail);
             }
 
             var content = contentProperty.GetString();
             if (string.IsNullOrWhiteSpace(content))
             {
+                var detail = $"Mode={mode}; Reason=empty response content; Endpoint={BuildSanitizedEndpointValue(endpoint)}; Sample={BuildResponseSnippet(json)}.";
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty content string.", mode);
-                if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", $"Mode={mode}; Reason=empty response content.");
-                return null;
+                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
+                return BuildUnavailableResponse(detail);
             }
 
             var parsed = ParseStructuredResponse(content);
@@ -223,23 +232,33 @@ public class InterviewAiClient : IAIInterviewClient
 
             var contractReason = BuildStructuredResponseFailureLog(content, mode);
             _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON or failed contract parsing.", mode);
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", contractReason);
+            await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", contractReason);
+            return BuildUnavailableResponse(contractReason);
         }
         catch (System.Text.Json.JsonException ex)
         {
+            var detail = $"Mode={mode}; Reason=invalid JSON format; Exception={ex.GetType().Name}; Message={TruncateSafe(ex.Message, 220)}.";
             _logger?.LogWarning(ex, "Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON format.", mode);
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI JSON failure", $"Mode={mode}; Reason=invalid JSON format.");
+            await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI JSON failure", detail);
+            return BuildUnavailableResponse(detail);
         }
         catch (Exception ex)
         {
+            var detail = $"Mode={mode}; Reason={ex.GetType().Name}; Message={TruncateSafe(ex.Message, 220)}.";
             _logger?.LogWarning(ex, "Azure OpenAI call exception.");
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Error, "AI Interview Azure OpenAI exception", $"Mode={mode}; Reason={ex.GetType().Name}.");
+            await LogAiClientIssueAsync(NopLogLevel.Error, "AI Interview Azure OpenAI exception", detail);
+            return BuildUnavailableResponse(detail);
         }
 
-        return BuildUnavailableResponse();
+    }
+
+    protected virtual async Task LogAiClientIssueAsync(NopLogLevel level, string shortMessage, string fullMessage)
+    {
+        if (_nopLogger == null)
+            return;
+
+        var customer = _workContext == null ? null : await _workContext.GetCurrentCustomerAsync();
+        await _nopLogger.InsertLogAsync(level, shortMessage, fullMessage, customer);
     }
 
 
@@ -284,10 +303,11 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
 """;
     }
 
-    protected static string BuildAzureHttpFailureLog(string mode, int statusCode, string responseBody)
+    protected static string BuildAzureHttpFailureLog(string mode, string endpoint, int statusCode, string reasonPhrase, string responseBody)
     {
         var errorCode = string.Empty;
         var errorMessage = string.Empty;
+        var responseSnippet = string.Empty;
 
         if (!string.IsNullOrWhiteSpace(responseBody))
         {
@@ -305,15 +325,81 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
             catch
             {
             }
+
+            responseSnippet = BuildResponseSnippet(responseBody);
         }
 
         var details = new List<string> { $"Mode={mode}", $"HttpStatus={statusCode}", "Reason=http failure" };
+        if (!string.IsNullOrWhiteSpace(reasonPhrase))
+            details.Add($"ReasonPhrase={TruncateSafe(reasonPhrase, 80)}");
+        details.Add($"Endpoint={BuildSanitizedEndpointValue(endpoint)}");
         if (!string.IsNullOrWhiteSpace(errorCode))
             details.Add($"AzureErrorCode={errorCode}");
         if (!string.IsNullOrWhiteSpace(errorMessage))
             details.Add($"AzureErrorMessage={errorMessage}");
+        if (!string.IsNullOrWhiteSpace(responseSnippet))
+            details.Add($"ResponseSnippet={responseSnippet}");
 
         return string.Join("; ", details) + ".";
+    }
+
+    protected virtual string BuildConfigurationIncompleteLog(string mode, bool endpointConfigured, bool apiKeyConfigured, bool deploymentConfigured)
+    {
+        var missingFields = new List<string>();
+        if (!endpointConfigured)
+            missingFields.Add("AzureOpenAiEndpointUrl");
+        if (!apiKeyConfigured)
+            missingFields.Add("AzureOpenAiApiKey");
+        if (!deploymentConfigured)
+            missingFields.Add("DeploymentOrModel");
+
+        return string.Join("; ", new[]
+        {
+            $"Mode={mode}",
+            "Reason=configuration incomplete",
+            $"MissingFields={(missingFields.Count > 0 ? string.Join(",", missingFields) : "<none>")}",
+            $"MockModeEnabled={(_mockSettings?.UseMockResponses != false).ToString().ToLowerInvariant()}",
+            $"EndpointConfigured={endpointConfigured.ToString().ToLowerInvariant()}",
+            $"ApiKeyConfigured={apiKeyConfigured.ToString().ToLowerInvariant()}",
+            $"DeploymentConfigured={deploymentConfigured.ToString().ToLowerInvariant()}",
+            $"EndpointHost={BuildSanitizedEndpointHost(_settings?.AzureOpenAiEndpointUrl)}",
+            $"Deployment={BuildSafeValue(_settings?.AzureOpenAiDeploymentOrModel)}"
+        }) + ".";
+    }
+
+    protected static string BuildSanitizedEndpointHost(string endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+            return "<empty>";
+
+        return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
+            ? uri.Host
+            : TruncateSafe(endpoint.Trim(), 120);
+    }
+
+    protected static string BuildSanitizedEndpointValue(string endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+            return "<empty>";
+
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri))
+            return TruncateSafe(endpoint.Trim(), 180);
+
+        var path = uri.AbsolutePath;
+        var query = string.IsNullOrWhiteSpace(uri.Query) ? string.Empty : "?api-version=<set>";
+        return $"{uri.Host}{path}{query}";
+    }
+
+    protected static string BuildSafeValue(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "<empty>" : TruncateSafe(value.Trim(), 120);
+    }
+
+    protected static string BuildResponseSnippet(string responseBody)
+    {
+        return string.IsNullOrWhiteSpace(responseBody)
+            ? string.Empty
+            : TruncateSafe(responseBody.Replace('\r', ' ').Replace('\n', ' ').Trim(), 220);
     }
 
     protected static string GetStructuredResponseFailureReason(string content, string mode)
@@ -521,7 +607,7 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
         return normalized;
     }
 
-    protected sealed record ScoreContractDiagnostics(string Reason, string Shape, string PropertyNames, string Sample);
+    protected sealed record ScoreContractDiagnostics(string Reason, string Shape, string PropertyNames, string Sample, string MissingFields);
 
     protected static ScoreContractDiagnostics AnalyzeScoreContract(JsonElement root)
     {
@@ -539,6 +625,22 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
             ? string.Join(",", root.EnumerateObject().Select(property => property.Name))
             : string.Empty;
 
+        var missingFields = new List<string>();
+        if (!score.HasValue)
+            missingFields.Add("score");
+        if (!technicalScore.HasValue)
+            missingFields.Add("technicalScore");
+        if (!communicationScore.HasValue)
+            missingFields.Add("communicationScore");
+        if (!professionalismScore.HasValue)
+            missingFields.Add("professionalismScore");
+        if (!positiveAttitudeScore.HasValue)
+            missingFields.Add("positiveAttitudeScore");
+        if (string.IsNullOrWhiteSpace(feedback))
+            missingFields.Add("feedback");
+        if (!complete && string.IsNullOrWhiteSpace(nextQuestion))
+            missingFields.Add("nextQuestion");
+
         var reason = "invalid JSON or failed contract parsing";
         if (!score.HasValue)
             reason = "missing score";
@@ -549,7 +651,7 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
         else if (!complete && string.IsNullOrWhiteSpace(nextQuestion))
             reason = "missing next question";
 
-        return new ScoreContractDiagnostics(reason, root.ValueKind.ToString(), propertyNames, TruncateSafe(root.GetRawText(), 800));
+        return new ScoreContractDiagnostics(reason, root.ValueKind.ToString(), propertyNames, TruncateSafe(root.GetRawText(), 800), missingFields.Count > 0 ? string.Join(",", missingFields) : "<none>");
     }
 
     protected static string BuildStructuredResponseFailureLog(string content, string mode)
@@ -564,9 +666,10 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
                 ? AnalyzeScoreContract(document.RootElement)
                 : new ScoreContractDiagnostics(GetStructuredResponseFailureReason(content, mode), document.RootElement.ValueKind.ToString(),
                     document.RootElement.ValueKind == JsonValueKind.Object ? string.Join(",", document.RootElement.EnumerateObject().Select(property => property.Name)) : string.Empty,
-                    TruncateSafe(document.RootElement.GetRawText(), 800));
+                    TruncateSafe(document.RootElement.GetRawText(), 800),
+                    string.IsNullOrWhiteSpace(document.RootElement.TryGetProperty("question", out var questionElement) ? questionElement.GetString() : null) ? "question" : "<none>");
 
-            return $"Mode={mode}; Reason={diagnostics.Reason}; Shape={diagnostics.Shape}; PropertyNames={diagnostics.PropertyNames}; Sample={diagnostics.Sample}.";
+            return $"Mode={mode}; Reason={diagnostics.Reason}; MissingFields={diagnostics.MissingFields}; Shape={diagnostics.Shape}; PropertyNames={diagnostics.PropertyNames}; Sample={diagnostics.Sample}.";
         }
         catch
         {
@@ -585,6 +688,22 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
 
     protected static string BuildScoreValidationFailureLog(AIInterviewClientResponse response)
     {
+        var missingFields = new List<string>();
+        if (response == null || !response.Score.HasValue)
+            missingFields.Add("score");
+        if (response == null || !response.TechnicalScore.HasValue)
+            missingFields.Add("technicalScore");
+        if (response == null || !response.CommunicationScore.HasValue)
+            missingFields.Add("communicationScore");
+        if (response == null || !response.ProfessionalismScore.HasValue)
+            missingFields.Add("professionalismScore");
+        if (response == null || !response.PositiveAttitudeScore.HasValue)
+            missingFields.Add("positiveAttitudeScore");
+        if (string.IsNullOrWhiteSpace(response?.Feedback))
+            missingFields.Add("feedback");
+        if (response != null && !response.Complete && string.IsNullOrWhiteSpace(response.NextQuestion))
+            missingFields.Add("nextQuestion");
+
         var reason = response == null || !response.Score.HasValue ? "missing required score"
             : !response.TechnicalScore.HasValue || !response.CommunicationScore.HasValue || !response.ProfessionalismScore.HasValue || !response.PositiveAttitudeScore.HasValue ? "missing category score"
             : string.IsNullOrWhiteSpace(response.Feedback) ? "missing feedback"
@@ -592,7 +711,7 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
             : "invalid score contract";
 
         var sample = TruncateSafe(response?.RawJson, 800);
-        return $"Mode=score; Reason={reason}; Sample={sample}.";
+        return $"Mode=score; Reason={reason}; MissingFields={(missingFields.Count > 0 ? string.Join(",", missingFields) : "<none>")}; Sample={sample}.";
     }
 
     protected static void UpsertScoreValue(JsonObject rubric, string propertyName, decimal? value)
@@ -766,6 +885,21 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         return _nopLogger == null ? Task.CompletedTask : _nopLogger.InsertLogAsync(level, shortMessage, fullMessage, customer);
     }
 
+    protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
+    {
+        if (customer != null)
+            return customer;
+
+        if (session?.CustomerId > 0)
+        {
+            var sessionCustomer = await _customerService.GetCustomerByIdAsync(session.CustomerId);
+            if (sessionCustomer != null)
+                return sessionCustomer;
+        }
+
+        return _workContext == null ? null : await _workContext.GetCurrentCustomerAsync();
+    }
+
 
     protected static string TruncateSafe(string text, int length = 500)
     {
@@ -795,6 +929,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             return null;
         }
+    }
+
+    protected static string BuildSafeValue(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "<empty>" : TruncateSafe(value.Trim(), 220);
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string fallback)
@@ -846,19 +985,23 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
         if (!turns.Any())
         {
-            var first = await GenerateQuestionTurnAsync(session, 1, turns);
-            if (first == null)
+            var firstResult = await GenerateQuestionTurnAsync(session, 1, turns);
+            if (firstResult.Turn == null)
             {
                 var unavailableModel = await BuildRuntimeModelAsync(session, turns, customer);
                 unavailableModel.CurrentQuestion = "AI service unavailable. Please try again later.";
                 unavailableModel.ClientSettings ??= new RuntimeClientSettingsModel();
                 unavailableModel.ClientSettings.SpeechAvailable = false;
-                if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview first question unavailable", $"Mode=generate; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=first question generation failed.");
+                var logCustomer = await ResolveLogCustomerAsync(session, customer);
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Warning,
+                    "AI Interview first question unavailable",
+                    $"Mode=generate; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=first question generation failed; Detail={BuildSafeValue(firstResult.FailureReason ?? "AI service unavailable.")}.",
+                    logCustomer);
                 return unavailableModel;
             }
 
-            await _turnService.InsertInterviewTurnAsync(first);
+            await _turnService.InsertInterviewTurnAsync(firstResult.Turn);
             turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
         }
 
@@ -891,8 +1034,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var currentTurn = turns.LastOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText)) ?? turns.LastOrDefault();
         if (currentTurn == null)
         {
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview submit before begin", $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=submit before begin.");
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Warning,
+                "AI Interview submit before begin",
+                $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=submit before begin.",
+                await ResolveLogCustomerAsync(session));
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
@@ -927,8 +1073,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             _logger?.LogWarning("SubmitAnswer score failure for session {SessionId}. Reason: {Reason}.",
                 session.Id, evaluation?.ErrorMessage ?? "Invalid format/range");
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview scoring failure", $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason={evaluation?.ErrorMessage ?? "missing required score"}.");
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Warning,
+                "AI Interview scoring failure",
+                $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason={evaluation?.ErrorMessage ?? "missing required score"}.",
+                await ResolveLogCustomerAsync(session));
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
@@ -973,13 +1122,20 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             }
             else
             {
-                nextTurn = await GenerateQuestionTurnAsync(session, currentTurn.SequenceNumber + 1, turns);
+                var nextTurnResult = await GenerateQuestionTurnAsync(session, currentTurn.SequenceNumber + 1, turns);
+                nextTurn = nextTurnResult.Turn;
+                if (nextTurn == null)
+                {
+                    await LogRuntimeIssueAsync(
+                        NopLogLevel.Warning,
+                        "AI Interview next question unavailable",
+                        $"Mode=generate; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=next question generation failed; Detail={BuildSafeValue(nextTurnResult.FailureReason ?? "AI service unavailable.")}.",
+                        await ResolveLogCustomerAsync(session));
+                }
             }
 
             if (nextTurn == null)
             {
-                if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview next question unavailable", $"Mode=generate; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=next question generation failed.");
                 return new SubmitInterviewAnswerResponse
                 {
                     Success = false,
@@ -1069,8 +1225,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             string.IsNullOrWhiteSpace(_settings?.AzureSpeechKey) ||
             string.IsNullOrWhiteSpace(_settings?.AzureSpeechRegion))
         {
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview speech token unavailable", $"Azure Speech configuration is incomplete for session {session?.Id ?? 0}.");
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Warning,
+                "AI Interview speech token unavailable",
+                $"Mode=speech-token; Reason=configuration incomplete; SessionId={session?.Id ?? 0}; ProductId={session?.ProductId ?? 0}; CustomerId={session?.CustomerId ?? 0}; SpeechKeyConfigured={(!string.IsNullOrWhiteSpace(_settings?.AzureSpeechKey)).ToString().ToLowerInvariant()}; SpeechRegionConfigured={(!string.IsNullOrWhiteSpace(_settings?.AzureSpeechRegion)).ToString().ToLowerInvariant()}; SpeechRegion={BuildSafeValue(_settings?.AzureSpeechRegion)}.",
+                await ResolveLogCustomerAsync(session));
             return null;
         }
 
@@ -1084,8 +1243,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             {
                 _logger?.LogWarning("Azure Speech token request failed. Region: {Region}. Status: {StatusCode}.",
                     _settings.AzureSpeechRegion.Trim(), response.StatusCode);
-                if (_nopLogger != null)
-                    await _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview speech token failure", $"Azure Speech token request failed with status {(int)response.StatusCode}.");
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Warning,
+                    "AI Interview speech token failure",
+                    $"Mode=speech-token; Reason=http failure; SessionId={session?.Id ?? 0}; ProductId={session?.ProductId ?? 0}; CustomerId={session?.CustomerId ?? 0}; Region={BuildSafeValue(_settings.AzureSpeechRegion)}; HttpStatus={(int)response.StatusCode}; ReasonPhrase={BuildSafeValue(response.ReasonPhrase)}.",
+                    await ResolveLogCustomerAsync(session));
                 return null;
             }
 
@@ -1103,8 +1265,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Azure Speech token request exception. Region: {Region}.", _settings.AzureSpeechRegion.Trim());
-            if (_nopLogger != null)
-                await _nopLogger.InsertLogAsync(NopLogLevel.Error, "AI Interview speech token exception", $"Azure Speech token request exception: {ex.GetType().Name}.");
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Error,
+                "AI Interview speech token exception",
+                $"Mode=speech-token; Reason={ex.GetType().Name}; SessionId={session?.Id ?? 0}; ProductId={session?.ProductId ?? 0}; CustomerId={session?.CustomerId ?? 0}; Region={BuildSafeValue(_settings.AzureSpeechRegion)}; Message={TruncateSafe(ex.Message, 220)}.",
+                await ResolveLogCustomerAsync(session));
             return null;
         }
     }
@@ -1258,7 +1423,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         };
     }
 
-    protected virtual async Task<InterviewTurn> GenerateQuestionTurnAsync(InterviewSession session, int sequenceNumber, IList<InterviewTurn> turns)
+    protected virtual async Task<(InterviewTurn Turn, string FailureReason)> GenerateQuestionTurnAsync(InterviewSession session, int sequenceNumber, IList<InterviewTurn> turns)
     {
         var request = new AIInterviewClientRequest
         {
@@ -1276,10 +1441,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             _logger?.LogWarning("GenerateQuestion failure for session {SessionId}. Reason: {Reason}.",
                 session.Id, aiResponse?.ErrorMessage ?? "Invalid format");
-            return null;
+            return (null, aiResponse?.ErrorMessage ?? "Invalid format");
         }
 
-        return new InterviewTurn
+        return (new InterviewTurn
         {
             InterviewSessionId = session.Id,
             SequenceNumber = sequenceNumber,
@@ -1289,7 +1454,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             CreatedOnUtc = DateTime.UtcNow,
             RawAIResponseJson = aiResponse.RawJson,
             RubricJson = aiResponse.RubricJson
-        };
+        }, null);
     }
 
     protected virtual async Task<CompleteInterviewResponse> CompleteInterviewInternalAsync(InterviewSession session, IList<InterviewTurn> turns, string reason, string aiCompletion = null)
@@ -1477,25 +1642,25 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         return (decimal)overlap / source.Length;
     }
 
-    protected virtual Task LogRecordingUploadStartAsync(InterviewSession session, IFormFile recording, string blobName)
+    protected virtual async Task LogRecordingUploadStartAsync(InterviewSession session, IFormFile recording, string blobName)
     {
         var detail = BuildRecordingUploadLog(session, recording, blobName, "Start");
         _logger?.LogInformation("AI Interview recording upload start. {Detail}", detail);
-        return _nopLogger == null ? Task.CompletedTask : _nopLogger.InsertLogAsync(NopLogLevel.Information, "AI Interview recording upload start", detail);
+        await LogRuntimeIssueAsync(NopLogLevel.Information, "AI Interview recording upload start", detail, await ResolveLogCustomerAsync(session));
     }
 
-    protected virtual Task LogRecordingUploadSuccessAsync(InterviewSession session, IFormFile recording, string blobName, int azureStatus)
+    protected virtual async Task LogRecordingUploadSuccessAsync(InterviewSession session, IFormFile recording, string blobName, int azureStatus)
     {
         var detail = BuildRecordingUploadLog(session, recording, blobName, "Success", azureStatus: azureStatus);
         _logger?.LogInformation("AI Interview recording upload success. {Detail}", detail);
-        return _nopLogger == null ? Task.CompletedTask : _nopLogger.InsertLogAsync(NopLogLevel.Information, "AI Interview recording upload success", detail);
+        await LogRuntimeIssueAsync(NopLogLevel.Information, "AI Interview recording upload success", detail, await ResolveLogCustomerAsync(session));
     }
 
-    protected virtual Task LogRecordingUploadFailureAsync(InterviewSession session, IFormFile recording, string blobName, string message, string reason, int? azureStatus = null, string azureErrorBody = null)
+    protected virtual async Task LogRecordingUploadFailureAsync(InterviewSession session, IFormFile recording, string blobName, string message, string reason, int? azureStatus = null, string azureErrorBody = null)
     {
         var detail = BuildRecordingUploadLog(session, recording, blobName, "Failure", message, reason, azureStatus, azureErrorBody);
         _logger?.LogWarning("AI Interview recording upload failure. {Detail}", detail);
-        return _nopLogger == null ? Task.CompletedTask : _nopLogger.InsertLogAsync(NopLogLevel.Warning, "AI Interview recording upload failure", detail);
+        await LogRuntimeIssueAsync(NopLogLevel.Warning, "AI Interview recording upload failure", detail, await ResolveLogCustomerAsync(session));
     }
 
     protected static string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null)

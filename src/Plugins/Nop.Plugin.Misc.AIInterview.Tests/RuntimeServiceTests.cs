@@ -1023,6 +1023,7 @@ public class RuntimeServiceTests
             },
             new MockAIInterviewSettings { UseMockResponses = false },
             httpFactory.Object,
+            null,
             nopLogger.Object);
 
         var response = await client.GenerateQuestionAsync(new AIInterviewClientRequest
@@ -1069,6 +1070,7 @@ public class RuntimeServiceTests
             },
             new MockAIInterviewSettings { UseMockResponses = false },
             httpFactory.Object,
+            null,
             nopLogger.Object);
 
         var response = await client.ScoreAnswerAsync(new AIInterviewClientRequest
@@ -1115,6 +1117,7 @@ public class RuntimeServiceTests
             },
             new MockAIInterviewSettings { UseMockResponses = false },
             httpFactory.Object,
+            null,
             nopLogger.Object);
 
         var response = await client.ScoreAnswerAsync(new AIInterviewClientRequest
@@ -1162,6 +1165,7 @@ public class RuntimeServiceTests
             },
             new MockAIInterviewSettings { UseMockResponses = false },
             httpFactory.Object,
+            null,
             nopLogger.Object);
 
         var response = await client.GenerateQuestionAsync(new AIInterviewClientRequest
@@ -1677,7 +1681,8 @@ public class RuntimeServiceTests
                 AzureOpenAiDeploymentOrModel = "deployment"
             },
             new MockAIInterviewSettings { UseMockResponses = false },
-            httpFactory.Object);
+            httpFactory.Object,
+            null);
 
         var result = await client.GenerateQuestionAsync(new AIInterviewClientRequest
         {
@@ -1733,7 +1738,8 @@ public class RuntimeServiceTests
                 AzureOpenAiDeploymentOrModel = "deployment"
             },
             new MockAIInterviewSettings { UseMockResponses = false },
-            httpFactory.Object);
+            httpFactory.Object,
+            null);
 
         var result = await client.ScoreAnswerAsync(new AIInterviewClientRequest
         {
@@ -1788,7 +1794,8 @@ public class RuntimeServiceTests
                 AzureOpenAiDeploymentOrModel = "deployment"
             },
             new MockAIInterviewSettings { UseMockResponses = false },
-            missingScoreFactory.Object);
+            missingScoreFactory.Object,
+            null);
 
         var missing = await client.ScoreAnswerAsync(new AIInterviewClientRequest
         {
@@ -1816,7 +1823,8 @@ public class RuntimeServiceTests
                 AzureOpenAiDeploymentOrModel = "deployment"
             },
             new MockAIInterviewSettings { UseMockResponses = false },
-            outOfRangeFactory.Object);
+            outOfRangeFactory.Object,
+            null);
 
         var outOfRange = await outOfRangeClient.ScoreAnswerAsync(new AIInterviewClientRequest
         {
@@ -1848,7 +1856,8 @@ public class RuntimeServiceTests
                 AzureOpenAiDeploymentOrModel = "deployment"
             },
             new MockAIInterviewSettings { UseMockResponses = false },
-            factory.Object);
+            factory.Object,
+            null);
 
         var response = await client.ScoreAnswerAsync(new AIInterviewClientRequest
         {
@@ -1877,7 +1886,8 @@ public class RuntimeServiceTests
                 AzureOpenAiDeploymentOrModel = "deployment"
             },
             new MockAIInterviewSettings { UseMockResponses = false },
-            failureFactory.Object);
+            failureFactory.Object,
+            null);
 
         var failure = await client.GenerateQuestionAsync(new AIInterviewClientRequest
         {
@@ -1901,7 +1911,8 @@ public class RuntimeServiceTests
                 AzureOpenAiDeploymentOrModel = "deployment"
             },
             new MockAIInterviewSettings { UseMockResponses = false },
-            invalidFactory.Object);
+            invalidFactory.Object,
+            null);
 
         var invalid = await invalidClient.ScoreAnswerAsync(new AIInterviewClientRequest
         {

@@ -21,6 +21,7 @@ using NopLogLevel = Nop.Core.Domain.Logging.LogLevel;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core.Domain.Catalog;
+using Nop.Core.Domain.Customers;
 using Nop.Web.Framework.Mvc.Routing;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
@@ -85,9 +86,27 @@ public class MockAiInterviewController : BasePluginController
         _nopUrlHelper = nopUrlHelper;
     }
 
-    protected virtual Task LogRuntimeIssueAsync(string shortMessage, string fullMessage = "")
+    protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
     {
-        return _nopLogger == null ? Task.CompletedTask : _nopLogger.InsertLogAsync(NopLogLevel.Warning, shortMessage, fullMessage);
+        if (customer != null)
+            return customer;
+
+        if (session?.CustomerId > 0)
+        {
+            var sessionCustomer = await _customerService.GetCustomerByIdAsync(session.CustomerId);
+            if (sessionCustomer != null)
+                return sessionCustomer;
+        }
+
+        return _workContext == null ? null : await _workContext.GetCurrentCustomerAsync();
+    }
+
+    protected virtual async Task LogRuntimeIssueAsync(string shortMessage, string fullMessage = "", Customer customer = null)
+    {
+        if (_nopLogger == null)
+            return;
+
+        await _nopLogger.InsertLogAsync(NopLogLevel.Warning, shortMessage, fullMessage, customer ?? (_workContext == null ? null : await _workContext.GetCurrentCustomerAsync()));
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -490,7 +509,9 @@ public class MockAiInterviewController : BasePluginController
         var maskedToken = MaskToken(token);
         var fullMessage = $"Event=RuntimeGuidelinesAcknowledged; Token={maskedToken}; SessionId={session?.Id ?? 0}; CustomerId={session?.CustomerId ?? 0}; ProductId={session?.ProductId ?? 0}; AcknowledgedTimestamp={acknowledgedTimestamp ?? string.Empty}; UserAgent={userAgent ?? string.Empty}; ScreenSize={screenSize ?? string.Empty}; ViewportSize={viewportSize ?? string.Empty};";
 
-        await (_nopLogger?.InsertLogAsync(NopLogLevel.Information, "AI Interview runtime guidelines acknowledged", fullMessage) ?? Task.CompletedTask);
+        var logCustomer = await ResolveLogCustomerAsync(session);
+        if (_nopLogger != null)
+            await _nopLogger.InsertLogAsync(NopLogLevel.Information, "AI Interview runtime guidelines acknowledged", fullMessage, logCustomer);
         _logger?.LogInformation("AIInterview runtime guidelines acknowledged for session {SessionId}, customer {CustomerId}, product {ProductId}, token {Token}.",
             session?.Id ?? 0, session?.CustomerId ?? 0, session?.ProductId ?? 0, maskedToken);
 
@@ -561,7 +582,7 @@ public class MockAiInterviewController : BasePluginController
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
         if (!IsSessionUsable(session))
         {
-            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"SubmitAnswer rejected invalid session for token {MaskToken(token)}.");
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"SubmitAnswer rejected invalid session for token {MaskToken(token)}.", await ResolveLogCustomerAsync(session));
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
@@ -616,7 +637,7 @@ public class MockAiInterviewController : BasePluginController
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
         if (!IsSessionUsable(session))
         {
-            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"Stop rejected invalid session for token {MaskToken(token)}.");
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"Stop rejected invalid session for token {MaskToken(token)}.", await ResolveLogCustomerAsync(session));
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
@@ -652,7 +673,7 @@ public class MockAiInterviewController : BasePluginController
         var session = tokenRenewal.Session;
         if (session == null)
         {
-            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"Token refresh failed for token {MaskToken(token)}.");
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"Token refresh failed for token {MaskToken(token)}.", await ResolveLogCustomerAsync());
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
@@ -672,7 +693,7 @@ public class MockAiInterviewController : BasePluginController
         var result = await _interviewRuntimeService.GetSpeechTokenAsync(token);
         if (result == null)
         {
-            await LogRuntimeIssueAsync("AI Interview speech token failure", $"Speech token retrieval failed for token {MaskToken(token)}.");
+            await LogRuntimeIssueAsync("AI Interview speech token failure", $"Speech token retrieval failed for token {MaskToken(token)}.", await ResolveLogCustomerAsync(tokenRenewal.Session));
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech token service is unavailable.");
         }
 
@@ -705,7 +726,7 @@ public class MockAiInterviewController : BasePluginController
         var result = await _interviewRuntimeService.UploadRecordingAsync(token, recording);
         if (result == null || !result.Success)
         {
-            await LogRuntimeIssueAsync("AI Interview recording upload failure", $"Recording upload failed for token {MaskToken(token)}.");
+            await LogRuntimeIssueAsync("AI Interview recording upload failure", $"Recording upload failed for token {MaskToken(token)}.", await ResolveLogCustomerAsync(tokenRenewal.Session));
             return Json(new { success = false, message = result?.Message ?? "Recording upload failed." });
         }
 
