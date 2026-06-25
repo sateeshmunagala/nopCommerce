@@ -8,6 +8,7 @@
     NopHtml.AppendPageCssClassParts("html-account-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-employer-applications-page");
+    var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
 
     string GetStatusLabel(string status) => status switch
     {
@@ -19,7 +20,7 @@
         "Shortlisted" => "Shortlisted",
         "Rejected" => "Rejected",
         "Withdrawn" => "Withdrawn",
-        _ => status
+        _ => T($"Plugins.Misc.AIInterview.Status.{status}").Text
     };
 }
 
@@ -34,18 +35,20 @@
     </div>
     <div class="page-body">
         <div class="section">
-            <div class="title">
-                <strong>@T("Plugins.Misc.AIInterview.Employer.Applications.Title")</strong>
-            </div>
             <div class="fieldset">
                 <form method="get" asp-action="EmployerApplications" class="employer-filter-form">
+                <div class="employer-filter-shell">
+                <div class="employer-filter-head">
+                    <strong>@T("Plugins.Misc.AIInterview.Employer.Applications.FilterTitle")</strong>
+                    <span>@T("Plugins.Misc.AIInterview.Employer.Applications.FilterSubtitle")</span>
+                </div>
                 <div class="employer-filter-grid">
                     <div class="employer-field employer-field-wide">
-                        <label for="CandidateNameOrEmail">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Candidate")</label>
+                        <label for="CandidateNameOrEmail">@T("Plugins.Misc.AIInterview.Employer.Applications.Candidate")</label>
                         <input id="CandidateNameOrEmail" name="CandidateNameOrEmail" value="@Model.CandidateNameOrEmail" />
                     </div>
                     <div class="employer-field">
-                        <label for="Status">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Status")</label>
+                        <label for="Status">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</label>
                         <select id="Status" name="Status">
                             <option value="">@T("Admin.Common.All")</option>
                             @foreach (var status in JobApplicationStatuses.All)
@@ -63,11 +66,11 @@
                         </select>
                     </div>
                     <div class="employer-field">
-                        <label for="MinScore">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.MinScore")</label>
+                        <label for="MinScore">@T("Plugins.Misc.AIInterview.Employer.Applications.MinScore")</label>
                         <input id="MinScore" name="MinScore" type="number" min="0" max="100" value="@Model.MinScore" />
                     </div>
                     <div class="employer-field">
-                        <label for="MaxScore">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.MaxScore")</label>
+                        <label for="MaxScore">@T("Plugins.Misc.AIInterview.Employer.Applications.MaxScore")</label>
                         <input id="MaxScore" name="MaxScore" type="number" min="0" max="100" value="@Model.MaxScore" />
                     </div>
                     <div class="employer-field">
@@ -96,7 +99,7 @@
                 </div>
 
                 <div class="employer-filter-actions">
-                    <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Filter")</button>
+                    <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Applications.Filter")</button>
                     <a class="button-2" href="@Url.Action("EmployerApplications")">@T("Admin.Common.Reset")</a>
                     <a class="button-2" href="@Url.RouteUrl("Plugin.Misc.AIInterview.ExportCsv", new {
                         CandidateNameOrEmail = Model.CandidateNameOrEmail,
@@ -107,6 +110,7 @@
                         EndDate = Model.EndDate?.ToString("o"),
                         SortByScore = Model.SortByScore
                     })">@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")</a>
+                </div>
                 </div>
                 </form>
 
@@ -124,17 +128,16 @@
                     <table class="data-table employer-table">
                         <thead>
                             <tr>
-                                <th class="col-candidate">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Candidate")</th>
-                                <th class="col-email">@T("Admin.Customers.Customers.Fields.Email")</th>
+                                <th class="col-candidate">@T("Plugins.Misc.AIInterview.Employer.Applications.Candidate")</th>
+                                <th class="col-email">@T("Plugins.Misc.AIInterview.Employer.Applications.Email")</th>
                                 <th class="col-phone">@T("Admin.Customers.Customers.Fields.Phone")</th>
                                 <th class="col-charge">@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</th>
-                                <th class="col-prompt">@T("Plugins.Misc.AIInterview.Employer.Applications.PromptSource")</th>
                                 <th class="col-score">@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewScore")</th>
                                 <th class="col-attempts">@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>
                                 <th class="col-applied">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedOn")</th>
                                 <th class="col-message">@T("Plugins.Misc.AIInterview.Employer.Applications.CoverMessage")</th>
-                                <th class="col-status">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Status")</th>
-                                <th class="col-report">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report")</th>
+                                <th class="col-status">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</th>
+                                <th class="col-report">@viewReportText</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -145,7 +148,6 @@
                                     <td class="col-email">@app.CandidateEmail</td>
                                     <td class="col-phone">@app.CandidatePhone</td>
                                     <td class="col-charge"><span class="charge-pill">@app.ChargeMode</span></td>
-                                    <td class="col-prompt">@app.PromptSource</td>
                                     <td class="col-score">
                                         @if (app.InterviewScore.HasValue)
                                         {
@@ -175,7 +177,7 @@
                                     <td class="col-report">
                                         @if (!string.IsNullOrWhiteSpace(app.InterviewReportUrl))
                                         {
-                                            <a href="@app.InterviewReportUrl">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report")</a>
+                                            <a href="@app.InterviewReportUrl" class="ai-view-report-link"><i class="fa fa-eye" aria-hidden="true"></i><span>@viewReportText</span></a>
                                         }
                                         else
                                         {

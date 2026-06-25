@@ -130,6 +130,18 @@
     min-width: 0;
 }
 
+.applications-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+}
+
+.applications-sort label {
+    margin: 0;
+    white-space: nowrap;
+}
+
 .applications-sort select,
 .employer-field input,
 .employer-field select,
@@ -275,6 +287,19 @@
     resize: vertical;
 }
 
+.vendor-job-form-control textarea[rows="2"] {
+    min-height: 72px;
+}
+
+.vendor-job-form-unsupported {
+    padding: 11px 12px;
+    border: 1px dashed #c6cdd4;
+    border-radius: 4px;
+    background: #f8fafc;
+    color: #5a6470;
+    line-height: 1.5;
+}
+
 .vendor-job-form-control input[type="file"] {
     padding: 10px 12px;
 }
@@ -377,6 +402,53 @@
 .employer-table-wrapper,
 .invite-table-wrapper {
     -webkit-overflow-scrolling: touch;
+}
+
+.ai-report-page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ai-report-back-button,
+.ai-view-report-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-view-report-link i,
+.ai-report-back-button i {
+    font-size: 14px;
+}
+
+.employer-filter-shell {
+    display: grid;
+    gap: 18px;
+    padding: 18px;
+    border: 1px solid #dedede;
+    border-radius: 4px;
+    background: #fbfbfb;
+}
+
+.employer-filter-head {
+    display: grid;
+    gap: 6px;
+}
+
+.employer-filter-head strong {
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.02rem;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.employer-filter-head span {
+    color: #687078;
+    line-height: 1.5;
 }
 
 .score-chip,
@@ -799,6 +871,10 @@ body.aiinterview-report-drawer-open {
         display: grid;
         grid-template-columns: 1fr;
         align-items: stretch;
+    }
+
+    .applications-sort {
+        flex-wrap: wrap;
     }
 
     .ai-report-drawer-panel {
@@ -1912,7 +1988,7 @@ body.aiinterview-report-drawer-open {
 }
 
 .html-aiinterview-employer-applications-page .employer-table {
-    min-width: 1380px;
+    min-width: 1240px;
     table-layout: fixed;
 }
 
@@ -1936,11 +2012,6 @@ body.aiinterview-report-drawer-open {
     min-width: 130px;
 }
 
-.html-aiinterview-employer-applications-page .employer-table .col-prompt {
-    width: 150px;
-    min-width: 150px;
-}
-
 .html-aiinterview-employer-applications-page .employer-table .col-score,
 .html-aiinterview-employer-applications-page .employer-table .col-attempts,
 .html-aiinterview-employer-applications-page .employer-table .col-report {
@@ -1961,6 +2032,10 @@ body.aiinterview-report-drawer-open {
 .html-aiinterview-employer-applications-page .employer-table .col-status {
     width: 250px;
     min-width: 250px;
+}
+
+.html-aiinterview-employer-applications-page .employer-filter-actions {
+    justify-content: flex-start;
 }
 
 .html-aiinterview-employer-applications-page .status-form {

@@ -16,12 +16,12 @@
 
 <div class="page vendor-job-creation-page">
     <div class="page-title">
-        <h1>Create Employer Job</h1>
+        <h1>@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")</h1>
     </div>
     <div class="page-body">
         <div class="section">
             <div class="title">
-                <strong>Create Employer Job</strong>
+                <strong>@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")</strong>
             </div>
             <form asp-route="@AIInterviewDefaults.VendorJobCreationRouteName" method="post" class="vendor-job-form-shell">
                 <div class="fieldset">
@@ -40,16 +40,7 @@
                         <span asp-validation-for="Name"></span>
                     </div>
                 </div>
-
-                <div class="vendor-job-form-row vendor-job-form-row-top">
-                    <div class="vendor-job-form-label">
-                        <label asp-for="Sku" asp-postfix=":"></label>
-                    </div>
-                    <div class="vendor-job-form-control">
-                        <input asp-for="Sku" />
-                        <span asp-validation-for="Sku"></span>
-                    </div>
-                </div>
+                <input asp-for="Sku" type="hidden" />
 
                 <div class="vendor-job-form-row vendor-job-form-row-top">
                     <div class="vendor-job-form-label">
@@ -102,11 +93,18 @@
 
                 <div class="vendor-job-form-row vendor-job-form-row-top">
                     <div class="vendor-job-form-label">
-                        <label asp-for="JobLocation" asp-postfix=":"></label>
+                        <label asp-for="JobLocationOptionId" asp-postfix=":"></label>
                     </div>
                     <div class="vendor-job-form-control">
-                        <input asp-for="JobLocation" />
-                        <span asp-validation-for="JobLocation"></span>
+                        @if (Model.AvailableJobLocations.Any())
+                        {
+                            <select asp-for="JobLocationOptionId" asp-items="Model.AvailableJobLocations"></select>
+                        }
+                        else
+                        {
+                            <div class="vendor-job-form-unsupported">@T("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Unsupported")</div>
+                        }
+                        <span asp-validation-for="JobLocationOptionId"></span>
                     </div>
                 </div>
 
@@ -128,7 +126,7 @@
                         <label asp-for="ShortDescription" asp-postfix=":"></label>
                     </div>
                     <div class="vendor-job-form-control">
-                        <textarea asp-for="ShortDescription"></textarea>
+                        <textarea asp-for="ShortDescription" rows="2"></textarea>
                         <span asp-validation-for="ShortDescription"></span>
                     </div>
                 </div>

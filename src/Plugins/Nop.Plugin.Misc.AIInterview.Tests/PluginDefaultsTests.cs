@@ -148,7 +148,7 @@ public class PluginDefaultsTests
             Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.WorkMode"));
         Assert.That(typeof(VendorJobModel).GetProperty("EmploymentTypeOptionId")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
             Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.EmploymentType"));
-        Assert.That(typeof(VendorJobModel).GetProperty("JobLocation")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+        Assert.That(typeof(VendorJobModel).GetProperty("JobLocationOptionId")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
             Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation"));
         Assert.That(typeof(VendorJobModel).GetProperty("SalaryRange")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
             Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange"));

@@ -14,7 +14,15 @@
 
 <div class="page mock-report">
     <div class="page-title">
-        <h1>@T("Plugins.Misc.AIInterview.Report.Title")</h1>
+        <div class="ai-report-page-head">
+            <h1>@T("Plugins.Misc.AIInterview.Report.Title")</h1>
+            <button type="button"
+                    class="button-2 ai-report-back-button"
+                    onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href='@Url.RouteUrl(AIInterviewDefaults.MockHistoryRouteName)'; }">
+                <i class="fa fa-arrow-left" aria-hidden="true"></i>
+                <span>@T("Plugins.Misc.AIInterview.Report.Back")</span>
+            </button>
+        </div>
     </div>
     <div class="page-body">
         <div class="mock-report-wrap">

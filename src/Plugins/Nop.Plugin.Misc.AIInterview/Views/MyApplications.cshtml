@@ -15,6 +15,7 @@
     var openSharePageText = T("Plugins.Misc.AIInterview.Report.OpenSharePage").Text;
     var jobReportTitleFormat = T("Plugins.Misc.AIInterview.Report.JobReportTitle").Text;
     var jobRecordingTitleFormat = T("Plugins.Misc.AIInterview.Report.JobRecordingTitle").Text;
+    var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
 }
 
 @section left
@@ -84,9 +85,9 @@
                                     @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
                                     {
                                         <a href="@app.InterviewReportUrl"
-                                           class="js-open-report-drawer"
+                                           class="js-open-report-drawer ai-view-report-link"
                                            data-report-panel-url="@app.InterviewReportPanelUrl"
-                                           data-report-title="@reportTitle">@T("Plugins.Misc.AIInterview.Report.OpenReport")</a>
+                                           data-report-title="@reportTitle"><i class="fa fa-eye" aria-hidden="true"></i><span>@viewReportText</span></a>
                                     }
                                     else
                                     {

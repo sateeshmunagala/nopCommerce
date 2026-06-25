@@ -843,6 +843,12 @@ public class AIInterviewController : BasePluginController
             model.AvailableEmploymentTypes = BuildSelectList(
                 await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(employmentTypeAttribute.Id),
                 model.EmploymentTypeOptionId);
+
+        var jobLocationAttribute = await GetSpecificationAttributeByNameAsync("Job Location", "Location");
+        if (jobLocationAttribute != null)
+            model.AvailableJobLocations = BuildSelectList(
+                await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(jobLocationAttribute.Id),
+                model.JobLocationOptionId);
     }
 
     protected async Task<int> ResolveCustomTextSpecificationOptionIdAsync(params string[] attributeNames)
@@ -1203,13 +1209,11 @@ public class AIInterviewController : BasePluginController
         if (!await IsValidSpecificationOptionSelectionAsync(model.EmploymentTypeOptionId, employmentTypeAttribute))
             ModelState.AddModelError(nameof(model.EmploymentTypeOptionId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.EmploymentType.Invalid"));
 
-        var jobLocationOptionId = 0;
-        if (!string.IsNullOrWhiteSpace(model.JobLocation))
-        {
-            jobLocationOptionId = await ResolveCustomTextSpecificationOptionIdAsync("Job Location", "Location");
-            if (jobLocationOptionId <= 0)
-                ModelState.AddModelError(nameof(model.JobLocation), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Unsupported"));
-        }
+        var jobLocationAttribute = await GetSpecificationAttributeByNameAsync("Job Location", "Location");
+        if (jobLocationAttribute == null)
+            ModelState.AddModelError(nameof(model.JobLocationOptionId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Unsupported"));
+        else if (!await IsValidSpecificationOptionSelectionAsync(model.JobLocationOptionId, jobLocationAttribute))
+            ModelState.AddModelError(nameof(model.JobLocationOptionId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Invalid"));
 
         var salaryRangeOptionId = 0;
         if (!string.IsNullOrWhiteSpace(model.SalaryRange))
@@ -1234,7 +1238,7 @@ public class AIInterviewController : BasePluginController
             Name = model.Name.Trim(),
             ShortDescription = model.ShortDescription,
             FullDescription = model.FullDescription,
-            Sku = model.Sku,
+            Sku = string.IsNullOrWhiteSpace(model.Sku) ? $"AIJOB-{DateTime.UtcNow:yyyyMMddHHmmssfff}" : model.Sku,
             VisibleIndividually = true,
             Published = model.Published,
             DisableBuyButton = true,
@@ -1253,11 +1257,7 @@ public class AIInterviewController : BasePluginController
         await InsertProductSpecificationAttributeAsync(product.Id, model.WorkModeOptionId ?? 0, displayOrder: 1);
         await InsertProductSpecificationAttributeAsync(product.Id, model.EmploymentTypeOptionId ?? 0, displayOrder: 2);
 
-        if (!string.IsNullOrWhiteSpace(model.JobLocation))
-        {
-            await InsertProductSpecificationAttributeAsync(product.Id, jobLocationOptionId,
-                SpecificationAttributeType.CustomText, model.JobLocation, 3);
-        }
+        await InsertProductSpecificationAttributeAsync(product.Id, model.JobLocationOptionId ?? 0, displayOrder: 3);
 
         if (!string.IsNullOrWhiteSpace(model.SalaryRange))
         {
@@ -1285,7 +1285,6 @@ public class AIInterviewController : BasePluginController
         model.Sku = model.Sku?.Trim();
         model.ShortDescription = model.ShortDescription?.Trim();
         model.FullDescription = model.FullDescription?.Trim();
-        model.JobLocation = model.JobLocation?.Trim();
         model.SalaryRange = model.SalaryRange?.Trim();
 
         if (!model.InterviewRequired)

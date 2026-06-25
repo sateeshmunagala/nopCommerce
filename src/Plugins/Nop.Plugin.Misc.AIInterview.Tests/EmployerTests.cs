@@ -526,7 +526,7 @@ public class EmployerTests
     }
 
     [Test]
-    public async Task VendorJobCreation_Rejects_CustomText_Metadata_When_Unsupported()
+    public async Task VendorJobCreation_Rejects_Metadata_When_Unsupported()
     {
         _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
             .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
@@ -535,7 +535,7 @@ public class EmployerTests
         var result = await _controller.VendorJobCreation(new VendorJobModel
         {
             Name = "Platform Engineer",
-            JobLocation = "London",
+            JobLocationOptionId = 3,
             SalaryRange = "80k-90k"
         });
 

@@ -137,7 +137,7 @@ public record VendorJobModel : BaseNopModel
     public int? EmploymentTypeOptionId { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation")]
-    public string JobLocation { get; set; }
+    public int? JobLocationOptionId { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange")]
     public string SalaryRange { get; set; }
@@ -150,6 +150,8 @@ public record VendorJobModel : BaseNopModel
     public IList<SelectListItem> AvailableWorkModes { get; set; } = new List<SelectListItem>();
 
     public IList<SelectListItem> AvailableEmploymentTypes { get; set; } = new List<SelectListItem>();
+
+    public IList<SelectListItem> AvailableJobLocations { get; set; } = new List<SelectListItem>();
 }
 
 public record RuntimeErrorModel : BaseNopModel
