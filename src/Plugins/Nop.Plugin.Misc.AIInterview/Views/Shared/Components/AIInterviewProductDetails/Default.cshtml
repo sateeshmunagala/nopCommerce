@@ -63,9 +63,9 @@
                     <input id="job-resume-file" name="ResumeFile" type="file" accept=".pdf,.docx" />
                     <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
                     <div class="job-ai-actions">
-                        <button type="button" class="button-1 apply-btn" id="job-apply-button" @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                        <button type="button" class="job-ai-action job-ai-action-primary apply-btn" id="job-apply-button" @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
                         <button type="button"
-                                class="button-2 start-interview-btn"
+                                class="job-ai-action job-ai-action-secondary start-interview-btn"
                                 id="start-job-interview"
                                 data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
                     </div>

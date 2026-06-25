@@ -527,7 +527,70 @@
 }
 
 .job-ai-actions {
+    display: flex;
+    flex-wrap: wrap;
     margin-top: 14px;
+    gap: 12px;
+}
+
+.job-ai-actions .job-ai-action {
+    all: unset;
+    appearance: none;
+    -webkit-appearance: none;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    min-width: 170px;
+    padding: 13px 22px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    background-image: none;
+    box-shadow: none;
+    cursor: pointer;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-align: center;
+    text-decoration: none;
+    text-shadow: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.job-ai-actions .job-ai-action-primary {
+    border-color: #1fb99b;
+    background: #1fb99b;
+    color: #ffffff;
+}
+
+.job-ai-actions .job-ai-action-primary:hover:not(:disabled),
+.job-ai-actions .job-ai-action-primary:focus-visible {
+    border-color: #159d84;
+    background: #159d84;
+    color: #ffffff;
+}
+
+.job-ai-actions .job-ai-action-secondary {
+    border-color: #cfd6dc;
+    background: #ffffff;
+    color: #25313a;
+}
+
+.job-ai-actions .job-ai-action-secondary:hover:not(:disabled),
+.job-ai-actions .job-ai-action-secondary:focus-visible {
+    border-color: #b8c1c9;
+    background: #f3f5f6;
+    color: #17212a;
+}
+
+.job-ai-actions .job-ai-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .job-ai-actions .button-1,
@@ -726,7 +789,8 @@ body.aiinterview-report-drawer-open {
     .html-aiinterview-view-page .button-1,
     .html-aiinterview-view-page .button-2,
     .job-ai-actions .button-1,
-    .job-ai-actions .button-2 {
+    .job-ai-actions .button-2,
+    .job-ai-actions .job-ai-action {
         width: 100%;
     }
 
@@ -2180,6 +2244,19 @@ body.aiinterview-report-drawer-open {
     .job-hero {
         padding: 20px;
     }
+
+    .job-shell .job-ai-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .job-shell .job-ai-actions .button-1,
+    .job-shell .job-ai-actions .button-2,
+    .job-shell .job-ai-actions .job-ai-action {
+        width: 100%;
+        min-width: 0;
+    }
 }
 
 @media (max-width: 640px) {
@@ -2221,5 +2298,64 @@ body.aiinterview-report-drawer-open {
     .job-meta-item,
     .report-preview {
         max-width: 100%;
+    }
+}
+
+#job-apply-button.job-ai-action,
+#start-job-interview.job-ai-action {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 168px;
+    height: 50px;
+    padding: 0 24px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    box-shadow: none;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-align: center;
+    text-decoration: none;
+    text-shadow: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+#job-apply-button.job-ai-action {
+    border-color: #1fb99b;
+    background-color: #1fb99b;
+    color: #ffffff;
+}
+
+#job-apply-button.job-ai-action:hover:not(:disabled),
+#job-apply-button.job-ai-action:focus-visible {
+    border-color: #159d84;
+    background-color: #159d84;
+    color: #ffffff;
+}
+
+#start-job-interview.job-ai-action {
+    border-color: #c7d0d7;
+    background-color: #ffffff;
+    color: #24313a;
+}
+
+#start-job-interview.job-ai-action:hover:not(:disabled),
+#start-job-interview.job-ai-action:focus-visible {
+    border-color: #aeb9c2;
+    background-color: #f4f6f7;
+    color: #141d24;
+}
+
+@media (max-width: 720px) {
+    #job-apply-button.job-ai-action,
+    #start-job-interview.job-ai-action {
+        width: 100%;
+        min-width: 0;
     }
 }
