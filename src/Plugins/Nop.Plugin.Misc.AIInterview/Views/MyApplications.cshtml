@@ -75,7 +75,10 @@
                                 <td>
                                     @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
                                     {
-                                        <a href="@app.InterviewReportUrl">@T("Plugins.Misc.AIInterview.Report.OpenReport")</a>
+                                        <a href="@app.InterviewReportUrl"
+                                           class="js-open-report-drawer"
+                                           data-report-panel-url="@app.InterviewReportPanelUrl"
+                                           data-report-title="@app.JobTitle report">@T("Plugins.Misc.AIInterview.Report.OpenReport")</a>
                                     }
                                     else
                                     {
@@ -85,7 +88,17 @@
                                 <td>
                                     @if (!string.IsNullOrEmpty(app.RecordingUrl))
                                     {
-                                        <a href="@app.RecordingUrl">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>
+                                        <div class="candidate-recording-actions">
+                                            <a href="@app.RecordingUrl" target="_blank" rel="noopener">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>
+                                            @if (!string.IsNullOrEmpty(app.RecordingShareUrl))
+                                            {
+                                                <button type="button" class="button-2 ai-copy-share-link" data-share-url="@app.RecordingShareUrl">Copy share link</button>
+                                                <button type="button" class="button-2 ai-native-share-link aiinterview-hidden" data-share-url="@app.RecordingShareUrl" data-share-title="@app.JobTitle recording">Share</button>
+                                                <noscript>
+                                                    <a href="@app.RecordingShareUrl" target="_blank" rel="noopener">Open share page</a>
+                                                </noscript>
+                                            }
+                                        </div>
                                     }
                                     else
                                     {
@@ -93,58 +106,6 @@
                                     }
                                 </td>
                             </tr>
-                            @if (!string.IsNullOrEmpty(app.InterviewReportUrl) || app.Turns?.Any() == true)
-                            {
-                                <tr>
-                                    <td colspan="6">
-                                        <div class="report-preview">
-                                            <h3>@T("Plugins.Misc.AIInterview.Report.Title") - @T("Plugins.Misc.AIInterview.MyApplications.Attempt") @app.Id</h3>
-                                            <div class="report-metrics">
-                                                <div class="report-metric">
-                                                    <div class="report-metric-label">@T("Plugins.Misc.AIInterview.Report.Overall")</div>
-                                                    <div class="report-metric-value">@(app.InterviewScore.HasValue ? Math.Round(app.InterviewScore.Value).ToString() : "-")</div>
-                                                </div>
-                                                <div class="report-metric">
-                                                    <div class="report-metric-label">@T("Plugins.Misc.AIInterview.Report.QuestionCount")</div>
-                                                    <div class="report-metric-value">@((app.Turns?.Count ?? 0).ToString())</div>
-                                                </div>
-                                                <div class="report-metric">
-                                                    <div class="report-metric-label">@T("Plugins.Misc.AIInterview.Report.Completed")</div>
-                                                    <div class="report-metric-value">@(app.CompletedOn.HasValue ? app.CompletedOn.Value.ToString("yyyy-MM-dd") : "-")</div>
-                                                </div>
-                                                <div class="report-metric">
-                                                    <div class="report-metric-label">@T("Plugins.Misc.AIInterview.Report.Assessment")</div>
-                                                    <div class="report-metric-value">@(app.Turns?.Any() == true ? T("Plugins.Misc.AIInterview.Common.Available").Text : "-")</div>
-                                                </div>
-                                            </div>
-                                            <div class="report-copy">
-                                                @if (!string.IsNullOrWhiteSpace(app.ReportSummary))
-                                                {
-                                                    <p><strong>@T("Plugins.Misc.AIInterview.Report.Summary"):</strong> @app.ReportSummary</p>
-                                                }
-                                                @if (!string.IsNullOrWhiteSpace(app.FeedbackSummary))
-                                                {
-                                                    <p><strong>@T("Plugins.Misc.AIInterview.Report.AiFeedback"):</strong> @app.FeedbackSummary</p>
-                                                }
-                                            </div>
-                                            @if (app.Turns?.Any() == true)
-                                            {
-                                                <div class="turn-history">
-                                                    @foreach (var turn in app.Turns)
-                                                    {
-                                                        <div class="ai-turn-card">
-                                                            <div><strong>Q@(turn.SequenceNumber).</strong> @turn.QuestionText</div>
-                                                            <div><strong>@T("Plugins.Misc.AIInterview.Report.Answer"):</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? T("Plugins.Misc.AIInterview.Report.Pending").Text : turn.AnswerText)</div>
-                                                            <div><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @(turn.Score.HasValue ? turn.Score.Value.ToString("N2") : "-")</div>
-                                                            <div><strong>@T("Plugins.Misc.AIInterview.Report.Feedback"):</strong> @(string.IsNullOrWhiteSpace(turn.Feedback) ? "-" : turn.Feedback)</div>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
                         }
                     </tbody>
                 </table>
@@ -161,3 +122,5 @@
         </div>
     </div>
 </div>
+
+@await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_CandidateReportDrawer.cshtml")

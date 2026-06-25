@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Http;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
@@ -209,6 +210,132 @@ public class AIInterviewController : BasePluginController
         return (lines.FirstOrDefault() ?? string.Empty, lines.Skip(1).FirstOrDefault() ?? string.Empty);
     }
 
+    protected virtual string BuildRouteUrl(string routeName, object values = null)
+    {
+        var relativeUrl = Url?.RouteUrl(new UrlRouteContext
+        {
+            RouteName = routeName,
+            Values = values
+        });
+        if (string.IsNullOrWhiteSpace(relativeUrl))
+            return null;
+
+        if (Uri.TryCreate(relativeUrl, UriKind.Absolute, out _))
+            return relativeUrl;
+
+        if (Request?.Host.HasValue == true)
+            return $"{Request.Scheme}://{Request.Host}{Request.PathBase}{relativeUrl}";
+
+        return relativeUrl;
+    }
+
+    protected virtual string BuildAuthenticatedReportUrl(int sessionId)
+    {
+        return sessionId > 0 ? Url?.Action("Report", "AIInterview", new { sessionId }) : null;
+    }
+
+    protected virtual string BuildReportPanelUrl(int sessionId)
+    {
+        return sessionId > 0 ? Url?.Action("ReportPanel", "AIInterview", new { sessionId }) : null;
+    }
+
+    protected virtual string BuildAuthenticatedRecordingUrl(int sessionId)
+    {
+        return sessionId > 0 ? Url?.Action("Recording", "AIInterview", new { sessionId }) : null;
+    }
+
+    protected virtual async Task<string> BuildRecordingShareUrlAsync(InterviewSession session)
+    {
+        if (session == null || string.IsNullOrWhiteSpace(session.RecordingUrl))
+            return null;
+
+        var token = await _interviewSessionService.EnsureRecordingShareTokenAsync(session);
+        return string.IsNullOrWhiteSpace(token)
+            ? null
+            : BuildRouteUrl(AIInterviewDefaults.RecordingShareRouteName, new { token });
+    }
+
+    protected virtual IList<InterviewTurnViewModel> MapTurns(IList<InterviewTurn> turns)
+    {
+        return (turns ?? new List<InterviewTurn>()).Select(turn => new InterviewTurnViewModel
+        {
+            TurnId = turn.Id,
+            SequenceNumber = turn.SequenceNumber,
+            QuestionText = turn.QuestionText,
+            AnswerText = turn.AnswerText,
+            Score = turn.Score,
+            TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
+            CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
+            ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
+            PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
+            Feedback = turn.Feedback,
+            AskedOnUtc = turn.AskedOnUtc,
+            AnsweredOnUtc = turn.AnsweredOnUtc
+        }).ToList();
+    }
+
+    protected virtual async Task<IList<InterviewTurn>> GetTurnsSafeAsync(int sessionId)
+    {
+        if (_interviewTurnService == null || sessionId <= 0)
+            return new List<InterviewTurn>();
+
+        try
+        {
+            return ((await _interviewTurnService.GetTurnsBySessionIdAsync(sessionId)) ?? new List<InterviewTurn>()).ToList();
+        }
+        catch
+        {
+            return new List<InterviewTurn>();
+        }
+    }
+
+    protected virtual async Task<InterviewReportModel> BuildInterviewReportModelAsync(InterviewSession session)
+    {
+        if (session == null)
+            return null;
+
+        var turns = await GetTurnsSafeAsync(session.Id);
+        var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+
+        return new InterviewReportModel
+        {
+            SessionId = session.Id,
+            CustomerId = session.CustomerId,
+            ProductId = session.ProductId,
+            ProductName = product?.Name ?? string.Empty,
+            JobTitle = product?.Name ?? string.Empty,
+            Difficulty = session.Difficulty,
+            Score = session.Score,
+            QuestionScores = session.QuestionScores,
+            ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
+            ReportData = session.ReportData,
+            RecordingUrl = !string.IsNullOrWhiteSpace(session.RecordingUrl) ? BuildAuthenticatedRecordingUrl(session.Id) : null,
+            RecordingShareUrl = await BuildRecordingShareUrlAsync(session),
+            CreatedOnUtc = session.CreatedOnUtc,
+            CompletedOnUtc = session.CompletedOnUtc,
+            Turns = MapTurns(turns)
+        };
+    }
+
+    protected virtual async Task<IActionResult> ProxyRecordingAsync(string recordingUrl)
+    {
+        var playbackUrl = BuildRecordingPlaybackUrl(recordingUrl);
+        if (string.IsNullOrWhiteSpace(playbackUrl))
+            return NotFound();
+
+        using var client = _httpClientFactory?.CreateClient(nameof(AIInterviewController)) ?? new HttpClient();
+        var response = await client.GetAsync(playbackUrl, HttpCompletionOption.ResponseHeadersRead);
+        if (!response.IsSuccessStatusCode)
+        {
+            response.Dispose();
+            return NotFound();
+        }
+
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "video/webm";
+        var stream = await response.Content.ReadAsStreamAsync();
+        return File(new ProxyResponseStream(stream, response), contentType);
+    }
+
     public async Task<IActionResult> Index()
     {
         if (!_aiInterviewSettings.Enabled)
@@ -256,10 +383,13 @@ public class AIInterviewController : BasePluginController
             return new ApplicationModel
             {
                 Id = a.Id,
+                InterviewSessionId = latestSession?.Id ?? 0,
                 JobTitle = a.JobTitle,
                 InterviewScore = latestSession?.Score,
-                InterviewReportUrl = latestSession != null ? Url.Action("Report", "AIInterview", new { sessionId = latestSession.Id }) : null,
-                RecordingUrl = latestSession != null && !string.IsNullOrWhiteSpace(latestSession.RecordingUrl) ? Url.Action("Recording", "AIInterview", new { sessionId = latestSession.Id }) : null,
+                InterviewReportUrl = latestSession != null ? BuildAuthenticatedReportUrl(latestSession.Id) : null,
+                InterviewReportPanelUrl = latestSession != null ? BuildReportPanelUrl(latestSession.Id) : null,
+                RecordingUrl = latestSession != null && !string.IsNullOrWhiteSpace(latestSession.RecordingUrl) ? BuildAuthenticatedRecordingUrl(latestSession.Id) : null,
+                RecordingShareUrl = latestSession != null ? await BuildRecordingShareUrlAsync(latestSession) : null,
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
                 RawStatus = normalizedStatus,
                 CreatedOn = a.CreatedOnUtc,
@@ -270,21 +400,7 @@ public class AIInterviewController : BasePluginController
                 QuestionScoreValues = questionScores,
                 ReportSummary = reportSections.Summary,
                 FeedbackSummary = reportSections.Feedback,
-                Turns = turns.Select(turn => new InterviewTurnViewModel
-                {
-                    TurnId = turn.Id,
-                    SequenceNumber = turn.SequenceNumber,
-                    QuestionText = turn.QuestionText,
-                    AnswerText = turn.AnswerText,
-                    Score = turn.Score,
-                    TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
-                    CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
-                    ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
-                    PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
-                    Feedback = turn.Feedback,
-                    AskedOnUtc = turn.AskedOnUtc,
-                    AnsweredOnUtc = turn.AnsweredOnUtc
-                }).ToList()
+                Turns = MapTurns(turns)
             };
         }));
 
@@ -342,52 +458,30 @@ public class AIInterviewController : BasePluginController
             return RedirectToRoute(AIInterviewDefaults.MyApplicationsRouteName);
         }
 
-        var turns = new List<InterviewTurn>();
-        if (_interviewTurnService != null)
-        {
-            try
-            {
-                turns = (await _interviewTurnService.GetTurnsBySessionIdAsync(sessionId)).ToList();
-            }
-            catch
-            {
-                turns = new List<InterviewTurn>();
-            }
-        }
-
-        var model = new InterviewReportModel
-        {
-            SessionId = session.Id,
-            CustomerId = session.CustomerId,
-            ProductId = session.ProductId,
-            ProductName = session.ProductId > 0 ? (await _productService.GetProductByIdAsync(session.ProductId))?.Name : string.Empty,
-            JobTitle = session.ProductId > 0 ? (await _productService.GetProductByIdAsync(session.ProductId))?.Name : string.Empty,
-            Difficulty = session.Difficulty,
-            Score = session.Score,
-            QuestionScores = session.QuestionScores,
-            ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
-            ReportData = session.ReportData,
-            RecordingUrl = !string.IsNullOrWhiteSpace(session.RecordingUrl) ? Url?.Action("Recording", "AIInterview", new { sessionId = session.Id }) : null,
-            CreatedOnUtc = session.CreatedOnUtc,
-            CompletedOnUtc = session.CompletedOnUtc,
-            Turns = turns.Select(turn => new InterviewTurnViewModel
-            {
-                TurnId = turn.Id,
-                SequenceNumber = turn.SequenceNumber,
-                QuestionText = turn.QuestionText,
-                AnswerText = turn.AnswerText,
-                Score = turn.Score,
-                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
-                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
-                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
-                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
-                Feedback = turn.Feedback,
-                AskedOnUtc = turn.AskedOnUtc,
-                AnsweredOnUtc = turn.AnsweredOnUtc
-            }).ToList()
-        };
+        var model = await BuildInterviewReportModelAsync(session);
 
         return View("~/Plugins/Misc.AIInterview/Views/Report.cshtml", model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ReportPanel(int sessionId)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return NotFound();
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null)
+            return Challenge();
+
+        if (!await _interviewSessionService.CanAccessReportAsync(customer.Id, sessionId))
+            return Challenge();
+
+        var session = await _interviewSessionService.GetInterviewSessionByIdAsync(sessionId);
+        if (session == null || string.IsNullOrWhiteSpace(session.ReportData))
+            return NotFound();
+
+        var model = await BuildInterviewReportModelAsync(session);
+        return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_InterviewReportContent.cshtml", model);
     }
 
     [HttpGet]
@@ -407,21 +501,26 @@ public class AIInterviewController : BasePluginController
         if (session == null || string.IsNullOrWhiteSpace(session.RecordingUrl))
             return NotFound();
 
-        var playbackUrl = BuildRecordingPlaybackUrl(session.RecordingUrl);
-        if (string.IsNullOrWhiteSpace(playbackUrl))
+        return await ProxyRecordingAsync(session.RecordingUrl);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> RecordingShare(string token)
+    {
+        if (!_aiInterviewSettings.Enabled)
             return NotFound();
 
-        using var client = _httpClientFactory?.CreateClient(nameof(AIInterviewController)) ?? new HttpClient();
-        var response = await client.GetAsync(playbackUrl, HttpCompletionOption.ResponseHeadersRead);
-        if (!response.IsSuccessStatusCode)
+        var session = await _interviewSessionService.GetSessionByRecordingShareTokenAsync(token);
+        if (session == null ||
+            !session.RecordingShareEnabled ||
+            string.IsNullOrWhiteSpace(session.RecordingShareToken) ||
+            !string.Equals(session.RecordingShareToken, token, StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(session.RecordingUrl))
         {
-            response.Dispose();
             return NotFound();
         }
 
-        var contentType = response.Content.Headers.ContentType?.MediaType ?? "video/webm";
-        var stream = await response.Content.ReadAsStreamAsync();
-        return File(new ProxyResponseStream(stream, response), contentType);
+        return await ProxyRecordingAsync(session.RecordingUrl);
     }
 
     public async Task<IActionResult> Interview(string sessionKey)

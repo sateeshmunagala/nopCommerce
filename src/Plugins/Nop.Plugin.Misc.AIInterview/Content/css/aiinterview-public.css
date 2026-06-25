@@ -75,7 +75,9 @@
 .aiinterview-public-page .buttons,
 .html-aiinterview-view-page .buttons,
 .job-ai-actions,
-.employer-filter-actions {
+.employer-filter-actions,
+.ai-report-actions,
+.candidate-recording-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -318,7 +320,8 @@
 }
 
 .invite-table-wrapper,
-.employer-table-wrapper {
+.employer-table-wrapper,
+.history-table-wrapper {
     width: 100%;
     max-width: 100%;
     overflow-x: auto;
@@ -363,7 +366,8 @@
 
 .html-aiinterview-view-page .table-wrapper,
 .applications-table-wrap,
-.mock-history .page-body {
+.mock-history .page-body,
+.history-table-wrapper {
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
@@ -452,6 +456,19 @@
     max-width: 980px;
     margin: 0 auto;
     gap: 20px;
+}
+
+.ai-report-actions {
+    justify-content: flex-start;
+}
+
+.candidate-recording-actions {
+    align-items: flex-start;
+}
+
+.candidate-recording-actions .button-2 {
+    min-height: 38px;
+    padding: 8px 14px;
 }
 
 .ai-report-turn,
@@ -578,6 +595,89 @@
     display: none;
 }
 
+.ai-report-drawer {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 9998;
+}
+
+.ai-report-drawer.is-open {
+    display: block;
+}
+
+.ai-report-drawer-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.56);
+}
+
+.ai-report-drawer-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    width: min(760px, 100%);
+    height: 100%;
+    max-width: 100%;
+    padding: 24px;
+    box-sizing: border-box;
+    border-left: 1px solid #d7dde6;
+    background: #f8fafc;
+    overflow: hidden;
+}
+
+.ai-report-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 10px;
+}
+
+.ai-report-drawer-header h2 {
+    margin: 0;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.ai-report-drawer-close {
+    min-width: 40px;
+    min-height: 40px;
+    border: 1px solid #d5d5d5;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #20252b;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.ai-report-drawer-status {
+    min-height: 22px;
+    color: #687078;
+    line-height: 1.5;
+}
+
+.ai-report-drawer-body {
+    min-width: 0;
+    overflow: auto;
+    padding-right: 6px;
+}
+
+.ai-report-drawer-body .ai-report-hero,
+.ai-report-drawer-body .ai-report-card,
+.ai-report-drawer-body .mock-report-card,
+.ai-report-drawer-body .mock-report-hero {
+    margin-bottom: 16px;
+}
+
+body.aiinterview-report-drawer-open {
+    overflow: hidden;
+}
+
 @media (max-width: 1000px) {
     .employer-filter-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -628,6 +728,18 @@
     .job-ai-actions .button-1,
     .job-ai-actions .button-2 {
         width: 100%;
+    }
+
+    .candidate-recording-actions,
+    .ai-report-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .ai-report-drawer-panel {
+        width: 100%;
+        padding: 16px;
     }
 }
 

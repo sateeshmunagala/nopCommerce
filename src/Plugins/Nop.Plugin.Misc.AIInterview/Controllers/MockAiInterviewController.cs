@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Nop.Core;
+using Microsoft.AspNetCore.Mvc.Routing;
 using System.Text.Json;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
@@ -153,6 +154,36 @@ public class MockAiInterviewController : BasePluginController
         return sessionId > 0
             ? Url?.RouteUrl(AIInterviewDefaults.MockReportRouteName, new { sessionId }) ?? string.Empty
             : string.Empty;
+    }
+
+    protected virtual string BuildRouteUrl(string routeName, object values = null)
+    {
+        var relativeUrl = Url?.RouteUrl(new UrlRouteContext
+        {
+            RouteName = routeName,
+            Values = values
+        });
+        if (string.IsNullOrWhiteSpace(relativeUrl))
+            return null;
+
+        if (Uri.TryCreate(relativeUrl, UriKind.Absolute, out _))
+            return relativeUrl;
+
+        if (Request?.Host.HasValue == true)
+            return $"{Request.Scheme}://{Request.Host}{Request.PathBase}{relativeUrl}";
+
+        return relativeUrl;
+    }
+
+    protected virtual async Task<string> BuildRecordingShareUrlAsync(InterviewSession session)
+    {
+        if (session == null || string.IsNullOrWhiteSpace(session.RecordingUrl))
+            return null;
+
+        var token = await _interviewSessionService.EnsureRecordingShareTokenAsync(session);
+        return string.IsNullOrWhiteSpace(token)
+            ? null
+            : BuildRouteUrl(AIInterviewDefaults.RecordingShareRouteName, new { token });
     }
 
     protected virtual int NormalizeQuestionCount(int questionCount)
@@ -700,7 +731,36 @@ public class MockAiInterviewController : BasePluginController
             return Challenge();
 
         var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id);
-        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/History.cshtml", sessions);
+        var model = await Task.WhenAll((sessions ?? new List<InterviewSession>()).Select(async session =>
+        {
+            var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+
+            return new InterviewHistoryItemModel
+            {
+                SessionId = session.Id,
+                JobTitle = product?.Name ?? "Interview",
+                CreatedOnUtc = session.CreatedOnUtc,
+                CompletedOnUtc = session.CompletedOnUtc,
+                Status = session.CompletedOnUtc.HasValue
+                    ? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Completed")
+                    : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Active"),
+                Score = session.Score,
+                InterviewReportUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
+                    ? GetMockReportUrl(session.Id)
+                    : null,
+                InterviewReportPanelUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
+                    ? Url?.Action("ReportPanel", "AIInterview", new { sessionId = session.Id })
+                    : null,
+                RecordingUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.RecordingUrl)
+                    ? Url?.Action("Recording", "AIInterview", new { sessionId = session.Id })
+                    : null,
+                RecordingShareUrl = session.CompletedOnUtc.HasValue
+                    ? await BuildRecordingShareUrlAsync(session)
+                    : null
+            };
+        }));
+
+        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/History.cshtml", model.ToList());
     }
 
     public async Task<IActionResult> Report(int sessionId)
@@ -743,6 +803,7 @@ public class MockAiInterviewController : BasePluginController
             ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
             ReportData = session.ReportData,
             RecordingUrl = !string.IsNullOrWhiteSpace(session.RecordingUrl) ? Url?.Action("Recording", "AIInterview", new { sessionId = session.Id }) : null,
+            RecordingShareUrl = await BuildRecordingShareUrlAsync(session),
             Turns = turns.Select(turn => new InterviewTurnViewModel
             {
                 TurnId = turn.Id,

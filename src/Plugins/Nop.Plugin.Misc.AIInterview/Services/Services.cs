@@ -12,6 +12,7 @@ using Nop.Services.Localization;
 using Nop.Services.Vendors;
 using Nop.Services.Helpers;
 using Microsoft.AspNetCore.Http;
+using System.Security.Cryptography;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
@@ -375,11 +376,42 @@ public class InterviewSessionService : IInterviewSessionService
         return (await _sessionRepository.GetAllAsync(query => query.Where(s => s.Token == token))).FirstOrDefault();
     }
 
+    public async Task<InterviewSession> GetSessionByRecordingShareTokenAsync(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return null;
+
+        return (await _sessionRepository.GetAllAsync(query => query.Where(session =>
+            session.RecordingShareEnabled &&
+            session.RecordingShareToken == token))).FirstOrDefault();
+    }
+
     public async Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId)
     {
         return await _sessionRepository.GetAllAsync(query => query
             .Where(s => s.CustomerId == customerId)
             .OrderByDescending(s => s.CreatedOnUtc));
+    }
+
+    public async Task<string> EnsureRecordingShareTokenAsync(InterviewSession session)
+    {
+        if (session == null || string.IsNullOrWhiteSpace(session.RecordingUrl))
+            return null;
+
+        if (!string.IsNullOrWhiteSpace(session.RecordingShareToken) && session.RecordingShareEnabled)
+            return session.RecordingShareToken;
+
+        string token;
+        do
+        {
+            token = GenerateRecordingShareToken();
+        } while (await _sessionRepository.Table.AnyAsync(existing => existing.Id != session.Id && existing.RecordingShareToken == token));
+
+        session.RecordingShareToken = token;
+        session.RecordingShareEnabled = true;
+        session.RecordingShareCreatedOnUtc ??= DateTime.UtcNow;
+        await _sessionRepository.UpdateAsync(session);
+        return session.RecordingShareToken;
     }
 
     public async Task UpdateInterviewSessionAsync(InterviewSession session)
@@ -425,6 +457,16 @@ public class InterviewSessionService : IInterviewSessionService
         }
 
         return false;
+    }
+
+    protected static string GenerateRecordingShareToken()
+    {
+        var tokenBytes = new byte[32];
+        RandomNumberGenerator.Fill(tokenBytes);
+        return Convert.ToBase64String(tokenBytes)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
     }
 }
 

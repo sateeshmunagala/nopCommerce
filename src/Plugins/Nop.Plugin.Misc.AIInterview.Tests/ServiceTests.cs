@@ -386,6 +386,44 @@ public class ServiceTests
     }
 
     [Test]
+    public async Task InterviewSessionService_EnsureRecordingShareTokenAsync_GeneratesPersistentToken()
+    {
+        var sessions = new List<InterviewSession>
+        {
+            new() { Id = 1, RecordingUrl = "https://storage.example.com/container/one.webm" }
+        };
+        _sessionRepository.SetupGet(x => x.Table).Returns(() => sessions.AsQueryable());
+        _sessionRepository.Setup(x => x.UpdateAsync(It.IsAny<InterviewSession>(), true))
+            .Returns(Task.CompletedTask);
+
+        var service = new InterviewSessionService(
+            _sessionRepository.Object,
+            new Mock<Nop.Services.Customers.ICustomerService>().Object,
+            new Mock<IApplicationService>().Object,
+            new Mock<Nop.Services.Catalog.IProductService>().Object,
+            _workflowMessageService.Object,
+            _messageTemplateService.Object,
+            _emailAccountService.Object,
+            _messageTokenProvider.Object,
+            _emailAccountSettings,
+            _storeContext.Object,
+            _webHelper.Object,
+            new Mock<Nop.Services.Vendors.IVendorService>().Object);
+
+        var firstToken = await service.EnsureRecordingShareTokenAsync(sessions[0]);
+        var secondToken = await service.EnsureRecordingShareTokenAsync(sessions[0]);
+
+        Assert.That(firstToken, Is.Not.Null.And.Not.Empty);
+        Assert.That(secondToken, Is.EqualTo(firstToken));
+        Assert.That(firstToken, Is.Not.EqualTo("1"));
+        Assert.That(firstToken, Does.Not.Contain("one.webm"));
+        Assert.That(sessions[0].RecordingShareEnabled, Is.True);
+        Assert.That(sessions[0].RecordingShareCreatedOnUtc, Is.Not.Null);
+        _sessionRepository.Verify(x => x.UpdateAsync(It.Is<InterviewSession>(session =>
+            session.RecordingShareToken == firstToken && session.RecordingShareEnabled), true), Times.Once);
+    }
+
+    [Test]
     public async Task CreditService_AddCreditAsync_CreatesWalletAndLedger()
     {
         var walletRepository = new Mock<IRepository<CreditWallet>>();

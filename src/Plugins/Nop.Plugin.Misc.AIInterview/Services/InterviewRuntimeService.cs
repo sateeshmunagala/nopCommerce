@@ -1170,6 +1170,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
             session.RecordingUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}";
             await _sessionService.UpdateInterviewSessionAsync(session);
+            await _sessionService.EnsureRecordingShareTokenAsync(session);
             await LogRecordingUploadSuccessAsync(session, recording, blobName, (int)response.StatusCode);
 
             return new RecordingUploadResponseModel

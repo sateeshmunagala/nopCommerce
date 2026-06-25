@@ -13,6 +13,9 @@ public class InterviewSession : BaseEntity
     public DateTime? TokenExpiryUtc { get; set; }
     public bool IsActive { get; set; }
     public string RecordingUrl { get; set; }
+    public string RecordingShareToken { get; set; }
+    public bool RecordingShareEnabled { get; set; }
+    public DateTime? RecordingShareCreatedOnUtc { get; set; }
     public string ReportData { get; set; }
     public string QuestionScores { get; set; }
     public decimal Score { get; set; }

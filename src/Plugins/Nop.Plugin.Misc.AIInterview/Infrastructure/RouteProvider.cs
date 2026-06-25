@@ -86,9 +86,17 @@ public class RouteProvider : IRouteProvider
             pattern: "aiinterview/report/{sessionId}",
             defaults: new { controller = "AIInterview", action = "Report" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.ReportPanelRouteName,
+            pattern: "aiinterview/report-panel/{sessionId}",
+            defaults: new { controller = "AIInterview", action = "ReportPanel" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.RecordingRouteName,
             pattern: "aiinterview/recording/{sessionId}",
             defaults: new { controller = "AIInterview", action = "Recording" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.RecordingShareRouteName,
+            pattern: "aiinterview/recording/share/{token}",
+            defaults: new { controller = "AIInterview", action = "RecordingShare" });
 
         //MockAiInterview
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockStartRouteName,

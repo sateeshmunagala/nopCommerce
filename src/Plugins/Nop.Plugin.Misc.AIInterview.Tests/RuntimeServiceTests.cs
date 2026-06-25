@@ -1618,6 +1618,14 @@ public class RuntimeServiceTests
         };
         sessionService.Setup(x => x.GetSessionByTokenAsync("upload-success")).ReturnsAsync(session);
         sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        sessionService.Setup(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(s =>
+            {
+                s.RecordingShareToken = "share-token-success";
+                s.RecordingShareEnabled = true;
+                s.RecordingShareCreatedOnUtc = DateTime.UtcNow;
+            })
+            .ReturnsAsync("share-token-success");
 
         var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
             settings: new AIInterviewSettings
@@ -1637,6 +1645,9 @@ public class RuntimeServiceTests
         Assert.That(httpHandler.Requests[0].Method, Is.EqualTo(HttpMethod.Put));
         Assert.That(httpHandler.Requests[0].Headers.Contains("x-ms-blob-type"), Is.True);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.RecordingUrl == result.RecordingUrl)), Times.Once);
+        sessionService.Verify(x => x.EnsureRecordingShareTokenAsync(It.Is<InterviewSession>(s => s.RecordingUrl == result.RecordingUrl)), Times.Once);
+        Assert.That(session.RecordingShareToken, Is.EqualTo("share-token-success"));
+        Assert.That(session.RecordingShareEnabled, Is.True);
     }
 
     [Test]

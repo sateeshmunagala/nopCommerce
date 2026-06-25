@@ -37,6 +37,7 @@ public record ApplicationListModel : BaseNopModel
 public record ApplicationModel : BaseNopModel
 {
     public int Id { get; set; }
+    public int InterviewSessionId { get; set; }
     public string JobTitle { get; set; }
     public string CandidateName { get; set; }
     public string CandidateEmail { get; set; }
@@ -47,7 +48,9 @@ public record ApplicationModel : BaseNopModel
     public string QuestionScores { get; set; }
     public IList<decimal> QuestionScoreValues { get; set; } = new List<decimal>();
     public string InterviewReportUrl { get; set; }
+    public string InterviewReportPanelUrl { get; set; }
     public string RecordingUrl { get; set; }
+    public string RecordingShareUrl { get; set; }
     public string ProductUrl { get; set; }
     public DateTime CreatedOn { get; set; }
     public int AttemptCount { get; set; }
@@ -60,6 +63,20 @@ public record ApplicationModel : BaseNopModel
     public string ReportSummary { get; set; }
     public string FeedbackSummary { get; set; }
     public IList<InterviewTurnViewModel> Turns { get; set; } = new List<InterviewTurnViewModel>();
+}
+
+public record InterviewHistoryItemModel : BaseNopModel
+{
+    public int SessionId { get; set; }
+    public string JobTitle { get; set; }
+    public DateTime CreatedOnUtc { get; set; }
+    public DateTime? CompletedOnUtc { get; set; }
+    public string Status { get; set; }
+    public decimal Score { get; set; }
+    public string InterviewReportUrl { get; set; }
+    public string InterviewReportPanelUrl { get; set; }
+    public string RecordingUrl { get; set; }
+    public string RecordingShareUrl { get; set; }
 }
 
 public record UpdateStatusModel : BaseNopModel

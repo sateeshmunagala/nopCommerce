@@ -1,4 +1,4 @@
-@model IList<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>
+@model IList<Nop.Plugin.Misc.AIInterview.Models.InterviewHistoryItemModel>
 @using Nop.Web.Models.Customer
 @{
     Layout = "_ColumnsTwo";
@@ -20,47 +20,64 @@
     <div class="page-body">
         @if (Model.Any())
         {
-            <table class="history-table">
-                <thead>
-                    <tr>
-                        <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
-                        <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
-                        <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
-                        <th>@T("Plugins.Misc.AIInterview.Report.Title")</th>
-                        <th>@T("Plugins.Misc.AIInterview.Report.Recording")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var session in Model)
-                    {
+            <div class="history-table-wrapper">
+                <table class="history-table">
+                    <thead>
                         <tr>
-                            <td>@session.CreatedOnUtc.ToString("yyyy-MM-dd")</td>
-                            <td>@(session.CompletedOnUtc.HasValue ? T("Plugins.Misc.AIInterview.Status.Completed").Text : T("Plugins.Misc.AIInterview.Status.Active").Text)</td>
-                            <td>@session.Score</td>
-                            <td>
-                                @if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
-                                {
-                                    <a href="@Url.Action("Report", "AIInterview", new { sessionId = session.Id })">@T("Plugins.Misc.AIInterview.Report.OpenReport")</a>
-                                }
-                                else
-                                {
-                                    <span>-</span>
-                                }
-                            </td>
-                            <td>
-                                @if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.RecordingUrl))
-                                {
-                                    <a href="@Url.Action("Recording", "AIInterview", new { sessionId = session.Id })">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>
-                                }
-                                else
-                                {
-                                    <span>-</span>
-                                }
-                            </td>
+                            <th>Interview</th>
+                            <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
+                            <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
+                            <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
+                            <th>@T("Plugins.Misc.AIInterview.Report.Title")</th>
+                            <th>@T("Plugins.Misc.AIInterview.Report.Recording")</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var session in Model)
+                        {
+                            <tr>
+                                <td>@session.JobTitle</td>
+                                <td>@session.CreatedOnUtc.ToString("yyyy-MM-dd")</td>
+                                <td>@session.Status</td>
+                                <td>@session.Score</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(session.InterviewReportUrl))
+                                    {
+                                        <a href="@session.InterviewReportUrl"
+                                           class="js-open-report-drawer"
+                                           data-report-panel-url="@session.InterviewReportPanelUrl"
+                                           data-report-title="@session.JobTitle report">@T("Plugins.Misc.AIInterview.Report.OpenReport")</a>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(session.RecordingUrl))
+                                    {
+                                        <div class="candidate-recording-actions">
+                                            <a href="@session.RecordingUrl" target="_blank" rel="noopener">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>
+                                            @if (!string.IsNullOrWhiteSpace(session.RecordingShareUrl))
+                                            {
+                                                <button type="button" class="button-2 ai-copy-share-link" data-share-url="@session.RecordingShareUrl">Copy share link</button>
+                                                <button type="button" class="button-2 ai-native-share-link aiinterview-hidden" data-share-url="@session.RecordingShareUrl" data-share-title="@session.JobTitle recording">Share</button>
+                                                <noscript>
+                                                    <a href="@session.RecordingShareUrl" target="_blank" rel="noopener">Open share page</a>
+                                                </noscript>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         }
         else
         {
@@ -68,3 +85,5 @@
         }
     </div>
 </div>
+
+@await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_CandidateReportDrawer.cshtml")

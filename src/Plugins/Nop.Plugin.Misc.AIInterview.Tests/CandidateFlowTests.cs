@@ -772,6 +772,7 @@ public class CandidateFlowTests
     {
         var customer = new Customer { Id = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>())).ReturnsAsync("share-token-99");
 
         var applications = new List<JobApplication>
         {
@@ -788,8 +789,14 @@ public class CandidateFlowTests
 
         var urlHelperMock = new Mock<Microsoft.AspNetCore.Mvc.IUrlHelper>();
         urlHelperMock.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()))
-            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlActionContext ctx) =>
-                ctx.Action == "Recording" ? "/aiinterview/recording/99" : "/aiinterview/report/99");
+            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlActionContext ctx) => ctx.Action switch
+            {
+                "Recording" => "/aiinterview/recording/99",
+                "ReportPanel" => "/aiinterview/report-panel/99",
+                _ => "/aiinterview/report/99"
+            });
+        urlHelperMock.Setup(u => u.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
+            .Returns("/aiinterview/recording/share/share-token-99");
         _controller.Url = urlHelperMock.Object;
 
         var result = await _controller.MyApplications("LatestApplied");
@@ -797,6 +804,10 @@ public class CandidateFlowTests
         var viewResult = (ViewResult)result;
         var model = (ApplicationListModel)viewResult.Model;
         Assert.That(model.Applications.Single().RecordingUrl, Is.Not.Null.And.Contain("/aiinterview/recording/99"));
+        Assert.That(model.Applications.Single().RecordingShareUrl, Is.EqualTo("/aiinterview/recording/share/share-token-99"));
+        Assert.That(model.Applications.Single().RecordingShareUrl, Does.Not.EndWith("/99"));
+        Assert.That(model.Applications.Single().RecordingShareUrl, Does.Not.Contain("storage.example.com"));
+        Assert.That(model.Applications.Single().RecordingShareUrl, Does.Not.Contain("sig="));
     }
 
     [Test]
@@ -907,14 +918,18 @@ public class CandidateFlowTests
     [Test]
     public void ReportAndHistoryViews_IncludeRecordingAccessMarkup()
     {
-        var reportText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Report.cshtml"));
-        var mockReportText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Report.cshtml"));
+        var reportText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_InterviewReportContent.cshtml"));
+        var drawerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_CandidateReportDrawer.cshtml"));
         var historyText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml"));
+        var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml"));
 
         Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Recording"));
-        Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.Recording"));
         Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.OpenRecording"));
         Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.OpenReport"));
+        Assert.That(historyText, Does.Contain("ai-copy-share-link"));
+        Assert.That(myApplicationsText, Does.Contain("js-open-report-drawer"));
+        Assert.That(drawerText, Does.Contain("ai-report-drawer"));
+        Assert.That(drawerText, Does.Contain("data-report-drawer-close"));
     }
 
     [Test]
@@ -935,9 +950,11 @@ public class CandidateFlowTests
 
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(customer.Id)).ReturnsAsync(applications);
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(sessions);
+        _sessionService.Setup(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>())).ReturnsAsync((string)null);
 
         var urlHelperMock = new Mock<Microsoft.AspNetCore.Mvc.IUrlHelper>();
-        urlHelperMock.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>())).Returns("dummy-url");
+        urlHelperMock.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()))
+            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlActionContext ctx) => ctx.Action == "ReportPanel" ? "panel-url" : "dummy-url");
         _controller.Url = urlHelperMock.Object;
 
         // Act
@@ -951,6 +968,17 @@ public class CandidateFlowTests
 
         Assert.That(firstApp.Id, Is.EqualTo(10)); // Id remains application ID
         Assert.That(firstApp.InterviewReportUrl, Is.EqualTo("dummy-url")); // Report URL is populated properly
+        Assert.That(firstApp.InterviewReportPanelUrl, Is.EqualTo("panel-url"));
+    }
+
+    [Test]
+    public async Task RecordingShareRoute_InvalidToken_ReturnsNotFound()
+    {
+        _sessionService.Setup(x => x.GetSessionByRecordingShareTokenAsync("missing-token")).ReturnsAsync((InterviewSession)null);
+
+        var result = await _controller.RecordingShare("missing-token");
+
+        Assert.That(result, Is.TypeOf<NotFoundResult>());
     }
 
     [Test]
@@ -1032,6 +1060,8 @@ public class CandidateFlowTests
         var runtimeText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
         var mockReportText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Report.cshtml"));
         var reportText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Report.cshtml"));
+        var reportContentText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_InterviewReportContent.cshtml"));
+        var drawerText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_CandidateReportDrawer.cshtml"));
 
         Assert.That(runtimeText, Does.Contain("textContent"));
         Assert.That(runtimeText, Does.Not.Contain("card.innerHTML ="));
@@ -1126,23 +1156,20 @@ public class CandidateFlowTests
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Relevancy"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Correctness"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Answer Score"));
-        Assert.That(myApplicationsText, Does.Contain("Plugins.Misc.AIInterview.Report.QuestionCount"));
-        Assert.That(mockReportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
-        Assert.That(reportText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
-        Assert.That(mockReportText, Does.Not.Contain("Q@turn.SequenceNumber"));
-        Assert.That(reportText, Does.Not.Contain("Q@turn.SequenceNumber"));
-        Assert.That(mockReportText, Does.Contain("Q@(turn.SequenceNumber)"));
-        Assert.That(reportText, Does.Contain("Q@(turn.SequenceNumber)"));
-        Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.TechnicalScore"));
-        Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.Communication"));
-        Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.Professionalism"));
-        Assert.That(mockReportText, Does.Contain("Plugins.Misc.AIInterview.Report.PositiveAttitude"));
-        Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.TechnicalScore"));
-        Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Communication"));
-        Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Professionalism"));
-        Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.PositiveAttitude"));
-        Assert.That(mockReportText, Does.Not.Contain(">Technical Score<"));
-        Assert.That(reportText, Does.Not.Contain(">Technical Score<"));
+        Assert.That(myApplicationsText, Does.Contain("js-open-report-drawer"));
+        Assert.That(mockReportText, Does.Contain("_InterviewReportContent.cshtml"));
+        Assert.That(reportText, Does.Contain("_InterviewReportContent.cshtml"));
+        Assert.That(reportContentText, Does.Not.Contain("Html.Raw(Model.ReportData)"));
+        Assert.That(reportContentText, Does.Not.Contain("Q@turn.SequenceNumber"));
+        Assert.That(reportContentText, Does.Contain("Q@(turn.SequenceNumber)"));
+        Assert.That(reportContentText, Does.Contain("Plugins.Misc.AIInterview.Report.TechnicalScore"));
+        Assert.That(reportContentText, Does.Contain("Plugins.Misc.AIInterview.Report.Communication"));
+        Assert.That(reportContentText, Does.Contain("Plugins.Misc.AIInterview.Report.Professionalism"));
+        Assert.That(reportContentText, Does.Contain("Plugins.Misc.AIInterview.Report.PositiveAttitude"));
+        Assert.That(reportContentText, Does.Contain("ai-copy-share-link"));
+        Assert.That(drawerText, Does.Contain("navigator.share"));
+        Assert.That(drawerText, Does.Contain("Escape"));
+        Assert.That(reportContentText, Does.Not.Contain(">Technical Score<"));
     }
 
     [Test]

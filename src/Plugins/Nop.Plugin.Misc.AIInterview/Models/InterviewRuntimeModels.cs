@@ -137,5 +137,6 @@ public record InterviewReportModel : BaseNopModel
     public IList<decimal> ParsedQuestionScores { get; set; } = new List<decimal>();
     public string ReportData { get; set; }
     public string RecordingUrl { get; set; }
+    public string RecordingShareUrl { get; set; }
     public IList<InterviewTurnViewModel> Turns { get; set; } = new List<InterviewTurnViewModel>();
 }
