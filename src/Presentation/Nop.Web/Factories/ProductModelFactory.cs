@@ -1351,14 +1351,6 @@ public partial class ProductModelFactory : IProductModelFactory
     /// A task that represents the asynchronous operation
     /// The task result contains the view path
     /// </returns>
-    private static bool IsAiInterviewJobDetailsPluginViewPath(string viewPath)
-    {
-        if (string.IsNullOrEmpty(viewPath)) return false;
-
-        var normalizedPath = viewPath.Replace('\\', '/').TrimStart('~', '/');
-        return normalizedPath.Equals("Plugins/Misc.AIInterview/Views/ProductTemplate.JobDetails.cshtml", StringComparison.OrdinalIgnoreCase);
-    }
-
     public virtual async Task<string> PrepareProductTemplateViewPathAsync(Product product)
     {
         ArgumentNullException.ThrowIfNull(product);
@@ -1367,10 +1359,6 @@ public partial class ProductModelFactory : IProductModelFactory
                         (await _productTemplateService.GetAllProductTemplatesAsync()).FirstOrDefault()) ?? throw new Exception("No default template could be loaded");
 
         var viewPath = template.ViewPath;
-
-        if (IsAiInterviewJobDetailsPluginViewPath(viewPath))
-            return "ProductTemplate.JobDetails";
-
         return viewPath;
     }
 
