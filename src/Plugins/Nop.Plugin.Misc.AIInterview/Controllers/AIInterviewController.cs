@@ -939,7 +939,7 @@ public class AIInterviewController : BasePluginController
                 CreatedOn = a.CreatedOnUtc,
                 AttemptCount = appSessions.Count,
                 CompletedOn = session?.CompletedOnUtc,
-                ChargeMode = session != null && session.SponsorInviteId > 0 ? "Company Sponsored" : "Candidate Paid",
+                ChargeMode = await GetEmployerChargeModeLabelAsync(session != null && session.SponsorInviteId > 0),
                 PromptSource = string.IsNullOrWhiteSpace(_aiInterviewSettings.Provider) && string.IsNullOrWhiteSpace(_aiInterviewSettings.Model)
                     ? "Resume-backed template"
                     : $"Provider: {_aiInterviewSettings.Provider}, Model: {_aiInterviewSettings.Model}",
@@ -953,15 +953,7 @@ public class AIInterviewController : BasePluginController
             };
         }));
 
-        if (model.OnlyWithInterviewScore)
-            model.Applications = model.Applications.Where(application => application.InterviewScore.HasValue).ToList();
-
-        model.Applications = (model.InterviewSort ?? "TopScorersFirst") switch
-        {
-            "LowestScorersFirst" => model.Applications.OrderBy(application => application.InterviewScore ?? decimal.MaxValue).ToList(),
-            "LatestApplied" => model.Applications.OrderByDescending(application => application.CreatedOn).ToList(),
-            _ => model.Applications.OrderByDescending(application => application.InterviewScore ?? decimal.MinValue).ToList()
-        };
+        model.Applications = ApplyEmployerInterviewFiltersAndSorting(model.Applications, model);
 
         if (!string.IsNullOrWhiteSpace(model.JobTitleOrKeyword))
             model.Applications = model.Applications
@@ -1027,7 +1019,7 @@ public class AIInterviewController : BasePluginController
             startDate: model.StartDate,
             endDate: model.EndDate,
             vendorId: isEmployer ? customer.VendorId : 0,
-            sortByScore: model.SortByScore);
+            sortByScore: false);
 
         var customerIds = applications.Select(a => a.CustomerId).Distinct().ToList();
         var customers = await _customerService.GetCustomersByIdsAsync(customerIds.ToArray());
@@ -1042,8 +1034,9 @@ public class AIInterviewController : BasePluginController
         var jobTitleHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.JobTitle");
         var chargeModeHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode");
         var attemptsHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Attempts");
-        var promptSourceHeader = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.PromptSource");
-        sb.AppendLine($"{idHeader},{candidateHeader},{emailHeader},{statusHeader},{scoreHeader},{dateHeader},{jobTitleHeader},{chargeModeHeader},{attemptsHeader},{promptSourceHeader}");
+        sb.AppendLine($"{idHeader},{candidateHeader},{emailHeader},{statusHeader},{scoreHeader},{dateHeader},{jobTitleHeader},{chargeModeHeader},{attemptsHeader}");
+
+        var exportRows = new List<ApplicationModel>();
 
         foreach (var a in applications)
         {
@@ -1055,21 +1048,30 @@ public class AIInterviewController : BasePluginController
             var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
             var email = appCustomer?.Email ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
             var status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{JobApplicationStatuses.Normalize(a.Status)}");
-            var score = session?.Score.ToString() ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.None");
+            exportRows.Add(new ApplicationModel
+            {
+                Id = a.Id,
+                CandidateName = candidateName,
+                CandidateEmail = email,
+                Status = status,
+                InterviewScore = session?.Score,
+                CreatedOn = a.CreatedOnUtc,
+                JobTitle = a.JobTitle ?? string.Empty,
+                ChargeMode = await GetEmployerChargeModeLabelAsync(session != null && session.SponsorInviteId > 0),
+                AttemptCount = appSessions.Count
+            });
+        }
 
-            var jobTitle = a.JobTitle ?? string.Empty;
-            var attempts = appSessions.Count.ToString();
-            var chargeMode = session != null && session.SponsorInviteId > 0 ? "Sponsor" : "Self-Paid";
-            var promptSource = $"Provider: {_aiInterviewSettings.Provider}, Model: {_aiInterviewSettings.Model}";
+        foreach (var row in ApplyEmployerInterviewFiltersAndSorting(exportRows, model))
+        {
+            var score = row.InterviewScore?.ToString() ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.None");
+            var candidateNameCsv = $"\"{row.CandidateName.Replace("\"", "\"\"")}\"";
+            var emailCsv = $"\"{row.CandidateEmail.Replace("\"", "\"\"")}\"";
+            var statusCsv = $"\"{row.Status?.Replace("\"", "\"\"")}\"";
+            var jobTitleCsv = $"\"{row.JobTitle.Replace("\"", "\"\"")}\"";
+            var chargeModeCsv = $"\"{row.ChargeMode.Replace("\"", "\"\"")}\"";
 
-            var candidateNameCsv = $"\"{candidateName.Replace("\"", "\"\"")}\"";
-            var emailCsv = $"\"{email.Replace("\"", "\"\"")}\"";
-            var statusCsv = $"\"{status?.Replace("\"", "\"\"")}\"";
-            var jobTitleCsv = $"\"{jobTitle.Replace("\"", "\"\"")}\"";
-            var chargeModeCsv = $"\"{chargeMode.Replace("\"", "\"\"")}\"";
-            var promptSourceCsv = $"\"{promptSource.Replace("\"", "\"\"")}\"";
-
-            sb.AppendLine($"{a.Id},{candidateNameCsv},{emailCsv},{statusCsv},{score},{a.CreatedOnUtc:yyyy-MM-dd HH:mm:ss},{jobTitleCsv},{chargeModeCsv},{attempts},{promptSourceCsv}");
+            sb.AppendLine($"{row.Id},{candidateNameCsv},{emailCsv},{statusCsv},{score},{row.CreatedOn:yyyy-MM-dd HH:mm:ss},{jobTitleCsv},{chargeModeCsv},{row.AttemptCount}");
         }
 
         return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "applications.csv");
@@ -1292,6 +1294,41 @@ public class AIInterviewController : BasePluginController
             model.MinimumScore = 0m;
             model.QuestionCount = 3;
         }
+    }
+
+    protected virtual async Task<string> GetEmployerChargeModeLabelAsync(bool isCompanySponsored)
+    {
+        var resourceKey = isCompanySponsored
+            ? "Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CompanySponsored"
+            : "Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CandidatePaid";
+
+        return await _localizationService.GetResourceAsync(resourceKey);
+    }
+
+    protected virtual IList<ApplicationModel> ApplyEmployerInterviewFiltersAndSorting(IEnumerable<ApplicationModel> applications, ApplicationListModel model)
+    {
+        var filteredApplications = applications;
+
+        if (model.OnlyWithInterviewScore)
+            filteredApplications = filteredApplications.Where(application => application.InterviewScore.HasValue);
+
+        return (model.InterviewSort ?? "TopScorersFirst") switch
+        {
+            "LowestScorersFirst" => filteredApplications
+                .OrderBy(application => application.InterviewScore.HasValue ? 0 : 1)
+                .ThenBy(application => application.InterviewScore ?? decimal.MaxValue)
+                .ThenByDescending(application => application.CreatedOn)
+                .ToList(),
+            "LatestApplied" => filteredApplications
+                .OrderByDescending(application => application.CreatedOn)
+                .ThenByDescending(application => application.InterviewScore ?? decimal.MinValue)
+                .ToList(),
+            _ => filteredApplications
+                .OrderBy(application => application.InterviewScore.HasValue ? 0 : 1)
+                .ThenByDescending(application => application.InterviewScore ?? decimal.MinValue)
+                .ThenByDescending(application => application.CreatedOn)
+                .ToList()
+        };
     }
 
     protected virtual DateTime? GetInclusiveApplyUntilUtc(DateTime? applyUntilUtc)

@@ -10,18 +10,7 @@
     NopHtml.AppendPageCssClassParts("html-aiinterview-employer-applications-page");
     var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
 
-    string GetStatusLabel(string status) => status switch
-    {
-        "Pending" => "Pending",
-        "Applied" => "Applied",
-        "InProgress" => "In Progress",
-        "Completed" => "Completed",
-        "Reviewed" => "Reviewed",
-        "Shortlisted" => "Shortlisted",
-        "Rejected" => "Rejected",
-        "Withdrawn" => "Withdrawn",
-        _ => T($"Plugins.Misc.AIInterview.Status.{status}").Text
-    };
+    string GetStatusLabel(string status) => T($"Plugins.Misc.AIInterview.Status.{JobApplicationStatuses.Normalize(status)}").Text;
 }
 
 @section left
@@ -108,7 +97,8 @@
                         MaxScore = Model.MaxScore,
                         StartDate = Model.StartDate?.ToString("o"),
                         EndDate = Model.EndDate?.ToString("o"),
-                        SortByScore = Model.SortByScore
+                        InterviewSort = Model.InterviewSort,
+                        OnlyWithInterviewScore = Model.OnlyWithInterviewScore
                     })">@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")</a>
                 </div>
                 </div>

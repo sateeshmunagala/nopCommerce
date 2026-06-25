@@ -3,20 +3,26 @@
 @model VendorScoreboardModel
 @{
     Layout = "_ColumnsTwo";
-    NopHtml.AddTitleParts("Employer Scoreboard");
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.VendorScoreboard.Title").Text);
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
     NopHtml.AppendPageCssClassParts("html-account-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-vendor-scoreboard-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-scoreboard-page");
+    var titleText = T("Plugins.Misc.AIInterview.VendorScoreboard.Title").Text;
+    var eyebrowText = T("Plugins.Misc.AIInterview.VendorScoreboard.Eyebrow").Text;
+    var introText = T("Plugins.Misc.AIInterview.VendorScoreboard.Intro").Text;
+    var totalSubmissionsText = string.Format(T("Plugins.Misc.AIInterview.VendorScoreboard.TotalSubmissions").Text, Model.TotalApplications);
+    var highestScoreText = string.Format(T("Plugins.Misc.AIInterview.VendorScoreboard.HighestRecordedScore").Text, Model.HighestScore?.ToString("N2") ?? "-");
+    var shortlistedText = string.Format(T("Plugins.Misc.AIInterview.VendorScoreboard.ShortlistedDetail").Text, Model.ShortlistedApplications);
 
     static string GetVerificationLabel(string rawStatus)
     {
         return JobApplicationStatuses.Normalize(rawStatus) switch
         {
-            JobApplicationStatuses.Completed or JobApplicationStatuses.Reviewed or JobApplicationStatuses.Shortlisted => "Verified",
-            JobApplicationStatuses.Rejected or JobApplicationStatuses.Withdrawn => "Flagged",
-            _ => "Evaluating"
+            JobApplicationStatuses.Completed or JobApplicationStatuses.Reviewed or JobApplicationStatuses.Shortlisted => "Plugins.Misc.AIInterview.VendorScoreboard.Verification.Verified",
+            JobApplicationStatuses.Rejected or JobApplicationStatuses.Withdrawn => "Plugins.Misc.AIInterview.VendorScoreboard.Verification.Flagged",
+            _ => "Plugins.Misc.AIInterview.VendorScoreboard.Verification.Evaluating"
         };
     }
 
@@ -38,54 +44,54 @@
 
 <div class="page vendor-scoreboard-page scoreboard-deck-page">
     <div class="page-title">
-        <h1>Employer Scoreboard</h1>
+        <h1>@titleText</h1>
     </div>
     <div class="page-body">
         <div class="section scoreboard-deck-shell">
             <div class="scoreboard-deck-header">
                 <div>
-                    <strong class="scoreboard-deck-eyebrow">Recruitment Analytics Desk</strong>
-                    <h2 class="scoreboard-deck-title">Employer Scoreboard</h2>
-                    <p class="scoreboard-deck-copy">Review assessment outcomes, verify interview completion, and move hiring decisions forward from one candidate metrics workspace.</p>
+                    <strong class="scoreboard-deck-eyebrow">@eyebrowText</strong>
+                    <h2 class="scoreboard-deck-title">@titleText</h2>
+                    <p class="scoreboard-deck-copy">@introText</p>
                 </div>
                 <div class="buttons scoreboard-deck-actions">
-                    <a class="button-1" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobCreationRouteName)">Create Job</a>
-                    <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)">Review Applications</a>
-                    <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.MockEmployerManageRouteName)">Manage Invites</a>
+                    <a class="button-1" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobCreationRouteName)">@T("Plugins.Misc.AIInterview.VendorScoreboard.CreateJobAction")</a>
+                    <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewApplicationsAction")</a>
+                    <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.MockEmployerManageRouteName)">@T("Plugins.Misc.AIInterview.VendorScoreboard.ManageInvitesAction")</a>
                 </div>
             </div>
 
             <div class="fieldset scoreboard-deck-summary">
                 <div class="scoreboard-deck-metrics">
                     <div class="scoreboard-deck-metric">
-                        <span class="scoreboard-deck-metric-label">Total Completed Assessments</span>
+                        <span class="scoreboard-deck-metric-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.TotalCompletedAssessments")</span>
                         <strong class="scoreboard-deck-metric-value">@Model.CompletedInterviews</strong>
-                        <span class="scoreboard-deck-metric-detail">@Model.TotalApplications total candidate submissions tracked</span>
+                        <span class="scoreboard-deck-metric-detail">@totalSubmissionsText</span>
                     </div>
                     <div class="scoreboard-deck-metric">
-                        <span class="scoreboard-deck-metric-label">Average Analytical Score</span>
+                        <span class="scoreboard-deck-metric-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.AverageAnalyticalScore")</span>
                         <strong class="scoreboard-deck-metric-value">@(Model.AverageScore?.ToString("N2") ?? "-")</strong>
-                        <span class="scoreboard-deck-metric-detail">Highest recorded score @(Model.HighestScore?.ToString("N2") ?? "-")</span>
+                        <span class="scoreboard-deck-metric-detail">@highestScoreText</span>
                     </div>
                     <div class="scoreboard-deck-metric">
-                        <span class="scoreboard-deck-metric-label">Active Flagged Violations</span>
+                        <span class="scoreboard-deck-metric-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.ActiveFlaggedViolations")</span>
                         <strong class="scoreboard-deck-metric-value">@Model.ActiveFlaggedViolations</strong>
-                        <span class="scoreboard-deck-metric-detail">@Model.ShortlistedApplications shortlisted for next-step review</span>
+                        <span class="scoreboard-deck-metric-detail">@shortlistedText</span>
                     </div>
                 </div>
             </div>
 
             <div class="fieldset scoreboard-deck-overview">
                 <div class="scoreboard-deck-overview-card">
-                    <span class="scoreboard-deck-overview-label">Open Job Modules</span>
+                    <span class="scoreboard-deck-overview-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.OpenJobModules")</span>
                     <strong class="scoreboard-deck-overview-value">@Model.TotalJobs</strong>
                 </div>
                 <div class="scoreboard-deck-overview-card">
-                    <span class="scoreboard-deck-overview-label">Candidate Volume</span>
+                    <span class="scoreboard-deck-overview-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.CandidateVolume")</span>
                     <strong class="scoreboard-deck-overview-value">@Model.TotalApplications</strong>
                 </div>
                 <div class="scoreboard-deck-overview-card">
-                    <span class="scoreboard-deck-overview-label">Shortlist Queue</span>
+                    <span class="scoreboard-deck-overview-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.ShortlistQueue")</span>
                     <strong class="scoreboard-deck-overview-value">@Model.ShortlistedApplications</strong>
                 </div>
             </div>
@@ -93,7 +99,7 @@
 
         <div class="section scoreboard-deck-table-section">
             <div class="title">
-                <strong>Candidate Assessment Matrix</strong>
+                <strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.CandidateAssessmentMatrix")</strong>
             </div>
             @if (Model.RecentApplications.Any())
             {
@@ -101,18 +107,18 @@
                     <table class="data-table scoreboard-deck-table">
                         <thead>
                             <tr>
-                                <th>Candidate Name</th>
-                                <th>Assessment Module</th>
-                                <th>Completion Date</th>
-                                <th>Core AI Rating</th>
-                                <th>Verification Status</th>
-                                <th>Actions</th>
+                                <th>@T("Plugins.Misc.AIInterview.VendorScoreboard.CandidateName")</th>
+                                <th>@T("Plugins.Misc.AIInterview.VendorScoreboard.AssessmentModule")</th>
+                                <th>@T("Plugins.Misc.AIInterview.VendorScoreboard.CompletionDate")</th>
+                                <th>@T("Plugins.Misc.AIInterview.VendorScoreboard.CoreAiRating")</th>
+                                <th>@T("Plugins.Misc.AIInterview.VendorScoreboard.VerificationStatus")</th>
+                                <th>@T("Plugins.Misc.AIInterview.VendorScoreboard.Actions")</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var application in Model.RecentApplications)
                             {
-                                var verificationLabel = GetVerificationLabel(application.RawStatus);
+                                var verificationLabel = T(GetVerificationLabel(application.RawStatus)).Text;
                                 var verificationClass = GetVerificationClass(application.RawStatus);
                                 var statusText = string.IsNullOrWhiteSpace(application.Status) ? verificationLabel : application.Status;
                                 var completionDate = application.CompletedOn ?? application.CreatedOn;
@@ -126,11 +132,11 @@
                                     </td>
                                     <td>
                                         <div class="scoreboard-deck-cell-primary">@application.JobTitle</div>
-                                        <div class="scoreboard-deck-cell-secondary">Assessment workflow</div>
+                                        <div class="scoreboard-deck-cell-secondary">@T("Plugins.Misc.AIInterview.VendorScoreboard.AssessmentWorkflow")</div>
                                     </td>
                                     <td>
                                         <div class="scoreboard-deck-cell-primary">@completionDate.ToString("g")</div>
-                                        <div class="scoreboard-deck-cell-secondary">@(application.CompletedOn.HasValue ? "Interview completed" : "Application received")</div>
+                                        <div class="scoreboard-deck-cell-secondary">@(application.CompletedOn.HasValue ? T("Plugins.Misc.AIInterview.VendorScoreboard.InterviewCompleted").Text : T("Plugins.Misc.AIInterview.VendorScoreboard.ApplicationReceived").Text)</div>
                                     </td>
                                     <td>
                                         @if (application.InterviewScore.HasValue)
@@ -139,7 +145,7 @@
                                         }
                                         else
                                         {
-                                            <span class="scoreboard-deck-score scoreboard-deck-score-muted">Pending</span>
+                                            <span class="scoreboard-deck-score scoreboard-deck-score-muted">@T("Plugins.Misc.AIInterview.Status.Pending")</span>
                                         }
                                     </td>
                                     <td>
@@ -150,11 +156,11 @@
                                         <div class="buttons scoreboard-deck-row-actions">
                                             @if (!string.IsNullOrWhiteSpace(application.InterviewReportUrl))
                                             {
-                                                <a class="button-2" href="@application.InterviewReportUrl">View Analysis</a>
+                                                <a class="button-2" href="@application.InterviewReportUrl">@T("Plugins.Misc.AIInterview.VendorScoreboard.ViewAnalysis")</a>
                                             }
                                             else
                                             {
-                                                <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)">Review Queue</a>
+                                                <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")</a>
                                             }
                                         </div>
                                     </td>
@@ -167,7 +173,7 @@
             else
             {
                 <div class="fieldset scoreboard-deck-empty-state">
-                    <p>No candidate assessments have been submitted yet.</p>
+                    <p>@T("Plugins.Misc.AIInterview.VendorScoreboard.NoAssessments")</p>
                 </div>
             }
         </div>

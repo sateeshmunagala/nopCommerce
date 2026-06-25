@@ -169,7 +169,19 @@ public class PluginDefaultsTests
                      "Plugins.Misc.AIInterview.VendorJobCreation.JobLocation",
                      "Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Settings",
-                     "Plugins.Misc.AIInterview.VendorJobCreation.Select"
+                     "Plugins.Misc.AIInterview.VendorJobCreation.Select",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings",
+                     "Plugins.Misc.AIInterview.Employer.Invite.Title",
+                     "Plugins.Misc.AIInterview.Employer.Invite.CreateTitle",
+                     "Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle",
+                     "Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CompanySponsored",
+                     "Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CandidatePaid",
+                     "Plugins.Misc.AIInterview.VendorScoreboard.Title",
+                     "Plugins.Misc.AIInterview.VendorScoreboard.Eyebrow",
+                     "Plugins.Misc.AIInterview.VendorScoreboard.TotalCompletedAssessments",
+                     "Plugins.Misc.AIInterview.VendorScoreboard.ViewAnalysis"
                  })
         {
             Assert.That(resources.ContainsKey(key), Is.True, $"Missing vendor job locale resource: {key}");

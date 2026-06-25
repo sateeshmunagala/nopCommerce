@@ -29,7 +29,7 @@
                     <div asp-validation-summary="ModelOnly" class="message-error"></div>
                     <div class="vendor-job-form-grid">
                 <div class="vendor-job-form-section">
-                    <div class="vendor-job-form-section-title">Role Overview</div>
+                    <div class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview")</div>
                 <div class="vendor-job-form-row">
                     <div class="vendor-job-form-label">
                         <label asp-for="Name" asp-postfix=":"></label>
@@ -120,7 +120,7 @@
                 </div>
 
                 <div class="vendor-job-form-section">
-                    <div class="vendor-job-form-section-title">Job Content</div>
+                    <div class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent")</div>
                 <div class="vendor-job-form-row">
                     <div class="vendor-job-form-label">
                         <label asp-for="ShortDescription" asp-postfix=":"></label>
@@ -143,7 +143,7 @@
                 </div>
 
                 <div class="vendor-job-form-section">
-                    <div class="vendor-job-form-section-title">Interview Settings</div>
+                    <div class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings")</div>
                 <div class="vendor-job-form-row">
                     <div class="vendor-job-form-label">
                         @T("Plugins.Misc.AIInterview.VendorJobCreation.Settings")

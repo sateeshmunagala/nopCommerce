@@ -925,7 +925,9 @@ public class CandidateFlowTests
 
         Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Recording"));
         Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.OpenRecording"));
-        Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.OpenReport"));
+        Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.ViewReport"));
+        Assert.That(historyText, Does.Contain("ai-view-report-link"));
+        Assert.That(historyText, Does.Contain("fa fa-eye"));
         Assert.That(historyText, Does.Contain("ai-copy-share-link"));
         Assert.That(myApplicationsText, Does.Contain("js-open-report-drawer"));
         Assert.That(drawerText, Does.Contain("ai-report-drawer"));

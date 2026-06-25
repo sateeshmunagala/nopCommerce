@@ -19,7 +19,7 @@
 
 <div class="page vendor-account-page employer-manage">
     <div class="page-title">
-        <h1>Employer Interview Invites</h1>
+        <h1>@T("Plugins.Misc.AIInterview.Employer.Invite.Title")</h1>
     </div>
     <div class="page-body">
         <div class="credit-balance">
@@ -28,7 +28,7 @@
 
         <div class="section create-invite">
             <div class="title">
-                <strong>Create Employer Invite</strong>
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle")</strong>
             </div>
             <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post" class="invite-create-form">
                 <div class="fieldset">
@@ -66,7 +66,7 @@
 
         <div class="section invite-list">
             <div class="title">
-                <strong>Active Employer Invites</strong>
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle")</strong>
             </div>
             @if (Model.Any())
             {

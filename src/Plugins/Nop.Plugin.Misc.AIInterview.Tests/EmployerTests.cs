@@ -166,8 +166,9 @@ public class EmployerTests
         _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.History.Date")).ReturnsAsync("Date");
         _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.JobTitle")).ReturnsAsync("Job Title");
         _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")).ReturnsAsync("Charge Mode");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CompanySponsored")).ReturnsAsync("Company sponsored");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CandidatePaid")).ReturnsAsync("Candidate paid");
         _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Attempts")).ReturnsAsync("Attempts");
-        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.PromptSource")).ReturnsAsync("Prompt Source");
 
         var result = await _controller.ExportCsv(new ApplicationListModel());
 
@@ -178,8 +179,61 @@ public class EmployerTests
         Assert.That(csv, Does.Contain("Job Title"));
         Assert.That(csv, Does.Contain("Charge Mode"));
         Assert.That(csv, Does.Contain("Attempts"));
-        Assert.That(csv, Does.Contain("Prompt Source"));
+        Assert.That(csv, Does.Not.Contain("Prompt Source"));
         Assert.That(csv, Does.Contain("1,\"John Doe\",\"john@example.com\""));
+    }
+
+    [Test]
+    public async Task ExportCsv_Applies_OnlyWithInterviewScore_And_InterviewSort()
+    {
+        var applications = new PagedList<JobApplication>(new List<JobApplication>
+        {
+            new() { Id = 1, CustomerId = 100, ProductId = 21, JobTitle = "Role A", Status = JobApplicationStatuses.Applied, CreatedOnUtc = new DateTime(2024, 1, 2) },
+            new() { Id = 2, CustomerId = 101, ProductId = 22, JobTitle = "Role B", Status = JobApplicationStatuses.Completed, CreatedOnUtc = new DateTime(2024, 1, 3) },
+            new() { Id = 3, CustomerId = 102, ProductId = 23, JobTitle = "Role C", Status = JobApplicationStatuses.Completed, CreatedOnUtc = new DateTime(2024, 1, 1) }
+        }, 0, 10);
+
+        _applicationService.Setup(x => x.GetApplicationsAsync(null, null, null, null, null, null, 0, 1, 0, int.MaxValue, false))
+            .ReturnsAsync(applications);
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>()))
+            .ReturnsAsync(new List<Customer>
+            {
+                new() { Id = 100, FirstName = "Alpha", LastName = "Candidate", Email = "alpha@example.com" },
+                new() { Id = 101, FirstName = "Bravo", LastName = "Candidate", Email = "bravo@example.com" },
+                new() { Id = 102, FirstName = "Charlie", LastName = "Candidate", Email = "charlie@example.com" }
+            });
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(100)).ReturnsAsync(new List<InterviewSession>());
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(101)).ReturnsAsync(new List<InterviewSession>
+        {
+            new() { JobApplicationId = 2, ProductId = 22, Score = 82, CompletedOnUtc = new DateTime(2024, 1, 3), SponsorInviteId = 12 }
+        });
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(102)).ReturnsAsync(new List<InterviewSession>
+        {
+            new() { JobApplicationId = 3, ProductId = 23, Score = 61, CompletedOnUtc = new DateTime(2024, 1, 4) }
+        });
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ID")).ReturnsAsync("ID");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Candidate")).ReturnsAsync("Candidate");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Email")).ReturnsAsync("Email");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.History.Status")).ReturnsAsync("Status");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.History.Score")).ReturnsAsync("Score");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.History.Date")).ReturnsAsync("Date");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.JobTitle")).ReturnsAsync("Job Title");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")).ReturnsAsync("Charge Mode");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CompanySponsored")).ReturnsAsync("Company sponsored");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CandidatePaid")).ReturnsAsync("Candidate paid");
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.Attempts")).ReturnsAsync("Attempts");
+
+        var result = await _controller.ExportCsv(new ApplicationListModel
+        {
+            OnlyWithInterviewScore = true,
+            InterviewSort = "LowestScorersFirst"
+        });
+
+        var csv = System.Text.Encoding.UTF8.GetString(((FileContentResult)result).FileContents);
+        Assert.That(csv, Does.Not.Contain("alpha@example.com"));
+        Assert.That(csv.IndexOf("charlie@example.com", StringComparison.Ordinal), Is.LessThan(csv.IndexOf("bravo@example.com", StringComparison.Ordinal)));
+        Assert.That(csv, Does.Contain("Company sponsored"));
+        Assert.That(csv, Does.Contain("Candidate paid"));
     }
 
     [Test]
@@ -579,6 +633,7 @@ public class EmployerTests
         var employerApplications = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "EmployerApplications.cshtml"));
         var vendorScoreboard = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorScoreboard.cshtml"));
         var employerManage = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "EmployerManage.cshtml"));
+        var historyView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml"));
 
         Assert.That(vendorJobCreation, Does.Contain("Layout = \"_ColumnsTwo\""));
         Assert.That(vendorJobCreation, Does.Contain("class=\"section\""));
@@ -592,17 +647,17 @@ public class EmployerTests
 
         Assert.That(vendorScoreboard, Does.Contain("Layout = \"_ColumnsTwo\""));
         Assert.That(vendorScoreboard, Does.Contain("class=\"section scoreboard-deck-shell\""));
-        Assert.That(vendorScoreboard, Does.Contain("Employer Scoreboard"));
-        Assert.That(vendorScoreboard, Does.Contain("Recruitment Analytics Desk"));
+        Assert.That(vendorScoreboard, Does.Contain("Plugins.Misc.AIInterview.VendorScoreboard.Title"));
+        Assert.That(vendorScoreboard, Does.Contain("Plugins.Misc.AIInterview.VendorScoreboard.Eyebrow"));
         Assert.That(vendorScoreboard, Does.Contain("html-aiinterview-scoreboard-page"));
         Assert.That(vendorScoreboard, Does.Contain("class=\"table-wrapper scoreboard-deck-table-wrapper\""));
         Assert.That(vendorScoreboard, Does.Contain("class=\"data-table scoreboard-deck-table\""));
-        Assert.That(vendorScoreboard, Does.Contain("Total Completed Assessments"));
-        Assert.That(vendorScoreboard, Does.Contain("Average Analytical Score"));
-        Assert.That(vendorScoreboard, Does.Contain("Active Flagged Violations"));
-        Assert.That(vendorScoreboard, Does.Contain("Candidate Assessment Matrix"));
+        Assert.That(vendorScoreboard, Does.Contain("Plugins.Misc.AIInterview.VendorScoreboard.TotalCompletedAssessments"));
+        Assert.That(vendorScoreboard, Does.Contain("Plugins.Misc.AIInterview.VendorScoreboard.AverageAnalyticalScore"));
+        Assert.That(vendorScoreboard, Does.Contain("Plugins.Misc.AIInterview.VendorScoreboard.ActiveFlaggedViolations"));
+        Assert.That(vendorScoreboard, Does.Contain("Plugins.Misc.AIInterview.VendorScoreboard.CandidateAssessmentMatrix"));
         Assert.That(vendorScoreboard, Does.Contain("scoreboard-deck-status"));
-        Assert.That(vendorScoreboard, Does.Not.Contain("Vendor Dashboard"));
+        Assert.That(vendorScoreboard, Does.Not.Contain(">Employer Scoreboard<"));
 
         Assert.That(employerManage, Does.Contain("Layout = \"_ColumnsTwo\""));
         Assert.That(employerManage, Does.Contain("class=\"section create-invite\""));
@@ -610,6 +665,14 @@ public class EmployerTests
         Assert.That(employerManage, Does.Contain("class=\"table-wrapper\""));
         Assert.That(employerManage, Does.Contain("label for=\"invite-email\""));
         Assert.That(employerManage, Does.Contain("label for=\"productId\""));
+        Assert.That(employerManage, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Title"));
+        Assert.That(employerManage, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle"));
+        Assert.That(employerManage, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle"));
+
+        Assert.That(historyView, Does.Contain("Plugins.Misc.AIInterview.Report.ViewReport"));
+        Assert.That(historyView, Does.Contain("fa fa-eye"));
+        Assert.That(historyView, Does.Contain("ai-view-report-link"));
+        Assert.That(historyView, Does.Not.Contain("@T(\"Plugins.Misc.AIInterview.Report.OpenReport\")"));
     }
 
     private void SetupVendorSpecificationAttributes(bool includeJobLocation = true, bool includeSalaryRange = true)
