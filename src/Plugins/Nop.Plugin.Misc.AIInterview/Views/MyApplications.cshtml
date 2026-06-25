@@ -9,6 +9,12 @@
     NopHtml.AppendPageCssClassParts("html-account-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-my-applications-page");
+
+    var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
+    var shareText = T("Plugins.Misc.AIInterview.Report.Share").Text;
+    var openSharePageText = T("Plugins.Misc.AIInterview.Report.OpenSharePage").Text;
+    var jobReportTitleFormat = T("Plugins.Misc.AIInterview.Report.JobReportTitle").Text;
+    var jobRecordingTitleFormat = T("Plugins.Misc.AIInterview.Report.JobRecordingTitle").Text;
 }
 
 @section left
@@ -55,6 +61,8 @@
                     <tbody>
                         @foreach (var app in Model.Applications)
                         {
+                            var reportTitle = string.Format(jobReportTitleFormat, app.JobTitle);
+                            var recordingTitle = string.Format(jobRecordingTitleFormat, app.JobTitle);
                             <tr>
                                 <td>
                                     <div><strong>@app.JobTitle</strong></div>
@@ -78,7 +86,7 @@
                                         <a href="@app.InterviewReportUrl"
                                            class="js-open-report-drawer"
                                            data-report-panel-url="@app.InterviewReportPanelUrl"
-                                           data-report-title="@app.JobTitle report">@T("Plugins.Misc.AIInterview.Report.OpenReport")</a>
+                                           data-report-title="@reportTitle">@T("Plugins.Misc.AIInterview.Report.OpenReport")</a>
                                     }
                                     else
                                     {
@@ -92,10 +100,10 @@
                                             <a href="@app.RecordingUrl" target="_blank" rel="noopener">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>
                                             @if (!string.IsNullOrEmpty(app.RecordingShareUrl))
                                             {
-                                                <button type="button" class="button-2 ai-copy-share-link" data-share-url="@app.RecordingShareUrl">Copy share link</button>
-                                                <button type="button" class="button-2 ai-native-share-link aiinterview-hidden" data-share-url="@app.RecordingShareUrl" data-share-title="@app.JobTitle recording">Share</button>
+                                                <button type="button" class="button-2 ai-copy-share-link" data-share-url="@app.RecordingShareUrl">@copyShareLinkText</button>
+                                                <button type="button" class="button-2 ai-native-share-link aiinterview-hidden" data-share-url="@app.RecordingShareUrl" data-share-title="@recordingTitle">@shareText</button>
                                                 <noscript>
-                                                    <a href="@app.RecordingShareUrl" target="_blank" rel="noopener">Open share page</a>
+                                                    <a href="@app.RecordingShareUrl" target="_blank" rel="noopener">@openSharePageText</a>
                                                 </noscript>
                                             }
                                         </div>

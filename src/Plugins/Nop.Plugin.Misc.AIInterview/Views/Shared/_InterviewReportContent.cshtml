@@ -6,6 +6,10 @@
     decimal? avgCommunication = categoryTurns.Any(x => x.CommunicationScore.HasValue) ? categoryTurns.Where(x => x.CommunicationScore.HasValue).Average(x => x.CommunicationScore.Value) : null;
     decimal? avgProfessionalism = categoryTurns.Any(x => x.ProfessionalismScore.HasValue) ? categoryTurns.Where(x => x.ProfessionalismScore.HasValue).Average(x => x.ProfessionalismScore.Value) : null;
     decimal? avgPositiveAttitude = categoryTurns.Any(x => x.PositiveAttitudeScore.HasValue) ? categoryTurns.Where(x => x.PositiveAttitudeScore.HasValue).Average(x => x.PositiveAttitudeScore.Value) : null;
+    var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
+    var shareText = T("Plugins.Misc.AIInterview.Report.Share").Text;
+    var openSharePageText = T("Plugins.Misc.AIInterview.Report.OpenSharePage").Text;
+    var recordingShareTitleText = T("Plugins.Misc.AIInterview.Report.RecordingShareTitle").Text;
 }
 
 <div class="ai-report-actions">
@@ -15,10 +19,10 @@
     }
     @if (!string.IsNullOrWhiteSpace(Model.RecordingShareUrl))
     {
-        <button type="button" class="button-2 ai-copy-share-link" data-share-url="@Model.RecordingShareUrl">Copy share link</button>
-        <button type="button" class="button-2 ai-native-share-link aiinterview-hidden" data-share-url="@Model.RecordingShareUrl" data-share-title="Interview recording">Share</button>
+        <button type="button" class="button-2 ai-copy-share-link" data-share-url="@Model.RecordingShareUrl">@copyShareLinkText</button>
+        <button type="button" class="button-2 ai-native-share-link aiinterview-hidden" data-share-url="@Model.RecordingShareUrl" data-share-title="@recordingShareTitleText">@shareText</button>
         <noscript>
-            <a class="button-2" href="@Model.RecordingShareUrl" target="_blank" rel="noopener">Open share page</a>
+            <a class="button-2" href="@Model.RecordingShareUrl" target="_blank" rel="noopener">@openSharePageText</a>
         </noscript>
     }
 </div>

@@ -162,6 +162,10 @@
             }
         }
     }
+
+    var shareJobText = T("Plugins.Misc.AIInterview.Report.Share").Text;
+    var linkCopiedText = T("Plugins.Misc.AIInterview.Report.LinkCopied").Text;
+    var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
 }
 
 @section Breadcrumb
@@ -229,7 +233,14 @@
                                     Save to custom wishlist
                                 </button>
                             }
-                            <button type="button" class="job-action-link" id="share-job-button" data-share-url="@productPageUrl" data-share-title="@Model.Name">Share job</button>
+                            <button type="button"
+                                    class="job-action-link"
+                                    id="share-job-button"
+                                    data-share-url="@productPageUrl"
+                                    data-share-title="@Model.Name"
+                                    data-default-text="@shareJobText"
+                                    data-link-copied-text="@linkCopiedText"
+                                    data-copy-prompt-text="@copyShareLinkText">@shareJobText</button>
                         </div>
 
                         @if (heroMetadata.Any())
@@ -441,12 +452,12 @@
 
             if (navigator.clipboard) {
                 await navigator.clipboard.writeText(shareUrl);
-                shareButton.textContent = 'Link copied';
-                window.setTimeout(() => shareButton.textContent = 'Share job', 1800);
+                shareButton.textContent = shareButton.dataset.linkCopiedText || '';
+                window.setTimeout(() => shareButton.textContent = shareButton.dataset.defaultText || '', 1800);
                 return;
             }
 
-            window.prompt('Copy this job link', shareUrl);
+            window.prompt(shareButton.dataset.copyPromptText || '', shareUrl);
         });
     })();
 </script>

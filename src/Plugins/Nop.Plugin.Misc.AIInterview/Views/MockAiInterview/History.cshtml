@@ -6,6 +6,13 @@
     NopHtml.AppendPageCssClassParts("html-account-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-history-page");
+
+    var interviewText = T("Plugins.Misc.AIInterview.Common.Interview").Text;
+    var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
+    var shareText = T("Plugins.Misc.AIInterview.Report.Share").Text;
+    var openSharePageText = T("Plugins.Misc.AIInterview.Report.OpenSharePage").Text;
+    var jobReportTitleFormat = T("Plugins.Misc.AIInterview.Report.JobReportTitle").Text;
+    var jobRecordingTitleFormat = T("Plugins.Misc.AIInterview.Report.JobRecordingTitle").Text;
 }
 
 @section left
@@ -24,7 +31,7 @@
                 <table class="history-table">
                     <thead>
                         <tr>
-                            <th>Interview</th>
+                            <th>@interviewText</th>
                             <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
                             <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
                             <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
@@ -35,6 +42,8 @@
                     <tbody>
                         @foreach (var session in Model)
                         {
+                            var reportTitle = string.Format(jobReportTitleFormat, session.JobTitle);
+                            var recordingTitle = string.Format(jobRecordingTitleFormat, session.JobTitle);
                             <tr>
                                 <td>@session.JobTitle</td>
                                 <td>@session.CreatedOnUtc.ToString("yyyy-MM-dd")</td>
@@ -46,7 +55,7 @@
                                         <a href="@session.InterviewReportUrl"
                                            class="js-open-report-drawer"
                                            data-report-panel-url="@session.InterviewReportPanelUrl"
-                                           data-report-title="@session.JobTitle report">@T("Plugins.Misc.AIInterview.Report.OpenReport")</a>
+                                           data-report-title="@reportTitle">@T("Plugins.Misc.AIInterview.Report.OpenReport")</a>
                                     }
                                     else
                                     {
@@ -60,10 +69,10 @@
                                             <a href="@session.RecordingUrl" target="_blank" rel="noopener">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>
                                             @if (!string.IsNullOrWhiteSpace(session.RecordingShareUrl))
                                             {
-                                                <button type="button" class="button-2 ai-copy-share-link" data-share-url="@session.RecordingShareUrl">Copy share link</button>
-                                                <button type="button" class="button-2 ai-native-share-link aiinterview-hidden" data-share-url="@session.RecordingShareUrl" data-share-title="@session.JobTitle recording">Share</button>
+                                                <button type="button" class="button-2 ai-copy-share-link" data-share-url="@session.RecordingShareUrl">@copyShareLinkText</button>
+                                                <button type="button" class="button-2 ai-native-share-link aiinterview-hidden" data-share-url="@session.RecordingShareUrl" data-share-title="@recordingTitle">@shareText</button>
                                                 <noscript>
-                                                    <a href="@session.RecordingShareUrl" target="_blank" rel="noopener">Open share page</a>
+                                                    <a href="@session.RecordingShareUrl" target="_blank" rel="noopener">@openSharePageText</a>
                                                 </noscript>
                                             }
                                         </div>

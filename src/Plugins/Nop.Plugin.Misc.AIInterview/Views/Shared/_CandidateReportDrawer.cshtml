@@ -1,9 +1,25 @@
-<div class="ai-report-drawer" id="ai-report-drawer" aria-hidden="true">
+@{
+    var drawerTitleText = T("Plugins.Misc.AIInterview.Report.DrawerTitle").Text;
+    var closePanelText = T("Plugins.Misc.AIInterview.Report.ClosePanel").Text;
+    var loadingText = T("Plugins.Misc.AIInterview.Report.Loading").Text;
+    var loadFailedText = T("Plugins.Misc.AIInterview.Report.LoadFailed").Text;
+    var copiedText = T("Plugins.Misc.AIInterview.Report.Copied").Text;
+    var copyFailedText = T("Plugins.Misc.AIInterview.Report.CopyFailed").Text;
+    var recordingShareTitleText = T("Plugins.Misc.AIInterview.Report.RecordingShareTitle").Text;
+}
+
+<div class="ai-report-drawer" id="ai-report-drawer" aria-hidden="true"
+     data-drawer-title="@drawerTitleText"
+     data-loading-text="@loadingText"
+     data-load-failed-text="@loadFailedText"
+     data-copied-text="@copiedText"
+     data-copy-failed-text="@copyFailedText"
+     data-recording-share-title="@recordingShareTitleText">
     <div class="ai-report-drawer-backdrop" data-report-drawer-close="true"></div>
     <div class="ai-report-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="ai-report-drawer-title" tabindex="-1">
         <div class="ai-report-drawer-header">
-            <h2 id="ai-report-drawer-title">Interview report</h2>
-            <button type="button" class="ai-report-drawer-close" aria-label="Close report panel" data-report-drawer-close="true">×</button>
+            <h2 id="ai-report-drawer-title">@drawerTitleText</h2>
+            <button type="button" class="ai-report-drawer-close" aria-label="@closePanelText" data-report-drawer-close="true">&times;</button>
         </div>
         <div class="ai-report-drawer-status" aria-live="polite"></div>
         <div class="ai-report-drawer-body"></div>
@@ -26,6 +42,12 @@
     const title = drawer.querySelector('#ai-report-drawer-title');
     const body = drawer.querySelector('.ai-report-drawer-body');
     const status = drawer.querySelector('.ai-report-drawer-status');
+    const defaultDrawerTitle = drawer.dataset.drawerTitle || '';
+    const loadingText = drawer.dataset.loadingText || '';
+    const loadFailedText = drawer.dataset.loadFailedText || '';
+    const copiedText = drawer.dataset.copiedText || '';
+    const copyFailedText = drawer.dataset.copyFailedText || '';
+    const recordingShareTitle = drawer.dataset.recordingShareTitle || '';
     let lastTrigger = null;
 
     const setStatus = (message) => {
@@ -89,15 +111,15 @@
 
             event.preventDefault();
             lastTrigger = reportTrigger;
-            title.textContent = reportTrigger.getAttribute('data-report-title') || 'Interview report';
+            title.textContent = reportTrigger.getAttribute('data-report-title') || defaultDrawerTitle;
             body.innerHTML = '';
-            setStatus('Loading report...');
+            setStatus(loadingText);
             openDrawer();
 
             try {
                 const response = await fetch(panelUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
                 if (!response.ok) {
-                    throw new Error('Failed to load report.');
+                    throw new Error(loadFailedText);
                 }
 
                 body.innerHTML = await response.text();
@@ -125,9 +147,9 @@
             const originalText = copyTrigger.textContent;
             try {
                 await writeToClipboard(shareUrl);
-                copyTrigger.textContent = 'Copied';
+                copyTrigger.textContent = copiedText;
             } catch (error) {
-                copyTrigger.textContent = 'Copy failed';
+                copyTrigger.textContent = copyFailedText;
             }
 
             window.setTimeout(() => {
@@ -151,7 +173,7 @@
 
             try {
                 await navigator.share({
-                    title: shareTrigger.getAttribute('data-share-title') || 'Interview recording',
+                    title: shareTrigger.getAttribute('data-share-title') || recordingShareTitle,
                     url: shareUrl
                 });
             } catch (error) {
