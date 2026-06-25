@@ -1214,8 +1214,23 @@ public class RuntimeAndAdminTests
         Assert.That(projectText, Does.Contain("<None Remove=\"Views\\Shared\\Components\\AIInterviewJobProductCard\\Default.cshtml\" />"));
         Assert.That(projectText, Does.Contain("<Content Include=\"Views\\Shared\\Components\\AIInterviewJobProductCard\\Default.cshtml\">"));
         Assert.That(jobCardScript, Does.Contain("data-ai-job-preview-open"));
-        Assert.That(jobCardScript, Does.Contain("lookupWishlistItemId"));
+        Assert.That(jobCardScript, Does.Contain("data-toggle-url"));
         Assert.That(jobCardScript, Does.Contain("data-ai-job-save-status"));
+    }
+
+    [Test]
+    public void JobCard_SaveToggle_Uses_ServerBacked_Json_Flow()
+    {
+        var jobCardScript = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "js", "aiinterview-job-card.js"));
+
+        Assert.That(jobCardScript, Does.Contain("data-toggle-url"));
+        Assert.That(jobCardScript, Does.Contain("productId: parseInt(button.getAttribute('data-product-id'), 10) || 0"));
+        Assert.That(jobCardScript, Does.Contain("save: shouldSave"));
+        Assert.That(jobCardScript, Does.Contain("setSavedState(button.getAttribute('data-product-id'), response.isSaved === true, response.wishlistItemId || 0);"));
+        Assert.That(jobCardScript, Does.Not.Contain("fetch('/wishlist'"));
+        Assert.That(jobCardScript, Does.Not.Contain("DOMParser"));
+        Assert.That(jobCardScript, Does.Not.Contain("querySelectorAll('a[href]')"));
+        Assert.That(jobCardScript, Does.Not.Contain("lookupWishlistItemId"));
     }
 
     [Test]

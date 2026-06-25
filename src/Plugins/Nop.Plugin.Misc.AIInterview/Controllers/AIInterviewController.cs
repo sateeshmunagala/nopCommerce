@@ -6,6 +6,7 @@ using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Media;
+using Nop.Core.Domain.Orders;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
@@ -23,6 +24,7 @@ using Nop.Web.Framework.Controllers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.WebUtilities;
+using Nop.Core.Http;
 using Nop.Web.Framework.Mvc.Routing;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
@@ -46,6 +48,8 @@ public class AIInterviewController : BasePluginController
     private readonly IInterviewTurnService _interviewTurnService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly INopUrlHelper _nopUrlHelper;
+    private readonly IShoppingCartService _shoppingCartService;
+    private readonly IStoreContext _storeContext;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -63,7 +67,9 @@ public class AIInterviewController : BasePluginController
         ISpecificationAttributeService specificationAttributeService = null,
         IInterviewTurnService interviewTurnService = null,
         IHttpClientFactory httpClientFactory = null,
-        INopUrlHelper nopUrlHelper = null)
+        INopUrlHelper nopUrlHelper = null,
+        IShoppingCartService shoppingCartService = null,
+        IStoreContext storeContext = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -82,6 +88,8 @@ public class AIInterviewController : BasePluginController
         _interviewTurnService = interviewTurnService;
         _httpClientFactory = httpClientFactory;
         _nopUrlHelper = nopUrlHelper;
+        _shoppingCartService = shoppingCartService;
+        _storeContext = storeContext;
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -97,7 +105,9 @@ public class AIInterviewController : BasePluginController
         IUrlRecordService urlRecordService = null,
         IJobInterviewExperienceService jobInterviewExperienceService = null,
         ISpecificationAttributeService specificationAttributeService = null,
-        INopUrlHelper nopUrlHelper = null)
+        INopUrlHelper nopUrlHelper = null,
+        IShoppingCartService shoppingCartService = null,
+        IStoreContext storeContext = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -114,8 +124,77 @@ public class AIInterviewController : BasePluginController
             specificationAttributeService,
             null,
             null,
-            nopUrlHelper)
+            nopUrlHelper,
+            shoppingCartService,
+            storeContext)
     {
+    }
+
+    [HttpPost]
+    public virtual async Task<IActionResult> ToggleSavedJob(int productId, bool save)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return Json(new { success = false, redirect = Url.RouteUrl("Homepage") });
+
+        if (_shoppingCartService == null || _storeContext == null)
+            return Json(new { success = false, message = "Saved jobs are temporarily unavailable." });
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null)
+            return Json(new { success = false, redirect = Url.RouteUrl(NopRouteNames.General.LOGIN) });
+
+        var product = await _productService.GetProductByIdAsync(productId);
+        if (product == null)
+            return Json(new { success = false, message = "The selected job could not be found." });
+
+        var store = await _storeContext.GetCurrentStoreAsync();
+        var savedText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.SavedToSavedJobs");
+        var removedText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.RemovedFromSavedJobs");
+
+        var wishlistItems = (await _shoppingCartService.GetShoppingCartAsync(customer, ShoppingCartType.Wishlist, store.Id, productId: product.Id, customWishlistId: 0)).ToList();
+
+        if (save)
+        {
+            if (wishlistItems.Count > 1)
+            {
+                foreach (var duplicateItem in wishlistItems.Skip(1))
+                    await _shoppingCartService.DeleteShoppingCartItemAsync(duplicateItem);
+
+                wishlistItems = (await _shoppingCartService.GetShoppingCartAsync(customer, ShoppingCartType.Wishlist, store.Id, productId: product.Id, customWishlistId: 0)).ToList();
+            }
+
+            if (!wishlistItems.Any())
+            {
+                var warnings = await _shoppingCartService.AddToCartAsync(customer, product, ShoppingCartType.Wishlist, store.Id, quantity: 1, wishlistId: null);
+                if (warnings.Any())
+                    return Json(new { success = false, message = warnings.ToArray() });
+
+                wishlistItems = (await _shoppingCartService.GetShoppingCartAsync(customer, ShoppingCartType.Wishlist, store.Id, productId: product.Id, customWishlistId: 0)).ToList();
+            }
+        }
+        else if (wishlistItems.Any())
+        {
+            foreach (var wishlistItem in wishlistItems)
+                await _shoppingCartService.DeleteShoppingCartItemAsync(wishlistItem);
+
+            wishlistItems.Clear();
+        }
+
+        var allWishlistItems = await _shoppingCartService.GetShoppingCartAsync(customer, ShoppingCartType.Wishlist, store.Id, customWishlistId: 0);
+        var updateTopWishlistSectionHtml = string.Format(await _localizationService.GetResourceAsync("Wishlist.HeaderQuantity"),
+            allWishlistItems.Sum(item => item.Quantity));
+
+        var savedItem = wishlistItems.FirstOrDefault();
+        var isSaved = savedItem != null;
+
+        return Json(new
+        {
+            success = true,
+            isSaved,
+            wishlistItemId = savedItem?.Id ?? 0,
+            message = isSaved ? savedText : removedText,
+            updatetopwishlistsectionhtml = updateTopWishlistSectionHtml
+        });
     }
 
     protected virtual async Task<string> BuildProductRedirectUrlAsync(Product product, IDictionary<string, string> query = null)

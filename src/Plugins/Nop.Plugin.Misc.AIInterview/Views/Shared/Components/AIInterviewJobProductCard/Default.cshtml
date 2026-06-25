@@ -9,13 +9,7 @@
     NopHtml.AppendScriptParts(ResourceLocation.Footer, "~/Plugins/Misc.AIInterview/Content/js/aiinterview-job-card.js");
 
     var productUrl = await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName });
-    var wishlistAddUrl = Url.RouteUrl(NopRouteNames.Ajax.ADD_PRODUCT_TO_CART_CATALOG, new
-    {
-        productId = Model.Id,
-        shoppingCartTypeId = (int)ShoppingCartType.Wishlist,
-        quantity = 1
-    });
-    var wishlistUrl = Url.RouteUrl(NopRouteNames.General.WISHLIST);
+    var saveToggleUrl = Url.Action("ToggleSavedJob", "AIInterview");
     var drawerId = $"ai-job-preview-{Model.Id}";
     var drawerTitleId = $"ai-job-preview-title-{Model.Id}";
     var saveLabel = T("Plugins.Misc.AIInterview.JobCard.SaveJob").Text;
@@ -50,9 +44,7 @@
                 <button type="button"
                         class="ai-job-card-save @(Model.IsSavedJob ? "is-saved" : null)"
                         data-product-id="@Model.Id"
-                        data-product-url="@productUrl"
-                        data-add-url="@wishlistAddUrl"
-                        data-remove-url="@wishlistUrl"
+                        data-toggle-url="@saveToggleUrl"
                         data-wishlist-item-id="@Model.WishlistItemId"
                         data-is-saved="@Model.IsSavedJob.ToString().ToLowerInvariant()"
                         data-save-label="@saveLabel"
@@ -217,9 +209,7 @@
                         <button type="button"
                                 class="ai-job-card-save ai-job-preview-save @(Model.IsSavedJob ? "is-saved" : null)"
                                 data-product-id="@Model.Id"
-                                data-product-url="@productUrl"
-                                data-add-url="@wishlistAddUrl"
-                                data-remove-url="@wishlistUrl"
+                                data-toggle-url="@saveToggleUrl"
                                 data-wishlist-item-id="@Model.WishlistItemId"
                                 data-is-saved="@Model.IsSavedJob.ToString().ToLowerInvariant()"
                                 data-save-label="@saveLabel"

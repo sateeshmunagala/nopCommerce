@@ -977,7 +977,7 @@ body.aiinterview-report-drawer-open {
     background: #ffffff;
     color: #334155;
     cursor: pointer;
-    transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
+    transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .ai-job-card-save:hover,
@@ -987,9 +987,25 @@ body.aiinterview-report-drawer-open {
 }
 
 .ai-job-card-save.is-saved {
-    border-color: #188f78;
-    background: #eefaf7;
-    color: #188f78;
+    border-color: #20252b;
+    background: #20252b;
+    color: #ffffff;
+    box-shadow: inset 0 0 0 1px #20252b;
+}
+
+.ai-job-card-save[aria-pressed="true"] {
+    border-color: #20252b;
+    background: #20252b;
+    color: #ffffff;
+}
+
+.ai-job-card-save.is-saved:hover,
+.ai-job-card-save.is-saved:focus-visible,
+.ai-job-card-save[aria-pressed="true"]:hover,
+.ai-job-card-save[aria-pressed="true"]:focus-visible {
+    border-color: #111827;
+    background: #111827;
+    color: #ffffff;
 }
 
 .ai-job-card-save-icon-filled {
@@ -1001,6 +1017,14 @@ body.aiinterview-report-drawer-open {
 }
 
 .ai-job-card-save.is-saved .ai-job-card-save-icon-filled {
+    display: inline-block;
+}
+
+.ai-job-card-save[aria-pressed="true"] .ai-job-card-save-icon-outline {
+    display: none;
+}
+
+.ai-job-card-save[aria-pressed="true"] .ai-job-card-save-icon-filled {
     display: inline-block;
 }
 

@@ -8,14 +8,6 @@
     var activeDrawer = null;
     var activeTrigger = null;
 
-    function normalizePath(url) {
-        try {
-            return new URL(url, window.location.origin).pathname.toLowerCase();
-        } catch (error) {
-            return (url || '').toLowerCase();
-        }
-    }
-
     function getStatusNodes(productId) {
         return document.querySelectorAll('[data-ai-job-save-status="' + productId + '"]');
     }
@@ -44,6 +36,17 @@
                 srText.textContent = label;
             }
         });
+    }
+
+    function showErrorMessage(message) {
+        if (!message) {
+            return;
+        }
+
+        var text = Array.isArray(message) ? message.join('\n') : message;
+        if (window.displayBarNotification) {
+            displayBarNotification(text, 'error', 0);
+        }
     }
 
     function closeDrawer(drawer) {
@@ -88,83 +91,34 @@
         }
     }
 
-    function lookupWishlistItemId(productUrl) {
-        return fetch('/wishlist', {
-            credentials: 'same-origin'
-        }).then(function (response) {
-            return response.text();
-        }).then(function (html) {
-            var parser = new DOMParser();
-            var documentFragment = parser.parseFromString(html, 'text/html');
-            var targetPath = normalizePath(productUrl);
-            var matchingLink = Array.prototype.find.call(documentFragment.querySelectorAll('a[href]'), function (link) {
-                return normalizePath(link.getAttribute('href')) === targetPath;
-            });
+    function postToggle(button) {
+        var shouldSave = button.getAttribute('data-is-saved') !== 'true';
 
-            if (!matchingLink) {
-                return 0;
-            }
-
-            var row = matchingLink.closest('tr');
-            var removeCheckbox = row ? row.querySelector('input[name="removefromcart"]') : null;
-            return removeCheckbox ? parseInt(removeCheckbox.value, 10) || 0 : 0;
-        });
-    }
-
-    function postAdd(button) {
         return $.ajax({
             cache: false,
-            url: button.getAttribute('data-add-url'),
+            url: button.getAttribute('data-toggle-url'),
             type: 'POST',
-            data: addAntiForgeryToken({})
+            data: addAntiForgeryToken({
+                productId: parseInt(button.getAttribute('data-product-id'), 10) || 0,
+                save: shouldSave
+            })
         }).then(function (response) {
-            if (window.AjaxCart && typeof AjaxCart.success_process === 'function') {
-                AjaxCart.success_process(response);
-            }
-
             if (response && response.redirect) {
                 setLocation(response.redirect);
                 return $.Deferred().reject().promise();
             }
 
             if (!response || response.success !== true) {
+                showErrorMessage(response && response.message);
                 return $.Deferred().reject(response).promise();
             }
 
-            return lookupWishlistItemId(button.getAttribute('data-product-url')).then(function (wishlistItemId) {
-                setSavedState(button.getAttribute('data-product-id'), true, wishlistItemId);
-                setStatus(button.getAttribute('data-product-id'), button.getAttribute('data-saved-text') || '');
-            });
-        });
-    }
+            if (window.AjaxCart && typeof AjaxCart.success_process === 'function') {
+                AjaxCart.success_process(response);
+            }
 
-    function postRemove(button) {
-        var wishlistItemId = parseInt(button.getAttribute('data-wishlist-item-id'), 10) || 0;
-        if (!wishlistItemId) {
-            return lookupWishlistItemId(button.getAttribute('data-product-url')).then(function (resolvedId) {
-                if (!resolvedId) {
-                    return $.Deferred().reject().promise();
-                }
-
-                button.setAttribute('data-wishlist-item-id', resolvedId);
-                return postRemove(button);
-            });
-        }
-
-        var requestData = addAntiForgeryToken({
-            updatecart: 'updatecart',
-            listId: 0,
-            removefromcart: wishlistItemId
-        });
-
-        return $.ajax({
-            cache: false,
-            url: button.getAttribute('data-remove-url'),
-            type: 'POST',
-            data: requestData
-        }).then(function () {
-            setSavedState(button.getAttribute('data-product-id'), false, 0);
-            setStatus(button.getAttribute('data-product-id'), button.getAttribute('data-removed-text') || '');
+            setSavedState(button.getAttribute('data-product-id'), response.isSaved === true, response.wishlistItemId || 0);
+            setStatus(button.getAttribute('data-product-id'), response.message || '');
         });
     }
 
@@ -196,13 +150,7 @@
 
         saveButton.dataset.pending = 'true';
 
-        var request = saveButton.getAttribute('data-is-saved') === 'true'
-            ? postRemove(saveButton)
-            : postAdd(saveButton);
-
-        request.fail(function () {
-            // nopCommerce ajax notifications are already handled on add failures
-        }).always(function () {
+        postToggle(saveButton).always(function () {
             delete saveButton.dataset.pending;
         });
     });

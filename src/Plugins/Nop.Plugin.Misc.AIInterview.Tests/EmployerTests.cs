@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Nop.Core;
 using Nop.Core.Domain.Customers;
+using Nop.Core.Domain.Orders;
 using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
@@ -12,7 +13,9 @@ using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Messages;
+using Nop.Services.Orders;
 using Nop.Services.Seo;
+using Nop.Services.Stores;
 using NUnit.Framework;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
@@ -34,6 +37,8 @@ public class EmployerTests
     private Mock<IProductTemplateService> _productTemplateService;
     private Mock<IUrlRecordService> _urlRecordService;
     private Mock<ISpecificationAttributeService> _specificationAttributeService;
+    private Mock<IShoppingCartService> _shoppingCartService;
+    private Mock<IStoreContext> _storeContext;
     private AIInterviewController _controller;
     private MockAiInterviewController _mockAiController;
     private Customer _employer;
@@ -59,6 +64,8 @@ public class EmployerTests
         _productTemplateService = new Mock<IProductTemplateService>();
         _urlRecordService = new Mock<IUrlRecordService>();
         _specificationAttributeService = new Mock<ISpecificationAttributeService>();
+        _shoppingCartService = new Mock<IShoppingCartService>();
+        _storeContext = new Mock<IStoreContext>();
 
         _employer = new Customer { Id = 123, VendorId = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_employer);
@@ -72,6 +79,9 @@ public class EmployerTests
             .ReturnsAsync((string key) => key);
 
         _creditService.Setup(x => x.GetOrCreateWalletAsync(It.IsAny<int>())).ReturnsAsync(new CreditWallet { Balance = 500 });
+        _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(new Nop.Core.Domain.Stores.Store { Id = 1 });
+        _shoppingCartService.Setup(x => x.GetShoppingCartAsync(It.IsAny<Customer>(), ShoppingCartType.Wishlist, 1, It.IsAny<int?>(), null, null, 0))
+            .ReturnsAsync(new List<ShoppingCartItem>());
 
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<JobApplication>());
         _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<InterviewSession>());
@@ -90,7 +100,12 @@ public class EmployerTests
             _productTemplateService.Object,
             _urlRecordService.Object,
             null,
-            _specificationAttributeService.Object);
+            _specificationAttributeService.Object,
+            null,
+            null,
+            null,
+            _shoppingCartService.Object,
+            _storeContext.Object);
 
         _mockAiController = new MockAiInterviewController(
             _interviewSessionService.Object,
@@ -676,6 +691,70 @@ public class EmployerTests
     }
 
     [Test]
+    public async Task ToggleSavedJob_Adds_Default_Wishlist_Item_Without_Duplicates()
+    {
+        var product = new Product { Id = 44, Name = "AI Role" };
+        var wishlistItems = new List<ShoppingCartItem>();
+
+        _productService.Setup(x => x.GetProductByIdAsync(44)).ReturnsAsync(product);
+        _shoppingCartService.Setup(x => x.GetShoppingCartAsync(_employer, ShoppingCartType.Wishlist, 1, 44, null, null, 0))
+            .ReturnsAsync(() => wishlistItems.ToList());
+        _shoppingCartService.Setup(x => x.GetShoppingCartAsync(_employer, ShoppingCartType.Wishlist, 1, null, null, null, 0))
+            .ReturnsAsync(() => wishlistItems.ToList());
+        _shoppingCartService.Setup(x => x.AddToCartAsync(_employer, product, ShoppingCartType.Wishlist, 1, null, 0m, null, null, 1, true, null))
+            .ReturnsAsync(new List<string>())
+            .Callback(() =>
+            {
+                if (!wishlistItems.Any(item => item.ProductId == 44))
+                {
+                    wishlistItems.Add(new ShoppingCartItem
+                    {
+                        Id = 700,
+                        ProductId = 44,
+                        ShoppingCartType = ShoppingCartType.Wishlist,
+                        StoreId = 1,
+                        Quantity = 1
+                    });
+                }
+            });
+
+        var firstResult = (JsonResult)await _controller.ToggleSavedJob(44, true);
+        var secondResult = (JsonResult)await _controller.ToggleSavedJob(44, true);
+
+        Assert.That(firstResult.Value.GetType().GetProperty("success")?.GetValue(firstResult.Value), Is.EqualTo(true));
+        Assert.That(firstResult.Value.GetType().GetProperty("isSaved")?.GetValue(firstResult.Value), Is.EqualTo(true));
+        Assert.That(secondResult.Value.GetType().GetProperty("wishlistItemId")?.GetValue(secondResult.Value), Is.EqualTo(700));
+        Assert.That(wishlistItems.Count(item => item.ProductId == 44), Is.EqualTo(1));
+        _shoppingCartService.Verify(x => x.AddToCartAsync(_employer, product, ShoppingCartType.Wishlist, 1, null, 0m, null, null, 1, true, null), Times.Once);
+    }
+
+    [Test]
+    public async Task ToggleSavedJob_Removes_Existing_Default_Wishlist_Items()
+    {
+        var product = new Product { Id = 55, Name = "Saved Role" };
+        var wishlistItems = new List<ShoppingCartItem>
+        {
+            new() { Id = 801, ProductId = 55, ShoppingCartType = ShoppingCartType.Wishlist, StoreId = 1, Quantity = 1 },
+            new() { Id = 802, ProductId = 55, ShoppingCartType = ShoppingCartType.Wishlist, StoreId = 1, Quantity = 1 }
+        };
+
+        _productService.Setup(x => x.GetProductByIdAsync(55)).ReturnsAsync(product);
+        _shoppingCartService.Setup(x => x.GetShoppingCartAsync(_employer, ShoppingCartType.Wishlist, 1, 55, null, null, 0))
+            .ReturnsAsync(() => wishlistItems.Where(item => item.ProductId == 55).ToList());
+        _shoppingCartService.Setup(x => x.GetShoppingCartAsync(_employer, ShoppingCartType.Wishlist, 1, null, null, null, 0))
+            .ReturnsAsync(() => wishlistItems.ToList());
+        _shoppingCartService.Setup(x => x.DeleteShoppingCartItemAsync(It.IsAny<ShoppingCartItem>(), true, It.IsAny<bool>()))
+            .Callback<ShoppingCartItem, bool, bool>((item, _, _) => wishlistItems.RemoveAll(existing => existing.Id == item.Id))
+            .Returns(Task.CompletedTask);
+
+        var result = (JsonResult)await _controller.ToggleSavedJob(55, false);
+
+        Assert.That(result.Value.GetType().GetProperty("success")?.GetValue(result.Value), Is.EqualTo(true));
+        Assert.That(result.Value.GetType().GetProperty("isSaved")?.GetValue(result.Value), Is.EqualTo(false));
+        _shoppingCartService.Verify(x => x.DeleteShoppingCartItemAsync(It.IsAny<ShoppingCartItem>(), true, It.IsAny<bool>()), Times.Exactly(2));
+    }
+
+    [Test]
     public void JobCard_Rendering_Uses_Plugin_Component_And_Shared_Spec_Mapping()
     {
         var productBox = File.ReadAllText(Path.Combine(TestFilePathHelper.GetPluginRootPath(), "..", "..", "Presentation", "Nop.Web", "Themes", "JobBoardVenture", "Views", "Shared", "_ProductBox.cshtml"));
@@ -695,6 +774,7 @@ public class EmployerTests
         Assert.That(jobCardView, Does.Contain("ai-job-card-save"));
         Assert.That(jobCardView, Does.Contain("aria-pressed"));
         Assert.That(jobCardView, Does.Contain("fa-bookmark"));
+        Assert.That(jobCardView, Does.Contain("data-toggle-url"));
         Assert.That(jobCardView, Does.Not.Contain("Prompt Source"));
 
         Assert.That(jobDetailView, Does.Contain("@inject IAIInterviewJobDisplayService aiInterviewJobDisplayService"));
@@ -710,6 +790,9 @@ public class EmployerTests
         Assert.That(cssText, Does.Contain(".ai-job-card-summary"));
         Assert.That(cssText, Does.Contain("text-overflow: ellipsis;"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-drawer"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-save.is-saved"));
+        Assert.That(cssText, Does.Contain("background: #20252b;"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-save[aria-pressed=\"true\"]"));
     }
 
     private void SetupVendorSpecificationAttributes(bool includeJobLocation = true, bool includeSalaryRange = true)
