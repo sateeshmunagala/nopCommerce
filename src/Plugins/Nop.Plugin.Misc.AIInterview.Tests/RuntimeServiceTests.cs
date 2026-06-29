@@ -38,6 +38,7 @@ public class RuntimeServiceTests
         MockAIInterviewSettings mockSettings = null,
         Mock<IWorkContext> workContext = null,
         Mock<IEventPublisher> eventPublisher = null,
+        Mock<NopLogger> nopLogger = null,
         Mock<Microsoft.Extensions.Logging.ILogger<InterviewRuntimeService>> logger = null)
     {
         return new InterviewRuntimeService(
@@ -51,7 +52,9 @@ public class RuntimeServiceTests
             mockSettings ?? new MockAIInterviewSettings { UseMockResponses = true },
             httpClientFactory?.Object ?? new Mock<IHttpClientFactory>().Object,
             workContext?.Object ?? new Mock<IWorkContext>().Object,
-            eventPublisher?.Object ?? new Mock<IEventPublisher>().Object);
+            eventPublisher?.Object ?? new Mock<IEventPublisher>().Object,
+            nopLogger?.Object,
+            logger?.Object);
     }
 
     private sealed class TestHttpMessageHandler : HttpMessageHandler
@@ -1652,6 +1655,139 @@ public class RuntimeServiceTests
         sessionService.Verify(x => x.EnsureRecordingShareTokenAsync(It.Is<InterviewSession>(s => s.RecordingUrl == result.RecordingUrl)), Times.Once);
         Assert.That(session.RecordingShareToken, Is.EqualTo("share-token-success"));
         Assert.That(session.RecordingShareEnabled, Is.True);
+    }
+
+    [Test]
+    public async Task UploadRecordingAsync_Normalizes_ContentType_With_Codec_Parameters()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Created));
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var session = new InterviewSession
+        {
+            Id = 36,
+            Token = "upload-codec",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            SessionKey = "82db481657f14cfdbfe096204556a0ee",
+            CustomerId = 1,
+            ProductId = 56
+        };
+        sessionService.Setup(x => x.GetSessionByTokenAsync("upload-codec")).ReturnsAsync(session);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        sessionService.Setup(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>())).ReturnsAsync("share-token");
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureBlobStorageContainerUrl = "https://storage.blob.core.windows.net/container",
+                AzureBlobStorageSasToken = "?sig=token"
+            });
+
+        var result = await service.UploadRecordingAsync("upload-codec", CreateRecordingFile("webm-data", contentType: "video/webm;codecs=vp9,opus"));
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(session.RecordingUrl, Is.EqualTo(result.RecordingUrl));
+        Assert.That(httpHandler.Requests.Count, Is.EqualTo(1));
+        Assert.That(httpHandler.Requests[0].Method, Is.EqualTo(HttpMethod.Put));
+        Assert.That(httpHandler.Requests[0].Content?.Headers?.ContentType?.MediaType, Is.EqualTo("video/webm"));
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.RecordingUrl == result.RecordingUrl)), Times.Once);
+    }
+
+    [Test]
+    public async Task UploadRecordingAsync_Falls_Back_To_Webm_For_Invalid_ContentType()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Created));
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var session = new InterviewSession
+        {
+            Id = 37,
+            Token = "upload-invalid-type",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            SessionKey = "session-invalid-type",
+            CustomerId = 7,
+            ProductId = 5
+        };
+        sessionService.Setup(x => x.GetSessionByTokenAsync("upload-invalid-type")).ReturnsAsync(session);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        sessionService.Setup(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>())).ReturnsAsync("share-token");
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureBlobStorageContainerUrl = "https://storage.blob.core.windows.net/container",
+                AzureBlobStorageSasToken = "?sig=token"
+            });
+
+        var result = await service.UploadRecordingAsync("upload-invalid-type", CreateRecordingFile("webm-data", contentType: "not a media type"));
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(httpHandler.Requests.Count, Is.EqualTo(1));
+        Assert.That(httpHandler.Requests[0].Content?.Headers?.ContentType?.MediaType, Is.EqualTo("video/webm"));
+    }
+
+    [Test]
+    public async Task UploadRecordingAsync_Logs_Full_Exception_Detail_On_Failure()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+        var httpHandler = new TestHttpMessageHandler(_ => throw new HttpRequestException("blob upload failed with detailed diagnostics"));
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var session = new InterviewSession
+        {
+            Id = 38,
+            Token = "upload-log-failure",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            SessionKey = "session-log-failure",
+            CustomerId = 7,
+            ProductId = 5
+        };
+        sessionService.Setup(x => x.GetSessionByTokenAsync("upload-log-failure")).ReturnsAsync(session);
+        nopLogger.Setup(x => x.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureBlobStorageContainerUrl = "https://storage.blob.core.windows.net/container",
+                AzureBlobStorageSasToken = "?sig=token"
+            },
+            nopLogger: nopLogger);
+
+        var result = await service.UploadRecordingAsync("upload-log-failure", CreateRecordingFile("webm-data", contentType: "video/webm;codecs=vp9,opus"));
+
+        Assert.That(result.Success, Is.False);
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview recording upload failure",
+            It.Is<string>(message =>
+                message.Contains("Stage=Failure") &&
+                message.Contains("SessionId=38") &&
+                message.Contains("CustomerId=7") &&
+                message.Contains("ProductId=5") &&
+                message.Contains("ContentType=video/webm;codecs=vp9,opus") &&
+                message.Contains("NormalizedAzureContentType=video/webm") &&
+                message.Contains("System.Net.Http.HttpRequestException") &&
+                message.Contains("blob upload failed with detailed diagnostics")),
+            It.IsAny<Customer>()), Times.Once);
     }
 
     [Test]

@@ -770,6 +770,12 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("beginInterviewUrl"));
         Assert.That(runtimeViewText, Does.Contain("submitAnswer"));
         Assert.That(runtimeViewText, Does.Contain("stopInterview"));
+        Assert.That(runtimeViewText, Does.Contain("<textarea id=\"runtime-answer\""));
+        Assert.That(runtimeViewText, Does.Contain("const answerPanel = answerBox?.closest('.runtime-answer');"));
+        Assert.That(runtimeViewText, Does.Contain("const updateAnswerInputState = () =>"));
+        Assert.That(runtimeViewText, Does.Contain("answerPanel?.classList.toggle('runtime-answer-hidden', !showAnswerInput);"));
+        Assert.That(runtimeViewText, Does.Contain("answerPanel?.classList.toggle('runtime-js-hidden', !showAnswerInput);"));
+        Assert.That(runtimeViewText, Does.Contain("answerBox.disabled = !canEditAnswer;"));
         Assert.That(runtimeViewText, Does.Not.Contain("console.log(config)"));
         Assert.That(runtimeViewText, Does.Not.Contain("Settings Config"));
         Assert.That(runtimeViewText, Does.Not.Contain("Body: ${text}"));
@@ -879,6 +885,11 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("Enable screen share, camera, or microphone before recording."));
         Assert.That(runtimeViewText, Does.Not.Contain("setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);"));
         Assert.That(runtimeViewText, Does.Contain("Recording paused until screen sharing resumes."));
+        Assert.That(runtimeViewText, Does.Contain("speechRecognizer.recognized = (_, e) => {"));
+        Assert.That(runtimeViewText, Does.Contain("answerBox.value = `${answerBox.value ? `${answerBox.value.trim()} ` : ''}${e.result.text}`.trim();"));
+        Assert.That(runtimeViewText, Does.Contain("answerBox.addEventListener('input', () => {"));
+        Assert.That(runtimeViewText, Does.Contain("const trimmedAnswer = (answerBox.value || '').trim();"));
+        Assert.That(runtimeViewText, Does.Contain("updateAnswerInputState();"));
         Assert.That(runtimeViewText, Does.Contain("Recording upload request start. blobBytes="));
         Assert.That(runtimeViewText, Does.Contain("Recording upload response success. url="));
         Assert.That(runtimeViewText, Does.Contain("Recording chunk captured. chunkCount="));

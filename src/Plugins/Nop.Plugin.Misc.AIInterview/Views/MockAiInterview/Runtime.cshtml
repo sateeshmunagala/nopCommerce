@@ -170,6 +170,7 @@
         let sessionToken = config.token || '@Model.Token';
         let tokenExpiryUtc = config.tokenExpiryUtc ? new Date(config.tokenExpiryUtc) : null;
         const answerBox = document.getElementById('runtime-answer');
+        const answerPanel = answerBox?.closest('.runtime-answer');
         const questionBox = document.getElementById('runtime-question');
         const messageBox = document.getElementById('runtime-message');
         const statusBox = document.getElementById('runtime-status');
@@ -580,6 +581,19 @@
 
         const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());
 
+        const updateAnswerInputState = () => {
+            const showAnswerInput = interviewStarted
+                && !runtimeStoppedOrCompleted
+                && !stopInProgress
+                && !interviewUnavailable
+                && hasActiveQuestion();
+            const canEditAnswer = showAnswerInput;
+
+            answerPanel?.classList.toggle('runtime-answer-hidden', !showAnswerInput);
+            answerPanel?.classList.toggle('runtime-js-hidden', !showAnswerInput);
+            answerBox.disabled = !canEditAnswer;
+        };
+
         function isCameraActive() {
             return !!cameraStream?.getVideoTracks?.().some(track => track.readyState === 'live');
         }
@@ -645,6 +659,8 @@
         const updateSubmitAvailability = () => {
             if (!submitButton)
                 return;
+
+            updateAnswerInputState();
 
             const trimmedAnswer = (answerBox.value || '').trim();
             const disableSubmit = answerBox.disabled
@@ -762,7 +778,7 @@
             questionBox.textContent = message;
             messageBox.textContent = message;
             messageBox.classList.add('runtime-js-hidden');
-            answerBox.disabled = true;
+            updateAnswerInputState();
             setStatus(message, true);
             updateSubmitAvailability();
         };
@@ -914,7 +930,7 @@
             completionBox.textContent = reportUrl
                 ? 'Interview completed. Redirecting to report shortly.'
                 : completionText;
-            answerBox.disabled = true;
+            updateAnswerInputState();
             submitButton.disabled = true;
             updateStartButtonState();
             if (reportUrl) {
@@ -1469,6 +1485,7 @@
                     if (e.result?.reason === SpeechSDK.ResultReason.RecognizedSpeech && e.result.text) {
                         answerBox.value = `${answerBox.value ? `${answerBox.value.trim()} ` : ''}${e.result.text}`.trim();
                         logActivity('Speech recognized and appended.');
+                        updateSubmitAvailability();
                         resetTimers();
                     }
                 };
@@ -1954,7 +1971,7 @@
             screenShareActive = true;
             screenShareInterrupted = false;
             setScreenShareStatus('Screen sharing active', 'active');
-            answerBox.disabled = false;
+            updateAnswerInputState();
             questionBox.textContent = firstQuestion;
             startRuntimeTimer();
             setStatus('Please answer the question.', false);
@@ -2068,7 +2085,7 @@
         });
 
         renderTranscript();
-        answerBox.disabled = true;
+        updateAnswerInputState();
         submitButton.disabled = true;
         updateStopButtonsState();
         setStatus('Click Start Interview to begin.', false);

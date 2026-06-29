@@ -1278,29 +1278,30 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
         var now = DateTime.UtcNow;
+        var normalizedContentType = NormalizeRecordingContentType(recording?.ContentType);
         if (!CanUploadRecording(session, token, now))
         {
-            await LogRecordingUploadFailureAsync(session, recording, null, "Invalid or expired session token.", "validation failed");
+            await LogRecordingUploadFailureAsync(session, recording, null, "Invalid or expired session token.", "validation failed", normalizedContentType: normalizedContentType);
             return RecordingFailure("Invalid or expired session token.");
         }
 
         if (recording == null || recording.Length <= 0)
         {
-            await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is empty.", "empty recording");
+            await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is empty.", "empty recording", normalizedContentType: normalizedContentType);
             return RecordingFailure("Recording file is empty.");
         }
 
         const long maxRecordingBytes = 100L * 1024L * 1024L;
         if (recording.Length > maxRecordingBytes)
         {
-            await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is too large.", "recording too large");
+            await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is too large.", "recording too large", normalizedContentType: normalizedContentType);
             return RecordingFailure("Recording file is too large.");
         }
 
         if (string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageContainerUrl) ||
             string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageSasToken))
         {
-            await LogRecordingUploadFailureAsync(session, recording, null, "Recording storage is not configured.", "missing Azure Blob configuration");
+            await LogRecordingUploadFailureAsync(session, recording, null, "Recording storage is not configured.", "missing Azure Blob configuration", normalizedContentType: normalizedContentType);
             return RecordingFailure("Recording storage is not configured.");
         }
 
@@ -1314,10 +1315,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         try
         {
-            await LogRecordingUploadStartAsync(session, recording, blobName);
+            await LogRecordingUploadStartAsync(session, recording, blobName, normalizedContentType);
             using var httpClient = CreateHttpClient();
             using var content = new StreamContent(recording.OpenReadStream());
-            content.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(recording.ContentType) ? "video/webm" : recording.ContentType);
+            content.Headers.ContentType = new MediaTypeHeaderValue(normalizedContentType);
 
             using var request = new HttpRequestMessage(HttpMethod.Put, uploadUrl)
             {
@@ -1328,15 +1329,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             var response = await httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode)
             {
-                var errorBody = TruncateSafe(await response.Content.ReadAsStringAsync(), 500);
-                await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", $"Azure Blob PUT returned {(int)response.StatusCode}.", (int)response.StatusCode, errorBody);
+                var errorBody = await response.Content.ReadAsStringAsync();
+                await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", $"Azure Blob PUT returned {(int)response.StatusCode}.", (int)response.StatusCode, errorBody, normalizedContentType);
                 return RecordingFailure("Recording upload failed.");
             }
 
             session.RecordingUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}";
             await _sessionService.UpdateInterviewSessionAsync(session);
             await _sessionService.EnsureRecordingShareTokenAsync(session);
-            await LogRecordingUploadSuccessAsync(session, recording, blobName, (int)response.StatusCode);
+            await LogRecordingUploadSuccessAsync(session, recording, blobName, (int)response.StatusCode, normalizedContentType);
 
             return new RecordingUploadResponseModel
             {
@@ -1349,7 +1350,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             _logger?.LogWarning(ex, "Recording upload failed for session {SessionId}, customer {CustomerId}, product {ProductId}.",
                 session?.Id ?? 0, session?.CustomerId ?? 0, session?.ProductId ?? 0);
-            await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", ex.GetType().Name);
+            await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", ex.ToString(), normalizedContentType: normalizedContentType);
             return RecordingFailure("Recording upload failed.");
         }
     }
@@ -1642,28 +1643,28 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         return (decimal)overlap / source.Length;
     }
 
-    protected virtual async Task LogRecordingUploadStartAsync(InterviewSession session, IFormFile recording, string blobName)
+    protected virtual async Task LogRecordingUploadStartAsync(InterviewSession session, IFormFile recording, string blobName, string normalizedContentType)
     {
-        var detail = BuildRecordingUploadLog(session, recording, blobName, "Start");
+        var detail = BuildRecordingUploadLog(session, recording, blobName, "Start", normalizedContentType: normalizedContentType);
         _logger?.LogInformation("AI Interview recording upload start. {Detail}", detail);
         await LogRuntimeIssueAsync(NopLogLevel.Information, "AI Interview recording upload start", detail, await ResolveLogCustomerAsync(session));
     }
 
-    protected virtual async Task LogRecordingUploadSuccessAsync(InterviewSession session, IFormFile recording, string blobName, int azureStatus)
+    protected virtual async Task LogRecordingUploadSuccessAsync(InterviewSession session, IFormFile recording, string blobName, int azureStatus, string normalizedContentType)
     {
-        var detail = BuildRecordingUploadLog(session, recording, blobName, "Success", azureStatus: azureStatus);
+        var detail = BuildRecordingUploadLog(session, recording, blobName, "Success", azureStatus: azureStatus, normalizedContentType: normalizedContentType);
         _logger?.LogInformation("AI Interview recording upload success. {Detail}", detail);
         await LogRuntimeIssueAsync(NopLogLevel.Information, "AI Interview recording upload success", detail, await ResolveLogCustomerAsync(session));
     }
 
-    protected virtual async Task LogRecordingUploadFailureAsync(InterviewSession session, IFormFile recording, string blobName, string message, string reason, int? azureStatus = null, string azureErrorBody = null)
+    protected virtual async Task LogRecordingUploadFailureAsync(InterviewSession session, IFormFile recording, string blobName, string message, string reason, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null)
     {
-        var detail = BuildRecordingUploadLog(session, recording, blobName, "Failure", message, reason, azureStatus, azureErrorBody);
+        var detail = BuildRecordingUploadLog(session, recording, blobName, "Failure", message, reason, azureStatus, azureErrorBody, normalizedContentType);
         _logger?.LogWarning("AI Interview recording upload failure. {Detail}", detail);
         await LogRuntimeIssueAsync(NopLogLevel.Warning, "AI Interview recording upload failure", detail, await ResolveLogCustomerAsync(session));
     }
 
-    protected static string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null)
+    protected static string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null)
     {
         var details = new List<string>
         {
@@ -1673,6 +1674,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             $"ProductId={session?.ProductId ?? 0}",
             $"RecordingLength={recording?.Length ?? 0}",
             $"ContentType={recording?.ContentType ?? string.Empty}",
+            $"NormalizedAzureContentType={normalizedContentType ?? NormalizeRecordingContentType(recording?.ContentType)}",
             $"BlobName={blobName ?? string.Empty}"
         };
 
@@ -1683,9 +1685,30 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (azureStatus.HasValue)
             details.Add($"AzureHttpStatus={azureStatus.Value}");
         if (!string.IsNullOrWhiteSpace(azureErrorBody))
-            details.Add($"AzureErrorBody={TruncateSafe(azureErrorBody, 300)}");
+            details.Add($"AzureErrorBody={TruncateSafe(azureErrorBody, 4000)}");
 
         return string.Join("; ", details);
+    }
+
+    protected static string NormalizeRecordingContentType(string contentType)
+    {
+        const string fallbackContentType = "video/webm";
+
+        if (string.IsNullOrWhiteSpace(contentType))
+            return fallbackContentType;
+
+        var candidate = contentType.Trim();
+        var separatorIndex = candidate.IndexOf(';');
+        if (separatorIndex >= 0)
+            candidate = candidate[..separatorIndex];
+
+        candidate = candidate.Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+            return fallbackContentType;
+
+        return MediaTypeHeaderValue.TryParse(candidate, out var parsed) && !string.IsNullOrWhiteSpace(parsed?.MediaType)
+            ? parsed.MediaType
+            : fallbackContentType;
     }
 
     protected virtual RecordingUploadResponseModel RecordingFailure(string message)
