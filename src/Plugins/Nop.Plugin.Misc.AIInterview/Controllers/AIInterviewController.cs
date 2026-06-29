@@ -1304,12 +1304,6 @@ public class AIInterviewController : BasePluginController
         if (model.ApplyUntilUtc.HasValue && model.ApplyUntilUtc.Value.Date < DateTime.UtcNow.Date)
             ModelState.AddModelError(nameof(model.ApplyUntilUtc), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc.Past"));
 
-        if (model.MinimumScore < 0 || model.MinimumScore > 100)
-            ModelState.AddModelError(nameof(model.MinimumScore), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.MinimumScore.Range"));
-
-        if (model.InterviewRequired && (model.QuestionCount < 1 || model.QuestionCount > 10))
-            ModelState.AddModelError(nameof(model.QuestionCount), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.QuestionCount.Range"));
-
         if (_productTemplateService == null || _urlRecordService == null)
             ModelState.AddModelError(string.Empty, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Unavailable"));
 
@@ -1392,7 +1386,7 @@ public class AIInterviewController : BasePluginController
         if (_jobInterviewExperienceService != null)
             await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
         if (_jobRequirementService != null)
-            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, model.InterviewRequired ? model.MinimumScore : 0m, model.InterviewRequired ? model.QuestionCount : 3);
+            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, 0m, 3);
         var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
         await _urlRecordService.SaveSlugAsync(product, seName, 0);
 
@@ -1410,12 +1404,8 @@ public class AIInterviewController : BasePluginController
         model.ShortDescription = model.ShortDescription?.Trim();
         model.FullDescription = model.FullDescription?.Trim();
         model.SalaryRange = model.SalaryRange?.Trim();
-
-        if (!model.InterviewRequired)
-        {
-            model.MinimumScore = 0m;
-            model.QuestionCount = 3;
-        }
+        model.MinimumScore = 0m;
+        model.QuestionCount = 3;
     }
 
     protected virtual async Task<string> GetEmployerChargeModeLabelAsync(bool isCompanySponsored)

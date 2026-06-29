@@ -449,19 +449,23 @@ public class EmployerTests
             product.ProductTemplateId == 7 &&
             product.Published &&
             product.DisableBuyButton)), Times.Once);
-        var expectedMinimumScore = interviewRequired ? 82m : 0m;
-        var expectedQuestionCount = interviewRequired ? 5 : 3;
         _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.Is<Nop.Core.Domain.Catalog.Product>(product =>
-            product.Name == "Platform Engineer"), resumeRequired, interviewRequired, expectedMinimumScore, expectedQuestionCount), Times.Once);
+            product.Name == "Platform Engineer"), resumeRequired, interviewRequired, 0m, 3), Times.Once);
         _urlRecordService.Verify(x => x.SaveSlugAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), "platform-engineer", 0), Times.Once);
     }
 
     [Test]
-    public async Task VendorJobCreation_Invalid_QuestionCount_When_InterviewRequired_Does_Not_Insert_Product()
+    public async Task VendorJobCreation_Ignores_Posted_QuestionCount_When_InterviewRequired()
     {
         _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
-            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+            .ReturnsAsync(new List<ProductTemplate>
+            {
+                new() { Id = 1, Name = "Simple product", ViewPath = "ProductTemplate.Simple" },
+                new() { Id = 7, Name = AIInterviewDefaults.JobProductTemplateName, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath }
+            });
         SetupVendorSpecificationAttributes();
+        _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Product>(), string.Empty, "Platform Engineer", true))
+            .ReturnsAsync("platform-engineer");
 
         var result = await _controller.VendorJobCreation(new VendorJobModel
         {
@@ -470,17 +474,23 @@ public class EmployerTests
             QuestionCount = 11
         });
 
-        Assert.That(result, Is.TypeOf<ViewResult>());
-        _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.IsAny<Product>(), false, true, 0m, 3), Times.Once);
     }
 
     [TestCase(-1)]
     [TestCase(101)]
-    public async Task VendorJobCreation_Invalid_MinimumScore_Does_Not_Insert_Product(decimal minimumScore)
+    public async Task VendorJobCreation_Ignores_Posted_MinimumScore(decimal minimumScore)
     {
         _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
-            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+            .ReturnsAsync(new List<ProductTemplate>
+            {
+                new() { Id = 1, Name = "Simple product", ViewPath = "ProductTemplate.Simple" },
+                new() { Id = 7, Name = AIInterviewDefaults.JobProductTemplateName, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath }
+            });
         SetupVendorSpecificationAttributes();
+        _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Product>(), string.Empty, "Platform Engineer", true))
+            .ReturnsAsync("platform-engineer");
 
         var result = await _controller.VendorJobCreation(new VendorJobModel
         {
@@ -490,8 +500,8 @@ public class EmployerTests
             QuestionCount = 5
         });
 
-        Assert.That(result, Is.TypeOf<ViewResult>());
-        _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.IsAny<Product>(), false, true, 0m, 3), Times.Once);
     }
 
     [Test]
@@ -512,6 +522,32 @@ public class EmployerTests
         });
 
         _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.IsAny<Product>(), false, false, 0m, 3), Times.Once);
+    }
+
+    [Test]
+    public async Task VendorJobCreation_Always_Persists_Default_Interview_Settings()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate>
+            {
+                new() { Id = 1, Name = "Simple product", ViewPath = "ProductTemplate.Simple" },
+                new() { Id = 7, Name = AIInterviewDefaults.JobProductTemplateName, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath }
+            });
+        SetupVendorSpecificationAttributes();
+        _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Product>(), string.Empty, "Platform Engineer", true))
+            .ReturnsAsync("platform-engineer");
+
+        var result = await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            ResumeRequired = true,
+            InterviewRequired = true,
+            MinimumScore = 67,
+            QuestionCount = 9
+        });
+
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        _jobRequirementService.Verify(x => x.SaveRequirementsAsync(It.IsAny<Product>(), true, true, 0m, 3), Times.Once);
     }
 
     [Test]
@@ -615,7 +651,7 @@ public class EmployerTests
     }
 
     [Test]
-    public void VendorJobCreation_View_Toggles_MinimumScore_And_QuestionCount_With_InterviewRequired()
+    public void VendorJobCreation_View_Removes_Public_MinimumScore_And_QuestionCount_Controls()
     {
         var viewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorJobCreation.cshtml"));
 
@@ -625,16 +661,14 @@ public class EmployerTests
         Assert.That(viewText, Does.Contain("vendor-job-form-checkbox-list"));
         Assert.That(viewText, Does.Contain("vendor-job-form-actions"));
         Assert.That(viewText, Does.Contain("vendor-job-form-row vendor-job-form-actions"));
-        Assert.That(viewText, Does.Contain("aiinterview-minimum-score-row"));
-        Assert.That(viewText, Does.Contain("aiinterview-question-count-row"));
-        Assert.That(viewText, Does.Contain("const minimumScoreRow = document.querySelector('.aiinterview-minimum-score-row');"));
-        Assert.That(viewText, Does.Contain("const questionCountRow = document.querySelector('.aiinterview-question-count-row');"));
-        Assert.That(viewText, Does.Contain("minimumScoreInput.disabled = !enabled;"));
-        Assert.That(viewText, Does.Contain("questionCountInput.disabled = !enabled;"));
-        Assert.That(viewText, Does.Contain("minimumScoreHidden.disabled = enabled;"));
-        Assert.That(viewText, Does.Contain("questionCountHidden.disabled = enabled;"));
-        Assert.That(viewText, Does.Contain("minimumScoreRow.style.display = enabled ? '' : 'none';"));
-        Assert.That(viewText, Does.Contain("questionCountRow.style.display = enabled ? '' : 'none';"));
+        Assert.That(viewText, Does.Not.Contain("aiinterview-minimum-score-row"));
+        Assert.That(viewText, Does.Not.Contain("aiinterview-question-count-row"));
+        Assert.That(viewText, Does.Not.Contain("MinimumScoreHidden"));
+        Assert.That(viewText, Does.Not.Contain("QuestionCountHidden"));
+        Assert.That(viewText, Does.Not.Contain("const minimumScoreRow = document.querySelector('.aiinterview-minimum-score-row');"));
+        Assert.That(viewText, Does.Not.Contain("const questionCountRow = document.querySelector('.aiinterview-question-count-row');"));
+        Assert.That(viewText, Does.Not.Contain("document.getElementById('MinimumScore')"));
+        Assert.That(viewText, Does.Not.Contain("document.getElementById('QuestionCount')"));
         Assert.That(viewText, Does.Not.Contain("Apply Until:"));
         Assert.That(viewText, Does.Not.Contain("Experience Level:"));
         Assert.That(viewText, Does.Not.Contain("Work Mode:"));

@@ -168,58 +168,6 @@
                     </div>
                 </div>
 
-                <div class="vendor-job-form-row aiinterview-minimum-score-row @(Model.InterviewRequired ? string.Empty : "aiinterview-hidden")">
-                    <div class="vendor-job-form-label">
-                        <label asp-for="MinimumScore" asp-postfix=":"></label>
-                    </div>
-                    <div class="vendor-job-form-control">
-                        <input asp-for="MinimumScore" type="number" min="0" step="0.01" disabled="@(!Model.InterviewRequired)" />
-                        @if (Model.InterviewRequired)
-                        {
-                            <input type="hidden"
-                                   id="MinimumScoreHidden"
-                                   name="MinimumScore"
-                                   value="@Model.MinimumScore.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                                   disabled="disabled" />
-                        }
-                        else
-                        {
-                            <input type="hidden"
-                                   id="MinimumScoreHidden"
-                                   name="MinimumScore"
-                                   value="@Model.MinimumScore.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
-                        }
-                        <small class="vendor-job-form-hint">@T("Plugins.Misc.AIInterview.VendorJobCreation.MinimumScore.Hint")</small>
-                        <span asp-validation-for="MinimumScore"></span>
-                    </div>
-                </div>
-
-                <div class="vendor-job-form-row aiinterview-question-count-row @(Model.InterviewRequired ? string.Empty : "aiinterview-hidden")">
-                    <div class="vendor-job-form-label">
-                        <label asp-for="QuestionCount" asp-postfix=":"></label>
-                    </div>
-                    <div class="vendor-job-form-control">
-                        <input asp-for="QuestionCount" type="number" min="1" max="10" step="1" disabled="@(!Model.InterviewRequired)" />
-                        @if (Model.InterviewRequired)
-                        {
-                            <input type="hidden"
-                                   id="QuestionCountHidden"
-                                   name="QuestionCount"
-                                   value="@Model.QuestionCount"
-                                   disabled="disabled" />
-                        }
-                        else
-                        {
-                            <input type="hidden"
-                                   id="QuestionCountHidden"
-                                   name="QuestionCount"
-                                   value="@Model.QuestionCount" />
-                        }
-                        <small class="vendor-job-form-hint">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionCount.Hint")</small>
-                        <span asp-validation-for="QuestionCount"></span>
-                    </div>
-                </div>
-
                 <div class="vendor-job-form-row vendor-job-form-actions">
                     <div class="vendor-job-form-label"></div>
                     <div class="vendor-job-form-control">
@@ -234,42 +182,3 @@
         </div>
     </div>
 </div>
-
-<script asp-location="Footer">
-    (() => {
-        const interviewRequired = document.getElementById('InterviewRequired');
-        const minimumScoreRow = document.querySelector('.aiinterview-minimum-score-row');
-        const questionCountRow = document.querySelector('.aiinterview-question-count-row');
-        const minimumScoreInput = document.getElementById('MinimumScore');
-        const questionCountInput = document.getElementById('QuestionCount');
-        const minimumScoreHidden = document.getElementById('MinimumScoreHidden');
-        const questionCountHidden = document.getElementById('QuestionCountHidden');
-
-        if (!interviewRequired || !minimumScoreRow || !questionCountRow || !minimumScoreInput || !questionCountInput || !minimumScoreHidden || !questionCountHidden)
-            return;
-
-        const syncHiddenValues = () => {
-            minimumScoreHidden.value = minimumScoreInput.value;
-            questionCountHidden.value = questionCountInput.value;
-        };
-
-        const updateVisibility = () => {
-            const enabled = interviewRequired.checked;
-
-            minimumScoreRow.style.display = enabled ? '' : 'none';
-            questionCountRow.style.display = enabled ? '' : 'none';
-
-            minimumScoreInput.disabled = !enabled;
-            questionCountInput.disabled = !enabled;
-            minimumScoreHidden.disabled = enabled;
-            questionCountHidden.disabled = enabled;
-
-            syncHiddenValues();
-        };
-
-        minimumScoreInput.addEventListener('input', syncHiddenValues);
-        questionCountInput.addEventListener('input', syncHiddenValues);
-        interviewRequired.addEventListener('change', updateVisibility);
-        updateVisibility();
-    })();
-</script>
