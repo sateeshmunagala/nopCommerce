@@ -696,12 +696,13 @@ public class EmployerTests
     {
         var viewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorJobCreation.cshtml"));
 
-        Assert.That(viewText, Does.Contain("vendor-job-form-row"));
-        Assert.That(viewText, Does.Contain("vendor-job-form-label"));
-        Assert.That(viewText, Does.Contain("vendor-job-form-control"));
+        Assert.That(viewText, Does.Contain("vendor-job-posting-shell"));
+        Assert.That(viewText, Does.Contain("vendor-job-form-simple-grid"));
+        Assert.That(viewText, Does.Contain("vendor-job-form-field"));
         Assert.That(viewText, Does.Contain("vendor-job-form-checkbox-list"));
         Assert.That(viewText, Does.Contain("vendor-job-form-actions"));
-        Assert.That(viewText, Does.Contain("vendor-job-form-row vendor-job-form-actions"));
+        Assert.That(viewText, Does.Not.Contain("vendor-job-form-row"));
+        Assert.That(viewText, Does.Not.Contain("vendor-job-form-label"));
         Assert.That(viewText, Does.Not.Contain("aiinterview-minimum-score-row"));
         Assert.That(viewText, Does.Not.Contain("aiinterview-question-count-row"));
         Assert.That(viewText, Does.Not.Contain("MinimumScoreHidden"));
@@ -746,6 +747,10 @@ public class EmployerTests
         Assert.That(employerApplications, Does.Contain("class=\"button-2 employer-status-update\""));
         Assert.That(employerApplications, Does.Not.Contain("Admin.Common.PageSize"));
         Assert.That(employerApplications, Does.Not.Contain("Admin.Common.Reset"));
+        Assert.That(employerApplications, Does.Not.Contain("Admin.Common.All"));
+        Assert.That(employerApplications, Does.Not.Contain("Admin.Customers.Customers.Fields.Phone"));
+        Assert.That(employerApplications, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.All"));
+        Assert.That(employerApplications, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.Phone"));
 
         Assert.That(vendorScoreboard, Does.Contain("Layout = \"_ColumnsTwo\""));
         Assert.That(vendorScoreboard, Does.Contain("class=\"section scoreboard-deck-shell\""));
@@ -934,6 +939,9 @@ public class EmployerTests
         Assert.That(jobCardView, Does.Contain("aria-pressed"));
         Assert.That(jobCardView, Does.Contain("fa-bookmark"));
         Assert.That(jobCardView, Does.Contain("data-toggle-url"));
+        Assert.That(jobCardView, Does.Contain("<a class=\"ai-job-card-title-link\" href=\"@Model.ProductUrl\">"));
+        Assert.That(jobCardView, Does.Contain("class=\"button-2 ai-job-card-preview-trigger\""));
+        Assert.That(jobCardView, Does.Contain("data-ai-job-preview-open=\"@drawerId\""));
         Assert.That(jobCardView, Does.Contain("href=\"@productUrl\""));
         Assert.That(jobCardView, Does.Not.Contain("href=\"#\""));
         Assert.That(jobCardView, Does.Not.Contain("@Model.PreviewDescription"));
@@ -950,6 +958,27 @@ public class EmployerTests
         Assert.That(sharedJobDetailView, Does.Contain("@inject IAIInterviewJobDisplayService aiInterviewJobDisplayService"));
         Assert.That(sharedJobDetailView, Does.Contain("@using Nop.Services.Helpers"));
         Assert.That(sharedJobDetailView, Does.Contain("@using Nop.Web.Framework.Infrastructure"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.Kicker"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.HiringCompany"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.CandidatesApplied"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.ViewJob"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.EmailAFriend"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.SaveJob"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.SavedJob"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.SaveToCustomWishlist"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.JobDescription"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.RoleHighlights"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.RoleHighlightsFallback"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.Skills"));
+        Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.SkillsFallback"));
+        Assert.That(sharedJobDetailView, Does.Not.Contain(">AI Interview Role<"));
+        Assert.That(sharedJobDetailView, Does.Not.Contain(">Hiring Company<"));
+        Assert.That(sharedJobDetailView, Does.Not.Contain(">View job<"));
+        Assert.That(sharedJobDetailView, Does.Not.Contain(">Email a friend<"));
+        Assert.That(sharedJobDetailView, Does.Not.Contain(">Save to custom wishlist<"));
+        Assert.That(sharedJobDetailView, Does.Not.Contain(">Job Description<"));
+        Assert.That(sharedJobDetailView, Does.Not.Contain(">Role Highlights<"));
+        Assert.That(sharedJobDetailView, Does.Not.Contain(">Skills<"));
         Assert.That(sharedJobDetailView, Does.Contain("AIInterviewJobDisplayService.CompactSpecificationAliases"));
         Assert.That(sharedJobDetailView, Does.Contain("GetSpecificationSnapshotAsync(Model.Id, Model.ProductSpecificationModel)"));
         Assert.That(sharedJobDetailView, Does.Contain("AIInterviewProductDetailsViewComponent"));
@@ -979,6 +1008,9 @@ public class EmployerTests
         Assert.That(cssText, Does.Contain("rgba(15, 23, 42, 0.78)"));
         Assert.That(cssText, Does.Contain("backdrop-filter: blur(2px);"));
         Assert.That(cssText, Does.Contain(".ai-job-card-save.is-saved"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-preview-trigger"));
+        Assert.That(cssText, Does.Contain(".vendor-job-posting-shell"));
+        Assert.That(cssText, Does.Contain(".vendor-job-form-simple-grid"));
         Assert.That(cssText, Does.Contain("background: #20252b;"));
         Assert.That(cssText, Does.Contain(".ai-job-card-save[aria-pressed=\"true\"]"));
         Assert.That(cssText, Does.Contain(".invite-deactivate-button"));

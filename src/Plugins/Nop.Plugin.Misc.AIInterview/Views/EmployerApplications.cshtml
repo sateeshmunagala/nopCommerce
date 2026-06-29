@@ -39,7 +39,7 @@
                     <div class="employer-field">
                         <label for="Status">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</label>
                         <select id="Status" name="Status">
-                            <option value="">@T("Admin.Common.All")</option>
+                            <option value="">@T("Plugins.Misc.AIInterview.Employer.Applications.All")</option>
                             @foreach (var status in JobApplicationStatuses.All)
                             {
                                 <option value="@status" selected="@(Model.Status == status)">@GetStatusLabel(status)</option>
@@ -120,7 +120,7 @@
                             <tr>
                                 <th class="col-candidate">@T("Plugins.Misc.AIInterview.Employer.Applications.Candidate")</th>
                                 <th class="col-email">@T("Plugins.Misc.AIInterview.Employer.Applications.Email")</th>
-                                <th class="col-phone">@T("Admin.Customers.Customers.Fields.Phone")</th>
+                                <th class="col-phone">@T("Plugins.Misc.AIInterview.Employer.Applications.Phone")</th>
                                 <th class="col-charge">@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</th>
                                 <th class="col-score">@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewScore")</th>
                                 <th class="col-attempts">@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>

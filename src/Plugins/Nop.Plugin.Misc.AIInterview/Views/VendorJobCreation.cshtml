@@ -20,162 +20,122 @@
     </div>
     <div class="page-body">
         <div class="section">
-            <div class="title">
-                <strong>@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")</strong>
-            </div>
             <form asp-route="@AIInterviewDefaults.VendorJobCreationRouteName" method="post" class="vendor-job-form-shell">
-                <div class="fieldset">
-                    <div class="vendor-job-fieldset">
-                    <div asp-validation-summary="ModelOnly" class="message-error"></div>
-                    <div class="vendor-job-form-grid">
-                <div class="vendor-job-form-section">
-                    <div class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview")</div>
-                <div class="vendor-job-form-row">
-                    <div class="vendor-job-form-label">
-                        <label asp-for="Name" asp-postfix=":"></label>
-                        <nop-required />
-                    </div>
-                    <div class="vendor-job-form-control">
-                        <input asp-for="Name" />
-                        <span asp-validation-for="Name"></span>
-                    </div>
-                </div>
                 <input asp-for="Sku" type="hidden" />
-
-                <div class="vendor-job-form-row vendor-job-form-row-top">
-                    <div class="vendor-job-form-label">
-                        <label asp-for="ApplyUntilUtc" asp-postfix=":"></label>
-                    </div>
-                    <div class="vendor-job-form-control">
-                        <input asp-for="ApplyUntilUtc" type="date" />
-                        <span asp-validation-for="ApplyUntilUtc"></span>
-                    </div>
-                </div>
-
-                @if (Model.AvailableExperienceLevels.Any())
-                {
-                    <div class="vendor-job-form-row vendor-job-form-row-top">
-                        <div class="vendor-job-form-label">
-                            <label asp-for="ExperienceLevelOptionId" asp-postfix=":"></label>
+                <div class="fieldset">
+                    <div class="vendor-job-posting-shell">
+                        <div class="vendor-job-posting-intro">
+                            <p class="vendor-job-posting-kicker">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview")</p>
+                            <h2>@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")</h2>
+                            <p>@T("Plugins.Misc.AIInterview.VendorScoreboard.Intro")</p>
                         </div>
-                        <div class="vendor-job-form-control">
-                            <select asp-for="ExperienceLevelOptionId" asp-items="Model.AvailableExperienceLevels"></select>
-                            <span asp-validation-for="ExperienceLevelOptionId"></span>
-                        </div>
-                    </div>
-                }
 
-                @if (Model.AvailableWorkModes.Any())
-                {
-                    <div class="vendor-job-form-row vendor-job-form-row-top">
-                        <div class="vendor-job-form-label">
-                            <label asp-for="WorkModeOptionId" asp-postfix=":"></label>
-                        </div>
-                        <div class="vendor-job-form-control">
-                            <select asp-for="WorkModeOptionId" asp-items="Model.AvailableWorkModes"></select>
-                            <span asp-validation-for="WorkModeOptionId"></span>
-                        </div>
-                    </div>
-                }
+                        <div asp-validation-summary="ModelOnly" class="message-error"></div>
 
-                @if (Model.AvailableEmploymentTypes.Any())
-                {
-                    <div class="vendor-job-form-row vendor-job-form-row-top">
-                        <div class="vendor-job-form-label">
-                            <label asp-for="EmploymentTypeOptionId" asp-postfix=":"></label>
-                        </div>
-                        <div class="vendor-job-form-control">
-                            <select asp-for="EmploymentTypeOptionId" asp-items="Model.AvailableEmploymentTypes"></select>
-                            <span asp-validation-for="EmploymentTypeOptionId"></span>
-                        </div>
-                    </div>
-                }
-
-                <div class="vendor-job-form-row vendor-job-form-row-top">
-                    <div class="vendor-job-form-label">
-                        <label asp-for="JobLocationOptionId" asp-postfix=":"></label>
-                    </div>
-                    <div class="vendor-job-form-control">
-                        @if (Model.AvailableJobLocations.Any())
-                        {
-                            <select asp-for="JobLocationOptionId" asp-items="Model.AvailableJobLocations"></select>
-                        }
-                        else
-                        {
-                            <div class="vendor-job-form-unsupported">@T("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Unsupported")</div>
-                        }
-                        <span asp-validation-for="JobLocationOptionId"></span>
-                    </div>
-                </div>
-
-                <div class="vendor-job-form-row vendor-job-form-row-top">
-                    <div class="vendor-job-form-label">
-                        <label asp-for="SalaryRange" asp-postfix=":"></label>
-                    </div>
-                    <div class="vendor-job-form-control">
-                        <input asp-for="SalaryRange" />
-                        <span asp-validation-for="SalaryRange"></span>
-                    </div>
-                </div>
-                </div>
-
-                <div class="vendor-job-form-section">
-                    <div class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent")</div>
-                <div class="vendor-job-form-row">
-                    <div class="vendor-job-form-label">
-                        <label asp-for="ShortDescription" asp-postfix=":"></label>
-                    </div>
-                    <div class="vendor-job-form-control">
-                        <textarea asp-for="ShortDescription" rows="2"></textarea>
-                        <span asp-validation-for="ShortDescription"></span>
-                    </div>
-                </div>
-
-                <div class="vendor-job-form-row">
-                    <div class="vendor-job-form-label">
-                        <label asp-for="FullDescription" asp-postfix=":"></label>
-                    </div>
-                    <div class="vendor-job-form-control">
-                        <textarea asp-for="FullDescription" rows="8"></textarea>
-                        <span asp-validation-for="FullDescription"></span>
-                    </div>
-                </div>
-                </div>
-
-                <div class="vendor-job-form-section">
-                    <div class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings")</div>
-                <div class="vendor-job-form-row">
-                    <div class="vendor-job-form-label">
-                        @T("Plugins.Misc.AIInterview.VendorJobCreation.Settings")
-                    </div>
-                    <div class="vendor-job-form-control">
-                        <div class="vendor-job-form-checkbox-list">
-                            <div class="vendor-job-form-checkbox">
-                                <input asp-for="Published" />
-                                <label asp-for="Published"></label>
+                    <section class="vendor-job-form-section">
+                        <h3 class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview")</h3>
+                        <div class="vendor-job-form-simple-grid">
+                            <div class="vendor-job-form-field vendor-job-form-field-wide">
+                                <label asp-for="Name" asp-postfix=":"></label>
+                                <nop-required />
+                                <input asp-for="Name" />
+                                <span asp-validation-for="Name"></span>
                             </div>
-                            <div class="vendor-job-form-checkbox">
+
+                            <div class="vendor-job-form-field">
+                                <label asp-for="ApplyUntilUtc" asp-postfix=":"></label>
+                                <input asp-for="ApplyUntilUtc" type="date" />
+                                <span asp-validation-for="ApplyUntilUtc"></span>
+                            </div>
+
+                            @if (Model.AvailableExperienceLevels.Any())
+                            {
+                                <div class="vendor-job-form-field">
+                                    <label asp-for="ExperienceLevelOptionId" asp-postfix=":"></label>
+                                    <select asp-for="ExperienceLevelOptionId" asp-items="Model.AvailableExperienceLevels"></select>
+                                    <span asp-validation-for="ExperienceLevelOptionId"></span>
+                                </div>
+                            }
+
+                            @if (Model.AvailableWorkModes.Any())
+                            {
+                                <div class="vendor-job-form-field">
+                                    <label asp-for="WorkModeOptionId" asp-postfix=":"></label>
+                                    <select asp-for="WorkModeOptionId" asp-items="Model.AvailableWorkModes"></select>
+                                    <span asp-validation-for="WorkModeOptionId"></span>
+                                </div>
+                            }
+
+                            @if (Model.AvailableEmploymentTypes.Any())
+                            {
+                                <div class="vendor-job-form-field">
+                                    <label asp-for="EmploymentTypeOptionId" asp-postfix=":"></label>
+                                    <select asp-for="EmploymentTypeOptionId" asp-items="Model.AvailableEmploymentTypes"></select>
+                                    <span asp-validation-for="EmploymentTypeOptionId"></span>
+                                </div>
+                            }
+
+                            <div class="vendor-job-form-field">
+                                <label asp-for="JobLocationOptionId" asp-postfix=":"></label>
+                                @if (Model.AvailableJobLocations.Any())
+                                {
+                                    <select asp-for="JobLocationOptionId" asp-items="Model.AvailableJobLocations"></select>
+                                }
+                                else
+                                {
+                                    <div class="vendor-job-form-unsupported">@T("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Unsupported")</div>
+                                }
+                                <span asp-validation-for="JobLocationOptionId"></span>
+                            </div>
+
+                            <div class="vendor-job-form-field">
+                                <label asp-for="SalaryRange" asp-postfix=":"></label>
+                                <input asp-for="SalaryRange" />
+                                <span asp-validation-for="SalaryRange"></span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="vendor-job-form-section">
+                        <h3 class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent")</h3>
+                        <div class="vendor-job-form-simple-grid">
+                            <div class="vendor-job-form-field vendor-job-form-field-wide">
+                                <label asp-for="ShortDescription" asp-postfix=":"></label>
+                                <textarea asp-for="ShortDescription" rows="2"></textarea>
+                                <span asp-validation-for="ShortDescription"></span>
+                            </div>
+
+                            <div class="vendor-job-form-field vendor-job-form-field-wide">
+                                <label asp-for="FullDescription" asp-postfix=":"></label>
+                                <textarea asp-for="FullDescription" rows="8"></textarea>
+                                <span asp-validation-for="FullDescription"></span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="vendor-job-form-section">
+                        <h3 class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings")</h3>
+                        <div class="vendor-job-form-checkbox-list">
+                            <label class="vendor-job-form-toggle" asp-for="Published">
+                                <input asp-for="Published" />
+                                <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.Published")</span>
+                            </label>
+                            <label class="vendor-job-form-toggle" asp-for="ResumeRequired">
                                 <input type="hidden" name="ResumeRequired" value="false" />
                                 <input asp-for="ResumeRequired" />
-                                <label asp-for="ResumeRequired"></label>
-                            </div>
-                            <div class="vendor-job-form-checkbox">
+                                <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.ResumeRequired")</span>
+                            </label>
+                            <label class="vendor-job-form-toggle" asp-for="InterviewRequired">
                                 <input type="hidden" name="InterviewRequired" value="false" />
                                 <input asp-for="InterviewRequired" />
-                                <label asp-for="InterviewRequired"></label>
-                            </div>
+                                <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired")</span>
+                            </label>
                         </div>
-                    </div>
-                </div>
+                    </section>
 
-                <div class="vendor-job-form-row vendor-job-form-actions">
-                    <div class="vendor-job-form-label"></div>
-                    <div class="vendor-job-form-control">
-                        <button type="submit" class="button-1 vendor-job-submit">@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")</button>
-                    </div>
-                </div>
-                </div>
-                    </div>
+                        <div class="vendor-job-form-actions">
+                            <button type="submit" class="button-1 vendor-job-submit">@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")</button>
+                        </div>
                     </div>
                 </div>
             </form>

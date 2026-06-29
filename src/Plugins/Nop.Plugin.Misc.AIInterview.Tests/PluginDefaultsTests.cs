@@ -180,6 +180,8 @@ public class PluginDefaultsTests
                      "Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CandidatePaid",
                      "Plugins.Misc.AIInterview.Employer.Applications.PageSize",
                      "Plugins.Misc.AIInterview.Employer.Applications.Reset",
+                     "Plugins.Misc.AIInterview.Employer.Applications.All",
+                     "Plugins.Misc.AIInterview.Employer.Applications.Phone",
                      "Plugins.Misc.AIInterview.VendorScoreboard.Title",
                      "Plugins.Misc.AIInterview.VendorScoreboard.Eyebrow",
                      "Plugins.Misc.AIInterview.VendorScoreboard.TotalCompletedAssessments",
@@ -226,6 +228,37 @@ public class PluginDefaultsTests
     }
 
     [Test]
+    public void JobDetails_Locale_Resources_Contain_All_Required_Keys()
+    {
+        var method = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var resources = (Dictionary<string, string>)method.Invoke(null, null);
+
+        foreach (var key in new[]
+                 {
+                     "Plugins.Misc.AIInterview.JobDetails.Kicker",
+                     "Plugins.Misc.AIInterview.JobDetails.HiringCompany",
+                     "Plugins.Misc.AIInterview.JobDetails.CandidatesApplied",
+                     "Plugins.Misc.AIInterview.JobDetails.ViewJob",
+                     "Plugins.Misc.AIInterview.JobDetails.EmailAFriend",
+                     "Plugins.Misc.AIInterview.JobDetails.SaveJob",
+                     "Plugins.Misc.AIInterview.JobDetails.SavedJob",
+                     "Plugins.Misc.AIInterview.JobDetails.SaveToCustomWishlist",
+                     "Plugins.Misc.AIInterview.JobDetails.SaveFirstForWishlist",
+                     "Plugins.Misc.AIInterview.JobDetails.JobDescription",
+                     "Plugins.Misc.AIInterview.JobDetails.RoleHighlights",
+                     "Plugins.Misc.AIInterview.JobDetails.RoleHighlightsFallback",
+                     "Plugins.Misc.AIInterview.JobDetails.Skills",
+                     "Plugins.Misc.AIInterview.JobDetails.SkillsFallback",
+                     "Plugins.Misc.AIInterview.JobDetails.JobDetails"
+                 })
+        {
+            Assert.That(resources.ContainsKey(key), Is.True, $"Missing job details locale resource: {key}");
+        }
+
+        Assert.That(resources["Plugins.Misc.AIInterview.VendorJobCreation.ShortDescription"], Is.EqualTo("Job summary"));
+    }
+
+    [Test]
     public void Public_Vendor_Resources_Are_Seeded_In_Install_And_Upgrade_Paths()
     {
         var pluginText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("AIInterviewPlugin.cs"));
@@ -238,7 +271,25 @@ public class PluginDefaultsTests
                      ".Employer.Invite.CreateTitle\"] =",
                      ".Employer.Invite.ActiveTitle\"] =",
                      ".Employer.Applications.PageSize\"] =",
-                     ".Employer.Applications.Reset\"] ="
+                     ".Employer.Applications.Reset\"] =",
+                     ".Employer.Applications.All\"] =",
+                     ".Employer.Applications.Phone\"] =",
+                     ".JobDetails.Kicker\"] =",
+                     ".JobDetails.HiringCompany\"] =",
+                     ".JobDetails.CandidatesApplied\"] =",
+                     ".JobDetails.ViewJob\"] =",
+                     ".JobDetails.EmailAFriend\"] =",
+                     ".JobDetails.SaveJob\"] =",
+                     ".JobDetails.SavedJob\"] =",
+                     ".JobDetails.SaveToCustomWishlist\"] =",
+                     ".JobDetails.SaveFirstForWishlist\"] =",
+                     ".JobDetails.JobDescription\"] =",
+                     ".JobDetails.RoleHighlights\"] =",
+                     ".JobDetails.RoleHighlightsFallback\"] =",
+                     ".JobDetails.Skills\"] =",
+                     ".JobDetails.SkillsFallback\"] =",
+                     ".JobDetails.JobDetails\"] =",
+                     ".VendorJobCreation.ShortDescription\"] = \"Job summary\""
                  })
         {
             Assert.That(pluginText.Split(key, StringSplitOptions.None).Length - 1, Is.GreaterThanOrEqualTo(2), $"Expected install and upgrade seeding for: {key}");

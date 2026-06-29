@@ -255,6 +255,45 @@
     gap: 16px;
 }
 
+.vendor-job-posting-shell {
+    display: grid;
+    gap: 20px;
+    max-width: 940px;
+}
+
+.vendor-job-posting-intro {
+    display: grid;
+    gap: 8px;
+    padding: 22px;
+    border: 1px solid #dedede;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.vendor-job-posting-kicker {
+    margin: 0;
+    color: #188f78;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.vendor-job-posting-intro h2 {
+    margin: 0;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.9rem;
+    font-weight: 400;
+    line-height: 1.08;
+    text-transform: uppercase;
+}
+
+.vendor-job-posting-intro p:last-child {
+    margin: 0;
+    color: #687078;
+    line-height: 1.6;
+}
+
 .vendor-job-fieldset,
 .invite-fieldset {
     padding: 0;
@@ -274,6 +313,7 @@
     font-family: "Fjalla One", Arial, sans-serif;
     font-size: 1.05rem;
     text-transform: uppercase;
+    margin: 0;
 }
 
 .vendor-job-form-row {
@@ -339,6 +379,58 @@
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.vendor-job-form-simple-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 18px;
+}
+
+.vendor-job-form-field {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.vendor-job-form-field-wide {
+    grid-column: span 2;
+}
+
+.vendor-job-form-field > label {
+    color: #30363c;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.92rem;
+    text-transform: uppercase;
+}
+
+.vendor-job-form-field > label + .required {
+    margin-top: -4px;
+}
+
+.vendor-job-form-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #d9dfe5;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #30363c;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.92rem;
+    text-transform: uppercase;
+}
+
+.vendor-job-form-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.vendor-job-form-actions {
+    display: flex;
+    justify-content: flex-start;
 }
 
 .invite-form-grid {
@@ -996,9 +1088,18 @@ body.aiinterview-report-drawer-open {
     align-items: center;
 }
 
+.ai-job-card-preview-trigger,
 .ai-job-card-view-job {
     min-height: 34px;
     padding: 7px 12px;
+}
+
+.ai-job-card-title-link {
+    text-decoration: none;
+}
+
+.ai-job-card-preview-trigger {
+    min-width: 0;
 }
 
 .ai-job-card-save {
@@ -1242,6 +1343,14 @@ body.ai-job-preview-open {
 
     .applications-sort {
         flex-wrap: wrap;
+    }
+
+    .vendor-job-form-simple-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .vendor-job-form-field-wide {
+        grid-column: auto;
     }
 
     .html-aiinterview-employer-applications-page .status-form {

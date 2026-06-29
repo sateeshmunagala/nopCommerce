@@ -63,14 +63,9 @@
             }
         </div>
 
-        <button type="button"
-                class="ai-job-card-title-link"
-                data-ai-job-preview-open="@drawerId"
-                aria-controls="@drawerId"
-                aria-expanded="false"
-                aria-label="@($"{Model.JobTitle} - {previewText}")">
+        <a class="ai-job-card-title-link" href="@Model.ProductUrl">
             @Model.JobTitle
-        </button>
+        </a>
 
         @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
         {
@@ -129,6 +124,14 @@
         </div>
 
         <div class="ai-job-card-actions">
+            <button type="button"
+                    class="button-2 ai-job-card-preview-trigger"
+                    data-ai-job-preview-open="@drawerId"
+                    aria-controls="@drawerId"
+                    aria-expanded="false"
+                    aria-label="@($"{Model.JobTitle} - {previewText}")">
+                @previewText
+            </button>
             <a class="button-2 jb-view-job-button ai-job-card-view-job" href="@productUrl">@viewJobText</a>
         </div>
 

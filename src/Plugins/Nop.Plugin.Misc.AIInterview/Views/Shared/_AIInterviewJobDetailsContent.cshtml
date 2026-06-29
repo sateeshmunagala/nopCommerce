@@ -60,14 +60,29 @@
 
     var heroAttributeNames = AIInterviewJobDisplayService.CompactSpecificationAliases;
     var applyUntil = Model.AvailableEndDate?.ToString("yyyy-MM-dd");
+    var jobDetailsKickerText = T("Plugins.Misc.AIInterview.JobDetails.Kicker").Text;
+    var hiringCompanyText = T("Plugins.Misc.AIInterview.JobDetails.HiringCompany").Text;
+    var candidatesAppliedText = string.Format(T("Plugins.Misc.AIInterview.JobDetails.CandidatesApplied").Text, candidateCount);
+    var viewJobText = T("Plugins.Misc.AIInterview.JobDetails.ViewJob").Text;
+    var emailFriendText = T("Plugins.Misc.AIInterview.JobDetails.EmailAFriend").Text;
+    var saveJobText = T("Plugins.Misc.AIInterview.JobDetails.SaveJob").Text;
+    var savedJobText = T("Plugins.Misc.AIInterview.JobDetails.SavedJob").Text;
+    var saveToCustomWishlistText = T("Plugins.Misc.AIInterview.JobDetails.SaveToCustomWishlist").Text;
+    var saveFirstForWishlistText = T("Plugins.Misc.AIInterview.JobDetails.SaveFirstForWishlist").Text;
+    var jobDescriptionText = T("Plugins.Misc.AIInterview.JobDetails.JobDescription").Text;
+    var roleHighlightsText = T("Plugins.Misc.AIInterview.JobDetails.RoleHighlights").Text;
+    var roleHighlightsFallbackText = T("Plugins.Misc.AIInterview.JobDetails.RoleHighlightsFallback").Text;
+    var skillsText = T("Plugins.Misc.AIInterview.JobDetails.Skills").Text;
+    var skillsFallbackText = T("Plugins.Misc.AIInterview.JobDetails.SkillsFallback").Text;
+    var jobDetailsSectionText = T("Plugins.Misc.AIInterview.JobDetails.JobDetails").Text;
     var heroMetadata = new List<(string Label, string Value)>
     {
-        ("Experience Level", compactSpecifications.ExperienceLevel),
-        ("Work Arrangement", compactSpecifications.WorkArrangement),
-        ("Employment Type", compactSpecifications.EmploymentType),
-        ("Apply Until", applyUntil),
-        ("Job Location", compactSpecifications.JobLocation),
-        ("Salary Range", compactSpecifications.SalaryRange)
+        (T("Plugins.Misc.AIInterview.JobCard.ExperienceLevel").Text, compactSpecifications.ExperienceLevel),
+        (T("Plugins.Misc.AIInterview.JobCard.WorkArrangement").Text, compactSpecifications.WorkArrangement),
+        (T("Plugins.Misc.AIInterview.JobCard.EmploymentType").Text, compactSpecifications.EmploymentType),
+        (T("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc").Text, applyUntil),
+        (T("Plugins.Misc.AIInterview.JobCard.JobLocation").Text, compactSpecifications.JobLocation),
+        (T("Plugins.Misc.AIInterview.JobCard.SalaryRange").Text, compactSpecifications.SalaryRange)
     }.Where(item => !string.IsNullOrWhiteSpace(item.Value)).ToList();
 
     var filteredSpecificationGroups = specificationGroups
@@ -135,13 +150,13 @@
 <article data-productid="@Model.Id" class="job-shell @(isDrawer ? "job-shell-drawer" : null)">
     <section class="job-hero">
         <div class="job-hero-copy">
-            <span class="job-kicker">AI Interview Role</span>
+            <span class="job-kicker">@jobDetailsKickerText</span>
             @if (!string.IsNullOrWhiteSpace(vendorDisplayName))
             {
                 <div class="job-company">
                     <img class="job-company-logo" src="@vendorPictureUrl" alt="@vendorDisplayName" />
                     <div>
-                        <div class="job-company-label">Hiring Company</div>
+                        <div class="job-company-label">@hiringCompanyText</div>
                         <div class="job-company-name">@vendorDisplayName</div>
                     </div>
                 </div>
@@ -156,7 +171,7 @@
             }
 
             <div class="job-overview-meta">
-                <span class="job-pill"><strong>Candidates</strong> @candidateCount applied</span>
+                <span class="job-pill">@candidatesAppliedText</span>
             </div>
 
             @if (!isDrawer)
@@ -167,31 +182,32 @@
             <div class="job-action-links @(isDrawer ? "job-action-links-drawer" : null)">
                 @if (isDrawer)
                 {
-                    <a class="job-action-link" href="@productPageUrl">View job</a>
+                    <a class="job-action-link" href="@productPageUrl">@viewJobText</a>
                 }
                 else
                 {
                     @if (!string.IsNullOrWhiteSpace(emailFriendUrl))
                     {
-                        <a class="job-action-link" href="@emailFriendUrl">Email a friend</a>
+                        <a class="job-action-link" href="@emailFriendUrl">@emailFriendText</a>
                     }
                     @if (!Model.AddToCart.DisableWishlistButton)
                     {
                         <button type="button"
                                 id="job-save-button"
                                 class="job-action-link @(isSavedJob ? "is-saved" : null)"
-                                data-saved-text="Saved job"
-                                data-default-text="Save job"
+                                data-saved-text="@savedJobText"
+                                data-default-text="@saveJobText"
+                                data-save-first-text="@saveFirstForWishlistText"
                                 data-url="@Url.RouteUrl(NopRouteNames.Ajax.ADD_PRODUCT_TO_CART_DETAILS, new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.Wishlist, customwishlistid = customWishlistId })"
                                 @(isSavedJob ? "disabled" : null)>
-                            @(isSavedJob ? "Saved job" : "Save job")
+                            @(isSavedJob ? savedJobText : saveJobText)
                         </button>
                         @await Html.PartialAsync("~/Views/Shared/_MoveToWishlistModal.cshtml", Model.AddToCart.ProductToWishlist)
                         <button type="button"
                                 id="job-custom-wishlist-button"
                                 class="job-action-link"
                                 @(isSavedJob ? null : "disabled")>
-                            Save to custom wishlist
+                            @saveToCustomWishlistText
                         </button>
                     }
                     <button type="button"
@@ -235,7 +251,7 @@
             @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
             {
                 <section class="job-card">
-                    <h2 class="job-section-title">Job Description</h2>
+                    <h2 class="job-section-title">@jobDescriptionText</h2>
                     <div class="full-description">
                         @Html.Raw(Model.FullDescription)
                     </div>
@@ -243,7 +259,7 @@
             }
 
             <section class="job-card">
-                <h2 class="job-section-title">Role Highlights</h2>
+                <h2 class="job-section-title">@roleHighlightsText</h2>
                 @if (highlights.Any())
                 {
                     <ul>
@@ -255,14 +271,14 @@
                 }
                 else
                 {
-                    <p>Key responsibilities and outcomes will be discussed during the interview process.</p>
+                    <p>@roleHighlightsFallbackText</p>
                 }
             </section>
         </div>
 
         <div class="job-main">
             <section class="job-card">
-                <h2 class="job-section-title">Skills</h2>
+                <h2 class="job-section-title">@skillsText</h2>
                 @if (skills.Any())
                 {
                     <div class="job-skills">
@@ -274,12 +290,12 @@
                 }
                 else
                 {
-                    <p>Skills will be evaluated during the AI interview.</p>
+                    <p>@skillsFallbackText</p>
                 }
             </section>
 
             <section class="job-card">
-                <h2 class="job-section-title">Job Details</h2>
+                <h2 class="job-section-title">@jobDetailsSectionText</h2>
                 @if (filteredSpecificationGroups.Any())
                 {
                     <div class="job-spec-groups">
@@ -361,8 +377,8 @@
 
             if (customWishlistButton) {
                 customWishlistButton.addEventListener('click', () => {
-                    if (customWishlistButton.disabled) {
-                        displayBarNotification('Save the job first, then choose a custom wishlist.', 'warning', 3500);
+                if (customWishlistButton.disabled) {
+                        displayBarNotification(saveButton.dataset.saveFirstText || '', 'warning', 3500);
                         return false;
                     }
 
