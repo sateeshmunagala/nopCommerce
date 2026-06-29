@@ -255,7 +255,7 @@ public class PluginDefaultsTests
             Assert.That(resources.ContainsKey(key), Is.True, $"Missing job details locale resource: {key}");
         }
 
-        Assert.That(resources["Plugins.Misc.AIInterview.VendorJobCreation.ShortDescription"], Is.EqualTo("Job summary"));
+        Assert.That(resources["Plugins.Misc.AIInterview.VendorJobCreation.ShortDescription"], Is.EqualTo("Job Title"));
     }
 
     [Test]
@@ -289,7 +289,7 @@ public class PluginDefaultsTests
                      ".JobDetails.Skills\"] =",
                      ".JobDetails.SkillsFallback\"] =",
                      ".JobDetails.JobDetails\"] =",
-                     ".VendorJobCreation.ShortDescription\"] = \"Job summary\""
+                     ".VendorJobCreation.ShortDescription\"] = \"Job Title\""
                  })
         {
             Assert.That(pluginText.Split(key, StringSplitOptions.None).Length - 1, Is.GreaterThanOrEqualTo(2), $"Expected install and upgrade seeding for: {key}");

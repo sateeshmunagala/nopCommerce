@@ -142,6 +142,11 @@
     white-space: nowrap;
 }
 
+.applications-sort select {
+    flex: 0 1 auto;
+    min-width: 180px;
+}
+
 .applications-sort select,
 .employer-field input,
 .employer-field select,
@@ -2890,6 +2895,18 @@ body.ai-job-preview-open {
     .job-meta-item,
     .report-preview {
         max-width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .applications-sort {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .applications-sort select {
+        width: 100%;
+        min-width: 0;
     }
 }
 
