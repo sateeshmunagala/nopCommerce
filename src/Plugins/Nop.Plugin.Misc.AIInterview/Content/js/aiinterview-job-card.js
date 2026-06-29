@@ -107,6 +107,8 @@
     function loadDrawerContent(drawer) {
         var drawerBody = drawer.querySelector('[data-ai-job-drawer-body]');
         var drawerUrl = drawer.getAttribute('data-drawer-url');
+        var productUrl = drawer.getAttribute('data-product-url');
+        var productLinkText = drawer.getAttribute('data-product-link-text') || '';
         var drawerErrorText = drawer.getAttribute('data-error-text') || '';
 
         if (!drawerBody || !drawerUrl || drawer.dataset.loaded === 'true') {
@@ -129,7 +131,20 @@
             drawer.dataset.loaded = 'true';
         }).catch(function () {
             drawer.dataset.loaded = 'false';
-            drawerBody.innerHTML = '<div class="ai-job-preview-loading">' + drawerErrorText + '</div>';
+            drawerBody.innerHTML = '';
+
+            var message = document.createElement('div');
+            message.className = 'ai-job-preview-loading';
+            message.textContent = drawerErrorText;
+            drawerBody.appendChild(message);
+
+            if (productUrl) {
+                var link = document.createElement('a');
+                link.className = 'button-2 ai-job-preview-fallback-link';
+                link.href = productUrl;
+                link.textContent = productLinkText;
+                drawerBody.appendChild(link);
+            }
         });
     }
 

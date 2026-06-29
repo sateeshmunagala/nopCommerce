@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
+using System.Globalization;
 using Nop.Web.Framework.Mvc.Routing;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
@@ -908,6 +909,7 @@ public class MockAiInterviewController : BasePluginController
         ViewBag.AvailableProducts = await BuildEmployerInviteProductSelectListAsync(customer);
 
         ViewBag.CreditBalance = wallet.Balance;
+        ViewBag.CreditBalanceDisplay = decimal.Truncate(wallet.Balance).ToString("0", CultureInfo.InvariantCulture);
         ViewBag.SponsorInviteStatuses = inviteStatuses;
 
         return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/EmployerManage.cshtml", invites);

@@ -23,7 +23,7 @@
     </div>
     <div class="page-body">
         <div class="credit-balance">
-            <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Balance"):</strong> @ViewBag.CreditBalance
+            <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Balance"):</strong> @ViewBag.CreditBalanceDisplay
         </div>
 
         <div class="section create-invite">
@@ -102,8 +102,8 @@
                                     <td>
                                         @if (isActiveInvite)
                                         {
-                                            <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post">
-                                                <button type="submit" class="button-2">@T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate")</button>
+                                            <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post" class="invite-deactivate-form">
+                                                <button type="submit" class="button-2 invite-deactivate-button">@T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate")</button>
                                             </form>
                                         }
                                     </td>

@@ -178,9 +178,12 @@ public class PluginDefaultsTests
                      "Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle",
                      "Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CompanySponsored",
                      "Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CandidatePaid",
+                     "Plugins.Misc.AIInterview.Employer.Applications.PageSize",
+                     "Plugins.Misc.AIInterview.Employer.Applications.Reset",
                      "Plugins.Misc.AIInterview.VendorScoreboard.Title",
                      "Plugins.Misc.AIInterview.VendorScoreboard.Eyebrow",
                      "Plugins.Misc.AIInterview.VendorScoreboard.TotalCompletedAssessments",
+                     "Plugins.Misc.AIInterview.VendorScoreboard.ShortlistedDetail",
                      "Plugins.Misc.AIInterview.VendorScoreboard.ViewAnalysis"
                  })
         {
@@ -219,6 +222,26 @@ public class PluginDefaultsTests
                  })
         {
             Assert.That(resources.ContainsKey(key), Is.True, $"Missing job card locale resource: {key}");
+        }
+    }
+
+    [Test]
+    public void Public_Vendor_Resources_Are_Seeded_In_Install_And_Upgrade_Paths()
+    {
+        var pluginText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("AIInterviewPlugin.cs"));
+
+        foreach (var key in new[]
+                 {
+                     ".JobCard.LoadingJobDetails\"] =",
+                     ".JobCard.UnableToLoadJobDetails\"] =",
+                     ".VendorScoreboard.ShortlistedDetail\"] =",
+                     ".Employer.Invite.CreateTitle\"] =",
+                     ".Employer.Invite.ActiveTitle\"] =",
+                     ".Employer.Applications.PageSize\"] =",
+                     ".Employer.Applications.Reset\"] ="
+                 })
+        {
+            Assert.That(pluginText.Split(key, StringSplitOptions.None).Length - 1, Is.GreaterThanOrEqualTo(2), $"Expected install and upgrade seeding for: {key}");
         }
     }
 

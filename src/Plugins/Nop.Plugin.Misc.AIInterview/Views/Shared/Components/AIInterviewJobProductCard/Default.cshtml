@@ -18,6 +18,7 @@
     var closePreviewText = T("Plugins.Misc.AIInterview.JobCard.CloseJobPreview").Text;
     var loadingJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.LoadingJobDetails").Text;
     var unableToLoadJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.UnableToLoadJobDetails").Text;
+    var viewJobLinkText = T("Plugins.Misc.AIInterview.JobCard.ViewJob").Text;
     var postedText = string.Format(T("Plugins.Misc.AIInterview.JobCard.Posted").Text, Model.CreatedOnUtc.ToString("MMM d, yyyy"));
     var appliedCountText = string.Format(T("Plugins.Misc.AIInterview.JobCard.AppliedCount").Text, Model.AppliedCount);
 
@@ -138,6 +139,8 @@
          id="@drawerId"
          aria-hidden="true"
          data-drawer-url="@drawerContentUrl"
+         data-product-url="@productUrl"
+         data-product-link-text="@viewJobLinkText"
          data-loading-text="@loadingJobDetailsText"
          data-error-text="@unableToLoadJobDetailsText">
         <div class="ai-job-preview-drawer-backdrop" data-ai-job-preview-close="true"></div>

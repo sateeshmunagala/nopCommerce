@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Moq;
 using Nop.Core;
 using Nop.Core.Domain.Customers;
@@ -151,6 +152,45 @@ public class EmployerTests
     }
 
     [Test]
+    public async Task EmployerApplications_Populates_ReportPanelUrl_For_Completed_Session()
+    {
+        var applications = new PagedList<JobApplication>(new List<JobApplication>
+        {
+            new() { Id = 5, CustomerId = 789, ProductId = 22, JobTitle = "Platform Engineer", CreatedOnUtc = DateTime.UtcNow, Status = JobApplicationStatuses.Completed }
+        }, 0, 10);
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper.Setup(x => x.Action(It.IsAny<UrlActionContext>()))
+            .Returns<UrlActionContext>(context =>
+                context.Action switch
+                {
+                    "Report" => "/AIInterview/Report/91",
+                    "ReportPanel" => "/AIInterview/ReportPanel?sessionId=91",
+                    _ => string.Empty
+                });
+        _controller.Url = urlHelper.Object;
+
+        _applicationService.Setup(x => x.GetApplicationsAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<decimal?>(), It.IsAny<decimal?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(),
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>()))
+            .ReturnsAsync(applications);
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>()))
+            .ReturnsAsync(new List<Customer> { new() { Id = 789, FirstName = "Jamie", LastName = "Doe", Email = "jamie@example.com" } });
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(789))
+            .ReturnsAsync(new List<InterviewSession>
+            {
+                new() { Id = 91, CustomerId = 789, ProductId = 22, JobApplicationId = 5, CompletedOnUtc = DateTime.UtcNow, Score = 88, ReportData = "ready" }
+            });
+
+        var result = await _controller.EmployerApplications(new ApplicationListModel());
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (ApplicationListModel)((ViewResult)result).Model;
+        var application = model.Applications.Single();
+        Assert.That(application.InterviewReportUrl, Does.Contain("/AIInterview/Report/91").IgnoreCase);
+        Assert.That(application.InterviewReportPanelUrl, Does.Contain("sessionId=91").IgnoreCase);
+    }
+
+    [Test]
     public async Task UpdateStatus_SavesCorrectly()
     {
         var application = new JobApplication { Id = 1, Status = "Applied", ProductId = 10 };
@@ -264,6 +304,7 @@ public class EmployerTests
         Assert.That(result, Is.TypeOf<ViewResult>());
         var viewResult = (ViewResult)result;
         Assert.That(viewResult.ViewData["CreditBalance"], Is.EqualTo(500m));
+        Assert.That(viewResult.ViewData["CreditBalanceDisplay"], Is.EqualTo("500"));
         Assert.That(viewResult.Model, Is.EqualTo(invites));
     }
 
@@ -695,6 +736,16 @@ public class EmployerTests
         Assert.That(employerApplications, Does.Contain("class=\"fieldset\""));
         Assert.That(employerApplications, Does.Contain("class=\"table-wrapper\""));
         Assert.That(employerApplications, Does.Contain("class=\"data-table employer-table\""));
+        Assert.That(employerApplications, Does.Contain("js-open-report-drawer"));
+        Assert.That(employerApplications, Does.Contain("data-report-panel-url"));
+        Assert.That(employerApplications, Does.Contain("data-report-title"));
+        Assert.That(employerApplications, Does.Contain("_CandidateReportDrawer.cshtml"));
+        Assert.That(employerApplications, Does.Contain("class=\"status-form employer-status-form\""));
+        Assert.That(employerApplications, Does.Contain("class=\"employer-status-select\""));
+        Assert.That(employerApplications, Does.Contain("class=\"employer-status-comment\""));
+        Assert.That(employerApplications, Does.Contain("class=\"button-2 employer-status-update\""));
+        Assert.That(employerApplications, Does.Not.Contain("Admin.Common.PageSize"));
+        Assert.That(employerApplications, Does.Not.Contain("Admin.Common.Reset"));
 
         Assert.That(vendorScoreboard, Does.Contain("Layout = \"_ColumnsTwo\""));
         Assert.That(vendorScoreboard, Does.Contain("class=\"section scoreboard-deck-shell\""));
@@ -709,6 +760,8 @@ public class EmployerTests
         Assert.That(vendorScoreboard, Does.Contain("Plugins.Misc.AIInterview.VendorScoreboard.CandidateAssessmentMatrix"));
         Assert.That(vendorScoreboard, Does.Contain("scoreboard-deck-status"));
         Assert.That(vendorScoreboard, Does.Not.Contain(">Employer Scoreboard<"));
+        Assert.That(vendorScoreboard, Does.Not.Contain("<h2 class=\"scoreboard-deck-title\">@titleText</h2>"));
+        Assert.That(vendorScoreboard, Does.Contain("Plugins.Misc.AIInterview.VendorScoreboard.AssessmentWorkflow"));
 
         Assert.That(employerManage, Does.Contain("Layout = \"_ColumnsTwo\""));
         Assert.That(employerManage, Does.Contain("class=\"section create-invite\""));
@@ -719,6 +772,9 @@ public class EmployerTests
         Assert.That(employerManage, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Title"));
         Assert.That(employerManage, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle"));
         Assert.That(employerManage, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle"));
+        Assert.That(employerManage, Does.Contain("ViewBag.CreditBalanceDisplay"));
+        Assert.That(employerManage, Does.Contain("class=\"invite-deactivate-form\""));
+        Assert.That(employerManage, Does.Contain("class=\"button-2 invite-deactivate-button\""));
 
         Assert.That(historyView, Does.Contain("Plugins.Misc.AIInterview.Report.ViewReport"));
         Assert.That(historyView, Does.Contain("fa fa-eye"));
@@ -884,16 +940,24 @@ public class EmployerTests
         Assert.That(jobCardView, Does.Not.Contain("Prompt Source"));
         Assert.That(jobCardView, Does.Contain("data-loading-text=\"@loadingJobDetailsText\""));
         Assert.That(jobCardView, Does.Contain("data-error-text=\"@unableToLoadJobDetailsText\""));
+        Assert.That(jobCardView, Does.Contain("data-product-url=\"@productUrl\""));
+        Assert.That(jobCardView, Does.Contain("data-product-link-text=\"@viewJobLinkText\""));
         Assert.That(jobCardView, Does.Contain("T(\"Plugins.Misc.AIInterview.JobCard.LoadingJobDetails\")"));
         Assert.That(jobCardView, Does.Contain("T(\"Plugins.Misc.AIInterview.JobCard.UnableToLoadJobDetails\")"));
 
         Assert.That(jobDetailView, Does.Contain("_AIInterviewJobDetailsContent.cshtml"));
+        Assert.That(jobDetailView, Does.Contain("@using Nop.Services.Helpers"));
         Assert.That(sharedJobDetailView, Does.Contain("@inject IAIInterviewJobDisplayService aiInterviewJobDisplayService"));
+        Assert.That(sharedJobDetailView, Does.Contain("@using Nop.Services.Helpers"));
+        Assert.That(sharedJobDetailView, Does.Contain("@using Nop.Web.Framework.Infrastructure"));
         Assert.That(sharedJobDetailView, Does.Contain("AIInterviewJobDisplayService.CompactSpecificationAliases"));
         Assert.That(sharedJobDetailView, Does.Contain("GetSpecificationSnapshotAsync(Model.Id, Model.ProductSpecificationModel)"));
         Assert.That(sharedJobDetailView, Does.Contain("AIInterviewProductDetailsViewComponent"));
         Assert.That(drawerView, Does.Contain("_AIInterviewJobDetailsContent.cshtml"));
         Assert.That(controllerText, Does.Contain("JobDetailsDrawer(int productId)"));
+        Assert.That(controllerText, Does.Contain("return NotFound(unavailableText);"));
+        Assert.That(controllerText, Does.Contain("return BadRequest(unavailableText);"));
+        Assert.That(controllerText, Does.Contain("InterviewReportPanelUrl = session != null ? BuildReportPanelUrl(session.Id) : null"));
         Assert.That(controllerText, Does.Contain("_AIInterviewJobDetailsDrawer.cshtml"));
 
         Assert.That(serviceText, Does.Contain("WorkArrangementAliases = [\"Work Arrangement\", \"Work Mode\", \"Work Type\"]"));
@@ -907,13 +971,18 @@ public class EmployerTests
         Assert.That(cssText, Does.Contain("grid-template-columns: 84px minmax(0, 1fr);"));
         Assert.That(cssText, Does.Contain(".ai-job-card-summary"));
         Assert.That(cssText, Does.Contain("text-overflow: ellipsis;"));
+        Assert.That(cssText, Does.Contain(".ai-job-preview-fallback-link"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-drawer"));
         Assert.That(cssText, Does.Contain("width: 50vw;"));
         Assert.That(cssText, Does.Contain("width: 88vw;"));
         Assert.That(cssText, Does.Contain("height: 100dvh;"));
+        Assert.That(cssText, Does.Contain("rgba(15, 23, 42, 0.78)"));
+        Assert.That(cssText, Does.Contain("backdrop-filter: blur(2px);"));
         Assert.That(cssText, Does.Contain(".ai-job-card-save.is-saved"));
         Assert.That(cssText, Does.Contain("background: #20252b;"));
         Assert.That(cssText, Does.Contain(".ai-job-card-save[aria-pressed=\"true\"]"));
+        Assert.That(cssText, Does.Contain(".invite-deactivate-button"));
+        Assert.That(cssText, Does.Contain(".employer-status-form"));
     }
 
     private void SetupVendorSpecificationAttributes(bool includeJobLocation = true, bool includeSalaryRange = true)

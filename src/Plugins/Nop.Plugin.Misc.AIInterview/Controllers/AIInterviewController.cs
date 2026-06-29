@@ -138,22 +138,36 @@ public class AIInterviewController : BasePluginController
 
     public virtual async Task<IActionResult> JobDetailsDrawer(int productId)
     {
+        var unavailableText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.UnableToLoadJobDetails");
+        var notFoundText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.JobNotFound");
+        var invalidJobText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.InvalidJob");
+
         if (!_aiInterviewSettings.Enabled || _productModelFactory == null)
-            return NotFound();
+            return NotFound(unavailableText);
 
         var product = await _productService.GetProductByIdAsync(productId);
         if (product == null || _productTemplateService == null)
-            return NotFound();
+            return NotFound(notFoundText);
 
         var productTemplate = await _productTemplateService.GetProductTemplateByIdAsync(product.ProductTemplateId);
         if (productTemplate == null ||
             !string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase))
         {
-            return NotFound();
+            return NotFound(invalidJobText);
         }
 
-        var model = await _productModelFactory.PrepareProductDetailsModelAsync(product);
-        return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_AIInterviewJobDetailsDrawer.cshtml", model);
+        try
+        {
+            var model = await _productModelFactory.PrepareProductDetailsModelAsync(product);
+            if (model == null)
+                return BadRequest(unavailableText);
+
+            return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_AIInterviewJobDetailsDrawer.cshtml", model);
+        }
+        catch
+        {
+            return BadRequest(unavailableText);
+        }
     }
 
     [HttpPost]
@@ -1058,6 +1072,7 @@ public class AIInterviewController : BasePluginController
                 StatusComment = a.StatusComment,
                 InterviewScore = session?.Score,
                 InterviewReportUrl = session != null ? Url.Action("Report", "AIInterview", new { sessionId = session.Id }) : null,
+                InterviewReportPanelUrl = session != null ? BuildReportPanelUrl(session.Id) : null,
                 CreatedOn = a.CreatedOnUtc,
                 AttemptCount = appSessions.Count,
                 CompletedOn = session?.CompletedOnUtc,

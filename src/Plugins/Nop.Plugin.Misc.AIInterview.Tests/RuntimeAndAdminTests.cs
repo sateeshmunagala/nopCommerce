@@ -1245,6 +1245,8 @@ public class RuntimeAndAdminTests
         Assert.That(jobCardScript, Does.Contain("fetch(drawerUrl"));
         Assert.That(jobCardScript, Does.Contain("executeScripts(drawerBody);"));
         Assert.That(jobCardScript, Does.Contain("drawer.dataset.loaded = 'true';"));
+        Assert.That(jobCardScript, Does.Contain("var productUrl = drawer.getAttribute('data-product-url');"));
+        Assert.That(jobCardScript, Does.Contain("ai-job-preview-fallback-link"));
         Assert.That(jobCardScript, Does.Contain("var drawerErrorText = drawer.getAttribute('data-error-text') || '';"));
         Assert.That(jobCardScript, Does.Not.Contain("Unable to load job details."));
         Assert.That(jobCardScript, Does.Not.Contain("Model.PreviewDescription"));

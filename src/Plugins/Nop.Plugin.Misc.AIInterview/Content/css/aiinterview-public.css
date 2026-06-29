@@ -234,6 +234,22 @@
     min-width: 0;
 }
 
+.employer-status-form {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+}
+
+.employer-status-select,
+.employer-status-comment {
+    width: 100%;
+}
+
+.employer-status-update {
+    min-height: 40px;
+    padding: 8px 14px;
+    justify-self: start;
+}
+
 .vendor-job-form-grid {
     display: grid;
     gap: 16px;
@@ -344,6 +360,17 @@
     justify-content: flex-start;
 }
 
+.invite-deactivate-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.invite-deactivate-button {
+    min-height: 38px;
+    padding: 8px 14px;
+    white-space: nowrap;
+}
+
 .invite-table-wrapper,
 .employer-table-wrapper,
 .history-table-wrapper {
@@ -422,6 +449,10 @@
 .ai-view-report-link i,
 .ai-report-back-button i {
     font-size: 14px;
+}
+
+.ai-job-preview-fallback-link {
+    width: fit-content;
 }
 
 .employer-filter-shell {
@@ -744,7 +775,8 @@
 .ai-report-drawer-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(15, 23, 42, 0.56);
+    background: rgba(15, 23, 42, 0.78);
+    backdrop-filter: blur(2px);
 }
 
 .ai-report-drawer-panel {
@@ -760,6 +792,7 @@
     box-sizing: border-box;
     border-left: 1px solid #d7dde6;
     background: #f8fafc;
+    box-shadow: -20px 0 42px rgba(15, 23, 42, 0.28);
     overflow: hidden;
 }
 
@@ -1209,6 +1242,15 @@ body.ai-job-preview-open {
 
     .applications-sort {
         flex-wrap: wrap;
+    }
+
+    .html-aiinterview-employer-applications-page .status-form {
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-employer-applications-page .status-form .employer-status-update {
+        width: 100%;
+        min-width: 0;
     }
 
     .ai-report-drawer-panel {
@@ -2394,11 +2436,21 @@ body.ai-job-preview-open {
 }
 
 .html-aiinterview-employer-applications-page .status-form {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(130px, 0.9fr) minmax(0, 1.35fr) auto;
+    align-items: start;
+    gap: 8px;
 }
 
 .html-aiinterview-employer-applications-page .status-form .button-2 {
-    justify-self: start;
+    justify-self: stretch;
+}
+
+.html-aiinterview-employer-applications-page .status-form .employer-status-comment {
+    min-width: 180px;
+}
+
+.html-aiinterview-employer-applications-page .status-form .employer-status-update {
+    min-width: 92px;
 }
 
 .html-aiinterview-my-applications-page .applications-table-wrap,
@@ -2414,6 +2466,7 @@ body.ai-job-preview-open {
 
 .html-aiinterview-vendor-job-creation-page .vendor-job-submit,
 .html-aiinterview-employer-manage-page .invite-actions .button-1,
+.html-aiinterview-employer-manage-page .invite-deactivate-button,
 .html-aiinterview-employer-applications-page .employer-filter-actions .button-1,
 .html-aiinterview-employer-applications-page .employer-filter-actions .button-2 {
     min-height: 44px;
