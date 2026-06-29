@@ -18,6 +18,7 @@ public partial record AIInterviewJobProductCardModel : BaseNopEntityModel
     public string Summary { get; set; }
     public string PreviewDescription { get; set; }
     public string SeName { get; set; }
+    public string ProductUrl { get; set; }
 
     public string ImageUrl { get; set; }
     public string ImageAlt { get; set; }

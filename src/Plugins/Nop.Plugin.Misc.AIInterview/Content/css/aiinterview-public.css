@@ -815,10 +815,10 @@ body.aiinterview-report-drawer-open {
 
 .ai-job-product-card {
     display: grid;
-    grid-template-columns: 132px minmax(0, 1fr);
-    gap: 18px;
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 12px;
     align-items: start;
-    padding: 18px;
+    padding: 14px;
     border: 1px solid #d8dee4;
     border-radius: 6px;
     background: #ffffff;
@@ -840,8 +840,8 @@ body.aiinterview-report-drawer-open {
 
 .ai-job-card-logo {
     display: block;
-    width: 132px;
-    height: 132px;
+    width: 84px;
+    height: 84px;
     border: 1px solid #d8dee4;
     border-radius: 6px;
     object-fit: cover;
@@ -854,7 +854,7 @@ body.aiinterview-report-drawer-open {
     justify-content: center;
     color: #188f78;
     font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 2rem;
+    font-size: 1.45rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
@@ -862,11 +862,10 @@ body.aiinterview-report-drawer-open {
 .ai-job-card-body,
 .ai-job-preview-drawer-body {
     display: grid;
-    gap: 14px;
+    gap: 10px;
 }
 
 .ai-job-card-topline,
-.ai-job-preview-drawer-header,
 .ai-job-preview-actions {
     display: flex;
     align-items: flex-start;
@@ -892,8 +891,8 @@ body.aiinterview-report-drawer-open {
     background: transparent;
     color: #20252b;
     font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 1.9rem;
-    line-height: 1.05;
+    font-size: 1.28rem;
+    line-height: 1.08;
     text-align: left;
     text-transform: uppercase;
     cursor: pointer;
@@ -906,17 +905,19 @@ body.aiinterview-report-drawer-open {
 
 .ai-job-card-company {
     color: #374151;
+    font-size: 0.94rem;
     font-weight: 700;
-    line-height: 1.5;
+    line-height: 1.4;
 }
 
 .ai-job-card-summary,
 .ai-job-preview-description {
     color: #4b5563;
-    line-height: 1.6;
+    line-height: 1.5;
 }
 
 .ai-job-card-summary {
+    font-size: 0.92rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -925,26 +926,30 @@ body.aiinterview-report-drawer-open {
 .ai-job-card-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
 }
 
 .ai-job-card-spec {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    min-height: 34px;
+    gap: 6px;
+    min-height: 30px;
     max-width: 100%;
-    padding: 7px 12px;
+    padding: 5px 10px;
     border: 1px solid #d8dee4;
     border-radius: 999px;
     background: #f9fbfb;
     color: #334155;
-    line-height: 1.4;
+    font-size: 0.84rem;
+    line-height: 1.3;
 }
 
 .ai-job-card-spec span:last-child {
     min-width: 0;
-    overflow-wrap: anywhere;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .ai-job-card-spec-icon {
@@ -954,13 +959,13 @@ body.aiinterview-report-drawer-open {
 .ai-job-card-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
 }
 
 .ai-job-card-view-job {
-    min-height: 40px;
-    padding: 10px 16px;
+    min-height: 34px;
+    padding: 7px 12px;
 }
 
 .ai-job-card-save {
@@ -1044,7 +1049,7 @@ body.aiinterview-report-drawer-open {
     position: fixed;
     inset: 0;
     display: none;
-    z-index: 9999;
+    z-index: 10000;
 }
 
 .ai-job-preview-drawer.is-open {
@@ -1058,28 +1063,32 @@ body.aiinterview-report-drawer-open {
 }
 
 .ai-job-preview-drawer-panel {
-    position: absolute;
-    top: 0;
+    position: fixed;
+    inset-block: 0;
     right: 0;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
-    width: min(560px, 100%);
-    height: 100%;
-    padding: 24px;
+    width: 50vw;
+    min-width: min(520px, 100vw);
+    max-width: 880px;
+    height: 100vh;
+    height: 100dvh;
+    padding: 0;
     border-left: 1px solid #d8dee4;
-    background: #ffffff;
+    background: #f3f5f7;
     box-sizing: border-box;
     overflow: hidden;
+    box-shadow: -16px 0 36px rgba(15, 23, 42, 0.18);
 }
 
-.ai-job-preview-drawer-header h2 {
-    margin: 10px 0 0;
-    color: #20252b;
-    font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 1.7rem;
-    font-weight: 400;
-    line-height: 1.05;
-    text-transform: uppercase;
+.ai-job-preview-drawer-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #d8dee4;
+    background: rgba(255, 255, 255, 0.96);
 }
 
 .ai-job-preview-drawer-close {
@@ -1097,11 +1106,45 @@ body.aiinterview-report-drawer-open {
 
 .ai-job-preview-drawer-body {
     overflow: auto;
-    padding-right: 4px;
+    padding: 18px;
 }
 
 body.ai-job-preview-open {
     overflow: hidden;
+}
+
+.ai-job-preview-loading {
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+.ai-job-preview-drawer-content,
+.ai-job-preview-drawer-form {
+    min-width: 0;
+}
+
+.ai-job-preview-drawer-form {
+    display: grid;
+}
+
+.ai-job-preview-drawer-body .job-shell {
+    gap: 20px;
+}
+
+.ai-job-preview-drawer-body .job-hero {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 20px;
+}
+
+.ai-job-preview-drawer-body .job-content-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.ai-job-preview-drawer-body .job-card,
+.ai-job-preview-drawer-body .job-reviews-wrap {
+    padding: 20px;
 }
 
 @media (max-width: 1000px) {
@@ -1174,22 +1217,24 @@ body.ai-job-preview-open {
     }
 
     .ai-job-product-card {
-        grid-template-columns: 88px minmax(0, 1fr);
-        gap: 14px;
-        padding: 14px;
+        grid-template-columns: 62px minmax(0, 1fr);
+        gap: 10px;
+        padding: 12px;
     }
 
     .ai-job-card-logo {
-        width: 88px;
-        height: 88px;
+        width: 62px;
+        height: 62px;
     }
 
     .ai-job-card-title-link {
-        font-size: 1.35rem;
+        font-size: 1.08rem;
     }
 
     .ai-job-preview-drawer-panel {
-        padding: 16px;
+        width: 88vw;
+        min-width: 0;
+        max-width: none;
     }
 }
 

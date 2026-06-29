@@ -1234,6 +1234,18 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void JobCard_Drawer_Loads_Server_Rendered_Detail_Content()
+    {
+        var jobCardScript = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "js", "aiinterview-job-card.js"));
+
+        Assert.That(jobCardScript, Does.Contain("data-ai-job-drawer-body"));
+        Assert.That(jobCardScript, Does.Contain("fetch(drawerUrl"));
+        Assert.That(jobCardScript, Does.Contain("executeScripts(drawerBody);"));
+        Assert.That(jobCardScript, Does.Contain("drawer.dataset.loaded = 'true';"));
+        Assert.That(jobCardScript, Does.Not.Contain("Model.PreviewDescription"));
+    }
+
+    [Test]
     public void AdminCandidateDetailsView_Uses_Tabbed_Dashboard_Layout()
     {
         var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Areas", "Admin", "Views", "AIInterviewAdmin", "CandidateDetails.cshtml"));

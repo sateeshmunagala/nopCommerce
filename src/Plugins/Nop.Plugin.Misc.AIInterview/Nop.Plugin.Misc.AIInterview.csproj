@@ -44,6 +44,8 @@
     <None Remove="Views\Admin\Scoreboard.cshtml" />
     <None Remove="Views\Admin\_ProductJobRequirements.cshtml" />
     <None Remove="Views\Shared\_CandidateReportDrawer.cshtml" />
+    <None Remove="Views\Shared\_AIInterviewJobDetailsContent.cshtml" />
+    <None Remove="Views\Shared\_AIInterviewJobDetailsDrawer.cshtml" />
     <None Remove="Views\Shared\_InterviewReportContent.cshtml" />
     <None Remove="Views\Shared\Components\AIInterviewJobProductCard\Default.cshtml" />
     <None Remove="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml" />
@@ -117,6 +119,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\_CandidateReportDrawer.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_AIInterviewJobDetailsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_AIInterviewJobDetailsDrawer.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\_InterviewReportContent.cshtml">

@@ -51,7 +51,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         _aiInterviewSettings = aiInterviewSettings;
     }
 
-    public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData)
+    public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData, string formDomId = null, string contextId = null)
     {
         if (additionalData is not ProductDetailsModel model)
             return Content("");
@@ -93,6 +93,8 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         ViewBag.ProductId = productId;
         ViewBag.IsAuthenticated = customer != null;
         ViewBag.CreditPurchasePageUrl = NormalizeCreditPurchasePageUrl(_aiInterviewSettings?.CreditPurchasePageUrl);
+        ViewBag.ProductFormId = string.IsNullOrWhiteSpace(formDomId) ? "product-details-form" : formDomId;
+        ViewBag.JobAiContextId = string.IsNullOrWhiteSpace(contextId) ? $"job-{productId}" : contextId;
 
         var sponsorToken = HttpContext?.Request?.Query?["sponsorToken"].ToString() ?? "";
         ViewBag.SponsorToken = sponsorToken;

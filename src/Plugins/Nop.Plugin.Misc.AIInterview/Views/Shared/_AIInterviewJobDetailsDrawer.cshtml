@@ -1,0 +1,17 @@
+@model Nop.Web.Models.Catalog.ProductDetailsModel
+
+@{
+    var drawerFormId = $"job-details-drawer-form-{Model.Id}";
+    var drawerContextId = $"job-drawer-{Model.Id}";
+}
+
+<div class="ai-job-preview-drawer-content" data-productid="@Model.Id">
+    <form asp-route="Product" asp-route-sename="@Model.SeName" method="post" id="@drawerFormId" class="ai-job-preview-drawer-form">
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_AIInterviewJobDetailsContent.cshtml", Model, new ViewDataDictionary(ViewData)
+        {
+            ["RenderMode"] = "Drawer",
+            ["ProductFormId"] = drawerFormId,
+            ["JobAiContextId"] = drawerContextId
+        })
+    </form>
+</div>

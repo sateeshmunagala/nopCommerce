@@ -760,8 +760,12 @@ public class EmployerTests
         var productBox = File.ReadAllText(Path.Combine(TestFilePathHelper.GetPluginRootPath(), "..", "..", "Presentation", "Nop.Web", "Themes", "JobBoardVenture", "Views", "Shared", "_ProductBox.cshtml"));
         var jobCardView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "Components", "AIInterviewJobProductCard", "Default.cshtml"));
         var jobDetailView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "ProductTemplate.JobDetails.cshtml"));
+        var sharedJobDetailView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_AIInterviewJobDetailsContent.cshtml"));
+        var drawerView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_AIInterviewJobDetailsDrawer.cshtml"));
         var cssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
         var serviceText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Services", "AIInterviewJobDisplayService.cs"));
+        var modelText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Models", "JobCardModels.cs"));
+        var controllerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "AIInterviewController.cs"));
 
         Assert.That(productBox, Does.Contain("Component.InvokeAsync(\"AIInterviewJobProductCard\""));
         Assert.That(productBox, Does.Contain("if (!string.IsNullOrWhiteSpace(aiInterviewCardMarkup))"));
@@ -770,26 +774,40 @@ public class EmployerTests
         Assert.That(jobCardView, Does.Contain("ai-job-product-card"));
         Assert.That(jobCardView, Does.Contain("ai-job-card-title-link"));
         Assert.That(jobCardView, Does.Contain("ai-job-preview-drawer"));
-        Assert.That(jobCardView, Does.Contain("ai-job-card-summary"));
+        Assert.That(jobCardView, Does.Contain("data-drawer-url"));
         Assert.That(jobCardView, Does.Contain("ai-job-card-save"));
         Assert.That(jobCardView, Does.Contain("aria-pressed"));
         Assert.That(jobCardView, Does.Contain("fa-bookmark"));
         Assert.That(jobCardView, Does.Contain("data-toggle-url"));
+        Assert.That(jobCardView, Does.Contain("href=\"@productUrl\""));
+        Assert.That(jobCardView, Does.Not.Contain("href=\"#\""));
+        Assert.That(jobCardView, Does.Not.Contain("@Model.PreviewDescription"));
         Assert.That(jobCardView, Does.Not.Contain("Prompt Source"));
 
-        Assert.That(jobDetailView, Does.Contain("@inject IAIInterviewJobDisplayService aiInterviewJobDisplayService"));
-        Assert.That(jobDetailView, Does.Contain("AIInterviewJobDisplayService.CompactSpecificationAliases"));
-        Assert.That(jobDetailView, Does.Contain("GetSpecificationSnapshotAsync(Model.Id, Model.ProductSpecificationModel)"));
+        Assert.That(jobDetailView, Does.Contain("_AIInterviewJobDetailsContent.cshtml"));
+        Assert.That(sharedJobDetailView, Does.Contain("@inject IAIInterviewJobDisplayService aiInterviewJobDisplayService"));
+        Assert.That(sharedJobDetailView, Does.Contain("AIInterviewJobDisplayService.CompactSpecificationAliases"));
+        Assert.That(sharedJobDetailView, Does.Contain("GetSpecificationSnapshotAsync(Model.Id, Model.ProductSpecificationModel)"));
+        Assert.That(sharedJobDetailView, Does.Contain("AIInterviewProductDetailsViewComponent"));
+        Assert.That(drawerView, Does.Contain("_AIInterviewJobDetailsContent.cshtml"));
+        Assert.That(controllerText, Does.Contain("JobDetailsDrawer(int productId)"));
+        Assert.That(controllerText, Does.Contain("_AIInterviewJobDetailsDrawer.cshtml"));
 
         Assert.That(serviceText, Does.Contain("WorkArrangementAliases = [\"Work Arrangement\", \"Work Mode\", \"Work Type\"]"));
         Assert.That(serviceText, Does.Contain("JobLocationAliases = [\"Job Location\", \"Location\"]"));
         Assert.That(serviceText, Does.Contain("ExperienceLevelAliases = [\"Experience Level\", \"Experience\"]"));
+        Assert.That(modelText, Does.Contain("public string ProductUrl { get; set; }"));
+        Assert.That(serviceText, Does.Contain("ProductUrl = await ResolveProductUrlAsync(product)"));
+        Assert.That(serviceText, Does.Contain("RouteGenericUrlAsync(product)"));
 
         Assert.That(cssText, Does.Contain(".ai-job-product-card"));
-        Assert.That(cssText, Does.Contain("grid-template-columns: 132px minmax(0, 1fr);"));
+        Assert.That(cssText, Does.Contain("grid-template-columns: 84px minmax(0, 1fr);"));
         Assert.That(cssText, Does.Contain(".ai-job-card-summary"));
         Assert.That(cssText, Does.Contain("text-overflow: ellipsis;"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-drawer"));
+        Assert.That(cssText, Does.Contain("width: 50vw;"));
+        Assert.That(cssText, Does.Contain("width: 88vw;"));
+        Assert.That(cssText, Does.Contain("height: 100dvh;"));
         Assert.That(cssText, Does.Contain(".ai-job-card-save.is-saved"));
         Assert.That(cssText, Does.Contain("background: #20252b;"));
         Assert.That(cssText, Does.Contain(".ai-job-card-save[aria-pressed=\"true\"]"));

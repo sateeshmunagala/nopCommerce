@@ -8,6 +8,13 @@
     string sponsorToken = ViewBag.SponsorToken as string;
     string creditPurchasePageUrl = ViewBag.CreditPurchasePageUrl as string ?? "/pricing";
     string interviewError = Context?.Request?.Query["interviewError"].ToString();
+    string productFormId = ViewBag.ProductFormId as string ?? "product-details-form";
+    string jobAiContextId = ViewBag.JobAiContextId as string ?? $"job-{productId}";
+    string resumeInputId = $"job-resume-file-{jobAiContextId}";
+    string applyPanelId = $"job-apply-panel-{jobAiContextId}";
+    string applyButtonId = $"job-apply-button-{jobAiContextId}";
+    string startButtonId = $"start-job-interview-{jobAiContextId}";
+    string feedbackId = $"job-ai-feedback-{jobAiContextId}";
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
 }
 
@@ -56,23 +63,23 @@
 
             <div class="job-ai-card">
                 <h3>@T("Plugins.Misc.AIInterview.Apply.Title")</h3>
-                <div id="job-apply-panel">
+                <div id="@applyPanelId">
                     <input type="hidden" name="ProductId" value="@productId" />
                     <input type="hidden" name="JobTitle" value="@Model.Name" />
-                    <label for="job-resume-file">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
-                    <input id="job-resume-file" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                    <label for="@resumeInputId">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
+                    <input id="@resumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
                     <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
                     <div class="job-ai-actions">
-                        <button type="button" class="job-ai-action job-ai-action-primary apply-btn" id="job-apply-button" @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                        <button type="button" class="job-ai-action job-ai-action-primary apply-btn" id="@applyButtonId" @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
                         <button type="button"
                                 class="job-ai-action job-ai-action-secondary start-interview-btn"
-                                id="start-job-interview"
+                                id="@startButtonId"
                                 data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
                     </div>
                 </div>
             </div>
 
-            <div id="job-ai-feedback" class="job-inline-message" role="status" aria-live="polite"></div>
+            <div id="@feedbackId" class="job-inline-message" role="status" aria-live="polite"></div>
         }
     </div>
 </div>
@@ -81,11 +88,11 @@
 {
     <script asp-location="Footer">
         (() => {
-            const feedback = document.getElementById('job-ai-feedback');
-            const applyPanel = document.getElementById('job-apply-panel');
-            const productForm = document.getElementById('product-details-form');
-            const startButton = document.getElementById('start-job-interview');
-            const applyButton = document.getElementById('job-apply-button');
+            const feedback = document.getElementById('@feedbackId');
+            const applyPanel = document.getElementById('@applyPanelId');
+            const productForm = document.getElementById('@productFormId');
+            const startButton = document.getElementById('@startButtonId');
+            const applyButton = document.getElementById('@applyButtonId');
             const sponsorToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sponsorToken ?? string.Empty));
             const safeRequestError = 'Unable to reach the interview service. Please check your network and try again.';
 
@@ -188,13 +195,13 @@
             };
 
             document.addEventListener('click', async (event) => {
-                const applyButton = event.target.closest?.('#job-apply-button');
+                const applyButton = event.target.closest?.('#@applyButtonId');
                 if (applyButton) {
                     await applyInterview();
                     return;
                 }
 
-                const startButton = event.target.closest?.('#start-job-interview, [data-start-interview-button="true"]');
+                const startButton = event.target.closest?.('#@startButtonId');
                 if (startButton) {
                     await startInterview();
                 }

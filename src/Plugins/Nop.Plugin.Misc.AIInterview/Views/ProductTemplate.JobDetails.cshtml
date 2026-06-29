@@ -1,32 +1,12 @@
 @model Nop.Web.Models.Catalog.ProductDetailsModel
 
-@using Nop.Core.Domain.Catalog
-@using Nop.Core.Domain.Orders
 @using Nop.Core.Domain.Seo
-@using Nop.Core.Domain.Customers
-@using Nop.Core
 @using Nop.Core.Http
-@using Nop.Services.Helpers
-@using Nop.Services.Html
-@using Nop.Services.Media
-@using Nop.Services.Orders
-@using Nop.Services.Stores
-@using Nop.Services.Vendors
 @using Nop.Web.Components
 @using Nop.Web.Framework.Infrastructure
-@using Nop.Plugin.Misc.AIInterview.Components
-@using Nop.Plugin.Misc.AIInterview.Services
 
-@inject IApplicationService applicationService
-@inject IHtmlFormatter htmlFormatter
 @inject IWebHelper webHelper
 @inject SeoSettings seoSettings
-@inject IWorkContext workContext
-@inject IStoreContext storeContext
-@inject IShoppingCartService shoppingCartService
-@inject IVendorService vendorService
-@inject IPictureService pictureService
-@inject IAIInterviewJobDisplayService aiInterviewJobDisplayService
 
 @{
     Layout = "_ColumnsOne";
@@ -46,110 +26,6 @@
     }
 
     NopHtml.AddJsonLdParts(Model.JsonLd);
-
-    var specificationGroups = Model.ProductSpecificationModel?.Groups
-        ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeGroupModel>();
-    var specificationAttributes = specificationGroups
-        .SelectMany(group => group.Attributes ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeModel>())
-        .ToList();
-    var compactSpecifications = await aiInterviewJobDisplayService.GetSpecificationSnapshotAsync(Model.Id, Model.ProductSpecificationModel);
-
-    Nop.Web.Models.Catalog.ProductSpecificationAttributeModel FindSpecificationAttribute(params string[] keys)
-    {
-        foreach (var key in keys)
-        {
-            var match = specificationAttributes.FirstOrDefault(specificationAttribute =>
-                string.Equals(specificationAttribute.Name, key, StringComparison.OrdinalIgnoreCase));
-            if (match != null)
-                return match;
-        }
-
-        return null;
-    }
-
-    string GetSpecificationValue(Nop.Web.Models.Catalog.ProductSpecificationAttributeModel specificationAttribute)
-    {
-        if (specificationAttribute?.Values?.Any() != true)
-            return string.Empty;
-
-        return string.Join(", ", specificationAttribute.Values
-            .Select(value => htmlFormatter.StripTags(value.ValueRaw)?.Trim())
-            .Where(value => !string.IsNullOrWhiteSpace(value)));
-    }
-
-    var heroAttributeNames = AIInterviewJobDisplayService.CompactSpecificationAliases;
-    var applyUntil = Model.AvailableEndDate?.ToString("yyyy-MM-dd");
-
-    var heroMetadata = new List<(string Label, string Value)>
-    {
-        ("Experience Level", compactSpecifications.ExperienceLevel),
-        ("Work Arrangement", compactSpecifications.WorkArrangement),
-        ("Employment Type", compactSpecifications.EmploymentType),
-        ("Apply Until", applyUntil),
-        ("Job Location", compactSpecifications.JobLocation),
-        ("Salary Range", compactSpecifications.SalaryRange)
-    }.Where(item => !string.IsNullOrWhiteSpace(item.Value)).ToList();
-
-    var filteredSpecificationGroups = specificationGroups
-        .Select(group => new
-        {
-            GroupId = group.Id,
-            GroupName = group.Name,
-            Attributes = (group.Attributes ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeModel>())
-                .Where(specificationAttribute => !heroAttributeNames.Contains(specificationAttribute.Name ?? string.Empty))
-                .Where(specificationAttribute => specificationAttribute.Values?.Any(value =>
-                    !string.IsNullOrWhiteSpace(htmlFormatter.StripTags(value.ValueRaw)?.Trim()) ||
-                    (!string.IsNullOrWhiteSpace(value.ColorSquaresRgb) && value.AttributeTypeId == (int)SpecificationAttributeType.Option)) == true)
-                .ToList()
-        })
-        .Where(group => group.Attributes.Any())
-        .ToList();
-
-    var applications = await applicationService.GetApplicationsAsync(productId: Model.Id, pageSize: int.MaxValue);
-    var candidateCount = applications.Count;
-    var currentCustomer = await workContext.GetCurrentCustomerAsync();
-    var currentStore = await storeContext.GetCurrentStoreAsync();
-    var isSavedJob = currentCustomer != null
-        && (await shoppingCartService.GetShoppingCartAsync(currentCustomer, ShoppingCartType.Wishlist, currentStore.Id, Model.Id, customWishlistId: 0)).Any();
-
-    var highlights = System.Text.RegularExpressions.Regex.Matches(Model.FullDescription ?? string.Empty, "<li>(.*?)</li>", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
-        .Select(match => htmlFormatter.StripTags(match.Groups[1].Value).Trim())
-        .Where(value => !string.IsNullOrWhiteSpace(value))
-        .Take(5)
-        .ToList();
-
-    if (!highlights.Any() && !string.IsNullOrWhiteSpace(Model.ShortDescription))
-        highlights.Add(htmlFormatter.StripTags(Model.ShortDescription));
-
-    var skillValues = GetSpecificationValue(FindSpecificationAttribute("Skills", "Skill Set"));
-    var skills = !string.IsNullOrWhiteSpace(skillValues)
-        ? skillValues.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
-        : Model.ProductTags.Select(tag => tag.Name).Where(name => !string.IsNullOrWhiteSpace(name)).ToList();
-
-    var emailFriendUrl = Model.EmailAFriendEnabled
-        ? Url.RouteUrl(NopRouteNames.Standard.PRODUCT_EMAIL_FRIEND, new { productId = Model.Id })
-        : string.Empty;
-    var productPageUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol()) ?? webHelper.GetThisPageUrl(false);
-    var customWishlistId = webHelper.QueryString<string>("customwishlistid");
-    var vendorPictureUrl = Model.DefaultPictureModel.ImageUrl;
-    var vendorDisplayName = Model.ShowVendor ? Model.VendorModel?.Name : string.Empty;
-
-    if (Model.ShowVendor && Model.VendorModel?.Id > 0)
-    {
-        var vendor = await vendorService.GetVendorByIdAsync(Model.VendorModel.Id);
-        if (vendor?.PictureId > 0)
-        {
-            var vendorPicture = await pictureService.GetPictureByIdAsync(vendor.PictureId);
-            if (vendorPicture != null)
-            {
-                (vendorPictureUrl, _) = await pictureService.GetPictureUrlAsync(vendorPicture, 220, true);
-            }
-        }
-    }
-
-    var shareJobText = T("Plugins.Misc.AIInterview.Report.Share").Text;
-    var linkCopiedText = T("Plugins.Misc.AIInterview.Report.LinkCopied").Text;
-    var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
 }
 
 @section Breadcrumb
@@ -157,204 +33,23 @@
     @await Html.PartialAsync("_ProductBreadcrumb", Model.Breadcrumb)
 }
 
-
 @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsAfterBreadcrumb, additionalData = Model })
 
 <div class="page product-details-page job-details-page">
     <div class="page-body">
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsTop, additionalData = Model })
         <form asp-route="Product" asp-route-sename="@Model.SeName" method="post" id="product-details-form">
-            <article data-productid="@Model.Id" class="job-shell">
-                <section class="job-hero">
-                    <div class="job-hero-copy">
-                        <span class="job-kicker">AI Interview Role</span>
-                        @if (!string.IsNullOrWhiteSpace(vendorDisplayName))
-                        {
-                            <div class="job-company">
-                                <img class="job-company-logo" src="@vendorPictureUrl" alt="@vendorDisplayName" />
-                                <div>
-                                    <div class="job-company-label">Hiring Company</div>
-                                    <div class="job-company-name">@vendorDisplayName</div>
-                                </div>
-                            </div>
-                        }
-                        <div class="job-title">
-                            <h1>@Model.Name</h1>
-                        </div>
-
-                        @if (!string.IsNullOrWhiteSpace(Model.ShortDescription))
-                        {
-                            <p class="job-summary">@Html.Raw(Model.ShortDescription)</p>
-                        }
-
-                        <div class="job-overview-meta">
-                            <span class="job-pill"><strong>Candidates</strong> @candidateCount applied</span>
-                        </div>
-
-                        @await Html.PartialAsync("_ProductReviewOverview", Model.ProductReviewOverview)
-
-                        <div class="job-action-links">
-                            @if (!string.IsNullOrWhiteSpace(emailFriendUrl))
-                            {
-                                <a class="job-action-link" href="@emailFriendUrl">Email a friend</a>
-                            }
-                            @if (!Model.AddToCart.DisableWishlistButton)
-                            {
-                                <button type="button"
-                                        id="job-save-button"
-                                        class="job-action-link @(isSavedJob ? "is-saved" : null)"
-                                        data-saved-text="Saved job"
-                                        data-default-text="Save job"
-                                        data-url="@Url.RouteUrl(NopRouteNames.Ajax.ADD_PRODUCT_TO_CART_DETAILS, new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.Wishlist, customwishlistid = customWishlistId })"
-                                        @(isSavedJob ? "disabled" : null)>
-                                    @(isSavedJob ? "Saved job" : "Save job")
-                                </button>
-                                @await Html.PartialAsync("~/Views/Shared/_MoveToWishlistModal.cshtml", Model.AddToCart.ProductToWishlist)
-                                <button type="button"
-                                        id="job-custom-wishlist-button"
-                                        class="job-action-link"
-                                        @(isSavedJob ? null : "disabled")>
-                                    Save to custom wishlist
-                                </button>
-                            }
-                            <button type="button"
-                                    class="job-action-link"
-                                    id="share-job-button"
-                                    data-share-url="@productPageUrl"
-                                    data-share-title="@Model.Name"
-                                    data-default-text="@shareJobText"
-                                    data-link-copied-text="@linkCopiedText"
-                                    data-copy-prompt-text="@copyShareLinkText">@shareJobText</button>
-                        </div>
-
-                        @if (heroMetadata.Any())
-                        {
-                            <div class="job-grid">
-                                @foreach (var item in heroMetadata)
-                                {
-                                    <div class="job-meta-item">
-                                        <div class="job-fact-label">@item.Label</div>
-                                        <div class="job-fact-value small">@item.Value</div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-
-                    <div>
-                        @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
-                        {
-                            widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
-                            additionalData = Model
-                        })
-                    </div>
-                </section>
-
-                <section class="job-content-grid">
-                    <div class="job-main">
-                        @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
-                        {
-                            <section class="job-card">
-                                <h2 class="job-section-title">Job Description</h2>
-                                <div class="full-description">
-                                    @Html.Raw(Model.FullDescription)
-                                </div>
-                            </section>
-                        }
-
-                        <section class="job-card">
-                            <h2 class="job-section-title">Role Highlights</h2>
-                            @if (highlights.Any())
-                            {
-                                <ul>
-                                    @foreach (var highlight in highlights)
-                                    {
-                                        <li>@highlight</li>
-                                    }
-                                </ul>
-                            }
-                            else
-                            {
-                                <p>Key responsibilities and outcomes will be discussed during the interview process.</p>
-                            }
-                        </section>
-                    </div>
-
-                    <div class="job-main">
-                        <section class="job-card">
-                            <h2 class="job-section-title">Skills</h2>
-                            @if (skills.Any())
-                            {
-                                <div class="job-skills">
-                                    @foreach (var skill in skills)
-                                    {
-                                        <span>@skill</span>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                <p>Skills will be evaluated during the AI interview.</p>
-                            }
-                        </section>
-
-                        <section class="job-card">
-                            <h2 class="job-section-title">Job Details</h2>
-                            @if (filteredSpecificationGroups.Any())
-                            {
-                                <div class="job-spec-groups">
-                                    @foreach (var group in filteredSpecificationGroups)
-                                    {
-                                        <div class="job-spec-group">
-                                            @if (group.GroupId > 0 && !string.IsNullOrWhiteSpace(group.GroupName))
-                                            {
-                                                <div class="job-spec-group-name">@group.GroupName</div>
-                                            }
-                                            <div class="job-spec-grid">
-                                                @foreach (var specificationAttribute in group.Attributes)
-                                                {
-                                                    <div class="job-spec-item">
-                                                        <div class="job-spec-label">@specificationAttribute.Name</div>
-                                                        <div class="job-spec-value">
-                                                            @for (int i = 0; i < specificationAttribute.Values.Count; i++)
-                                                            {
-                                                                var value = specificationAttribute.Values[i];
-
-                                                                if (!string.IsNullOrEmpty(value.ColorSquaresRgb) && value.AttributeTypeId == (int)SpecificationAttributeType.Option)
-                                                                {
-                                                                    <div class="attribute-squares color-squares attribute-squares-padding">
-                                                                        <span class="attribute-square-container" title="@Html.Raw(value.ValueRaw)">
-                                                                            <span class="attribute-square" style="background-color: @(value.ColorSquaresRgb);">&nbsp;</span>
-                                                                        </span>
-                                                                    </div>
-                                                                }
-                                                                else
-                                                                {
-                                                                    @Html.Raw(value.ValueRaw)
-                                                                    if (i != specificationAttribute.Values.Count - 1)
-                                                                    {
-                                                                        <text>, </text>
-                                                                    }
-                                                                }
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                            @await Html.PartialAsync("_ProductTags", Model.ProductTags)
-                        </section>
-                    </div>
-                </section>
-
-                @await Component.InvokeAsync(typeof(ProductsAlsoPurchasedViewComponent), new { productId = Model.Id })
-                @await Component.InvokeAsync(typeof(RelatedProductsViewComponent), new { productId = Model.Id })
-                @await Component.InvokeAsync(typeof(CompatibleWithFilterLevelValuesViewComponent), new { productId = Model.Id })
-            </article>
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_AIInterviewJobDetailsContent.cshtml", Model, new ViewDataDictionary(ViewData)
+            {
+                ["RenderMode"] = "Page",
+                ["ProductFormId"] = "product-details-form",
+                ["JobAiContextId"] = $"job-page-{Model.Id}"
+            })
         </form>
+
+        @await Component.InvokeAsync(typeof(ProductsAlsoPurchasedViewComponent), new { productId = Model.Id })
+        @await Component.InvokeAsync(typeof(RelatedProductsViewComponent), new { productId = Model.Id })
+        @await Component.InvokeAsync(typeof(CompatibleWithFilterLevelValuesViewComponent), new { productId = Model.Id })
 
         @if (Model.ProductReviewOverview.AllowCustomerReviews)
         {
@@ -366,82 +61,3 @@
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsBottom, additionalData = Model })
     </div>
 </div>
-
-<script asp-location="Footer">
-    (() => {
-        const shareButton = document.getElementById('share-job-button');
-        const saveButton = document.getElementById('job-save-button');
-        const customWishlistButton = document.getElementById('job-custom-wishlist-button');
-
-        const markSaved = () => {
-            if (!saveButton)
-                return;
-
-            saveButton.textContent = saveButton.dataset.savedText || 'Saved job';
-            saveButton.classList.add('is-saved');
-            saveButton.disabled = true;
-
-            if (customWishlistButton)
-                customWishlistButton.disabled = false;
-        };
-
-        if (saveButton) {
-            saveButton.addEventListener('click', () => {
-                window.__jobSavePending = true;
-                AjaxCart.addproducttocart_details(saveButton.dataset.url, '#product-details-form');
-                return false;
-            });
-        }
-
-        if (customWishlistButton) {
-            customWishlistButton.addEventListener('click', () => {
-                if (customWishlistButton.disabled) {
-                    displayBarNotification('Save the job first, then choose a custom wishlist.', 'warning', 3500);
-                    return false;
-                }
-
-                showMoveToWishlistModal(@Model.Id);
-                return false;
-            });
-        }
-
-        if (window.AjaxCart && !window.__jobWishlistHooked) {
-            const originalSuccess = AjaxCart.success_process;
-            AjaxCart.success_process = function(response) {
-                const result = originalSuccess.call(this, response);
-                if (window.__jobSavePending && response && response.success === true) {
-                    markSaved();
-                }
-
-                window.__jobSavePending = false;
-                return result;
-            };
-            window.__jobWishlistHooked = true;
-        }
-
-        if (!shareButton)
-            return;
-
-        shareButton.addEventListener('click', async () => {
-            const shareUrl = shareButton.dataset.shareUrl;
-            const shareTitle = shareButton.dataset.shareTitle;
-
-            if (navigator.share) {
-                try {
-                    await navigator.share({ title: shareTitle, url: shareUrl });
-                    return;
-                } catch {
-                }
-            }
-
-            if (navigator.clipboard) {
-                await navigator.clipboard.writeText(shareUrl);
-                shareButton.textContent = shareButton.dataset.linkCopiedText || '';
-                window.setTimeout(() => shareButton.textContent = shareButton.dataset.defaultText || '', 1800);
-                return;
-            }
-
-            window.prompt(shareButton.dataset.copyPromptText || '', shareUrl);
-        });
-    })();
-</script>

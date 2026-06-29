@@ -20,6 +20,7 @@ using Nop.Services.Vendors;
 using Nop.Services.Orders;
 using Nop.Services.Stores;
 using Nop.Services.Common;
+using Nop.Web.Factories;
 using Nop.Web.Framework.Controllers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -50,6 +51,7 @@ public class AIInterviewController : BasePluginController
     private readonly INopUrlHelper _nopUrlHelper;
     private readonly IShoppingCartService _shoppingCartService;
     private readonly IStoreContext _storeContext;
+    private readonly IProductModelFactory _productModelFactory;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -69,7 +71,8 @@ public class AIInterviewController : BasePluginController
         IHttpClientFactory httpClientFactory = null,
         INopUrlHelper nopUrlHelper = null,
         IShoppingCartService shoppingCartService = null,
-        IStoreContext storeContext = null)
+        IStoreContext storeContext = null,
+        IProductModelFactory productModelFactory = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -90,6 +93,7 @@ public class AIInterviewController : BasePluginController
         _nopUrlHelper = nopUrlHelper;
         _shoppingCartService = shoppingCartService;
         _storeContext = storeContext;
+        _productModelFactory = productModelFactory;
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -107,7 +111,8 @@ public class AIInterviewController : BasePluginController
         ISpecificationAttributeService specificationAttributeService = null,
         INopUrlHelper nopUrlHelper = null,
         IShoppingCartService shoppingCartService = null,
-        IStoreContext storeContext = null)
+        IStoreContext storeContext = null,
+        IProductModelFactory productModelFactory = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -126,8 +131,29 @@ public class AIInterviewController : BasePluginController
             null,
             nopUrlHelper,
             shoppingCartService,
-            storeContext)
+            storeContext,
+            productModelFactory)
     {
+    }
+
+    public virtual async Task<IActionResult> JobDetailsDrawer(int productId)
+    {
+        if (!_aiInterviewSettings.Enabled || _productModelFactory == null)
+            return NotFound();
+
+        var product = await _productService.GetProductByIdAsync(productId);
+        if (product == null || _productTemplateService == null)
+            return NotFound();
+
+        var productTemplate = await _productTemplateService.GetProductTemplateByIdAsync(product.ProductTemplateId);
+        if (productTemplate == null ||
+            !string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound();
+        }
+
+        var model = await _productModelFactory.PrepareProductDetailsModelAsync(product);
+        return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_AIInterviewJobDetailsDrawer.cshtml", model);
     }
 
     [HttpPost]

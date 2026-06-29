@@ -8,6 +8,19 @@
     var activeDrawer = null;
     var activeTrigger = null;
 
+    function executeScripts(container) {
+        Array.prototype.forEach.call(container.querySelectorAll('script'), function (oldScript) {
+            var newScript = document.createElement('script');
+
+            Array.prototype.forEach.call(oldScript.attributes, function (attribute) {
+                newScript.setAttribute(attribute.name, attribute.value);
+            });
+
+            newScript.text = oldScript.text || oldScript.textContent || '';
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
+    }
+
     function getStatusNodes(productId) {
         return document.querySelectorAll('[data-ai-job-save-status="' + productId + '"]');
     }
@@ -91,6 +104,34 @@
         }
     }
 
+    function loadDrawerContent(drawer) {
+        var drawerBody = drawer.querySelector('[data-ai-job-drawer-body]');
+        var drawerUrl = drawer.getAttribute('data-drawer-url');
+
+        if (!drawerBody || !drawerUrl || drawer.dataset.loaded === 'true') {
+            return Promise.resolve();
+        }
+
+        drawer.dataset.loaded = 'pending';
+
+        return fetch(drawerUrl, {
+            credentials: 'same-origin'
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('Unable to load drawer content.');
+            }
+
+            return response.text();
+        }).then(function (html) {
+            drawerBody.innerHTML = html;
+            executeScripts(drawerBody);
+            drawer.dataset.loaded = 'true';
+        }).catch(function () {
+            drawer.dataset.loaded = 'false';
+            drawerBody.innerHTML = '<div class="ai-job-preview-loading">Unable to load job details.</div>';
+        });
+    }
+
     function postToggle(button) {
         var shouldSave = button.getAttribute('data-is-saved') !== 'true';
 
@@ -126,7 +167,9 @@
         var openTrigger = event.target.closest('[data-ai-job-preview-open]');
         if (openTrigger) {
             event.preventDefault();
-            openDrawer(document.getElementById(openTrigger.getAttribute('data-ai-job-preview-open')), openTrigger);
+            var drawer = document.getElementById(openTrigger.getAttribute('data-ai-job-preview-open'));
+            openDrawer(drawer, openTrigger);
+            loadDrawerContent(drawer);
             return;
         }
 

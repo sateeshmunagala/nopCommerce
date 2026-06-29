@@ -9,6 +9,7 @@ using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Orders;
 using Nop.Services.Vendors;
+using Nop.Web.Framework.Mvc.Routing;
 using Nop.Web.Models.Catalog;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
@@ -40,6 +41,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
     private readonly IStoreContext _storeContext;
     private readonly IVendorService _vendorService;
     private readonly IWorkContext _workContext;
+    private readonly INopUrlHelper _nopUrlHelper;
 
     public AIInterviewJobDisplayService(IApplicationService applicationService,
         IHtmlFormatter htmlFormatter,
@@ -51,7 +53,8 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
         IShoppingCartService shoppingCartService,
         IStoreContext storeContext,
         IVendorService vendorService,
-        IWorkContext workContext)
+        IWorkContext workContext,
+        INopUrlHelper nopUrlHelper)
     {
         _applicationService = applicationService;
         _htmlFormatter = htmlFormatter;
@@ -64,6 +67,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
         _storeContext = storeContext;
         _vendorService = vendorService;
         _workContext = workContext;
+        _nopUrlHelper = nopUrlHelper;
     }
 
     public async Task<AIInterviewJobProductCardModel> PrepareJobProductCardModelAsync(ProductOverviewModel productOverviewModel)
@@ -106,6 +110,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             Summary = summary,
             PreviewDescription = previewDescription,
             SeName = productOverviewModel.SeName,
+            ProductUrl = await ResolveProductUrlAsync(product),
             ImageUrl = imageModel.ImageUrl,
             ImageAlt = imageModel.ImageAlt,
             UseImagePlaceholder = imageModel.UsePlaceholder,
@@ -244,5 +249,13 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             .ToArray();
 
         return initials.Length > 0 ? new string(initials) : "AI";
+    }
+
+    protected virtual async Task<string> ResolveProductUrlAsync(Product product)
+    {
+        if (product == null || _nopUrlHelper == null)
+            return string.Empty;
+
+        return await _nopUrlHelper.RouteGenericUrlAsync(product) ?? string.Empty;
     }
 }
