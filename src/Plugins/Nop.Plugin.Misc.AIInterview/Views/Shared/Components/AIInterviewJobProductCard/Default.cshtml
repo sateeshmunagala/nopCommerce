@@ -16,6 +16,8 @@
     var viewJobText = T("Plugins.Misc.AIInterview.JobCard.ViewJob").Text;
     var previewText = T("Plugins.Misc.AIInterview.JobCard.JobPreview").Text;
     var closePreviewText = T("Plugins.Misc.AIInterview.JobCard.CloseJobPreview").Text;
+    var loadingJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.LoadingJobDetails").Text;
+    var unableToLoadJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.UnableToLoadJobDetails").Text;
     var postedText = string.Format(T("Plugins.Misc.AIInterview.JobCard.Posted").Text, Model.CreatedOnUtc.ToString("MMM d, yyyy"));
     var appliedCountText = string.Format(T("Plugins.Misc.AIInterview.JobCard.AppliedCount").Text, Model.AppliedCount);
 
@@ -132,7 +134,12 @@
         <span class="ai-job-card-status ai-job-card-visually-hidden" aria-live="polite" data-ai-job-save-status="@Model.Id"></span>
     </div>
 
-    <div class="ai-job-preview-drawer" id="@drawerId" aria-hidden="true" data-drawer-url="@drawerContentUrl">
+    <div class="ai-job-preview-drawer"
+         id="@drawerId"
+         aria-hidden="true"
+         data-drawer-url="@drawerContentUrl"
+         data-loading-text="@loadingJobDetailsText"
+         data-error-text="@unableToLoadJobDetailsText">
         <div class="ai-job-preview-drawer-backdrop" data-ai-job-preview-close="true"></div>
         <div class="ai-job-preview-drawer-panel" role="dialog" aria-modal="true" aria-label="@Model.JobTitle" tabindex="-1">
             <div class="ai-job-preview-drawer-toolbar">
@@ -144,7 +151,7 @@
                 </button>
             </div>
             <div class="ai-job-preview-drawer-body" data-ai-job-drawer-body="true">
-                <div class="ai-job-preview-loading">Loading job details...</div>
+                <div class="ai-job-preview-loading">@loadingJobDetailsText</div>
             </div>
         </div>
     </div>

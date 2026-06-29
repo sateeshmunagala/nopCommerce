@@ -1231,6 +1231,9 @@ public class RuntimeAndAdminTests
         Assert.That(jobCardScript, Does.Not.Contain("DOMParser"));
         Assert.That(jobCardScript, Does.Not.Contain("querySelectorAll('a[href]')"));
         Assert.That(jobCardScript, Does.Not.Contain("lookupWishlistItemId"));
+        Assert.That(jobCardScript, Does.Not.Contain("Saved jobs are temporarily unavailable."));
+        Assert.That(jobCardScript, Does.Not.Contain("The selected job could not be found."));
+        Assert.That(jobCardScript, Does.Not.Contain("The selected product is not an AI interview job."));
     }
 
     [Test]
@@ -1242,6 +1245,8 @@ public class RuntimeAndAdminTests
         Assert.That(jobCardScript, Does.Contain("fetch(drawerUrl"));
         Assert.That(jobCardScript, Does.Contain("executeScripts(drawerBody);"));
         Assert.That(jobCardScript, Does.Contain("drawer.dataset.loaded = 'true';"));
+        Assert.That(jobCardScript, Does.Contain("var drawerErrorText = drawer.getAttribute('data-error-text') || '';"));
+        Assert.That(jobCardScript, Does.Not.Contain("Unable to load job details."));
         Assert.That(jobCardScript, Does.Not.Contain("Model.PreviewDescription"));
     }
 

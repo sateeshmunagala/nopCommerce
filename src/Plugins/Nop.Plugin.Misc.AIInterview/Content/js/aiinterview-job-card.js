@@ -107,6 +107,7 @@
     function loadDrawerContent(drawer) {
         var drawerBody = drawer.querySelector('[data-ai-job-drawer-body]');
         var drawerUrl = drawer.getAttribute('data-drawer-url');
+        var drawerErrorText = drawer.getAttribute('data-error-text') || '';
 
         if (!drawerBody || !drawerUrl || drawer.dataset.loaded === 'true') {
             return Promise.resolve();
@@ -128,7 +129,7 @@
             drawer.dataset.loaded = 'true';
         }).catch(function () {
             drawer.dataset.loaded = 'false';
-            drawerBody.innerHTML = '<div class="ai-job-preview-loading">Unable to load job details.</div>';
+            drawerBody.innerHTML = '<div class="ai-job-preview-loading">' + drawerErrorText + '</div>';
         });
     }
 

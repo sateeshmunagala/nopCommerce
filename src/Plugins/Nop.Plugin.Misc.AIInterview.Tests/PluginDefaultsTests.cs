@@ -210,7 +210,12 @@ public class PluginDefaultsTests
                      "Plugins.Misc.AIInterview.JobCard.SavedToSavedJobs",
                      "Plugins.Misc.AIInterview.JobCard.RemovedFromSavedJobs",
                      "Plugins.Misc.AIInterview.JobCard.JobPreview",
-                     "Plugins.Misc.AIInterview.JobCard.CloseJobPreview"
+                     "Plugins.Misc.AIInterview.JobCard.CloseJobPreview",
+                     "Plugins.Misc.AIInterview.JobCard.LoadingJobDetails",
+                     "Plugins.Misc.AIInterview.JobCard.UnableToLoadJobDetails",
+                     "Plugins.Misc.AIInterview.JobCard.SavedJobsUnavailable",
+                     "Plugins.Misc.AIInterview.JobCard.JobNotFound",
+                     "Plugins.Misc.AIInterview.JobCard.InvalidJob"
                  })
         {
             Assert.That(resources.ContainsKey(key), Is.True, $"Missing job card locale resource: {key}");

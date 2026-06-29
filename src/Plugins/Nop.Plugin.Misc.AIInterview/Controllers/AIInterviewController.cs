@@ -163,7 +163,11 @@ public class AIInterviewController : BasePluginController
             return Json(new { success = false, redirect = Url.RouteUrl("Homepage") });
 
         if (_shoppingCartService == null || _storeContext == null)
-            return Json(new { success = false, message = "Saved jobs are temporarily unavailable." });
+            return Json(new
+            {
+                success = false,
+                message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.SavedJobsUnavailable")
+            });
 
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (customer == null)
@@ -171,7 +175,20 @@ public class AIInterviewController : BasePluginController
 
         var product = await _productService.GetProductByIdAsync(productId);
         if (product == null)
-            return Json(new { success = false, message = "The selected job could not be found." });
+            return Json(new
+            {
+                success = false,
+                message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.JobNotFound")
+            });
+
+        if (_jobRequirementService == null || !await _jobRequirementService.IsJobProductAsync(product))
+        {
+            return Json(new
+            {
+                success = false,
+                message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.InvalidJob")
+            });
+        }
 
         var store = await _storeContext.GetCurrentStoreAsync();
         var savedText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.SavedToSavedJobs");

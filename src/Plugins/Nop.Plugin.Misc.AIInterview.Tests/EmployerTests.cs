@@ -58,6 +58,8 @@ public class EmployerTests
         _jobRequirementService = new Mock<IJobRequirementService>();
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
             .ReturnsAsync(new JobRequirementsModel());
+        _jobRequirementService.Setup(x => x.IsJobProductAsync(It.IsAny<Product>()))
+            .ReturnsAsync(true);
         _jobRequirementService.Setup(x => x.SaveRequirementsAsync(It.IsAny<Nop.Core.Domain.Catalog.Product>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<decimal>(), It.IsAny<int>()))
             .Returns(Task.CompletedTask);
         _downloadService = new Mock<IDownloadService>();
@@ -755,6 +757,69 @@ public class EmployerTests
     }
 
     [Test]
+    public async Task ToggleSavedJob_MissingProduct_ReturnsLocalizedMessage()
+    {
+        _productService.Setup(x => x.GetProductByIdAsync(999)).ReturnsAsync((Product)null);
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.JobNotFound"))
+            .ReturnsAsync("Localized job missing");
+
+        var result = (JsonResult)await _controller.ToggleSavedJob(999, true);
+
+        Assert.That(result.Value.GetType().GetProperty("success")?.GetValue(result.Value), Is.EqualTo(false));
+        Assert.That(result.Value.GetType().GetProperty("message")?.GetValue(result.Value), Is.EqualTo("Localized job missing"));
+    }
+
+    [Test]
+    public async Task ToggleSavedJob_NonAiProduct_ReturnsLocalizedInvalidJobMessage()
+    {
+        var product = new Product { Id = 77, Name = "Regular Product" };
+
+        _productService.Setup(x => x.GetProductByIdAsync(77)).ReturnsAsync(product);
+        _jobRequirementService.Setup(x => x.IsJobProductAsync(product)).ReturnsAsync(false);
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.InvalidJob"))
+            .ReturnsAsync("Localized invalid job");
+
+        var result = (JsonResult)await _controller.ToggleSavedJob(77, true);
+
+        Assert.That(result.Value.GetType().GetProperty("success")?.GetValue(result.Value), Is.EqualTo(false));
+        Assert.That(result.Value.GetType().GetProperty("message")?.GetValue(result.Value), Is.EqualTo("Localized invalid job"));
+        _shoppingCartService.Verify(x => x.DeleteShoppingCartItemAsync(It.IsAny<ShoppingCartItem>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ToggleSavedJob_UnavailableServices_ReturnsLocalizedUnavailableMessage()
+    {
+        var controller = new AIInterviewController(
+            _applicationService.Object,
+            _interviewSessionService.Object,
+            new AIInterviewSettings { Enabled = true },
+            _workContext.Object,
+            _notificationService.Object,
+            _localizationService.Object,
+            _downloadService.Object,
+            _customerService.Object,
+            _productService.Object,
+            _jobRequirementService.Object,
+            _productTemplateService.Object,
+            _urlRecordService.Object,
+            null,
+            _specificationAttributeService.Object,
+            null,
+            null,
+            null,
+            null,
+            _storeContext.Object);
+
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.SavedJobsUnavailable"))
+            .ReturnsAsync("Localized unavailable");
+
+        var result = (JsonResult)await controller.ToggleSavedJob(44, true);
+
+        Assert.That(result.Value.GetType().GetProperty("success")?.GetValue(result.Value), Is.EqualTo(false));
+        Assert.That(result.Value.GetType().GetProperty("message")?.GetValue(result.Value), Is.EqualTo("Localized unavailable"));
+    }
+
+    [Test]
     public void JobCard_Rendering_Uses_Plugin_Component_And_Shared_Spec_Mapping()
     {
         var productBox = File.ReadAllText(Path.Combine(TestFilePathHelper.GetPluginRootPath(), "..", "..", "Presentation", "Nop.Web", "Themes", "JobBoardVenture", "Views", "Shared", "_ProductBox.cshtml"));
@@ -783,6 +848,10 @@ public class EmployerTests
         Assert.That(jobCardView, Does.Not.Contain("href=\"#\""));
         Assert.That(jobCardView, Does.Not.Contain("@Model.PreviewDescription"));
         Assert.That(jobCardView, Does.Not.Contain("Prompt Source"));
+        Assert.That(jobCardView, Does.Contain("data-loading-text=\"@loadingJobDetailsText\""));
+        Assert.That(jobCardView, Does.Contain("data-error-text=\"@unableToLoadJobDetailsText\""));
+        Assert.That(jobCardView, Does.Contain("T(\"Plugins.Misc.AIInterview.JobCard.LoadingJobDetails\")"));
+        Assert.That(jobCardView, Does.Contain("T(\"Plugins.Misc.AIInterview.JobCard.UnableToLoadJobDetails\")"));
 
         Assert.That(jobDetailView, Does.Contain("_AIInterviewJobDetailsContent.cshtml"));
         Assert.That(sharedJobDetailView, Does.Contain("@inject IAIInterviewJobDisplayService aiInterviewJobDisplayService"));
