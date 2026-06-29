@@ -58,6 +58,8 @@
             .Where(value => !string.IsNullOrWhiteSpace(value)));
     }
 
+    var applications = await applicationService.GetApplicationsAsync(productId: Model.Id, pageSize: int.MaxValue);
+    var candidateCount = applications.Count;
     var heroAttributeNames = AIInterviewJobDisplayService.CompactSpecificationAliases;
     var applyUntil = Model.AvailableEndDate?.ToString("yyyy-MM-dd");
     var jobDetailsKickerText = T("Plugins.Misc.AIInterview.JobDetails.Kicker").Text;
@@ -99,9 +101,6 @@
         })
         .Where(group => group.Attributes.Any())
         .ToList();
-
-    var applications = await applicationService.GetApplicationsAsync(productId: Model.Id, pageSize: int.MaxValue);
-    var candidateCount = applications.Count;
     var currentCustomer = await workContext.GetCurrentCustomerAsync();
     var currentStore = await storeContext.GetCurrentStoreAsync();
     var isSavedJob = currentCustomer != null
@@ -359,7 +358,7 @@
                 if (!saveButton)
                     return;
 
-                saveButton.textContent = saveButton.dataset.savedText || 'Saved job';
+                saveButton.textContent = saveButton.dataset.savedText || saveButton.textContent || '';
                 saveButton.classList.add('is-saved');
                 saveButton.disabled = true;
 

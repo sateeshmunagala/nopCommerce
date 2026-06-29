@@ -939,7 +939,8 @@ public class EmployerTests
         Assert.That(jobCardView, Does.Contain("aria-pressed"));
         Assert.That(jobCardView, Does.Contain("fa-bookmark"));
         Assert.That(jobCardView, Does.Contain("data-toggle-url"));
-        Assert.That(jobCardView, Does.Contain("<a class=\"ai-job-card-title-link\" href=\"@Model.ProductUrl\">"));
+        Assert.That(jobCardView, Does.Contain("<a class=\"ai-job-card-title-link\" href=\"@productUrl\">"));
+        Assert.That(jobCardView, Does.Not.Contain("<a class=\"ai-job-card-title-link\" href=\"@Model.ProductUrl\">"));
         Assert.That(jobCardView, Does.Contain("class=\"button-2 ai-job-card-preview-trigger\""));
         Assert.That(jobCardView, Does.Contain("data-ai-job-preview-open=\"@drawerId\""));
         Assert.That(jobCardView, Does.Contain("href=\"@productUrl\""));
@@ -971,6 +972,10 @@ public class EmployerTests
         Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.RoleHighlightsFallback"));
         Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.Skills"));
         Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.SkillsFallback"));
+        Assert.That(sharedJobDetailView.IndexOf("var candidateCount = applications.Count;", StringComparison.Ordinal), Is.GreaterThanOrEqualTo(0));
+        Assert.That(sharedJobDetailView.IndexOf("var candidatesAppliedText = string.Format(T(\"Plugins.Misc.AIInterview.JobDetails.CandidatesApplied\").Text, candidateCount);", StringComparison.Ordinal), Is.GreaterThan(sharedJobDetailView.IndexOf("var candidateCount = applications.Count;", StringComparison.Ordinal)));
+        Assert.That(sharedJobDetailView, Does.Not.Contain("|| 'Saved job'"));
+        Assert.That(sharedJobDetailView, Does.Not.Contain("|| \"Saved job\""));
         Assert.That(sharedJobDetailView, Does.Not.Contain(">AI Interview Role<"));
         Assert.That(sharedJobDetailView, Does.Not.Contain(">Hiring Company<"));
         Assert.That(sharedJobDetailView, Does.Not.Contain(">View job<"));
