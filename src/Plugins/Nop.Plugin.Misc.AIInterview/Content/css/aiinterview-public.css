@@ -2718,7 +2718,7 @@ body.ai-job-preview-open {
 }
 
 .html-aiinterview-employer-applications-page .employer-table {
-    min-width: 1240px;
+    min-width: 1770px;
     table-layout: fixed;
 }
 
@@ -2760,8 +2760,8 @@ body.ai-job-preview-open {
 }
 
 .html-aiinterview-employer-applications-page .employer-table .col-status {
-    width: 250px;
-    min-width: 250px;
+    width: 340px;
+    min-width: 340px;
 }
 
 .html-aiinterview-employer-applications-page .employer-filter-grid {
@@ -2778,7 +2778,7 @@ body.ai-job-preview-open {
 }
 
 .html-aiinterview-employer-applications-page .status-form {
-    grid-template-columns: minmax(140px, 0.95fr) minmax(0, 1.45fr) minmax(112px, auto);
+    grid-template-columns: minmax(150px, 1fr) minmax(112px, auto);
     align-items: end;
     gap: 10px;
 }
@@ -2804,8 +2804,16 @@ body.ai-job-preview-open {
     opacity: 0;
 }
 
+.html-aiinterview-employer-applications-page .employer-status-field-comment {
+    grid-column: 1 / -1;
+}
+
+.html-aiinterview-employer-applications-page .employer-status-field-action {
+    align-self: end;
+}
+
 .html-aiinterview-employer-applications-page .status-form .employer-status-comment {
-    min-width: 220px;
+    min-width: 0;
 }
 
 .html-aiinterview-employer-applications-page .status-form .employer-status-update {
@@ -3173,8 +3181,9 @@ body.ai-job-preview-open {
     }
 }
 
-#job-apply-button.job-ai-action,
-#start-job-interview.job-ai-action {
+.job-ai-actions .apply-btn.job-ai-action,
+.job-ai-actions .start-interview-btn.job-ai-action,
+.job-ai-actions [data-start-interview-button="true"].job-ai-action {
     box-sizing: border-box;
     display: inline-flex;
     align-items: center;
@@ -3198,35 +3207,39 @@ body.ai-job-preview-open {
     white-space: nowrap;
 }
 
-#job-apply-button.job-ai-action {
-    border-color: #1fb99b;
-    background-color: #1fb99b;
+.job-ai-actions .apply-btn.job-ai-action {
+    border-color: #24b99a;
+    background-color: #24b99a;
     color: #ffffff;
 }
 
-#job-apply-button.job-ai-action:hover:not(:disabled),
-#job-apply-button.job-ai-action:focus-visible {
-    border-color: #159d84;
-    background-color: #159d84;
+.job-ai-actions .apply-btn.job-ai-action:hover:not(:disabled),
+.job-ai-actions .apply-btn.job-ai-action:focus-visible {
+    border-color: #0f766e;
+    background-color: #0f766e;
     color: #ffffff;
 }
 
-#start-job-interview.job-ai-action {
-    border-color: #c7d0d7;
+.job-ai-actions .start-interview-btn.job-ai-action,
+.job-ai-actions [data-start-interview-button="true"].job-ai-action {
+    border-color: #b9c7c3;
     background-color: #ffffff;
-    color: #24313a;
+    color: #0f766e;
 }
 
-#start-job-interview.job-ai-action:hover:not(:disabled),
-#start-job-interview.job-ai-action:focus-visible {
-    border-color: #aeb9c2;
-    background-color: #f4f6f7;
-    color: #141d24;
+.job-ai-actions .start-interview-btn.job-ai-action:hover:not(:disabled),
+.job-ai-actions .start-interview-btn.job-ai-action:focus-visible,
+.job-ai-actions [data-start-interview-button="true"].job-ai-action:hover:not(:disabled),
+.job-ai-actions [data-start-interview-button="true"].job-ai-action:focus-visible {
+    border-color: #35d6b4;
+    background-color: #eefaf7;
+    color: #0f766e;
 }
 
 @media (max-width: 720px) {
-    #job-apply-button.job-ai-action,
-    #start-job-interview.job-ai-action {
+    .job-ai-actions .apply-btn.job-ai-action,
+    .job-ai-actions .start-interview-btn.job-ai-action,
+    .job-ai-actions [data-start-interview-button="true"].job-ai-action {
         width: 100%;
         min-width: 0;
     }

@@ -788,6 +788,61 @@ public class EmployerTests
     }
 
     [Test]
+    public void EmployerApplications_View_Keeps_Accessible_Status_Action_Markers()
+    {
+        var employerApplications = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "EmployerApplications.cshtml"));
+
+        Assert.That(employerApplications, Does.Contain("var candidateDisplay ="));
+        Assert.That(employerApplications, Does.Contain("class=\"employer-status-inline-label\""));
+        Assert.That(employerApplications, Does.Contain("class=\"employer-status-field employer-status-field-comment\""));
+        Assert.That(employerApplications, Does.Contain("class=\"employer-status-field employer-status-field-action\""));
+        Assert.That(employerApplications, Does.Contain("id=\"Status-@app.Id\""));
+        Assert.That(employerApplications, Does.Contain("id=\"StatusComment-@app.Id\""));
+        Assert.That(employerApplications, Does.Contain("aria-label=\"@($"));
+        Assert.That(employerApplications, Does.Contain("title=\"@($"));
+        Assert.That(employerApplications, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.StatusComment"));
+        Assert.That(employerApplications, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.Update"));
+    }
+
+    [Test]
+    public void EmployerApplications_And_ProductDetails_Css_Keep_Responsive_Layout_Guards()
+    {
+        var cssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
+
+        Assert.That(cssText, Does.Contain(".html-aiinterview-employer-applications-page .employer-table {"));
+        Assert.That(cssText, Does.Contain("min-width: 1770px;"));
+        Assert.That(cssText, Does.Contain(".html-aiinterview-employer-applications-page .employer-table .col-status {"));
+        Assert.That(cssText, Does.Contain("width: 340px;"));
+        Assert.That(cssText, Does.Contain("min-width: 340px;"));
+        Assert.That(cssText, Does.Contain("grid-template-columns: minmax(150px, 1fr) minmax(112px, auto);"));
+        Assert.That(cssText, Does.Contain(".html-aiinterview-employer-applications-page .employer-status-field-comment {"));
+        Assert.That(cssText, Does.Contain("grid-column: 1 / -1;"));
+        Assert.That(cssText, Does.Contain(".job-ai-actions .apply-btn.job-ai-action"));
+        Assert.That(cssText, Does.Contain("[data-start-interview-button=\"true\"].job-ai-action"));
+        Assert.That(cssText, Does.Not.Contain("#job-apply-button.job-ai-action"));
+        Assert.That(cssText, Does.Not.Contain("#start-job-interview.job-ai-action"));
+    }
+
+    [Test]
+    public void VendorJobCreation_And_Theme_Cta_Source_Guards_Remain_In_Place()
+    {
+        var vendorJobCreation = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorJobCreation.cshtml"));
+        var themeCssText = File.ReadAllText(Path.Combine(TestFilePathHelper.GetPluginRootPath(), "..", "..", "Presentation", "Nop.Web", "Themes", "JobBoardVenture", "Content", "css", "jobboard-venture.css"));
+
+        Assert.That(vendorJobCreation, Does.Contain("<h1>@T(\"Plugins.Misc.AIInterview.VendorJobCreation.Title\")</h1>"));
+        Assert.That(vendorJobCreation, Does.Not.Contain("<h2>@T(\"Plugins.Misc.AIInterview.VendorJobCreation.Title\")</h2>"));
+        Assert.That(vendorJobCreation, Does.Contain("class=\"vendor-job-posting-lead\""));
+        Assert.That(vendorJobCreation, Does.Contain("class=\"vendor-job-posting-sections\""));
+
+        Assert.That(themeCssText, Does.Contain(".html-category-page .product-item .buttons .jb-view-job-button:focus-visible"));
+        Assert.That(themeCssText, Does.Contain(".html-search-page .product-item .buttons .jb-view-job-button:focus-visible"));
+        Assert.That(themeCssText, Does.Contain("min-height: 40px;"));
+        Assert.That(themeCssText, Does.Contain(".html-category-page .product-item .buttons .jb-view-job-button,"));
+        Assert.That(themeCssText, Does.Contain(".html-category-page .product-item .buttons .add-to-wishlist-button,"));
+        Assert.That(themeCssText, Does.Contain("min-width: 0;"));
+    }
+
+    [Test]
     public async Task ToggleSavedJob_Adds_Default_Wishlist_Item_Without_Duplicates()
     {
         var product = new Product { Id = 44, Name = "AI Role" };

@@ -123,6 +123,24 @@ public class PluginDefaultsTests
     }
 
     [Test]
+    public void MockConfigure_Locale_Resources_Contain_All_Used_Admin_Keys()
+    {
+        var adminMethod = typeof(AIInterviewPlugin).GetMethod("GetAdminLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var adminResources = (Dictionary<string, string>)adminMethod.Invoke(null, null);
+
+        var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterviewAdmin", "Configure.cshtml"));
+        var usedKeys = Regex.Matches(viewText, "\"(Plugins\\.Misc\\.AIInterview\\.Admin\\.[^\"]+)\"")
+            .Cast<System.Text.RegularExpressions.Match>()
+            .Select(match => match.Groups[1].Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.That(usedKeys, Is.Not.Empty, "Mock configure resource usage scan did not find any keys.");
+
+        foreach (var key in usedKeys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase))
+            Assert.That(adminResources.ContainsKey(key), Is.True, $"Missing admin locale resource: {key}");
+    }
+
+    [Test]
     public void ApplicantCredits_Models_Remove_Deprecated_Load_And_Search_Fields()
     {
         Assert.That(typeof(CreditManagementModel).GetProperty("LoadCustomerId"), Is.Null);

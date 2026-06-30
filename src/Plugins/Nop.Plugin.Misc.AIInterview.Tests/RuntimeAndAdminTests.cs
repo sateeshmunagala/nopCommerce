@@ -1056,6 +1056,42 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void MockConfigure_View_Uses_Localized_Informational_Admin_Layout()
+    {
+        var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterviewAdmin", "Configure.cshtml"));
+
+        Assert.That(viewText, Does.Contain("aiinterview-admin-config-shell"));
+        Assert.That(viewText, Does.Contain("aiinterview-admin-summary"));
+        Assert.That(viewText, Does.Contain("aiinterview-admin-card"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.Admin.MockConfigure.Subtitle"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.Admin.MockConfigure.General.Summary"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.Admin.MockConfigure.Service.Body"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.Admin.MockConfigure.CreditPack.Body"));
+        Assert.That(viewText, Does.Not.Contain("Mock Configuration Page"));
+        Assert.That(viewText, Does.Not.Contain("Mock administration workspace"));
+        Assert.That(viewText, Does.Not.Contain("Informational only"));
+    }
+
+    [Test]
+    public void Admin_Polish_Views_Keep_Labeled_Action_And_Link_Buttons()
+    {
+        var applicantCredits = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "ApplicantCredits.cshtml"));
+        var scoreboard = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "Scoreboard.cshtml"));
+
+        Assert.That(applicantCredits, Does.Contain("class=\"btn btn-primary btn-search aiinterview-admin-action-button\""));
+        Assert.That(applicantCredits, Does.Contain("aria-label=\"@T(\\\"Admin.Common.Search\\\")\"".Replace("\\\"", "\"")));
+        Assert.That(applicantCredits, Does.Contain("title=\"@T(\\\"Plugins.Misc.AIInterview.Admin.Credits.TopUp\\\")\"".Replace("\\\"", "\"")));
+        Assert.That(applicantCredits, Does.Contain("aiinterview-admin-link-button"));
+        Assert.That(applicantCredits, Does.Contain("Plugins.Misc.AIInterview.Admin.Credits.Activity.ViewLedger"));
+
+        Assert.That(scoreboard, Does.Contain("class=\"btn btn-secondary aiinterview-admin-link-button\""));
+        Assert.That(scoreboard, Does.Contain("class=\"btn btn-primary btn-search aiinterview-admin-action-button\""));
+        Assert.That(scoreboard, Does.Contain("title=\"@T(\\\"Plugins.Misc.AIInterview.Admin.Scoreboard.Filter\\\")\"".Replace("\\\"", "\"")));
+        Assert.That(scoreboard, Does.Contain("Plugins.Misc.AIInterview.Admin.Scoreboard.Report"));
+        Assert.That(scoreboard, Does.Contain("aiinterview-admin-link-button"));
+    }
+
+    [Test]
     public void MockAiInterviewController_Has_EmployerActions()
     {
         var createMethod = typeof(MockAiInterviewController).GetMethod("CreateInvite");
