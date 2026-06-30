@@ -16,9 +16,20 @@
     string startButtonId = $"start-job-interview-{jobAiContextId}";
     string feedbackId = $"job-ai-feedback-{jobAiContextId}";
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendScriptParts(Nop.Web.Framework.UI.ResourceLocation.Footer, "~/Plugins/Misc.AIInterview/Content/js/aiinterview-job-card.js");
 }
 
-<div class="job-ai-panel ai-interview-product-details">
+<div class="job-ai-panel ai-interview-product-details"
+     data-job-ai-panel="true"
+     data-job-ai-context-id="@jobAiContextId"
+     data-product-id="@productId"
+     data-product-form-id="@productFormId"
+     data-apply-panel-id="@applyPanelId"
+     data-feedback-id="@feedbackId"
+     data-start-url="@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)"
+     data-apply-url="@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)"
+     data-sponsor-token="@sponsorToken"
+     data-request-error="Unable to reach the interview service. Please check your network and try again.">
     <div class="job-ai-grid">
         <div>
             <h2>@T("Plugins.Misc.AIInterview.Interview.Title")</h2>
@@ -70,10 +81,15 @@
                     <input id="@resumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
                     <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
                     <div class="job-ai-actions">
-                        <button type="button" class="job-ai-action job-ai-action-primary apply-btn" id="@applyButtonId" @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                        <button type="button"
+                                class="job-ai-action job-ai-action-primary apply-btn"
+                                id="@applyButtonId"
+                                data-job-ai-action="apply"
+                                @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
                         <button type="button"
                                 class="job-ai-action job-ai-action-secondary start-interview-btn"
                                 id="@startButtonId"
+                                data-job-ai-action="start"
                                 data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
                     </div>
                 </div>
@@ -83,129 +99,3 @@
         }
     </div>
 </div>
-
-@if (isAuthenticated)
-{
-    <script asp-location="Footer">
-        (() => {
-            const feedback = document.getElementById('@feedbackId');
-            const applyPanel = document.getElementById('@applyPanelId');
-            const productForm = document.getElementById('@productFormId');
-            const startButton = document.getElementById('@startButtonId');
-            const applyButton = document.getElementById('@applyButtonId');
-            const sponsorToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sponsorToken ?? string.Empty));
-            const safeRequestError = 'Unable to reach the interview service. Please check your network and try again.';
-
-            const setFeedback = (message, isError) => {
-                if (!feedback)
-                    return;
-
-                feedback.textContent = message || '';
-                feedback.classList.add('is-visible');
-                feedback.classList.toggle('is-error', !!isError);
-                feedback.classList.toggle('is-success', !isError);
-            };
-
-            const setBusy = (isBusy) => {
-                [startButton, applyButton].filter(Boolean).forEach(button => {
-                    button.disabled = !!isBusy;
-                });
-            };
-
-            const postJson = async (url, formData) => {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (!response.ok)
-                        return { success: false, error: safeRequestError };
-
-                    const contentType = response.headers.get('content-type') || '';
-                    if (!contentType.includes('application/json'))
-                        return { success: false, error: safeRequestError };
-
-                    try {
-                        return await response.json();
-                    } catch {
-                        return { success: false, error: safeRequestError };
-                    }
-                } catch {
-                    return { success: false, error: safeRequestError };
-                }
-            };
-
-            const startInterview = async () => {
-                setBusy(true);
-                const formData = productForm ? new FormData(productForm) : new FormData();
-                if (!productForm && applyPanel) {
-                    applyPanel.querySelectorAll('input').forEach(input => {
-                        if (input.type === 'file') {
-                            Array.from(input.files || []).forEach(file => formData.append(input.name, file));
-                            return;
-                        }
-
-                        if ((input.type === 'radio' || input.type === 'checkbox') && !input.checked)
-                            return;
-
-                        formData.append(input.name, input.value);
-                    });
-                }
-
-                formData.set('productId', '@productId');
-                if (sponsorToken)
-                    formData.set('sponsorToken', sponsorToken);
-
-                try {
-                    const result = await postJson('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)', formData);
-                    if (result.runtimeUrl) {
-                        window.location.href = result.runtimeUrl;
-                        return;
-                    }
-
-                    setFeedback(result.error || result.message || safeRequestError, true);
-                } finally {
-                    setBusy(false);
-                }
-            };
-
-            const applyInterview = async () => {
-                setBusy(true);
-                const formData = productForm ? new FormData(productForm) : new FormData();
-                if (!productForm && applyPanel) {
-                    applyPanel.querySelectorAll('input').forEach(input => {
-                        if (input.type === 'file') {
-                            Array.from(input.files || []).forEach(file => formData.append(input.name, file));
-                            return;
-                        }
-
-                        if ((input.type === 'radio' || input.type === 'checkbox') && !input.checked)
-                            return;
-
-                        formData.append(input.name, input.value);
-                    });
-                }
-                try {
-                    const result = await postJson('@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)', formData);
-                    setFeedback(result.message || result.error || safeRequestError, !result.success);
-                } finally {
-                    setBusy(false);
-                }
-            };
-
-            document.addEventListener('click', async (event) => {
-                const applyButton = event.target.closest?.('#@applyButtonId');
-                if (applyButton) {
-                    await applyInterview();
-                    return;
-                }
-
-                const startButton = event.target.closest?.('#@startButtonId');
-                if (startButton) {
-                    await startInterview();
-                }
-            });
-        })();
-    </script>
-}

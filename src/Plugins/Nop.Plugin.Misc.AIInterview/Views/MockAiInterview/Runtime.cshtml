@@ -106,7 +106,17 @@
                 <div id="runtime-question" class="runtime-question runtime-js-hidden">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
                 <div id="runtime-message" class="runtime-message is-info runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
 
-                <div class="runtime-conversation" id="conversation"></div>
+                <div class="runtime-conversation" id="conversation">
+                    <div class="runtime-chat-placeholder" id="conversation-empty-state">
+                        <div class="runtime-chat-placeholder-icon">
+                            <i class="fa-solid fa-comments" aria-hidden="true"></i>
+                        </div>
+                        <div class="runtime-chat-placeholder-copy">
+                            <div class="runtime-chat-placeholder-title">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
+                            <div class="runtime-chat-placeholder-text">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="runtime-answer runtime-answer-hidden runtime-js-hidden">
                     <label class="sr-only" for="runtime-answer">Your answer</label>
@@ -237,6 +247,7 @@
         let runtimeTimerHandle = null;
         let timerStartedAt = null;
         let answerNeedsEditAfterFailure = false;
+        let screenShareAudioAvailable = false;
 
         const setButtonLabel = (button, text) => {
             if (!button)
@@ -388,6 +399,29 @@
             resetSubmitButtonText();
         };
 
+        const getScreenShareAudioTracks = () => screenShareStream?.getAudioTracks?.().filter(track => track.readyState === 'live') || [];
+
+        const updateScreenShareAudioNotice = (shouldLog = false) => {
+            if (!screenShareActive || screenShareInterrupted) {
+                screenShareAudioAvailable = false;
+                return;
+            }
+
+            const hasAudioTrack = getScreenShareAudioTracks().length > 0;
+            screenShareAudioAvailable = hasAudioTrack;
+
+            if (hasAudioTrack) {
+                setScreenShareStatus('Screen sharing active', 'active');
+                if (shouldLog)
+                    logActivity('Screen sharing started with a system or tab audio track.');
+                return;
+            }
+
+            setScreenShareStatus('Screen sharing active without system or tab audio. Continue if your browser does not offer audio sharing.', 'warning');
+            if (shouldLog)
+                logActivity('Screen sharing started without a system or tab audio track.');
+        };
+
         const clearTokenRefreshTimer = () => {
             clearTimeout(tokenRefreshTimer);
             tokenRefreshTimer = null;
@@ -398,6 +432,7 @@
             screenShareStream = null;
             screenShareActive = false;
             screenShareInterrupted = false;
+            screenShareAudioAvailable = false;
             setScreenShareStatus(runtimeStoppedOrCompleted ? 'Screen sharing ended' : 'Screen sharing required');
             updateAuxiliaryControlsState();
         };
@@ -707,6 +742,7 @@
         const onScreenShareInterrupted = async () => {
             screenShareActive = false;
             screenShareInterrupted = true;
+            screenShareAudioAvailable = false;
             clearAnswerTimers();
             await stopSpeechRecognition();
             if (recordingEnabled && mediaRecorder)
@@ -731,7 +767,7 @@
             if (screenShareStream?.getTracks?.().some(track => track.readyState === 'live')) {
                 screenShareActive = true;
                 screenShareInterrupted = false;
-                setScreenShareStatus('Screen sharing active', 'active');
+                updateScreenShareAudioNotice();
                 updateAuxiliaryControlsState();
                 return true;
             }
@@ -743,10 +779,16 @@
             }
 
             try {
-                screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                screenShareStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: true,
+                    systemAudio: 'include',
+                    surfaceSwitching: 'include',
+                    selfBrowserSurface: 'exclude'
+                });
                 screenShareActive = true;
                 screenShareInterrupted = false;
-                setScreenShareStatus('Screen sharing active', 'active');
+                updateScreenShareAudioNotice(true);
                 const [screenTrack] = screenShareStream.getVideoTracks();
                 if (screenTrack) {
                     screenTrack.addEventListener('ended', async () => {
@@ -756,7 +798,8 @@
                     });
                 }
 
-                logActivity('Screen sharing started.');
+                if (screenShareAudioAvailable)
+                    logActivity('Screen sharing started.');
                 updateStartButtonState();
                 updateSubmitAvailability();
                 updateAuxiliaryControlsState();
@@ -765,6 +808,7 @@
                 return true;
             } catch (error) {
                 stopScreenShare();
+                screenShareAudioAvailable = false;
                 logActivity('Screen sharing was denied or cancelled.');
                 setStatus('Screen sharing is required to start the interview.', true);
                 updateAuxiliaryControlsState();
@@ -1007,6 +1051,35 @@
             return message;
         };
 
+        const buildChatPlaceholder = (title, message) => {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'runtime-chat-placeholder';
+
+            const iconWrap = document.createElement('div');
+            iconWrap.className = 'runtime-chat-placeholder-icon';
+            const icon = document.createElement('i');
+            icon.className = 'fa-solid fa-comments';
+            icon.setAttribute('aria-hidden', 'true');
+            iconWrap.appendChild(icon);
+
+            const copy = document.createElement('div');
+            copy.className = 'runtime-chat-placeholder-copy';
+
+            const heading = document.createElement('div');
+            heading.className = 'runtime-chat-placeholder-title';
+            heading.textContent = title || 'Welcome! Click Start Interview to begin.';
+
+            const body = document.createElement('div');
+            body.className = 'runtime-chat-placeholder-text';
+            body.textContent = message || 'Click Start Interview to begin.';
+
+            copy.appendChild(heading);
+            copy.appendChild(body);
+            placeholder.appendChild(iconWrap);
+            placeholder.appendChild(copy);
+            return placeholder;
+        };
+
         const buildTurnCard = (turn, index) => {
             const normalizedTurn = normalizeTurn(turn, index) || {};
             const card = document.createElement('div');
@@ -1042,6 +1115,12 @@
             transcriptBody.replaceChildren();
             conversation.replaceChildren();
             const normalizedTurns = (turns || []).map((turn, index) => normalizeTurn(turn, index));
+            if (!normalizedTurns.length) {
+                if (hasActiveQuestion())
+                    conversation.appendChild(buildChatMessage('bot', currentQuestionText(), { pending: interviewStarted }));
+                else
+                    conversation.appendChild(buildChatPlaceholder(currentQuestionText(), (messageBox.textContent || '').trim()));
+            }
             normalizedTurns.forEach((turn, index) => {
                 const transcriptCard = buildTurnCard(turn, index);
                 if (turn?.questionText)

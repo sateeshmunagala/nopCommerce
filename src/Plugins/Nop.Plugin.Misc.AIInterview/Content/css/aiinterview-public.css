@@ -1307,6 +1307,7 @@ body.ai-job-preview-open {
 }
 
 .ai-job-preview-drawer-body .job-shell {
+    display: grid;
     gap: 20px;
 }
 
@@ -1314,6 +1315,10 @@ body.ai-job-preview-open {
     grid-template-columns: 1fr;
     gap: 20px;
     padding: 20px;
+    border: 1px solid var(--job-border);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: var(--job-shadow);
 }
 
 .ai-job-preview-drawer-body .job-content-grid {
@@ -1324,6 +1329,10 @@ body.ai-job-preview-open {
 .ai-job-preview-drawer-body .job-card,
 .ai-job-preview-drawer-body .job-reviews-wrap {
     padding: 20px;
+    border: 1px solid var(--job-border);
+    border-radius: 8px;
+    background: var(--job-card);
+    box-shadow: var(--job-shadow);
 }
 
 @media (max-width: 1000px) {
@@ -1844,6 +1853,45 @@ body.ai-job-preview-open {
     border-radius: 8px;
     background: #f8fafc;
     min-height: 0;
+}
+
+.runtime-chat-placeholder {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    padding: 16px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.runtime-chat-placeholder-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #d8f8f1;
+    color: #0f766e;
+}
+
+.runtime-chat-placeholder-copy {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.runtime-chat-placeholder-title {
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.runtime-chat-placeholder-text {
+    color: #475569;
+    line-height: 1.6;
 }
 
 .runtime-chat-message {

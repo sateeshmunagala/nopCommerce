@@ -1061,6 +1061,10 @@ public class EmployerTests
         Assert.That(cssText, Does.Contain("left: auto;"));
         Assert.That(cssText, Does.Contain("transform: translateX(100%);"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-drawer.is-open .ai-job-preview-drawer-panel"));
+        Assert.That(cssText, Does.Contain(".ai-job-preview-drawer-body .job-hero {"));
+        Assert.That(cssText, Does.Contain(".ai-job-preview-drawer-body .job-card,"));
+        Assert.That(cssText, Does.Contain(".ai-job-preview-drawer-body .job-reviews-wrap {"));
+        Assert.That(cssText, Does.Contain("box-shadow: var(--job-shadow);"));
         Assert.That(cssText, Does.Contain(".ai-job-card-save.is-saved"));
         Assert.That(cssText, Does.Not.Contain(".ai-job-card-preview-trigger"));
         Assert.That(cssText, Does.Contain(".vendor-job-posting-shell"));

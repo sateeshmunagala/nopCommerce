@@ -62,6 +62,143 @@
         }
     }
 
+    function getJobAiPanel(target) {
+        return target && target.closest ? target.closest('[data-job-ai-panel="true"]') : null;
+    }
+
+    function getJobAiNode(panel, key) {
+        if (!panel) {
+            return null;
+        }
+
+        var id = panel.getAttribute('data-' + key + '-id');
+        return id ? document.getElementById(id) : null;
+    }
+
+    function getJobAiButtons(panel) {
+        return panel ? panel.querySelectorAll('[data-job-ai-action]') : [];
+    }
+
+    function setJobAiFeedback(panel, message, isError) {
+        var feedback = getJobAiNode(panel, 'feedback');
+        if (!feedback) {
+            return;
+        }
+
+        feedback.textContent = message || '';
+        feedback.classList.toggle('is-visible', !!message);
+        feedback.classList.toggle('is-error', !!message && !!isError);
+        feedback.classList.toggle('is-success', !!message && !isError);
+        feedback.classList.toggle('is-info', false);
+    }
+
+    function setJobAiBusy(panel, isBusy) {
+        Array.prototype.forEach.call(getJobAiButtons(panel), function (button) {
+            if (!button.hasAttribute('data-job-ai-original-disabled')) {
+                button.setAttribute('data-job-ai-original-disabled', button.disabled ? 'true' : 'false');
+            }
+
+            button.disabled = !!isBusy || button.getAttribute('data-job-ai-original-disabled') === 'true';
+            button.classList.toggle('is-loading', !!isBusy);
+        });
+    }
+
+    function appendFormInputsFromPanel(formData, panel) {
+        var applyPanel = getJobAiNode(panel, 'apply-panel');
+        if (!applyPanel) {
+            return;
+        }
+
+        Array.prototype.forEach.call(applyPanel.querySelectorAll('input'), function (input) {
+            if (!input.name) {
+                return;
+            }
+
+            if (input.type === 'file') {
+                Array.prototype.forEach.call(input.files || [], function (file) {
+                    formData.append(input.name, file);
+                });
+                return;
+            }
+
+            if ((input.type === 'radio' || input.type === 'checkbox') && !input.checked) {
+                return;
+            }
+
+            formData.append(input.name, input.value);
+        });
+    }
+
+    function buildJobAiFormData(panel) {
+        var productForm = getJobAiNode(panel, 'product-form');
+        var formData = productForm ? new FormData(productForm) : new FormData();
+
+        if (!productForm) {
+            appendFormInputsFromPanel(formData, panel);
+        }
+
+        var productId = panel && panel.getAttribute('data-product-id');
+        if (productId) {
+            formData.set('productId', productId);
+        }
+
+        var sponsorToken = panel && panel.getAttribute('data-sponsor-token');
+        if (sponsorToken) {
+            formData.set('sponsorToken', sponsorToken);
+        }
+
+        return formData;
+    }
+
+    function postJobAiJson(url, formData, requestErrorText) {
+        return fetch(url, {
+            method: 'POST',
+            body: formData
+        }).then(function (response) {
+            if (!response.ok) {
+                return { success: false, error: requestErrorText };
+            }
+
+            var contentType = response.headers.get('content-type') || '';
+            if (contentType.indexOf('application/json') === -1) {
+                return { success: false, error: requestErrorText };
+            }
+
+            return response.json().catch(function () {
+                return { success: false, error: requestErrorText };
+            });
+        }).catch(function () {
+            return { success: false, error: requestErrorText };
+        });
+    }
+
+    function handleJobAiAction(panel, action) {
+        if (!panel) {
+            return Promise.resolve();
+        }
+
+        var url = panel.getAttribute(action === 'start' ? 'data-start-url' : 'data-apply-url');
+        var requestErrorText = panel.getAttribute('data-request-error') || 'Unable to reach the interview service. Please check your network and try again.';
+        if (!url) {
+            setJobAiFeedback(panel, requestErrorText, true);
+            return Promise.resolve();
+        }
+
+        setJobAiBusy(panel, true);
+        return postJobAiJson(url, buildJobAiFormData(panel), requestErrorText)
+            .then(function (result) {
+                if (action === 'start' && result && result.runtimeUrl) {
+                    window.location.href = result.runtimeUrl;
+                    return;
+                }
+
+                setJobAiFeedback(panel, (result && (result.message || result.error)) || requestErrorText, !result || result.success !== true);
+            })
+            .finally(function () {
+                setJobAiBusy(panel, false);
+            });
+    }
+
     function closeDrawer(drawer) {
         var target = drawer || activeDrawer;
         if (!target) {
@@ -193,6 +330,13 @@
         if (closeTrigger) {
             event.preventDefault();
             closeDrawer(closeTrigger.closest('.ai-job-preview-drawer'));
+            return;
+        }
+
+        var jobAiAction = event.target.closest('[data-job-ai-action]');
+        if (jobAiAction) {
+            event.preventDefault();
+            handleJobAiAction(getJobAiPanel(jobAiAction), jobAiAction.getAttribute('data-job-ai-action'));
             return;
         }
 

@@ -332,10 +332,15 @@ public class CandidateFlowTests
     {
         var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "Components", "AIInterviewProductDetails", "Default.cshtml"));
 
+        Assert.That(viewText, Does.Contain("data-job-ai-panel=\"true\""));
         Assert.That(viewText, Does.Contain("data-start-interview-button=\"true\""));
-        Assert.That(viewText, Does.Contain("postJson('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)'"));
-        Assert.That(viewText, Does.Contain("window.location.href = result.runtimeUrl"));
-        Assert.That(viewText, Does.Contain("document.addEventListener('click'"));
+        Assert.That(viewText, Does.Contain("data-job-ai-action=\"start\""));
+        Assert.That(viewText, Does.Contain("data-job-ai-action=\"apply\""));
+        Assert.That(viewText, Does.Contain("data-start-url=\"@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)\""));
+        Assert.That(viewText, Does.Contain("data-apply-url=\"@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)\""));
+        Assert.That(viewText, Does.Contain("AppendScriptParts(Nop.Web.Framework.UI.ResourceLocation.Footer, \"~/Plugins/Misc.AIInterview/Content/js/aiinterview-job-card.js\")"));
+        Assert.That(viewText, Does.Not.Contain("postJson('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)'"));
+        Assert.That(viewText, Does.Not.Contain("document.addEventListener('click'"));
         Assert.That(viewText, Does.Not.Contain("aiinterview-server-fallback-shell"));
     }
 
@@ -343,13 +348,15 @@ public class CandidateFlowTests
     public void ProductDetails_And_StartViews_Handle_Fetch_Errors_Safely()
     {
         var productViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "Components", "AIInterviewProductDetails", "Default.cshtml"));
+        var jobCardScript = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "js", "aiinterview-job-card.js"));
         var startViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Start.cshtml"));
 
         Assert.That(productViewText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
-        Assert.That(productViewText, Does.Contain("response.ok"));
-        Assert.That(productViewText, Does.Contain("content-type"));
         Assert.That(productViewText, Does.Contain("interviewError"));
         Assert.That(productViewText, Does.Contain("Plugins.Misc.AIInterview.Runtime.Error.ExpiredLink"));
+        Assert.That(jobCardScript, Does.Contain("response.ok"));
+        Assert.That(jobCardScript, Does.Contain("content-type"));
+        Assert.That(jobCardScript, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
         Assert.That(startViewText, Does.Contain("Unable to reach the interview service. Please check your network and try again."));
         Assert.That(startViewText, Does.Contain("response.ok"));
         Assert.That(startViewText, Does.Contain("content-type"));
