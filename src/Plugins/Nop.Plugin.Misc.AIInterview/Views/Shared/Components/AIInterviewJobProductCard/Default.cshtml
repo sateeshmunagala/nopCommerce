@@ -19,10 +19,15 @@
     var loadingJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.LoadingJobDetails").Text;
     var unableToLoadJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.UnableToLoadJobDetails").Text;
     var viewJobLinkText = T("Plugins.Misc.AIInterview.JobCard.ViewJob").Text;
+    var workArrangementLabel = T("Plugins.Misc.AIInterview.JobCard.WorkArrangement").Text;
+    var employmentTypeLabel = T("Plugins.Misc.AIInterview.JobCard.EmploymentType").Text;
+    var jobLocationLabel = T("Plugins.Misc.AIInterview.JobCard.JobLocation").Text;
+    var salaryRangeLabel = T("Plugins.Misc.AIInterview.JobCard.SalaryRange").Text;
+    var experienceLevelLabel = T("Plugins.Misc.AIInterview.JobCard.ExperienceLevel").Text;
     var postedText = string.Format(T("Plugins.Misc.AIInterview.JobCard.Posted").Text, Model.PostedDateText);
     var appliedCountText = string.Format(T("Plugins.Misc.AIInterview.JobCard.AppliedCount").Text, Model.AppliedCount);
 
-    string BuildAccessibleSpecText(string resourceKey, string value) => $"{T(resourceKey).Text}: {value}";
+    string BuildAccessibleSpecText(string label, string value) => $"{label}: {value}";
 }
 
 <article class="product-item ai-job-product-card" data-productid="@Model.Id">
@@ -84,46 +89,51 @@
         <div class="ai-job-card-meta">
             @if (!string.IsNullOrWhiteSpace(Model.Specifications.WorkArrangement))
             {
-                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText("Plugins.Misc.AIInterview.JobCard.WorkArrangement", Model.Specifications.WorkArrangement)" aria-label="@BuildAccessibleSpecText("Plugins.Misc.AIInterview.JobCard.WorkArrangement", Model.Specifications.WorkArrangement)">
+                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(workArrangementLabel, Model.Specifications.WorkArrangement)" aria-label="@BuildAccessibleSpecText(workArrangementLabel, Model.Specifications.WorkArrangement)">
                     <i class="fa-solid fa-briefcase ai-job-card-spec-icon" aria-hidden="true"></i>
-                    <span>@Model.Specifications.WorkArrangement</span>
+                    <span class="ai-job-card-spec-label">@workArrangementLabel</span>
+                    <span class="ai-job-card-spec-value">@Model.Specifications.WorkArrangement</span>
                 </span>
             }
             @if (!string.IsNullOrWhiteSpace(Model.Specifications.EmploymentType))
             {
-                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText("Plugins.Misc.AIInterview.JobCard.EmploymentType", Model.Specifications.EmploymentType)" aria-label="@BuildAccessibleSpecText("Plugins.Misc.AIInterview.JobCard.EmploymentType", Model.Specifications.EmploymentType)">
+                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(employmentTypeLabel, Model.Specifications.EmploymentType)" aria-label="@BuildAccessibleSpecText(employmentTypeLabel, Model.Specifications.EmploymentType)">
                     <i class="fa-solid fa-id-card ai-job-card-spec-icon" aria-hidden="true"></i>
-                    <span>@Model.Specifications.EmploymentType</span>
+                    <span class="ai-job-card-spec-label">@employmentTypeLabel</span>
+                    <span class="ai-job-card-spec-value">@Model.Specifications.EmploymentType</span>
                 </span>
             }
             @if (!string.IsNullOrWhiteSpace(Model.Specifications.JobLocation))
             {
-                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText("Plugins.Misc.AIInterview.JobCard.JobLocation", Model.Specifications.JobLocation)" aria-label="@BuildAccessibleSpecText("Plugins.Misc.AIInterview.JobCard.JobLocation", Model.Specifications.JobLocation)">
+                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(jobLocationLabel, Model.Specifications.JobLocation)" aria-label="@BuildAccessibleSpecText(jobLocationLabel, Model.Specifications.JobLocation)">
                     <i class="fa-solid fa-location-dot ai-job-card-spec-icon" aria-hidden="true"></i>
-                    <span>@Model.Specifications.JobLocation</span>
+                    <span class="ai-job-card-spec-label">@jobLocationLabel</span>
+                    <span class="ai-job-card-spec-value">@Model.Specifications.JobLocation</span>
                 </span>
             }
             @if (!string.IsNullOrWhiteSpace(Model.Specifications.SalaryRange))
             {
-                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText("Plugins.Misc.AIInterview.JobCard.SalaryRange", Model.Specifications.SalaryRange)" aria-label="@BuildAccessibleSpecText("Plugins.Misc.AIInterview.JobCard.SalaryRange", Model.Specifications.SalaryRange)">
+                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(salaryRangeLabel, Model.Specifications.SalaryRange)" aria-label="@BuildAccessibleSpecText(salaryRangeLabel, Model.Specifications.SalaryRange)">
                     <i class="fa-solid fa-wallet ai-job-card-spec-icon" aria-hidden="true"></i>
-                    <span>@Model.Specifications.SalaryRange</span>
+                    <span class="ai-job-card-spec-label">@salaryRangeLabel</span>
+                    <span class="ai-job-card-spec-value">@Model.Specifications.SalaryRange</span>
                 </span>
             }
             @if (!string.IsNullOrWhiteSpace(Model.Specifications.ExperienceLevel))
             {
-                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText("Plugins.Misc.AIInterview.JobCard.ExperienceLevel", Model.Specifications.ExperienceLevel)" aria-label="@BuildAccessibleSpecText("Plugins.Misc.AIInterview.JobCard.ExperienceLevel", Model.Specifications.ExperienceLevel)">
+                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(experienceLevelLabel, Model.Specifications.ExperienceLevel)" aria-label="@BuildAccessibleSpecText(experienceLevelLabel, Model.Specifications.ExperienceLevel)">
                     <i class="fa-solid fa-chart-line ai-job-card-spec-icon" aria-hidden="true"></i>
-                    <span>@Model.Specifications.ExperienceLevel</span>
+                    <span class="ai-job-card-spec-label">@experienceLevelLabel</span>
+                    <span class="ai-job-card-spec-value">@Model.Specifications.ExperienceLevel</span>
                 </span>
             }
-            <span class="ai-job-card-spec" title="@postedText" aria-label="@postedText">
+            <span class="ai-job-card-spec ai-job-card-spec-stat" title="@postedText" aria-label="@postedText">
                 <i class="fa-regular fa-clock ai-job-card-spec-icon" aria-hidden="true"></i>
-                <span>@postedText</span>
+                <span class="ai-job-card-spec-value">@postedText</span>
             </span>
-            <span class="ai-job-card-spec" title="@appliedCountText" aria-label="@appliedCountText">
+            <span class="ai-job-card-spec ai-job-card-spec-stat" title="@appliedCountText" aria-label="@appliedCountText">
                 <i class="fa-solid fa-user-group ai-job-card-spec-icon" aria-hidden="true"></i>
-                <span>@appliedCountText</span>
+                <span class="ai-job-card-spec-value">@appliedCountText</span>
             </span>
         </div>
 

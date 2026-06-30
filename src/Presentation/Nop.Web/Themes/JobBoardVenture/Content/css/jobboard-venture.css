@@ -597,7 +597,7 @@ body.jb-menu-open .jb-mobile-drawer {
     }
 
     .jb-home-hero h1 span::after {
-        content: " Ã¢â‚¬Â¢ ";
+        content: " \2022 ";
         margin: 0 10px;
         color: var(--jb-accent);
     }
@@ -2125,11 +2125,11 @@ body {
 }
 
 .header-links .ico-wishlist::before {
-    content: "Ã¢â„¢Â¥";
+    content: "\2665";
 }
 
 .header-links .ico-inbox::before {
-    content: "Ã¢Å“â€°";
+    content: "\2709";
 }
 
 #topcartlink .ico-cart {
@@ -2996,7 +2996,7 @@ body.jb-search-open .jb-drawer-overlay {
 
     .footer-menu__title::before,
     .footer-menu__title::after {
-        content: "Ã¢Å’â€ž";
+        content: "\2304";
         position: absolute;
         top: 50%;
         transform: translateY(-50%);
@@ -4238,7 +4238,7 @@ body.jb-search-open .jb-drawer-overlay {
 
 .product-rating-box .rating::before,
 .product-review-box .rating::before {
-    content: "Ã¢Ëœâ€¦Ã¢Ëœâ€¦Ã¢Ëœâ€¦Ã¢Ëœâ€¦Ã¢Ëœâ€¦";
+    content: "\2605\2605\2605\2605\2605";
 }
 
 .product-rating-box .rating > div,
@@ -4255,7 +4255,7 @@ body.jb-search-open .jb-drawer-overlay {
 
 .product-rating-box .rating > div::before,
 .product-review-box .rating > div::before {
-    content: "Ã¢Ëœâ€¦Ã¢Ëœâ€¦Ã¢Ëœâ€¦Ã¢Ëœâ€¦Ã¢Ëœâ€¦";
+    content: "\2605\2605\2605\2605\2605";
 }
 
 .html-category-page .master-column-wrapper,
@@ -8926,5 +8926,78 @@ body.jb-filter-panel-open .product-filters {
         width: 100%;
         min-width: 0;
         max-width: none;
+    }
+}
+
+.html-category-page .product-item.ai-job-product-card,
+.html-search-page .product-item.ai-job-product-card,
+.html-home-page .home-page .product-item.ai-job-product-card {
+    display: grid;
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    padding: 14px 16px;
+    border-radius: 8px;
+    box-shadow: 0 10px 22px rgba(33, 43, 54, 0.08);
+}
+
+.html-home-page .home-page .product-item.ai-job-product-card {
+    grid-template-columns: 68px minmax(0, 1fr) !important;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-media,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-media,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-media {
+    flex: 0 0 68px;
+    width: 68px;
+    max-width: 68px;
+    align-self: start;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-body,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-body,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-body {
+    min-width: 0;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-logo,
+.html-category-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-logo,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder {
+    width: 68px;
+    height: 68px;
+}
+
+@media (max-width: 767px) {
+    .html-category-page .product-item.ai-job-product-card,
+    .html-search-page .product-item.ai-job-product-card,
+    .html-home-page .home-page .product-item.ai-job-product-card {
+        grid-template-columns: 60px minmax(0, 1fr);
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .html-home-page .home-page .product-item.ai-job-product-card {
+        grid-template-columns: 60px minmax(0, 1fr) !important;
+    }
+
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-media,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-media,
+    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-media {
+        flex-basis: 60px;
+        width: 60px;
+        max-width: 60px;
+    }
+
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-logo,
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-logo,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
+    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo,
+    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder {
+        width: 60px;
+        height: 60px;
     }
 }
