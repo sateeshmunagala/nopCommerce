@@ -60,6 +60,7 @@
   <ItemGroup>
     <Content Include="Content\css\aiinterview-public.css">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="Content\js\aiinterview-job-card.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

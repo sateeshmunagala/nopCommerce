@@ -9093,3 +9093,346 @@ body.jb-filter-panel-open .product-filters {
         padding: 0 16px 16px;
     }
 }
+
+/* Prompt 67 live jobs visual density and CSS parity */
+.html-category-page .master-column-wrapper,
+.html-search-page .master-column-wrapper {
+    gap: 20px;
+    padding: 0 20px 20px;
+}
+
+.html-category-page .master-column-wrapper {
+    flex-direction: row;
+}
+
+.html-category-page .master-column-wrapper > .side-2 {
+    flex: 0 0 224px;
+    width: 224px;
+    max-width: 224px;
+}
+
+.html-category-page .page-title,
+.html-search-page .page-title {
+    margin: 0 auto 8px;
+    padding: 0 20px;
+}
+
+.html-category-page .page-title h1,
+.html-search-page .page-title h1 {
+    padding-bottom: 4px;
+    font-size: 1.82rem;
+    line-height: 1.02;
+}
+
+.html-category-page .page-body,
+.html-search-page .page-body {
+    padding-bottom: 8px;
+}
+
+.html-category-page .category-description,
+.html-search-page .search-results {
+    margin-bottom: 12px;
+}
+
+.html-category-page .side-2 .product-filters,
+.html-search-page .side-2 .product-filters {
+    border-radius: 8px;
+}
+
+.html-category-page .product-filter,
+.html-search-page .product-filter {
+    padding: 16px 16px 12px;
+}
+
+.html-category-page .product-filter .filter-title,
+.html-search-page .product-filter .filter-title {
+    margin: 0 0 12px;
+    padding: 0 0 8px;
+    font-size: 1rem;
+}
+
+.html-category-page .product-filter .filter-title::after,
+.html-search-page .product-filter .filter-title::after {
+    width: 48px;
+    height: 2px;
+}
+
+.html-category-page .product-filter .group + .group,
+.html-search-page .product-filter .group + .group {
+    margin-top: 16px;
+}
+
+.html-category-page .product-filter .item,
+.html-search-page .product-filter .item {
+    gap: 8px;
+    margin: 0 0 9px;
+}
+
+.html-category-page .product-selectors,
+.html-search-page .product-selectors {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin: 0 0 10px;
+    padding: 0;
+}
+
+.html-category-page .product-selectors > div,
+.html-search-page .product-selectors > div {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.html-category-page .product-selectors span,
+.html-search-page .product-selectors span {
+    color: #6b7280;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.html-category-page .product-selectors select,
+.html-search-page .product-selectors select {
+    min-width: 116px;
+    min-height: 36px;
+    padding: 6px 30px 6px 10px;
+    border-color: #d7e0e4;
+    background: #ffffff;
+    color: #1f2937;
+    font-size: 0.84rem;
+}
+
+.html-category-page .product-viewmode a,
+.html-search-page .product-viewmode a {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 6px;
+}
+
+.jb-filter-panel-toggle {
+    width: auto;
+    min-height: 42px;
+    margin: 0 0 10px;
+    padding: 0 14px;
+    border: 1px solid #d7e0e4;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1f2937;
+    font-size: 0.92rem;
+    gap: 10px;
+}
+
+.html-category-page .product-item.ai-job-product-card,
+.html-search-page .product-item.ai-job-product-card,
+.html-home-page .home-page .product-item.ai-job-product-card {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    padding: 10px 12px;
+    min-height: 0;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-media,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-media,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-media {
+    flex: 0 0 64px;
+    width: 64px;
+    max-width: 64px;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-logo,
+.html-category-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-logo,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder {
+    width: 64px;
+    height: 64px;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-body,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-body,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-body {
+    gap: 6px;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-title-link,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-title-link,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-title-link {
+    font-size: 1rem;
+    line-height: 1.12;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-company,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-company,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-company {
+    font-size: 0.84rem;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-summary,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-summary,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-summary {
+    font-size: 0.82rem;
+    line-height: 1.4;
+    -webkit-line-clamp: 1;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-meta,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-meta,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-meta {
+    gap: 2px 12px;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-spec,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-spec,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-spec {
+    gap: 2px 5px;
+    font-size: 0.78rem;
+    line-height: 1.25;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-spec-label,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-spec-label,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-spec-label {
+    font-size: 0.7rem;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-spec-icon,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-spec-icon,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-spec-icon {
+    width: 12px;
+    font-size: 0.72rem;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-view-job,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-view-job,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-view-job {
+    min-height: 34px;
+    padding: 7px 12px;
+}
+
+.html-category-page .product-item.ai-job-product-card .ai-job-card-save,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-save,
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-save {
+    width: 34px;
+    height: 34px;
+}
+
+@media (max-width: 1079px) {
+    .html-category-page .master-column-wrapper,
+    .html-search-page .master-column-wrapper {
+        gap: 16px;
+        padding: 0 16px 18px;
+    }
+
+    .html-category-page .master-column-wrapper {
+        flex-direction: column;
+    }
+
+    .html-category-page .master-column-wrapper > .side-2,
+    .html-category-page .master-column-wrapper > .center-2,
+    .html-search-page .master-column-wrapper > .center-2 {
+        width: 100%;
+        max-width: none;
+    }
+
+    .html-category-page .master-column-wrapper > .side-2 {
+        flex-basis: auto;
+    }
+
+    .html-category-page .product-selectors,
+    .html-search-page .product-selectors {
+        gap: 8px 12px;
+        margin-bottom: 8px;
+    }
+}
+
+@media (max-width: 767px) {
+    .html-category-page .page-title,
+    .html-search-page .page-title {
+        margin-bottom: 6px;
+        padding: 0 16px;
+    }
+
+    .html-category-page .page-title h1,
+    .html-search-page .page-title h1 {
+        font-size: 1.42rem;
+        padding-bottom: 2px;
+    }
+
+    .html-category-page .product-selectors,
+    .html-search-page .product-selectors {
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .html-category-page .product-selectors > div,
+    .html-search-page .product-selectors > div {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .html-category-page .product-selectors select,
+    .html-search-page .product-selectors select {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .jb-filter-panel-toggle {
+        margin-bottom: 8px;
+        padding: 0 12px;
+        font-size: 0.84rem;
+    }
+
+    .html-category-page .product-item.ai-job-product-card,
+    .html-search-page .product-item.ai-job-product-card,
+    .html-home-page .home-page .product-item.ai-job-product-card {
+        grid-template-columns: 54px minmax(0, 1fr);
+        gap: 8px;
+        padding: 9px 10px;
+    }
+
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-media,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-media,
+    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-media {
+        flex-basis: 54px;
+        width: 54px;
+        max-width: 54px;
+    }
+
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-logo,
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-logo,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
+    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo,
+    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder {
+        width: 54px;
+        height: 54px;
+    }
+
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-meta,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-meta,
+    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-meta {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 2px;
+    }
+
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-title-link,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-title-link,
+    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-title-link {
+        font-size: 0.94rem;
+    }
+
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-summary,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-summary,
+    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-summary {
+        font-size: 0.78rem;
+    }
+}
