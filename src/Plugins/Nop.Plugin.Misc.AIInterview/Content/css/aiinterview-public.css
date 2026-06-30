@@ -90,10 +90,20 @@
 .html-aiinterview-view-page .button-2,
 .job-ai-actions .button-1,
 .job-ai-actions .button-2 {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 18px;
+    border: 1px solid transparent;
     border-radius: 0;
     font-family: "Fjalla One", Arial, sans-serif;
     font-weight: 400;
+    line-height: 1.1;
+    text-align: center;
+    text-decoration: none;
     text-transform: uppercase;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .aiinterview-public-page .button-1,
@@ -107,9 +117,44 @@
 .aiinterview-public-page .button-2,
 .html-aiinterview-view-page .button-2,
 .job-ai-actions .button-2 {
-    border-color: #d5d5d5;
-    background: #f2f2f2;
-    color: #454c52;
+    border-color: #b9c7c3;
+    background: #f9fbfb;
+    color: #1b4e46;
+}
+
+.aiinterview-public-page .button-1:hover,
+.aiinterview-public-page .button-1:focus-visible,
+.html-aiinterview-view-page .button-1:hover,
+.html-aiinterview-view-page .button-1:focus-visible,
+.job-ai-actions .button-1:hover,
+.job-ai-actions .button-1:focus-visible {
+    border-color: #24b99a;
+    background: #24b99a;
+    color: #ffffff;
+}
+
+.aiinterview-public-page .button-2:hover,
+.aiinterview-public-page .button-2:focus-visible,
+.html-aiinterview-view-page .button-2:hover,
+.html-aiinterview-view-page .button-2:focus-visible,
+.job-ai-actions .button-2:hover,
+.job-ai-actions .button-2:focus-visible {
+    border-color: #35d6b4;
+    background: #eefaf7;
+    color: #0f766e;
+}
+
+.aiinterview-public-page .button-1:focus-visible,
+.aiinterview-public-page .button-2:focus-visible,
+.html-aiinterview-view-page .button-1:focus-visible,
+.html-aiinterview-view-page .button-2:focus-visible,
+.job-ai-actions .button-1:focus-visible,
+.job-ai-actions .button-2:focus-visible,
+.job-ai-actions .job-ai-action:focus-visible,
+.ai-job-card-save:focus-visible,
+.ai-job-preview-drawer-close:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.22);
 }
 
 .applications-toolbar,
@@ -268,7 +313,7 @@
 
 .vendor-job-posting-intro {
     display: grid;
-    gap: 8px;
+    gap: 12px;
     padding: 22px;
     border: 1px solid #dedede;
     border-radius: 4px;
@@ -283,20 +328,30 @@
     text-transform: uppercase;
 }
 
-.vendor-job-posting-intro h2 {
-    margin: 0;
-    color: #20252b;
-    font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 1.9rem;
-    font-weight: 400;
-    line-height: 1.08;
-    text-transform: uppercase;
-}
-
-.vendor-job-posting-intro p:last-child {
+.vendor-job-posting-lead {
     margin: 0;
     color: #687078;
     line-height: 1.6;
+}
+
+.vendor-job-posting-sections {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.vendor-job-posting-sections span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 6px 10px;
+    border: 1px solid #cfe4de;
+    border-radius: 4px;
+    background: #f5fbf9;
+    color: #145f50;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.84rem;
+    text-transform: uppercase;
 }
 
 .vendor-job-fieldset,
@@ -548,17 +603,39 @@
     font-size: 14px;
 }
 
+.ai-view-report-link {
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid #b9c7c3;
+    border-radius: 4px;
+    background: #f9fbfb;
+    color: #0f766e;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.1;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ai-view-report-link:hover,
+.ai-view-report-link:focus-visible {
+    border-color: #35d6b4;
+    background: #eefaf7;
+    color: #0f766e;
+}
+
 .ai-job-preview-fallback-link {
     width: fit-content;
 }
 
 .employer-filter-shell {
     display: grid;
-    gap: 18px;
-    padding: 18px;
+    gap: 20px;
+    padding: 20px;
     border: 1px solid #dedede;
-    border-radius: 4px;
-    background: #fbfbfb;
+    border-radius: 6px;
+    background: #fbfcfc;
 }
 
 .employer-filter-head {
@@ -577,6 +654,10 @@
 .employer-filter-head span {
     color: #687078;
     line-height: 1.5;
+}
+
+.employer-filter-actions .button-2:last-child {
+    margin-left: auto;
 }
 
 .score-chip,
@@ -720,7 +801,7 @@
 
 .job-ai-card {
     padding: 18px;
-    background: #fafafa;
+    background: #fbfcfc;
     max-width: 100%;
     min-width: 0;
     overflow: hidden;
@@ -763,29 +844,29 @@
 }
 
 .job-ai-actions .job-ai-action-primary {
-    border-color: #1fb99b;
-    background: #1fb99b;
+    border-color: #24b99a;
+    background: #24b99a;
     color: #ffffff;
 }
 
 .job-ai-actions .job-ai-action-primary:hover:not(:disabled),
 .job-ai-actions .job-ai-action-primary:focus-visible {
-    border-color: #159d84;
-    background: #159d84;
+    border-color: #0f766e;
+    background: #0f766e;
     color: #ffffff;
 }
 
 .job-ai-actions .job-ai-action-secondary {
-    border-color: #cfd6dc;
+    border-color: #b9c7c3;
     background: #ffffff;
-    color: #25313a;
+    color: #0f766e;
 }
 
 .job-ai-actions .job-ai-action-secondary:hover:not(:disabled),
 .job-ai-actions .job-ai-action-secondary:focus-visible {
-    border-color: #b8c1c9;
-    background: #f3f5f6;
-    color: #17212a;
+    border-color: #35d6b4;
+    background: #eefaf7;
+    color: #0f766e;
 }
 
 .job-ai-actions .job-ai-action:disabled {
@@ -840,6 +921,56 @@
     border-left: 2px solid var(--jb-accent, #35d6b4);
     padding: 28px;
     background: #ffffff;
+}
+
+.aiinterview-index-hero {
+    display: grid;
+    gap: 18px;
+    border-left: 2px solid var(--jb-accent, #35d6b4);
+}
+
+.aiinterview-index-copy,
+.aiinterview-index-summary-item {
+    min-width: 0;
+}
+
+.aiinterview-index-lead {
+    margin: 0;
+    color: #4f5963;
+    font-size: 1.02rem;
+    line-height: 1.75;
+}
+
+.aiinterview-index-actions {
+    gap: 12px;
+}
+
+.aiinterview-index-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.aiinterview-index-summary-item {
+    display: grid;
+    gap: 6px;
+    padding: 16px 18px;
+    border: 1px solid #dedede;
+    border-radius: 4px;
+    background: #fbfbfb;
+}
+
+.aiinterview-index-summary-item strong {
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.aiinterview-index-summary-item span {
+    color: #687078;
+    line-height: 1.55;
 }
 
 .mock-start form,
@@ -1122,8 +1253,8 @@ body.aiinterview-report-drawer-open {
 }
 
 .ai-job-card-view-job {
-    min-height: 34px;
-    padding: 7px 12px;
+    min-height: 40px;
+    padding: 9px 14px;
 }
 
 .ai-job-card-save {
@@ -2633,26 +2764,53 @@ body.ai-job-preview-open {
     min-width: 250px;
 }
 
+.html-aiinterview-employer-applications-page .employer-filter-grid {
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 18px 20px;
+}
+
+.html-aiinterview-employer-applications-page .employer-filter-meta {
+    justify-content: space-between;
+}
+
 .html-aiinterview-employer-applications-page .employer-filter-actions {
     justify-content: flex-start;
 }
 
 .html-aiinterview-employer-applications-page .status-form {
-    grid-template-columns: minmax(130px, 0.9fr) minmax(0, 1.35fr) auto;
-    align-items: start;
-    gap: 8px;
+    grid-template-columns: minmax(140px, 0.95fr) minmax(0, 1.45fr) minmax(112px, auto);
+    align-items: end;
+    gap: 10px;
 }
 
 .html-aiinterview-employer-applications-page .status-form .button-2 {
     justify-self: stretch;
 }
 
+.html-aiinterview-employer-applications-page .employer-status-field {
+    display: grid;
+    gap: 6px;
+}
+
+.html-aiinterview-employer-applications-page .employer-status-inline-label {
+    color: #4f5963;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-employer-applications-page .employer-status-inline-label-action {
+    opacity: 0;
+}
+
 .html-aiinterview-employer-applications-page .status-form .employer-status-comment {
-    min-width: 180px;
+    min-width: 220px;
 }
 
 .html-aiinterview-employer-applications-page .status-form .employer-status-update {
-    min-width: 92px;
+    min-width: 110px;
+    min-height: 42px;
 }
 
 .html-aiinterview-my-applications-page .applications-table-wrap,
@@ -2742,12 +2900,13 @@ body.ai-job-preview-open {
 
 .html-aiinterview-scoreboard-page .scoreboard-deck-actions {
     justify-content: flex-start;
+    gap: 12px;
 }
 
 .html-aiinterview-scoreboard-page .scoreboard-deck-actions .button-1,
 .html-aiinterview-scoreboard-page .scoreboard-deck-actions .button-2,
 .html-aiinterview-scoreboard-page .scoreboard-deck-row-actions .button-2 {
-    min-height: 42px;
+    min-height: 44px;
     padding: 10px 16px;
     border-radius: 4px;
 }
@@ -2945,6 +3104,10 @@ body.ai-job-preview-open {
 }
 
 @media (max-width: 640px) {
+    .aiinterview-index-summary {
+        grid-template-columns: 1fr;
+    }
+
     .html-aiinterview-scoreboard-page .scoreboard-deck-metrics,
     .html-aiinterview-scoreboard-page .scoreboard-deck-overview {
         grid-template-columns: 1fr;
@@ -2968,6 +3131,10 @@ body.ai-job-preview-open {
         grid-column: auto;
     }
 
+    .employer-filter-actions .button-2:last-child {
+        margin-left: 0;
+    }
+
     .invite-form-grid {
         grid-template-columns: 1fr;
     }
@@ -2987,6 +3154,14 @@ body.ai-job-preview-open {
 }
 
 @media (max-width: 480px) {
+    .html-aiinterview-employer-applications-page .status-form {
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-employer-applications-page .employer-status-inline-label-action {
+        opacity: 1;
+    }
+
     .applications-sort {
         flex-wrap: wrap;
         align-items: flex-start;

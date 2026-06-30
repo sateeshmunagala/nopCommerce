@@ -1,7 +1,134 @@
 .html-aiinterview-admin-candidate-page .content-wrapper,
 .html-aiinterview-admin-candidate-page .content,
-.html-aiinterview-admin-candidate-page .container-fluid {
+.html-aiinterview-admin-candidate-page .container-fluid,
+.html-aiinterview-plugin-admin-page .content-wrapper,
+.html-aiinterview-plugin-admin-page .content,
+.html-aiinterview-plugin-admin-page .container-fluid {
     min-width: 0;
+}
+
+.html-aiinterview-plugin-admin-page .content-header h1 {
+    margin: 0;
+}
+
+.html-aiinterview-plugin-admin-page .content-header .float-left,
+.html-aiinterview-plugin-admin-page .content-header .float-right {
+    min-width: 0;
+}
+
+.aiinterview-admin-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.aiinterview-admin-subtitle {
+    margin-top: 6px;
+    color: #6b7280;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.aiinterview-admin-shell,
+.aiinterview-admin-shell * {
+    box-sizing: border-box;
+}
+
+.aiinterview-admin-shell {
+    display: grid;
+    gap: 16px;
+}
+
+.aiinterview-admin-summary,
+.aiinterview-admin-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.aiinterview-admin-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.aiinterview-admin-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.aiinterview-admin-summary-card,
+.aiinterview-admin-card {
+    min-width: 0;
+    border: 1px solid #d7dce3;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.aiinterview-admin-summary-card {
+    display: grid;
+    gap: 8px;
+    padding: 18px;
+}
+
+.aiinterview-admin-summary-label {
+    color: #6b7280;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.aiinterview-admin-summary-value {
+    color: #111827;
+    font-size: 1.08rem;
+    font-weight: 700;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.aiinterview-admin-search-card .card-body,
+.aiinterview-admin-card .card-body {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.aiinterview-admin-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.aiinterview-admin-copy,
+.aiinterview-admin-list {
+    color: #4b5563;
+    line-height: 1.65;
+}
+
+.aiinterview-admin-copy p:last-child,
+.aiinterview-admin-list {
+    margin-bottom: 0;
+}
+
+.aiinterview-admin-list {
+    padding-left: 18px;
+}
+
+.aiinterview-admin-action-button,
+.aiinterview-admin-link-button {
+    min-height: 40px;
+    border-radius: 4px;
+}
+
+.aiinterview-admin-link-button {
+    border-color: #b9c7c3;
+    background: #f8fbfb;
+    color: #0f766e;
+}
+
+.aiinterview-admin-link-button:hover,
+.aiinterview-admin-link-button:focus-visible {
+    border-color: #35d6b4;
+    background: #eefaf7;
+    color: #0f766e;
 }
 
 .candidate-dashboard-shell,
@@ -346,6 +473,19 @@
 }
 
 @media (max-width: 767px) {
+    .aiinterview-admin-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .aiinterview-admin-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aiinterview-admin-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
     .candidate-dashboard-hero,
     .candidate-dashboard-card-header,
     .candidate-dashboard-analysis-head,

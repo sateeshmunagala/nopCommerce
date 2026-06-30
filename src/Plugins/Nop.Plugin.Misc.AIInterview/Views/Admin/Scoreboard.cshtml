@@ -7,11 +7,17 @@
 @{
     Layout = "_AdminLayout";
     ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.Scoreboard.Title").Text;
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-admin.css");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-plugin-admin-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-admin-scoreboard-page");
     NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminScoreboardMenuSystemName);
 }
 
-<div class="content-header clearfix">
-    <h1 class="float-left">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Title")</h1>
+<div class="content-header clearfix aiinterview-admin-header">
+    <div class="float-left">
+        <h1>@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Title")</h1>
+        <div class="aiinterview-admin-subtitle">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Filter")</div>
+    </div>
     <div class="float-right">
         <form asp-controller="AIInterviewAdmin" asp-action="ScoreboardExportCsv" method="post" class="d-inline">
             <input type="hidden" asp-for="Candidate" />
@@ -22,7 +28,7 @@
             <input type="hidden" asp-for="MaxScore" />
             <input type="hidden" asp-for="StartDate" />
             <input type="hidden" asp-for="EndDate" />
-            <button type="submit" class="btn btn-secondary">
+            <button type="submit" class="btn btn-secondary aiinterview-admin-link-button" aria-label="@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Export")" title="@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Export")">
                 <i class="fas fa-download"></i> @T("Plugins.Misc.AIInterview.Admin.Scoreboard.Export")
             </button>
         </form>
@@ -30,8 +36,23 @@
 </div>
 
 <section class="content">
-    <div class="container-fluid">
-        <div class="card card-default card-search">
+    <div class="container-fluid aiinterview-admin-shell aiinterview-admin-scoreboard-shell">
+        <div class="aiinterview-admin-summary">
+            <div class="aiinterview-admin-summary-card">
+                <span class="aiinterview-admin-summary-label">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Candidate")</span>
+                <strong class="aiinterview-admin-summary-value">@(!string.IsNullOrWhiteSpace(Model.Candidate) ? Model.Candidate : "-")</strong>
+            </div>
+            <div class="aiinterview-admin-summary-card">
+                <span class="aiinterview-admin-summary-label">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Vendor")</span>
+                <strong class="aiinterview-admin-summary-value">@(!string.IsNullOrWhiteSpace(Model.Vendor) ? Model.Vendor : "-")</strong>
+            </div>
+            <div class="aiinterview-admin-summary-card">
+                <span class="aiinterview-admin-summary-label">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.JobPosting")</span>
+                <strong class="aiinterview-admin-summary-value">@(!string.IsNullOrWhiteSpace(Model.JobPosting) ? Model.JobPosting : "-")</strong>
+            </div>
+        </div>
+
+        <div class="card card-default card-search aiinterview-admin-card aiinterview-admin-search-card">
             <div class="card-body">
                 <div class="search-body">
                     <div class="row">
@@ -106,7 +127,7 @@
                     </div>
                     <div class="row">
                         <div class="text-center col-12">
-                            <button type="button" id="search-scoreboard" class="btn btn-primary btn-search">
+                            <button type="button" id="search-scoreboard" class="btn btn-primary btn-search aiinterview-admin-action-button" aria-label="@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Filter")" title="@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Filter")">
                                 <i class="fas fa-magnifying-glass"></i>
                                 @T("Plugins.Misc.AIInterview.Admin.Scoreboard.Filter")
                             </button>
@@ -116,7 +137,7 @@
             </div>
         </div>
 
-        <div class="card card-default">
+        <div class="card card-default aiinterview-admin-card">
             <div class="card-body">
                 @await Html.PartialAsync("Table", new DataTablesModel
                 {
@@ -243,6 +264,6 @@
             return '';
         }
 
-        return '<a class="btn btn-default" href="' + scoreboardEncodeHtml(row.ReportUrl) + '">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report").Text</a>';
+        return '<a class="btn btn-default aiinterview-admin-link-button" href="' + scoreboardEncodeHtml(row.ReportUrl) + '" title="@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report").Text" aria-label="@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report").Text">@T("Plugins.Misc.AIInterview.Admin.Scoreboard.Report").Text</a>';
     }
 </script>

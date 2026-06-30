@@ -26,8 +26,12 @@
                     <div class="vendor-job-posting-shell">
                         <div class="vendor-job-posting-intro">
                             <p class="vendor-job-posting-kicker">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview")</p>
-                            <h2>@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")</h2>
-                            <p>@T("Plugins.Misc.AIInterview.VendorScoreboard.Intro")</p>
+                            <p class="vendor-job-posting-lead">@T("Plugins.Misc.AIInterview.VendorScoreboard.Intro")</p>
+                            <div class="vendor-job-posting-sections" aria-label="@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")">
+                                <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview")</span>
+                                <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent")</span>
+                                <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings")</span>
+                            </div>
                         </div>
 
                         <div asp-validation-summary="ModelOnly" class="message-error"></div>
@@ -134,7 +138,7 @@
                     </section>
 
                         <div class="vendor-job-form-actions">
-                            <button type="submit" class="button-1 vendor-job-submit">@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")</button>
+                            <button type="submit" class="button-1 vendor-job-submit" title="@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")">@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")</button>
                         </div>
                     </div>
                 </div>

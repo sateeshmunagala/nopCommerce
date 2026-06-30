@@ -55,9 +55,9 @@
                     <p class="scoreboard-deck-copy">@introText</p>
                 </div>
                 <div class="buttons scoreboard-deck-actions">
-                    <a class="button-1" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobCreationRouteName)">@T("Plugins.Misc.AIInterview.VendorScoreboard.CreateJobAction")</a>
-                    <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewApplicationsAction")</a>
-                    <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.MockEmployerManageRouteName)">@T("Plugins.Misc.AIInterview.VendorScoreboard.ManageInvitesAction")</a>
+                    <a class="button-1 scoreboard-deck-action-primary" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobCreationRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.CreateJobAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.CreateJobAction")</a>
+                    <a class="button-2 scoreboard-deck-action-secondary" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewApplicationsAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewApplicationsAction")</a>
+                    <a class="button-2 scoreboard-deck-action-secondary" href="@Url.RouteUrl(AIInterviewDefaults.MockEmployerManageRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ManageInvitesAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ManageInvitesAction")</a>
                 </div>
             </div>
 
@@ -156,11 +156,11 @@
                                         <div class="buttons scoreboard-deck-row-actions">
                                             @if (!string.IsNullOrWhiteSpace(application.InterviewReportUrl))
                                             {
-                                                <a class="button-2" href="@application.InterviewReportUrl">@T("Plugins.Misc.AIInterview.VendorScoreboard.ViewAnalysis")</a>
+                                                <a class="button-2 scoreboard-deck-row-link" href="@application.InterviewReportUrl" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ViewAnalysis")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ViewAnalysis")</a>
                                             }
                                             else
                                             {
-                                                <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")</a>
+                                                <a class="button-2 scoreboard-deck-row-link" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")</a>
                                             }
                                         </div>
                                     </td>

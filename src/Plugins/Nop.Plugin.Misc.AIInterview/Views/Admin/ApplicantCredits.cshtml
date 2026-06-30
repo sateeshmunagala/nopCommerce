@@ -8,6 +8,9 @@
 @{
     Layout = "_AdminLayout";
     ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle").Text;
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-admin.css");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-plugin-admin-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-admin-credits-page");
     NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminApplicantCreditsMenuSystemName);
 }
 
@@ -16,16 +19,34 @@
     var hideSearchBlock = await genericAttributeService.GetAttributeAsync<bool>(await workContext.GetCurrentCustomerAsync(), hideSearchBlockAttributeName);
 }
 
-<div class="content-header clearfix">
-    <h1 class="float-left">@T("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle")</h1>
+<div class="content-header clearfix aiinterview-admin-header">
+    <div class="float-left">
+        <h1>@T("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle")</h1>
+        <div class="aiinterview-admin-subtitle">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.Title")</div>
+    </div>
 </div>
 
 <section class="content">
-    <div class="container-fluid">
-        <div class="card card-default">
+    <div class="container-fluid aiinterview-admin-shell aiinterview-admin-credits-shell">
+        <div class="aiinterview-admin-summary">
+            <div class="aiinterview-admin-summary-card">
+                <span class="aiinterview-admin-summary-label">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.SelectedApplicant")</span>
+                <strong class="aiinterview-admin-summary-value">@(string.IsNullOrWhiteSpace(Model.CustomerName) ? T("Plugins.Misc.AIInterview.Admin.Credits.Activity.SelectApplicant").Text : Model.CustomerName)</strong>
+            </div>
+            <div class="aiinterview-admin-summary-card">
+                <span class="aiinterview-admin-summary-label">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.WalletBalance")</span>
+                <strong class="aiinterview-admin-summary-value">@Model.WalletBalance</strong>
+            </div>
+            <div class="aiinterview-admin-summary-card">
+                <span class="aiinterview-admin-summary-label">@T("Plugins.Misc.AIInterview.Admin.Credits.Credits")</span>
+                <strong class="aiinterview-admin-summary-value">@Model.Amount</strong>
+            </div>
+        </div>
+
+        <div class="card card-default aiinterview-admin-card">
             <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.Title")</div>
             <div class="card-body">
-                <div class="card card-default card-search">
+                <div class="card card-default card-search aiinterview-admin-search-card">
                     <div class="card-body">
                         <div class="row search-row @(!hideSearchBlock ? "opened" : "")" data-hideAttribute="@hideSearchBlockAttributeName">
                             <div class="search-text">@T("Admin.Common.Search")</div>
@@ -48,7 +69,7 @@
                             </div>
                             <div class="row">
                                 <div class="text-center col-12">
-                                    <button type="button" id="search-applicant-credits" class="btn btn-primary btn-search">
+                                    <button type="button" id="search-applicant-credits" class="btn btn-primary btn-search aiinterview-admin-action-button" aria-label="@T("Admin.Common.Search")" title="@T("Admin.Common.Search")">
                                         <i class="fas fa-magnifying-glass"></i>
                                         @T("Admin.Common.Search")
                                     </button>
@@ -109,10 +130,10 @@
             </div>
         </div>
 
-        <form asp-controller="AIInterviewAdmin" asp-action="ApplicantCredits" method="post">
+        <form asp-controller="AIInterviewAdmin" asp-action="ApplicantCredits" method="post" class="aiinterview-admin-form-shell">
             <input type="hidden" id="SelectedCustomerId" name="CustomerId" value="@Model.CustomerId" />
 
-            <div class="card card-default">
+            <div class="card card-default aiinterview-admin-card">
                 <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.SelectedApplicant")</div>
                 <div class="card-body">
                     <div class="form-group row">
@@ -144,56 +165,58 @@
                         <div class="col-md-3">@T("Plugins.Misc.AIInterview.Admin.Credits.Credits")</div>
                         <div class="col-md-6"><nop-editor asp-for="Amount" /></div>
                         <div class="col-md-3">
-                            <button type="submit" class="btn btn-primary">@T("Plugins.Misc.AIInterview.Admin.Credits.TopUp")</button>
+                            <button type="submit" class="btn btn-primary aiinterview-admin-action-button" aria-label="@T("Plugins.Misc.AIInterview.Admin.Credits.TopUp")" title="@T("Plugins.Misc.AIInterview.Admin.Credits.TopUp")">@T("Plugins.Misc.AIInterview.Admin.Credits.TopUp")</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card card-default">
+            <div class="card card-default aiinterview-admin-card">
                 <div class="card-header">@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Title")</div>
                 <div class="card-body">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Customer")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Amount")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Type")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Remarks")</th>
-                                <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Utc")</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (Model.LedgerEntries.Any())
-                            {
-                                foreach (var entry in Model.LedgerEntries)
+                    <div class="aiinterview-admin-table-wrap">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Customer")</th>
+                                    <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Amount")</th>
+                                    <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Type")</th>
+                                    <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Remarks")</th>
+                                    <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Utc")</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.LedgerEntries.Any())
+                                {
+                                    foreach (var entry in Model.LedgerEntries)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @if (!string.IsNullOrWhiteSpace(entry.CustomerAdminUrl))
+                                                {
+                                                    <a href="@entry.CustomerAdminUrl">@entry.CustomerName</a>
+                                                }
+                                                else
+                                                {
+                                                    @entry.CustomerName
+                                                }
+                                            </td>
+                                            <td>@entry.Amount</td>
+                                            <td>@entry.TransactionType</td>
+                                            <td>@entry.Remarks</td>
+                                            <td>@entry.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                        </tr>
+                                    }
+                                }
+                                else
                                 {
                                     <tr>
-                                        <td>
-                                            @if (!string.IsNullOrWhiteSpace(entry.CustomerAdminUrl))
-                                            {
-                                                <a href="@entry.CustomerAdminUrl">@entry.CustomerName</a>
-                                            }
-                                            else
-                                            {
-                                                @entry.CustomerName
-                                            }
-                                        </td>
-                                        <td>@entry.Amount</td>
-                                        <td>@entry.TransactionType</td>
-                                        <td>@entry.Remarks</td>
-                                        <td>@entry.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                        <td colspan="5">@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Empty")</td>
                                     </tr>
                                 }
-                            }
-                            else
-                            {
-                                <tr>
-                                    <td colspan="5">@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Empty")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </form>
@@ -249,6 +272,6 @@
             return '';
         }
 
-        return '<a class="btn btn-default" href="' + applicantCreditEncodeUrl(row.ViewLedgerUrl) + '">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.ViewLedger").Text</a>';
+        return '<a class="btn btn-default aiinterview-admin-link-button" href="' + applicantCreditEncodeUrl(row.ViewLedgerUrl) + '" title="@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.ViewLedger").Text" aria-label="@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.ViewLedger").Text">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.ViewLedger").Text</a>';
     }
 </script>
