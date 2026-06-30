@@ -9436,3 +9436,110 @@ body.jb-filter-panel-open .product-filters {
         font-size: 0.78rem;
     }
 }
+
+/* Prompt 68 catalog specification filter groups */
+.html-category-page .product-spec-filter.product-spec-filter-groups,
+.html-search-page .product-spec-filter.product-spec-filter-groups {
+    padding-top: 12px;
+}
+
+.html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-group,
+.html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-group {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    list-style: none;
+}
+
+.html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-group + .jb-spec-filter-group,
+.html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-group + .jb-spec-filter-group {
+    margin-top: 14px;
+}
+
+.html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary,
+.html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary {
+    position: relative;
+    display: block;
+    margin: 0;
+    padding: 0 28px 8px 0;
+    cursor: pointer;
+    color: #202020;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1;
+    text-transform: uppercase;
+    list-style: none;
+}
+
+.html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary::-webkit-details-marker,
+.html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary::-webkit-details-marker,
+.html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary::marker,
+.html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary::marker {
+    display: none;
+    content: "";
+}
+
+.html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary::after,
+.html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 48px;
+    height: 2px;
+    background: var(--jb-accent);
+}
+
+.html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary::before,
+.html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary::before {
+    content: "\f078";
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-family: "Font Awesome 6 Free";
+    font-size: 0.75rem;
+    font-weight: 900;
+    color: #4c4c4c;
+    transition: transform 0.2s ease;
+}
+
+.html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-group[open] > .jb-spec-filter-summary::before,
+.html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-group[open] > .jb-spec-filter-summary::before {
+    transform: rotate(180deg);
+}
+
+.html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-values,
+.html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-values {
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-values .item:last-child,
+.html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-values .item:last-child {
+    margin-bottom: 0;
+}
+
+@media (max-width: 767px) {
+    .html-category-page .product-spec-filter.product-spec-filter-groups,
+    .html-search-page .product-spec-filter.product-spec-filter-groups {
+        padding-top: 8px;
+    }
+
+    .html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-group + .jb-spec-filter-group,
+    .html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-group + .jb-spec-filter-group {
+        margin-top: 12px;
+    }
+
+    .html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary,
+    .html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-summary {
+        font-size: 0.94rem;
+        padding-bottom: 7px;
+    }
+
+    .html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-values,
+    .html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-values {
+        margin-top: 10px;
+    }
+}

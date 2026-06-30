@@ -1178,6 +1178,10 @@ body.aiinterview-report-drawer-open {
     align-content: start;
 }
 
+.ai-job-card-body {
+    position: relative;
+}
+
 .ai-job-card-topline,
 .ai-job-preview-actions {
     display: flex;
@@ -1187,8 +1191,17 @@ body.aiinterview-report-drawer-open {
 }
 
 .ai-job-card-topline {
+    position: absolute;
+    top: 0;
+    right: 0;
     justify-content: flex-end;
     min-height: 0;
+    z-index: 1;
+}
+
+.ai-job-card-topline + .ai-job-card-title-link {
+    padding-right: 46px;
+    box-sizing: border-box;
 }
 
 .ai-job-card-kicker {

@@ -1,0 +1,54 @@
+@model SpecificationFilterModel
+
+<div class="product-filter product-spec-filter product-spec-filter-groups">
+    @foreach (var attr in Model.Attributes)
+    {
+        <details class="group product-spec-group jb-spec-filter-group @(!attr.Values.Any() ? "jb-spec-filter-group-empty" : null) @(attr.Values.Any(x => !string.IsNullOrEmpty(x.ColorSquaresRgb)) ? "product-spec-color" : null)" open>
+            <summary class="name jb-spec-filter-summary">
+                <span class="jb-spec-filter-summary-text">@attr.Name</span>
+            </summary>
+            <ul class="jb-spec-filter-values">
+                @foreach (var value in attr.Values)
+                {
+                    <li class="item @(!string.IsNullOrEmpty(value.ColorSquaresRgb) ? "color-item" : null)">
+                        <input id="attribute-option-@value.Id" type="checkbox" data-option-id="@value.Id" checked="@value.Selected" />
+                        @if (string.IsNullOrEmpty(value.ColorSquaresRgb))
+                        {
+                            <label for="attribute-option-@value.Id">
+                                @value.Name
+                            </label>
+                        }
+                        else
+                        {
+                            <label for="attribute-option-@value.Id" class="attribute-squares color-squares">
+                                <span class="attribute-square" style="background-color: @(value.ColorSquaresRgb);"></span>
+                                @value.Name
+                            </label>
+                        }
+                    </li>
+                }
+            </ul>
+        </details>
+    }
+</div>
+<script asp-location="Footer">
+    $(function() {
+        var $optionEls = $('[data-option-id]');
+        $optionEls.on('change', function () {
+            CatalogProducts.getProducts();
+        });
+
+        $(CatalogProducts).on('before', function (e) {
+            var selectedOptions = $.map($optionEls, function (el) {
+                var $optionEl = $(el);
+                if ($optionEl.is(':checked')) return $optionEl.data('option-id');
+                return null;
+            });
+
+            if (selectedOptions && selectedOptions.length > 0) {
+                e.payload.urlBuilder
+                    .addParameter('specs', selectedOptions.join(','));
+            }
+        });
+    });
+</script>
