@@ -1005,6 +1005,8 @@ public class EmployerTests
         Assert.That(serviceText, Does.Contain("var appliedCount = await _applicationService.GetApplicationCountAsync(productId: product.Id);"));
         Assert.That(serviceText, Does.Contain("NormalizeSpecificationAttributeName"));
         Assert.That(serviceText, Does.Contain("public bool IsCompactSpecificationAttributeName(string name)"));
+        Assert.That(serviceText, Does.Not.Contain("ToString(\"D\", culture)"));
+        Assert.That(serviceText, Does.Contain("ToString(\"d\", culture)"));
         Assert.That(modelText, Does.Contain("public string ProductUrl { get; set; }"));
         Assert.That(modelText, Does.Contain("public string PostedDateText { get; set; }"));
         Assert.That(serviceText, Does.Contain("ProductUrl = await ResolveProductUrlAsync(product)"));
@@ -1017,7 +1019,16 @@ public class EmployerTests
         Assert.That(cssText, Does.Contain(".ai-job-product-card"));
         Assert.That(cssText, Does.Contain("grid-template-columns: 84px minmax(0, 1fr);"));
         Assert.That(cssText, Does.Contain(".ai-job-card-summary"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-content,"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-meta,"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-spec {"));
+        Assert.That(cssText, Does.Contain("min-width: 0;"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-spec span:first-child"));
+        Assert.That(cssText, Does.Contain("flex: 0 0 auto;"));
+        Assert.That(cssText, Does.Contain("max-width: 44%;"));
+        Assert.That(cssText, Does.Contain("text-overflow: ellipsis;"));
         Assert.That(cssText, Does.Contain(".ai-job-card-spec span:last-child"));
+        Assert.That(cssText, Does.Contain("flex: 1 1 auto;"));
         Assert.That(cssText, Does.Contain("-webkit-line-clamp: 2;"));
         Assert.That(cssText, Does.Contain("white-space: normal;"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-fallback-link"));

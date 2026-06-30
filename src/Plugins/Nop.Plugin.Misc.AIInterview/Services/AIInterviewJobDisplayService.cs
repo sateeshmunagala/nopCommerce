@@ -296,6 +296,6 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             ? createdOnUtc
             : await _dateTimeHelper.ConvertToUserTimeAsync(createdOnUtc, DateTimeKind.Utc);
 
-        return userTime.ToString("D", culture);
+        return userTime.ToString("d", culture);
     }
 }
