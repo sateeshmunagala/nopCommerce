@@ -121,7 +121,11 @@
     var emailFriendUrl = Model.EmailAFriendEnabled
         ? Url.RouteUrl(NopRouteNames.Standard.PRODUCT_EMAIL_FRIEND, new { productId = Model.Id })
         : string.Empty;
-    var productPageUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol()) ?? string.Empty;
+    var productPageSeName = ViewData["ProductSeName"] as string ?? Model.SeName;
+    var productPageUrl = ViewData["ProductPageUrl"] as string;
+    if (string.IsNullOrWhiteSpace(productPageUrl) && !string.IsNullOrWhiteSpace(productPageSeName))
+        productPageUrl = Url.RouteUrl("Product", new { SeName = productPageSeName }, webHelper.GetCurrentRequestProtocol()) ?? string.Empty;
+    productPageUrl ??= string.Empty;
     var customWishlistId = webHelper.QueryString<string>("customwishlistid");
     var vendorPictureUrl = Model.DefaultPictureModel.ImageUrl;
     var vendorDisplayName = Model.ShowVendor ? Model.VendorModel?.Name : string.Empty;

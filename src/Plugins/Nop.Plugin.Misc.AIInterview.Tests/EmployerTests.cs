@@ -995,12 +995,24 @@ public class EmployerTests
         Assert.That(sharedJobDetailView, Does.Contain("AIInterviewProductDetailsViewComponent"));
         Assert.That(sharedJobDetailView, Does.Contain("@if (!isDrawer)"));
         Assert.That(sharedJobDetailView, Does.Contain("@await Html.PartialAsync(\"_ProductTags\", Model.ProductTags)"));
+        Assert.That(sharedJobDetailView, Does.Contain("var productPageSeName = ViewData[\"ProductSeName\"] as string ?? Model.SeName;"));
+        Assert.That(sharedJobDetailView, Does.Contain("var productPageUrl = ViewData[\"ProductPageUrl\"] as string;"));
+        Assert.That(sharedJobDetailView, Does.Contain("if (string.IsNullOrWhiteSpace(productPageUrl) && !string.IsNullOrWhiteSpace(productPageSeName))"));
         Assert.That(drawerView, Does.Contain("_AIInterviewJobDetailsContent.cshtml"));
+        Assert.That(drawerView, Does.Contain("var drawerProductSeName = ViewData[\"ProductSeName\"] as string ?? Model.SeName;"));
+        Assert.That(drawerView, Does.Contain("var drawerProductPageUrl = ViewData[\"ProductPageUrl\"] as string;"));
+        Assert.That(drawerView, Does.Contain("action=\"@(string.IsNullOrWhiteSpace(drawerProductPageUrl) ? Url.RouteUrl(\"Product\", new { SeName = drawerProductSeName }) ?? string.Empty : drawerProductPageUrl)\""));
+        Assert.That(drawerView, Does.Contain("[\"ProductPageUrl\"] = drawerProductPageUrl"));
         Assert.That(controllerText, Does.Contain("JobDetailsDrawer(int productId)"));
         Assert.That(controllerText, Does.Contain("return NotFound(unavailableText);"));
         Assert.That(controllerText, Does.Contain("return BadRequest(unavailableText);"));
         Assert.That(controllerText, Does.Contain("InterviewReportPanelUrl = session != null ? BuildReportPanelUrl(session.Id) : null"));
         Assert.That(controllerText, Does.Contain("_AIInterviewJobDetailsDrawer.cshtml"));
+        Assert.That(controllerText, Does.Contain("if (string.IsNullOrWhiteSpace(model.SeName) && _urlRecordService != null)"));
+        Assert.That(controllerText, Does.Contain("model.SeName = await _urlRecordService.GetSeNameAsync(product);"));
+        Assert.That(controllerText, Does.Contain("var productPageUrl = await BuildProductRedirectUrlAsync(product);"));
+        Assert.That(controllerText, Does.Contain("ViewData[\"ProductPageUrl\"] = productPageUrl;"));
+        Assert.That(controllerText, Does.Contain("ViewData[\"ProductSeName\"] = model.SeName ?? string.Empty;"));
 
         Assert.That(serviceText, Does.Contain("Workplace Type"));
         Assert.That(serviceText, Does.Contain("Job Type"));

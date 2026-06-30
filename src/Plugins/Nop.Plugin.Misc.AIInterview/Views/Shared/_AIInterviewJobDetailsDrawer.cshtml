@@ -3,15 +3,22 @@
 @{
     var drawerFormId = $"job-details-drawer-form-{Model.Id}";
     var drawerContextId = $"job-drawer-{Model.Id}";
+    var drawerProductSeName = ViewData["ProductSeName"] as string ?? Model.SeName;
+    var drawerProductPageUrl = ViewData["ProductPageUrl"] as string;
 }
 
 <div class="ai-job-preview-drawer-content" data-productid="@Model.Id">
-    <form asp-route="Product" asp-route-sename="@Model.SeName" method="post" id="@drawerFormId" class="ai-job-preview-drawer-form">
+    <form method="post"
+          id="@drawerFormId"
+          class="ai-job-preview-drawer-form"
+          action="@(string.IsNullOrWhiteSpace(drawerProductPageUrl) ? Url.RouteUrl("Product", new { SeName = drawerProductSeName }) ?? string.Empty : drawerProductPageUrl)">
         @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_AIInterviewJobDetailsContent.cshtml", Model, new ViewDataDictionary(ViewData)
         {
             ["RenderMode"] = "Drawer",
             ["ProductFormId"] = drawerFormId,
-            ["JobAiContextId"] = drawerContextId
+            ["JobAiContextId"] = drawerContextId,
+            ["ProductSeName"] = drawerProductSeName,
+            ["ProductPageUrl"] = drawerProductPageUrl
         })
     </form>
 </div>

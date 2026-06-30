@@ -162,6 +162,16 @@ public class AIInterviewController : BasePluginController
             if (model == null)
                 return BadRequest(unavailableText);
 
+            if (string.IsNullOrWhiteSpace(model.SeName) && _urlRecordService != null)
+                model.SeName = await _urlRecordService.GetSeNameAsync(product);
+
+            var productPageUrl = await BuildProductRedirectUrlAsync(product);
+            if (string.IsNullOrWhiteSpace(productPageUrl) && !string.IsNullOrWhiteSpace(model.SeName))
+                productPageUrl = Url.RouteUrl("Product", new { SeName = model.SeName }) ?? string.Empty;
+
+            ViewData["ProductPageUrl"] = productPageUrl;
+            ViewData["ProductSeName"] = model.SeName ?? string.Empty;
+
             return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_AIInterviewJobDetailsDrawer.cshtml", model);
         }
         catch
