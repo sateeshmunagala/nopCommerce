@@ -5,32 +5,37 @@ using Nop.Core.Domain.Vendors;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Services.Catalog;
 using Nop.Services.Html;
+using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Orders;
 using Nop.Services.Vendors;
 using Nop.Web.Framework.Mvc.Routing;
 using Nop.Web.Models.Catalog;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
 public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
 {
-    public static readonly string[] WorkArrangementAliases = ["Work Arrangement", "Work Mode", "Work Type"];
-    public static readonly string[] EmploymentTypeAliases = ["Employment Type"];
-    public static readonly string[] JobLocationAliases = ["Job Location", "Location"];
-    public static readonly string[] SalaryRangeAliases = ["Salary Range", "Compensation"];
-    public static readonly string[] ExperienceLevelAliases = ["Experience Level", "Experience"];
+    public static readonly string[] WorkArrangementAliases = ["Work Arrangement", "Work Mode", "Work Type", "Workplace Type", "Workplace", "Work Setup", "Work Location Type", "Remote Type"];
+    public static readonly string[] EmploymentTypeAliases = ["Employment Type", "Job Type", "Contract Type", "Employment Basis"];
+    public static readonly string[] JobLocationAliases = ["Job Location", "Location", "Office Location", "Work Location", "City", "Region"];
+    public static readonly string[] SalaryRangeAliases = ["Salary Range", "Compensation", "Pay Range", "Salary", "Compensation Range"];
+    public static readonly string[] ExperienceLevelAliases = ["Experience Level", "Experience", "Seniority", "Seniority Level", "Level"];
 
     public static readonly ISet<string> CompactSpecificationAliases = new HashSet<string>(
         WorkArrangementAliases
             .Concat(EmploymentTypeAliases)
             .Concat(JobLocationAliases)
             .Concat(SalaryRangeAliases)
-            .Concat(ExperienceLevelAliases),
+            .Concat(ExperienceLevelAliases)
+            .Select(NormalizeSpecificationAttributeName),
         StringComparer.OrdinalIgnoreCase);
 
     private readonly IApplicationService _applicationService;
+    private readonly IDateTimeHelper _dateTimeHelper;
     private readonly IHtmlFormatter _htmlFormatter;
     private readonly IJobRequirementService _jobRequirementService;
     private readonly ILocalizationService _localizationService;
@@ -44,6 +49,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
     private readonly INopUrlHelper _nopUrlHelper;
 
     public AIInterviewJobDisplayService(IApplicationService applicationService,
+        IDateTimeHelper dateTimeHelper,
         IHtmlFormatter htmlFormatter,
         IJobRequirementService jobRequirementService,
         ILocalizationService localizationService,
@@ -57,6 +63,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
         INopUrlHelper nopUrlHelper)
     {
         _applicationService = applicationService;
+        _dateTimeHelper = dateTimeHelper;
         _htmlFormatter = htmlFormatter;
         _jobRequirementService = jobRequirementService;
         _localizationService = localizationService;
@@ -100,7 +107,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
         if (string.IsNullOrWhiteSpace(previewDescription))
             previewDescription = summary;
 
-        var applications = await _applicationService.GetApplicationsAsync(productId: product.Id, pageSize: int.MaxValue);
+        var appliedCount = await _applicationService.GetApplicationCountAsync(productId: product.Id);
 
         return new AIInterviewJobProductCardModel
         {
@@ -111,17 +118,23 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             PreviewDescription = previewDescription,
             SeName = productOverviewModel.SeName,
             ProductUrl = await ResolveProductUrlAsync(product),
+            PostedDateText = await FormatPostedDateAsync(product.CreatedOnUtc),
             ImageUrl = imageModel.ImageUrl,
             ImageAlt = imageModel.ImageAlt,
             UseImagePlaceholder = imageModel.UsePlaceholder,
             ImagePlaceholderText = imageModel.PlaceholderText,
             CreatedOnUtc = product.CreatedOnUtc,
-            AppliedCount = applications.Count,
+            AppliedCount = appliedCount,
             CanSaveJob = !productOverviewModel.ProductPrice.DisableWishlistButton,
             IsSavedJob = wishlistItem != null,
             WishlistItemId = wishlistItem?.Id ?? 0,
             Specifications = await GetSpecificationSnapshotAsync(product.Id)
         };
+    }
+
+    public bool IsCompactSpecificationAttributeName(string name)
+    {
+        return CompactSpecificationAliases.Contains(NormalizeSpecificationAttributeName(name));
     }
 
     public async Task<AIInterviewJobSpecificationSnapshotModel> GetSpecificationSnapshotAsync(int productId, ProductSpecificationModel preparedSpecificationModel = null)
@@ -192,13 +205,19 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
     protected virtual string ResolveValue(IEnumerable<(string Name, string Value)> entries, params string[] aliases)
     {
         var matchedValues = entries
-            .Where(entry => aliases.Any(alias => string.Equals(alias, entry.Name, StringComparison.OrdinalIgnoreCase)))
+            .Where(entry => IsAliasMatch(entry.Name, aliases))
             .Select(entry => entry.Value)
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return matchedValues.Any() ? string.Join(", ", matchedValues) : string.Empty;
+    }
+
+    protected virtual bool IsAliasMatch(string value, IEnumerable<string> aliases)
+    {
+        var normalized = NormalizeSpecificationAttributeName(value);
+        return aliases.Any(alias => string.Equals(normalized, NormalizeSpecificationAttributeName(alias), StringComparison.OrdinalIgnoreCase));
     }
 
     protected virtual string NormalizePlainText(string value)
@@ -213,7 +232,15 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
 
         return string.IsNullOrWhiteSpace(stripped)
             ? string.Empty
-            : System.Text.RegularExpressions.Regex.Replace(stripped, "\\s+", " ");
+            : Regex.Replace(stripped, "\\s+", " ");
+    }
+
+    public static string NormalizeSpecificationAttributeName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        return Regex.Replace(value.Trim(), "\\s+", " ");
     }
 
     protected virtual async Task<(string ImageUrl, string ImageAlt, bool UsePlaceholder, string PlaceholderText)> PrepareImageModelAsync(ProductOverviewModel productOverviewModel, Vendor vendor, string companyName, string jobTitle)
@@ -257,5 +284,18 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             return string.Empty;
 
         return await _nopUrlHelper.RouteGenericUrlAsync(product) ?? string.Empty;
+    }
+
+    protected virtual async Task<string> FormatPostedDateAsync(DateTime createdOnUtc)
+    {
+        var language = await _workContext.GetWorkingLanguageAsync();
+        var culture = !string.IsNullOrWhiteSpace(language?.LanguageCulture)
+            ? new CultureInfo(language.LanguageCulture)
+            : CultureInfo.CurrentCulture;
+        var userTime = _dateTimeHelper == null
+            ? createdOnUtc
+            : await _dateTimeHelper.ConvertToUserTimeAsync(createdOnUtc, DateTimeKind.Utc);
+
+        return userTime.ToString("D", culture);
     }
 }

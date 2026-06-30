@@ -59,9 +59,7 @@
             .Where(value => !string.IsNullOrWhiteSpace(value)));
     }
 
-    var applications = await applicationService.GetApplicationsAsync(productId: Model.Id, pageSize: int.MaxValue);
-    var candidateCount = applications.Count;
-    var heroAttributeNames = AIInterviewJobDisplayService.CompactSpecificationAliases;
+    var candidateCount = await applicationService.GetApplicationCountAsync(productId: Model.Id);
     var applyUntil = Model.AvailableEndDate?.ToString("yyyy-MM-dd");
     var jobDetailsKickerText = T("Plugins.Misc.AIInterview.JobDetails.Kicker").Text;
     var hiringCompanyText = T("Plugins.Misc.AIInterview.JobDetails.HiringCompany").Text;
@@ -94,7 +92,7 @@
             GroupId = group.Id,
             GroupName = group.Name,
             Attributes = (group.Attributes ?? new List<Nop.Web.Models.Catalog.ProductSpecificationAttributeModel>())
-                .Where(specificationAttribute => !heroAttributeNames.Contains(specificationAttribute.Name ?? string.Empty))
+                .Where(specificationAttribute => !aiInterviewJobDisplayService.IsCompactSpecificationAttributeName(specificationAttribute.Name ?? string.Empty))
                 .Where(specificationAttribute => specificationAttribute.Values?.Any(value =>
                     !string.IsNullOrWhiteSpace(htmlFormatter.StripTags(value.ValueRaw)?.Trim()) ||
                     (!string.IsNullOrWhiteSpace(value.ColorSquaresRgb) && value.AttributeTypeId == (int)SpecificationAttributeType.Option)) == true)

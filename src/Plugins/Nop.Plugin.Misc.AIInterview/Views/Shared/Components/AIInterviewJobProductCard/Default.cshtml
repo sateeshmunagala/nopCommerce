@@ -19,7 +19,7 @@
     var loadingJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.LoadingJobDetails").Text;
     var unableToLoadJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.UnableToLoadJobDetails").Text;
     var viewJobLinkText = T("Plugins.Misc.AIInterview.JobCard.ViewJob").Text;
-    var postedText = string.Format(T("Plugins.Misc.AIInterview.JobCard.Posted").Text, Model.CreatedOnUtc.ToString("MMM d, yyyy"));
+    var postedText = string.Format(T("Plugins.Misc.AIInterview.JobCard.Posted").Text, Model.PostedDateText);
     var appliedCountText = string.Format(T("Plugins.Misc.AIInterview.JobCard.AppliedCount").Text, Model.AppliedCount);
 
     string BuildAccessibleSpecText(string resourceKey, string value) => $"{T(resourceKey).Text}: {value}";

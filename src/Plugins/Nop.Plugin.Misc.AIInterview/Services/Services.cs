@@ -179,6 +179,25 @@ public class ApplicationService : IApplicationService
         return await query.ToPagedListAsync(pageIndex, pageSize);
     }
 
+    public async Task<int> GetApplicationCountAsync(int productId = 0, int vendorId = 0, string status = null)
+    {
+        var query = _applicationRepository.Table;
+
+        if (productId > 0)
+            query = query.Where(a => a.ProductId == productId);
+
+        if (vendorId > 0)
+        {
+            var productIds = _productRepository.Table.Where(p => p.VendorId == vendorId).Select(p => p.Id);
+            query = query.Where(a => productIds.Contains(a.ProductId));
+        }
+
+        if (!string.IsNullOrEmpty(status))
+            query = query.Where(a => a.Status == status);
+
+        return await query.CountAsync();
+    }
+
     public async Task UpdateJobApplicationAsync(JobApplication application)
     {
         await _applicationRepository.UpdateAsync(application);

@@ -972,8 +972,10 @@ public class EmployerTests
         Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.RoleHighlightsFallback"));
         Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.Skills"));
         Assert.That(sharedJobDetailView, Does.Contain("Plugins.Misc.AIInterview.JobDetails.SkillsFallback"));
-        Assert.That(sharedJobDetailView.IndexOf("var candidateCount = applications.Count;", StringComparison.Ordinal), Is.GreaterThanOrEqualTo(0));
-        Assert.That(sharedJobDetailView.IndexOf("var candidatesAppliedText = string.Format(T(\"Plugins.Misc.AIInterview.JobDetails.CandidatesApplied\").Text, candidateCount);", StringComparison.Ordinal), Is.GreaterThan(sharedJobDetailView.IndexOf("var candidateCount = applications.Count;", StringComparison.Ordinal)));
+        Assert.That(jobCardView, Does.Contain("Model.PostedDateText"));
+        Assert.That(jobCardView, Does.Not.Contain("ToString(\"MMM d, yyyy\")"));
+        Assert.That(sharedJobDetailView, Does.Contain("var candidateCount = await applicationService.GetApplicationCountAsync(productId: Model.Id);"));
+        Assert.That(sharedJobDetailView, Does.Contain("var candidatesAppliedText = string.Format(T(\"Plugins.Misc.AIInterview.JobDetails.CandidatesApplied\").Text, candidateCount);"));
         Assert.That(sharedJobDetailView, Does.Not.Contain("|| 'Saved job'"));
         Assert.That(sharedJobDetailView, Does.Not.Contain("|| \"Saved job\""));
         Assert.That(sharedJobDetailView, Does.Not.Contain(">AI Interview Role<"));
@@ -984,7 +986,7 @@ public class EmployerTests
         Assert.That(sharedJobDetailView, Does.Not.Contain(">Job Description<"));
         Assert.That(sharedJobDetailView, Does.Not.Contain(">Role Highlights<"));
         Assert.That(sharedJobDetailView, Does.Not.Contain(">Skills<"));
-        Assert.That(sharedJobDetailView, Does.Contain("AIInterviewJobDisplayService.CompactSpecificationAliases"));
+        Assert.That(sharedJobDetailView, Does.Contain("aiInterviewJobDisplayService.IsCompactSpecificationAttributeName(specificationAttribute.Name ?? string.Empty)"));
         Assert.That(sharedJobDetailView, Does.Contain("GetSpecificationSnapshotAsync(Model.Id, Model.ProductSpecificationModel)"));
         Assert.That(sharedJobDetailView, Does.Contain("AIInterviewProductDetailsViewComponent"));
         Assert.That(drawerView, Does.Contain("_AIInterviewJobDetailsContent.cshtml"));
@@ -994,17 +996,30 @@ public class EmployerTests
         Assert.That(controllerText, Does.Contain("InterviewReportPanelUrl = session != null ? BuildReportPanelUrl(session.Id) : null"));
         Assert.That(controllerText, Does.Contain("_AIInterviewJobDetailsDrawer.cshtml"));
 
-        Assert.That(serviceText, Does.Contain("WorkArrangementAliases = [\"Work Arrangement\", \"Work Mode\", \"Work Type\"]"));
-        Assert.That(serviceText, Does.Contain("JobLocationAliases = [\"Job Location\", \"Location\"]"));
-        Assert.That(serviceText, Does.Contain("ExperienceLevelAliases = [\"Experience Level\", \"Experience\"]"));
+        Assert.That(serviceText, Does.Contain("Workplace Type"));
+        Assert.That(serviceText, Does.Contain("Job Type"));
+        Assert.That(serviceText, Does.Contain("Office Location"));
+        Assert.That(serviceText, Does.Contain("Pay Range"));
+        Assert.That(serviceText, Does.Contain("Seniority Level"));
+        Assert.That(serviceText, Does.Contain("PostedDateText = await FormatPostedDateAsync(product.CreatedOnUtc)"));
+        Assert.That(serviceText, Does.Contain("var appliedCount = await _applicationService.GetApplicationCountAsync(productId: product.Id);"));
+        Assert.That(serviceText, Does.Contain("NormalizeSpecificationAttributeName"));
+        Assert.That(serviceText, Does.Contain("public bool IsCompactSpecificationAttributeName(string name)"));
         Assert.That(modelText, Does.Contain("public string ProductUrl { get; set; }"));
+        Assert.That(modelText, Does.Contain("public string PostedDateText { get; set; }"));
         Assert.That(serviceText, Does.Contain("ProductUrl = await ResolveProductUrlAsync(product)"));
         Assert.That(serviceText, Does.Contain("RouteGenericUrlAsync(product)"));
+        Assert.That(controllerText, Does.Contain("GetExperienceLevelAttributeAliases() => AIInterviewJobDisplayService.ExperienceLevelAliases"));
+        Assert.That(controllerText, Does.Contain("GetWorkArrangementAttributeAliases() => AIInterviewJobDisplayService.WorkArrangementAliases"));
+        Assert.That(controllerText, Does.Contain("GetJobLocationAttributeAliases() => AIInterviewJobDisplayService.JobLocationAliases"));
+        Assert.That(controllerText, Does.Contain("ResolveSalaryRangeSpecificationOptionIdAsync()"));
 
         Assert.That(cssText, Does.Contain(".ai-job-product-card"));
         Assert.That(cssText, Does.Contain("grid-template-columns: 84px minmax(0, 1fr);"));
         Assert.That(cssText, Does.Contain(".ai-job-card-summary"));
-        Assert.That(cssText, Does.Contain("text-overflow: ellipsis;"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-spec span:last-child"));
+        Assert.That(cssText, Does.Contain("-webkit-line-clamp: 2;"));
+        Assert.That(cssText, Does.Contain("white-space: normal;"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-fallback-link"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-drawer"));
         Assert.That(cssText, Does.Contain("width: 50vw;"));
@@ -1029,27 +1044,39 @@ public class EmployerTests
         var employmentType = new SpecificationAttribute { Id = 12, Name = "Employment Type" };
         var jobLocation = new SpecificationAttribute { Id = 13, Name = "Job Location" };
         var salaryRange = new SpecificationAttribute { Id = 14, Name = "Salary Range" };
+        var allAttributes = new List<SpecificationAttribute> { experience, workMode, employmentType, jobLocation, salaryRange };
 
-        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Experience Level", 0, 1))
-            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute> { experience }, 0, 1));
-        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Experience", 0, 1))
-            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute>(), 0, 1));
-        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Work Mode", 0, 1))
-            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute> { workMode }, 0, 1));
-        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Work Arrangement", 0, 1))
-            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute>(), 0, 1));
-        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Work Type", 0, 1))
-            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute>(), 0, 1));
-        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Employment Type", 0, 1))
-            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute> { employmentType }, 0, 1));
-        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Job Location", 0, 1))
-            .ReturnsAsync(new PagedList<SpecificationAttribute>(includeJobLocation ? new List<SpecificationAttribute> { jobLocation } : new List<SpecificationAttribute>(), 0, 1));
-        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Location", 0, 1))
-            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute>(), 0, 1));
-        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Salary Range", 0, 1))
-            .ReturnsAsync(new PagedList<SpecificationAttribute>(includeSalaryRange ? new List<SpecificationAttribute> { salaryRange } : new List<SpecificationAttribute>(), 0, 1));
-        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync("Compensation", 0, 1))
-            .ReturnsAsync(new PagedList<SpecificationAttribute>(new List<SpecificationAttribute>(), 0, 1));
+        SetupSpecificationAttributeLookup("Experience Level", new List<SpecificationAttribute> { experience });
+        SetupSpecificationAttributeLookup("Experience");
+        SetupSpecificationAttributeLookup("Seniority");
+        SetupSpecificationAttributeLookup("Seniority Level");
+        SetupSpecificationAttributeLookup("Level");
+        SetupSpecificationAttributeLookup("Work Mode", new List<SpecificationAttribute> { workMode });
+        SetupSpecificationAttributeLookup("Work Arrangement");
+        SetupSpecificationAttributeLookup("Work Type");
+        SetupSpecificationAttributeLookup("Workplace Type");
+        SetupSpecificationAttributeLookup("Workplace");
+        SetupSpecificationAttributeLookup("Work Setup");
+        SetupSpecificationAttributeLookup("Work Location Type");
+        SetupSpecificationAttributeLookup("Remote Type");
+        SetupSpecificationAttributeLookup("Employment Type", new List<SpecificationAttribute> { employmentType });
+        SetupSpecificationAttributeLookup("Job Type");
+        SetupSpecificationAttributeLookup("Contract Type");
+        SetupSpecificationAttributeLookup("Employment Basis");
+        SetupSpecificationAttributeLookup("Job Location", includeJobLocation ? new List<SpecificationAttribute> { jobLocation } : new List<SpecificationAttribute>());
+        SetupSpecificationAttributeLookup("Location");
+        SetupSpecificationAttributeLookup("Office Location");
+        SetupSpecificationAttributeLookup("Work Location");
+        SetupSpecificationAttributeLookup("City");
+        SetupSpecificationAttributeLookup("Region");
+        SetupSpecificationAttributeLookup("Salary Range", includeSalaryRange ? new List<SpecificationAttribute> { salaryRange } : new List<SpecificationAttribute>());
+        SetupSpecificationAttributeLookup("Compensation");
+        SetupSpecificationAttributeLookup("Pay Range");
+        SetupSpecificationAttributeLookup("Salary");
+        SetupSpecificationAttributeLookup("Compensation Range");
+
+        _specificationAttributeService.Setup(x => x.GetAllSpecificationAttributesAsync(0, int.MaxValue))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(allAttributes, 0, allAttributes.Count));
 
         _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(experience.Id))
             .ReturnsAsync(new List<SpecificationAttributeOption> { new() { Id = 101, SpecificationAttributeId = experience.Id, Name = "Senior" } });
@@ -1068,5 +1095,12 @@ public class EmployerTests
             .ReturnsAsync(new SpecificationAttributeOption { Id = 201, SpecificationAttributeId = workMode.Id, Name = "Remote" });
         _specificationAttributeService.Setup(x => x.GetSpecificationAttributeOptionByIdAsync(301))
             .ReturnsAsync(new SpecificationAttributeOption { Id = 301, SpecificationAttributeId = employmentType.Id, Name = "Full-time" });
+    }
+
+    private void SetupSpecificationAttributeLookup(string name, IList<SpecificationAttribute> matches = null)
+    {
+        var results = matches?.ToList() ?? new List<SpecificationAttribute>();
+        _specificationAttributeService.Setup(x => x.GetSpecificationAttributesByNameAsync(name, 0, 10))
+            .ReturnsAsync(new PagedList<SpecificationAttribute>(results, 0, results.Count));
     }
 }

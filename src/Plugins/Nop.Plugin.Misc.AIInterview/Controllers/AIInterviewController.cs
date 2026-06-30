@@ -926,16 +926,65 @@ public class AIInterviewController : BasePluginController
         if (_specificationAttributeService == null)
             return null;
 
-        foreach (var name in names.Where(name => !string.IsNullOrWhiteSpace(name)))
+        foreach (var name in names.Where(name => !string.IsNullOrWhiteSpace(name)).Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            var attributes = await _specificationAttributeService.GetSpecificationAttributesByNameAsync(name, 0, 1);
+            var attributes = await _specificationAttributeService.GetSpecificationAttributesByNameAsync(name, 0, 10);
             var attribute = attributes.FirstOrDefault(specificationAttribute =>
-                string.Equals(specificationAttribute.Name, name, StringComparison.OrdinalIgnoreCase));
+                string.Equals(AIInterviewJobDisplayService.NormalizeSpecificationAttributeName(specificationAttribute.Name), AIInterviewJobDisplayService.NormalizeSpecificationAttributeName(name), StringComparison.OrdinalIgnoreCase));
             if (attribute != null)
                 return attribute;
         }
 
-        return null;
+        var allAttributes = await _specificationAttributeService.GetAllSpecificationAttributesAsync(pageSize: int.MaxValue);
+        return allAttributes.FirstOrDefault(specificationAttribute =>
+            names.Any(name => string.Equals(AIInterviewJobDisplayService.NormalizeSpecificationAttributeName(specificationAttribute.Name), AIInterviewJobDisplayService.NormalizeSpecificationAttributeName(name), StringComparison.OrdinalIgnoreCase)));
+    }
+
+    protected static string[] GetExperienceLevelAttributeAliases() => AIInterviewJobDisplayService.ExperienceLevelAliases;
+
+    protected static string[] GetWorkArrangementAttributeAliases() => AIInterviewJobDisplayService.WorkArrangementAliases;
+
+    protected static string[] GetEmploymentTypeAttributeAliases() => AIInterviewJobDisplayService.EmploymentTypeAliases;
+
+    protected static string[] GetJobLocationAttributeAliases() => AIInterviewJobDisplayService.JobLocationAliases;
+
+    protected static string[] GetSalaryRangeAttributeAliases() => AIInterviewJobDisplayService.SalaryRangeAliases;
+
+    protected async Task<SpecificationAttribute> GetExperienceLevelSpecificationAttributeAsync()
+    {
+        return await GetSpecificationAttributeByNameAsync(GetExperienceLevelAttributeAliases());
+    }
+
+    protected async Task<SpecificationAttribute> GetWorkArrangementSpecificationAttributeAsync()
+    {
+        return await GetSpecificationAttributeByNameAsync(GetWorkArrangementAttributeAliases());
+    }
+
+    protected async Task<SpecificationAttribute> GetEmploymentTypeSpecificationAttributeAsync()
+    {
+        return await GetSpecificationAttributeByNameAsync(GetEmploymentTypeAttributeAliases());
+    }
+
+    protected async Task<SpecificationAttribute> GetJobLocationSpecificationAttributeAsync()
+    {
+        return await GetSpecificationAttributeByNameAsync(GetJobLocationAttributeAliases());
+    }
+
+    protected async Task<int> ResolveSalaryRangeSpecificationOptionIdAsync()
+    {
+        return await ResolveCustomTextSpecificationOptionIdAsync(GetSalaryRangeAttributeAliases());
+    }
+
+    protected async Task<int> ResolveCustomTextSpecificationOptionIdAsync(params string[] attributeNames)
+    {
+        var attribute = await GetSpecificationAttributeByNameAsync(attributeNames);
+        if (attribute == null)
+            return 0;
+
+        var options = await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(attribute.Id);
+        return options.FirstOrDefault(option => string.Equals(option.Name, "Value", StringComparison.OrdinalIgnoreCase))?.Id
+            ?? options.FirstOrDefault()?.Id
+            ?? 0;
     }
 
     protected async Task PrepareVendorJobModelAsync(VendorJobModel model)
@@ -962,41 +1011,29 @@ public class AIInterviewController : BasePluginController
             return items;
         }
 
-        var experienceAttribute = await GetSpecificationAttributeByNameAsync("Experience Level", "Experience");
+        var experienceAttribute = await GetExperienceLevelSpecificationAttributeAsync();
         if (experienceAttribute != null)
             model.AvailableExperienceLevels = BuildSelectList(
                 await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(experienceAttribute.Id),
                 model.ExperienceLevelOptionId);
 
-        var workModeAttribute = await GetSpecificationAttributeByNameAsync("Work Mode", "Work Arrangement", "Work Type");
+        var workModeAttribute = await GetWorkArrangementSpecificationAttributeAsync();
         if (workModeAttribute != null)
             model.AvailableWorkModes = BuildSelectList(
                 await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(workModeAttribute.Id),
                 model.WorkModeOptionId);
 
-        var employmentTypeAttribute = await GetSpecificationAttributeByNameAsync("Employment Type");
+        var employmentTypeAttribute = await GetEmploymentTypeSpecificationAttributeAsync();
         if (employmentTypeAttribute != null)
             model.AvailableEmploymentTypes = BuildSelectList(
                 await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(employmentTypeAttribute.Id),
                 model.EmploymentTypeOptionId);
 
-        var jobLocationAttribute = await GetSpecificationAttributeByNameAsync("Job Location", "Location");
+        var jobLocationAttribute = await GetJobLocationSpecificationAttributeAsync();
         if (jobLocationAttribute != null)
             model.AvailableJobLocations = BuildSelectList(
                 await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(jobLocationAttribute.Id),
                 model.JobLocationOptionId);
-    }
-
-    protected async Task<int> ResolveCustomTextSpecificationOptionIdAsync(params string[] attributeNames)
-    {
-        var attribute = await GetSpecificationAttributeByNameAsync(attributeNames);
-        if (attribute == null)
-            return 0;
-
-        var options = await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(attribute.Id);
-        return options.FirstOrDefault(option => string.Equals(option.Name, "Value", StringComparison.OrdinalIgnoreCase))?.Id
-            ?? options.FirstOrDefault()?.Id
-            ?? 0;
     }
 
     protected async Task InsertProductSpecificationAttributeAsync(int productId, int optionId, SpecificationAttributeType attributeType = SpecificationAttributeType.Option, string customValue = null, int displayOrder = 0)
@@ -1329,9 +1366,9 @@ public class AIInterviewController : BasePluginController
         if (productTemplate == null)
             ModelState.AddModelError(string.Empty, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Unavailable"));
 
-        var experienceAttribute = await GetSpecificationAttributeByNameAsync("Experience Level", "Experience");
-        var workModeAttribute = await GetSpecificationAttributeByNameAsync("Work Mode", "Work Arrangement", "Work Type");
-        var employmentTypeAttribute = await GetSpecificationAttributeByNameAsync("Employment Type");
+        var experienceAttribute = await GetExperienceLevelSpecificationAttributeAsync();
+        var workModeAttribute = await GetWorkArrangementSpecificationAttributeAsync();
+        var employmentTypeAttribute = await GetEmploymentTypeSpecificationAttributeAsync();
 
         if (!await IsValidSpecificationOptionSelectionAsync(model.ExperienceLevelOptionId, experienceAttribute))
             ModelState.AddModelError(nameof(model.ExperienceLevelOptionId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.ExperienceLevel.Invalid"));
@@ -1342,7 +1379,7 @@ public class AIInterviewController : BasePluginController
         if (!await IsValidSpecificationOptionSelectionAsync(model.EmploymentTypeOptionId, employmentTypeAttribute))
             ModelState.AddModelError(nameof(model.EmploymentTypeOptionId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.EmploymentType.Invalid"));
 
-        var jobLocationAttribute = await GetSpecificationAttributeByNameAsync("Job Location", "Location");
+        var jobLocationAttribute = await GetJobLocationSpecificationAttributeAsync();
         if (jobLocationAttribute == null)
             ModelState.AddModelError(nameof(model.JobLocationOptionId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Unsupported"));
         else if (!await IsValidSpecificationOptionSelectionAsync(model.JobLocationOptionId, jobLocationAttribute))
@@ -1351,7 +1388,7 @@ public class AIInterviewController : BasePluginController
         var salaryRangeOptionId = 0;
         if (!string.IsNullOrWhiteSpace(model.SalaryRange))
         {
-            salaryRangeOptionId = await ResolveCustomTextSpecificationOptionIdAsync("Salary Range", "Compensation");
+            salaryRangeOptionId = await ResolveSalaryRangeSpecificationOptionIdAsync();
             if (salaryRangeOptionId <= 0)
                 ModelState.AddModelError(nameof(model.SalaryRange), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange.Unsupported"));
         }

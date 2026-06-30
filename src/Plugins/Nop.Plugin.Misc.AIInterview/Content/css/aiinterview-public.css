@@ -1054,36 +1054,45 @@ body.aiinterview-report-drawer-open {
 }
 
 .ai-job-card-meta {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 8px;
+    align-items: start;
+    width: 100%;
 }
 
 .ai-job-card-spec {
-    display: inline-flex;
-    align-items: center;
+    display: flex;
+    align-items: flex-start;
     gap: 6px;
     min-height: 30px;
     max-width: 100%;
     padding: 5px 10px;
     border: 1px solid #d8dee4;
-    border-radius: 999px;
+    border-radius: 6px;
     background: #f9fbfb;
     color: #334155;
     font-size: 0.84rem;
     line-height: 1.3;
+    box-sizing: border-box;
 }
 
 .ai-job-card-spec span:last-child {
     min-width: 0;
     max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .ai-job-card-spec-icon {
     color: #188f78;
+    flex: 0 0 auto;
+    margin-top: 1px;
 }
 
 .ai-job-card-actions {

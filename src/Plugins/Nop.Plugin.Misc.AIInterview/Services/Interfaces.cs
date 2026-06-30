@@ -17,6 +17,7 @@ public interface IApplicationService
     Task<IList<JobApplication>> GetJobApplicationsByCustomerIdAsync(int customerId);
     Task<IList<JobApplication>> GetJobApplicationsByCustomerIdAndJobTitleAsync(int customerId, string jobTitle);
     Task<IPagedList<JobApplication>> GetApplicationsAsync(string candidateNameOrEmail = null, string status = null, decimal? minScore = null, decimal? maxScore = null, DateTime? startDate = null, DateTime? endDate = null, int productId = 0, int vendorId = 0, int pageIndex = 0, int pageSize = int.MaxValue, bool sortByScore = false);
+    Task<int> GetApplicationCountAsync(int productId = 0, int vendorId = 0, string status = null);
     Task UpdateJobApplicationAsync(JobApplication application);
 }
 
@@ -143,4 +144,5 @@ public interface IAIInterviewJobDisplayService
 {
     Task<AIInterviewJobProductCardModel> PrepareJobProductCardModelAsync(ProductOverviewModel productOverviewModel);
     Task<AIInterviewJobSpecificationSnapshotModel> GetSpecificationSnapshotAsync(int productId, ProductSpecificationModel preparedSpecificationModel = null);
+    bool IsCompactSpecificationAttributeName(string name);
 }
