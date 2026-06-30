@@ -9001,3 +9001,95 @@ body.jb-filter-panel-open .product-filters {
         height: 60px;
     }
 }
+
+/* Prompt 66 job listing shell polish */
+.html-category-page .master-column-wrapper,
+.html-search-page .master-column-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 0 24px 24px;
+    box-sizing: border-box;
+}
+
+.html-category-page .master-column-wrapper > .side-2 {
+    flex: 0 0 232px;
+    width: 232px;
+    max-width: 232px;
+}
+
+.html-category-page .master-column-wrapper > .center-2,
+.html-search-page .master-column-wrapper > .center-2 {
+    flex: 1 1 0;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+}
+
+.html-search-page .master-column-wrapper > .side-2 {
+    display: none;
+}
+
+.html-search-page .master-column-wrapper > .center-2 {
+    flex-basis: 100%;
+    width: 100%;
+}
+
+.html-category-page .jb-job-listing-sidebar {
+    display: grid;
+    gap: 18px;
+}
+
+.html-category-page .jb-job-listing-sidebar > * {
+    min-width: 0;
+}
+
+.html-category-page .side-2 .product-filters,
+.html-search-page .side-2 .product-filters {
+    margin: 0;
+}
+
+.html-category-page .side-2 .block-manufacturer-navigation,
+.html-category-page .side-2 .block-vendor-navigation,
+.html-category-page .side-2 .block-recently-viewed-products,
+.html-category-page .side-2 .block-popular-tags,
+.html-search-page .side-2 .block-category-navigation,
+.html-search-page .side-2 .block-manufacturer-navigation,
+.html-search-page .side-2 .block-vendor-navigation,
+.html-search-page .side-2 .block-recently-viewed-products,
+.html-search-page .side-2 .block-popular-tags {
+    display: none;
+}
+
+@media (max-width: 1180px) {
+    .html-category-page .master-column-wrapper,
+    .html-search-page .master-column-wrapper {
+        gap: 18px;
+        padding: 0 18px 20px;
+    }
+
+    .html-category-page .master-column-wrapper {
+        flex-direction: column;
+    }
+
+    .html-category-page .master-column-wrapper > .side-2,
+    .html-category-page .master-column-wrapper > .center-2,
+    .html-search-page .master-column-wrapper > .center-2 {
+        width: 100%;
+        max-width: none;
+    }
+
+    .html-category-page .master-column-wrapper > .side-2 {
+        flex-basis: auto;
+    }
+}
+
+@media (max-width: 767px) {
+    .html-category-page .master-column-wrapper,
+    .html-search-page .master-column-wrapper {
+        gap: 16px;
+        padding: 0 16px 16px;
+    }
+}

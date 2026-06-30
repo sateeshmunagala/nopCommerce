@@ -72,9 +72,11 @@
     }
 }
 
-@section CatalogFilters {
-    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsBeforeFilters, additionalData = Model })
-    @await Html.PartialAsync("_CatalogFilters", Model.CatalogProductsModel)
+@section left {
+    <div class="jb-job-listing-sidebar">
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsBeforeFilters, additionalData = Model })
+        @await Html.PartialAsync("_CatalogFilters", Model.CatalogProductsModel)
+    </div>
 }
 
 <div class="page category-page">
