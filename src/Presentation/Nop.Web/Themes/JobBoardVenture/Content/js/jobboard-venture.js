@@ -344,8 +344,9 @@
         var filterPanelPlaceholder = null;
         var filterPanelOriginalParent = null;
         var filterPanelMode = null;
-        var filterPanelBreakpoint = 1000;
+        var filterPanelBreakpoint = 1079;
         var filterPanelBreakpointBuffer = 32;
+        var responsiveSyncFrame = 0;
 
         function getViewportWidth() {
             return window.innerWidth || document.documentElement.clientWidth || 0;
@@ -374,6 +375,18 @@
                 filterPanelPlaceholder.className = 'jb-filter-panel-placeholder';
                 filterPanelOriginalParent = filtersPanel.parentNode;
                 filterPanelOriginalParent.insertBefore(filterPanelPlaceholder, filtersPanel);
+            }
+
+            if (filterPanelMode === nextMode) {
+                if (shouldBeMobilePanel && filtersPanel.parentNode === document.body) {
+                    syncFilterPanelModeClass();
+                    return;
+                }
+
+                if (!shouldBeMobilePanel && filterPanelPlaceholder && filterPanelPlaceholder.parentNode && filtersPanel.parentNode === filterPanelPlaceholder.parentNode) {
+                    syncFilterPanelModeClass();
+                    return;
+                }
             }
 
             filterPanelMode = nextMode;
@@ -407,7 +420,9 @@
                 e.stopPropagation();
             }
 
-            if (!isFilterPanelMobileMode() || !filtersPanel) {
+            syncFilterPanelMount();
+
+            if (filterPanelMode !== 'mobile' || !filtersPanel) {
                 return;
             }
 
@@ -499,7 +514,7 @@
                 return;
             }
 
-            var isMobile = getViewportWidth() <= 1000;
+            var isMobile = getViewportWidth() <= filterPanelBreakpoint;
 
             for (var p = 0; p < sideBlockTitles.length; p++) {
                 var blockTitle = sideBlockTitles[p];
@@ -557,7 +572,7 @@
             }
 
             sideBlockTitles[q].addEventListener('click', function (e) {
-                if (window.innerWidth > 1000) {
+                if (window.innerWidth > filterPanelBreakpoint) {
                     return;
                 }
 
@@ -573,10 +588,11 @@
             }, true);
         }
 
-        window.addEventListener('resize', function () {
+        function syncCatalogResponsiveUI() {
             var viewportWidth = getViewportWidth();
+            var wasMobilePanel = filterPanelMode === 'mobile';
 
-            if (viewportWidth > 1000) {
+            if (viewportWidth > filterPanelBreakpoint) {
                 closeMenu();
                 closeSearch();
                 closeAccount();
@@ -584,23 +600,33 @@
             }
 
             syncFilterPanelMount();
-            if (filterPanelMode !== 'mobile') {
+
+            if (wasMobilePanel && filterPanelMode !== 'mobile') {
                 closeFilterPanel();
             }
+
             syncMobileFilters();
             syncSideBlocks();
             syncCustomerNavState();
+        }
+
+        window.addEventListener('resize', function () {
+            if (responsiveSyncFrame) {
+                window.cancelAnimationFrame(responsiveSyncFrame);
+            }
+
+            responsiveSyncFrame = window.requestAnimationFrame(function () {
+                responsiveSyncFrame = 0;
+                syncCatalogResponsiveUI();
+            });
         });
 
-        syncFilterPanelMount();
+        syncCatalogResponsiveUI();
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 closeFilterPanel();
             }
         });
-
-        syncMobileFilters();
-        syncSideBlocks();
         syncExpandedState();
         syncCustomerNavState();
     }
