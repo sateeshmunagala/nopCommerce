@@ -61,7 +61,6 @@
 
     var candidateCount = await applicationService.GetApplicationCountAsync(productId: Model.Id);
     var applyUntil = Model.AvailableEndDate?.ToString("yyyy-MM-dd");
-    var jobDetailsKickerText = T("Plugins.Misc.AIInterview.JobDetails.Kicker").Text;
     var hiringCompanyText = T("Plugins.Misc.AIInterview.JobDetails.HiringCompany").Text;
     var candidatesAppliedText = string.Format(T("Plugins.Misc.AIInterview.JobDetails.CandidatesApplied").Text, candidateCount);
     var viewJobText = T("Plugins.Misc.AIInterview.JobDetails.ViewJob").Text;
@@ -148,7 +147,6 @@
 <article data-productid="@Model.Id" class="job-shell @(isDrawer ? "job-shell-drawer" : null)">
     <section class="job-hero">
         <div class="job-hero-copy">
-            <span class="job-kicker">@jobDetailsKickerText</span>
             @if (!string.IsNullOrWhiteSpace(vendorDisplayName))
             {
                 <div class="job-company">
@@ -339,7 +337,10 @@
                         }
                     </div>
                 }
-                @await Html.PartialAsync("_ProductTags", Model.ProductTags)
+                @if (!isDrawer)
+                {
+                    @await Html.PartialAsync("_ProductTags", Model.ProductTags)
+                }
             </section>
         </div>
     </section>

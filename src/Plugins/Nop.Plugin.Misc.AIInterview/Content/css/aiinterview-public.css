@@ -1003,6 +1003,10 @@ body.aiinterview-report-drawer-open {
     gap: 12px;
 }
 
+.ai-job-card-topline {
+    justify-content: flex-end;
+}
+
 .ai-job-card-kicker {
     color: #687078;
     font-family: "Fjalla One", Arial, sans-serif;
@@ -1117,18 +1121,9 @@ body.aiinterview-report-drawer-open {
     align-items: center;
 }
 
-.ai-job-card-preview-trigger,
 .ai-job-card-view-job {
     min-height: 34px;
     padding: 7px 12px;
-}
-
-.ai-job-card-title-link {
-    text-decoration: none;
-}
-
-.ai-job-card-preview-trigger {
-    min-width: 0;
 }
 
 .ai-job-card-save {
@@ -1211,24 +1206,39 @@ body.aiinterview-report-drawer-open {
 .ai-job-preview-drawer {
     position: fixed;
     inset: 0;
-    display: none;
+    display: block;
+    visibility: hidden;
+    pointer-events: none;
     z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.2s ease;
 }
 
 .ai-job-preview-drawer.is-open {
-    display: block;
+    visibility: visible;
+    pointer-events: auto;
+    opacity: 1;
 }
 
 .ai-job-preview-drawer-backdrop {
     position: absolute;
     inset: 0;
     background: rgba(15, 23, 42, 0.54);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.ai-job-preview-drawer.is-open .ai-job-preview-drawer-backdrop {
+    opacity: 1;
 }
 
 .ai-job-preview-drawer-panel {
     position: fixed;
-    inset-block: 0;
+    top: 0;
     right: 0;
+    bottom: 0;
+    left: auto;
+    margin: 0;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     width: 50vw;
@@ -1242,6 +1252,12 @@ body.aiinterview-report-drawer-open {
     box-sizing: border-box;
     overflow: hidden;
     box-shadow: -16px 0 36px rgba(15, 23, 42, 0.18);
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+}
+
+.ai-job-preview-drawer.is-open .ai-job-preview-drawer-panel {
+    transform: translateX(0);
 }
 
 .ai-job-preview-drawer-toolbar {

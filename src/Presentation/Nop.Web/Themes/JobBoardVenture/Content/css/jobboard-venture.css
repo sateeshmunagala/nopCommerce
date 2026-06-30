@@ -5859,6 +5859,36 @@ body.jb-search-open .jb-drawer-overlay {
         gap: 6px;
     }
 
+    .html-category-page .product-item.ai-job-product-card,
+    .html-search-page .product-item.ai-job-product-card {
+        display: grid;
+        grid-template-columns: 62px minmax(0, 1fr);
+        align-items: start;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-media,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-media {
+        grid-column: 1;
+        width: 62px;
+        max-width: 62px;
+    }
+
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-body,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-body {
+        grid-column: 2;
+        min-width: 0;
+    }
+
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-logo,
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-logo,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder {
+        width: 62px;
+        height: 62px;
+    }
+
     .html-category-page .product-item .sku,
     .html-search-page .product-item .sku {
         font-size: 0.78rem;

@@ -187,13 +187,19 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             if (!attributeLookup.TryGetValue(option.SpecificationAttributeId, out var specificationAttribute))
                 continue;
 
-            var name = await _localizationService.GetLocalizedAsync(specificationAttribute, entity => entity.Name, languageId, false, false);
-            var value = mapping.AttributeType == SpecificationAttributeType.CustomText
-                ? await _localizationService.GetLocalizedAsync(mapping, entity => entity.CustomValue, languageId, false, false)
-                : await _localizationService.GetLocalizedAsync(option, entity => entity.Name, languageId, false, false);
+            var name = NormalizePlainText(await _localizationService.GetLocalizedAsync(specificationAttribute, entity => entity.Name, languageId, true, false));
+            if (string.IsNullOrWhiteSpace(name))
+                name = NormalizePlainText(specificationAttribute.Name);
 
-            name = NormalizePlainText(name);
-            value = NormalizePlainText(value);
+            var value = mapping.AttributeType == SpecificationAttributeType.CustomText
+                ? NormalizePlainText(await _localizationService.GetLocalizedAsync(mapping, entity => entity.CustomValue, languageId, true, false))
+                : NormalizePlainText(await _localizationService.GetLocalizedAsync(option, entity => entity.Name, languageId, true, false));
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                value = NormalizePlainText(mapping.AttributeType == SpecificationAttributeType.CustomText
+                    ? mapping.CustomValue
+                    : option.Name);
+            }
 
             if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(value))
                 values.Add((name, value));

@@ -38,11 +38,10 @@
             <img class="ai-job-card-logo" src="@Model.ImageUrl" alt="@Model.ImageAlt" />
         }
     </div>
-    <div class="ai-job-card-body">
-        <div class="ai-job-card-topline">
-            <span class="ai-job-card-kicker">@T("Plugins.Misc.AIInterview.JobCard.Kicker")</span>
-            @if (Model.CanSaveJob)
-            {
+    <div class="ai-job-card-body ai-job-card-content">
+        @if (Model.CanSaveJob)
+        {
+            <div class="ai-job-card-topline">
                 <button type="button"
                         class="ai-job-card-save @(Model.IsSavedJob ? "is-saved" : null)"
                         data-product-id="@Model.Id"
@@ -60,12 +59,17 @@
                     <i class="fa-solid fa-bookmark ai-job-card-save-icon ai-job-card-save-icon-filled" aria-hidden="true"></i>
                     <span class="ai-job-card-visually-hidden">@(Model.IsSavedJob ? removeSavedLabel : saveLabel)</span>
                 </button>
-            }
-        </div>
+            </div>
+        }
 
-        <a class="ai-job-card-title-link" href="@productUrl">
+        <button type="button"
+                class="ai-job-card-title-link"
+                data-ai-job-preview-open="@drawerId"
+                aria-controls="@drawerId"
+                aria-expanded="false"
+                aria-label="@($"{Model.JobTitle} - {previewText}")">
             @Model.JobTitle
-        </a>
+        </button>
 
         @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
         {
@@ -124,14 +128,6 @@
         </div>
 
         <div class="ai-job-card-actions">
-            <button type="button"
-                    class="button-2 ai-job-card-preview-trigger"
-                    data-ai-job-preview-open="@drawerId"
-                    aria-controls="@drawerId"
-                    aria-expanded="false"
-                    aria-label="@($"{Model.JobTitle} - {previewText}")">
-                @previewText
-            </button>
             <a class="button-2 jb-view-job-button ai-job-card-view-job" href="@productUrl">@viewJobText</a>
         </div>
 
