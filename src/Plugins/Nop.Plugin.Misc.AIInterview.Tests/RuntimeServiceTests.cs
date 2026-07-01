@@ -18,6 +18,7 @@ using NUnit.Framework;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -249,6 +250,7 @@ public class RuntimeServiceTests
             SessionKey = "key32",
             Token = "token32",
             Difficulty = "Medium",
+            QuestionCount = 1,
             IsActive = true,
             TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
         };
@@ -362,6 +364,110 @@ public class RuntimeServiceTests
 
         Assert.That(inserted, Is.False);
         Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable. Please try again later."));
+    }
+
+    [Test]
+    public async Task EnsureInterviewStartedAsync_PartialPlanWithAnsweredTurns_FillsMissingSequencesDeterministically()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession
+        {
+            Id = 77,
+            ProductId = 18,
+            CustomerId = 41,
+            SessionKey = "partial-plan",
+            Token = "partial-token",
+            Difficulty = "Medium",
+            QuestionCount = 4,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
+        var answeredTurn = new InterviewTurn
+        {
+            Id = 1,
+            InterviewSessionId = 77,
+            SequenceNumber = 1,
+            QuestionText = "Existing question 1",
+            AnswerText = "Answered with detail",
+            Score = 82,
+            RubricJson = "{\"category\":\"skill\",\"resumeEvidence\":\"C#\",\"expectedSignals\":[\"depth\"]}",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-8),
+            AnsweredOnUtc = DateTime.UtcNow.AddMinutes(-7),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-8)
+        };
+        var retainedTurn = new InterviewTurn
+        {
+            Id = 2,
+            InterviewSessionId = 77,
+            SequenceNumber = 3,
+            QuestionText = "Existing question 3",
+            RubricJson = "{\"category\":\"project_scenario\",\"resumeEvidence\":\"Payments platform\",\"expectedSignals\":[\"tradeoffs\"]}",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-2),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-2)
+        };
+        var store = new List<InterviewTurn> { answeredTurn, retainedTurn };
+        AIInterviewQuestionPlanRequest capturedPlanRequest = null;
+
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(77)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn turn) =>
+            {
+                turn.Id = store.Max(existing => existing.Id) + 1;
+                store.Add(turn);
+                return turn;
+            });
+        aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
+            .Callback<AIInterviewQuestionPlanRequest>(request => capturedPlanRequest = request)
+            .ReturnsAsync(new AIInterviewQuestionPlanResponse
+            {
+                Success = true,
+                Questions = new List<AIInterviewQuestionPlanItem>
+                {
+                    new()
+                    {
+                        SequenceNumber = 1,
+                        Category = "behavioral",
+                        Question = "Generated question 2",
+                        ResumeEvidence = "Ownership",
+                        ExpectedSignals = new List<string> { "Ownership", "Clarity" },
+                        Rubric = new AIInterviewQuestionRubric()
+                    },
+                    new()
+                    {
+                        SequenceNumber = 2,
+                        Category = "job_fit",
+                        Question = "Generated question 4",
+                        ResumeEvidence = "Role alignment",
+                        ExpectedSignals = new List<string> { "Alignment", "Ramp-up" },
+                        Rubric = new AIInterviewQuestionRubric()
+                    }
+                }
+            });
+        productService.Setup(x => x.GetProductByIdAsync(18)).ReturnsAsync(new Product { Id = 18, Name = "Platform Engineer" });
+        customerService.Setup(x => x.GetCustomerByIdAsync(41)).ReturnsAsync(new Customer { Id = 41, FirstName = "Casey", LastName = "Lee" });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 41, FirstName = "Casey", LastName = "Lee" });
+
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.CurrentQuestion, Is.EqualTo("Generated question 2"));
+        Assert.That(store.Select(turn => turn.SequenceNumber).OrderBy(sequence => sequence), Is.EqualTo(new[] { 1, 2, 3, 4 }));
+        Assert.That(store.Count(turn => turn.SequenceNumber == 2), Is.EqualTo(1));
+        Assert.That(store.Count(turn => turn.SequenceNumber == 4), Is.EqualTo(1));
+        Assert.That(capturedPlanRequest, Is.Not.Null);
+        Assert.That(capturedPlanRequest.QuestionCount, Is.EqualTo(2));
+        Assert.That(capturedPlanRequest.TotalQuestionCount, Is.EqualTo(4));
+        Assert.That(capturedPlanRequest.ExistingQuestions, Is.EquivalentTo(new[] { "Existing question 1", "Existing question 3" }));
+        Assert.That(capturedPlanRequest.ExistingCategories, Is.EquivalentTo(new[] { "skill", "project_scenario" }));
+        turnService.Verify(x => x.DeleteInterviewTurnsAsync(It.IsAny<IList<InterviewTurn>>()), Times.Never);
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
     }
 
     [Test]
@@ -642,6 +748,106 @@ public class RuntimeServiceTests
         Assert.That(updatedSession.Score, Is.EqualTo(85));
         Assert.That(updatedSession.QuestionScores, Does.Contain("85"));
         aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SubmitAnswerAsync_PreservesQuestionPlanMetadataAfterScoring()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession
+        {
+            Id = 240,
+            ProductId = 20,
+            CustomerId = 5,
+            SessionKey = "key240",
+            Token = "token240",
+            Difficulty = "Medium",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            QuestionCount = 2
+        };
+        var currentTurn = new InterviewTurn
+        {
+            Id = 1,
+            InterviewSessionId = 240,
+            SequenceNumber = 1,
+            QuestionText = "Describe your payments project tradeoffs.",
+            RubricJson = "{\"category\":\"project_scenario\",\"resumeEvidence\":\"Payments platform project\",\"expectedSignals\":[\"tradeoffs\",\"ownership\"],\"rubric\":{\"technical\":\"Depth\",\"communication\":\"Clarity\"}}",
+            RawAIResponseJson = "{\"sequenceNumber\":1,\"category\":\"project_scenario\",\"question\":\"Describe your payments project tradeoffs.\",\"resumeEvidence\":\"Payments platform project\"}",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-3),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-3)
+        };
+        var nextTurn = new InterviewTurn
+        {
+            Id = 2,
+            InterviewSessionId = 240,
+            SequenceNumber = 2,
+            QuestionText = "Second question",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-2),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-2)
+        };
+        var store = new List<InterviewTurn> { currentTurn, nextTurn };
+        AIInterviewClientRequest scoreRequest = null;
+        InterviewTurn updatedTurn = null;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token240")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(240)).ReturnsAsync(() => store.OrderBy(turn => turn.SequenceNumber).ToList());
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback<InterviewTurn>(turn =>
+            {
+                updatedTurn = turn;
+                store.RemoveAll(existing => existing.Id == turn.Id);
+                store.Add(turn);
+            })
+            .Returns(Task.CompletedTask);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        productService.Setup(x => x.GetProductByIdAsync(20)).ReturnsAsync(new Product { Id = 20, Name = "Platform Engineer" });
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
+            .Callback<AIInterviewClientRequest>(request => scoreRequest = request)
+            .ReturnsAsync(new AIInterviewClientResponse
+            {
+                Success = true,
+                TechnicalScore = 90,
+                CommunicationScore = 85,
+                ProfessionalismScore = 88,
+                PositiveAttitudeScore = 87,
+                Score = 87.5m,
+                Feedback = "Strong answer",
+                RawJson = "{\"score\":87.5,\"feedback\":\"Strong answer\",\"complete\":false}",
+                RubricJson = "{\"technicalScore\":90,\"communicationScore\":85,\"professionalismScore\":88,\"positiveAttitudeScore\":87,\"score\":87.5,\"feedback\":\"Strong answer\"}"
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var result = await service.SubmitAnswerAsync("token240", "I would prioritize safe scaling, observability, and rollback paths.");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Question, Is.EqualTo("Second question"));
+        Assert.That(scoreRequest, Is.Not.Null);
+        Assert.That(scoreRequest.CurrentTurnRubricJson, Does.Contain("Payments platform project"));
+        Assert.That(scoreRequest.CurrentTurnRubricJson, Does.Contain("\"category\":\"project_scenario\""));
+        Assert.That(updatedTurn, Is.Not.Null);
+        using (var rubricDocument = JsonDocument.Parse(updatedTurn.RubricJson))
+        {
+            Assert.That(rubricDocument.RootElement.GetProperty("technicalScore").GetDecimal(), Is.EqualTo(90));
+            Assert.That(rubricDocument.RootElement.GetProperty("score").GetDecimal(), Is.EqualTo(87.5m));
+            Assert.That(rubricDocument.RootElement.GetProperty("plan").GetProperty("category").GetString(), Is.EqualTo("project_scenario"));
+            Assert.That(rubricDocument.RootElement.GetProperty("plan").GetProperty("resumeEvidence").GetString(), Is.EqualTo("Payments platform project"));
+            Assert.That(rubricDocument.RootElement.GetProperty("scoring").GetProperty("communicationScore").GetDecimal(), Is.EqualTo(85));
+        }
+
+        using (var rawDocument = JsonDocument.Parse(updatedTurn.RawAIResponseJson))
+        {
+            Assert.That(rawDocument.RootElement.GetProperty("questionPlan").GetProperty("category").GetString(), Is.EqualTo("project_scenario"));
+            Assert.That(rawDocument.RootElement.GetProperty("scoringResponse").GetProperty("score").GetDecimal(), Is.EqualTo(87.5m));
+        }
     }
 
     [Test]
@@ -1310,8 +1516,13 @@ public class RuntimeServiceTests
         Assert.That(updatedTurn.AnswerText, Is.EqualTo("Answer that should complete"));
         Assert.That(updatedTurn.Score, Is.EqualTo(91));
         Assert.That(updatedTurn.Feedback, Is.EqualTo("Strong"));
-        Assert.That(updatedTurn.RawAIResponseJson, Is.EqualTo("{\"score\":91,\"complete\":true}"));
-        Assert.That(updatedTurn.RubricJson, Is.EqualTo("{\"score\":91,\"feedback\":\"Strong\"}"));
+        using (var rawDocument = JsonDocument.Parse(updatedTurn.RawAIResponseJson))
+            Assert.That(rawDocument.RootElement.GetProperty("scoringResponse").GetProperty("score").GetDecimal(), Is.EqualTo(91));
+        using (var rubricDocument = JsonDocument.Parse(updatedTurn.RubricJson))
+        {
+            Assert.That(rubricDocument.RootElement.GetProperty("score").GetDecimal(), Is.EqualTo(91));
+            Assert.That(rubricDocument.RootElement.GetProperty("scoring").GetProperty("feedback").GetString(), Is.EqualTo("Strong"));
+        }
         eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Once);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.CompletedOnUtc.HasValue && !s.IsActive)), Times.Once);
     }
@@ -2135,7 +2346,7 @@ public class RuntimeServiceTests
         var customerService = new Mock<ICustomerService>();
         var localizationService = new Mock<ILocalizationService>();
 
-        var session = new InterviewSession { Id = 6, ProductId = 60, CustomerId = 7, SessionKey = "session-6", Token = "token6", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var session = new InterviewSession { Id = 6, ProductId = 60, CustomerId = 7, SessionKey = "session-6", Token = "token6", QuestionCount = 1, IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(6)).ReturnsAsync(new List<InterviewTurn>
         {
             new()

@@ -188,16 +188,28 @@ public partial class InterviewAiClient
 
     private static string BuildQuestionPlanPrompt(AIInterviewQuestionPlanRequest request)
     {
+        var totalQuestionCount = request.TotalQuestionCount > 0 ? request.TotalQuestionCount : request.QuestionCount;
         var builder = new StringBuilder();
         builder.AppendLine("Interview mode: question-plan");
         builder.AppendLine($"Job title: {request.JobTitle}");
         builder.AppendLine($"Job context: {TruncateSafe(request.JobContext, 2500)}");
         builder.AppendLine($"Difficulty: {request.Difficulty}");
-        builder.AppendLine($"Question count: {request.QuestionCount}");
+        builder.AppendLine($"Question count to return now: {request.QuestionCount}");
+        builder.AppendLine($"Total interview question count: {totalQuestionCount}");
         builder.AppendLine($"Global prompt: {request.Prompt}");
         builder.AppendLine("Resume profile JSON:");
         builder.AppendLine(TruncateSafe(request.ResumeProfileJson, 4000));
         builder.AppendLine("Allowed categories: skill, project_scenario, job_fit, behavioral");
+        if (request.ExistingQuestions?.Any() == true)
+        {
+            builder.AppendLine("Existing planned questions that must not be duplicated:");
+            foreach (var question in request.ExistingQuestions.Where(question => !string.IsNullOrWhiteSpace(question)))
+                builder.AppendLine($"- {TruncateSafe(question, 220)}");
+        }
+
+        if (request.ExistingCategories?.Any() == true)
+            builder.AppendLine($"Existing category usage: {string.Join(", ", request.ExistingCategories.Where(category => !string.IsNullOrWhiteSpace(category)).Select(NormalizePlanCategory))}");
+
         builder.AppendLine("Response contract:");
         builder.Append("""
 {
@@ -408,9 +420,20 @@ public partial class InterviewAiClient
     private AIInterviewQuestionPlanResponse BuildMockQuestionPlan(AIInterviewQuestionPlanRequest request)
     {
         var profile = ParseResumeProfileForMock(request.ResumeProfileJson);
-        var questionCount = Math.Clamp(request.QuestionCount <= 0 ? 3 : request.QuestionCount, 1, 10);
-        var categories = BuildQuestionCategories(questionCount, profile.Projects.Any());
+        var totalQuestionCount = Math.Clamp(request.TotalQuestionCount <= 0 ? (request.QuestionCount <= 0 ? 3 : request.QuestionCount) : request.TotalQuestionCount, 1, 10);
+        var questionCount = Math.Clamp(request.QuestionCount <= 0 ? totalQuestionCount : request.QuestionCount, 1, totalQuestionCount);
+        var existingQuestions = (request.ExistingQuestions ?? new List<string>())
+            .Where(question => !string.IsNullOrWhiteSpace(question))
+            .Select(question => question.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var existingCategories = (request.ExistingCategories ?? new List<string>())
+            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Select(NormalizePlanCategory)
+            .ToList();
+        var categories = BuildRemainingQuestionCategories(totalQuestionCount, questionCount, existingCategories, profile.Projects.Any());
         var primarySkills = profile.PrimarySkills.Any() ? profile.PrimarySkills : profile.Skills.Any() ? profile.Skills : new List<string> { request.JobTitle, "problem solving" };
+        var seenQuestions = new HashSet<string>(existingQuestions, StringComparer.OrdinalIgnoreCase);
         var questions = new List<AIInterviewQuestionPlanItem>();
 
         for (var index = 0; index < questionCount; index++)
@@ -418,18 +441,24 @@ public partial class InterviewAiClient
             var category = categories[index];
             var skill = primarySkills[index % primarySkills.Count];
             var project = profile.Projects.Any() ? profile.Projects[index % profile.Projects.Count] : null;
+            var questionText = BuildMockPlanQuestionText(request, category, skill, project, index, 0);
+            var variant = 1;
+            while (seenQuestions.Contains(questionText) && variant < 6)
+            {
+                questionText = BuildMockPlanQuestionText(request, category, skill, project, index, variant);
+                variant++;
+            }
+
+            if (seenQuestions.Contains(questionText))
+                questionText = $"{questionText} (follow-up {variant})";
+
+            seenQuestions.Add(questionText);
 
             questions.Add(new AIInterviewQuestionPlanItem
             {
                 SequenceNumber = index + 1,
                 Category = category,
-                Question = category switch
-                {
-                    "skill" => $"Your resume highlights {skill}. How would you apply that in a {request.Difficulty} {request.JobTitle} assignment?",
-                    "project_scenario" when project != null => $"In your {project.Name} project, how would you handle a scenario where the core solution must scale while preserving reliability?",
-                    "behavioral" => $"Describe a time you had to collaborate under pressure in work related to {request.JobTitle}. What did you do?",
-                    _ => $"What part of this {request.JobTitle} role is the strongest match for your background, and where would you ramp up first?"
-                },
+                Question = questionText,
                 ResumeEvidence = category == "project_scenario" && project != null
                     ? string.IsNullOrWhiteSpace(project.Name) ? project.Domain : project.Name
                     : skill,
@@ -455,6 +484,54 @@ public partial class InterviewAiClient
             Success = true,
             Questions = questions,
             RawJson = JsonSerializer.Serialize(new { questions }, ResumePlanSerializerOptions)
+        };
+    }
+
+    private static IList<string> BuildRemainingQuestionCategories(int totalQuestionCount, int requestedQuestionCount, IList<string> existingCategories, bool hasProjects)
+    {
+        var remainingCategories = BuildQuestionCategories(totalQuestionCount, hasProjects).ToList();
+        foreach (var existingCategory in existingCategories ?? Array.Empty<string>())
+        {
+            var normalized = NormalizePlanCategory(existingCategory);
+            var index = remainingCategories.FindIndex(category => category.Equals(normalized, StringComparison.OrdinalIgnoreCase));
+            if (index >= 0)
+                remainingCategories.RemoveAt(index);
+        }
+
+        while (remainingCategories.Count < requestedQuestionCount)
+            remainingCategories.Add(remainingCategories.Count % 2 == 0 ? "job_fit" : "behavioral");
+
+        return remainingCategories.Take(requestedQuestionCount).ToList();
+    }
+
+    private static string BuildMockPlanQuestionText(AIInterviewQuestionPlanRequest request, string category, string skill, AIResumeProjectProfile project, int index, int variant)
+    {
+        return category switch
+        {
+            "skill" => variant switch
+            {
+                0 => $"Your resume highlights {skill}. How would you apply that in a {request.Difficulty} {request.JobTitle} assignment?",
+                1 => $"What is the hardest production problem you solved using {skill}, and how does that experience fit this {request.JobTitle} role?",
+                _ => $"Which tradeoffs would you watch first when using {skill} in this {request.JobTitle} position?"
+            },
+            "project_scenario" when project != null => variant switch
+            {
+                0 => $"In your {project.Name} project, how would you handle a scenario where the core solution must scale while preserving reliability?",
+                1 => $"Looking at {project.Name}, what would you change first if the project suddenly needed stronger observability and fault isolation?",
+                _ => $"What architecture or delivery tradeoffs stood out most in {project.Name}, and how would you explain them to this team?"
+            },
+            "behavioral" => variant switch
+            {
+                0 => $"Describe a time you had to collaborate under pressure in work related to {request.JobTitle}. What did you do?",
+                1 => $"Tell me about a disagreement you navigated while delivering work similar to this {request.JobTitle} role.",
+                _ => $"How have you handled feedback or shifting priorities in work connected to {request.JobTitle}?"
+            },
+            _ => variant switch
+            {
+                0 => $"What part of this {request.JobTitle} role is the strongest match for your background, and where would you ramp up first?",
+                1 => $"Which responsibility in this {request.JobTitle} job would you take ownership of earliest, and why?",
+                _ => $"How does your background prepare you for the first 90 days of this {request.JobTitle} role?"
+            }
         };
     }
 

@@ -279,4 +279,198 @@ public class ResumePlanningTests
             product,
             true), Times.Once);
     }
+
+    [Test]
+    public async Task StartPost_WithInvalidResume_DoesNotChargeOrCreateSession()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var inviteService = new Mock<ISponsorInviteService>();
+        var creditService = new Mock<ICreditService>();
+        var customerService = new Mock<ICustomerService>();
+        var productService = new Mock<IProductService>();
+        var vendorService = new Mock<Nop.Services.Vendors.IVendorService>();
+        var applicationService = new Mock<IApplicationService>();
+        var jobRequirementService = new Mock<IJobRequirementService>();
+        var resumeFileService = new Mock<IResumeFileService>();
+
+        var customer = new Customer { Id = 12, Email = "candidate@example.com" };
+        var product = new Product { Id = 44, Name = "Platform Engineer" };
+        var resumeFile = CreateResumeFile("resume.txt", "binary");
+        var files = new FormFileCollection { resumeFile };
+        var form = new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>(), files);
+
+        workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        localizationService.Setup(service => service.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        sessionService.Setup(service => service.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
+        productService.Setup(service => service.GetProductByIdAsync(44)).ReturnsAsync(product);
+        applicationService.Setup(service => service.GetJobApplicationsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<JobApplication>());
+        jobRequirementService.Setup(service => service.GetRequirementsAsync(44)).ReturnsAsync(new JobRequirementsModel());
+        resumeFileService.Setup(service => service.ValidateResumeFile(resumeFile)).Returns(new ResumeFileValidationResult
+        {
+            Success = false,
+            ErrorMessage = "Allowed resume file types: PDF, DOCX. Maximum size: 5 MB."
+        });
+
+        var controller = new MockAiInterviewController(
+            sessionService.Object,
+            localizationService.Object,
+            workContext.Object,
+            inviteService.Object,
+            creditService.Object,
+            customerService.Object,
+            productService.Object,
+            vendorService.Object,
+            applicationService.Object,
+            jobRequirementService: jobRequirementService.Object,
+            resumeFileService: resumeFileService.Object);
+
+        var result = await controller.StartPost(form, 44, "Medium");
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        creditService.Verify(service => service.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        sessionService.Verify(service => service.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        applicationService.Verify(service => service.InsertJobApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+        applicationService.Verify(service => service.UpdateJobApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+    }
+
+    [Test]
+    public async Task StartPost_WhenResumeRequiredAndMissing_DoesNotChargeOrCreateSession()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var inviteService = new Mock<ISponsorInviteService>();
+        var creditService = new Mock<ICreditService>();
+        var customerService = new Mock<ICustomerService>();
+        var productService = new Mock<IProductService>();
+        var vendorService = new Mock<Nop.Services.Vendors.IVendorService>();
+        var applicationService = new Mock<IApplicationService>();
+        var jobRequirementService = new Mock<IJobRequirementService>();
+
+        var customer = new Customer { Id = 12, Email = "candidate@example.com" };
+        var product = new Product { Id = 44, Name = "Platform Engineer" };
+        var form = new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>());
+
+        workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        localizationService.Setup(service => service.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        sessionService.Setup(service => service.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
+        productService.Setup(service => service.GetProductByIdAsync(44)).ReturnsAsync(product);
+        applicationService.Setup(service => service.GetJobApplicationsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<JobApplication>());
+        jobRequirementService.Setup(service => service.GetRequirementsAsync(44)).ReturnsAsync(new JobRequirementsModel
+        {
+            ResumeRequired = true,
+            QuestionCount = 5
+        });
+
+        var controller = new MockAiInterviewController(
+            sessionService.Object,
+            localizationService.Object,
+            workContext.Object,
+            inviteService.Object,
+            creditService.Object,
+            customerService.Object,
+            productService.Object,
+            vendorService.Object,
+            applicationService.Object,
+            jobRequirementService: jobRequirementService.Object);
+
+        var result = await controller.StartPost(form, 44, "Medium");
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        creditService.Verify(service => service.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        sessionService.Verify(service => service.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        applicationService.Verify(service => service.InsertJobApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+        applicationService.Verify(service => service.UpdateJobApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+    }
+
+    [Test]
+    public async Task StartPost_ReusableSession_WithPostedResume_StoresResumeAndLinksApplication()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var inviteService = new Mock<ISponsorInviteService>();
+        var creditService = new Mock<ICreditService>();
+        var customerService = new Mock<ICustomerService>();
+        var productService = new Mock<IProductService>();
+        var vendorService = new Mock<Nop.Services.Vendors.IVendorService>();
+        var applicationService = new Mock<IApplicationService>();
+        var jobRequirementService = new Mock<IJobRequirementService>();
+        var resumeFileService = new Mock<IResumeFileService>();
+        var resumeProfileService = new Mock<IResumeProfileService>();
+        var turnService = new Mock<IInterviewTurnService>();
+
+        var customer = new Customer { Id = 12, Email = "candidate@example.com" };
+        var product = new Product { Id = 44, Name = "Platform Engineer" };
+        var resumeFile = CreateResumeFile("resume.pdf", "binary");
+        var files = new FormFileCollection { resumeFile };
+        var form = new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>(), files);
+        var reusableSession = new InterviewSession
+        {
+            Id = 900,
+            ProductId = 44,
+            CustomerId = 12,
+            SessionKey = "session-900",
+            Token = "token-900",
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(20),
+            IsActive = true
+        };
+        var plannedTurns = new List<InterviewTurn>
+        {
+            new() { Id = 1, InterviewSessionId = 900, SequenceNumber = 1, QuestionText = "Q1", AskedOnUtc = DateTime.UtcNow.AddMinutes(-2), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-2) },
+            new() { Id = 2, InterviewSessionId = 900, SequenceNumber = 2, QuestionText = "Q2", AskedOnUtc = DateTime.UtcNow.AddMinutes(-1), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1) }
+        };
+
+        workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        localizationService.Setup(service => service.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        sessionService.Setup(service => service.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession> { reusableSession });
+        productService.Setup(service => service.GetProductByIdAsync(44)).ReturnsAsync(product);
+        applicationService.Setup(service => service.GetJobApplicationsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<JobApplication>());
+        jobRequirementService.Setup(service => service.GetRequirementsAsync(44)).ReturnsAsync(new JobRequirementsModel { QuestionCount = 5 });
+        resumeFileService.Setup(service => service.ValidateResumeFile(resumeFile)).Returns(new ResumeFileValidationResult { Success = true });
+        resumeFileService.Setup(service => service.StoreResumeAsync(resumeFile)).ReturnsAsync(new ResumeFileStoreResult { Success = true, DownloadId = 78 });
+        applicationService.Setup(service => service.InsertJobApplicationAsync(It.IsAny<JobApplication>()))
+            .Callback<JobApplication>(application => application.Id = 501)
+            .Returns(Task.CompletedTask);
+        resumeProfileService.Setup(service => service.EnsureResumeProfileAsync(It.IsAny<JobApplication>(), product, true))
+            .ReturnsAsync(new ResumeProfileGenerationResult { Success = true, ProfileJson = "{\"skills\":[\"Azure\"]}" });
+        turnService.Setup(service => service.GetTurnsBySessionIdAsync(900)).ReturnsAsync(plannedTurns);
+        sessionService.Setup(service => service.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+
+        var controller = new MockAiInterviewController(
+            sessionService.Object,
+            localizationService.Object,
+            workContext.Object,
+            inviteService.Object,
+            creditService.Object,
+            customerService.Object,
+            productService.Object,
+            vendorService.Object,
+            applicationService.Object,
+            jobRequirementService: jobRequirementService.Object,
+            turnService: turnService.Object,
+            resumeFileService: resumeFileService.Object,
+            resumeProfileService: resumeProfileService.Object);
+
+        var result = await controller.StartPost(form, 44, "Medium");
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        creditService.Verify(service => service.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        sessionService.Verify(service => service.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        applicationService.Verify(service => service.InsertJobApplicationAsync(It.Is<JobApplication>(application =>
+            application.Id == 501 &&
+            application.ProductId == 44 &&
+            application.ResumeDownloadId == 78 &&
+            application.CustomerId == 12)), Times.Once);
+        resumeProfileService.Verify(service => service.EnsureResumeProfileAsync(
+            It.Is<JobApplication>(application => application.Id == 501 && application.ResumeDownloadId == 78),
+            product,
+            true), Times.Once);
+        turnService.Verify(service => service.DeleteInterviewTurnsAsync(It.Is<IList<InterviewTurn>>(turns => turns.Count == 2 && turns.All(turn => turn.InterviewSessionId == 900))), Times.Once);
+        sessionService.Verify(service => service.UpdateInterviewSessionAsync(It.Is<InterviewSession>(session =>
+            session.Id == 900 &&
+            session.JobApplicationId == 501)), Times.Once);
+    }
 }

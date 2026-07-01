@@ -44,6 +44,7 @@ public interface IInterviewTurnService
     Task<IList<InterviewTurn>> GetTurnsBySessionIdAsync(int interviewSessionId);
     Task<InterviewTurn> GetLatestTurnBySessionIdAsync(int interviewSessionId);
     Task UpdateInterviewTurnAsync(InterviewTurn turn);
+    Task DeleteInterviewTurnsAsync(IList<InterviewTurn> turns);
 }
 
 public interface IInterviewRuntimeService
@@ -166,8 +167,11 @@ public record AIInterviewQuestionPlanRequest
     public string JobContext { get; init; }
     public string Difficulty { get; init; }
     public int QuestionCount { get; init; }
+    public int TotalQuestionCount { get; init; }
     public string Prompt { get; init; }
     public string ResumeProfileJson { get; init; }
+    public IList<string> ExistingQuestions { get; init; } = new List<string>();
+    public IList<string> ExistingCategories { get; init; } = new List<string>();
 }
 
 public record AIInterviewQuestionPlanResponse

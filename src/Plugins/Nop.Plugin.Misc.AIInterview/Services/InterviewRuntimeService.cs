@@ -60,6 +60,14 @@ public class InterviewTurnService : IInterviewTurnService
     {
         await _turnRepository.UpdateAsync(turn);
     }
+
+    public async Task DeleteInterviewTurnsAsync(IList<InterviewTurn> turns)
+    {
+        if (turns == null || !turns.Any())
+            return;
+
+        await _turnRepository.DeleteAsync(turns);
+    }
 }
 
 public partial class InterviewAiClient : IAIInterviewClient
@@ -951,6 +959,143 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         return text;
     }
 
+    protected static JsonNode TryParseJsonNode(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        try
+        {
+            return JsonNode.Parse(json);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    protected static JsonObject TryParseJsonObject(string json)
+    {
+        return TryParseJsonNode(json) as JsonObject;
+    }
+
+    protected static void SetJsonScoreValue(JsonObject node, string propertyName, decimal? value)
+    {
+        if (node != null && value.HasValue)
+            node[propertyName] = value.Value;
+    }
+
+    protected static JsonObject ExtractPlanMetadataNode(string rubricJson)
+    {
+        var root = TryParseJsonObject(rubricJson);
+        if (root == null)
+            return null;
+
+        if (root["plan"] is JsonObject existingPlan)
+            return (JsonObject)existingPlan.DeepClone();
+
+        var plan = new JsonObject();
+        var hasPlanData = false;
+        foreach (var propertyName in new[] { "category", "resumeEvidence", "expectedSignals", "rubric" })
+        {
+            if (root[propertyName] == null)
+                continue;
+
+            plan[propertyName] = root[propertyName].DeepClone();
+            hasPlanData = true;
+        }
+
+        return hasPlanData ? plan : null;
+    }
+
+    protected static string ExtractPlanCategory(string rubricJson)
+    {
+        var plan = ExtractPlanMetadataNode(rubricJson);
+        if (plan == null || plan["category"] == null)
+            return string.Empty;
+
+        try
+        {
+            return plan["category"].GetValue<string>() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    protected static JsonNode ExtractQuestionPlanRawNode(string rawJson)
+    {
+        var root = TryParseJsonObject(rawJson);
+        if (root?["questionPlan"] != null)
+            return root["questionPlan"].DeepClone();
+
+        return TryParseJsonNode(rawJson)?.DeepClone();
+    }
+
+    protected static JsonNode ExtractScoringResponseNode(string rawJson)
+    {
+        var root = TryParseJsonObject(rawJson);
+        if (root?["scoringResponse"] != null)
+            return root["scoringResponse"].DeepClone();
+
+        var parsed = TryParseJsonNode(rawJson);
+        return parsed?.DeepClone() ?? (!string.IsNullOrWhiteSpace(rawJson) ? JsonValue.Create(rawJson) : null);
+    }
+
+    protected virtual string BuildMergedRubricJson(string existingRubricJson, AIInterviewClientResponse evaluation)
+    {
+        var merged = TryParseJsonObject(evaluation?.RubricJson) ?? new JsonObject();
+        SetJsonScoreValue(merged, "technicalScore", evaluation?.TechnicalScore);
+        SetJsonScoreValue(merged, "communicationScore", evaluation?.CommunicationScore);
+        SetJsonScoreValue(merged, "professionalismScore", evaluation?.ProfessionalismScore);
+        SetJsonScoreValue(merged, "positiveAttitudeScore", evaluation?.PositiveAttitudeScore);
+        SetJsonScoreValue(merged, "score", evaluation?.Score);
+
+        if (!string.IsNullOrWhiteSpace(evaluation?.Feedback))
+            merged["feedback"] = evaluation.Feedback;
+
+        var planNode = ExtractPlanMetadataNode(existingRubricJson);
+        if (planNode != null)
+            merged["plan"] = planNode;
+
+        var scoringNode = TryParseJsonNode(evaluation?.RubricJson)?.DeepClone();
+        if (scoringNode == null)
+        {
+            var scoringFallback = new JsonObject();
+            SetJsonScoreValue(scoringFallback, "technicalScore", evaluation?.TechnicalScore);
+            SetJsonScoreValue(scoringFallback, "communicationScore", evaluation?.CommunicationScore);
+            SetJsonScoreValue(scoringFallback, "professionalismScore", evaluation?.ProfessionalismScore);
+            SetJsonScoreValue(scoringFallback, "positiveAttitudeScore", evaluation?.PositiveAttitudeScore);
+            SetJsonScoreValue(scoringFallback, "score", evaluation?.Score);
+            if (!string.IsNullOrWhiteSpace(evaluation?.Feedback))
+                scoringFallback["feedback"] = evaluation.Feedback;
+            scoringNode = scoringFallback.Count > 0 ? scoringFallback : null;
+        }
+
+        if (scoringNode != null)
+            merged["scoring"] = scoringNode;
+
+        return JsonSerializer.Serialize(merged, StorageSerializerOptions);
+    }
+
+    protected virtual string BuildMergedRawAiResponseJson(string existingRawJson, string scoringRawJson)
+    {
+        var merged = new JsonObject();
+        var questionPlanNode = ExtractQuestionPlanRawNode(existingRawJson);
+        if (questionPlanNode != null)
+            merged["questionPlan"] = questionPlanNode;
+
+        var scoringNode = ExtractScoringResponseNode(scoringRawJson);
+        if (scoringNode != null)
+            merged["scoringResponse"] = scoringNode;
+
+        if (merged.Count == 0)
+            return !string.IsNullOrWhiteSpace(scoringRawJson) ? scoringRawJson : existingRawJson;
+
+        return JsonSerializer.Serialize(merged, StorageSerializerOptions);
+    }
+
     protected virtual HttpClient CreateHttpClient()
     {
         return _httpClientFactory?.CreateClient(nameof(InterviewRuntimeService)) ?? new HttpClient();
@@ -1102,8 +1247,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         currentTurn.AnswerText = answer;
         currentTurn.Score = Math.Clamp(evaluation.Score.Value, 0, 100);
         currentTurn.Feedback = evaluation.Feedback;
-        currentTurn.RubricJson = evaluation.RubricJson;
-        currentTurn.RawAIResponseJson = evaluation.RawJson;
+        currentTurn.RubricJson = BuildMergedRubricJson(currentTurn.RubricJson, evaluation);
+        currentTurn.RawAIResponseJson = BuildMergedRawAiResponseJson(currentTurn.RawAIResponseJson, evaluation.RawJson);
         currentTurn.AnsweredOnUtc = DateTime.UtcNow;
         await _turnService.UpdateInterviewTurnAsync(currentTurn);
 
@@ -1445,43 +1590,78 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         turns ??= new List<InterviewTurn>();
         var maxQuestions = GetMaxQuestions(session);
-        if (turns.Count >= maxQuestions)
+        var orderedTurns = turns
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+        var configuredSequenceNumbers = Enumerable.Range(1, maxQuestions).ToList();
+        var existingSequenceNumbers = new HashSet<int>(orderedTurns.Select(turn => turn.SequenceNumber));
+        var missingSequenceNumbers = configuredSequenceNumbers
+            .Where(sequenceNumber => !existingSequenceNumbers.Contains(sequenceNumber))
+            .ToList();
+
+        if (!missingSequenceNumbers.Any())
+            return (orderedTurns, null);
+
+        if (orderedTurns.Any() && orderedTurns.All(turn => string.IsNullOrWhiteSpace(turn.AnswerText)))
         {
-            return (turns
-                .OrderBy(turn => turn.SequenceNumber)
-                .ThenBy(turn => turn.Id)
-                .ToList(), null);
+            await _turnService.DeleteInterviewTurnsAsync(orderedTurns);
+            orderedTurns = new List<InterviewTurn>();
+            missingSequenceNumbers = configuredSequenceNumbers;
         }
 
-        var generatedPlan = await GenerateQuestionPlanTurnsAsync(session, customer);
+        var generatedPlan = await GenerateQuestionPlanTurnsAsync(session, customer, orderedTurns, missingSequenceNumbers);
         if (!generatedPlan.Turns.Any())
-            return (turns, generatedPlan.FailureReason);
+            return (orderedTurns, generatedPlan.FailureReason);
 
-        var existingSequenceNumbers = new HashSet<int>(turns.Select(turn => turn.SequenceNumber));
+        existingSequenceNumbers = new HashSet<int>(orderedTurns.Select(turn => turn.SequenceNumber));
         foreach (var turn in generatedPlan.Turns.Where(turn => !existingSequenceNumbers.Contains(turn.SequenceNumber)))
         {
             var inserted = await _turnService.InsertInterviewTurnAsync(turn);
-            turns.Add(inserted);
+            orderedTurns.Add(inserted);
         }
 
-        return (turns
+        return (orderedTurns
             .OrderBy(turn => turn.SequenceNumber)
             .ThenBy(turn => turn.Id)
             .ToList(), null);
     }
 
-    protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> GenerateQuestionPlanTurnsAsync(InterviewSession session, Customer customer = null)
+    protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> GenerateQuestionPlanTurnsAsync(InterviewSession session, Customer customer = null, IList<InterviewTurn> existingTurns = null, IList<int> targetSequenceNumbers = null)
     {
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
-        var questionCount = GetMaxQuestions(session);
+        var totalQuestionCount = GetMaxQuestions(session);
+        var sequenceNumbers = (targetSequenceNumbers?.Any() == true
+                ? targetSequenceNumbers
+                : Enumerable.Range(1, totalQuestionCount).ToList())
+            .Distinct()
+            .OrderBy(sequenceNumber => sequenceNumber)
+            .ToList();
+        var questionCount = sequenceNumbers.Count;
+        if (questionCount <= 0)
+            return (Array.Empty<InterviewTurn>(), null);
+
+        var plannedContext = (existingTurns ?? new List<InterviewTurn>())
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
         var response = await _aiClient.GenerateQuestionPlanAsync(new AIInterviewQuestionPlanRequest
         {
             JobTitle = product?.Name ?? await GetJobTitleAsync(session.ProductId),
             JobContext = BuildJobContext(product),
             Difficulty = session.Difficulty,
             QuestionCount = questionCount,
+            TotalQuestionCount = totalQuestionCount,
             Prompt = _settings.Prompt,
-            ResumeProfileJson = await GetResumeProfileJsonAsync(session, product)
+            ResumeProfileJson = await GetResumeProfileJsonAsync(session, product),
+            ExistingQuestions = plannedContext
+                .Select(turn => turn.QuestionText?.Trim())
+                .Where(questionText => !string.IsNullOrWhiteSpace(questionText))
+                .ToList(),
+            ExistingCategories = plannedContext
+                .Select(turn => ExtractPlanCategory(turn.RubricJson))
+                .Where(category => !string.IsNullOrWhiteSpace(category))
+                .ToList()
         });
 
         if (response == null || !response.Success || response.Questions == null)
@@ -1498,8 +1678,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var turns = plannedQuestions.Select((question, index) => new InterviewTurn
         {
             InterviewSessionId = session.Id,
-            SequenceNumber = index + 1,
-            QuestionId = index + 1,
+            SequenceNumber = sequenceNumbers[index],
+            QuestionId = sequenceNumbers[index],
             QuestionText = question.Question.Trim(),
             RubricJson = JsonSerializer.Serialize(new
             {

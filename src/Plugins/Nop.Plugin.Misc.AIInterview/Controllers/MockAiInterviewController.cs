@@ -226,13 +226,82 @@ public class MockAiInterviewController : BasePluginController
         return NormalizeQuestionCount(requirements?.QuestionCount ?? 3);
     }
 
-    protected virtual async Task<(JobApplication Application, string ErrorMessage)> ResolveApplicationForStartAsync(Customer customer, Product product, IFormFile resumeFile)
+    protected virtual async Task<JobApplication> GetLatestApplicationForStartAsync(Customer customer, Product product)
     {
-        var application = ((await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id)) ?? new List<JobApplication>())
+        return ((await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id)) ?? new List<JobApplication>())
             .Where(a => a.ProductId == (product?.Id ?? 0))
             .OrderByDescending(a => a.CreatedOnUtc)
             .ThenByDescending(a => a.Id)
             .FirstOrDefault();
+    }
+
+    protected virtual async Task<JobRequirementsModel> GetStartRequirementsAsync(int productId)
+    {
+        if (productId <= 0 || _jobRequirementService == null)
+            return new JobRequirementsModel();
+
+        return await _jobRequirementService.GetRequirementsAsync(productId) ?? new JobRequirementsModel();
+    }
+
+    protected virtual async Task<bool> HasAnsweredTurnsAsync(InterviewSession session)
+    {
+        if (session == null || session.Id <= 0 || _turnService == null)
+            return false;
+
+        var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id) ?? new List<InterviewTurn>();
+        return turns.Any(turn => !string.IsNullOrWhiteSpace(turn.AnswerText));
+    }
+
+    protected virtual async Task ResetUnstartedPlannedTurnsAsync(InterviewSession session)
+    {
+        if (session == null || session.Id <= 0 || _turnService == null)
+            return;
+
+        var turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id) ?? new List<InterviewTurn>()).ToList();
+        if (!turns.Any() || turns.Any(turn => !string.IsNullOrWhiteSpace(turn.AnswerText)))
+            return;
+
+        await _turnService.DeleteInterviewTurnsAsync(turns);
+    }
+
+    protected virtual async Task<(string ResourceKey, string ErrorMessage)> ValidateStartResumePreconditionsAsync(
+        JobRequirementsModel requirements,
+        JobApplication application,
+        IFormFile resumeFile,
+        InterviewSession reusableSession)
+    {
+        if (resumeFile != null)
+        {
+            if (_resumeFileService == null)
+                return ("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", "Resume upload is unavailable right now.");
+
+            var validation = _resumeFileService.ValidateResumeFile(resumeFile);
+            if (!validation.Success)
+            {
+                return ("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid",
+                    string.IsNullOrWhiteSpace(validation.ErrorMessage)
+                        ? await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", "Allowed resume file types: PDF, DOCX. Maximum size: 5 MB.")
+                        : validation.ErrorMessage);
+            }
+        }
+
+        var hasStoredResume = application?.ResumeDownloadId > 0;
+        if (requirements?.ResumeRequired == true && !hasStoredResume && resumeFile == null)
+        {
+            var canContinueStartedInterview = reusableSession != null && await HasAnsweredTurnsAsync(reusableSession);
+            if (!canContinueStartedInterview)
+            {
+                return ("Plugins.Misc.AIInterview.Apply.ResumeFile.Required",
+                    await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Required", "Resume file is required."));
+            }
+        }
+
+        return (null, null);
+    }
+
+    protected virtual async Task<(JobApplication Application, string ErrorMessage)> ResolveApplicationForStartAsync(Customer customer, Product product, IFormFile resumeFile, JobApplication application = null)
+    {
+        application ??= await GetLatestApplicationForStartAsync(customer, product);
 
         if (resumeFile != null)
         {
@@ -335,6 +404,8 @@ public class MockAiInterviewController : BasePluginController
         else
             difficulty = !string.IsNullOrWhiteSpace(form["difficulty"]) ? form["difficulty"] : difficulty ?? AIInterviewDefaults.DefaultInterviewDifficulty;
 
+        var resumeFile = form?.Files?.GetFile("ResumeFile");
+        var existingApplication = await GetLatestApplicationForStartAsync(customer, product);
         var customerSessions = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<InterviewSession>())
             .Where(s => s.ProductId == productId)
             .OrderByDescending(s => s.CreatedOnUtc)
@@ -345,6 +416,10 @@ public class MockAiInterviewController : BasePluginController
         var reusableSession = customerSessions.FirstOrDefault(s =>
             s.IsActive &&
             !s.CompletedOnUtc.HasValue);
+        var requirements = await GetStartRequirementsAsync(productId);
+        var resumeValidation = await ValidateStartResumePreconditionsAsync(requirements, existingApplication, resumeFile, reusableSession);
+        if (!string.IsNullOrWhiteSpace(resumeValidation.ErrorMessage))
+            return await LocalizedErrorAsync(resumeValidation.ResourceKey, resumeValidation.ErrorMessage);
 
         if (reusableSession != null)
         {
@@ -354,6 +429,24 @@ public class MockAiInterviewController : BasePluginController
                 if (renewed.Session != null)
                     reusableSession = renewed.Session;
             }
+
+            var applicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile, existingApplication);
+            if (!string.IsNullOrWhiteSpace(applicationResolution.ErrorMessage))
+                return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", applicationResolution.ErrorMessage);
+
+            var application = applicationResolution.Application;
+            var sessionUpdated = false;
+            if (application != null && reusableSession.JobApplicationId != application.Id)
+            {
+                reusableSession.JobApplicationId = application.Id;
+                sessionUpdated = true;
+            }
+
+            if (resumeFile != null)
+                await ResetUnstartedPlannedTurnsAsync(reusableSession);
+
+            if (sessionUpdated)
+                await _interviewSessionService.UpdateInterviewSessionAsync(reusableSession);
 
             return Json(new
             {
@@ -399,18 +492,22 @@ public class MockAiInterviewController : BasePluginController
                 return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.NoCredits", "Insufficient credits. Please purchase credits to start the interview.");
         }
 
-        var resumeFile = form?.Files?.GetFile("ResumeFile");
-        var applicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile);
-        if (!string.IsNullOrWhiteSpace(applicationResolution.ErrorMessage))
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", applicationResolution.ErrorMessage);
+        var newSessionApplicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile, existingApplication);
+        if (!string.IsNullOrWhiteSpace(newSessionApplicationResolution.ErrorMessage))
+        {
+            await LogRuntimeIssueAsync("AI Interview start resume persistence failure",
+                $"ProductId={productId}; CustomerId={customer.Id}; Reason={newSessionApplicationResolution.ErrorMessage}.",
+                customer);
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", newSessionApplicationResolution.ErrorMessage);
+        }
 
-        var application = applicationResolution.Application;
+        var newSessionApplication = newSessionApplicationResolution.Application;
 
         var session = new InterviewSession
         {
             CustomerId = customer.Id,
             ProductId = productId,
-            JobApplicationId = application?.Id ?? 0,
+            JobApplicationId = newSessionApplication?.Id ?? 0,
             SessionKey = Guid.NewGuid().ToString("N"),
             Difficulty = difficulty,
             Token = Guid.NewGuid().ToString("N"),
