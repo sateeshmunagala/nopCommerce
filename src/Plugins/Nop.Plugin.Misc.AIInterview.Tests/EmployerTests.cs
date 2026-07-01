@@ -785,13 +785,16 @@ public class EmployerTests
         Assert.That(employerApplications, Does.Contain("class=\"status-form employer-status-form\""));
         Assert.That(employerApplications, Does.Contain("class=\"employer-status-select\""));
         Assert.That(employerApplications, Does.Contain("class=\"employer-status-comment\""));
-        Assert.That(employerApplications, Does.Contain("class=\"button-2 employer-status-update\""));
+        Assert.That(employerApplications, Does.Contain("class=\"button-2 employer-status-update ai-icon-action\""));
         Assert.That(employerApplications, Does.Not.Contain("Admin.Common.PageSize"));
         Assert.That(employerApplications, Does.Not.Contain("Admin.Common.Reset"));
         Assert.That(employerApplications, Does.Not.Contain("Admin.Common.All"));
         Assert.That(employerApplications, Does.Not.Contain("Admin.Customers.Customers.Fields.Phone"));
         Assert.That(employerApplications, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.All"));
         Assert.That(employerApplications, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.Phone"));
+        Assert.That(employerApplications, Does.Contain("fa-solid fa-eye"));
+        Assert.That(employerApplications, Does.Contain("fa-solid fa-floppy-disk"));
+        Assert.That(employerApplications, Does.Contain("class=\"sr-only employer-status-inline-label\""));
 
         Assert.That(vendorScoreboard, Does.Contain("Layout = \"_ColumnsTwo\""));
         Assert.That(vendorScoreboard, Does.Contain("class=\"section scoreboard-deck-shell\""));
@@ -822,9 +825,10 @@ public class EmployerTests
         Assert.That(employerManage, Does.Contain("class=\"invite-deactivate-form\""));
         Assert.That(employerManage, Does.Contain("class=\"button-2 invite-deactivate-button\""));
 
-        Assert.That(historyView, Does.Contain("Plugins.Misc.AIInterview.Report.ViewReport"));
-        Assert.That(historyView, Does.Contain("fa fa-eye"));
+        Assert.That(vendorJobCreation, Does.Not.Contain("Plugins.Misc.AIInterview.VendorScoreboard.Intro"));
+        Assert.That(historyView, Does.Contain("fa-solid fa-eye"));
         Assert.That(historyView, Does.Contain("ai-view-report-link"));
+        Assert.That(historyView, Does.Contain("ai-copy-share-link ai-icon-action"));
         Assert.That(historyView, Does.Not.Contain("@T(\"Plugins.Misc.AIInterview.Report.OpenReport\")"));
     }
 
@@ -834,7 +838,8 @@ public class EmployerTests
         var employerApplications = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "EmployerApplications.cshtml"));
 
         Assert.That(employerApplications, Does.Contain("var candidateDisplay ="));
-        Assert.That(employerApplications, Does.Contain("class=\"employer-status-inline-label\""));
+        Assert.That(employerApplications, Does.Contain("var updateLabel ="));
+        Assert.That(employerApplications, Does.Contain("class=\"sr-only employer-status-inline-label\""));
         Assert.That(employerApplications, Does.Contain("class=\"employer-status-field employer-status-field-comment\""));
         Assert.That(employerApplications, Does.Contain("class=\"employer-status-field employer-status-field-action\""));
         Assert.That(employerApplications, Does.Contain("id=\"Status-@app.Id\""));
@@ -843,6 +848,7 @@ public class EmployerTests
         Assert.That(employerApplications, Does.Contain("title=\"@($"));
         Assert.That(employerApplications, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.StatusComment"));
         Assert.That(employerApplications, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.Update"));
+        Assert.That(employerApplications, Does.Not.Contain(">View Report<"));
     }
 
     [Test]
@@ -851,13 +857,14 @@ public class EmployerTests
         var cssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
 
         Assert.That(cssText, Does.Contain(".html-aiinterview-employer-applications-page .employer-table {"));
-        Assert.That(cssText, Does.Contain("min-width: 1770px;"));
+        Assert.That(cssText, Does.Contain("min-width: 1610px;"));
         Assert.That(cssText, Does.Contain(".html-aiinterview-employer-applications-page .employer-table .col-status {"));
-        Assert.That(cssText, Does.Contain("width: 340px;"));
-        Assert.That(cssText, Does.Contain("min-width: 340px;"));
-        Assert.That(cssText, Does.Contain("grid-template-columns: minmax(150px, 1fr) minmax(112px, auto);"));
+        Assert.That(cssText, Does.Contain("width: 300px;"));
+        Assert.That(cssText, Does.Contain("min-width: 300px;"));
+        Assert.That(cssText, Does.Contain("grid-template-columns: minmax(130px, 146px) minmax(0, 1fr) 38px;"));
         Assert.That(cssText, Does.Contain(".html-aiinterview-employer-applications-page .employer-status-field-comment {"));
-        Assert.That(cssText, Does.Contain("grid-column: 1 / -1;"));
+        Assert.That(cssText, Does.Contain(".ai-icon-action {"));
+        Assert.That(cssText, Does.Contain(".aiinterview-public-page .button-2.ai-icon-action,"));
         Assert.That(cssText, Does.Contain(".job-ai-actions .apply-btn.job-ai-action"));
         Assert.That(cssText, Does.Contain("[data-start-interview-button=\"true\"].job-ai-action"));
         Assert.That(cssText, Does.Not.Contain("#job-apply-button.job-ai-action"));
@@ -872,8 +879,10 @@ public class EmployerTests
 
         Assert.That(vendorJobCreation, Does.Contain("<h1>@T(\"Plugins.Misc.AIInterview.VendorJobCreation.Title\")</h1>"));
         Assert.That(vendorJobCreation, Does.Not.Contain("<h2>@T(\"Plugins.Misc.AIInterview.VendorJobCreation.Title\")</h2>"));
-        Assert.That(vendorJobCreation, Does.Contain("class=\"vendor-job-posting-lead\""));
-        Assert.That(vendorJobCreation, Does.Contain("class=\"vendor-job-posting-sections\""));
+        Assert.That(vendorJobCreation, Does.Contain("class=\"vendor-job-posting-shell\""));
+        Assert.That(vendorJobCreation, Does.Not.Contain("class=\"vendor-job-posting-lead\""));
+        Assert.That(vendorJobCreation, Does.Not.Contain("class=\"vendor-job-posting-sections\""));
+        Assert.That(vendorJobCreation, Does.Not.Contain("Plugins.Misc.AIInterview.VendorScoreboard.Intro"));
 
         Assert.That(themeCssText, Does.Contain(".html-category-page .product-item .buttons .jb-view-job-button:focus-visible"));
         Assert.That(themeCssText, Does.Contain(".html-search-page .product-item .buttons .jb-view-job-button:focus-visible"));

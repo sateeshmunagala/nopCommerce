@@ -650,6 +650,37 @@
     gap: 8px;
 }
 
+.ai-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    gap: 0;
+    flex: 0 0 38px;
+}
+
+.aiinterview-public-page .button-1.ai-icon-action,
+.aiinterview-public-page .button-2.ai-icon-action,
+.html-aiinterview-view-page .button-1.ai-icon-action,
+.html-aiinterview-view-page .button-2.ai-icon-action,
+.ai-view-report-link.ai-icon-action {
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+}
+
+.ai-icon-action i {
+    font-size: 0.98rem;
+}
+
 .ai-view-report-link i,
 .ai-report-back-button i {
     font-size: 14px;
@@ -670,6 +701,10 @@
     text-decoration: none;
     text-transform: uppercase;
     transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ai-view-report-link.ai-icon-action {
+    gap: 0;
 }
 
 .ai-report-back-button {
@@ -842,6 +877,7 @@
 
 .ai-report-actions {
     justify-content: flex-start;
+    gap: 8px;
 }
 
 .ai-report-actions .button-1,
@@ -923,12 +959,19 @@
 }
 
 .candidate-recording-actions {
-    align-items: flex-start;
+    align-items: center;
+    gap: 8px;
 }
 
 .candidate-recording-actions .button-2 {
     min-height: 38px;
     padding: 8px 14px;
+}
+
+.candidate-recording-actions .ai-icon-action,
+.ai-report-actions .ai-icon-action {
+    min-height: 38px;
+    padding: 0;
 }
 
 .ai-report-turn,
@@ -2969,7 +3012,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-applications-page .employer-table {
-    min-width: 1770px;
+    min-width: 1610px;
     table-layout: fixed;
 }
 
@@ -2996,8 +3039,8 @@ body.ai-job-preview-open .item-box {
 .html-aiinterview-employer-applications-page .employer-table .col-score,
 .html-aiinterview-employer-applications-page .employer-table .col-attempts,
 .html-aiinterview-employer-applications-page .employer-table .col-report {
-    width: 110px;
-    min-width: 110px;
+    width: 88px;
+    min-width: 88px;
 }
 
 .html-aiinterview-employer-applications-page .employer-table .col-applied {
@@ -3006,13 +3049,13 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-applications-page .employer-table .col-message {
-    width: 260px;
-    min-width: 260px;
+    width: 220px;
+    min-width: 220px;
 }
 
 .html-aiinterview-employer-applications-page .employer-table .col-status {
-    width: 340px;
-    min-width: 340px;
+    width: 300px;
+    min-width: 300px;
 }
 
 .html-aiinterview-employer-applications-page .employer-filter-grid {
@@ -3029,38 +3072,30 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-applications-page .status-form {
-    grid-template-columns: minmax(150px, 1fr) minmax(112px, auto);
-    align-items: end;
-    gap: 10px;
+    grid-template-columns: minmax(130px, 146px) minmax(0, 1fr) 38px;
+    align-items: center;
+    gap: 8px;
 }
 
 .html-aiinterview-employer-applications-page .status-form .button-2 {
-    justify-self: stretch;
+    justify-self: center;
 }
 
 .html-aiinterview-employer-applications-page .employer-status-field {
     display: grid;
-    gap: 6px;
+    gap: 0;
 }
 
 .html-aiinterview-employer-applications-page .employer-status-inline-label {
-    color: #4f5963;
-    font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 0.78rem;
-    line-height: 1.2;
-    text-transform: uppercase;
-}
-
-.html-aiinterview-employer-applications-page .employer-status-inline-label-action {
-    opacity: 0;
+    margin: 0;
 }
 
 .html-aiinterview-employer-applications-page .employer-status-field-comment {
-    grid-column: 1 / -1;
+    min-width: 0;
 }
 
 .html-aiinterview-employer-applications-page .employer-status-field-action {
-    align-self: end;
+    align-self: center;
 }
 
 .html-aiinterview-employer-applications-page .status-form .employer-status-comment {
@@ -3068,8 +3103,8 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-applications-page .status-form .employer-status-update {
-    min-width: 110px;
-    min-height: 42px;
+    min-width: 38px;
+    min-height: 38px;
 }
 
 .html-aiinterview-employer-applications-page .employer-table-wrapper {
@@ -3080,6 +3115,11 @@ body.ai-job-preview-open .item-box {
 
 .html-aiinterview-employer-applications-page .employer-table {
     background: #ffffff;
+}
+
+.html-aiinterview-employer-applications-page .employer-table td {
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 .html-aiinterview-employer-applications-page .employer-table .col-score,
@@ -3097,14 +3137,10 @@ body.ai-job-preview-open .item-box {
     white-space: nowrap;
 }
 
-.html-aiinterview-employer-applications-page .status-form {
-    width: 100%;
-}
-
 .html-aiinterview-employer-applications-page .status-form .employer-status-select,
 .html-aiinterview-employer-applications-page .status-form .employer-status-comment,
 .html-aiinterview-employer-applications-page .status-form .employer-status-update {
-    min-height: 42px;
+    min-height: 38px;
 }
 
 .html-aiinterview-my-applications-page .applications-table-wrap,
@@ -3477,8 +3513,8 @@ body.ai-job-preview-open .item-box {
         grid-template-columns: 1fr;
     }
 
-    .html-aiinterview-employer-applications-page .employer-status-inline-label-action {
-        opacity: 1;
+    .html-aiinterview-employer-applications-page .employer-status-field-action {
+        justify-content: flex-start;
     }
 
     .applications-sort {

@@ -135,6 +135,7 @@
                             @foreach (var app in Model.Applications)
                             {
                                 var candidateDisplay = string.IsNullOrWhiteSpace(app.CandidateName) ? app.CandidateEmail : app.CandidateName;
+                                var updateLabel = $"{T("Plugins.Misc.AIInterview.Employer.Applications.Update").Text} - {candidateDisplay}";
                                 <tr>
                                     <td class="col-candidate">@app.CandidateName</td>
                                     <td class="col-email">@app.CandidateEmail</td>
@@ -167,7 +168,7 @@
                                         <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post" class="status-form employer-status-form">
                                             <input type="hidden" name="Id" value="@app.Id" />
                                             <div class="employer-status-field">
-                                                <label class="employer-status-inline-label" for="Status-@app.Id">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</label>
+                                                <label class="sr-only employer-status-inline-label" for="Status-@app.Id">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</label>
                                                 <select id="Status-@app.Id" name="Status" class="employer-status-select" aria-label="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.Status").Text} - {candidateDisplay}")" title="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.Status").Text} - {candidateDisplay}")">
                                                     @foreach (var status in JobApplicationStatuses.All)
                                                     {
@@ -176,12 +177,11 @@
                                                 </select>
                                             </div>
                                             <div class="employer-status-field employer-status-field-comment">
-                                                <label class="employer-status-inline-label" for="StatusComment-@app.Id">@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")</label>
+                                                <label class="sr-only employer-status-inline-label" for="StatusComment-@app.Id">@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")</label>
                                                 <input id="StatusComment-@app.Id" type="text" name="StatusComment" class="employer-status-comment" value="@app.StatusComment" placeholder="@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")" aria-label="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment").Text} - {candidateDisplay}")" title="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment").Text} - {candidateDisplay}")" />
                                             </div>
                                             <div class="employer-status-field employer-status-field-action">
-                                                <span class="employer-status-inline-label employer-status-inline-label-action">@T("Plugins.Misc.AIInterview.Employer.Applications.Update")</span>
-                                                <button type="submit" class="button-2 employer-status-update" aria-label="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.Update").Text} - {candidateDisplay}")" title="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.Update").Text} - {candidateDisplay}")">@T("Plugins.Misc.AIInterview.Employer.Applications.Update")</button>
+                                                <button type="submit" class="button-2 employer-status-update ai-icon-action" aria-label="@updateLabel" title="@updateLabel"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i><span class="sr-only">@T("Plugins.Misc.AIInterview.Employer.Applications.Update")</span></button>
                                             </div>
                                         </form>
                                     </td>
@@ -190,10 +190,11 @@
                                         {
                                             var reportTitle = string.Format(T("Plugins.Misc.AIInterview.Report.JobReportTitle").Text, app.JobTitle);
                                             <a href="@app.InterviewReportUrl"
-                                               class="ai-view-report-link js-open-report-drawer"
+                                               class="ai-view-report-link ai-icon-action js-open-report-drawer"
                                                data-report-panel-url="@app.InterviewReportPanelUrl"
                                                data-report-title="@reportTitle"
-                                               title="@reportTitle"><i class="fa-solid fa-eye" aria-hidden="true"></i><span>@viewReportText</span></a>
+                                               aria-label="@($"{viewReportText} - {app.JobTitle}")"
+                                               title="@($"{viewReportText} - {app.JobTitle}")"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="sr-only">@viewReportText</span></a>
                                         }
                                         else
                                         {

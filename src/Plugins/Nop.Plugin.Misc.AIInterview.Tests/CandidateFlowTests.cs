@@ -707,6 +707,107 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public async Task Report_SanitizesPersistedStrengths_ThatRepeatQuestionText()
+    {
+        var customer = new Customer { Id = 1 };
+        var staleQuestionText = "Can you describe your role in the Copilot4ServiceNow project and how you optimized agent prompts?";
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 39)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(39)).ReturnsAsync(new InterviewSession
+        {
+            Id = 39,
+            CustomerId = 1,
+            ProductId = 11,
+            ReportData = $"Overall score: 73/100{Environment.NewLine}Strengths: {staleQuestionText}{Environment.NewLine}Improvement areas: Continue refining examples.{Environment.NewLine}Completion note: Existing completion note.",
+            QuestionScores = "[73]",
+            Score = 73,
+            CreatedOnUtc = DateTime.UtcNow.AddHours(-2),
+            CompletedOnUtc = DateTime.UtcNow
+        });
+        _productService.Setup(x => x.GetProductByIdAsync(11)).ReturnsAsync(new Product { Id = 11, Name = "Gen AI Engineer" });
+        _turnService.Setup(x => x.GetTurnsBySessionIdAsync(39)).ReturnsAsync(new List<InterviewTurn>
+        {
+            new()
+            {
+                Id = 1,
+                InterviewSessionId = 39,
+                SequenceNumber = 1,
+                QuestionText = staleQuestionText,
+                AnswerText = "I led Copilot and ServiceNow integration work, tuned prompts, and coordinated Teams workflows for enterprise support cases.",
+                Feedback = "Strong answer with clear structure.",
+                Score = 79
+            }
+        });
+
+        var result = await _controller.Report(39);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        var model = (InterviewReportModel)viewResult.Model;
+        Assert.That(model.ReportData, Does.Not.Contain($"Strengths: {staleQuestionText}"));
+        Assert.That(model.ReportData, Does.Contain("Strengths: Demonstrated clear structure and communication."));
+        Assert.That(model.ReportData, Does.Contain("Completion note: Existing completion note."));
+    }
+
+    [Test]
+    public async Task Report_And_ReportPanel_ShareSanitizedReportData_WhenImprovementLineRepeatsQuestionText()
+    {
+        var customer = new Customer { Id = 1 };
+        var staleImprovementQuestion = "What challenges did you face while developing the Searchlight AI Enterprise Chatbot and how did you overcome them?";
+        var staleStrengthQuestion = "Can you describe your role in the Copilot4ServiceNow project and how you optimized agent prompts?";
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 40)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(40)).ReturnsAsync(new InterviewSession
+        {
+            Id = 40,
+            CustomerId = 1,
+            ProductId = 11,
+            ReportData = $"Overall score: 73/100{Environment.NewLine}Strengths: {staleStrengthQuestion}{Environment.NewLine}Improvement areas: {staleImprovementQuestion}{Environment.NewLine}Completion note: Existing completion note.",
+            QuestionScores = "[73]",
+            Score = 73,
+            CreatedOnUtc = DateTime.UtcNow.AddHours(-2),
+            CompletedOnUtc = DateTime.UtcNow
+        });
+        _productService.Setup(x => x.GetProductByIdAsync(11)).ReturnsAsync(new Product { Id = 11, Name = "Gen AI Engineer" });
+        _turnService.Setup(x => x.GetTurnsBySessionIdAsync(40)).ReturnsAsync(new List<InterviewTurn>
+        {
+            new()
+            {
+                Id = 1,
+                InterviewSessionId = 40,
+                SequenceNumber = 1,
+                QuestionText = staleStrengthQuestion,
+                AnswerText = "I led Copilot and ServiceNow integration work, tuned prompts, and coordinated Teams workflows for enterprise support cases.",
+                Feedback = "Strong answer with clear structure.",
+                Score = 79
+            },
+            new()
+            {
+                Id = 2,
+                InterviewSessionId = 40,
+                SequenceNumber = 2,
+                QuestionText = staleImprovementQuestion,
+                AnswerText = "I mentioned hallucinations but not enough implementation detail.",
+                Feedback = "More detail on the solutions implemented would strengthen the response.",
+                Score = 61
+            }
+        });
+
+        var fullReportResult = await _controller.Report(40);
+        var panelResult = await _controller.ReportPanel(40);
+
+        Assert.That(fullReportResult, Is.TypeOf<ViewResult>());
+        Assert.That(panelResult, Is.TypeOf<PartialViewResult>());
+        var fullModel = (InterviewReportModel)((ViewResult)fullReportResult).Model;
+        var panelModel = (InterviewReportModel)((PartialViewResult)panelResult).Model;
+
+        Assert.That(fullModel.ReportData, Does.Not.Contain(staleStrengthQuestion));
+        Assert.That(fullModel.ReportData, Does.Not.Contain(staleImprovementQuestion));
+        Assert.That(fullModel.ReportData, Does.Contain("Provide more detail on the solutions implemented."));
+        Assert.That(panelModel.ReportData, Is.EqualTo(fullModel.ReportData));
+    }
+
+    [Test]
     public async Task Report_OldTurnWithoutRubric_LeavesCategoryScoresNull()
     {
         var customer = new Customer { Id = 1 };
@@ -965,11 +1066,17 @@ public class CandidateFlowTests
 
         Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Recording"));
         Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.OpenRecording"));
-        Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.ViewReport"));
         Assert.That(historyText, Does.Contain("ai-view-report-link"));
-        Assert.That(historyText, Does.Contain("fa fa-eye"));
+        Assert.That(historyText, Does.Contain("ai-icon-action"));
+        Assert.That(historyText, Does.Contain("fa-solid fa-eye"));
         Assert.That(historyText, Does.Contain("ai-copy-share-link"));
+        Assert.That(historyText, Does.Contain("ai-native-share-link"));
+        Assert.That(historyText, Does.Contain("class=\"sr-only\">@viewReportText</span>"));
         Assert.That(myApplicationsText, Does.Contain("js-open-report-drawer"));
+        Assert.That(myApplicationsText, Does.Not.Contain("Plugins.Misc.AIInterview.MyApplications.HistoryFootnote"));
+        Assert.That(myApplicationsText, Does.Contain("class=\"button-2 ai-copy-share-link ai-icon-action\""));
+        Assert.That(reportText, Does.Contain("class=\"button-2 ai-report-action ai-report-action-secondary ai-copy-share-link ai-icon-action\""));
+        Assert.That(reportText, Does.Contain("class=\"button-2 ai-report-action ai-report-action-secondary ai-native-share-link aiinterview-hidden ai-icon-action\""));
         Assert.That(drawerText, Does.Contain("ai-report-drawer"));
         Assert.That(drawerText, Does.Contain("data-report-drawer-close"));
     }
@@ -1209,6 +1316,9 @@ public class CandidateFlowTests
         Assert.That(reportContentText, Does.Contain("Plugins.Misc.AIInterview.Report.Professionalism"));
         Assert.That(reportContentText, Does.Contain("Plugins.Misc.AIInterview.Report.PositiveAttitude"));
         Assert.That(reportContentText, Does.Contain("ai-copy-share-link"));
+        Assert.That(reportContentText, Does.Contain("ai-native-share-link"));
+        Assert.That(reportContentText, Does.Contain("ai-icon-action"));
+        Assert.That(reportContentText, Does.Contain("class=\"sr-only\">@copyShareLinkText</span>"));
         Assert.That(drawerText, Does.Contain("navigator.share"));
         Assert.That(drawerText, Does.Contain("Escape"));
         Assert.That(reportContentText, Does.Not.Contain(">Technical Score<"));

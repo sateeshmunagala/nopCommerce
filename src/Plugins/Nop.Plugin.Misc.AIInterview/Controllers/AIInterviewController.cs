@@ -464,7 +464,7 @@ public class AIInterviewController : BasePluginController
             Score = session.Score,
             QuestionScores = session.QuestionScores,
             ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
-            ReportData = session.ReportData,
+            ReportData = InterviewReportSummaryHelper.NormalizePersistedReportData(session.ReportData, turns, session.Score),
             RecordingUrl = !string.IsNullOrWhiteSpace(session.RecordingUrl) ? BuildAuthenticatedRecordingUrl(session.Id) : null,
             RecordingShareUrl = await BuildRecordingShareUrlAsync(session),
             CreatedOnUtc = session.CreatedOnUtc,

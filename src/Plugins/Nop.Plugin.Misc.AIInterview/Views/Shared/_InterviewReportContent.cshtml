@@ -10,25 +10,40 @@
     var shareText = T("Plugins.Misc.AIInterview.Report.Share").Text;
     var openSharePageText = T("Plugins.Misc.AIInterview.Report.OpenSharePage").Text;
     var recordingShareTitleText = T("Plugins.Misc.AIInterview.Report.RecordingShareTitle").Text;
+    var openRecordingText = T("Plugins.Misc.AIInterview.Report.OpenRecording").Text;
 }
 
 <div class="ai-report-actions">
     @if (!string.IsNullOrWhiteSpace(Model.RecordingUrl))
     {
-        <a class="button-1 ai-report-action ai-report-action-primary" href="@Model.RecordingUrl" target="_blank" rel="noopener">
+        <a class="button-1 ai-report-action ai-report-action-primary ai-icon-action"
+           href="@Model.RecordingUrl"
+           target="_blank"
+           rel="noopener"
+           aria-label="@openRecordingText"
+           title="@openRecordingText">
             <i class="fa-solid fa-circle-play" aria-hidden="true"></i>
-            <span>@T("Plugins.Misc.AIInterview.Report.OpenRecording")</span>
+            <span class="sr-only">@openRecordingText</span>
         </a>
     }
     @if (!string.IsNullOrWhiteSpace(Model.RecordingShareUrl))
     {
-        <button type="button" class="button-2 ai-report-action ai-report-action-secondary ai-copy-share-link" data-share-url="@Model.RecordingShareUrl">
+        <button type="button"
+                class="button-2 ai-report-action ai-report-action-secondary ai-copy-share-link ai-icon-action"
+                data-share-url="@Model.RecordingShareUrl"
+                aria-label="@copyShareLinkText"
+                title="@copyShareLinkText">
             <i class="fa-solid fa-copy" aria-hidden="true"></i>
-            <span>@copyShareLinkText</span>
+            <span class="sr-only">@copyShareLinkText</span>
         </button>
-        <button type="button" class="button-2 ai-report-action ai-report-action-secondary ai-native-share-link aiinterview-hidden" data-share-url="@Model.RecordingShareUrl" data-share-title="@recordingShareTitleText">
+        <button type="button"
+                class="button-2 ai-report-action ai-report-action-secondary ai-native-share-link aiinterview-hidden ai-icon-action"
+                data-share-url="@Model.RecordingShareUrl"
+                data-share-title="@recordingShareTitleText"
+                aria-label="@shareText"
+                title="@shareText">
             <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>
-            <span>@shareText</span>
+            <span class="sr-only">@shareText</span>
         </button>
         <noscript>
             <a class="button-2 ai-report-action ai-report-action-secondary" href="@Model.RecordingShareUrl" target="_blank" rel="noopener">

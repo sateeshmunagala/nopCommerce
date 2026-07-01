@@ -64,6 +64,10 @@
                         {
                             var reportTitle = string.Format(jobReportTitleFormat, app.JobTitle);
                             var recordingTitle = string.Format(jobRecordingTitleFormat, app.JobTitle);
+                            var reportActionLabel = $"{viewReportText} - {app.JobTitle}";
+                            var openRecordingLabel = $"{T("Plugins.Misc.AIInterview.Report.OpenRecording").Text} - {app.JobTitle}";
+                            var copyShareLabel = $"{copyShareLinkText} - {app.JobTitle}";
+                            var shareActionLabel = $"{shareText} - {app.JobTitle}";
                             <tr>
                                 <td>
                                     <div><strong>@app.JobTitle</strong></div>
@@ -85,9 +89,11 @@
                                     @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
                                     {
                                         <a href="@app.InterviewReportUrl"
-                                           class="js-open-report-drawer ai-view-report-link"
+                                           class="js-open-report-drawer ai-view-report-link ai-icon-action"
                                            data-report-panel-url="@app.InterviewReportPanelUrl"
-                                           data-report-title="@reportTitle"><i class="fa-solid fa-eye" aria-hidden="true"></i><span>@viewReportText</span></a>
+                                           data-report-title="@reportTitle"
+                                           aria-label="@reportActionLabel"
+                                           title="@reportActionLabel"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="sr-only">@viewReportText</span></a>
                                     }
                                     else
                                     {
@@ -98,11 +104,25 @@
                                     @if (!string.IsNullOrEmpty(app.RecordingUrl))
                                     {
                                         <div class="candidate-recording-actions">
-                                            <a href="@app.RecordingUrl" target="_blank" rel="noopener">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>
+                                            <a href="@app.RecordingUrl"
+                                               target="_blank"
+                                               rel="noopener"
+                                               class="button-1 ai-report-action ai-report-action-primary ai-icon-action"
+                                               aria-label="@openRecordingLabel"
+                                               title="@openRecordingLabel"><i class="fa-solid fa-circle-play" aria-hidden="true"></i><span class="sr-only">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</span></a>
                                             @if (!string.IsNullOrEmpty(app.RecordingShareUrl))
                                             {
-                                                <button type="button" class="button-2 ai-copy-share-link" data-share-url="@app.RecordingShareUrl">@copyShareLinkText</button>
-                                                <button type="button" class="button-2 ai-native-share-link aiinterview-hidden" data-share-url="@app.RecordingShareUrl" data-share-title="@recordingTitle">@shareText</button>
+                                                <button type="button"
+                                                        class="button-2 ai-copy-share-link ai-icon-action"
+                                                        data-share-url="@app.RecordingShareUrl"
+                                                        aria-label="@copyShareLabel"
+                                                        title="@copyShareLabel"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="sr-only">@copyShareLinkText</span></button>
+                                                <button type="button"
+                                                        class="button-2 ai-native-share-link aiinterview-hidden ai-icon-action"
+                                                        data-share-url="@app.RecordingShareUrl"
+                                                        data-share-title="@recordingTitle"
+                                                        aria-label="@shareActionLabel"
+                                                        title="@shareActionLabel"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span class="sr-only">@shareText</span></button>
                                                 <noscript>
                                                     <a href="@app.RecordingShareUrl" target="_blank" rel="noopener">@openSharePageText</a>
                                                 </noscript>
@@ -118,10 +138,6 @@
                         }
                     </tbody>
                 </table>
-                </div>
-
-                <div class="applications-footnote">
-                    @T("Plugins.Misc.AIInterview.MyApplications.HistoryFootnote")
                 </div>
             }
             else

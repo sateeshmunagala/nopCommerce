@@ -2401,7 +2401,71 @@ public class RuntimeServiceTests
 
         Assert.That(report, Does.Not.Contain("Good structure and engagement."));
         Assert.That(report, Does.Contain("Strengths: No scored strengths were identified from the submitted answers."));
-        Assert.That(report, Does.Contain("Improvement areas: Q1; Q2; Q3"));
+        Assert.That(report, Does.Contain("Improvement areas: Provide more concrete examples and implementation details."));
+    }
+
+    [Test]
+    public void BuildReport_Strengths_DoNotUseQuestionText()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var method = typeof(InterviewRuntimeService).GetMethod("BuildReport", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var questionText = "Can you describe your role in the Copilot4ServiceNow project and how you optimized agent prompts?";
+        var turns = new List<InterviewTurn>
+        {
+            new()
+            {
+                SequenceNumber = 1,
+                QuestionText = questionText,
+                AnswerText = "I led the Copilot and ServiceNow workflow design, coordinated Teams integration, and tuned prompts for production support use cases.",
+                Feedback = "Strong answer with clear structure.",
+                Score = 82
+            }
+        };
+
+        var report = (string)method.Invoke(service, new object[] { turns, 82m, "Completed", null });
+
+        Assert.That(report, Does.Contain("Strengths:"));
+        Assert.That(report, Does.Not.Contain($"Strengths: {questionText}"));
+        Assert.That(report, Does.Contain("Demonstrated clear structure and communication."));
+    }
+
+    [Test]
+    public void BuildReport_ImprovementAreas_DoNotUseQuestionText()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var method = typeof(InterviewRuntimeService).GetMethod("BuildReport", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var questionText = "How have you utilized Azure AI Services in your projects?";
+        var turns = new List<InterviewTurn>
+        {
+            new()
+            {
+                SequenceNumber = 2,
+                QuestionText = questionText,
+                AnswerText = "I worked with AI services generally.",
+                Feedback = "The candidate did not provide specific examples of Azure AI Services used in projects.",
+                Score = 61
+            }
+        };
+
+        var report = (string)method.Invoke(service, new object[] { turns, 61m, "Completed", null });
+
+        Assert.That(report, Does.Contain("Improvement areas:"));
+        Assert.That(report, Does.Not.Contain(questionText));
+        Assert.That(report, Does.Contain("Provide specific examples of Azure AI Services used in projects."));
     }
 
     [Test]

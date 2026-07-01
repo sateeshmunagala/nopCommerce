@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
@@ -932,6 +933,348 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
                 feedback
             })
         };
+    }
+}
+
+internal static class InterviewReportSummaryHelper
+{
+    private static readonly string[] NegativeFeedbackMarkers =
+    {
+        "did not",
+        "more detail",
+        "could",
+        "should",
+        "lacked",
+        "missing",
+        "improve",
+        "strengthen the response",
+        "not substantive",
+        "answer in your own words"
+    };
+
+    private static readonly (string Phrase, string[] Terms)[] DomainPhraseMap =
+    {
+        ("LLM-driven conversational architectures", new[] { "llm", "chatbot", "conversational", "rag", "prompt" }),
+        ("Azure AI Services integration work", new[] { "azure ai services", "azure openai", "azure" }),
+        ("Microsoft Copilot and ServiceNow workflows", new[] { "copilot", "servicenow", "now assist", "teams" }),
+        ("enterprise AI delivery", new[] { "enterprise", "workflow", "production", "platform" }),
+        ("Python and ML solution delivery", new[] { "python", "xgboost", "ml", "machine learning", "fastapi" }),
+        ("AWS-based deployment experience", new[] { "aws", "lambda", "s3", "ec2" })
+    };
+
+    internal static string BuildReport(IEnumerable<InterviewTurn> turns, decimal score, string reason, string aiCompletion = null)
+    {
+        var orderedTurns = (turns ?? Enumerable.Empty<InterviewTurn>())
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+
+        return string.Join(Environment.NewLine, new[]
+        {
+            $"Overall score: {score:N0}/100",
+            $"Strengths: {BuildStrengthsSummary(orderedTurns)}",
+            $"Improvement areas: {BuildImprovementAreasSummary(orderedTurns)}",
+            string.IsNullOrWhiteSpace(aiCompletion) ? string.Empty : $"AI completion: {NormalizeWhitespace(aiCompletion)}",
+            string.IsNullOrWhiteSpace(reason) ? string.Empty : $"Completion note: {NormalizeWhitespace(reason)}"
+        }.Where(line => !string.IsNullOrWhiteSpace(line)));
+    }
+
+    internal static string NormalizePersistedReportData(string reportData, IEnumerable<InterviewTurn> turns, decimal score)
+    {
+        if (string.IsNullOrWhiteSpace(reportData))
+            return reportData;
+
+        var orderedTurns = (turns ?? Enumerable.Empty<InterviewTurn>())
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+        if (!orderedTurns.Any())
+            return reportData;
+
+        var normalizedQuestions = new HashSet<string>(
+            orderedTurns.Select(turn => NormalizeComparisonText(turn.QuestionText))
+                .Where(value => !string.IsNullOrWhiteSpace(value)),
+            StringComparer.Ordinal);
+        if (!normalizedQuestions.Any())
+            return reportData;
+
+        var lines = reportData
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .ToList();
+
+        if (!lines.Any())
+            return reportData;
+
+        for (var index = 0; index < lines.Count; index++)
+        {
+            if (StartsWithLabel(lines[index], "Strengths") && SummaryLineContainsQuestionText(lines[index], normalizedQuestions))
+            {
+                lines[index] = $"Strengths: {BuildStrengthsSummary(orderedTurns)}";
+                continue;
+            }
+
+            if (StartsWithLabel(lines[index], "Improvement areas") && SummaryLineContainsQuestionText(lines[index], normalizedQuestions))
+                lines[index] = $"Improvement areas: {BuildImprovementAreasSummary(orderedTurns)}";
+        }
+
+        if (!lines.Any(line => StartsWithLabel(line, "Overall score")))
+            lines.Insert(0, $"Overall score: {score:N0}/100");
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    internal static string BuildStrengthsSummary(IEnumerable<InterviewTurn> turns)
+    {
+        var strengths = (turns ?? Enumerable.Empty<InterviewTurn>())
+            .Where(turn => turn.Score.GetValueOrDefault() >= 75)
+            .OrderByDescending(turn => turn.Score.GetValueOrDefault())
+            .ThenBy(turn => turn.SequenceNumber)
+            .Select(TryBuildStrengthPhrase)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(3)
+            .ToList();
+
+        return strengths.Any()
+            ? string.Join("; ", strengths)
+            : "No scored strengths were identified from the submitted answers.";
+    }
+
+    internal static string BuildImprovementAreasSummary(IEnumerable<InterviewTurn> turns)
+    {
+        var improvements = (turns ?? Enumerable.Empty<InterviewTurn>())
+            .Where(turn => turn.Score.GetValueOrDefault() < 75)
+            .OrderBy(turn => turn.Score.GetValueOrDefault())
+            .ThenBy(turn => turn.SequenceNumber)
+            .Select(TryBuildImprovementPhrase)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(3)
+            .ToList();
+
+        return improvements.Any()
+            ? string.Join("; ", improvements)
+            : "Continue providing concrete examples and measurable outcomes.";
+    }
+
+    private static bool StartsWithLabel(string line, string label)
+    {
+        return !string.IsNullOrWhiteSpace(line) &&
+            line.StartsWith(label + ":", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool SummaryLineContainsQuestionText(string line, HashSet<string> normalizedQuestions)
+    {
+        var separatorIndex = line.IndexOf(':');
+        if (separatorIndex < 0)
+            return false;
+
+        var entries = line[(separatorIndex + 1)..]
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(NormalizeComparisonText)
+            .Where(value => !string.IsNullOrWhiteSpace(value));
+
+        return entries.Any(normalizedQuestions.Contains);
+    }
+
+    private static string TryBuildStrengthPhrase(InterviewTurn turn)
+    {
+        var feedbackStrength = BuildStrengthFromFeedback(turn?.Feedback);
+        if (!string.IsNullOrWhiteSpace(feedbackStrength))
+            return feedbackStrength;
+
+        var answerStrength = BuildStrengthFromAnswer(turn?.AnswerText);
+        if (!string.IsNullOrWhiteSpace(answerStrength))
+            return answerStrength;
+
+        return turn?.Score.GetValueOrDefault() >= 75
+            ? "Provided relevant project examples and implementation context."
+            : string.Empty;
+    }
+
+    private static string TryBuildImprovementPhrase(InterviewTurn turn)
+    {
+        var feedbackImprovement = BuildImprovementFromFeedback(turn?.Feedback);
+        if (!string.IsNullOrWhiteSpace(feedbackImprovement))
+            return feedbackImprovement;
+
+        var rubricImprovement = BuildImprovementFromScores(turn);
+        if (!string.IsNullOrWhiteSpace(rubricImprovement))
+            return rubricImprovement;
+
+        return "Provide more concrete examples and implementation details.";
+    }
+
+    private static string BuildStrengthFromFeedback(string feedback)
+    {
+        var normalizedFeedback = NormalizeWhitespace(feedback);
+        if (string.IsNullOrWhiteSpace(normalizedFeedback))
+            return string.Empty;
+
+        var lowered = normalizedFeedback.ToLowerInvariant();
+        if (NegativeFeedbackMarkers.Any(marker => lowered.Contains(marker, StringComparison.Ordinal)))
+            return string.Empty;
+
+        if (lowered.Contains("clear structure", StringComparison.Ordinal) || lowered.Contains("clear answer", StringComparison.Ordinal))
+            return "Demonstrated clear structure and communication.";
+        if (lowered.Contains("technical depth", StringComparison.Ordinal))
+            return "Demonstrated relevant technical depth.";
+        if (lowered.Contains("ownership", StringComparison.Ordinal))
+            return "Showed ownership and professional judgment.";
+        if (lowered.Contains("balanced", StringComparison.Ordinal))
+            return "Provided a balanced and relevant response.";
+        if (lowered.Contains("practical", StringComparison.Ordinal))
+            return "Connected practical experience to the interview discussion.";
+
+        var simplified = Regex.Replace(normalizedFeedback, @"^(strong|good|balanced|solid|clear|decent)\s+answer\s+(with|showing)\s+", string.Empty, RegexOptions.IgnoreCase);
+        simplified = Regex.Replace(simplified, @"\b(answer|response)\b", string.Empty, RegexOptions.IgnoreCase);
+        simplified = NormalizeWhitespace(simplified).Trim('.', ';', ',');
+        if (string.IsNullOrWhiteSpace(simplified) || simplified.Length < 12)
+            return string.Empty;
+
+        simplified = char.ToLowerInvariant(simplified[0]) + simplified[1..];
+        return $"Demonstrated {simplified}.";
+    }
+
+    private static string BuildStrengthFromAnswer(string answerText)
+    {
+        var normalizedAnswer = NormalizeWhitespace(answerText);
+        if (string.IsNullOrWhiteSpace(normalizedAnswer))
+            return string.Empty;
+
+        var matchedPhrase = DomainPhraseMap
+            .FirstOrDefault(candidate => candidate.Terms.Any(term => normalizedAnswer.Contains(term, StringComparison.OrdinalIgnoreCase)))
+            .Phrase;
+        if (!string.IsNullOrWhiteSpace(matchedPhrase))
+            return $"Demonstrated experience with {matchedPhrase}.";
+
+        var tokens = NormalizeComparisonText(normalizedAnswer).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return tokens.Length >= 12
+            ? "Provided relevant project examples and implementation context."
+            : string.Empty;
+    }
+
+    private static string BuildImprovementFromFeedback(string feedback)
+    {
+        var normalizedFeedback = NormalizeWhitespace(feedback);
+        if (string.IsNullOrWhiteSpace(normalizedFeedback))
+            return string.Empty;
+
+        var specificExamplesMatch = Regex.Match(normalizedFeedback, @"did not provide specific examples of (?<topic>.+?)(?:\.|;|$)", RegexOptions.IgnoreCase);
+        if (specificExamplesMatch.Success)
+            return $"Provide specific examples of {NormalizeTopic(specificExamplesMatch.Groups["topic"].Value)}.";
+
+        var moreDetailMatch = Regex.Match(normalizedFeedback, @"more detail on (?<topic>.+?) would strengthen(?: the response)?", RegexOptions.IgnoreCase);
+        if (moreDetailMatch.Success)
+            return $"Provide more detail on {NormalizeTopic(moreDetailMatch.Groups["topic"].Value)}.";
+
+        if (normalizedFeedback.Contains("more concrete examples", StringComparison.OrdinalIgnoreCase))
+            return "Provide more concrete examples and implementation details.";
+        if (normalizedFeedback.Contains("measurable outcomes", StringComparison.OrdinalIgnoreCase))
+            return "Add measurable outcomes and implementation impact.";
+        if (normalizedFeedback.Contains("not substantive", StringComparison.OrdinalIgnoreCase) ||
+            normalizedFeedback.Contains("own words", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Provide a direct answer in your own words with relevant detail.";
+        }
+
+        var lackedMatch = Regex.Match(normalizedFeedback, @"lacked (?<topic>.+?)(?:\.|;|$)", RegexOptions.IgnoreCase);
+        if (lackedMatch.Success)
+            return $"Add {NormalizeTopic(lackedMatch.Groups["topic"].Value)}.";
+
+        if (normalizedFeedback.Contains("specific examples", StringComparison.OrdinalIgnoreCase))
+            return "Provide specific examples and implementation details.";
+        if (normalizedFeedback.Contains("more detail", StringComparison.OrdinalIgnoreCase))
+            return "Provide more detail on the implementation and outcomes.";
+
+        return string.Empty;
+    }
+
+    private static string BuildImprovementFromScores(InterviewTurn turn)
+    {
+        var technical = ParseRubricScore(turn?.RubricJson, "technicalScore");
+        var communication = ParseRubricScore(turn?.RubricJson, "communicationScore");
+        var professionalism = ParseRubricScore(turn?.RubricJson, "professionalismScore");
+        var attitude = ParseRubricScore(turn?.RubricJson, "positiveAttitudeScore");
+
+        if (technical.HasValue && technical.Value < 75)
+            return "Provide more concrete technical examples and implementation details.";
+        if (communication.HasValue && communication.Value < 75)
+            return "Explain decisions more clearly and with stronger structure.";
+        if (professionalism.HasValue && professionalism.Value < 75)
+            return "Show stronger ownership and decision-making rationale.";
+        if (attitude.HasValue && attitude.Value < 75)
+            return "Highlight constructive problem-solving and learning mindset.";
+
+        return string.Empty;
+    }
+
+    private static decimal? ParseRubricScore(string rubricJson, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(rubricJson))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(rubricJson);
+            if (!document.RootElement.TryGetProperty(propertyName, out var property))
+                return null;
+
+            return property.ValueKind switch
+            {
+                JsonValueKind.Number when property.TryGetDecimal(out var decimalValue) => decimalValue,
+                JsonValueKind.String when decimal.TryParse(property.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedValue) => parsedValue,
+                _ => null
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string NormalizeTopic(string topic)
+    {
+        var normalized = NormalizeWhitespace(topic)
+            .Trim('.', ';', ',', ':')
+            .Trim();
+        return string.IsNullOrWhiteSpace(normalized)
+            ? "the implementation details"
+            : normalized;
+    }
+
+    private static string NormalizeWhitespace(string value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : Regex.Replace(value, @"\s+", " ").Trim();
+    }
+
+    private static string NormalizeComparisonText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var builder = new StringBuilder(value.Length);
+        var previousWasSpace = false;
+        foreach (var character in value.ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(character);
+                previousWasSpace = false;
+                continue;
+            }
+
+            if (previousWasSpace)
+                continue;
+
+            builder.Append(' ');
+            previousWasSpace = true;
+        }
+
+        return builder.ToString().Trim();
     }
 }
 
@@ -1900,20 +2243,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     protected virtual string BuildReport(IEnumerable<InterviewTurn> turns, decimal score, string reason, string aiCompletion = null)
     {
-        var strengths = turns.Where(turn => turn.Score.GetValueOrDefault() >= 75).Select(turn => turn.QuestionText).Take(3).ToList();
-        var improvements = turns.Where(turn => turn.Score.GetValueOrDefault() < 75).Select(turn => turn.QuestionText).Take(3).ToList();
-        var strengthsLine = strengths.Any()
-            ? string.Join("; ", strengths)
-            : "No scored strengths were identified from the submitted answers.";
-
-        return string.Join(Environment.NewLine, new[]
-        {
-            $"Overall score: {score:N0}/100",
-            $"Strengths: {strengthsLine}",
-            $"Improvement areas: {(improvements.Any() ? string.Join("; ", improvements) : "Provide more concrete examples.")}",
-            string.IsNullOrWhiteSpace(aiCompletion) ? string.Empty : $"AI completion: {aiCompletion}",
-            string.IsNullOrWhiteSpace(reason) ? string.Empty : $"Completion note: {reason}"
-        }.Where(line => !string.IsNullOrWhiteSpace(line)));
+        return InterviewReportSummaryHelper.BuildReport(turns, score, reason, aiCompletion);
     }
 
     protected virtual int GetMaxQuestions(InterviewSession session)
