@@ -117,6 +117,26 @@ public partial class InterviewAiClient : IAIInterviewClient
         if (response == null || !response.Success)
             return response ?? BuildUnavailableResponse();
 
+        if (ShouldRetrySuspiciousZeroScore(request, response))
+        {
+            var retryPrompt = string.Join(" ", new[]
+            {
+                request?.Prompt?.Trim(),
+                "Guardrail: if the answer attempts the question but is weak or generic, do not classify it as non_substantive and do not score it as 0.",
+                "Use answerQuality weak with low but non-zero scores for attempted answers. Reserve answerQuality non_substantive and score 0 for empty, copied, refusal, AI-persona, or unrelated answers only."
+            }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+            var retriedResponse = await CallAzureAsync(request with { Prompt = retryPrompt }, "score");
+            if (retriedResponse != null && retriedResponse.Success)
+                response = retriedResponse;
+
+            if (response.Score.GetValueOrDefault() == 0)
+            {
+                var detail = $"Mode=score; Reason=suspicious all-zero scoring retained after retry; AnswerLength={(request?.Answer ?? string.Empty).Length}; AnswerWords={TokenizeScoreRetryText(NormalizeScoreRetryText(request?.Answer)).Length}; AnswerQuality={BuildSafeValue(response.AnswerQuality)}; NonSubstantiveReason={BuildSafeValue(response.NonSubstantiveReason)}; Sample={TruncateSafe(response.RawJson, 300)}.";
+                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview zero-score guardrail", detail);
+            }
+        }
+
         if (!response.Score.HasValue ||
             string.IsNullOrWhiteSpace(response.Feedback) ||
             !response.TechnicalScore.HasValue ||
@@ -183,7 +203,7 @@ public partial class InterviewAiClient : IAIInterviewClient
                         role = "system",
                         content = mode == "generate"
                             ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
-                            : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, optional nextQuestion, completion, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. rubricJson should be a JSON object that repeats the category scores and score. Copied question text, irrelevant content, and no-answer responses must receive score 0 and feedback must clearly say the answer was not substantive."
+                            : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, optional nextQuestion, completion, optional answerQuality, optional nonSubstantiveReason, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. rubricJson should be a JSON object that repeats the category scores and score. Distinguish answerQuality as non_substantive, weak, or substantive. Reserve score 0 and answerQuality non_substantive only for empty, copied, refusal, AI-persona, or unrelated answers. If the answer attempts the question but is generic, vague, or lacks evidence, classify it as weak and assign low but non-zero scores with concrete feedback."
                     },
                     new { role = "user", content = prompt }
                 },
@@ -308,8 +328,9 @@ Previous answered turns:
 Current question: {request.Question}
 Candidate answer: {request.Answer}
 Current turn rubric JSON: {TruncateSafe(request.CurrentTurnRubricJson, 2000)}
-Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100,\"feedback\":\"string\",\"complete\":false,\"nextQuestion\":\"optional string or null\",\"completion\":\"string or null\",\"rubricJson\":{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100}}")}
-Scoring rule: copied question text, irrelevant content, or non-substantive answers must receive score 0 with feedback that tells the candidate to answer in their own words.
+Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100,\"feedback\":\"string\",\"complete\":false,\"nextQuestion\":\"optional string or null\",\"completion\":\"string or null\",\"answerQuality\":\"optional non_substantive|weak|substantive\",\"nonSubstantiveReason\":\"optional string\",\"rubricJson\":{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100}}")}
+Scoring rule: copied question text, irrelevant content, empty answers, refusal answers, AI-persona answers such as "As an AI...", or other non-substantive answers must receive score 0 with answerQuality non_substantive and feedback that tells the candidate to answer in their own words.
+Scoring distinction: if the answer attempts the question but is generic, weak, vague, or lacks concrete evidence, set answerQuality to weak and assign low but non-zero scores instead of 0. Use answerQuality substantive when the answer provides relevant specific evidence.
 """;
     }
 
@@ -467,6 +488,8 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
                 : root.TryGetProperty("optionalNextQuestion", out var onq) ? onq.GetString() : null;
             string feedback = root.TryGetProperty("feedback", out var fb) ? fb.GetString() : null;
             string completion = root.TryGetProperty("completion", out var cmp) ? cmp.GetString() : null;
+            string answerQuality = root.TryGetProperty("answerQuality", out var answerQualityElement) ? answerQualityElement.GetString() : null;
+            string nonSubstantiveReason = root.TryGetProperty("nonSubstantiveReason", out var nonSubstantiveReasonElement) ? nonSubstantiveReasonElement.GetString() : null;
             string rubricJson = root.TryGetProperty("rubricJson", out var rubricJsonElement) ? rubricJsonElement.GetRawText()
                 : root.TryGetProperty("rubric", out var rubricElement) ? rubricElement.GetRawText()
                 : null;
@@ -500,6 +523,8 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
                 Feedback = feedback,
                 Complete = TryParseBoolean(root, "complete"),
                 Completion = completion,
+                AnswerQuality = answerQuality,
+                NonSubstantiveReason = nonSubstantiveReason,
                 RawJson = content,
                 RubricJson = rubricJson
             };
@@ -526,9 +551,81 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
             Feedback = response?.Feedback,
             Complete = response?.Complete ?? false,
             Completion = response?.Completion,
+            AnswerQuality = response?.AnswerQuality,
+            NonSubstantiveReason = response?.NonSubstantiveReason,
             RawJson = response?.RawJson,
             RubricJson = response?.RubricJson
         };
+    }
+
+    protected virtual bool ShouldRetrySuspiciousZeroScore(AIInterviewClientRequest request, AIInterviewClientResponse response)
+    {
+        if (response == null || !response.Success || !response.Score.HasValue || response.Score.Value != 0)
+            return false;
+
+        if (response.TechnicalScore.GetValueOrDefault() != 0 ||
+            response.CommunicationScore.GetValueOrDefault() != 0 ||
+            response.ProfessionalismScore.GetValueOrDefault() != 0 ||
+            response.PositiveAttitudeScore.GetValueOrDefault() != 0)
+        {
+            return false;
+        }
+
+        if (string.Equals(response.AnswerQuality, "non_substantive", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return LooksPotentiallySubstantiveAnswer(request?.Answer);
+    }
+
+    protected virtual bool LooksPotentiallySubstantiveAnswer(string answer)
+    {
+        var normalizedAnswer = NormalizeScoreRetryText(answer);
+        var answerTokens = TokenizeScoreRetryText(normalizedAnswer);
+        if (answerTokens.Length < 12 || normalizedAnswer.Length < 60)
+            return false;
+
+        if (normalizedAnswer.StartsWith("as an ai", StringComparison.Ordinal) ||
+            normalizedAnswer.StartsWith("i cannot", StringComparison.Ordinal) ||
+            normalizedAnswer.StartsWith("i can't", StringComparison.Ordinal) ||
+            normalizedAnswer.Contains("language model", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    protected static string NormalizeScoreRetryText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        var builder = new StringBuilder(text.Length);
+        var previousWasSpace = false;
+        foreach (var character in text.ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(character);
+                previousWasSpace = false;
+                continue;
+            }
+
+            if (previousWasSpace)
+                continue;
+
+            builder.Append(' ');
+            previousWasSpace = true;
+        }
+
+        return builder.ToString().Trim();
+    }
+
+    protected static string[] TokenizeScoreRetryText(string text)
+    {
+        return string.IsNullOrWhiteSpace(text)
+            ? Array.Empty<string>()
+            : text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     protected static decimal? TryParseNullableDecimal(JsonElement root, string propertyName)
@@ -793,6 +890,7 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
             : score >= 50
                 ? "Decent answer. Add more concrete examples."
                 : "Answer is too brief. Explain your reasoning and impact.";
+        var answerQuality = score >= 75 ? "substantive" : score >= 1 ? "weak" : "non_substantive";
         var technicalScore = score;
         var communicationScore = Math.Clamp(score - 4, 0, 100);
         var professionalismScore = Math.Clamp(score + 2, 0, 100);
@@ -812,6 +910,7 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
             Feedback = feedback,
             Complete = false,
             Completion = string.Empty,
+            AnswerQuality = answerQuality,
             RawJson = JsonSerializer.Serialize(new
             {
                 technicalScore,
@@ -820,6 +919,7 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
                 positiveAttitudeScore,
                 score = averageScore,
                 feedback,
+                answerQuality,
                 complete = false
             }),
             RubricJson = JsonSerializer.Serialize(new
@@ -1802,11 +1902,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var strengths = turns.Where(turn => turn.Score.GetValueOrDefault() >= 75).Select(turn => turn.QuestionText).Take(3).ToList();
         var improvements = turns.Where(turn => turn.Score.GetValueOrDefault() < 75).Select(turn => turn.QuestionText).Take(3).ToList();
+        var strengthsLine = strengths.Any()
+            ? string.Join("; ", strengths)
+            : "No scored strengths were identified from the submitted answers.";
 
         return string.Join(Environment.NewLine, new[]
         {
             $"Overall score: {score:N0}/100",
-            $"Strengths: {(strengths.Any() ? string.Join("; ", strengths) : "Good structure and engagement.")}",
+            $"Strengths: {strengthsLine}",
             $"Improvement areas: {(improvements.Any() ? string.Join("; ", improvements) : "Provide more concrete examples.")}",
             string.IsNullOrWhiteSpace(aiCompletion) ? string.Empty : $"AI completion: {aiCompletion}",
             string.IsNullOrWhiteSpace(reason) ? string.Empty : $"Completion note: {reason}"

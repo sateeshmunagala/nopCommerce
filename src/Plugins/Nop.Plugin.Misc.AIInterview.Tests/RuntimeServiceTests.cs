@@ -2379,6 +2379,61 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public void BuildReport_AllZeroScores_DoesNotEmitPositiveStrengthFallback()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var method = typeof(InterviewRuntimeService).GetMethod("BuildReport", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var turns = new List<InterviewTurn>
+        {
+            new() { SequenceNumber = 1, QuestionText = "Q1", Score = 0 },
+            new() { SequenceNumber = 2, QuestionText = "Q2", Score = 0 },
+            new() { SequenceNumber = 3, QuestionText = "Q3", Score = 0 }
+        };
+
+        var report = (string)method.Invoke(service, new object[] { turns, 0m, "The answer was not substantive.", null });
+
+        Assert.That(report, Does.Not.Contain("Good structure and engagement."));
+        Assert.That(report, Does.Contain("Strengths: No scored strengths were identified from the submitted answers."));
+        Assert.That(report, Does.Contain("Improvement areas: Q1; Q2; Q3"));
+    }
+
+    [Test]
+    public void ScorePrompt_Distinguishes_NonSubstantive_Weak_And_Substantive()
+    {
+        var client = new InterviewAiClient(new AIInterviewSettings(), new MockAIInterviewSettings { UseMockResponses = false });
+        var method = typeof(InterviewAiClient).GetMethod("BuildPrompt", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        var prompt = (string)method.Invoke(client, new object[]
+        {
+            new AIInterviewClientRequest
+            {
+                JobTitle = "Platform Engineer",
+                Difficulty = "Medium",
+                Prompt = "Focus on practical experience.",
+                QuestionNumber = 1,
+                Question = "Tell me about a project.",
+                Answer = "I worked on a payments platform and improved reliability.",
+                CurrentTurnRubricJson = "{}"
+            },
+            "score"
+        });
+
+        Assert.That(prompt, Does.Contain("answerQuality"));
+        Assert.That(prompt, Does.Contain("non_substantive"));
+        Assert.That(prompt, Does.Contain("weak"));
+        Assert.That(prompt, Does.Contain("substantive"));
+        Assert.That(prompt, Does.Contain("AI-persona answers"));
+        Assert.That(prompt, Does.Contain("low but non-zero scores"));
+    }
+
+    [Test]
     public void AzureOpenAi_FailureLogsWithoutLeakingKey()
     {
         // Testing TruncateSafe on logger implicitly since we replaced the raw json with TruncateSafe

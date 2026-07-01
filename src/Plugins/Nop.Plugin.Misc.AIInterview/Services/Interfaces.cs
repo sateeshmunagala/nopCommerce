@@ -120,6 +120,8 @@ public sealed record ResumeTextExtractionResult
     public string Text { get; init; }
     public string ErrorCode { get; init; }
     public string ErrorMessage { get; init; }
+    public string ExceptionType { get; init; }
+    public string DiagnosticMessage { get; init; }
 }
 
 public sealed record ResumeProfileGenerationResult
@@ -222,6 +224,8 @@ public record AIInterviewClientResponse
     public string Feedback { get; init; }
     public bool Complete { get; init; }
     public string Completion { get; init; }
+    public string AnswerQuality { get; init; }
+    public string NonSubstantiveReason { get; init; }
     public string ErrorMessage { get; init; }
     public string RawJson { get; init; }
     public string RubricJson { get; init; }

@@ -674,6 +674,39 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public async Task Report_PrefersCompletedDate_WhenPresent()
+    {
+        var customer = new Customer { Id = 1 };
+        var createdOnUtc = new DateTime(2026, 06, 07, 15, 09, 46, DateTimeKind.Utc);
+        var completedOnUtc = new DateTime(2026, 07, 01, 13, 26, 15, DateTimeKind.Utc);
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 25)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(25)).ReturnsAsync(new InterviewSession
+        {
+            Id = 25,
+            CustomerId = 1,
+            ProductId = 11,
+            ReportData = "overall score: 88",
+            QuestionScores = "[88]",
+            Score = 88,
+            CreatedOnUtc = createdOnUtc,
+            StartedOnUtc = createdOnUtc.AddMinutes(1),
+            CompletedOnUtc = completedOnUtc
+        });
+        _productService.Setup(x => x.GetProductByIdAsync(11)).ReturnsAsync(new Product { Id = 11, Name = "Backend Engineer" });
+        _turnService.Setup(x => x.GetTurnsBySessionIdAsync(25)).ReturnsAsync(new List<InterviewTurn>());
+
+        var result = await _controller.Report(25);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        var model = (InterviewReportModel)viewResult.Model;
+        Assert.That(model.CreatedOnUtc, Is.EqualTo(createdOnUtc));
+        Assert.That(model.CompletedOnUtc, Is.EqualTo(completedOnUtc));
+        Assert.That(model.ReportDateUtc, Is.EqualTo(completedOnUtc));
+    }
+
+    [Test]
     public async Task Report_OldTurnWithoutRubric_LeavesCategoryScoresNull()
     {
         var customer = new Customer { Id = 1 };

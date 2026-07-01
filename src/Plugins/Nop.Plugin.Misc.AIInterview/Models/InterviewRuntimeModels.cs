@@ -130,6 +130,7 @@ public record InterviewReportModel : BaseNopModel
     public string JobTitle { get; set; }
     public string Difficulty { get; set; }
     public DateTime CreatedOnUtc { get; set; }
+    public DateTime ReportDateUtc { get; set; }
     public DateTime? CompletedOnUtc { get; set; }
     public decimal Score { get; set; }
     public bool IsCompleted { get; set; }

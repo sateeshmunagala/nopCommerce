@@ -8,6 +8,7 @@ using Moq;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
+using Nop.Core.Domain.Logging;
 using Nop.Core.Domain.Media;
 using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Domain;
@@ -18,6 +19,7 @@ using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Messages;
+using NopLogger = Nop.Services.Logging.ILogger;
 using NUnit.Framework;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
@@ -33,6 +35,29 @@ public class ResumePlanningTests
             var mainPart = document.AddMainDocumentPart();
             mainPart.Document = new Document(
                 new Body(paragraphs.Select(text => new Paragraph(new Run(new Text(text))))));
+        }
+
+        return stream.ToArray();
+    }
+
+    private static byte[] CreateDocxWithHeaderAndFooter(string bodyText, string headerText, string footerText)
+    {
+        using var stream = new MemoryStream();
+        using (var document = WordprocessingDocument.Create(stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document, true))
+        {
+            var mainPart = document.AddMainDocumentPart();
+            mainPart.Document = new Document(new Body(new Paragraph(new Run(new Text(bodyText)))));
+
+            var headerPart = mainPart.AddNewPart<HeaderPart>();
+            headerPart.Header = new Header(new Paragraph(new Run(new Text(headerText))));
+            var footerPart = mainPart.AddNewPart<FooterPart>();
+            footerPart.Footer = new Footer(new Paragraph(new Run(new Text(footerText))));
+
+            var sectionProperties = new SectionProperties(
+                new HeaderReference { Id = mainPart.GetIdOfPart(headerPart), Type = HeaderFooterValues.Default },
+                new FooterReference { Id = mainPart.GetIdOfPart(footerPart), Type = HeaderFooterValues.Default });
+            mainPart.Document.Body.Append(sectionProperties);
+            mainPart.Document.Save();
         }
 
         return stream.ToArray();
@@ -91,6 +116,43 @@ public class ResumePlanningTests
         Assert.That(unsupported.ErrorCode, Is.EqualTo("unsupported_extension"));
         Assert.That(empty.Success, Is.False);
         Assert.That(empty.ErrorCode, Is.EqualTo("empty_text"));
+    }
+
+    [Test]
+    public async Task ResumeTextExtractionService_InvalidDocx_ReturnsExtractionFailed()
+    {
+        var service = new ResumeTextExtractionService();
+
+        var result = await service.ExtractTextAsync(new Download
+        {
+            Filename = "invalid.docx",
+            Extension = ".docx",
+            ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            DownloadBinary = Encoding.UTF8.GetBytes("not-a-real-openxml-package")
+        });
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.ErrorCode, Is.EqualTo("extraction_failed"));
+        Assert.That(result.ExceptionType, Is.Not.Empty);
+    }
+
+    [Test]
+    public async Task ResumeTextExtractionService_Docx_ExtractsSupportedWordParts()
+    {
+        var service = new ResumeTextExtractionService();
+        var download = new Download
+        {
+            Filename = "resume.docx",
+            Extension = ".docx",
+            DownloadBinary = CreateDocxWithHeaderAndFooter("Body content", "Header content", "Footer content")
+        };
+
+        var result = await service.ExtractTextAsync(download);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Text, Does.Contain("Body content"));
+        Assert.That(result.Text, Does.Contain("Header content"));
+        Assert.That(result.Text, Does.Contain("Footer content"));
     }
 
     [Test]
@@ -472,5 +534,77 @@ public class ResumePlanningTests
         sessionService.Verify(service => service.UpdateInterviewSessionAsync(It.Is<InterviewSession>(session =>
             session.Id == 900 &&
             session.JobApplicationId == 501)), Times.Once);
+    }
+
+    [Test]
+    public async Task ResumeProfileService_ExtractionFailure_PersistsError_AndLogsAdminWarning()
+    {
+        var downloadService = new Mock<IDownloadService>();
+        var extractionService = new Mock<IResumeTextExtractionService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var applicationService = new Mock<IApplicationService>();
+        var productService = new Mock<IProductService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        var application = new JobApplication
+        {
+            Id = 45,
+            CustomerId = 9,
+            ProductId = 15,
+            ResumeDownloadId = 88,
+            JobTitle = "Backend Engineer"
+        };
+        var product = new Product { Id = 15, Name = "Backend Engineer" };
+        var download = new Download
+        {
+            Id = 88,
+            Filename = "resume.docx",
+            Extension = ".docx",
+            ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            DownloadBinary = new byte[321]
+        };
+
+        downloadService.Setup(service => service.GetDownloadByIdAsync(88)).ReturnsAsync(download);
+        extractionService.Setup(service => service.ExtractTextAsync(download)).ReturnsAsync(new ResumeTextExtractionResult
+        {
+            Success = false,
+            ErrorCode = "empty_text",
+            ErrorMessage = "Resume text could not be extracted.",
+            DiagnosticMessage = "empty main document text"
+        });
+        applicationService.Setup(service => service.UpdateJobApplicationAsync(It.IsAny<JobApplication>())).Returns(Task.CompletedTask);
+        nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var service = new ResumeProfileService(
+            downloadService.Object,
+            extractionService.Object,
+            aiClient.Object,
+            applicationService.Object,
+            productService.Object,
+            nopLogger.Object);
+
+        var result = await service.EnsureResumeProfileAsync(application, product, true);
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(application.ResumeProfileError, Does.Contain("empty_text"));
+        applicationService.Verify(x => x.UpdateJobApplicationAsync(It.Is<JobApplication>(jobApplication =>
+            jobApplication.Id == 45 &&
+            jobApplication.ResumeProfileJson == null &&
+            jobApplication.ResumeProfileGeneratedOnUtc == null &&
+            jobApplication.ResumeProfileError.Contains("empty_text"))), Times.Once);
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview resume extraction failed",
+            It.Is<string>(message =>
+                message.Contains("ApplicationId=45") &&
+                message.Contains("CustomerId=9") &&
+                message.Contains("ProductId=15") &&
+                message.Contains("ResumeDownloadId=88") &&
+                message.Contains("FileExtension=.docx") &&
+                message.Contains("FileSizeBytes=321") &&
+                !message.Contains("Resume-backed candidate profile", StringComparison.OrdinalIgnoreCase) &&
+                !message.Contains("Body content", StringComparison.OrdinalIgnoreCase)),
+            null), Times.Once);
     }
 }

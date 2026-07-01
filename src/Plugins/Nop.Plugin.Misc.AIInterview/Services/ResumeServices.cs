@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.AspNetCore.Http;
@@ -8,7 +9,9 @@ using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Media;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Services.Catalog;
+using Nop.Core.Domain.Logging;
 using Nop.Services.Media;
+using NopLogger = Nop.Services.Logging.ILogger;
 using UglyToad.PdfPig;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
@@ -165,13 +168,26 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
                 Text = normalized.Length <= MaxExtractedTextLength ? normalized : normalized[..MaxExtractedTextLength]
             });
         }
-        catch
+        catch (OpenXmlPackageException ex)
         {
             return Task.FromResult(new ResumeTextExtractionResult
             {
                 Success = false,
                 ErrorCode = "extraction_failed",
-                ErrorMessage = "Resume text could not be extracted."
+                ErrorMessage = "Resume text could not be extracted.",
+                ExceptionType = ex.GetType().Name,
+                DiagnosticMessage = BuildExtractionDiagnosticMessage(extension, ex.Message, invalidPackage: true)
+            });
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(new ResumeTextExtractionResult
+            {
+                Success = false,
+                ErrorCode = "extraction_failed",
+                ErrorMessage = "Resume text could not be extracted.",
+                ExceptionType = ex.GetType().Name,
+                DiagnosticMessage = BuildExtractionDiagnosticMessage(extension, ex.Message)
             });
         }
     }
@@ -187,8 +203,51 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
     {
         using var stream = new MemoryStream(binary, writable: false);
         using var document = WordprocessingDocument.Open(stream, false);
-        return string.Join(" ",
-            document.MainDocumentPart?.Document?.Descendants<Text>().Select(text => text.Text) ?? Enumerable.Empty<string>());
+        var parts = new List<string>
+        {
+            ExtractOpenXmlText(document.MainDocumentPart?.Document),
+            string.Join(" ", (document.MainDocumentPart?.HeaderParts ?? Enumerable.Empty<HeaderPart>()).Select(part => ExtractOpenXmlText(part.Header))),
+            string.Join(" ", (document.MainDocumentPart?.FooterParts ?? Enumerable.Empty<FooterPart>()).Select(part => ExtractOpenXmlText(part.Footer))),
+            ExtractOpenXmlText(document.MainDocumentPart?.FootnotesPart?.Footnotes),
+            ExtractOpenXmlText(document.MainDocumentPart?.EndnotesPart?.Endnotes),
+            ExtractOpenXmlText(document.MainDocumentPart?.WordprocessingCommentsPart?.Comments)
+        };
+
+        return string.Join(" ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
+    }
+
+    private static string ExtractOpenXmlText(OpenXmlPartRootElement root)
+    {
+        return root == null
+            ? string.Empty
+            : string.Join(" ", root.Descendants<Text>().Select(text => text.Text));
+    }
+
+    private static string BuildExtractionDiagnosticMessage(string extension, string message, bool invalidPackage = false)
+    {
+        if (extension?.Equals(".pdf", StringComparison.OrdinalIgnoreCase) == true)
+            return string.IsNullOrWhiteSpace(message) ? "pdf_read_failure" : TruncateDiagnostic(NormalizeWhitespace(message));
+
+        var normalized = NormalizeWhitespace(message);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return invalidPackage ? "invalid_openxml_package" : "docx_read_failure";
+
+        var lowerMessage = normalized.ToLowerInvariant();
+        if (lowerMessage.Contains("encrypted", StringComparison.Ordinal) || lowerMessage.Contains("password", StringComparison.Ordinal) || lowerMessage.Contains("protected", StringComparison.Ordinal))
+            return "docx_protected_or_encrypted";
+        if (invalidPackage || lowerMessage.Contains("package", StringComparison.Ordinal) || lowerMessage.Contains("zip", StringComparison.Ordinal))
+            return "invalid_openxml_package";
+        if (lowerMessage.Contains("strict", StringComparison.Ordinal))
+            return "strict_or_malformed_docx";
+
+        return TruncateDiagnostic(normalized);
+    }
+
+    private static string TruncateDiagnostic(string value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : value.Length <= 220 ? value : value[..220];
     }
 
     private static string NormalizeWhitespace(string text)
@@ -212,19 +271,22 @@ public class ResumeProfileService : IResumeProfileService
     private readonly IAIInterviewClient _aiInterviewClient;
     private readonly IApplicationService _applicationService;
     private readonly IProductService _productService;
+    private readonly NopLogger _nopLogger;
 
     public ResumeProfileService(
         IDownloadService downloadService,
         IResumeTextExtractionService resumeTextExtractionService,
         IAIInterviewClient aiInterviewClient,
         IApplicationService applicationService,
-        IProductService productService)
+        IProductService productService,
+        NopLogger nopLogger = null)
     {
         _downloadService = downloadService;
         _resumeTextExtractionService = resumeTextExtractionService;
         _aiInterviewClient = aiInterviewClient;
         _applicationService = applicationService;
         _productService = productService;
+        _nopLogger = nopLogger;
     }
 
     public async Task<ResumeProfileGenerationResult> EnsureResumeProfileAsync(JobApplication application, Product product = null, bool forceRegenerate = false)
@@ -259,6 +321,7 @@ public class ResumeProfileService : IResumeProfileService
         if (!extraction.Success || string.IsNullOrWhiteSpace(extraction.Text))
         {
             await PersistProfileFailureAsync(application, extraction.ErrorCode, extraction.ErrorMessage);
+            await TryLogResumeProfileFailureAsync(application, product, download, extraction.ErrorCode, extraction.ErrorMessage, extraction.ExceptionType, extraction.DiagnosticMessage);
             return new ResumeProfileGenerationResult
             {
                 Success = false,
@@ -278,6 +341,7 @@ public class ResumeProfileService : IResumeProfileService
         {
             var errorMessage = response?.ErrorMessage ?? "Resume profiling is unavailable.";
             await PersistProfileFailureAsync(application, "profile_generation_failed", errorMessage);
+            await TryLogResumeProfileFailureAsync(application, product, download, "profile_generation_failed", errorMessage);
             return new ResumeProfileGenerationResult
             {
                 Success = false,
@@ -324,6 +388,47 @@ public class ResumeProfileService : IResumeProfileService
         application.ResumeProfileGeneratedOnUtc = null;
         application.ResumeProfileError = Truncate($"{errorCode}: {errorMessage}", 1000);
         await _applicationService.UpdateJobApplicationAsync(application);
+    }
+
+    private async Task TryLogResumeProfileFailureAsync(JobApplication application, Product product, Download download, string errorCode, string errorMessage, string exceptionType = null, string diagnosticMessage = null)
+    {
+        if (_nopLogger == null)
+            return;
+
+        try
+        {
+            var metadata = new List<string>
+            {
+                $"ErrorCode={Truncate(errorCode, 80)}",
+                $"ApplicationId={application?.Id ?? 0}",
+                $"CustomerId={application?.CustomerId ?? 0}",
+                $"ProductId={application?.ProductId ?? product?.Id ?? 0}",
+                $"ResumeDownloadId={application?.ResumeDownloadId ?? download?.Id ?? 0}",
+                $"FileExtension={Truncate(ResolveExtension(download), 20)}",
+                $"ContentType={Truncate(download?.ContentType, 120)}",
+                $"FileSizeBytes={download?.DownloadBinary?.LongLength ?? 0}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(exceptionType))
+                metadata.Add($"ExceptionType={Truncate(exceptionType, 80)}");
+            if (!string.IsNullOrWhiteSpace(diagnosticMessage))
+                metadata.Add($"Diagnostic={Truncate(diagnosticMessage, 220)}");
+            if (!string.IsNullOrWhiteSpace(errorMessage))
+                metadata.Add($"Message={Truncate(errorMessage, 220)}");
+
+            var level = string.Equals(errorCode, "extraction_failed", StringComparison.OrdinalIgnoreCase)
+                ? LogLevel.Error
+                : LogLevel.Warning;
+
+            await _nopLogger.InsertLogAsync(
+                level,
+                "AI Interview resume extraction failed",
+                string.Join("; ", metadata) + ".",
+                null);
+        }
+        catch
+        {
+        }
     }
 
     private static string ResolveJobTitle(Product product, JobApplication application)
@@ -408,5 +513,14 @@ public class ResumeProfileService : IResumeProfileService
 
         var normalized = Regex.Replace(value.Trim(), @"\s+", " ");
         return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
+    }
+
+    private static string ResolveExtension(Download download)
+    {
+        var extension = Path.GetExtension(download?.Filename ?? string.Empty);
+        if (!string.IsNullOrWhiteSpace(extension))
+            return extension;
+
+        return string.IsNullOrWhiteSpace(download?.Extension) ? string.Empty : download.Extension;
     }
 }

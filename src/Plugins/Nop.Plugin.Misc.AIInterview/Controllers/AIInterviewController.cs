@@ -468,6 +468,7 @@ public class AIInterviewController : BasePluginController
             RecordingUrl = !string.IsNullOrWhiteSpace(session.RecordingUrl) ? BuildAuthenticatedRecordingUrl(session.Id) : null,
             RecordingShareUrl = await BuildRecordingShareUrlAsync(session),
             CreatedOnUtc = session.CreatedOnUtc,
+            ReportDateUtc = session.CompletedOnUtc ?? session.StartedOnUtc ?? session.CreatedOnUtc,
             CompletedOnUtc = session.CompletedOnUtc,
             Turns = MapTurns(turns)
         };
