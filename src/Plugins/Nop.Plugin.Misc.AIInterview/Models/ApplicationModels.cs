@@ -49,6 +49,9 @@ public record ApplicationModel : BaseNopModel
     public IList<decimal> QuestionScoreValues { get; set; } = new List<decimal>();
     public string InterviewReportUrl { get; set; }
     public string InterviewReportPanelUrl { get; set; }
+    public int ResumeDownloadId { get; set; }
+    public bool HasResume { get; set; }
+    public string ResumeDownloadUrl { get; set; }
     public string RecordingUrl { get; set; }
     public string RecordingShareUrl { get; set; }
     public string ProductUrl { get; set; }

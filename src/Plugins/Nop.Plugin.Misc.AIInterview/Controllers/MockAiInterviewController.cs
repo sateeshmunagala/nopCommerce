@@ -47,6 +47,8 @@ public class MockAiInterviewController : BasePluginController
     private readonly NopLogger _nopLogger;
     private readonly ILogger<MockAiInterviewController> _logger;
     private readonly INopUrlHelper _nopUrlHelper;
+    private readonly IResumeFileService _resumeFileService;
+    private readonly IResumeProfileService _resumeProfileService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -65,7 +67,9 @@ public class MockAiInterviewController : BasePluginController
         IJobRequirementService jobRequirementService = null,
         NopLogger nopLogger = null,
         ILogger<MockAiInterviewController> logger = null,
-        INopUrlHelper nopUrlHelper = null)
+        INopUrlHelper nopUrlHelper = null,
+        IResumeFileService resumeFileService = null,
+        IResumeProfileService resumeProfileService = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -85,6 +89,8 @@ public class MockAiInterviewController : BasePluginController
         _nopLogger = nopLogger;
         _logger = logger;
         _nopUrlHelper = nopUrlHelper;
+        _resumeFileService = resumeFileService;
+        _resumeProfileService = resumeProfileService;
     }
 
     protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
@@ -220,6 +226,61 @@ public class MockAiInterviewController : BasePluginController
         return NormalizeQuestionCount(requirements?.QuestionCount ?? 3);
     }
 
+    protected virtual async Task<(JobApplication Application, string ErrorMessage)> ResolveApplicationForStartAsync(Customer customer, Product product, IFormFile resumeFile)
+    {
+        var application = ((await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id)) ?? new List<JobApplication>())
+            .Where(a => a.ProductId == (product?.Id ?? 0))
+            .OrderByDescending(a => a.CreatedOnUtc)
+            .ThenByDescending(a => a.Id)
+            .FirstOrDefault();
+
+        if (resumeFile != null)
+        {
+            if (_resumeFileService == null)
+                return (null, "Resume upload is unavailable right now.");
+
+            var validation = _resumeFileService.ValidateResumeFile(resumeFile);
+            if (!validation.Success)
+                return (null, validation.ErrorMessage);
+
+            var storedResume = await _resumeFileService.StoreResumeAsync(resumeFile);
+            if (!storedResume.Success)
+                return (null, storedResume.ErrorMessage);
+
+            if (application == null)
+            {
+                application = new JobApplication
+                {
+                    CustomerId = customer.Id,
+                    ProductId = product?.Id ?? 0,
+                    JobTitle = product?.Name ?? "Interview",
+                    ResumeDownloadId = storedResume.DownloadId,
+                    Status = JobApplicationStatuses.Applied,
+                    CreatedOnUtc = DateTime.UtcNow
+                };
+                await _applicationService.InsertJobApplicationAsync(application);
+            }
+            else
+            {
+                application.ResumeDownloadId = storedResume.DownloadId;
+                application.ResumeProfileJson = null;
+                application.ResumeProfileGeneratedOnUtc = null;
+                application.ResumeProfileError = null;
+                await _applicationService.UpdateJobApplicationAsync(application);
+            }
+
+            if (_resumeProfileService != null)
+                await _resumeProfileService.EnsureResumeProfileAsync(application, product, forceRegenerate: true);
+
+            return (application, null);
+        }
+
+        if (application != null && application.ResumeDownloadId > 0 && string.IsNullOrWhiteSpace(application.ResumeProfileJson) && _resumeProfileService != null)
+            await _resumeProfileService.EnsureResumeProfileAsync(application, product);
+
+        return (application, null);
+    }
+
     protected virtual async Task<(InterviewSession Session, bool Renewed)> RenewActiveRuntimeTokenAsync(string token, bool forceRenew = false)
     {
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
@@ -338,10 +399,12 @@ public class MockAiInterviewController : BasePluginController
                 return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.NoCredits", "Insufficient credits. Please purchase credits to start the interview.");
         }
 
-        var application = ((await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id)) ?? new List<JobApplication>())
-            .Where(a => a.ProductId == productId)
-            .OrderByDescending(a => a.CreatedOnUtc)
-            .FirstOrDefault();
+        var resumeFile = form?.Files?.GetFile("ResumeFile");
+        var applicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile);
+        if (!string.IsNullOrWhiteSpace(applicationResolution.ErrorMessage))
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", applicationResolution.ErrorMessage);
+
+        var application = applicationResolution.Application;
 
         var session = new InterviewSession
         {

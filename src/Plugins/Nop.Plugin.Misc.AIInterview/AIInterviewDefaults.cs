@@ -56,6 +56,7 @@ public static class AIInterviewDefaults
     /// Gets the employer applications route name
     /// </summary>
     public static string EmployerApplicationsRouteName => "Plugin.Misc.AIInterview.EmployerApplications";
+    public static string EmployerDownloadResumeRouteName => "Plugin.Misc.AIInterview.EmployerDownloadResume";
 
     public static string VendorScoreboardRouteName => "Plugin.Misc.AIInterview.VendorScoreboard";
 

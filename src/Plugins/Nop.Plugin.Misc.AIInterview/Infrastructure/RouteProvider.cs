@@ -74,6 +74,10 @@ public class RouteProvider : IRouteProvider
             pattern: "aiinterview/employer-applications",
             defaults: new { controller = "AIInterview", action = "EmployerApplications" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.EmployerDownloadResumeRouteName,
+            pattern: "aiinterview/employer-applications/{applicationId:int}/resume",
+            defaults: new { controller = "AIInterview", action = "EmployerDownloadResume" });
+
         endpointRouteBuilder.MapControllerRoute(name: "Plugin.Misc.AIInterview.UpdateStatus",
             pattern: "aiinterview/update-status",
             defaults: new { controller = "AIInterview", action = "UpdateStatus" });

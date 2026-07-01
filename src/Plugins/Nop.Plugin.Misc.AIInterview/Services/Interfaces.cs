@@ -57,23 +57,143 @@ public interface IInterviewRuntimeService
     Task<RecordingUploadResponseModel> UploadRecordingAsync(string token, IFormFile recording);
 }
 
+public interface IResumeFileService
+{
+    ResumeFileValidationResult ValidateResumeFile(IFormFile file);
+    Task<ResumeFileStoreResult> StoreResumeAsync(IFormFile file);
+}
+
+public interface IResumeTextExtractionService
+{
+    Task<ResumeTextExtractionResult> ExtractTextAsync(Nop.Core.Domain.Media.Download download);
+}
+
+public interface IResumeProfileService
+{
+    Task<ResumeProfileGenerationResult> EnsureResumeProfileAsync(JobApplication application, Product product = null, bool forceRegenerate = false);
+    AIResumeProfileResponse ParseProfile(string resumeProfileJson);
+}
+
 public interface IAIInterviewClient
 {
     Task<AIInterviewClientResponse> GenerateQuestionAsync(AIInterviewClientRequest request);
+    Task<AIResumeProfileResponse> AnalyzeResumeAsync(AIResumeProfileRequest request);
+    Task<AIInterviewQuestionPlanResponse> GenerateQuestionPlanAsync(AIInterviewQuestionPlanRequest request);
     Task<AIInterviewClientResponse> ScoreAnswerAsync(AIInterviewClientRequest request);
 }
 
 public record AIInterviewClientRequest
 {
     public string JobTitle { get; init; }
+    public string JobContext { get; init; }
     public string Difficulty { get; init; }
     public string Prompt { get; init; }
     public string Question { get; init; }
     public string Answer { get; init; }
     public int QuestionNumber { get; init; }
+    public string ResumeProfileJson { get; init; }
+    public string CurrentTurnRubricJson { get; init; }
     public IList<string> PreviousQuestions { get; init; } = new List<string>();
     public IList<decimal> PreviousScores { get; init; } = new List<decimal>();
     public IList<AIInterviewHistoryItem> PreviousTurns { get; init; } = new List<AIInterviewHistoryItem>();
+}
+
+public sealed record ResumeFileValidationResult
+{
+    public bool Success { get; init; }
+    public string ErrorCode { get; init; }
+    public string ErrorMessage { get; init; }
+}
+
+public sealed record ResumeFileStoreResult
+{
+    public bool Success { get; init; }
+    public int DownloadId { get; init; }
+    public string ErrorCode { get; init; }
+    public string ErrorMessage { get; init; }
+}
+
+public sealed record ResumeTextExtractionResult
+{
+    public bool Success { get; init; }
+    public string Text { get; init; }
+    public string ErrorCode { get; init; }
+    public string ErrorMessage { get; init; }
+}
+
+public sealed record ResumeProfileGenerationResult
+{
+    public bool Success { get; init; }
+    public string ProfileJson { get; init; }
+    public AIResumeProfileResponse Profile { get; init; }
+    public string ErrorCode { get; init; }
+    public string ErrorMessage { get; init; }
+}
+
+public record AIResumeProfileRequest
+{
+    public string JobTitle { get; init; }
+    public string JobContext { get; init; }
+    public string ResumeText { get; init; }
+}
+
+public record AIResumeProfileResponse
+{
+    public bool Success { get; init; } = true;
+    public IList<string> Skills { get; init; } = new List<string>();
+    public IList<string> PrimarySkills { get; init; } = new List<string>();
+    public IList<string> Tools { get; init; } = new List<string>();
+    public IList<AIResumeProjectProfile> Projects { get; init; } = new List<AIResumeProjectProfile>();
+    public string ExperienceSummary { get; init; }
+    public IList<string> SenioritySignals { get; init; } = new List<string>();
+    public IList<string> MissingOrUnclearAreas { get; init; } = new List<string>();
+    public string ErrorMessage { get; init; }
+    public string RawJson { get; init; }
+}
+
+public record AIResumeProjectProfile
+{
+    public string Name { get; init; }
+    public string Domain { get; init; }
+    public IList<string> Technologies { get; init; } = new List<string>();
+    public IList<string> Responsibilities { get; init; } = new List<string>();
+    public string Impact { get; init; }
+}
+
+public record AIInterviewQuestionPlanRequest
+{
+    public string JobTitle { get; init; }
+    public string JobContext { get; init; }
+    public string Difficulty { get; init; }
+    public int QuestionCount { get; init; }
+    public string Prompt { get; init; }
+    public string ResumeProfileJson { get; init; }
+}
+
+public record AIInterviewQuestionPlanResponse
+{
+    public bool Success { get; init; } = true;
+    public IList<AIInterviewQuestionPlanItem> Questions { get; init; } = new List<AIInterviewQuestionPlanItem>();
+    public string ErrorMessage { get; init; }
+    public string RawJson { get; init; }
+}
+
+public record AIInterviewQuestionPlanItem
+{
+    public int SequenceNumber { get; init; }
+    public string Category { get; init; }
+    public string Question { get; init; }
+    public string ResumeEvidence { get; init; }
+    public IList<string> ExpectedSignals { get; init; } = new List<string>();
+    public AIInterviewQuestionRubric Rubric { get; init; } = new();
+}
+
+public record AIInterviewQuestionRubric
+{
+    public string Technical { get; init; }
+    public string Communication { get; init; }
+    public string Professionalism { get; init; }
+    public string PositiveAttitude { get; init; }
 }
 
 public record AIInterviewHistoryItem

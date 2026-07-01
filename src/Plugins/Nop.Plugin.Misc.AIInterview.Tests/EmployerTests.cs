@@ -191,6 +191,47 @@ public class EmployerTests
     }
 
     [Test]
+    public async Task EmployerDownloadResume_AuthorizedVendor_ReturnsFile()
+    {
+        _applicationService.Setup(service => service.GetJobApplicationByIdAsync(7))
+            .ReturnsAsync(new JobApplication { Id = 7, ProductId = 22, ResumeDownloadId = 91 });
+        _productService.Setup(service => service.GetProductByIdAsync(22))
+            .ReturnsAsync(new Product { Id = 22, VendorId = _employer.VendorId, Name = "Platform Engineer" });
+        _downloadService.Setup(service => service.GetDownloadByIdAsync(91))
+            .ReturnsAsync(new Nop.Core.Domain.Media.Download
+            {
+                DownloadBinary = new byte[] { 1, 2, 3, 4 },
+                ContentType = "application/pdf",
+                Filename = "candidate-resume.pdf",
+                Extension = ".pdf"
+            });
+
+        var result = await _controller.EmployerDownloadResume(7);
+
+        Assert.That(result, Is.TypeOf<FileContentResult>());
+        var fileResult = (FileContentResult)result;
+        Assert.That(fileResult.ContentType, Is.EqualTo("application/pdf"));
+        Assert.That(fileResult.FileDownloadName, Is.EqualTo("candidate-resume.pdf"));
+        Assert.That(fileResult.FileContents, Is.EqualTo(new byte[] { 1, 2, 3, 4 }));
+    }
+
+    [Test]
+    public async Task EmployerDownloadResume_OtherVendor_Is_Blocked()
+    {
+        var otherVendor = new Customer { Id = 321, VendorId = 2 };
+        _workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(otherVendor);
+        _applicationService.Setup(service => service.GetJobApplicationByIdAsync(7))
+            .ReturnsAsync(new JobApplication { Id = 7, ProductId = 22, ResumeDownloadId = 91 });
+        _productService.Setup(service => service.GetProductByIdAsync(22))
+            .ReturnsAsync(new Product { Id = 22, VendorId = 1, Name = "Platform Engineer" });
+
+        var result = await _controller.EmployerDownloadResume(7);
+
+        Assert.That(result, Is.TypeOf<ChallengeResult>());
+        _downloadService.Verify(service => service.GetDownloadByIdAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Test]
     public async Task UpdateStatus_SavesCorrectly()
     {
         var application = new JobApplication { Id = 1, Status = "Applied", ProductId = 10 };
@@ -1094,27 +1135,26 @@ public class EmployerTests
         Assert.That(controllerText, Does.Contain("ResolveSalaryRangeSpecificationOptionIdAsync()"));
 
         Assert.That(cssText, Does.Contain(".ai-job-product-card"));
-        Assert.That(cssText, Does.Contain("grid-template-columns: 84px minmax(0, 1fr);"));
+        Assert.That(cssText, Does.Contain("grid-template-columns: 68px minmax(0, 1fr);"));
         Assert.That(cssText, Does.Contain(".ai-job-card-summary"));
         Assert.That(cssText, Does.Contain(".ai-job-card-content,"));
         Assert.That(cssText, Does.Contain(".ai-job-card-meta,"));
         Assert.That(cssText, Does.Contain(".ai-job-card-spec {"));
         Assert.That(cssText, Does.Contain("min-width: 0;"));
-        Assert.That(cssText, Does.Contain(".ai-job-card-spec span:first-child"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-spec-label"));
         Assert.That(cssText, Does.Contain("flex: 0 0 auto;"));
-        Assert.That(cssText, Does.Contain("max-width: 44%;"));
-        Assert.That(cssText, Does.Contain("text-overflow: ellipsis;"));
-        Assert.That(cssText, Does.Contain(".ai-job-card-spec span:last-child"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-spec-value"));
+        Assert.That(cssText, Does.Contain("word-break: break-word;"));
         Assert.That(cssText, Does.Contain("flex: 1 1 auto;"));
         Assert.That(cssText, Does.Contain("-webkit-line-clamp: 2;"));
         Assert.That(cssText, Does.Contain("white-space: normal;"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-fallback-link"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-drawer"));
-        Assert.That(cssText, Does.Contain("width: 50vw;"));
-        Assert.That(cssText, Does.Contain("width: 88vw;"));
+        Assert.That(cssText, Does.Contain("width: 80vw;"));
+        Assert.That(cssText, Does.Contain("max-width: 80vw;"));
         Assert.That(cssText, Does.Contain("height: 100dvh;"));
         Assert.That(cssText, Does.Contain("left: auto;"));
-        Assert.That(cssText, Does.Contain("transform: translateX(100%);"));
+        Assert.That(cssText, Does.Contain("transform: translate3d(100%, 0, 0);"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-drawer.is-open .ai-job-preview-drawer-panel"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-drawer-body .job-hero {"));
         Assert.That(cssText, Does.Contain(".ai-job-preview-drawer-body .job-card,"));
@@ -1130,7 +1170,7 @@ public class EmployerTests
         Assert.That(cssText, Does.Contain(".employer-status-form"));
         Assert.That(themeCssText, Does.Contain(".html-category-page .product-item.ai-job-product-card"));
         Assert.That(themeCssText, Does.Contain(".html-search-page .product-item.ai-job-product-card"));
-        Assert.That(themeCssText, Does.Contain("grid-template-columns: 62px minmax(0, 1fr);"));
+        Assert.That(themeCssText, Does.Contain("grid-template-columns: 60px minmax(0, 1fr);"));
     }
 
     private void SetupVendorSpecificationAttributes(bool includeJobLocation = true, bool includeSalaryRange = true)

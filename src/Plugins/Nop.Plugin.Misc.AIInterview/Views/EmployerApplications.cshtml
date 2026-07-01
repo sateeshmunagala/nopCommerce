@@ -125,6 +125,7 @@
                                 <th class="col-score">@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewScore")</th>
                                 <th class="col-attempts">@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>
                                 <th class="col-applied">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedOn")</th>
+                                <th class="col-resume">@T("Plugins.Misc.AIInterview.Employer.Applications.Resume")</th>
                                 <th class="col-message">@T("Plugins.Misc.AIInterview.Employer.Applications.CoverMessage")</th>
                                 <th class="col-status">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</th>
                                 <th class="col-report">@viewReportText</th>
@@ -151,6 +152,16 @@
                                     </td>
                                     <td class="col-attempts">@app.AttemptCount</td>
                                     <td class="col-applied">@app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                    <td class="col-resume">
+                                        @if (app.HasResume && !string.IsNullOrWhiteSpace(app.ResumeDownloadUrl))
+                                        {
+                                            <a href="@app.ResumeDownloadUrl" title="@T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume")">@T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume")</a>
+                                        }
+                                        else
+                                        {
+                                            <span>@T("Plugins.Misc.AIInterview.Employer.Applications.NoResume")</span>
+                                        }
+                                    </td>
                                     <td class="col-message">@app.CoverMessage</td>
                                     <td class="col-status">
                                         <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post" class="status-form employer-status-form">

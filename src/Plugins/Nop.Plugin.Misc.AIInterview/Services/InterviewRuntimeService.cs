@@ -62,7 +62,7 @@ public class InterviewTurnService : IInterviewTurnService
     }
 }
 
-public class InterviewAiClient : IAIInterviewClient
+public partial class InterviewAiClient : IAIInterviewClient
 {
     private readonly AIInterviewSettings _settings;
     private readonly MockAIInterviewSettings _mockSettings;
@@ -114,8 +114,7 @@ public class InterviewAiClient : IAIInterviewClient
             !response.TechnicalScore.HasValue ||
             !response.CommunicationScore.HasValue ||
             !response.ProfessionalismScore.HasValue ||
-            !response.PositiveAttitudeScore.HasValue ||
-            (!response.Complete && string.IsNullOrWhiteSpace(response.NextQuestion)))
+            !response.PositiveAttitudeScore.HasValue)
         {
             var detail = BuildScoreValidationFailureLog(response);
             await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview score validation failure", detail);
@@ -176,7 +175,7 @@ public class InterviewAiClient : IAIInterviewClient
                         role = "system",
                         content = mode == "generate"
                             ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
-                            : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, nextQuestion, completion, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. nextQuestion must be present unless complete=true. rubricJson should be a JSON object that repeats the category scores and score. Copied question text, irrelevant content, and no-answer responses must receive score 0 and feedback must clearly say the answer was not substantive."
+                            : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, optional nextQuestion, completion, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. rubricJson should be a JSON object that repeats the category scores and score. Copied question text, irrelevant content, and no-answer responses must receive score 0 and feedback must clearly say the answer was not substantive."
                     },
                     new { role = "user", content = prompt }
                 },
@@ -289,16 +288,19 @@ public class InterviewAiClient : IAIInterviewClient
         return $"""
 Interview mode: {mode}
 Job title: {request.JobTitle}
+Job context: {TruncateSafe(request.JobContext, 1500)}
 Difficulty: {request.Difficulty}
 Prompt: {request.Prompt}
 Question number: {request.QuestionNumber}
+Resume profile JSON: {TruncateSafe(request.ResumeProfileJson, 2500)}
 Previous questions: {previousQuestions}
 Previous scores: {previousScores}
 Previous answered turns:
 {previousTurns}
 Current question: {request.Question}
 Candidate answer: {request.Answer}
-Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100,\"feedback\":\"string\",\"complete\":false,\"nextQuestion\":\"string or null\",\"completion\":\"string or null\",\"rubricJson\":{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100}}")}
+Current turn rubric JSON: {TruncateSafe(request.CurrentTurnRubricJson, 2000)}
+Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100,\"feedback\":\"string\",\"complete\":false,\"nextQuestion\":\"optional string or null\",\"completion\":\"string or null\",\"rubricJson\":{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100}}")}
 Scoring rule: copied question text, irrelevant content, or non-substantive answers must receive score 0 with feedback that tells the candidate to answer in their own words.
 """;
     }
@@ -638,9 +640,6 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
             missingFields.Add("positiveAttitudeScore");
         if (string.IsNullOrWhiteSpace(feedback))
             missingFields.Add("feedback");
-        if (!complete && string.IsNullOrWhiteSpace(nextQuestion))
-            missingFields.Add("nextQuestion");
-
         var reason = "invalid JSON or failed contract parsing";
         if (!score.HasValue)
             reason = "missing score";
@@ -648,8 +647,6 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
             reason = "missing category score";
         else if (string.IsNullOrWhiteSpace(feedback))
             reason = "missing feedback";
-        else if (!complete && string.IsNullOrWhiteSpace(nextQuestion))
-            reason = "missing next question";
 
         return new ScoreContractDiagnostics(reason, root.ValueKind.ToString(), propertyNames, TruncateSafe(root.GetRawText(), 800), missingFields.Count > 0 ? string.Join(",", missingFields) : "<none>");
     }
@@ -701,13 +698,9 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
             missingFields.Add("positiveAttitudeScore");
         if (string.IsNullOrWhiteSpace(response?.Feedback))
             missingFields.Add("feedback");
-        if (response != null && !response.Complete && string.IsNullOrWhiteSpace(response.NextQuestion))
-            missingFields.Add("nextQuestion");
-
         var reason = response == null || !response.Score.HasValue ? "missing required score"
             : !response.TechnicalScore.HasValue || !response.CommunicationScore.HasValue || !response.ProfessionalismScore.HasValue || !response.PositiveAttitudeScore.HasValue ? "missing category score"
             : string.IsNullOrWhiteSpace(response.Feedback) ? "missing feedback"
-            : !response.Complete && string.IsNullOrWhiteSpace(response.NextQuestion) ? "missing next question"
             : "invalid score contract";
 
         var sample = TruncateSafe(response?.RawJson, 800);
@@ -836,11 +829,19 @@ Scoring rule: copied question text, irrelevant content, or non-substantive answe
 
 public class InterviewRuntimeService : IInterviewRuntimeService
 {
+    private static readonly JsonSerializerOptions StorageSerializerOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
+
     private readonly IInterviewSessionService _sessionService;
     private readonly IInterviewTurnService _turnService;
     private readonly IAIInterviewClient _aiClient;
     private readonly IProductService _productService;
     private readonly ICustomerService _customerService;
+    private readonly IApplicationService _applicationService;
+    private readonly IResumeProfileService _resumeProfileService;
     private readonly ILocalizationService _localizationService;
     private readonly AIInterviewSettings _settings;
     private readonly MockAIInterviewSettings _mockSettings;
@@ -856,6 +857,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         IAIInterviewClient aiClient,
         IProductService productService,
         ICustomerService customerService,
+        IApplicationService applicationService,
+        IResumeProfileService resumeProfileService,
         ILocalizationService localizationService,
         AIInterviewSettings settings,
         MockAIInterviewSettings mockSettings,
@@ -870,6 +873,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         _aiClient = aiClient;
         _productService = productService;
         _customerService = customerService;
+        _applicationService = applicationService;
+        _resumeProfileService = resumeProfileService;
         _localizationService = localizationService;
         _settings = settings;
         _mockSettings = mockSettings;
@@ -982,11 +987,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (session == null)
             return null;
 
-        var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
-        if (!turns.Any())
+        var turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
+        if (!turns.Any() || turns.Count < GetMaxQuestions(session))
         {
-            var firstResult = await GenerateQuestionTurnAsync(session, 1, turns);
-            if (firstResult.Turn == null)
+            var planResult = await EnsureQuestionPlanAsync(session, turns, customer);
+            if (!planResult.Turns.Any())
             {
                 var unavailableModel = await BuildRuntimeModelAsync(session, turns, customer);
                 unavailableModel.CurrentQuestion = "AI service unavailable. Please try again later.";
@@ -995,14 +1000,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 var logCustomer = await ResolveLogCustomerAsync(session, customer);
                 await LogRuntimeIssueAsync(
                     NopLogLevel.Warning,
-                    "AI Interview first question unavailable",
-                    $"Mode=generate; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=first question generation failed; Detail={BuildSafeValue(firstResult.FailureReason ?? "AI service unavailable.")}.",
+                    "AI Interview question plan unavailable",
+                    $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=question plan generation failed; Detail={BuildSafeValue(planResult.FailureReason ?? "AI service unavailable.")}.",
                     logCustomer);
                 return unavailableModel;
             }
 
-            await _turnService.InsertInterviewTurnAsync(firstResult.Turn);
-            turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
+            turns = planResult.Turns.ToList();
         }
 
         return await BuildRuntimeModelAsync(session, turns, customer);
@@ -1030,8 +1034,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
-        var turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
-        var currentTurn = turns.LastOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText)) ?? turns.LastOrDefault();
+        var turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id))
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+        var currentTurn = turns.FirstOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText)) ?? turns.LastOrDefault();
         if (currentTurn == null)
         {
             await LogRuntimeIssueAsync(
@@ -1056,14 +1063,21 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
+        var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+        var jobTitle = product?.Name ?? await GetJobTitleAsync(session.ProductId);
+        var jobContext = BuildJobContext(product);
+        var resumeProfileJson = await GetResumeProfileJsonAsync(session, product);
         var evaluation = await _aiClient.ScoreAnswerAsync(new AIInterviewClientRequest
         {
-            JobTitle = await GetJobTitleAsync(session.ProductId),
+            JobTitle = jobTitle,
+            JobContext = jobContext,
             Difficulty = session.Difficulty,
             Prompt = _settings.Prompt,
             Question = currentTurn.QuestionText,
             Answer = answer,
             QuestionNumber = currentTurn.SequenceNumber,
+            ResumeProfileJson = resumeProfileJson,
+            CurrentTurnRubricJson = currentTurn.RubricJson,
             PreviousQuestions = turns.Select(turn => turn.QuestionText).ToList(),
             PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList(),
             PreviousTurns = BuildPreviousTurnContext(turns, currentTurn)
@@ -1100,42 +1114,37 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         var maxQuestions = GetMaxQuestions(session);
         var answeredCount = turns.Count(turn => !string.IsNullOrWhiteSpace(turn.AnswerText));
-        var aiRequestedCompletion = evaluation.Complete;
-        var shouldComplete = aiRequestedCompletion || answeredCount >= maxQuestions;
+        var shouldComplete = answeredCount >= maxQuestions;
         if (!shouldComplete)
         {
-            InterviewTurn nextTurn;
-            var nextQuestionText = evaluation.NextQuestion ?? evaluation.Question;
-            if (!string.IsNullOrWhiteSpace(nextQuestionText))
+            var nextTurn = turns
+                .OrderBy(turn => turn.SequenceNumber)
+                .ThenBy(turn => turn.Id)
+                .FirstOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText));
+
+            if (nextTurn == null && turns.Count < maxQuestions)
             {
-                nextTurn = new InterviewTurn
-                {
-                    InterviewSessionId = session.Id,
-                    SequenceNumber = currentTurn.SequenceNumber + 1,
-                    QuestionId = currentTurn.SequenceNumber + 1,
-                    QuestionText = nextQuestionText,
-                    AskedOnUtc = DateTime.UtcNow,
-                    CreatedOnUtc = DateTime.UtcNow,
-                    RawAIResponseJson = evaluation.RawJson,
-                    RubricJson = evaluation.RubricJson
-                };
-            }
-            else
-            {
-                var nextTurnResult = await GenerateQuestionTurnAsync(session, currentTurn.SequenceNumber + 1, turns);
-                nextTurn = nextTurnResult.Turn;
-                if (nextTurn == null)
-                {
-                    await LogRuntimeIssueAsync(
-                        NopLogLevel.Warning,
-                        "AI Interview next question unavailable",
-                        $"Mode=generate; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=next question generation failed; Detail={BuildSafeValue(nextTurnResult.FailureReason ?? "AI service unavailable.")}.",
-                        await ResolveLogCustomerAsync(session));
-                }
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Warning,
+                    "AI Interview question plan shorter than configured count",
+                    $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; ConfiguredQuestions={maxQuestions}; ExistingTurns={turns.Count}; Reason=missing planned turns.",
+                    await ResolveLogCustomerAsync(session));
+
+                var replenishedTurns = await EnsureQuestionPlanAsync(session, turns);
+                turns = replenishedTurns.Turns.ToList();
+                nextTurn = turns
+                    .OrderBy(turn => turn.SequenceNumber)
+                    .ThenBy(turn => turn.Id)
+                    .FirstOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText));
             }
 
             if (nextTurn == null)
             {
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Warning,
+                    "AI Interview next planned question unavailable",
+                    $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; ConfiguredQuestions={maxQuestions}; ExistingTurns={turns.Count}; AnsweredTurns={answeredCount}; Reason=next planned turn missing.",
+                    await ResolveLogCustomerAsync(session));
                 return new SubmitInterviewAnswerResponse
                 {
                     Success = false,
@@ -1144,7 +1153,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 };
             }
 
-            await _turnService.InsertInterviewTurnAsync(nextTurn);
             await _sessionService.UpdateInterviewSessionAsync(session);
 
             return new SubmitInterviewAnswerResponse
@@ -1384,8 +1392,17 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
         var candidate = customer ?? await _customerService.GetCustomerByIdAsync(session.CustomerId);
-        var currentTurn = turns.LastOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText)) ?? turns.LastOrDefault();
+        var currentTurn = turns
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .FirstOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText))
+            ?? turns.OrderBy(turn => turn.SequenceNumber).ThenBy(turn => turn.Id).LastOrDefault();
         var lastQuestion = currentTurn?.QuestionText ?? string.Empty;
+        var visibleTurns = turns
+            .Where(turn => !string.IsNullOrWhiteSpace(turn.AnswerText) || turn.Id == currentTurn?.Id)
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
 
         return new InterviewRuntimeModel
         {
@@ -1402,7 +1419,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             IsMockMode = _mockSettings?.UseMockResponses ?? true,
             ReportUrl = string.Empty,
             TokenExpiryUtc = session.TokenExpiryUtc,
-            Turns = turns.Select(turn => new InterviewTurnViewModel
+            Turns = visibleTurns.Select(turn => new InterviewTurnViewModel
             {
                 TurnId = turn.Id,
                 SequenceNumber = turn.SequenceNumber,
@@ -1424,14 +1441,92 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         };
     }
 
+    protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> EnsureQuestionPlanAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null)
+    {
+        turns ??= new List<InterviewTurn>();
+        var maxQuestions = GetMaxQuestions(session);
+        if (turns.Count >= maxQuestions)
+        {
+            return (turns
+                .OrderBy(turn => turn.SequenceNumber)
+                .ThenBy(turn => turn.Id)
+                .ToList(), null);
+        }
+
+        var generatedPlan = await GenerateQuestionPlanTurnsAsync(session, customer);
+        if (!generatedPlan.Turns.Any())
+            return (turns, generatedPlan.FailureReason);
+
+        var existingSequenceNumbers = new HashSet<int>(turns.Select(turn => turn.SequenceNumber));
+        foreach (var turn in generatedPlan.Turns.Where(turn => !existingSequenceNumbers.Contains(turn.SequenceNumber)))
+        {
+            var inserted = await _turnService.InsertInterviewTurnAsync(turn);
+            turns.Add(inserted);
+        }
+
+        return (turns
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList(), null);
+    }
+
+    protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> GenerateQuestionPlanTurnsAsync(InterviewSession session, Customer customer = null)
+    {
+        var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+        var questionCount = GetMaxQuestions(session);
+        var response = await _aiClient.GenerateQuestionPlanAsync(new AIInterviewQuestionPlanRequest
+        {
+            JobTitle = product?.Name ?? await GetJobTitleAsync(session.ProductId),
+            JobContext = BuildJobContext(product),
+            Difficulty = session.Difficulty,
+            QuestionCount = questionCount,
+            Prompt = _settings.Prompt,
+            ResumeProfileJson = await GetResumeProfileJsonAsync(session, product)
+        });
+
+        if (response == null || !response.Success || response.Questions == null)
+            return (Array.Empty<InterviewTurn>(), response?.ErrorMessage ?? "Question plan generation failed.");
+
+        var plannedQuestions = response.Questions
+            .Where(question => question != null && !string.IsNullOrWhiteSpace(question.Question))
+            .Take(questionCount)
+            .ToList();
+        if (plannedQuestions.Count != questionCount)
+            return (Array.Empty<InterviewTurn>(), "Question plan did not return the configured number of questions.");
+
+        var now = DateTime.UtcNow;
+        var turns = plannedQuestions.Select((question, index) => new InterviewTurn
+        {
+            InterviewSessionId = session.Id,
+            SequenceNumber = index + 1,
+            QuestionId = index + 1,
+            QuestionText = question.Question.Trim(),
+            RubricJson = JsonSerializer.Serialize(new
+            {
+                category = question.Category,
+                resumeEvidence = question.ResumeEvidence,
+                expectedSignals = question.ExpectedSignals ?? Array.Empty<string>(),
+                rubric = question.Rubric ?? new AIInterviewQuestionRubric()
+            }, StorageSerializerOptions),
+            RawAIResponseJson = JsonSerializer.Serialize(question, StorageSerializerOptions),
+            AskedOnUtc = now,
+            CreatedOnUtc = now
+        }).ToList();
+
+        return (turns, null);
+    }
+
     protected virtual async Task<(InterviewTurn Turn, string FailureReason)> GenerateQuestionTurnAsync(InterviewSession session, int sequenceNumber, IList<InterviewTurn> turns)
     {
+        var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
         var request = new AIInterviewClientRequest
         {
-            JobTitle = await GetJobTitleAsync(session.ProductId),
+            JobTitle = product?.Name ?? await GetJobTitleAsync(session.ProductId),
+            JobContext = BuildJobContext(product),
             Difficulty = session.Difficulty,
             Prompt = _settings.Prompt,
             QuestionNumber = sequenceNumber,
+            ResumeProfileJson = await GetResumeProfileJsonAsync(session, product),
             PreviousQuestions = turns.Select(turn => turn.QuestionText).ToList(),
             PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList(),
             PreviousTurns = BuildPreviousTurnContext(turns)
@@ -1727,6 +1822,77 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         var product = await _productService.GetProductByIdAsync(productId);
         return product?.Name ?? "Practice Interview";
+    }
+
+    protected virtual async Task<string> GetResumeProfileJsonAsync(InterviewSession session, Product product = null)
+    {
+        if (session == null || _resumeProfileService == null || _applicationService == null)
+            return string.Empty;
+
+        var application = await GetLinkedApplicationAsync(session);
+        if (application == null || application.ResumeDownloadId <= 0)
+            return string.Empty;
+
+        if (string.IsNullOrWhiteSpace(application.ResumeProfileJson))
+        {
+            var profileResult = await _resumeProfileService.EnsureResumeProfileAsync(application, product);
+            return profileResult.Success ? profileResult.ProfileJson ?? string.Empty : string.Empty;
+        }
+
+        return application.ResumeProfileJson;
+    }
+
+    protected virtual async Task<JobApplication> GetLinkedApplicationAsync(InterviewSession session)
+    {
+        if (session == null || _applicationService == null)
+            return null;
+
+        JobApplication application = null;
+        if (session.JobApplicationId > 0)
+            application = await _applicationService.GetJobApplicationByIdAsync(session.JobApplicationId);
+
+        if (application == null && session.CustomerId > 0 && session.ProductId > 0)
+        {
+            application = (await _applicationService.GetJobApplicationsByCustomerIdAsync(session.CustomerId) ?? new List<JobApplication>())
+                .Where(candidate => candidate.ProductId == session.ProductId)
+                .OrderByDescending(candidate => candidate.CreatedOnUtc)
+                .ThenByDescending(candidate => candidate.Id)
+                .FirstOrDefault();
+
+            if (application != null && session.JobApplicationId == 0)
+            {
+                session.JobApplicationId = application.Id;
+                await _sessionService.UpdateInterviewSessionAsync(session);
+            }
+        }
+
+        return application;
+    }
+
+    protected static string BuildJobContext(Product product)
+    {
+        if (product == null)
+            return string.Empty;
+
+        var parts = new[]
+        {
+            StripMarkup(product.Name),
+            StripMarkup(product.ShortDescription),
+            StripMarkup(product.FullDescription)
+        }.Where(value => !string.IsNullOrWhiteSpace(value));
+
+        var context = string.Join(Environment.NewLine, parts);
+        return context.Length <= 4000 ? context : context[..4000];
+    }
+
+    protected static string StripMarkup(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var withoutTags = System.Text.RegularExpressions.Regex.Replace(value, "<.*?>", " ");
+        var normalized = System.Text.RegularExpressions.Regex.Replace(withoutTags, @"\s+", " ").Trim();
+        return System.Net.WebUtility.HtmlDecode(normalized);
     }
 
     protected virtual IList<AIInterviewHistoryItem> BuildPreviousTurnContext(IEnumerable<InterviewTurn> turns, InterviewTurn currentTurn = null)

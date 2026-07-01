@@ -33,6 +33,8 @@ public class RuntimeServiceTests
         Mock<IProductService> productService,
         Mock<ICustomerService> customerService,
         Mock<ILocalizationService> localizationService,
+        Mock<IApplicationService> applicationService = null,
+        Mock<IResumeProfileService> resumeProfileService = null,
         Mock<IHttpClientFactory> httpClientFactory = null,
         AIInterviewSettings settings = null,
         MockAIInterviewSettings mockSettings = null,
@@ -47,6 +49,8 @@ public class RuntimeServiceTests
             aiClient.Object,
             productService.Object,
             customerService.Object,
+            applicationService?.Object ?? new Mock<IApplicationService>().Object,
+            resumeProfileService?.Object ?? new Mock<IResumeProfileService>().Object,
             localizationService.Object,
             settings ?? new AIInterviewSettings { Prompt = "Be concise" },
             mockSettings ?? new MockAIInterviewSettings { UseMockResponses = true },
@@ -95,7 +99,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task EnsureInterviewStartedAsync_Creates_First_Turn()
+    public async Task EnsureInterviewStartedAsync_Creates_Planned_Turns_Up_Front()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -106,19 +110,47 @@ public class RuntimeServiceTests
         var workContext = new Mock<IWorkContext>();
         var eventPublisher = new Mock<IEventPublisher>();
 
-        var session = new InterviewSession { Id = 1, ProductId = 10, CustomerId = 99, SessionKey = "key", Token = "token", Difficulty = "Medium" };
+        var session = new InterviewSession
+        {
+            Id = 1,
+            ProductId = 10,
+            CustomerId = 99,
+            SessionKey = "key",
+            Token = "token",
+            Difficulty = "Medium",
+            QuestionCount = 5
+        };
         var store = new List<InterviewTurn>();
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(1)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
-        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
-            .ReturnsAsync(new AIInterviewClientResponse { Question = "First question", RawJson = "{\"question\":\"First question\"}" });
+        aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
+            .ReturnsAsync(new AIInterviewQuestionPlanResponse
+            {
+                Success = true,
+                Questions = Enumerable.Range(1, 5).Select(index => new AIInterviewQuestionPlanItem
+                {
+                    SequenceNumber = index,
+                    Category = index <= 2 ? "skill" : index <= 4 ? "project_scenario" : "job_fit",
+                    Question = $"Planned question {index}",
+                    ResumeEvidence = index <= 2 ? "C#" : "Payments platform",
+                    ExpectedSignals = new List<string> { "Signal A", "Signal B" },
+                    Rubric = new AIInterviewQuestionRubric
+                    {
+                        Technical = "Technical depth",
+                        Communication = "Clear answer",
+                        Professionalism = "Ownership",
+                        PositiveAttitude = "Constructive mindset"
+                    }
+                }).ToList()
+            });
         productService.Setup(x => x.GetProductByIdAsync(10)).ReturnsAsync(new Product { Id = 10, Name = "Backend Engineer" });
         customerService.Setup(x => x.GetCustomerByIdAsync(99)).ReturnsAsync(new Customer { Id = 99, FirstName = "Jane", LastName = "Doe" });
 
-        InterviewTurn insertedTurn = null;
+        var insertedTurns = new List<InterviewTurn>();
         turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
             .ReturnsAsync((InterviewTurn turn) =>
             {
-                insertedTurn = turn;
+                turn.Id = insertedTurns.Count + 1;
+                insertedTurns.Add(turn);
                 store.Add(turn);
                 return turn;
             });
@@ -128,11 +160,16 @@ public class RuntimeServiceTests
         var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99, FirstName = "Jane", LastName = "Doe" });
 
         Assert.That(model, Is.Not.Null);
-        Assert.That(model.CurrentQuestion, Is.EqualTo("First question"));
-        Assert.That(insertedTurn, Is.Not.Null);
-        Assert.That(insertedTurn.InterviewSessionId, Is.EqualTo(1));
-        Assert.That(insertedTurn.SequenceNumber, Is.EqualTo(1));
-        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Once);
+        Assert.That(model.CurrentQuestion, Is.EqualTo("Planned question 1"));
+        Assert.That(insertedTurns.Count, Is.EqualTo(5));
+        Assert.That(insertedTurns.All(turn => turn.InterviewSessionId == 1), Is.True);
+        Assert.That(insertedTurns.Select(turn => turn.SequenceNumber), Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
+        Assert.That(store.Count, Is.EqualTo(5));
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.Is<AIInterviewQuestionPlanRequest>(request =>
+            request.JobTitle == "Backend Engineer" &&
+            request.QuestionCount == 5 &&
+            request.Difficulty == "Medium")), Times.Once);
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
     }
 
     [Test]
@@ -254,8 +291,8 @@ public class RuntimeServiceTests
 
         var session = new InterviewSession { Id = 10, ProductId = 50, CustomerId = 99, SessionKey = "key10", Token = "token10", Difficulty = "Medium" };
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(10)).ReturnsAsync(new List<InterviewTurn>());
-        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
-            .ReturnsAsync(new AIInterviewClientResponse { Success = false, ErrorMessage = "AI service unavailable." });
+        aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
+            .ReturnsAsync(new AIInterviewQuestionPlanResponse { Success = false, ErrorMessage = "AI service unavailable." });
 
         var inserted = false;
         turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
@@ -294,8 +331,15 @@ public class RuntimeServiceTests
 
         var session = new InterviewSession { Id = 11, ProductId = 51, CustomerId = 99, SessionKey = "key11", Token = "token11", Difficulty = "Medium" };
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(11)).ReturnsAsync(new List<InterviewTurn>());
-        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
-            .ReturnsAsync(new AIInterviewClientResponse { Success = true, Question = "   ", RawJson = "{\"question\":\"   \"}" });
+        aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
+            .ReturnsAsync(new AIInterviewQuestionPlanResponse
+            {
+                Success = true,
+                Questions = new List<AIInterviewQuestionPlanItem>
+                {
+                    new() { SequenceNumber = 1, Category = "skill", Question = "   " }
+                }
+            });
 
         var inserted = false;
         turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
@@ -332,9 +376,10 @@ public class RuntimeServiceTests
         var workContext = new Mock<IWorkContext>();
         var eventPublisher = new Mock<IEventPublisher>();
 
-        var session = new InterviewSession { Id = 2, ProductId = 20, CustomerId = 5, SessionKey = "key2", Token = "token2", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var session = new InterviewSession { Id = 2, ProductId = 20, CustomerId = 5, SessionKey = "key2", Token = "token2", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1), QuestionCount = 2 };
         var turn = new InterviewTurn { Id = 1, InterviewSessionId = 2, SequenceNumber = 1, QuestionText = "Q1", AskedOnUtc = DateTime.UtcNow.AddMinutes(-1), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1) };
-        var store = new List<InterviewTurn> { turn };
+        var nextTurn = new InterviewTurn { Id = 2, InterviewSessionId = 2, SequenceNumber = 2, QuestionText = "Q2", AskedOnUtc = DateTime.UtcNow.AddMinutes(-1), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1) };
+        var store = new List<InterviewTurn> { turn, nextTurn };
 
         sessionService.Setup(x => x.GetSessionByTokenAsync("token2")).ReturnsAsync(session);
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(2)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
@@ -350,8 +395,6 @@ public class RuntimeServiceTests
                 RawJson = "{}",
                 RubricJson = "{\"technicalScore\":78,\"communicationScore\":82,\"professionalismScore\":80,\"positiveAttitudeScore\":80,\"score\":80}"
             });
-        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
-            .ReturnsAsync(new AIInterviewClientResponse { Question = "Q2", RawJson = "{\"question\":\"Q2\"}" });
         productService.Setup(x => x.GetProductByIdAsync(20)).ReturnsAsync(new Product { Id = 20, Name = "QA Engineer" });
         sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
         turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
@@ -361,13 +404,6 @@ public class RuntimeServiceTests
                 store.Add(updated);
             })
             .Returns(Task.CompletedTask);
-        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
-            .ReturnsAsync((InterviewTurn created) =>
-            {
-                created.Id = created.SequenceNumber;
-                store.Add(created);
-                return created;
-            });
         localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
 
         var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
@@ -380,6 +416,9 @@ public class RuntimeServiceTests
         Assert.That(store.Any(x => x.SequenceNumber == 1 && x.AnswerText != null), Is.True);
         Assert.That(store.Any(x => x.SequenceNumber == 2), Is.True);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Score > 0)), Times.Once);
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Never);
+        turnService.Verify(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()), Times.Never);
     }
 
     [Test]
@@ -553,7 +592,7 @@ public class RuntimeServiceTests
         var workContext = new Mock<IWorkContext>();
         var eventPublisher = new Mock<IEventPublisher>();
 
-        var session = new InterviewSession { Id = 222, ProductId = 20, CustomerId = 5, SessionKey = "key222", Token = "token222", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var session = new InterviewSession { Id = 222, ProductId = 20, CustomerId = 5, SessionKey = "key222", Token = "token222", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1), QuestionCount = 1 };
         var turn = new InterviewTurn { Id = 1, InterviewSessionId = 222, SequenceNumber = 1, QuestionText = "Q1", AskedOnUtc = DateTime.UtcNow.AddMinutes(-1), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1) };
         var store = new List<InterviewTurn> { turn };
 
@@ -572,8 +611,6 @@ public class RuntimeServiceTests
                 RawJson = "{\"technicalScore\":92,\"communicationScore\":84,\"professionalismScore\":88,\"positiveAttitudeScore\":76,\"score\":85}",
                 RubricJson = "{\"technicalScore\":92,\"communicationScore\":84,\"professionalismScore\":88,\"positiveAttitudeScore\":76,\"score\":85}"
             });
-        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
-            .ReturnsAsync(new AIInterviewClientResponse { Question = "Q2", RawJson = "{\"question\":\"Q2\"}" });
         productService.Setup(x => x.GetProductByIdAsync(20)).ReturnsAsync(new Product { Id = 20, Name = "QA Engineer" });
         InterviewTurn updatedTurn = null;
         InterviewSession updatedSession = null;
@@ -585,13 +622,6 @@ public class RuntimeServiceTests
                 store.Add(updated);
             })
             .Returns(Task.CompletedTask);
-        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
-            .ReturnsAsync((InterviewTurn created) =>
-            {
-                created.Id = created.SequenceNumber + 10;
-                store.Add(created);
-                return created;
-            });
         sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
             .Callback<InterviewSession>(updated => updatedSession = updated)
             .Returns(Task.CompletedTask);
@@ -611,6 +641,7 @@ public class RuntimeServiceTests
         Assert.That(updatedSession, Is.Not.Null);
         Assert.That(updatedSession.Score, Is.EqualTo(85));
         Assert.That(updatedSession.QuestionScores, Does.Contain("85"));
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
     }
 
     [Test]
@@ -625,22 +656,29 @@ public class RuntimeServiceTests
         var workContext = new Mock<IWorkContext>();
         var eventPublisher = new Mock<IEventPublisher>();
 
-        var session = new InterviewSession { Id = 22, ProductId = 44, CustomerId = 5, SessionKey = "key22", Token = "token22", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
+        var session = new InterviewSession { Id = 22, ProductId = 44, CustomerId = 5, SessionKey = "key22", Token = "token22", Difficulty = "Medium", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1), QuestionCount = 3 };
         var priorTurn = new InterviewTurn { Id = 1, InterviewSessionId = 22, SequenceNumber = 1, QuestionText = "Q1", AnswerText = "A1 with detail", Score = 74, Feedback = "Add stronger metrics", AskedOnUtc = DateTime.UtcNow.AddMinutes(-5), AnsweredOnUtc = DateTime.UtcNow.AddMinutes(-4), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-5) };
         var currentTurn = new InterviewTurn { Id = 2, InterviewSessionId = 22, SequenceNumber = 2, QuestionText = "Q2", AskedOnUtc = DateTime.UtcNow.AddMinutes(-2), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-2) };
-        var store = new List<InterviewTurn> { priorTurn, currentTurn };
+        var plannedNextTurn = new InterviewTurn { Id = 3, InterviewSessionId = 22, SequenceNumber = 3, QuestionText = "Q3", AskedOnUtc = DateTime.UtcNow.AddMinutes(-1), CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1) };
+        var store = new List<InterviewTurn> { priorTurn, currentTurn, plannedNextTurn };
 
         AIInterviewClientRequest scoreRequest = null;
-        AIInterviewClientRequest nextQuestionRequest = null;
 
         sessionService.Setup(x => x.GetSessionByTokenAsync("token22")).ReturnsAsync(session);
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(22)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
         aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
             .Callback<AIInterviewClientRequest>(request => scoreRequest = request)
-            .ReturnsAsync(new AIInterviewClientResponse { Score = 88, Feedback = "Strong follow-up", RawJson = "{}" });
-        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
-            .Callback<AIInterviewClientRequest>(request => nextQuestionRequest = request)
-            .ReturnsAsync(new AIInterviewClientResponse { Question = "Q3", RawJson = "{\"question\":\"Q3\"}" });
+            .ReturnsAsync(new AIInterviewClientResponse
+            {
+                Score = 88,
+                TechnicalScore = 90,
+                CommunicationScore = 86,
+                ProfessionalismScore = 88,
+                PositiveAttitudeScore = 88,
+                Feedback = "Strong follow-up",
+                RawJson = "{}",
+                RubricJson = "{\"technicalScore\":90,\"communicationScore\":86,\"professionalismScore\":88,\"positiveAttitudeScore\":88,\"score\":88}"
+            });
         productService.Setup(x => x.GetProductByIdAsync(44)).ReturnsAsync(new Product { Id = 44, Name = "Platform Engineer" });
         sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
         turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
@@ -650,13 +688,6 @@ public class RuntimeServiceTests
                 store.Add(updated);
             })
             .Returns(Task.CompletedTask);
-        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
-            .ReturnsAsync((InterviewTurn created) =>
-            {
-                created.Id = 3;
-                store.Add(created);
-                return created;
-            });
         localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
 
         var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
@@ -669,11 +700,9 @@ public class RuntimeServiceTests
         Assert.That(scoreRequest.PreviousTurns[0].Question, Is.EqualTo("Q1"));
         Assert.That(scoreRequest.PreviousTurns[0].Answer, Is.EqualTo("A1 with detail"));
         Assert.That(scoreRequest.PreviousTurns[0].Feedback, Is.EqualTo("Add stronger metrics"));
-
-        Assert.That(nextQuestionRequest, Is.Not.Null);
-        Assert.That(nextQuestionRequest.PreviousTurns.Count, Is.EqualTo(2));
-        Assert.That(nextQuestionRequest.PreviousTurns.Any(x => x.Question == "Q1" && x.Answer == "A1 with detail" && x.Feedback == "Add stronger metrics"), Is.True);
-        Assert.That(nextQuestionRequest.PreviousTurns.Any(x => x.Question == "Q2" && x.Answer == "A2 with structure and impact." && x.Feedback == "Strong follow-up"), Is.True);
+        Assert.That(result.Question, Is.EqualTo("Q3"));
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Never);
     }
 
     [Test]
@@ -1229,7 +1258,8 @@ public class RuntimeServiceTests
             Token = "token3",
             Difficulty = "Medium",
             IsActive = true,
-            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            QuestionCount = 1
         };
         var turn = new InterviewTurn
         {
@@ -1251,7 +1281,6 @@ public class RuntimeServiceTests
         turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
             .Callback<InterviewTurn>(updated => updatedTurn = updated)
             .Returns(Task.CompletedTask);
-        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>())).ReturnsAsync((InterviewTurn created) => created);
         productService.Setup(x => x.GetProductByIdAsync(30)).ReturnsAsync(new Product { Id = 30, Name = "Architect" });
         customerService.Setup(x => x.GetCustomerByIdAsync(8)).ReturnsAsync(new Customer { Id = 8, FirstName = "John", LastName = "Doe" });
         localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
@@ -2107,9 +2136,18 @@ public class RuntimeServiceTests
         var localizationService = new Mock<ILocalizationService>();
 
         var session = new InterviewSession { Id = 6, ProductId = 60, CustomerId = 7, SessionKey = "session-6", Token = "token6", IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddHours(1) };
-        turnService.Setup(x => x.GetTurnsBySessionIdAsync(6)).ReturnsAsync(new List<InterviewTurn>());
-        aiClient.Setup(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()))
-            .ReturnsAsync(new AIInterviewClientResponse { Question = "Q1", RawJson = "{\"question\":\"Q1\"}" });
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(6)).ReturnsAsync(new List<InterviewTurn>
+        {
+            new()
+            {
+                Id = 1,
+                InterviewSessionId = 6,
+                SequenceNumber = 1,
+                QuestionText = "Q1",
+                AskedOnUtc = DateTime.UtcNow.AddMinutes(-1),
+                CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1)
+            }
+        });
 
         var missingFlagsService = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
             settings: new AIInterviewSettings(),

@@ -52,6 +52,8 @@ public class AIInterviewController : BasePluginController
     private readonly IShoppingCartService _shoppingCartService;
     private readonly IStoreContext _storeContext;
     private readonly IProductModelFactory _productModelFactory;
+    private readonly IResumeFileService _resumeFileService;
+    private readonly IResumeProfileService _resumeProfileService;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -72,7 +74,9 @@ public class AIInterviewController : BasePluginController
         INopUrlHelper nopUrlHelper = null,
         IShoppingCartService shoppingCartService = null,
         IStoreContext storeContext = null,
-        IProductModelFactory productModelFactory = null)
+        IProductModelFactory productModelFactory = null,
+        IResumeFileService resumeFileService = null,
+        IResumeProfileService resumeProfileService = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -94,6 +98,8 @@ public class AIInterviewController : BasePluginController
         _shoppingCartService = shoppingCartService;
         _storeContext = storeContext;
         _productModelFactory = productModelFactory;
+        _resumeFileService = resumeFileService;
+        _resumeProfileService = resumeProfileService;
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -112,7 +118,9 @@ public class AIInterviewController : BasePluginController
         INopUrlHelper nopUrlHelper = null,
         IShoppingCartService shoppingCartService = null,
         IStoreContext storeContext = null,
-        IProductModelFactory productModelFactory = null)
+        IProductModelFactory productModelFactory = null,
+        IResumeFileService resumeFileService = null,
+        IResumeProfileService resumeProfileService = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -132,7 +140,9 @@ public class AIInterviewController : BasePluginController
             nopUrlHelper,
             shoppingCartService,
             storeContext,
-            productModelFactory)
+            productModelFactory,
+            resumeFileService,
+            resumeProfileService)
     {
     }
 
@@ -823,6 +833,7 @@ public class AIInterviewController : BasePluginController
         if (string.IsNullOrWhiteSpace(model.JobTitle))
             ModelState.AddModelError(nameof(model.JobTitle), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.JobTitle.Required"));
 
+        var product = model.ProductId > 0 ? await _productService.GetProductByIdAsync(model.ProductId) : null;
         var allApplications = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<JobApplication>();
         var reusableResumeDownloadId = allApplications
             .OrderByDescending(a => a.CreatedOnUtc)
@@ -847,11 +858,17 @@ public class AIInterviewController : BasePluginController
         }
         else
         {
-            var extension = Path.GetExtension(model.ResumeFile.FileName);
-            var validExtension = extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase) ||
-                extension.Equals(".docx", StringComparison.OrdinalIgnoreCase);
-            if (!validExtension || model.ResumeFile.Length > 5 * 1024 * 1024)
-                ModelState.AddModelError(nameof(model.ResumeFile), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid"));
+            var validation = _resumeFileService?.ValidateResumeFile(model.ResumeFile)
+                ?? new ResumeFileValidationResult
+                {
+                    Success = (Path.GetExtension(model.ResumeFile.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase) ||
+                        Path.GetExtension(model.ResumeFile.FileName).Equals(".docx", StringComparison.OrdinalIgnoreCase)) &&
+                        model.ResumeFile.Length <= 5 * 1024 * 1024,
+                    ErrorMessage = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid")
+                };
+
+            if (!validation.Success)
+                ModelState.AddModelError(nameof(model.ResumeFile), string.IsNullOrWhiteSpace(validation.ErrorMessage) ? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid") : validation.ErrorMessage);
         }
 
         if (!ModelState.IsValid)
@@ -894,19 +911,39 @@ public class AIInterviewController : BasePluginController
         var resumeDownloadId = reusableResumeDownloadId;
         if (model.ResumeFile != null)
         {
-            var download = new Download
+            if (_resumeFileService != null)
             {
-                DownloadGuid = Guid.NewGuid(),
-                UseDownloadUrl = false,
-                DownloadBinary = await _downloadService.GetDownloadBitsAsync(model.ResumeFile),
-                ContentType = model.ResumeFile.ContentType,
-                Filename = model.ResumeFile.FileName,
-                Extension = Path.GetExtension(model.ResumeFile.FileName),
-                IsNew = true
-            };
-            await _downloadService.InsertDownloadAsync(download);
-            resumeDownloadId = download.Id;
+                var storedResume = await _resumeFileService.StoreResumeAsync(model.ResumeFile);
+                if (!storedResume.Success)
+                {
+                    return new ApplySubmissionResult
+                    {
+                        Success = false,
+                        Message = string.IsNullOrWhiteSpace(storedResume.ErrorMessage)
+                            ? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid")
+                            : storedResume.ErrorMessage
+                    };
+                }
+
+                resumeDownloadId = storedResume.DownloadId;
+            }
+            else
+            {
+                var download = new Download
+                {
+                    DownloadGuid = Guid.NewGuid(),
+                    UseDownloadUrl = false,
+                    DownloadBinary = await _downloadService.GetDownloadBitsAsync(model.ResumeFile),
+                    ContentType = model.ResumeFile.ContentType,
+                    Filename = model.ResumeFile.FileName,
+                    Extension = Path.GetExtension(model.ResumeFile.FileName),
+                    IsNew = true
+                };
+                await _downloadService.InsertDownloadAsync(download);
+                resumeDownloadId = download.Id;
+            }
         }
+
         var jobApplication = new JobApplication
         {
             CustomerId = customer.Id,
@@ -917,6 +954,9 @@ public class AIInterviewController : BasePluginController
             CreatedOnUtc = DateTime.UtcNow
         };
         await _applicationService.InsertJobApplicationAsync(jobApplication);
+        if (jobApplication.ResumeDownloadId > 0 && _resumeProfileService != null)
+            await _resumeProfileService.EnsureResumeProfileAsync(jobApplication, product, forceRegenerate: model.ResumeFile != null);
+
         await _applicationService.SendApplicationSubmittedNotificationAsync(jobApplication, (await _workContext.GetWorkingLanguageAsync()).Id);
         return new ApplySubmissionResult
         {
@@ -1117,6 +1157,9 @@ public class AIInterviewController : BasePluginController
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
                 RawStatus = normalizedStatus,
                 StatusComment = a.StatusComment,
+                ResumeDownloadId = a.ResumeDownloadId,
+                HasResume = a.ResumeDownloadId > 0,
+                ResumeDownloadUrl = a.ResumeDownloadId > 0 ? Url.RouteUrl(AIInterviewDefaults.EmployerDownloadResumeRouteName, new { applicationId = a.Id }) : null,
                 InterviewScore = session?.Score,
                 InterviewReportUrl = session != null ? Url.Action("Report", "AIInterview", new { sessionId = session.Id }) : null,
                 InterviewReportPanelUrl = session != null ? BuildReportPanelUrl(session.Id) : null,
@@ -1147,6 +1190,42 @@ public class AIInterviewController : BasePluginController
         model.TotalCount = model.Applications.Count;
 
         return View("~/Plugins/Misc.AIInterview/Views/EmployerApplications.cshtml", model);
+    }
+
+    public async Task<IActionResult> EmployerDownloadResume(int applicationId)
+    {
+        if (!await IsAuthorizedForEmployerActionsAsync())
+            return Challenge();
+
+        var application = await _applicationService.GetJobApplicationByIdAsync(applicationId);
+        if (application == null)
+            return NotFound(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Resume.NotFound"));
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (!await _customerService.IsAdminAsync(customer) && customer.VendorId > 0)
+        {
+            var product = await _productService.GetProductByIdAsync(application.ProductId);
+            if (product == null || product.VendorId != customer.VendorId)
+                return Challenge();
+        }
+
+        if (application.ResumeDownloadId <= 0)
+            return NotFound(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.NoResume"));
+
+        var download = await _downloadService.GetDownloadByIdAsync(application.ResumeDownloadId);
+        if (download?.DownloadBinary == null || download.DownloadBinary.Length == 0)
+            return NotFound(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Resume.NotFound"));
+
+        var extension = string.IsNullOrWhiteSpace(download.Extension) ? Path.GetExtension(download.Filename ?? string.Empty) : download.Extension;
+        var fileName = Path.GetFileName(download.Filename ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(fileName))
+            fileName = $"resume{(string.IsNullOrWhiteSpace(extension) ? string.Empty : extension)}";
+        else if (!string.IsNullOrWhiteSpace(extension) && !fileName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+            fileName += extension;
+
+        return File(download.DownloadBinary,
+            string.IsNullOrWhiteSpace(download.ContentType) ? "application/octet-stream" : download.ContentType,
+            fileName);
     }
 
     [HttpPost]
