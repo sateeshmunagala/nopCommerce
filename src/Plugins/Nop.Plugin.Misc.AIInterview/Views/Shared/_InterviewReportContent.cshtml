@@ -15,14 +15,26 @@
 <div class="ai-report-actions">
     @if (!string.IsNullOrWhiteSpace(Model.RecordingUrl))
     {
-        <a class="button-1" href="@Model.RecordingUrl" target="_blank" rel="noopener">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</a>
+        <a class="button-1 ai-report-action ai-report-action-primary" href="@Model.RecordingUrl" target="_blank" rel="noopener">
+            <i class="fa-solid fa-circle-play" aria-hidden="true"></i>
+            <span>@T("Plugins.Misc.AIInterview.Report.OpenRecording")</span>
+        </a>
     }
     @if (!string.IsNullOrWhiteSpace(Model.RecordingShareUrl))
     {
-        <button type="button" class="button-2 ai-copy-share-link" data-share-url="@Model.RecordingShareUrl">@copyShareLinkText</button>
-        <button type="button" class="button-2 ai-native-share-link aiinterview-hidden" data-share-url="@Model.RecordingShareUrl" data-share-title="@recordingShareTitleText">@shareText</button>
+        <button type="button" class="button-2 ai-report-action ai-report-action-secondary ai-copy-share-link" data-share-url="@Model.RecordingShareUrl">
+            <i class="fa-solid fa-copy" aria-hidden="true"></i>
+            <span>@copyShareLinkText</span>
+        </button>
+        <button type="button" class="button-2 ai-report-action ai-report-action-secondary ai-native-share-link aiinterview-hidden" data-share-url="@Model.RecordingShareUrl" data-share-title="@recordingShareTitleText">
+            <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>
+            <span>@shareText</span>
+        </button>
         <noscript>
-            <a class="button-2" href="@Model.RecordingShareUrl" target="_blank" rel="noopener">@openSharePageText</a>
+            <a class="button-2 ai-report-action ai-report-action-secondary" href="@Model.RecordingShareUrl" target="_blank" rel="noopener">
+                <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i>
+                <span>@openSharePageText</span>
+            </a>
         </noscript>
     }
 </div>
