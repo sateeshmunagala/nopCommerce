@@ -786,6 +786,7 @@ public class EmployerTests
         Assert.That(employerApplications, Does.Contain("class=\"employer-status-select\""));
         Assert.That(employerApplications, Does.Contain("class=\"employer-status-comment\""));
         Assert.That(employerApplications, Does.Contain("class=\"button-2 employer-status-update ai-icon-action\""));
+        Assert.That(employerApplications, Does.Contain("<th class=\"col-report\"><span class=\"sr-only\">@T(\"Plugins.Misc.AIInterview.Report.Title\")</span><i class=\"fa-solid fa-eye\" aria-hidden=\"true\"></i></th>"));
         Assert.That(employerApplications, Does.Not.Contain("Admin.Common.PageSize"));
         Assert.That(employerApplications, Does.Not.Contain("Admin.Common.Reset"));
         Assert.That(employerApplications, Does.Not.Contain("Admin.Common.All"));
@@ -849,6 +850,7 @@ public class EmployerTests
         Assert.That(employerApplications, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.StatusComment"));
         Assert.That(employerApplications, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.Update"));
         Assert.That(employerApplications, Does.Not.Contain(">View Report<"));
+        Assert.That(employerApplications, Does.Not.Contain("<th class=\"col-report\">@viewReportText</th>"));
     }
 
     [Test]
@@ -864,7 +866,15 @@ public class EmployerTests
         Assert.That(cssText, Does.Contain("grid-template-columns: minmax(130px, 146px) minmax(0, 1fr) 38px;"));
         Assert.That(cssText, Does.Contain(".html-aiinterview-employer-applications-page .employer-status-field-comment {"));
         Assert.That(cssText, Does.Contain(".ai-icon-action {"));
+        Assert.That(cssText, Does.Contain(".job-action-link.ai-icon-action {"));
+        Assert.That(cssText, Does.Contain(".html-aiinterview-employer-applications-page .employer-status-field-action {"));
+        Assert.That(cssText, Does.Contain("justify-self: center;"));
+        Assert.That(cssText, Does.Contain("max-width: 38px;"));
         Assert.That(cssText, Does.Contain(".aiinterview-public-page .button-2.ai-icon-action,"));
+        Assert.That(cssText, Does.Not.Contain(".vendor-job-posting-intro"));
+        Assert.That(cssText, Does.Not.Contain(".vendor-job-posting-kicker"));
+        Assert.That(cssText, Does.Not.Contain(".vendor-job-posting-lead"));
+        Assert.That(cssText, Does.Not.Contain(".vendor-job-posting-sections"));
         Assert.That(cssText, Does.Contain(".job-ai-actions .apply-btn.job-ai-action"));
         Assert.That(cssText, Does.Contain("[data-start-interview-button=\"true\"].job-ai-action"));
         Assert.That(cssText, Does.Not.Contain("#job-apply-button.job-ai-action"));
@@ -1102,6 +1112,14 @@ public class EmployerTests
         Assert.That(sharedJobDetailView, Does.Contain("@await Html.PartialAsync(\"_ProductTags\", Model.ProductTags)"));
         Assert.That(sharedJobDetailView, Does.Contain("var productPageSeName = ViewData[\"ProductSeName\"] as string ?? Model.SeName;"));
         Assert.That(sharedJobDetailView, Does.Contain("var productPageUrl = ViewData[\"ProductPageUrl\"] as string;"));
+        Assert.That(sharedJobDetailView, Does.Contain("var shareJobLabel = $\"{shareJobText} - {Model.Name}\";"));
+        Assert.That(sharedJobDetailView, Does.Contain("id=\"share-job-button\""));
+        Assert.That(sharedJobDetailView, Does.Contain("class=\"job-action-link ai-icon-action\""));
+        Assert.That(sharedJobDetailView, Does.Contain("fa-solid fa-share-nodes"));
+        Assert.That(sharedJobDetailView, Does.Contain("aria-label=\"@shareJobLabel\""));
+        Assert.That(sharedJobDetailView, Does.Contain("title=\"@shareJobLabel\""));
+        Assert.That(sharedJobDetailView, Does.Contain("const shareButtonScreenReaderText = shareButton?.querySelector('.sr-only');"));
+        Assert.That(sharedJobDetailView, Does.Not.Contain("shareButton.textContent ="));
         Assert.That(sharedJobDetailView, Does.Contain("if (string.IsNullOrWhiteSpace(productPageUrl) && !string.IsNullOrWhiteSpace(productPageSeName))"));
         Assert.That(drawerView, Does.Contain("_AIInterviewJobDetailsContent.cshtml"));
         Assert.That(drawerView, Does.Contain("var drawerProductSeName = ViewData[\"ProductSeName\"] as string ?? Model.SeName;"));

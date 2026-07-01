@@ -1077,6 +1077,10 @@ public class CandidateFlowTests
         Assert.That(myApplicationsText, Does.Contain("class=\"button-2 ai-copy-share-link ai-icon-action\""));
         Assert.That(reportText, Does.Contain("class=\"button-2 ai-report-action ai-report-action-secondary ai-copy-share-link ai-icon-action\""));
         Assert.That(reportText, Does.Contain("class=\"button-2 ai-report-action ai-report-action-secondary ai-native-share-link aiinterview-hidden ai-icon-action\""));
+        Assert.That(reportText, Does.Contain("var reportSubject ="));
+        Assert.That(reportText, Does.Contain("var openRecordingLabel ="));
+        Assert.That(reportText, Does.Contain("var copyShareLinkLabel ="));
+        Assert.That(reportText, Does.Contain("var shareLabel ="));
         Assert.That(drawerText, Does.Contain("ai-report-drawer"));
         Assert.That(drawerText, Does.Contain("data-report-drawer-close"));
     }
@@ -1318,7 +1322,10 @@ public class CandidateFlowTests
         Assert.That(reportContentText, Does.Contain("ai-copy-share-link"));
         Assert.That(reportContentText, Does.Contain("ai-native-share-link"));
         Assert.That(reportContentText, Does.Contain("ai-icon-action"));
-        Assert.That(reportContentText, Does.Contain("class=\"sr-only\">@copyShareLinkText</span>"));
+        Assert.That(reportContentText, Does.Contain("class=\"sr-only\">@copyShareLinkLabel</span>"));
+        Assert.That(reportContentText, Does.Contain("data-share-title=\"@recordingShareTitle\""));
+        Assert.That(reportContentText, Does.Contain("title=\"@shareLabel\""));
+        Assert.That(reportContentText, Does.Contain("aria-label=\"@openRecordingLabel\""));
         Assert.That(drawerText, Does.Contain("navigator.share"));
         Assert.That(drawerText, Does.Contain("Escape"));
         Assert.That(reportContentText, Does.Not.Contain(">Technical Score<"));

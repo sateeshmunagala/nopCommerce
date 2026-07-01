@@ -124,6 +124,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureJobProductTemplateAsync();
         await EnsureWidgetActiveAsync();
         await EnsureMessageTemplatesAsync();
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
 
@@ -598,6 +599,16 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         };
     }
 
+    protected static Dictionary<string, string> GetEmployerApplicationsLocaleResources()
+    {
+        return new Dictionary<string, string>
+        {
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Resume"] = "Resume",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.DownloadResume"] = "Download resume",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.NoResume"] = "No resume"
+        };
+    }
+
     public override async Task InstallAsync()
     {
         //settings
@@ -620,6 +631,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureJobProductTemplateAsync();
         await EnsureWidgetActiveAsync();
         await EnsureMessageTemplatesAsync();
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
 
         //locales

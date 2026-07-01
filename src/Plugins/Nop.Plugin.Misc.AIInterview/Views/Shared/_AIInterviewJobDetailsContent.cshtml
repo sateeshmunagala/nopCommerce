@@ -146,6 +146,7 @@
     var shareJobText = T("Plugins.Misc.AIInterview.Report.Share").Text;
     var linkCopiedText = T("Plugins.Misc.AIInterview.Report.LinkCopied").Text;
     var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
+    var shareJobLabel = $"{shareJobText} - {Model.Name}";
 }
 
 <article data-productid="@Model.Id" class="job-shell @(isDrawer ? "job-shell-drawer" : null)">
@@ -211,13 +212,15 @@
                         </button>
                     }
                     <button type="button"
-                            class="job-action-link"
+                            class="job-action-link ai-icon-action"
                             id="share-job-button"
                             data-share-url="@productPageUrl"
                             data-share-title="@Model.Name"
                             data-default-text="@shareJobText"
                             data-link-copied-text="@linkCopiedText"
-                            data-copy-prompt-text="@copyShareLinkText">@shareJobText</button>
+                            data-copy-prompt-text="@copyShareLinkText"
+                            aria-label="@shareJobLabel"
+                            title="@shareJobLabel"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span class="sr-only">@shareJobText</span></button>
                 }
             </div>
 
@@ -357,6 +360,11 @@
             const shareButton = document.getElementById('share-job-button');
             const saveButton = document.getElementById('job-save-button');
             const customWishlistButton = document.getElementById('job-custom-wishlist-button');
+            const shareButtonScreenReaderText = shareButton?.querySelector('.sr-only');
+            const defaultShareText = shareButton?.dataset.defaultText || shareButtonScreenReaderText?.textContent || '';
+            const defaultShareLabel = shareButton?.getAttribute('aria-label') || defaultShareText;
+            const defaultShareTitle = shareButton?.getAttribute('title') || defaultShareLabel;
+            let shareFeedbackTimer = null;
 
             const markSaved = () => {
                 if (!saveButton)
@@ -368,6 +376,24 @@
 
                 if (customWishlistButton)
                     customWishlistButton.disabled = false;
+            };
+
+            const setShareButtonFeedback = (text, accessibleLabel) => {
+                if (!shareButton)
+                    return;
+
+                if (shareButtonScreenReaderText)
+                    shareButtonScreenReaderText.textContent = text;
+
+                if (accessibleLabel) {
+                    shareButton.setAttribute('aria-label', accessibleLabel);
+                    shareButton.setAttribute('title', accessibleLabel);
+                }
+            };
+
+            const restoreShareButtonFeedback = () => {
+                setShareButtonFeedback(defaultShareText, defaultShareTitle);
+                shareFeedbackTimer = null;
             };
 
             if (saveButton) {
@@ -421,8 +447,11 @@
 
                 if (navigator.clipboard) {
                     await navigator.clipboard.writeText(shareUrl);
-                    shareButton.textContent = shareButton.dataset.linkCopiedText || '';
-                    window.setTimeout(() => shareButton.textContent = shareButton.dataset.defaultText || '', 1800);
+                    const copiedText = shareButton.dataset.linkCopiedText || defaultShareText;
+                    if (shareFeedbackTimer)
+                        window.clearTimeout(shareFeedbackTimer);
+                    setShareButtonFeedback(copiedText, copiedText);
+                    shareFeedbackTimer = window.setTimeout(restoreShareButtonFeedback, 1800);
                     return;
                 }
 

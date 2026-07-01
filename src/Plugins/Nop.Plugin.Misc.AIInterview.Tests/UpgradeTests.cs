@@ -54,6 +54,10 @@ public class UpgradeTests
         localizationService.Verify(x => x.AddOrUpdateLocaleResourceAsync(It.Is<Dictionary<string, string>>(resources =>
             resources.ContainsKey("Plugins.Misc.AIInterview.Admin.Credits.Activity.Title") &&
             resources.ContainsKey("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Customer"))), Times.AtLeastOnce);
+        localizationService.Verify(x => x.AddOrUpdateLocaleResourceAsync(It.Is<Dictionary<string, string>>(resources =>
+            resources.ContainsKey("Plugins.Misc.AIInterview.Employer.Applications.Resume") &&
+            resources.ContainsKey("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume") &&
+            resources.ContainsKey("Plugins.Misc.AIInterview.Employer.Applications.NoResume"))), Times.AtLeastOnce);
     }
 
     [Test]

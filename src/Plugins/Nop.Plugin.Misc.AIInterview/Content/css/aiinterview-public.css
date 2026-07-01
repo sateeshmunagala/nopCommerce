@@ -341,49 +341,6 @@
     max-width: 940px;
 }
 
-.vendor-job-posting-intro {
-    display: grid;
-    gap: 12px;
-    padding: 22px;
-    border: 1px solid #dedede;
-    border-radius: 4px;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-}
-
-.vendor-job-posting-kicker {
-    margin: 0;
-    color: #188f78;
-    font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-}
-
-.vendor-job-posting-lead {
-    margin: 0;
-    color: #687078;
-    line-height: 1.6;
-}
-
-.vendor-job-posting-sections {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.vendor-job-posting-sections span {
-    display: inline-flex;
-    align-items: center;
-    min-height: 32px;
-    padding: 6px 10px;
-    border: 1px solid #cfe4de;
-    border-radius: 4px;
-    background: #f5fbf9;
-    color: #145f50;
-    font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 0.84rem;
-    text-transform: uppercase;
-}
-
 .vendor-job-fieldset,
 .invite-fieldset {
     padding: 0;
@@ -679,6 +636,16 @@
 
 .ai-icon-action i {
     font-size: 0.98rem;
+}
+
+.job-action-link.ai-icon-action {
+    width: 42px;
+    min-width: 42px;
+    max-width: 42px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0;
+    gap: 0;
 }
 
 .ai-view-report-link i,
@@ -3075,10 +3042,12 @@ body.ai-job-preview-open .item-box {
     grid-template-columns: minmax(130px, 146px) minmax(0, 1fr) 38px;
     align-items: center;
     gap: 8px;
+    width: 100%;
 }
 
 .html-aiinterview-employer-applications-page .status-form .button-2 {
     justify-self: center;
+    width: auto;
 }
 
 .html-aiinterview-employer-applications-page .employer-status-field {
@@ -3095,6 +3064,12 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-applications-page .employer-status-field-action {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 38px;
+    min-width: 38px;
+    justify-self: center;
     align-self: center;
 }
 
@@ -3103,8 +3078,11 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-applications-page .status-form .employer-status-update {
+    width: 38px;
+    max-width: 38px;
     min-width: 38px;
     min-height: 38px;
+    padding: 0;
 }
 
 .html-aiinterview-employer-applications-page .employer-table-wrapper {

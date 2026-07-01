@@ -73,6 +73,19 @@ public class PluginDefaultsTests
     }
 
     [Test]
+    public void Employer_Resume_Locale_Resources_Are_Exposed_For_Install_And_Update()
+    {
+        var employerMethod = typeof(AIInterviewPlugin).GetMethod("GetEmployerApplicationsLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var resources = (Dictionary<string, string>)employerMethod.Invoke(null, null);
+        var pluginText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("AIInterviewPlugin.cs"));
+
+        Assert.That(resources["Plugins.Misc.AIInterview.Employer.Applications.Resume"], Is.EqualTo("Resume"));
+        Assert.That(resources["Plugins.Misc.AIInterview.Employer.Applications.DownloadResume"], Is.EqualTo("Download resume"));
+        Assert.That(resources["Plugins.Misc.AIInterview.Employer.Applications.NoResume"], Is.EqualTo("No resume"));
+        Assert.That(pluginText, Does.Contain("AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources())"));
+    }
+
+    [Test]
     public void Locale_Resources_DoNotContain_CaseInsensitive_Duplicates()
     {
         var upgradeMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
