@@ -806,6 +806,21 @@
     font-size: 0.98rem;
 }
 
+.ai-copy-share-link .ai-copy-success-icon,
+.ai-copy-share-link .ai-copy-error-icon {
+    display: none;
+}
+
+.ai-copy-share-link.is-success .ai-copy-default-icon,
+.ai-copy-share-link.is-error .ai-copy-default-icon {
+    display: none;
+}
+
+.ai-copy-share-link.is-success .ai-copy-success-icon,
+.ai-copy-share-link.is-error .ai-copy-error-icon {
+    display: inline-block;
+}
+
 .job-action-link.ai-icon-action {
     width: 42px;
     min-width: 42px;
@@ -840,6 +855,10 @@
 
 .ai-view-report-link.ai-icon-action {
     gap: 0;
+}
+
+.ai-view-report-link.ai-icon-action i {
+    font-size: 0.75rem;
 }
 
 .ai-report-back-button {
@@ -3397,6 +3416,21 @@ body.ai-job-preview-open .item-box {
     font-size: 0.75rem !important;
 }
 
+.html-aiinterview-my-applications-page .applications-table td.col-report .ai-view-report-link.ai-icon-action {
+    flex: 0 0 28px !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    max-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    padding: 0 !important;
+}
+
+.html-aiinterview-my-applications-page .applications-table td.col-report .ai-view-report-link.ai-icon-action i {
+    font-size: 0.75rem !important;
+}
+
 .html-aiinterview-vendor-job-creation-page .vendor-job-submit,
 .html-aiinterview-employer-manage-page .invite-actions .button-1,
 .html-aiinterview-employer-manage-page .invite-deactivate-button,
@@ -3730,6 +3764,31 @@ body.ai-job-preview-open .item-box {
         grid-template-columns: 1fr;
     }
 
+    .ai-report-actions {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+    }
+
+    .ai-report-actions .button-1,
+    .ai-report-actions .button-2,
+    .ai-report-actions .ai-icon-action {
+        flex: 0 0 40px !important;
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        padding: 0 !important;
+    }
+
+    .ai-report-actions .ai-icon-action i {
+        font-size: 0.82rem !important;
+    }
+
     .html-aiinterview-scoreboard-page .scoreboard-deck-metrics,
     .html-aiinterview-scoreboard-page .scoreboard-deck-overview {
         grid-template-columns: 1fr;
@@ -3786,6 +3845,118 @@ body.ai-job-preview-open .item-box {
     .responsive-data-card-actions .invite-deactivate-button {
         width: 100%;
     }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list {
+        gap: 12px;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card {
+        gap: 12px;
+        padding: 14px;
+        border-radius: 14px;
+        border-color: #d9e6e2;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-head {
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-head-copy {
+        gap: 2px;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-title {
+        font-size: 0.96rem;
+        line-height: 1.1;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .applications-footnote {
+        font-size: 0.84rem;
+        line-height: 1.35;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-chip-group {
+        gap: 6px;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .score-chip {
+        min-width: 36px;
+        min-height: 36px;
+        padding: 4px 8px;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .status-pill {
+        min-height: 36px;
+        padding: 4px 10px;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-item {
+        gap: 4px;
+        padding: 10px 12px;
+        border: 1px solid #e5eeeb;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #fbfdfd 0%, #f4fbf9 100%);
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-label {
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-value {
+        font-size: 0.92rem;
+        line-height: 1.35;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-actions {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-actions .candidate-recording-actions {
+        display: flex !important;
+        grid-template-columns: none !important;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link,
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-actions .button-1,
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-actions .button-2 {
+        flex: 0 0 40px !important;
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        padding: 0 !important;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link {
+        gap: 0;
+        justify-content: center;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link span {
+        display: none;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link i,
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-actions .candidate-recording-actions .button-1 i,
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-actions .candidate-recording-actions .button-2 i {
+        font-size: 0.82rem !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -3805,6 +3976,10 @@ body.ai-job-preview-open .item-box {
     .applications-sort select {
         width: 100%;
         min-width: 0;
+    }
+
+    .html-aiinterview-my-applications-page .applications-mobile-list .responsive-data-card-grid {
+        grid-template-columns: 1fr;
     }
 }
 

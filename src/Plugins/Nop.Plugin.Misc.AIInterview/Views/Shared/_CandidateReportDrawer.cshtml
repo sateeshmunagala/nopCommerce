@@ -38,6 +38,10 @@
         return;
     }
 
+    if (drawer.parentElement !== document.body) {
+        document.body.appendChild(drawer);
+    }
+
     const panel = drawer.querySelector('.ai-report-drawer-panel');
     const title = drawer.querySelector('#ai-report-drawer-title');
     const body = drawer.querySelector('.ai-report-drawer-body');
@@ -49,6 +53,51 @@
     const copyFailedText = drawer.dataset.copyFailedText || '';
     const recordingShareTitle = drawer.dataset.recordingShareTitle || '';
     let lastTrigger = null;
+
+    const clearCopyFeedback = (button) => {
+        if (!button) {
+            return;
+        }
+
+        button.classList.remove('is-success', 'is-error');
+        if (button.dataset.originalAriaLabel !== undefined) {
+            button.setAttribute('aria-label', button.dataset.originalAriaLabel);
+        }
+        if (button.dataset.originalTitle !== undefined) {
+            button.setAttribute('title', button.dataset.originalTitle);
+        }
+    };
+
+    const showCopyFeedback = (button, state, message) => {
+        if (!button) {
+            return;
+        }
+
+        if (button.dataset.originalAriaLabel === undefined) {
+            button.dataset.originalAriaLabel = button.getAttribute('aria-label') || '';
+        }
+        if (button.dataset.originalTitle === undefined) {
+            button.dataset.originalTitle = button.getAttribute('title') || '';
+        }
+
+        if (button.__copyFeedbackTimer) {
+            window.clearTimeout(button.__copyFeedbackTimer);
+        }
+
+        button.classList.remove('is-success', 'is-error');
+        if (state) {
+            button.classList.add(state);
+        }
+        if (message) {
+            button.setAttribute('aria-label', message);
+            button.setAttribute('title', message);
+        }
+
+        button.__copyFeedbackTimer = window.setTimeout(() => {
+            clearCopyFeedback(button);
+            button.__copyFeedbackTimer = null;
+        }, 2200);
+    };
 
     const setStatus = (message) => {
         if (status) {
@@ -144,17 +193,12 @@
                 return;
             }
 
-            const originalText = copyTrigger.textContent;
             try {
                 await writeToClipboard(shareUrl);
-                copyTrigger.textContent = copiedText;
+                showCopyFeedback(copyTrigger, 'is-success', copiedText);
             } catch (error) {
-                copyTrigger.textContent = copyFailedText;
+                showCopyFeedback(copyTrigger, 'is-error', copyFailedText);
             }
-
-            window.setTimeout(() => {
-                copyTrigger.textContent = originalText;
-            }, 1600);
             return;
         }
 

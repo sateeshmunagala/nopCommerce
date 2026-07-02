@@ -116,7 +116,7 @@
                                                             class="button-2 ai-copy-share-link ai-icon-action"
                                                             data-share-url="@app.RecordingShareUrl"
                                                             aria-label="@copyShareLabel"
-                                                            title="@copyShareLabel"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="sr-only">@copyShareLinkText</span></button>
+                                                            title="@copyShareLabel"><i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i><i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i><i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i><span class="sr-only">@copyShareLinkText</span></button>
                                                     <button type="button"
                                                             class="button-2 ai-native-share-link aiinterview-hidden ai-icon-action"
                                                             data-share-url="@app.RecordingShareUrl"
@@ -181,7 +181,7 @@
                                 @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
                                 {
                                     <a href="@app.InterviewReportUrl"
-                                       class="js-open-report-drawer ai-view-report-link"
+                                       class="js-open-report-drawer ai-view-report-link ai-icon-action"
                                        data-report-panel-url="@app.InterviewReportPanelUrl"
                                        data-report-title="@reportTitle"
                                        aria-label="@reportActionLabel"
@@ -205,7 +205,7 @@
                                                     class="button-2 ai-copy-share-link ai-icon-action"
                                                     data-share-url="@app.RecordingShareUrl"
                                                     aria-label="@copyShareLabel"
-                                                    title="@copyShareLabel"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="sr-only">@copyShareLinkText</span></button>
+                                                    title="@copyShareLabel"><i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i><i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i><i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i><span class="sr-only">@copyShareLinkText</span></button>
                                             <button type="button"
                                                     class="button-2 ai-native-share-link aiinterview-hidden ai-icon-action"
                                                     data-share-url="@app.RecordingShareUrl"
