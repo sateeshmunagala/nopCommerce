@@ -3625,7 +3625,7 @@ body.jb-search-open .jb-drawer-overlay {
     }
 
     .jb-drawer-account-links li:last-child {
-        border-bottom: 0 !important;
+        border-bottom: 1px solid #e3e3e3 !important;
     }
 
     .jb-drawer-account-links a {
