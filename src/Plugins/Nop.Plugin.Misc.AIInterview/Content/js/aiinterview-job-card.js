@@ -223,6 +223,10 @@
             return;
         }
 
+        if (drawer.parentElement !== document.body) {
+            document.body.appendChild(drawer);
+        }
+
         closeDrawer();
         activeDrawer = drawer;
         activeTrigger = trigger || null;

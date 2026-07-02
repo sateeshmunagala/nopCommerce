@@ -1648,6 +1648,10 @@ body.aiinterview-report-drawer-open {
     text-transform: none;
 }
 
+.ai-job-product-card .ai-job-card-spec-label {
+    display: none;
+}
+
 .ai-job-card-spec-label::after {
     content: ":";
     margin-left: 2px;
@@ -2050,8 +2054,8 @@ body.ai-job-preview-open .item-box {
     }
 
     .ai-job-card-meta {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 6px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 12px;
     }
 
     .ai-job-preview-drawer-panel {
