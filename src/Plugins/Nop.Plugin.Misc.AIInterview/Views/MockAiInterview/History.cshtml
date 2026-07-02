@@ -1,6 +1,14 @@
 @model IList<Nop.Plugin.Misc.AIInterview.Models.InterviewHistoryItemModel>
+@using Nop.Services.Helpers
 @using Nop.Web.Models.Customer
+@inject IDateTimeHelper dateTimeHelper
 @{
+    async Task<string> FormatUtcDateAsync(DateTime utcDateTime)
+    {
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(utcDateTime, DateTimeKind.Utc);
+        return userDateTime.ToString("yyyy-MM-dd");
+    }
+
     Layout = "_ColumnsTwo";
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
     NopHtml.AppendPageCssClassParts("html-account-page");
@@ -51,7 +59,7 @@
                             var shareActionLabel = $"{shareText} - {session.JobTitle}";
                             <tr>
                                 <td>@session.JobTitle</td>
-                                <td>@session.CreatedOnUtc.ToString("yyyy-MM-dd")</td>
+                                <td>@(await FormatUtcDateAsync(session.CreatedOnUtc))</td>
                                 <td>@session.Status</td>
                                 <td>@session.Score</td>
                                 <td>
@@ -122,7 +130,7 @@
                         <div class="responsive-data-card-head">
                             <div class="responsive-data-card-head-copy">
                                 <strong class="responsive-data-card-title">@session.JobTitle</strong>
-                                <div class="applications-footnote">@session.CreatedOnUtc.ToString("yyyy-MM-dd")</div>
+                                <div class="applications-footnote">@(await FormatUtcDateAsync(session.CreatedOnUtc))</div>
                             </div>
                             <div class="responsive-data-card-chip-group">
                                 <span class="score-chip">@(string.IsNullOrWhiteSpace(session.Score) ? "-" : session.Score)</span>
@@ -132,7 +140,7 @@
                         <div class="responsive-data-card-grid">
                             <div class="responsive-data-card-item">
                                 <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Date")</span>
-                                <span class="responsive-data-card-value">@session.CreatedOnUtc.ToString("yyyy-MM-dd")</span>
+                                <span class="responsive-data-card-value">@(await FormatUtcDateAsync(session.CreatedOnUtc))</span>
                             </div>
                             <div class="responsive-data-card-item">
                                 <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Score")</span>

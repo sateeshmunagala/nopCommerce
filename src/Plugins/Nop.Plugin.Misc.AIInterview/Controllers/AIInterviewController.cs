@@ -20,6 +20,7 @@ using Nop.Services.Vendors;
 using Nop.Services.Orders;
 using Nop.Services.Stores;
 using Nop.Services.Common;
+using Nop.Services.Helpers;
 using Nop.Web.Factories;
 using Nop.Web.Framework.Controllers;
 using System.Text.Json;
@@ -54,6 +55,7 @@ public class AIInterviewController : BasePluginController
     private readonly IProductModelFactory _productModelFactory;
     private readonly IResumeFileService _resumeFileService;
     private readonly IResumeProfileService _resumeProfileService;
+    private readonly IDateTimeHelper _dateTimeHelper;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -76,7 +78,8 @@ public class AIInterviewController : BasePluginController
         IStoreContext storeContext = null,
         IProductModelFactory productModelFactory = null,
         IResumeFileService resumeFileService = null,
-        IResumeProfileService resumeProfileService = null)
+        IResumeProfileService resumeProfileService = null,
+        IDateTimeHelper dateTimeHelper = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -100,6 +103,7 @@ public class AIInterviewController : BasePluginController
         _productModelFactory = productModelFactory;
         _resumeFileService = resumeFileService;
         _resumeProfileService = resumeProfileService;
+        _dateTimeHelper = dateTimeHelper;
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -120,7 +124,8 @@ public class AIInterviewController : BasePluginController
         IStoreContext storeContext = null,
         IProductModelFactory productModelFactory = null,
         IResumeFileService resumeFileService = null,
-        IResumeProfileService resumeProfileService = null)
+        IResumeProfileService resumeProfileService = null,
+        IDateTimeHelper dateTimeHelper = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -142,8 +147,25 @@ public class AIInterviewController : BasePluginController
             storeContext,
             productModelFactory,
             resumeFileService,
-            resumeProfileService)
+            resumeProfileService,
+            dateTimeHelper)
     {
+    }
+
+    protected virtual async Task<(DateTime? StartDateUtc, DateTime? EndDateUtc)> ConvertApplicationFilterDatesToUtcAsync(DateTime? startDate, DateTime? endDate)
+    {
+        if (_dateTimeHelper == null)
+            return (startDate, endDate);
+
+        var currentTimeZone = await _dateTimeHelper.GetCurrentTimeZoneAsync();
+        DateTime? startDateUtc = startDate.HasValue
+            ? _dateTimeHelper.ConvertToUtcTime(startDate.Value.Date, currentTimeZone)
+            : null;
+        DateTime? endDateUtc = endDate.HasValue
+            ? _dateTimeHelper.ConvertToUtcTime(endDate.Value.Date.AddDays(1), currentTimeZone).AddTicks(-1)
+            : null;
+
+        return (startDateUtc, endDateUtc);
     }
 
     public virtual async Task<IActionResult> JobDetailsDrawer(int productId)
@@ -1111,6 +1133,7 @@ public class AIInterviewController : BasePluginController
 
         var customer = await _workContext.GetCurrentCustomerAsync();
         var isEmployer = !await _customerService.IsAdminAsync(customer) && customer.VendorId > 0;
+        var (startDateUtc, endDateUtc) = await ConvertApplicationFilterDatesToUtcAsync(model.StartDate, model.EndDate);
 
         pageSize = model.PageSize > 0 ? model.PageSize : pageSize;
 
@@ -1119,8 +1142,8 @@ public class AIInterviewController : BasePluginController
             status: model.Status,
             minScore: model.MinScore,
             maxScore: model.MaxScore,
-            startDate: model.StartDate,
-            endDate: model.EndDate,
+            startDate: startDateUtc,
+            endDate: endDateUtc,
             vendorId: isEmployer ? customer.VendorId : 0,
             pageIndex: pageIndex,
             pageSize: pageSize,
@@ -1274,14 +1297,15 @@ public class AIInterviewController : BasePluginController
 
         var customer = await _workContext.GetCurrentCustomerAsync();
         var isEmployer = !await _customerService.IsAdminAsync(customer) && customer.VendorId > 0;
+        var (startDateUtc, endDateUtc) = await ConvertApplicationFilterDatesToUtcAsync(model.StartDate, model.EndDate);
 
         var applications = await _applicationService.GetApplicationsAsync(
             candidateNameOrEmail: model.CandidateNameOrEmail,
             status: model.Status,
             minScore: model.MinScore,
             maxScore: model.MaxScore,
-            startDate: model.StartDate,
-            endDate: model.EndDate,
+            startDate: startDateUtc,
+            endDate: endDateUtc,
             vendorId: isEmployer ? customer.VendorId : 0,
             sortByScore: false);
 

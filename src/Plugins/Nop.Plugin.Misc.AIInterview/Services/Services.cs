@@ -29,6 +29,7 @@ public class ApplicationService : IApplicationService
     private readonly EmailAccountSettings _emailAccountSettings;
     private readonly IStoreContext _storeContext;
     private readonly IWebHelper _webHelper;
+    private readonly IDateTimeHelper _dateTimeHelper;
 
     public ApplicationService(IRepository<JobApplication> applicationRepository,
         IRepository<Customer> customerRepository,
@@ -40,7 +41,8 @@ public class ApplicationService : IApplicationService
         Nop.Services.Messages.IMessageTokenProvider messageTokenProvider,
         EmailAccountSettings emailAccountSettings,
         IStoreContext storeContext,
-        IWebHelper webHelper)
+        IWebHelper webHelper,
+        IDateTimeHelper dateTimeHelper)
     {
         _applicationRepository = applicationRepository;
         _customerRepository = customerRepository;
@@ -53,6 +55,7 @@ public class ApplicationService : IApplicationService
         _emailAccountSettings = emailAccountSettings;
         _storeContext = storeContext;
         _webHelper = webHelper;
+        _dateTimeHelper = dateTimeHelper;
     }
 
     public async Task SendApplicationSubmittedNotificationAsync(JobApplication application, int languageId)
@@ -97,7 +100,9 @@ public class ApplicationService : IApplicationService
         await _messageTokenProvider.AddCustomerTokensAsync(tokens, customer);
         tokens.Add(new Nop.Services.Messages.Token("AIInterview.JobTitle", application.JobTitle));
         tokens.Add(new Nop.Services.Messages.Token("AIInterview.NewStatus", application.Status));
-        tokens.Add(new Nop.Services.Messages.Token("AIInterview.UpdateTimestamp", DateTime.UtcNow.ToString("g")));
+        var customerTimeZone = await _dateTimeHelper.GetCustomerTimeZoneAsync(customer);
+        var updateTimestamp = _dateTimeHelper.ConvertToUserTime(DateTime.UtcNow, TimeZoneInfo.Utc, customerTimeZone);
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.UpdateTimestamp", updateTimestamp.ToString("g")));
         tokens.Add(new Nop.Services.Messages.Token("AIInterview.MyApplicationsUrl", $"{_webHelper.GetStoreLocation()}aiinterview/my-applications"));
 
         await _workflowMessageService.SendNotificationAsync(template, emailAccount, languageId, tokens, customer.Email, customer.FirstName + " " + customer.LastName);
@@ -218,6 +223,7 @@ public class InterviewSessionService : IInterviewSessionService
     private readonly IStoreContext _storeContext;
     private readonly IWebHelper _webHelper;
     private readonly IVendorService _vendorService;
+    private readonly IDateTimeHelper _dateTimeHelper;
 
     public InterviewSessionService(IRepository<InterviewSession> sessionRepository,
         ICustomerService customerService,
@@ -230,7 +236,8 @@ public class InterviewSessionService : IInterviewSessionService
         EmailAccountSettings emailAccountSettings,
         IStoreContext storeContext,
         IWebHelper webHelper,
-        IVendorService vendorService)
+        IVendorService vendorService,
+        IDateTimeHelper dateTimeHelper)
     {
         _sessionRepository = sessionRepository;
         _customerService = customerService;
@@ -244,6 +251,7 @@ public class InterviewSessionService : IInterviewSessionService
         _storeContext = storeContext;
         _webHelper = webHelper;
         _vendorService = vendorService;
+        _dateTimeHelper = dateTimeHelper;
     }
 
     public async Task SendInterviewCompletionNotificationAsync(InterviewSession session, int languageId)
@@ -294,7 +302,11 @@ public class InterviewSessionService : IInterviewSessionService
                 await _messageTokenProvider.AddCustomerTokensAsync(tokens, customer);
                 tokens.Add(new Nop.Services.Messages.Token("AIInterview.JobTitle", jobTitle));
                 tokens.Add(new Nop.Services.Messages.Token("AIInterview.OverallScore", session.Score.ToString("N2")));
-                tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionDate", session.CompletedOnUtc?.ToString("g")));
+                var customerTimeZone = await _dateTimeHelper.GetCustomerTimeZoneAsync(customer);
+                var applicantCompletionDate = session.CompletedOnUtc.HasValue
+                    ? _dateTimeHelper.ConvertToUserTime(session.CompletedOnUtc.Value, TimeZoneInfo.Utc, customerTimeZone).ToString("g")
+                    : null;
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionDate", applicantCompletionDate));
                 tokens.Add(new Nop.Services.Messages.Token("AIInterview.QuestionSummary", session.QuestionScores ?? ""));
                 tokens.Add(new Nop.Services.Messages.Token("AIInterview.ReportUrl", $"{_webHelper.GetStoreLocation()}aiinterview/report/{session.Id}"));
                 tokens.Add(new Nop.Services.Messages.Token("AIInterview.MyApplicationsUrl", $"{_webHelper.GetStoreLocation()}aiinterview/my-applications"));
@@ -319,7 +331,10 @@ public class InterviewSessionService : IInterviewSessionService
                     tokens.Add(new Nop.Services.Messages.Token("Vendor.Name", vendor.Name));
                     tokens.Add(new Nop.Services.Messages.Token("AIInterview.JobTitle", jobTitle));
                     tokens.Add(new Nop.Services.Messages.Token("AIInterview.OverallScore", session.Score.ToString("N2")));
-                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionDate", session.CompletedOnUtc?.ToString("g")));
+                    var vendorCompletionDate = session.CompletedOnUtc.HasValue
+                        ? _dateTimeHelper.ConvertToUserTime(session.CompletedOnUtc.Value, TimeZoneInfo.Utc, _dateTimeHelper.DefaultStoreTimeZone).ToString("g")
+                        : null;
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionDate", vendorCompletionDate));
                     tokens.Add(new Nop.Services.Messages.Token("AIInterview.QuestionSummary", session.QuestionScores ?? ""));
                     tokens.Add(new Nop.Services.Messages.Token("AIInterview.CandidateReportUrl", $"{_webHelper.GetStoreLocation()}aiinterview/report/{session.Id}"));
 

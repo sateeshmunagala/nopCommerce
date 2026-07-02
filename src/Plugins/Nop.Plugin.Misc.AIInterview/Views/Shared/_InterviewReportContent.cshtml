@@ -1,6 +1,22 @@
 @model Nop.Plugin.Misc.AIInterview.Models.InterviewReportModel
+@using Nop.Services.Helpers
+@inject IDateTimeHelper dateTimeHelper
 
 @{
+    async Task<string> FormatUtcDateTimeAsync(DateTime utcDateTime)
+    {
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(utcDateTime, DateTimeKind.Utc);
+        return userDateTime.ToString("g");
+    }
+
+    async Task<string> FormatUtcDateTimeAsync(DateTime? utcDateTime)
+    {
+        if (!utcDateTime.HasValue)
+            return "-";
+
+        return await FormatUtcDateTimeAsync(utcDateTime.Value);
+    }
+
     var categoryTurns = (Model.Turns ?? Enumerable.Empty<Nop.Plugin.Misc.AIInterview.Models.InterviewTurnViewModel>()).ToList();
     decimal? avgTechnical = categoryTurns.Any(x => x.TechnicalScore.HasValue) ? categoryTurns.Where(x => x.TechnicalScore.HasValue).Average(x => x.TechnicalScore.Value) : null;
     decimal? avgCommunication = categoryTurns.Any(x => x.CommunicationScore.HasValue) ? categoryTurns.Where(x => x.CommunicationScore.HasValue).Average(x => x.CommunicationScore.Value) : null;
@@ -76,7 +92,7 @@
         </div>
         <div class="ai-report-stat">
             <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Date")</div>
-            <div class="ai-report-stat-value is-muted">@Model.ReportDateUtc.ToString("g")</div>
+            <div class="ai-report-stat-value is-muted">@(await FormatUtcDateTimeAsync(Model.ReportDateUtc))</div>
         </div>
         <div class="ai-report-stat">
             <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Questions")</div>
@@ -139,10 +155,10 @@
                 </div>
                 <div class="ai-report-meta">
                     <span><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @(turn.Score.HasValue ? $"{turn.Score.Value:N0}/100" : "-")</span>
-                    <span><strong>@T("Plugins.Misc.AIInterview.Report.Asked"):</strong> @turn.AskedOnUtc.ToString("g")</span>
+                    <span><strong>@T("Plugins.Misc.AIInterview.Report.Asked"):</strong> @(await FormatUtcDateTimeAsync(turn.AskedOnUtc))</span>
                     @if (turn.AnsweredOnUtc.HasValue)
                     {
-                        <span><strong>@T("Plugins.Misc.AIInterview.Report.Answered"):</strong> @turn.AnsweredOnUtc.Value.ToString("g")</span>
+                        <span><strong>@T("Plugins.Misc.AIInterview.Report.Answered"):</strong> @(await FormatUtcDateTimeAsync(turn.AnsweredOnUtc))</span>
                     }
                 </div>
             </div>

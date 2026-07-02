@@ -1,7 +1,15 @@
 @using Nop.Plugin.Misc.AIInterview.Domain
+@using Nop.Services.Helpers
 @using Nop.Web.Models.Customer
 @model VendorScoreboardModel
+@inject IDateTimeHelper dateTimeHelper
 @{
+    async Task<string> FormatUtcDateTimeAsync(DateTime utcDateTime)
+    {
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(utcDateTime, DateTimeKind.Utc);
+        return userDateTime.ToString("g");
+    }
+
     Layout = "_ColumnsTwo";
     NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.VendorScoreboard.Title").Text);
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
@@ -135,7 +143,7 @@
                                         <div class="scoreboard-deck-cell-secondary">@T("Plugins.Misc.AIInterview.VendorScoreboard.AssessmentWorkflow")</div>
                                     </td>
                                     <td>
-                                        <div class="scoreboard-deck-cell-primary">@completionDate.ToString("g")</div>
+                                        <div class="scoreboard-deck-cell-primary">@(await FormatUtcDateTimeAsync(completionDate))</div>
                                         <div class="scoreboard-deck-cell-secondary">@(application.CompletedOn.HasValue ? T("Plugins.Misc.AIInterview.VendorScoreboard.InterviewCompleted").Text : T("Plugins.Misc.AIInterview.VendorScoreboard.ApplicationReceived").Text)</div>
                                     </td>
                                     <td>
@@ -201,7 +209,7 @@
                             <div class="responsive-data-card-grid">
                                 <div class="responsive-data-card-item">
                                     <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.CompletionDate")</span>
-                                    <span class="responsive-data-card-value">@completionDate.ToString("g")</span>
+                                    <span class="responsive-data-card-value">@(await FormatUtcDateTimeAsync(completionDate))</span>
                                 </div>
                                 <div class="responsive-data-card-item">
                                     <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.VerificationStatus")</span>

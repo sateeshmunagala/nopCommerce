@@ -1,14 +1,24 @@
 @model ApplicationListModel
 @using Nop.Plugin.Misc.AIInterview.Domain
+@using Nop.Services.Helpers
 @using Nop.Web.Models.Customer
+@inject IDateTimeHelper dateTimeHelper
 
 @{
+    async Task<string> FormatUtcDateTimeAsync(DateTime utcDateTime)
+    {
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(utcDateTime, DateTimeKind.Utc);
+        return userDateTime.ToString("g");
+    }
+
     Layout = "_ColumnsTwo";
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
     NopHtml.AppendPageCssClassParts("html-account-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-employer-applications-page");
     var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
+    var appliedFromLabelText = T("Plugins.Misc.AIInterview.Employer.Applications.AppliedFromUtc").Text.Replace(" (UTC)", string.Empty);
+    var appliedToLabelText = T("Plugins.Misc.AIInterview.Employer.Applications.AppliedToUtc").Text.Replace(" (UTC)", string.Empty);
 
     string GetStatusLabel(string status) => T($"Plugins.Misc.AIInterview.Status.{JobApplicationStatuses.Normalize(status)}").Text;
 }
@@ -63,11 +73,11 @@
                         <input id="MaxScore" name="MaxScore" type="number" min="0" max="100" value="@Model.MaxScore" />
                     </div>
                     <div class="employer-field">
-                        <label for="StartDate">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedFromUtc")</label>
+                        <label for="StartDate">@appliedFromLabelText</label>
                         <input id="StartDate" name="StartDate" type="date" value="@(Model.StartDate?.ToString("yyyy-MM-dd"))" />
                     </div>
                     <div class="employer-field">
-                        <label for="EndDate">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedToUtc")</label>
+                        <label for="EndDate">@appliedToLabelText</label>
                         <input id="EndDate" name="EndDate" type="date" value="@(Model.EndDate?.ToString("yyyy-MM-dd"))" />
                     </div>
                     <div class="employer-field">
@@ -152,7 +162,7 @@
                                             }
                                         </td>
                                         <td class="col-attempts">@app.AttemptCount</td>
-                                        <td class="col-applied">@app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                        <td class="col-applied">@(await FormatUtcDateTimeAsync(app.CreatedOn))</td>
                                         <td class="col-resume">
                                             @if (app.HasResume && !string.IsNullOrWhiteSpace(app.ResumeDownloadUrl))
                                             {
@@ -246,7 +256,7 @@
                                 </div>
                                 <div class="responsive-data-card-item">
                                     <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedOn")</span>
-                                    <span class="responsive-data-card-value">@app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</span>
+                                    <span class="responsive-data-card-value">@(await FormatUtcDateTimeAsync(app.CreatedOn))</span>
                                 </div>
                                 <div class="responsive-data-card-item">
                                     <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Applications.Resume")</span>
