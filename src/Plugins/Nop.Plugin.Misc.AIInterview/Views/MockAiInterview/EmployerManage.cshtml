@@ -113,6 +113,42 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="responsive-data-list invite-mobile-list" aria-label="@T("Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle")">
+                    @foreach (var invite in Model)
+                    {
+                        var inviteUrl = Url.RouteUrl(AIInterviewDefaults.MockStartRouteName,
+                            new { productId = invite.ProductId, sponsorToken = invite.InviteCode });
+                        var statusKey = inviteStatuses.TryGetValue(invite.Id, out var inviteStatus) ? inviteStatus : string.Empty;
+                        var activeStatus = T("Plugins.Misc.AIInterview.Employer.Invite.Active").Text;
+                        var isActiveInvite = string.Equals(statusKey, activeStatus, StringComparison.OrdinalIgnoreCase);
+                        <article class="responsive-data-card">
+                            <div class="responsive-data-card-head">
+                                <div class="responsive-data-card-head-copy">
+                                    <strong class="responsive-data-card-title">@invite.Email</strong>
+                                    <div class="responsive-data-card-subtitle">@invite.InviteCode</div>
+                                </div>
+                                <div class="responsive-data-card-chip-group">
+                                    <span class="status-pill">@(string.IsNullOrWhiteSpace(statusKey) ? T("Plugins.Misc.AIInterview.Employer.Invite.Active") : statusKey)</span>
+                                </div>
+                            </div>
+                            <div class="responsive-data-card-grid">
+                                <div class="responsive-data-card-item responsive-data-card-item-wide">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Invite.Link")</span>
+                                    <span class="responsive-data-card-value"><a href="@inviteUrl">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</a></span>
+                                </div>
+                            </div>
+                            <div class="responsive-data-card-actions">
+                                @if (isActiveInvite)
+                                {
+                                    <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post" class="invite-deactivate-form">
+                                        <button type="submit" class="button-2 invite-deactivate-button">@T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate")</button>
+                                    </form>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
             }
             else
             {

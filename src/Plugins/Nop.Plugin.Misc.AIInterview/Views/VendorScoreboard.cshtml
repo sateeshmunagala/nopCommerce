@@ -98,7 +98,7 @@
         </div>
 
         <div class="section scoreboard-deck-table-section">
-            <div class="title">
+            <div class="title scoreboard-deck-section-head">
                 <strong>@T("Plugins.Misc.AIInterview.VendorScoreboard.CandidateAssessmentMatrix")</strong>
             </div>
             @if (Model.RecentApplications.Any())
@@ -168,6 +168,64 @@
                             }
                         </tbody>
                     </table>
+                </div>
+
+                <div class="responsive-data-list scoreboard-deck-mobile-list" aria-label="@T("Plugins.Misc.AIInterview.VendorScoreboard.CandidateAssessmentMatrix")">
+                    @foreach (var application in Model.RecentApplications)
+                    {
+                        var verificationLabel = T(GetVerificationLabel(application.RawStatus)).Text;
+                        var verificationClass = GetVerificationClass(application.RawStatus);
+                        var statusText = string.IsNullOrWhiteSpace(application.Status) ? verificationLabel : application.Status;
+                        var completionDate = application.CompletedOn ?? application.CreatedOn;
+                        <article class="responsive-data-card">
+                            <div class="responsive-data-card-head">
+                                <div class="responsive-data-card-head-copy">
+                                    <strong class="responsive-data-card-title">@(string.IsNullOrWhiteSpace(application.CandidateName) ? application.CandidateEmail : application.CandidateName)</strong>
+                                    <div class="responsive-data-card-subtitle">@application.JobTitle</div>
+                                    @if (!string.IsNullOrWhiteSpace(application.CandidateEmail))
+                                    {
+                                        <div class="applications-footnote">@application.CandidateEmail</div>
+                                    }
+                                </div>
+                                <div class="responsive-data-card-chip-group">
+                                    @if (application.InterviewScore.HasValue)
+                                    {
+                                        <span class="scoreboard-deck-score">@application.InterviewScore.Value.ToString("N2")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="scoreboard-deck-score scoreboard-deck-score-muted">@T("Plugins.Misc.AIInterview.Status.Pending")</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="responsive-data-card-grid">
+                                <div class="responsive-data-card-item">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.CompletionDate")</span>
+                                    <span class="responsive-data-card-value">@completionDate.ToString("g")</span>
+                                </div>
+                                <div class="responsive-data-card-item">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.VerificationStatus")</span>
+                                    <span class="responsive-data-card-value">
+                                        <span class="scoreboard-deck-status @verificationClass">@verificationLabel</span>
+                                    </span>
+                                </div>
+                                <div class="responsive-data-card-item responsive-data-card-item-wide">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Status")</span>
+                                    <span class="responsive-data-card-value">@statusText</span>
+                                </div>
+                            </div>
+                            <div class="responsive-data-card-actions">
+                                @if (!string.IsNullOrWhiteSpace(application.InterviewReportUrl))
+                                {
+                                    <a class="button-2 scoreboard-deck-row-link" href="@application.InterviewReportUrl" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ViewAnalysis")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ViewAnalysis")</a>
+                                }
+                                else
+                                {
+                                    <a class="button-2 scoreboard-deck-row-link" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")</a>
+                                }
+                            </div>
+                        </article>
+                    }
                 </div>
             }
             else

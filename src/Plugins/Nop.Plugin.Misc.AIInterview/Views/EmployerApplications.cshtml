@@ -115,96 +115,196 @@
 
                 <div class="table-wrapper">
                     <div class="employer-table-wrapper">
-                    <table class="data-table employer-table">
-                        <thead>
-                            <tr>
-                                <th class="col-candidate">@T("Plugins.Misc.AIInterview.Employer.Applications.Candidate")</th>
-                                <th class="col-email">@T("Plugins.Misc.AIInterview.Employer.Applications.Email")</th>
-                                <th class="col-phone">@T("Plugins.Misc.AIInterview.Employer.Applications.Phone")</th>
-                                <th class="col-charge">@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</th>
-                                <th class="col-score">@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewScore")</th>
-                                <th class="col-attempts">@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>
-                                <th class="col-applied">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedOn")</th>
-                                <th class="col-resume">@T("Plugins.Misc.AIInterview.Employer.Applications.Resume")</th>
-                                <th class="col-message">@T("Plugins.Misc.AIInterview.Employer.Applications.CoverMessage")</th>
-                                <th class="col-status">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</th>
-                                <th class="col-report"><span class="sr-only">@T("Plugins.Misc.AIInterview.Report.Title")</span><i class="fa-solid fa-eye" aria-hidden="true"></i></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var app in Model.Applications)
-                            {
-                                var candidateDisplay = string.IsNullOrWhiteSpace(app.CandidateName) ? app.CandidateEmail : app.CandidateName;
-                                var updateLabel = $"{T("Plugins.Misc.AIInterview.Employer.Applications.Update").Text} - {candidateDisplay}";
+                        <table class="data-table employer-table">
+                            <thead>
                                 <tr>
-                                    <td class="col-candidate">@app.CandidateName</td>
-                                    <td class="col-email">@app.CandidateEmail</td>
-                                    <td class="col-phone">@app.CandidatePhone</td>
-                                    <td class="col-charge"><span class="charge-pill">@app.ChargeMode</span></td>
-                                    <td class="col-score">
-                                        @if (app.InterviewScore.HasValue)
-                                        {
-                                            <span class="score-badge">@Math.Round(app.InterviewScore.Value)</span>
-                                        }
-                                        else
-                                        {
-                                            <span>-</span>
-                                        }
-                                    </td>
-                                    <td class="col-attempts">@app.AttemptCount</td>
-                                    <td class="col-applied">@app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
-                                    <td class="col-resume">
+                                    <th class="col-candidate">@T("Plugins.Misc.AIInterview.Employer.Applications.Candidate")</th>
+                                    <th class="col-email">@T("Plugins.Misc.AIInterview.Employer.Applications.Email")</th>
+                                    <th class="col-phone">@T("Plugins.Misc.AIInterview.Employer.Applications.Phone")</th>
+                                    <th class="col-charge">@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</th>
+                                    <th class="col-score">@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewScore")</th>
+                                    <th class="col-attempts">@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</th>
+                                    <th class="col-applied">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedOn")</th>
+                                    <th class="col-resume">@T("Plugins.Misc.AIInterview.Employer.Applications.Resume")</th>
+                                    <th class="col-message">@T("Plugins.Misc.AIInterview.Employer.Applications.CoverMessage")</th>
+                                    <th class="col-status">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</th>
+                                    <th class="col-report"><span class="sr-only">@T("Plugins.Misc.AIInterview.Report.Title")</span><i class="fa-solid fa-eye" aria-hidden="true"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var app in Model.Applications)
+                                {
+                                    var candidateDisplay = string.IsNullOrWhiteSpace(app.CandidateName) ? app.CandidateEmail : app.CandidateName;
+                                    var updateLabel = $"{T("Plugins.Misc.AIInterview.Employer.Applications.Update").Text} - {candidateDisplay}";
+                                    <tr>
+                                        <td class="col-candidate">@app.CandidateName</td>
+                                        <td class="col-email">@app.CandidateEmail</td>
+                                        <td class="col-phone">@app.CandidatePhone</td>
+                                        <td class="col-charge"><span class="charge-pill">@app.ChargeMode</span></td>
+                                        <td class="col-score">
+                                            @if (app.InterviewScore.HasValue)
+                                            {
+                                                <span class="score-badge">@Math.Round(app.InterviewScore.Value)</span>
+                                            }
+                                            else
+                                            {
+                                                <span>-</span>
+                                            }
+                                        </td>
+                                        <td class="col-attempts">@app.AttemptCount</td>
+                                        <td class="col-applied">@app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                        <td class="col-resume">
+                                            @if (app.HasResume && !string.IsNullOrWhiteSpace(app.ResumeDownloadUrl))
+                                            {
+                                                <a href="@app.ResumeDownloadUrl" title="@T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume")">@T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume")</a>
+                                            }
+                                            else
+                                            {
+                                                <span>@T("Plugins.Misc.AIInterview.Employer.Applications.NoResume")</span>
+                                            }
+                                        </td>
+                                        <td class="col-message">@app.CoverMessage</td>
+                                        <td class="col-status">
+                                            <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post" class="status-form employer-status-form">
+                                                <input type="hidden" name="Id" value="@app.Id" />
+                                                <div class="employer-status-field">
+                                                    <label class="sr-only employer-status-inline-label" for="Status-@app.Id">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</label>
+                                                    <select id="Status-@app.Id" name="Status" class="employer-status-select" aria-label="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.Status").Text} - {candidateDisplay}")" title="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.Status").Text} - {candidateDisplay}")">
+                                                        @foreach (var status in JobApplicationStatuses.All)
+                                                        {
+                                                            <option value="@status" selected="@(app.RawStatus == status)">@GetStatusLabel(status)</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                                <div class="employer-status-field employer-status-field-comment">
+                                                    <label class="sr-only employer-status-inline-label" for="StatusComment-@app.Id">@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")</label>
+                                                    <input id="StatusComment-@app.Id" type="text" name="StatusComment" class="employer-status-comment" value="@app.StatusComment" placeholder="@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")" aria-label="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment").Text} - {candidateDisplay}")" title="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment").Text} - {candidateDisplay}")" />
+                                                </div>
+                                                <div class="employer-status-field employer-status-field-action">
+                                                    <button type="submit" class="button-2 employer-status-update ai-icon-action" aria-label="@updateLabel" title="@updateLabel"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i><span class="sr-only">@T("Plugins.Misc.AIInterview.Employer.Applications.Update")</span></button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                        <td class="col-report">
+                                            @if (!string.IsNullOrWhiteSpace(app.InterviewReportUrl))
+                                            {
+                                                var reportTitle = string.Format(T("Plugins.Misc.AIInterview.Report.JobReportTitle").Text, app.JobTitle);
+                                                <a href="@app.InterviewReportUrl"
+                                                   class="ai-view-report-link ai-icon-action js-open-report-drawer"
+                                                   data-report-panel-url="@app.InterviewReportPanelUrl"
+                                                   data-report-title="@reportTitle"
+                                                   aria-label="@($"{viewReportText} - {app.JobTitle}")"
+                                                   title="@($"{viewReportText} - {app.JobTitle}")"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="sr-only">@viewReportText</span></a>
+                                            }
+                                            else
+                                            {
+                                                <span>-</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="responsive-data-list employer-mobile-list" aria-label="@T("Plugins.Misc.AIInterview.Employer.Applications.Title")">
+                    @foreach (var app in Model.Applications)
+                    {
+                        var candidateDisplay = string.IsNullOrWhiteSpace(app.CandidateName) ? app.CandidateEmail : app.CandidateName;
+                        var updateLabel = $"{T("Plugins.Misc.AIInterview.Employer.Applications.Update").Text} - {candidateDisplay}";
+                        <article class="responsive-data-card responsive-data-card-spacious">
+                            <div class="responsive-data-card-head">
+                                <div class="responsive-data-card-head-copy">
+                                    <strong class="responsive-data-card-title">@candidateDisplay</strong>
+                                    <div class="responsive-data-card-subtitle">@app.CandidateEmail</div>
+                                </div>
+                                <div class="responsive-data-card-chip-group">
+                                    <span class="charge-pill">@app.ChargeMode</span>
+                                    @if (app.InterviewScore.HasValue)
+                                    {
+                                        <span class="score-badge">@Math.Round(app.InterviewScore.Value)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="score-chip score-chip-muted">-</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="responsive-data-card-grid">
+                                <div class="responsive-data-card-item">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Applications.Phone")</span>
+                                    <span class="responsive-data-card-value">@(string.IsNullOrWhiteSpace(app.CandidatePhone) ? "-" : app.CandidatePhone)</span>
+                                </div>
+                                <div class="responsive-data-card-item">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Applications.ChargeMode")</span>
+                                    <span class="responsive-data-card-value">@app.ChargeMode</span>
+                                </div>
+                                <div class="responsive-data-card-item">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Applications.Attempts")</span>
+                                    <span class="responsive-data-card-value">@app.AttemptCount</span>
+                                </div>
+                                <div class="responsive-data-card-item">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Applications.AppliedOn")</span>
+                                    <span class="responsive-data-card-value">@app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</span>
+                                </div>
+                                <div class="responsive-data-card-item">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Applications.Resume")</span>
+                                    <span class="responsive-data-card-value">
                                         @if (app.HasResume && !string.IsNullOrWhiteSpace(app.ResumeDownloadUrl))
                                         {
                                             <a href="@app.ResumeDownloadUrl" title="@T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume")">@T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume")</a>
                                         }
                                         else
                                         {
-                                            <span>@T("Plugins.Misc.AIInterview.Employer.Applications.NoResume")</span>
+                                            @T("Plugins.Misc.AIInterview.Employer.Applications.NoResume")
                                         }
-                                    </td>
-                                    <td class="col-message">@app.CoverMessage</td>
-                                    <td class="col-status">
-                                        <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post" class="status-form employer-status-form">
-                                            <input type="hidden" name="Id" value="@app.Id" />
-                                            <div class="employer-status-field">
-                                                <label class="sr-only employer-status-inline-label" for="Status-@app.Id">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</label>
-                                                <select id="Status-@app.Id" name="Status" class="employer-status-select" aria-label="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.Status").Text} - {candidateDisplay}")" title="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.Status").Text} - {candidateDisplay}")">
-                                                    @foreach (var status in JobApplicationStatuses.All)
-                                                    {
-                                                        <option value="@status" selected="@(app.RawStatus == status)">@GetStatusLabel(status)</option>
-                                                    }
-                                                </select>
-                                            </div>
-                                            <div class="employer-status-field employer-status-field-comment">
-                                                <label class="sr-only employer-status-inline-label" for="StatusComment-@app.Id">@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")</label>
-                                                <input id="StatusComment-@app.Id" type="text" name="StatusComment" class="employer-status-comment" value="@app.StatusComment" placeholder="@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")" aria-label="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment").Text} - {candidateDisplay}")" title="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment").Text} - {candidateDisplay}")" />
-                                            </div>
-                                            <div class="employer-status-field employer-status-field-action">
-                                                <button type="submit" class="button-2 employer-status-update ai-icon-action" aria-label="@updateLabel" title="@updateLabel"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i><span class="sr-only">@T("Plugins.Misc.AIInterview.Employer.Applications.Update")</span></button>
-                                            </div>
-                                        </form>
-                                    </td>
-                                    <td class="col-report">
-                                        @if (!string.IsNullOrWhiteSpace(app.InterviewReportUrl))
-                                        {
-                                            var reportTitle = string.Format(T("Plugins.Misc.AIInterview.Report.JobReportTitle").Text, app.JobTitle);
-                                            <a href="@app.InterviewReportUrl"
-                                               class="ai-view-report-link ai-icon-action js-open-report-drawer"
-                                               data-report-panel-url="@app.InterviewReportPanelUrl"
-                                               data-report-title="@reportTitle"
-                                               aria-label="@($"{viewReportText} - {app.JobTitle}")"
-                                               title="@($"{viewReportText} - {app.JobTitle}")"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="sr-only">@viewReportText</span></a>
-                                        }
-                                        else
-                                        {
-                                            <span>-</span>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                                    </span>
+                                </div>
+                                <div class="responsive-data-card-item responsive-data-card-item-wide">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Applications.CoverMessage")</span>
+                                    <span class="responsive-data-card-value">@(string.IsNullOrWhiteSpace(app.CoverMessage) ? "-" : app.CoverMessage)</span>
+                                </div>
+                            </div>
+                            <div class="responsive-data-card-section">
+                                <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</span>
+                                <form asp-route="Plugin.Misc.AIInterview.UpdateStatus" method="post" class="status-form employer-status-form employer-status-form-card">
+                                    <input type="hidden" name="Id" value="@app.Id" />
+                                    <div class="employer-status-field">
+                                        <label class="sr-only employer-status-inline-label" for="MobileStatus-@app.Id">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</label>
+                                        <select id="MobileStatus-@app.Id" name="Status" class="employer-status-select" aria-label="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.Status").Text} - {candidateDisplay}")" title="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.Status").Text} - {candidateDisplay}")">
+                                            @foreach (var status in JobApplicationStatuses.All)
+                                            {
+                                                <option value="@status" selected="@(app.RawStatus == status)">@GetStatusLabel(status)</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="employer-status-field employer-status-field-comment">
+                                        <label class="sr-only employer-status-inline-label" for="MobileStatusComment-@app.Id">@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")</label>
+                                        <input id="MobileStatusComment-@app.Id" type="text" name="StatusComment" class="employer-status-comment" value="@app.StatusComment" placeholder="@T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment")" aria-label="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment").Text} - {candidateDisplay}")" title="@($"{T("Plugins.Misc.AIInterview.Employer.Applications.StatusComment").Text} - {candidateDisplay}")" />
+                                    </div>
+                                    <div class="employer-status-field employer-status-field-action">
+                                        <button type="submit" class="button-2 employer-status-update" aria-label="@updateLabel" title="@updateLabel">@T("Plugins.Misc.AIInterview.Employer.Applications.Update")</button>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="responsive-data-card-actions">
+                                @if (!string.IsNullOrWhiteSpace(app.InterviewReportUrl))
+                                {
+                                    var reportTitle = string.Format(T("Plugins.Misc.AIInterview.Report.JobReportTitle").Text, app.JobTitle);
+                                    <a href="@app.InterviewReportUrl"
+                                       class="ai-view-report-link js-open-report-drawer"
+                                       data-report-panel-url="@app.InterviewReportPanelUrl"
+                                       data-report-title="@reportTitle"
+                                       aria-label="@($"{viewReportText} - {app.JobTitle}")"
+                                       title="@($"{viewReportText} - {app.JobTitle}")">
+                                        <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                                        <span>@viewReportText</span>
+                                    </a>
+                                }
+                            </div>
+                        </article>
+                    }
                     </div>
                 </div>
             </div>

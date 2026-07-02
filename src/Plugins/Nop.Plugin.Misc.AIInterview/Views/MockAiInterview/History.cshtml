@@ -108,6 +108,82 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="responsive-data-list history-mobile-list" aria-label="@T("Plugins.Misc.AIInterview.History.Title")">
+                @foreach (var session in Model)
+                {
+                    var reportTitle = string.Format(jobReportTitleFormat, session.JobTitle);
+                    var recordingTitle = string.Format(jobRecordingTitleFormat, session.JobTitle);
+                    var reportActionLabel = $"{viewReportText} - {session.JobTitle}";
+                    var openRecordingLabel = $"{T("Plugins.Misc.AIInterview.Report.OpenRecording").Text} - {session.JobTitle}";
+                    var copyShareLabel = $"{copyShareLinkText} - {session.JobTitle}";
+                    var shareActionLabel = $"{shareText} - {session.JobTitle}";
+                    <article class="responsive-data-card">
+                        <div class="responsive-data-card-head">
+                            <div class="responsive-data-card-head-copy">
+                                <strong class="responsive-data-card-title">@session.JobTitle</strong>
+                                <div class="applications-footnote">@session.CreatedOnUtc.ToString("yyyy-MM-dd")</div>
+                            </div>
+                            <div class="responsive-data-card-chip-group">
+                                <span class="score-chip">@(string.IsNullOrWhiteSpace(session.Score) ? "-" : session.Score)</span>
+                                <span class="status-pill">@session.Status</span>
+                            </div>
+                        </div>
+                        <div class="responsive-data-card-grid">
+                            <div class="responsive-data-card-item">
+                                <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Date")</span>
+                                <span class="responsive-data-card-value">@session.CreatedOnUtc.ToString("yyyy-MM-dd")</span>
+                            </div>
+                            <div class="responsive-data-card-item">
+                                <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Score")</span>
+                                <span class="responsive-data-card-value">@(string.IsNullOrWhiteSpace(session.Score) ? "-" : session.Score)</span>
+                            </div>
+                        </div>
+                        <div class="responsive-data-card-actions">
+                            @if (!string.IsNullOrWhiteSpace(session.InterviewReportUrl))
+                            {
+                                <a href="@session.InterviewReportUrl"
+                                   class="js-open-report-drawer ai-view-report-link"
+                                   data-report-panel-url="@session.InterviewReportPanelUrl"
+                                   data-report-title="@reportTitle"
+                                   aria-label="@reportActionLabel"
+                                   title="@reportActionLabel">
+                                    <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                                    <span>@viewReportText</span>
+                                </a>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(session.RecordingUrl))
+                            {
+                                <div class="candidate-recording-actions">
+                                    <a href="@session.RecordingUrl"
+                                       target="_blank"
+                                       rel="noopener"
+                                       class="button-1 ai-report-action ai-report-action-primary ai-icon-action"
+                                       aria-label="@openRecordingLabel"
+                                       title="@openRecordingLabel"><i class="fa-solid fa-circle-play" aria-hidden="true"></i><span class="sr-only">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</span></a>
+                                    @if (!string.IsNullOrWhiteSpace(session.RecordingShareUrl))
+                                    {
+                                        <button type="button"
+                                                class="button-2 ai-copy-share-link ai-icon-action"
+                                                data-share-url="@session.RecordingShareUrl"
+                                                aria-label="@copyShareLabel"
+                                                title="@copyShareLabel"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="sr-only">@copyShareLinkText</span></button>
+                                        <button type="button"
+                                                class="button-2 ai-native-share-link aiinterview-hidden ai-icon-action"
+                                                data-share-url="@session.RecordingShareUrl"
+                                                data-share-title="@recordingTitle"
+                                                aria-label="@shareActionLabel"
+                                                title="@shareActionLabel"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span class="sr-only">@shareText</span></button>
+                                        <noscript>
+                                            <a href="@session.RecordingShareUrl" target="_blank" rel="noopener">@openSharePageText</a>
+                                        </noscript>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
         }
         else
         {

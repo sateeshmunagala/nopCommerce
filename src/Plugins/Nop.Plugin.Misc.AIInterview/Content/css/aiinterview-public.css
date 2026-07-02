@@ -17,6 +17,18 @@
     box-sizing: border-box;
 }
 
+.html-aiinterview-view-page .master-wrapper-content,
+.html-aiinterview-view-page .master-column-wrapper,
+.html-aiinterview-view-page .side-2,
+.html-aiinterview-view-page .center-2,
+.html-aiinterview-view-page .jb-account-nav-shell,
+.html-aiinterview-view-page .block-account-navigation,
+.html-aiinterview-view-page .block-account-navigation .listbox,
+.html-aiinterview-view-page .block-account-navigation .list {
+    min-width: 0;
+    max-width: 100%;
+}
+
 .aiinterview-shell,
 .ai-applications-page,
 .employer-applications-page,
@@ -451,6 +463,14 @@
     text-transform: uppercase;
 }
 
+.vendor-job-form-field-label {
+    display: block;
+    color: #30363c;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.92rem;
+    text-transform: uppercase;
+}
+
 .vendor-job-form-field > label + .required {
     margin-top: -4px;
 }
@@ -500,6 +520,10 @@
 .vendor-job-form-actions {
     display: flex;
     justify-content: flex-start;
+    padding: 18px;
+    border: 1px solid #dedede;
+    border-radius: 4px;
+    background: #fbfbfb;
 }
 
 .invite-form-grid {
@@ -521,6 +545,14 @@
     justify-content: flex-start;
 }
 
+.credit-balance {
+    margin-bottom: 18px;
+    padding: 16px 18px;
+    border: 1px solid #dedede;
+    border-radius: 6px;
+    background: #ffffff;
+}
+
 .invite-deactivate-form {
     display: inline-flex;
     margin: 0;
@@ -530,6 +562,142 @@
     min-height: 38px;
     padding: 8px 14px;
     white-space: nowrap;
+}
+
+.responsive-data-list {
+    display: grid;
+    gap: 14px;
+}
+
+.applications-mobile-list,
+.employer-mobile-list,
+.history-mobile-list,
+.invite-mobile-list,
+.scoreboard-deck-mobile-list {
+    display: none;
+}
+
+.responsive-data-card {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid #d8dee4;
+    border-radius: 6px;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.responsive-data-card-spacious {
+    gap: 16px;
+}
+
+.responsive-data-card-head,
+.responsive-data-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.responsive-data-card-head-copy,
+.responsive-data-card-grid,
+.responsive-data-card-item,
+.responsive-data-card-value {
+    min-width: 0;
+}
+
+.responsive-data-card-head-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.responsive-data-card-title {
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.15;
+    text-transform: uppercase;
+}
+
+.responsive-data-card-subtitle {
+    color: #4f5963;
+    font-weight: 600;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.responsive-data-card-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.responsive-data-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+}
+
+.responsive-data-card-item {
+    display: grid;
+    gap: 6px;
+}
+
+.responsive-data-card-item-wide {
+    grid-column: 1 / -1;
+}
+
+.responsive-data-card-label {
+    color: #687078;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.responsive-data-card-value {
+    color: #20252b;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.responsive-data-card-section {
+    display: grid;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.responsive-data-card-actions {
+    align-items: center;
+}
+
+.responsive-data-card-actions .candidate-recording-actions,
+.responsive-data-card-actions .invite-deactivate-form {
+    margin: 0;
+}
+
+.employer-status-form-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.employer-status-form-card .employer-status-field-action {
+    width: auto;
+    min-width: 0;
+    justify-content: flex-start;
+    justify-self: start;
+}
+
+.employer-status-form-card .employer-status-update {
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    padding: 10px 16px;
 }
 
 .invite-table-wrapper,
@@ -782,6 +950,11 @@
 .score-chip {
     min-width: 40px;
     min-height: 40px;
+}
+
+.score-chip-muted {
+    background: #f5f5f5;
+    color: #687078;
 }
 
 .status-pill {
@@ -1259,6 +1432,10 @@
     line-height: 1.5;
 }
 
+.ai-report-drawer-status:empty {
+    display: none;
+}
+
 .ai-report-drawer-body {
     min-width: 0;
     overflow: auto;
@@ -1325,12 +1502,13 @@ body.aiinterview-report-drawer-open {
 .ai-job-card-body,
 .ai-job-preview-drawer-body {
     display: grid;
-    gap: 8px;
+    gap: 10px;
     align-content: start;
 }
 
 .ai-job-card-body {
     position: relative;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
 }
 
 .ai-job-card-topline,
@@ -1420,7 +1598,7 @@ body.aiinterview-report-drawer-open {
 .ai-job-card-meta {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px 14px;
+    gap: 6px 14px;
     align-items: start;
     width: 100%;
 }
@@ -1482,7 +1660,8 @@ body.aiinterview-report-drawer-open {
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
-    margin-top: 2px;
+    margin-top: auto;
+    padding-top: 6px;
 }
 
 .ai-job-card-view-job {
@@ -1491,6 +1670,7 @@ body.aiinterview-report-drawer-open {
     padding: 8px 14px;
     font-size: 0.88rem;
     letter-spacing: 0.03em;
+    margin-left: auto;
 }
 
 .ai-job-card-save {
@@ -1779,6 +1959,22 @@ body.ai-job-preview-open .item-box {
         flex-wrap: wrap;
     }
 
+    .html-aiinterview-my-applications-page .applications-table-wrap,
+    .html-aiinterview-employer-applications-page .table-wrapper,
+    .html-aiinterview-history-page .history-table-wrapper,
+    .html-aiinterview-employer-manage-page .table-wrapper,
+    .html-aiinterview-scoreboard-page .scoreboard-deck-table-wrapper {
+        display: none;
+    }
+
+    .applications-mobile-list,
+    .employer-mobile-list,
+    .history-mobile-list,
+    .invite-mobile-list,
+    .scoreboard-deck-mobile-list {
+        display: grid;
+    }
+
     .vendor-job-form-simple-grid {
         grid-template-columns: 1fr;
     }
@@ -1799,6 +1995,24 @@ body.ai-job-preview-open .item-box {
     .ai-report-drawer-panel {
         width: 100%;
         padding: 16px;
+    }
+
+    .ai-report-drawer-header {
+        align-items: flex-start;
+    }
+
+    .ai-report-drawer-header h2 {
+        font-size: 1.2rem;
+    }
+
+    .ai-report-drawer-body {
+        padding-right: 0;
+    }
+
+    .ai-report-meta,
+    .mock-report-meta {
+        display: grid;
+        gap: 8px;
     }
 
     .ai-job-product-card {
@@ -2661,14 +2875,15 @@ body.ai-job-preview-open .item-box {
 
 .html-job-details-page .breadcrumb,
 .html-aiinterview-job-details-page .breadcrumb {
-    margin: 0 auto 18px;
-    padding: 6px 24px 8px;
+    margin: 0 auto 8px;
+    padding: 2px 24px 4px;
     background: transparent;
 }
 
 .job-details-page .page-body {
     display: grid;
-    gap: 28px;
+    gap: 24px;
+    padding-top: 8px;
 }
 
 .job-shell {
@@ -3129,7 +3344,57 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-my-applications-page .applications-table {
-    min-width: 760px;
+    min-width: 860px;
+}
+
+.html-aiinterview-my-applications-page .applications-table .col-report {
+    width: 72px;
+    min-width: 72px;
+    text-align: center;
+}
+
+.html-aiinterview-my-applications-page .applications-table .col-recording {
+    width: 104px;
+    min-width: 104px;
+    text-align: center;
+}
+
+.html-aiinterview-my-applications-page .applications-table td.col-report,
+.html-aiinterview-my-applications-page .applications-table td.col-recording {
+    white-space: nowrap;
+}
+
+.html-aiinterview-my-applications-page .applications-table .candidate-recording-actions {
+    display: flex;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    width: max-content;
+    max-width: none;
+    margin: 0 auto;
+    gap: 4px;
+}
+
+.html-aiinterview-my-applications-page .applications-table .candidate-recording-actions > .ai-icon-action,
+.html-aiinterview-my-applications-page .applications-table .candidate-recording-actions > .button-1,
+.html-aiinterview-my-applications-page .applications-table .candidate-recording-actions > .button-2 {
+    flex: 0 0 28px !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    max-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    flex-shrink: 1;
+}
+
+.html-aiinterview-my-applications-page .applications-table .candidate-recording-actions .button-1,
+.html-aiinterview-my-applications-page .applications-table .candidate-recording-actions .button-2 {
+    padding: 0;
+}
+
+.html-aiinterview-my-applications-page .applications-table .candidate-recording-actions .button-1 i,
+.html-aiinterview-my-applications-page .applications-table .candidate-recording-actions .button-2 i {
+    font-size: 0.75rem !important;
 }
 
 .html-aiinterview-vendor-job-creation-page .vendor-job-submit,
@@ -3159,6 +3424,14 @@ body.ai-job-preview-open .item-box {
 .html-aiinterview-scoreboard-page .scoreboard-deck-table-section {
     display: grid;
     gap: 18px;
+}
+
+.html-aiinterview-scoreboard-page .scoreboard-deck-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 .html-aiinterview-scoreboard-page .scoreboard-deck-header {
@@ -3357,6 +3630,18 @@ body.ai-job-preview-open .item-box {
     justify-content: flex-start;
 }
 
+@media (max-width: 1100px) {
+    .html-aiinterview-view-page.html-account-page .master-column-wrapper {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .html-aiinterview-view-page.html-account-page .side-2 {
+        order: -1;
+        margin: 0;
+    }
+}
+
 @media (max-width: 1080px) {
     .html-aiinterview-scoreboard-page .scoreboard-deck-metrics,
     .html-aiinterview-scoreboard-page .scoreboard-deck-overview {
@@ -3405,6 +3690,10 @@ body.ai-job-preview-open .item-box {
 
     .html-aiinterview-scoreboard-page .scoreboard-deck-title {
         font-size: 1.6rem;
+    }
+
+    .responsive-data-card-grid {
+        grid-template-columns: 1fr;
     }
 
     .job-hero,
@@ -3483,6 +3772,19 @@ body.ai-job-preview-open .item-box {
     .job-meta-item,
     .report-preview {
         max-width: 100%;
+    }
+
+    .responsive-data-card-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .responsive-data-card-actions .button-1,
+    .responsive-data-card-actions .button-2,
+    .responsive-data-card-actions .ai-view-report-link,
+    .responsive-data-card-actions .invite-deactivate-form,
+    .responsive-data-card-actions .invite-deactivate-button {
+        width: 100%;
     }
 }
 
