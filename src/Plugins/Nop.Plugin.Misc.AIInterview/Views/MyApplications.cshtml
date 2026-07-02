@@ -1,8 +1,19 @@
 @model ApplicationListModel
 @using Nop.Plugin.Misc.AIInterview.Domain
+@using Nop.Services.Helpers
 @using Nop.Web.Models.Customer
+@inject IDateTimeHelper dateTimeHelper
 
 @{
+    async Task<string> FormatUtcDateTimeAsync(DateTime? utcDateTime)
+    {
+        if (!utcDateTime.HasValue)
+            return "-";
+
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(utcDateTime.Value, DateTimeKind.Utc);
+        return userDateTime.ToString("g");
+    }
+
     Layout = "_ColumnsTwo";
     NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.MyApplications.Title").Text);
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
@@ -16,6 +27,7 @@
     var jobReportTitleFormat = T("Plugins.Misc.AIInterview.Report.JobReportTitle").Text;
     var jobRecordingTitleFormat = T("Plugins.Misc.AIInterview.Report.JobRecordingTitle").Text;
     var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
+    var completedLabelText = T("Plugins.Misc.AIInterview.Common.CompletedUtc").Text.Replace(" (UTC)", string.Empty);
 }
 
 @section left
@@ -54,7 +66,7 @@
                                 <th class="col-job">@T("Plugins.Misc.AIInterview.MyApplications.JobTitle")</th>
                                 <th class="col-score">@T("Plugins.Misc.AIInterview.MyApplications.Score")</th>
                                 <th class="col-status">@T("Plugins.Misc.AIInterview.History.Status")</th>
-                                <th class="col-completed">@T("Plugins.Misc.AIInterview.Common.CompletedUtc")</th>
+                                <th class="col-completed">@completedLabelText</th>
                                 <th class="col-report">@T("Plugins.Misc.AIInterview.Report.Title")</th>
                                 <th class="col-recording">@T("Plugins.Misc.AIInterview.Report.Recording")</th>
                             </tr>
@@ -71,7 +83,7 @@
                                 <tr>
                                     <td class="col-job">
                                         <div><strong>@app.JobTitle</strong></div>
-                                        <div class="applications-footnote">@T("Plugins.Misc.AIInterview.MyApplications.Applied") @app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</div>
+                                        <div class="applications-footnote">@T("Plugins.Misc.AIInterview.MyApplications.Applied") @(await FormatUtcDateTimeAsync(app.CreatedOn))</div>
                                     </td>
                                     <td class="col-score">
                                         @if (app.InterviewScore.HasValue)
@@ -84,7 +96,7 @@
                                         }
                                     </td>
                                     <td class="col-status"><span class="status-pill">@app.Status</span></td>
-                                    <td class="col-completed">@(app.CompletedOn.HasValue ? app.CompletedOn.Value.ToString("yyyy-MM-dd HH:mm:ss") + "Z" : "-")</td>
+                                    <td class="col-completed">@(await FormatUtcDateTimeAsync(app.CompletedOn))</td>
                                     <td class="col-report">
                                         @if (!string.IsNullOrEmpty(app.InterviewReportUrl))
                                         {
@@ -153,7 +165,7 @@
                             <div class="responsive-data-card-head">
                                 <div class="responsive-data-card-head-copy">
                                     <strong class="responsive-data-card-title">@app.JobTitle</strong>
-                                    <div class="applications-footnote">@T("Plugins.Misc.AIInterview.MyApplications.Applied") @app.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss")Z</div>
+                                    <div class="applications-footnote">@T("Plugins.Misc.AIInterview.MyApplications.Applied") @(await FormatUtcDateTimeAsync(app.CreatedOn))</div>
                                 </div>
                                 <div class="responsive-data-card-chip-group">
                                     @if (app.InterviewScore.HasValue)
@@ -173,8 +185,8 @@
                                     <span class="responsive-data-card-value">@(app.InterviewScore.HasValue ? Math.Round(app.InterviewScore.Value).ToString() : "-")</span>
                                 </div>
                                 <div class="responsive-data-card-item">
-                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Common.CompletedUtc")</span>
-                                    <span class="responsive-data-card-value">@(app.CompletedOn.HasValue ? app.CompletedOn.Value.ToString("yyyy-MM-dd HH:mm:ss") + "Z" : "-")</span>
+                                    <span class="responsive-data-card-label">@completedLabelText</span>
+                                    <span class="responsive-data-card-value">@(await FormatUtcDateTimeAsync(app.CompletedOn))</span>
                                 </div>
                             </div>
                             <div class="responsive-data-card-actions">

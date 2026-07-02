@@ -296,7 +296,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.JobReportTitle"] = "{0} report",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.JobRecordingTitle"] = "{0} recording",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.LinkCopied"] = "Link copied",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Common.CompletedUtc"] = "Completed (UTC)",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Common.CompletedUtc"] = "Completed",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.Available"] = "Available",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.Interview"] = "Interview",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Active"] = "Active",
