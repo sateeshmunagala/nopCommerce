@@ -13,7 +13,6 @@
     <div id="razorpay-pending-message" style="color: red; display: none; margin-top: 10px;">@T("Plugins.Payments.Razorpay.PaymentInfo.PleaseCompletePayment")</div>
 </div>
 
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
     (function () {
         var payButton = document.getElementById('razorpay-pay-button');
@@ -49,6 +48,47 @@
             return;
         }
 
+        function ensureRazorpaySdkLoaded() {
+            if (window.Razorpay) {
+                return Promise.resolve();
+            }
+
+            if (window.razorpaySdkLoadPromise) {
+                return window.razorpaySdkLoadPromise;
+            }
+
+            window.razorpaySdkLoadPromise = new Promise(function (resolve, reject) {
+                var existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+
+                if (existingScript) {
+                    if (window.Razorpay) {
+                        resolve();
+                        return;
+                    }
+
+                    existingScript.addEventListener('load', resolve, { once: true });
+                    existingScript.addEventListener('error', function () {
+                        reject(new Error('RazorpaySDKLoadFailed'));
+                    }, { once: true });
+                    return;
+                }
+
+                var script = document.createElement('script');
+                script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                script.async = true;
+                script.onload = resolve;
+                script.onerror = function () {
+                    reject(new Error('RazorpaySDKLoadFailed'));
+                };
+                document.head.appendChild(script);
+            }).catch(function (error) {
+                window.razorpaySdkLoadPromise = null;
+                throw error;
+            });
+
+            return window.razorpaySdkLoadPromise;
+        }
+
         $(document)
             .off('click.razorpay', '#razorpay-pay-button')
             .on('click.razorpay', '#razorpay-pay-button', function (e) {
@@ -57,24 +97,20 @@
                 errorContainer.style.display = 'none';
                 pendingMessage.style.display = 'none';
 
-                if (typeof Razorpay === 'undefined') {
-                    showError("Razorpay SDK not loaded.");
-                    logErrorToDiagnosticEndpoint("RazorpaySDKMissing", "typeof Razorpay is undefined.");
-                    return;
-                }
-
                 payButton.disabled = true;
                 payButton.textContent = '@T("Plugins.Payments.Razorpay.PaymentInfo.Processing").Text';
 
-                var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
-                var formData = new FormData();
-                if (antiforgeryToken) {
-                    formData.append('__RequestVerificationToken', antiforgeryToken.value);
-                }
+                ensureRazorpaySdkLoaded().then(function () {
+                    var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+                    var formData = new FormData();
+                    if (antiforgeryToken) {
+                        formData.append('__RequestVerificationToken', antiforgeryToken.value);
+                    }
 
-                fetch('@Url.Action("CreateOrder", "RazorpayPublic")', {
-                    method: 'POST',
-                    body: formData
+                    return fetch('@Url.Action("CreateOrder", "RazorpayPublic")', {
+                        method: 'POST',
+                        body: formData
+                    });
                 })
                 .then(function(response) {
                     if (!response.ok) {
@@ -129,11 +165,16 @@
                     }
                 })
                 .catch(function(error) {
+                    if (error && error.message === 'RazorpaySDKLoadFailed') {
+                        showError('Razorpay checkout could not be loaded. Please try again or check your network connection.');
+                        logErrorToDiagnosticEndpoint('RazorpaySDKLoadFailed', 'The external Razorpay script failed to load');
+                        return;
+                    }
+
                     showError(error.message);
                     logErrorToDiagnosticEndpoint("CreateOrderException", error.message);
                 });
             });
-        });
 
         function verifyPayment(paymentId, orderId, signature) {
             var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
