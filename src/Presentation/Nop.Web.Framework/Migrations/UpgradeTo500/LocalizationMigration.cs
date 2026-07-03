@@ -833,6 +833,16 @@ public class LocalizationMigration : MigrationBase
             //#8229
             ["Admin.Configuration.Settings.Order.DownloadableProductsReturnRequestsAllowed"] = "Allow return requests for downloadable products",
             ["Admin.Configuration.Settings.Order.DownloadableProductsReturnRequestsAllowed.Hint"] = "Check this option to allow return requests for downloadable products.",
+
+            //#8247
+            ["Admin.Customers.Customers.Fields.PriceLists"] = "Price lists",
+            ["Admin.Customers.Customers.Fields.PriceLists.Hint"] = "Choose price lists of this user.",
+            ["Admin.Customers.Customers.Fields.PriceLists.NoPriceList"] = "No price lists available. Create at least one price list before mapping.",
+
+            //#8248
+            ["Admin.Catalog.Products.Fields.PriceLists"] = "Price lists",
+            ["Admin.Catalog.Products.Fields.PriceLists.Hint"] = "Choose price lists of this product.",
+            ["Admin.Catalog.Products.Fields.PriceLists.NoPriceList"] = "No price lists available. Create at least one price list before mapping.",
         });
 
         #endregion
