@@ -16,7 +16,7 @@ public record ConfigurationModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Payments.Razorpay.Fields.KeySecret")]
     [DataType(DataType.Password)]
-    public string KeySecret { get; set; } = string.Empty;
+    public string? KeySecret { get; set; }
     public bool KeySecret_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Payments.Razorpay.Fields.PaymentCapture")]

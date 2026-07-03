@@ -1,0 +1,136 @@
+@model Nop.Plugin.Payments.Razorpay.Models.PaymentInfoModel
+@inject Nop.Core.IWebHelper WebHelper
+
+<div class="razorpay-payment-info" id="razorpay-payment-info-container">
+    <p>Please click the button below to complete your payment securely via Razorpay.</p>
+    <button type="button" id="razorpay-pay-button" class="button-1 payment-info-next-step-button" style="margin-top: 10px;">Pay with Razorpay</button>
+
+    <input type="hidden" id="RazorpayOrderId" name="RazorpayOrderId" value="" />
+    <input type="hidden" id="RazorpayPaymentId" name="RazorpayPaymentId" value="" />
+    <input type="hidden" id="RazorpaySignature" name="RazorpaySignature" value="" />
+
+    <div id="razorpay-error-message" style="color: red; display: none; margin-top: 10px;"></div>
+    <div id="razorpay-success-message" style="color: green; display: none; margin-top: 10px;">Payment successful! You can now continue the checkout.</div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var payButton = document.getElementById('razorpay-pay-button');
+        var container = document.getElementById('razorpay-payment-info-container');
+        var errorContainer = document.getElementById('razorpay-error-message');
+        var successContainer = document.getElementById('razorpay-success-message');
+
+        // Hide standard checkout next button initially if we can find it
+        var checkoutNextBtn = document.querySelector('.payment-info-next-step-button:not(#razorpay-pay-button)');
+        if (checkoutNextBtn) {
+            checkoutNextBtn.style.display = 'none';
+        }
+
+        payButton.addEventListener('click', function () {
+            errorContainer.style.display = 'none';
+            payButton.disabled = true;
+            payButton.textContent = 'Processing...';
+
+            var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+            var formData = new FormData();
+            if (antiforgeryToken) {
+                formData.append('__RequestVerificationToken', antiforgeryToken.value);
+            }
+
+            fetch('@Url.Action("CreateOrder", "RazorpayPublic")', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                var options = {
+                    "key": data.keyId,
+                    "amount": data.amount,
+                    "currency": data.currency,
+                    "name": data.name,
+                    "description": data.description,
+                    "order_id": data.orderId,
+                    "prefill": data.prefill,
+                    "handler": function (response) {
+                        // Payment successful in popup, now verify server-side
+                        verifyPayment(response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature);
+                    },
+                    "modal": {
+                        "ondismiss": function() {
+                            payButton.disabled = false;
+                            payButton.textContent = 'Pay with Razorpay';
+                        }
+                    }
+                };
+
+                var rzp = new Razorpay(options);
+                rzp.on('payment.failed', function (response){
+                    showError(response.error.description);
+                });
+                rzp.open();
+            })
+            .catch(function(error) {
+                showError(error.message);
+            });
+        });
+
+        function verifyPayment(paymentId, orderId, signature) {
+            var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+            var formData = new FormData();
+            if (antiforgeryToken) {
+                formData.append('__RequestVerificationToken', antiforgeryToken.value);
+            }
+            formData.append('razorpay_payment_id', paymentId);
+            formData.append('razorpay_order_id', orderId);
+            formData.append('razorpay_signature', signature);
+
+            fetch('@Url.Action("VerifyPayment", "RazorpayPublic")', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.success) {
+                    // Save to hidden fields for form submission
+                    document.getElementById('RazorpayOrderId').value = orderId;
+                    document.getElementById('RazorpayPaymentId').value = paymentId;
+                    document.getElementById('RazorpaySignature').value = signature;
+
+                    payButton.style.display = 'none';
+                    successContainer.style.display = 'block';
+
+                    // Show checkout next button so they can proceed
+                    if (checkoutNextBtn) {
+                        checkoutNextBtn.style.display = 'inline-block';
+                        // Optionally click it automatically
+                        // checkoutNextBtn.click();
+                    }
+                } else {
+                    showError(data.error || 'Payment verification failed.');
+                }
+            })
+            .catch(function(error) {
+                showError('Error verifying payment.');
+            });
+        }
+
+        function showError(msg) {
+            errorContainer.textContent = msg;
+            errorContainer.style.display = 'block';
+            payButton.disabled = false;
+            payButton.textContent = 'Pay with Razorpay';
+        }
+    });
+</script>

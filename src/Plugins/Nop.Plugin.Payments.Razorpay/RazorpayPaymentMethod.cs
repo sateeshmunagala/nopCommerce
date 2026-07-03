@@ -8,6 +8,7 @@ using Nop.Core.Domain.Payments;
 using Nop.Plugin.Payments.Razorpay.Services;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
+using Nop.Services.Orders;
 using Nop.Services.Payments;
 using Nop.Services.Plugins;
 using Nop.Plugin.Payments.Razorpay.Components;
@@ -21,19 +22,22 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
     private readonly ILocalizationService _localizationService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly RazorpayHttpClient _razorpayHttpClient;
+    private readonly IOrderTotalCalculationService _orderTotalCalculationService;
 
     public RazorpayPaymentMethod(
         ISettingService settingService,
         RazorpayPaymentSettings razorpayPaymentSettings,
         ILocalizationService localizationService,
         IHttpContextAccessor httpContextAccessor,
-        RazorpayHttpClient razorpayHttpClient)
+        RazorpayHttpClient razorpayHttpClient,
+        IOrderTotalCalculationService orderTotalCalculationService)
     {
         _settingService = settingService;
         _razorpayPaymentSettings = razorpayPaymentSettings;
         _localizationService = localizationService;
         _httpContextAccessor = httpContextAccessor;
         _razorpayHttpClient = razorpayHttpClient;
+        _orderTotalCalculationService = orderTotalCalculationService;
     }
 
     public bool SupportCapture => false;
@@ -56,9 +60,10 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         return Task.FromResult(new CapturePaymentResult { Errors = new[] { "Capture method not supported" } });
     }
 
-    public Task<decimal> GetAdditionalHandlingFeeAsync(IList<ShoppingCartItem> cart)
+    public async Task<decimal> GetAdditionalHandlingFeeAsync(IList<ShoppingCartItem> cart)
     {
-        return Task.FromResult(0m); // MVP logic, can add real fee calculation
+        return await _orderTotalCalculationService.CalculatePaymentAdditionalFeeAsync(cart,
+            _razorpayPaymentSettings.AdditionalFee, _razorpayPaymentSettings.AdditionalFeePercentage);
     }
 
     public Task<ProcessPaymentRequest> GetPaymentInfoAsync(IFormCollection form)
@@ -91,7 +96,7 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         return Task.FromResult(false);
     }
 
-    public Task<ProcessPaymentResult> ProcessPaymentAsync(ProcessPaymentRequest processPaymentRequest)
+    public async Task<ProcessPaymentResult> ProcessPaymentAsync(ProcessPaymentRequest processPaymentRequest)
     {
         var result = new ProcessPaymentResult();
 
@@ -102,7 +107,7 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         if (string.IsNullOrEmpty(orderId) || string.IsNullOrEmpty(paymentId) || string.IsNullOrEmpty(signature))
         {
             result.AddError("Missing Razorpay payment details.");
-            return Task.FromResult(result);
+            return result;
         }
 
         var isSignatureValid = _razorpayHttpClient.VerifySignature(orderId, paymentId, signature, _razorpayPaymentSettings.KeySecret);
@@ -110,13 +115,29 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         if (!isSignatureValid)
         {
             result.AddError("Razorpay signature verification failed.");
-            return Task.FromResult(result);
+            return result;
         }
 
-        result.CaptureTransactionId = paymentId;
-        result.NewPaymentStatus = PaymentStatus.Paid;
+        try
+        {
+            var paymentStatus = await _razorpayHttpClient.GetPaymentStatusAsync(_razorpayPaymentSettings.KeyId, _razorpayPaymentSettings.KeySecret, paymentId);
 
-        return Task.FromResult(result);
+            if (paymentStatus.Equals("captured", StringComparison.OrdinalIgnoreCase) || paymentStatus.Equals("authorized", StringComparison.OrdinalIgnoreCase))
+            {
+                result.CaptureTransactionId = paymentId;
+                result.NewPaymentStatus = PaymentStatus.Paid;
+            }
+            else
+            {
+                result.AddError($"Payment not captured. Status: {paymentStatus}");
+            }
+        }
+        catch (Exception ex)
+        {
+            result.AddError($"Failed to fetch payment status: {ex.Message}");
+        }
+
+        return result;
     }
 
     public Task<ProcessPaymentResult> ProcessRecurringPaymentAsync(ProcessPaymentRequest processPaymentRequest)

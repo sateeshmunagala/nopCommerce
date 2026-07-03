@@ -54,6 +54,27 @@ public class RazorpayHttpClient
         throw new Exception("Razorpay order creation failed: 'id' not found in response.");
     }
 
+    public async Task<string> GetPaymentStatusAsync(string keyId, string keySecret, string paymentId)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"payments/{paymentId}");
+
+        var authString = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{keyId}:{keySecret}"));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", authString);
+
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var responseContent = await response.Content.ReadAsStringAsync();
+        using var jsonDocument = JsonDocument.Parse(responseContent);
+
+        if (jsonDocument.RootElement.TryGetProperty("status", out var statusElement))
+        {
+            return statusElement.GetString() ?? string.Empty;
+        }
+
+        return string.Empty;
+    }
+
     public bool VerifySignature(string orderId, string paymentId, string signature, string keySecret)
     {
         var payload = $"{orderId}|{paymentId}";

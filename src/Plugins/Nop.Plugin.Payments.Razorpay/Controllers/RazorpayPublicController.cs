@@ -98,4 +98,31 @@ public class RazorpayPublicController : BasePublicController
             return Json(new { error = ex.Message });
         }
     }
+
+    [HttpPost]
+    public IActionResult VerifyPayment(string razorpay_payment_id, string razorpay_order_id, string razorpay_signature)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(razorpay_payment_id) || string.IsNullOrEmpty(razorpay_order_id) || string.IsNullOrEmpty(razorpay_signature))
+            {
+                return Json(new { success = false, error = "Missing payment verification parameters." });
+            }
+
+            var isSignatureValid = _razorpayHttpClient.VerifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, _razorpayPaymentSettings.KeySecret);
+
+            if (isSignatureValid)
+            {
+                return Json(new { success = true });
+            }
+            else
+            {
+                return Json(new { success = false, error = "Invalid signature." });
+            }
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = ex.Message });
+        }
+    }
 }
