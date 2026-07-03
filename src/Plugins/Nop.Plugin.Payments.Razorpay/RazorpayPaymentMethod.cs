@@ -13,6 +13,7 @@ using Nop.Services.Payments;
 using Nop.Services.Plugins;
 using Nop.Plugin.Payments.Razorpay.Components;
 using Nop.Services.Common;
+using Nop.Services.Logging;
 
 namespace Nop.Plugin.Payments.Razorpay;
 
@@ -26,6 +27,7 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
     private readonly IOrderTotalCalculationService _orderTotalCalculationService;
     private readonly IGenericAttributeService _genericAttributeService;
     private readonly IWorkContext _workContext;
+    private readonly ILogger _logger;
 
     public RazorpayPaymentMethod(
         ISettingService settingService,
@@ -35,7 +37,8 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         RazorpayHttpClient razorpayHttpClient,
         IOrderTotalCalculationService orderTotalCalculationService,
         IGenericAttributeService genericAttributeService,
-        IWorkContext workContext)
+        IWorkContext workContext,
+        ILogger logger)
     {
         _settingService = settingService;
         _razorpayPaymentSettings = razorpayPaymentSettings;
@@ -45,6 +48,7 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         _orderTotalCalculationService = orderTotalCalculationService;
         _genericAttributeService = genericAttributeService;
         _workContext = workContext;
+        _logger = logger;
     }
 
     public bool SupportCapture => false;
@@ -111,19 +115,21 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         var paymentId = processPaymentRequest.CustomValues.TryGetValue(RazorpayDefaults.RazorpayPaymentIdAttribute, out var pId) ? pId.ToString() : string.Empty;
         var signature = processPaymentRequest.CustomValues.TryGetValue(RazorpayDefaults.RazorpaySignatureAttribute, out var sig) ? sig.ToString() : string.Empty;
 
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        var storeId = processPaymentRequest.StoreId;
+
         if (string.IsNullOrEmpty(orderId) || string.IsNullOrEmpty(paymentId) || string.IsNullOrEmpty(signature))
         {
+            await _logger.WarningAsync($"Razorpay ProcessPayment: Payment details missing. CustomerId: {customer.Id}, StoreId: {storeId}");
             result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentDetailsMissing"));
             return result;
         }
-
-        var customer = await _workContext.GetCurrentCustomerAsync();
-        var storeId = processPaymentRequest.StoreId;
 
         var serverOrderId = await _genericAttributeService.GetAttributeAsync<string>(customer, RazorpayDefaults.RazorpayOrderIdAttribute, storeId);
 
         if (string.IsNullOrEmpty(serverOrderId) || !serverOrderId.Equals(orderId, StringComparison.OrdinalIgnoreCase))
         {
+            await _logger.WarningAsync($"Razorpay ProcessPayment: Order mismatch. ServerOrderId: {serverOrderId}, ClientOrderId: {orderId}, CustomerId: {customer.Id}, StoreId: {storeId}");
             result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.OrderMismatch"));
             return result;
         }
@@ -132,6 +138,7 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
 
         if (!isSignatureValid)
         {
+            await _logger.WarningAsync($"Razorpay ProcessPayment: Signature verification failed. RazorpayOrderId: {orderId}, PaymentId: {paymentId}, CustomerId: {customer.Id}, StoreId: {storeId}");
             result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.VerificationFailed"));
             return result;
         }
@@ -142,6 +149,7 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
 
             if (!payment.OrderId.Equals(orderId, StringComparison.OrdinalIgnoreCase))
             {
+                await _logger.WarningAsync($"Razorpay ProcessPayment: Payment order mismatch. PaymentOrderId: {payment.OrderId}, ClientOrderId: {orderId}, CustomerId: {customer.Id}, StoreId: {storeId}");
                 result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.OrderMismatch"));
                 return result;
             }
@@ -151,6 +159,7 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
             var expectedAmountInSubunits = Math.Round(processPaymentRequest.OrderTotal * 100, 0);
             if (payment.Amount != expectedAmountInSubunits || payment.Amount != serverOrderAmount)
             {
+                await _logger.WarningAsync($"Razorpay ProcessPayment: Amount mismatch. PaymentAmount: {payment.Amount}, ExpectedAmount: {expectedAmountInSubunits}, ServerAmount: {serverOrderAmount}, CustomerId: {customer.Id}, StoreId: {storeId}");
                 result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.AmountMismatch"));
                 return result;
             }
@@ -158,6 +167,7 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
             var serverOrderCurrency = await _genericAttributeService.GetAttributeAsync<string>(customer, RazorpayDefaults.RazorpayOrderCurrencyAttribute, storeId);
             if (!payment.Currency.Equals(serverOrderCurrency, StringComparison.OrdinalIgnoreCase))
             {
+                await _logger.WarningAsync($"Razorpay ProcessPayment: Currency mismatch. PaymentCurrency: {payment.Currency}, ServerCurrency: {serverOrderCurrency}, CustomerId: {customer.Id}, StoreId: {storeId}");
                 result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.CurrencyMismatch"));
                 return result;
             }
@@ -173,12 +183,14 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
             }
             else
             {
+                await _logger.WarningAsync($"Razorpay ProcessPayment: Payment not captured. Status: {payment.Status}, PaymentId: {paymentId}, CustomerId: {customer.Id}, StoreId: {storeId}");
                 result.AddError(string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentNotCaptured"), payment.Status));
                 result.NewPaymentStatus = PaymentStatus.Pending; // leave as pending or fail
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            await _logger.ErrorAsync($"Razorpay ProcessPayment failed. RazorpayOrderId: {orderId}, PaymentId: {paymentId}, CustomerId: {customer.Id}, StoreId: {storeId}", ex);
             result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentFetchFailed"));
         }
 
@@ -198,15 +210,26 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
     public async Task<IList<string>> ValidatePaymentFormAsync(IFormCollection form)
     {
         var warnings = new List<string>();
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        // Fallback store context could be retrieved if needed, but not trivial here, log what we can
 
         if (string.IsNullOrEmpty(form["RazorpayOrderId"]))
+        {
+            await _logger.WarningAsync($"Razorpay ValidatePaymentForm: RazorpayOrderId is missing. CustomerId: {customer.Id}");
             warnings.Add(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.Fields.OrderId.Required"));
+        }
         
         if (string.IsNullOrEmpty(form["RazorpayPaymentId"]))
+        {
+            await _logger.WarningAsync($"Razorpay ValidatePaymentForm: RazorpayPaymentId is missing. CustomerId: {customer.Id}");
             warnings.Add(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.Fields.PaymentId.Required"));
+        }
 
         if (string.IsNullOrEmpty(form["RazorpaySignature"]))
+        {
+            await _logger.WarningAsync($"Razorpay ValidatePaymentForm: RazorpaySignature is missing. CustomerId: {customer.Id}");
             warnings.Add(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.Fields.Signature.Required"));
+        }
 
         return warnings;
     }
@@ -266,6 +289,8 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PayButton", "Pay with Razorpay");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Processing", "Processing...");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Success", "Payment successful! You can now continue the checkout.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PleaseCompletePayment", "Please complete Razorpay payment before continuing checkout.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.ClientErrorLog", "Razorpay client error.");
 
         await base.InstallAsync();
     }
@@ -307,6 +332,8 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PayButton");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Processing");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Success");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PleaseCompletePayment");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.ClientErrorLog");
 
         await base.UninstallAsync();
     }

@@ -10,6 +10,7 @@
 
     <div id="razorpay-error-message" style="color: red; display: none; margin-top: 10px;"></div>
     <div id="razorpay-success-message" style="color: green; display: none; margin-top: 10px;">@T("Plugins.Payments.Razorpay.PaymentInfo.Success")</div>
+    <div id="razorpay-pending-message" style="color: red; display: none; margin-top: 10px;">@T("Plugins.Payments.Razorpay.PaymentInfo.PleaseCompletePayment")</div>
 </div>
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -18,14 +19,41 @@
         var payButton = document.getElementById('razorpay-pay-button');
         var errorContainer = document.getElementById('razorpay-error-message');
         var successContainer = document.getElementById('razorpay-success-message');
+        var pendingMessage = document.getElementById('razorpay-pending-message');
+
+        var isPaymentVerified = false;
 
         // Hide standard checkout next button initially to enforce Razorpay flow
         if (typeof $ !== 'undefined') {
             $('.payment-info-next-step-button').hide();
+
+            // Re-bind the next button to show warning if payment is not verified
+            $(document).on('click', '.payment-info-next-step-button', function(e) {
+                if (!isPaymentVerified) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pendingMessage.style.display = 'block';
+                    errorContainer.style.display = 'none';
+                    return false;
+                }
+            });
+        }
+
+        if (!payButton) {
+            logErrorToDiagnosticEndpoint("PayButtonMissing", "razorpay-pay-button element not found on page.");
+            return; // Since we are inside the DOMContentLoaded handler function, return is valid.
         }
 
         payButton.addEventListener('click', function () {
             errorContainer.style.display = 'none';
+            pendingMessage.style.display = 'none';
+
+            if (typeof Razorpay === 'undefined') {
+                showError("Razorpay SDK not loaded.");
+                logErrorToDiagnosticEndpoint("RazorpaySDKMissing", "typeof Razorpay is undefined.");
+                return;
+            }
+
             payButton.disabled = true;
             payButton.textContent = '@T("Plugins.Payments.Razorpay.PaymentInfo.Processing").Text';
 
@@ -41,13 +69,18 @@
             })
             .then(function(response) {
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    throw new Error('CreateOrder network response was not ok. Status: ' + response.status);
                 }
                 return response.json();
             })
             .then(function(data) {
                 if (data.error) {
                     throw new Error(data.error);
+                }
+
+                if (!data.keyId || !data.orderId || !data.amount || !data.currency) {
+                    logErrorToDiagnosticEndpoint("CreateOrderMissingData", "Missing required fields in CreateOrder response.");
+                    throw new Error('Invalid Razorpay order data received.');
                 }
 
                 var options = {
@@ -66,18 +99,29 @@
                         "ondismiss": function() {
                             payButton.disabled = false;
                             payButton.textContent = '@T("Plugins.Payments.Razorpay.PaymentInfo.PayButton").Text';
+                            logErrorToDiagnosticEndpoint("ModalDismissed", "User dismissed the Razorpay checkout modal.");
+                            pendingMessage.style.display = 'block';
                         }
                     }
                 };
 
-                var rzp = new Razorpay(options);
-                rzp.on('payment.failed', function (response){
-                    showError(response.error.description);
-                });
-                rzp.open();
+                try {
+                    var rzp = new Razorpay(options);
+                    rzp.on('payment.failed', function (response) {
+                        var failedDesc = response.error ? response.error.description : 'Payment failed.';
+                        showError(failedDesc);
+                        logErrorToDiagnosticEndpoint("PaymentFailed", "Razorpay payment.failed event fired: " + failedDesc);
+                        pendingMessage.style.display = 'block';
+                    });
+                    rzp.open();
+                } catch (rzpEx) {
+                    showError('Failed to open Razorpay checkout window.');
+                    logErrorToDiagnosticEndpoint("RazorpayOpenException", rzpEx.message || 'Unknown exception opening modal.');
+                }
             })
             .catch(function(error) {
                 showError(error.message);
+                logErrorToDiagnosticEndpoint("CreateOrderException", error.message);
             });
         });
 
@@ -96,6 +140,9 @@
                 body: formData
             })
             .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('VerifyPayment network response was not ok. Status: ' + response.status);
+                }
                 return response.json();
             })
             .then(function(data) {
@@ -104,6 +151,9 @@
                     document.getElementById('RazorpayOrderId').value = orderId;
                     document.getElementById('RazorpayPaymentId').value = paymentId;
                     document.getElementById('RazorpaySignature').value = signature;
+
+                    isPaymentVerified = true;
+                    pendingMessage.style.display = 'none';
 
                     payButton.style.display = 'none';
                     successContainer.style.display = 'block';
@@ -114,15 +164,37 @@
                     } else {
                         var nextBtn = document.querySelector('.payment-info-next-step-button');
                         if (nextBtn) {
+                            // Unbind our blocking handler then click
+                            $(document).off('click', '.payment-info-next-step-button');
                             nextBtn.click();
                         }
                     }
                 } else {
-                    showError(data.error || 'Payment verification failed.');
+                    var errMsg = data.error || 'Payment verification failed.';
+                    showError(errMsg);
+                    logErrorToDiagnosticEndpoint("VerifyPaymentFailed", errMsg);
                 }
             })
             .catch(function(error) {
                 showError('Error verifying payment.');
+                logErrorToDiagnosticEndpoint("VerifyPaymentException", error.message);
+            });
+        }
+
+        function logErrorToDiagnosticEndpoint(errorCode, contextMsg) {
+            var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+            var formData = new FormData();
+            if (antiforgeryToken) {
+                formData.append('__RequestVerificationToken', antiforgeryToken.value);
+            }
+            formData.append('error', errorCode);
+            formData.append('context', contextMsg);
+
+            fetch('@Url.Action("LogClientError", "RazorpayPublic")', {
+                method: 'POST',
+                body: formData
+            }).catch(function(e) {
+                // Ignore errors posting to diagnostic endpoint
             });
         }
 
