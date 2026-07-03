@@ -27,6 +27,8 @@ public class RazorpayPublicController : BasePublicController
     private readonly ICurrencyService _currencyService;
     private readonly CurrencySettings _currencySettings;
 
+    private readonly Nop.Services.Localization.ILocalizationService _localizationService;
+
     public RazorpayPublicController(
         RazorpayHttpClient razorpayHttpClient,
         RazorpayPaymentSettings razorpayPaymentSettings,
@@ -35,7 +37,8 @@ public class RazorpayPublicController : BasePublicController
         IOrderTotalCalculationService orderTotalCalculationService,
         IStoreContext storeContext,
         ICurrencyService currencyService,
-        CurrencySettings currencySettings)
+        CurrencySettings currencySettings,
+        Nop.Services.Localization.ILocalizationService localizationService)
     {
         _razorpayHttpClient = razorpayHttpClient;
         _razorpayPaymentSettings = razorpayPaymentSettings;
@@ -45,6 +48,7 @@ public class RazorpayPublicController : BasePublicController
         _storeContext = storeContext;
         _currencyService = currencyService;
         _currencySettings = currencySettings;
+        _localizationService = localizationService;
     }
 
     [HttpPost]
@@ -52,19 +56,29 @@ public class RazorpayPublicController : BasePublicController
     {
         try
         {
+            if (string.IsNullOrEmpty(_razorpayPaymentSettings.KeyId) || string.IsNullOrEmpty(_razorpayPaymentSettings.KeySecret))
+            {
+                return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.NotConfigured") });
+            }
+
             var customer = await _workContext.GetCurrentCustomerAsync();
             var store = await _storeContext.GetCurrentStoreAsync();
             var cart = await _shoppingCartService.GetShoppingCartAsync(customer, Nop.Core.Domain.Orders.ShoppingCartType.ShoppingCart, store.Id);
             
             var (shoppingCartTotal, _, _, _, _, _) = await _orderTotalCalculationService.GetShoppingCartTotalAsync(cart);
-            if (!shoppingCartTotal.HasValue)
+            if (!shoppingCartTotal.HasValue || shoppingCartTotal.Value <= 0)
             {
-                return Json(new { error = "Cart total is empty" });
+                return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.EmptyCart") });
             }
 
             var currency = await _workContext.GetWorkingCurrencyAsync();
             var currencyCode = currency.CurrencyCode;
             
+            if (!currencyCode.Equals("INR", StringComparison.OrdinalIgnoreCase))
+            {
+                return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.UnsupportedCurrency") });
+            }
+
             // Razorpay uses subunit (e.g. paisa for INR). Multiplier is 100 for most currencies.
             var amountInSubunits = shoppingCartTotal.Value * 100;
             
@@ -75,7 +89,8 @@ public class RazorpayPublicController : BasePublicController
                 _razorpayPaymentSettings.KeySecret, 
                 amountInSubunits, 
                 currencyCode, 
-                receiptId);
+                receiptId,
+                _razorpayPaymentSettings.PaymentCapture);
 
             return Json(new 
             { 
@@ -93,20 +108,20 @@ public class RazorpayPublicController : BasePublicController
                 }
             });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return Json(new { error = ex.Message });
+            return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.OrderCreationFailed") });
         }
     }
 
     [HttpPost]
-    public IActionResult VerifyPayment(string razorpay_payment_id, string razorpay_order_id, string razorpay_signature)
+    public async Task<IActionResult> VerifyPayment(string razorpay_payment_id, string razorpay_order_id, string razorpay_signature)
     {
         try
         {
             if (string.IsNullOrEmpty(razorpay_payment_id) || string.IsNullOrEmpty(razorpay_order_id) || string.IsNullOrEmpty(razorpay_signature))
             {
-                return Json(new { success = false, error = "Missing payment verification parameters." });
+                return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentDetailsMissing") });
             }
 
             var isSignatureValid = _razorpayHttpClient.VerifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, _razorpayPaymentSettings.KeySecret);
@@ -117,12 +132,12 @@ public class RazorpayPublicController : BasePublicController
             }
             else
             {
-                return Json(new { success = false, error = "Invalid signature." });
+                return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.VerificationFailed") });
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return Json(new { success = false, error = ex.Message });
+            return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentFetchFailed") });
         }
     }
 }

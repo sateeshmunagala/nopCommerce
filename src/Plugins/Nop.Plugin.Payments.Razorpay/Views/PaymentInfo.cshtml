@@ -21,11 +21,8 @@
         var errorContainer = document.getElementById('razorpay-error-message');
         var successContainer = document.getElementById('razorpay-success-message');
 
-        // Hide standard checkout next button initially if we can find it
-        var checkoutNextBtn = document.querySelector('.payment-info-next-step-button:not(#razorpay-pay-button)');
-        if (checkoutNextBtn) {
-            checkoutNextBtn.style.display = 'none';
-        }
+        // Hide standard checkout next button initially to enforce Razorpay flow
+        $('button.payment-info-next-step-button:not(#razorpay-pay-button)').hide();
 
         payButton.addEventListener('click', function () {
             errorContainer.style.display = 'none';
@@ -111,11 +108,12 @@
                     payButton.style.display = 'none';
                     successContainer.style.display = 'block';
 
-                    // Show checkout next button so they can proceed
-                    if (checkoutNextBtn) {
-                        checkoutNextBtn.style.display = 'inline-block';
-                        // Optionally click it automatically
-                        // checkoutNextBtn.click();
+                    // Trigger the checkout next button so they can proceed reliably
+                    var nextBtn = document.querySelector('button.payment-info-next-step-button:not(#razorpay-pay-button)');
+                    if (nextBtn) {
+                        nextBtn.click();
+                    } else if (typeof PaymentInfo !== 'undefined' && PaymentInfo.save) {
+                        PaymentInfo.save();
                     }
                 } else {
                     showError(data.error || 'Payment verification failed.');

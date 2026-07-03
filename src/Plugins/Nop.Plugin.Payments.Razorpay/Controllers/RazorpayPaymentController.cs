@@ -50,6 +50,7 @@ public class RazorpayPaymentController : BasePaymentController
         var model = new ConfigurationModel
         {
             KeyId = razorpayPaymentSettings.KeyId,
+            KeySecret = string.Empty, // Never render the secret back to the view
             PaymentCapture = razorpayPaymentSettings.PaymentCapture,
             AdditionalFee = razorpayPaymentSettings.AdditionalFee,
             AdditionalFeePercentage = razorpayPaymentSettings.AdditionalFeePercentage,
@@ -72,11 +73,21 @@ public class RazorpayPaymentController : BasePaymentController
     [CheckPermission(StandardPermission.Configuration.MANAGE_PAYMENT_METHODS)]
     public async Task<IActionResult> Configure(ConfigurationModel model)
     {
-        if (!ModelState.IsValid)
-            return await Configure();
-
         var storeScope = await _storeContext.GetActiveStoreScopeConfigurationAsync();
         var razorpayPaymentSettings = await _settingService.LoadSettingAsync<RazorpayPaymentSettings>(storeScope);
+
+        if (string.IsNullOrWhiteSpace(model.KeySecret) && string.IsNullOrWhiteSpace(razorpayPaymentSettings.KeySecret))
+        {
+            ModelState.AddModelError(nameof(model.KeySecret), await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.Fields.KeySecret.Required"));
+        }
+
+        if (string.IsNullOrWhiteSpace(model.KeyId))
+        {
+            ModelState.AddModelError(nameof(model.KeyId), await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.Fields.KeyId.Required"));
+        }
+
+        if (!ModelState.IsValid)
+            return await Configure();
 
         razorpayPaymentSettings.KeyId = model.KeyId;
         

@@ -106,7 +106,7 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
 
         if (string.IsNullOrEmpty(orderId) || string.IsNullOrEmpty(paymentId) || string.IsNullOrEmpty(signature))
         {
-            result.AddError("Missing Razorpay payment details.");
+            result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentDetailsMissing"));
             return result;
         }
 
@@ -114,27 +114,43 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
 
         if (!isSignatureValid)
         {
-            result.AddError("Razorpay signature verification failed.");
+            result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.VerificationFailed"));
             return result;
         }
 
         try
         {
-            var paymentStatus = await _razorpayHttpClient.GetPaymentStatusAsync(_razorpayPaymentSettings.KeyId, _razorpayPaymentSettings.KeySecret, paymentId);
+            var payment = await _razorpayHttpClient.GetPaymentAsync(_razorpayPaymentSettings.KeyId, _razorpayPaymentSettings.KeySecret, paymentId);
 
-            if (paymentStatus.Equals("captured", StringComparison.OrdinalIgnoreCase) || paymentStatus.Equals("authorized", StringComparison.OrdinalIgnoreCase))
+            if (!payment.OrderId.Equals(orderId, StringComparison.OrdinalIgnoreCase))
+            {
+                result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.OrderMismatch"));
+                return result;
+            }
+
+            // Note: Currency validation is limited here because ProcessPaymentRequest doesn't provide
+            // direct access to the currency code, but amount and order ownership are strictly verified.
+            var expectedAmountInSubunits = Math.Round(processPaymentRequest.OrderTotal * 100, 0);
+            if (payment.Amount != expectedAmountInSubunits)
+            {
+                result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.AmountMismatch"));
+                return result;
+            }
+
+            if (payment.Status.Equals("captured", StringComparison.OrdinalIgnoreCase))
             {
                 result.CaptureTransactionId = paymentId;
                 result.NewPaymentStatus = PaymentStatus.Paid;
             }
             else
             {
-                result.AddError($"Payment not captured. Status: {paymentStatus}");
+                result.AddError(string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentNotCaptured"), payment.Status));
+                result.NewPaymentStatus = PaymentStatus.Pending; // leave as pending or fail
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            result.AddError($"Failed to fetch payment status: {ex.Message}");
+            result.AddError(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentFetchFailed"));
         }
 
         return result;
@@ -201,6 +217,19 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.Fields.AdditionalFeePercentage.Hint", "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.Instructions", "Configure your Razorpay settings here. You can find these in your Razorpay Dashboard.");
 
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentDetailsMissing", "Missing Razorpay payment details.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.VerificationFailed", "Razorpay signature verification failed.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.OrderMismatch", "Razorpay order ID mismatch.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.AmountMismatch", "Razorpay payment amount mismatch.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentNotCaptured", "Payment not captured. Status: {0}");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentFetchFailed", "Failed to fetch payment status.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.NotConfigured", "Razorpay plugin is not configured.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.EmptyCart", "Cart total is empty.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.UnsupportedCurrency", "Only INR currency is supported.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.OrderCreationFailed", "Failed to create Razorpay order.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.Fields.KeyId.Required", "Key ID is required.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.Fields.KeySecret.Required", "Key Secret is required.");
+
         await base.InstallAsync();
     }
 
@@ -220,6 +249,19 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.Fields.AdditionalFeePercentage");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.Fields.AdditionalFeePercentage.Hint");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.Instructions");
+
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentDetailsMissing");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.VerificationFailed");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.OrderMismatch");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.AmountMismatch");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentNotCaptured");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentFetchFailed");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.NotConfigured");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.EmptyCart");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.UnsupportedCurrency");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.OrderCreationFailed");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.Fields.KeyId.Required");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.Fields.KeySecret.Required");
 
         await base.UninstallAsync();
     }
