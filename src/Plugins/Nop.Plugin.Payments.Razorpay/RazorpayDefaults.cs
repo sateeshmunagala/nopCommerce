@@ -7,4 +7,6 @@ public static class RazorpayDefaults
     public static string RazorpayOrderIdAttribute => "RazorpayOrderId";
     public static string RazorpayPaymentIdAttribute => "RazorpayPaymentId";
     public static string RazorpaySignatureAttribute => "RazorpaySignature";
+    public static string RazorpayOrderAmountAttribute => "RazorpayOrderAmount";
+    public static string RazorpayOrderCurrencyAttribute => "RazorpayOrderCurrency";
 }

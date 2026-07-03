@@ -2,12 +2,10 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
-using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Orders;
-using Nop.Core.Domain.Payments;
-using Nop.Core.Http;
 using Nop.Plugin.Payments.Razorpay.Services;
-using Nop.Services.Directory;
+using Nop.Services.Common;
+using Nop.Services.Localization;
 using Nop.Services.Orders;
 using Nop.Web.Controllers;
 using Nop.Web.Framework.Controllers;
@@ -24,10 +22,8 @@ public class RazorpayPublicController : BasePublicController
     private readonly IShoppingCartService _shoppingCartService;
     private readonly IOrderTotalCalculationService _orderTotalCalculationService;
     private readonly IStoreContext _storeContext;
-    private readonly ICurrencyService _currencyService;
-    private readonly CurrencySettings _currencySettings;
-
-    private readonly Nop.Services.Localization.ILocalizationService _localizationService;
+    private readonly IGenericAttributeService _genericAttributeService;
+    private readonly ILocalizationService _localizationService;
 
     public RazorpayPublicController(
         RazorpayHttpClient razorpayHttpClient,
@@ -36,9 +32,8 @@ public class RazorpayPublicController : BasePublicController
         IShoppingCartService shoppingCartService,
         IOrderTotalCalculationService orderTotalCalculationService,
         IStoreContext storeContext,
-        ICurrencyService currencyService,
-        CurrencySettings currencySettings,
-        Nop.Services.Localization.ILocalizationService localizationService)
+        IGenericAttributeService genericAttributeService,
+        ILocalizationService localizationService)
     {
         _razorpayHttpClient = razorpayHttpClient;
         _razorpayPaymentSettings = razorpayPaymentSettings;
@@ -46,8 +41,7 @@ public class RazorpayPublicController : BasePublicController
         _shoppingCartService = shoppingCartService;
         _orderTotalCalculationService = orderTotalCalculationService;
         _storeContext = storeContext;
-        _currencyService = currencyService;
-        _currencySettings = currencySettings;
+        _genericAttributeService = genericAttributeService;
         _localizationService = localizationService;
     }
 
@@ -92,6 +86,10 @@ public class RazorpayPublicController : BasePublicController
                 receiptId,
                 _razorpayPaymentSettings.PaymentCapture);
 
+            await _genericAttributeService.SaveAttributeAsync(customer, RazorpayDefaults.RazorpayOrderIdAttribute, razorpayOrderId, store.Id);
+            await _genericAttributeService.SaveAttributeAsync(customer, RazorpayDefaults.RazorpayOrderAmountAttribute, amountInSubunits, store.Id);
+            await _genericAttributeService.SaveAttributeAsync(customer, RazorpayDefaults.RazorpayOrderCurrencyAttribute, currencyCode, store.Id);
+
             return Json(new 
             { 
                 keyId = _razorpayPaymentSettings.KeyId,
@@ -124,16 +122,50 @@ public class RazorpayPublicController : BasePublicController
                 return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentDetailsMissing") });
             }
 
+            var customer = await _workContext.GetCurrentCustomerAsync();
+            var store = await _storeContext.GetCurrentStoreAsync();
+
+            var serverOrderId = await _genericAttributeService.GetAttributeAsync<string>(customer, RazorpayDefaults.RazorpayOrderIdAttribute, store.Id);
+
+            if (string.IsNullOrEmpty(serverOrderId) || !serverOrderId.Equals(razorpay_order_id, StringComparison.OrdinalIgnoreCase))
+            {
+                return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.OrderMismatch") });
+            }
+
             var isSignatureValid = _razorpayHttpClient.VerifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, _razorpayPaymentSettings.KeySecret);
 
-            if (isSignatureValid)
-            {
-                return Json(new { success = true });
-            }
-            else
+            if (!isSignatureValid)
             {
                 return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.VerificationFailed") });
             }
+
+            var payment = await _razorpayHttpClient.GetPaymentAsync(
+                _razorpayPaymentSettings.KeyId, _razorpayPaymentSettings.KeySecret, razorpay_payment_id);
+
+            if (!payment.OrderId.Equals(razorpay_order_id, StringComparison.OrdinalIgnoreCase))
+            {
+                return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.OrderMismatch") });
+            }
+
+            var serverOrderAmount = await _genericAttributeService.GetAttributeAsync<decimal>(customer, RazorpayDefaults.RazorpayOrderAmountAttribute, store.Id);
+            if (payment.Amount != serverOrderAmount)
+            {
+                return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.AmountMismatch") });
+            }
+
+            var serverOrderCurrency = await _genericAttributeService.GetAttributeAsync<string>(customer, RazorpayDefaults.RazorpayOrderCurrencyAttribute, store.Id);
+            if (!payment.Currency.Equals(serverOrderCurrency, StringComparison.OrdinalIgnoreCase))
+            {
+                return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.CurrencyMismatch") });
+            }
+
+            if (!payment.Status.Equals("captured", StringComparison.OrdinalIgnoreCase))
+            {
+                var errorMsg = string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentNotCaptured"), payment.Status);
+                return Json(new { success = false, error = errorMsg });
+            }
+
+            return Json(new { success = true });
         }
         catch (Exception)
         {

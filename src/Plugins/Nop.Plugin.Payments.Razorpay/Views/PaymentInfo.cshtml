@@ -1,33 +1,33 @@
 @model Nop.Plugin.Payments.Razorpay.Models.PaymentInfoModel
-@inject Nop.Core.IWebHelper WebHelper
 
 <div class="razorpay-payment-info" id="razorpay-payment-info-container">
-    <p>Please click the button below to complete your payment securely via Razorpay.</p>
-    <button type="button" id="razorpay-pay-button" class="button-1 payment-info-next-step-button" style="margin-top: 10px;">Pay with Razorpay</button>
+    <p>@T("Plugins.Payments.Razorpay.PaymentInfo.Instructions")</p>
+    <button type="button" id="razorpay-pay-button" class="button-1 razorpay-plugin-button" style="margin-top: 10px;">@T("Plugins.Payments.Razorpay.PaymentInfo.PayButton")</button>
 
     <input type="hidden" id="RazorpayOrderId" name="RazorpayOrderId" value="" />
     <input type="hidden" id="RazorpayPaymentId" name="RazorpayPaymentId" value="" />
     <input type="hidden" id="RazorpaySignature" name="RazorpaySignature" value="" />
 
     <div id="razorpay-error-message" style="color: red; display: none; margin-top: 10px;"></div>
-    <div id="razorpay-success-message" style="color: green; display: none; margin-top: 10px;">Payment successful! You can now continue the checkout.</div>
+    <div id="razorpay-success-message" style="color: green; display: none; margin-top: 10px;">@T("Plugins.Payments.Razorpay.PaymentInfo.Success")</div>
 </div>
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         var payButton = document.getElementById('razorpay-pay-button');
-        var container = document.getElementById('razorpay-payment-info-container');
         var errorContainer = document.getElementById('razorpay-error-message');
         var successContainer = document.getElementById('razorpay-success-message');
 
         // Hide standard checkout next button initially to enforce Razorpay flow
-        $('button.payment-info-next-step-button:not(#razorpay-pay-button)').hide();
+        if (typeof $ !== 'undefined') {
+            $('.payment-info-next-step-button').hide();
+        }
 
         payButton.addEventListener('click', function () {
             errorContainer.style.display = 'none';
             payButton.disabled = true;
-            payButton.textContent = 'Processing...';
+            payButton.textContent = '@T("Plugins.Payments.Razorpay.PaymentInfo.Processing").Text';
 
             var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
             var formData = new FormData();
@@ -65,7 +65,7 @@
                     "modal": {
                         "ondismiss": function() {
                             payButton.disabled = false;
-                            payButton.textContent = 'Pay with Razorpay';
+                            payButton.textContent = '@T("Plugins.Payments.Razorpay.PaymentInfo.PayButton").Text';
                         }
                     }
                 };
@@ -109,11 +109,13 @@
                     successContainer.style.display = 'block';
 
                     // Trigger the checkout next button so they can proceed reliably
-                    var nextBtn = document.querySelector('button.payment-info-next-step-button:not(#razorpay-pay-button)');
-                    if (nextBtn) {
-                        nextBtn.click();
-                    } else if (typeof PaymentInfo !== 'undefined' && PaymentInfo.save) {
+                    if (typeof PaymentInfo !== 'undefined' && PaymentInfo.save) {
                         PaymentInfo.save();
+                    } else {
+                        var nextBtn = document.querySelector('.payment-info-next-step-button');
+                        if (nextBtn) {
+                            nextBtn.click();
+                        }
                     }
                 } else {
                     showError(data.error || 'Payment verification failed.');
@@ -128,7 +130,7 @@
             errorContainer.textContent = msg;
             errorContainer.style.display = 'block';
             payButton.disabled = false;
-            payButton.textContent = 'Pay with Razorpay';
+            payButton.textContent = '@T("Plugins.Payments.Razorpay.PaymentInfo.PayButton").Text';
         }
     });
 </script>
