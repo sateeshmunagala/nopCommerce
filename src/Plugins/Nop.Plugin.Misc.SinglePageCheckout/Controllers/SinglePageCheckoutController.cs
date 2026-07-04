@@ -91,6 +91,9 @@ public class SinglePageCheckoutController : BasePluginController
         var store = await _storeContext.GetCurrentStoreAsync();
         var cart = await _shoppingCartService.GetShoppingCartAsync(customer, ShoppingCartType.ShoppingCart, store.Id);
 
+        if (!cart.Any())
+            return Content("");
+
         var model = await _pageModelFactory.PrepareAsync(cart);
 
         return PartialView("~/Plugins/Misc.SinglePageCheckout/Views/_Sidebar.cshtml", model);

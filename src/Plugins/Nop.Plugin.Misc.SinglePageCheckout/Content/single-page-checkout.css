@@ -17,12 +17,14 @@
 .spc-card {
     border: 1px solid #d9d9d9;
     background: #fff;
+    border-radius: 8px;
 }
 
 .spc-card-title {
     padding: 12px 16px;
     border-bottom: 1px solid #e5e5e5;
     background: #f7f7f7;
+    border-radius: 8px 8px 0 0;
 }
 
 .spc-card-title h2 {
@@ -30,6 +32,8 @@
     color: #4a4a4a;
     font-size: 18px;
     font-weight: 600;
+    font-family: 'Fjalla One', Arial, sans-serif;
+    text-transform: uppercase;
 }
 
 .spc-card .a-item,
@@ -519,4 +523,60 @@
     .spc-card-totals .total-info {
         max-width: 100%;
     }
+}
+
+.remove-btn {
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #7a7a7a;
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-btn:hover {
+    color: #d0021b;
+}
+
+.spc-no-shipping .cart-total .shipping-cost {
+    display: none;
+}
+
+.spc-layout.spc-layout-empty-primary {
+    grid-template-columns: 1fr;
+}
+
+.spc-layout.spc-layout-empty-primary .spc-column-primary {
+    display: none;
+}
+
+.spc-layout.spc-layout-empty-primary .spc-column-secondary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.spc-layout.spc-layout-empty-primary .spc-column-secondary > .spc-summary-shell {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+}
+
+@media (max-width: 1024px) {
+    .spc-layout.spc-layout-empty-primary .spc-column-secondary {
+        grid-template-columns: 1fr;
+    }
+
+    .spc-layout.spc-layout-empty-primary .spc-column-secondary > .spc-summary-shell {
+        grid-column: 1;
+        grid-row: auto;
+    }
+}
+
+.razorpay-container {
+    z-index: 99999 !important;
 }
