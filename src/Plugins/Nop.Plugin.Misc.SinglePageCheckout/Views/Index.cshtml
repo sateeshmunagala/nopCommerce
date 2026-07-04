@@ -172,31 +172,6 @@
                         </div>
                     </div>
 
-                    <div id="opc-confirm_order" class="tab-section spc-card spc-card-confirm">
-                        <div class="step-title spc-card-title">
-                            <h2>@T("Checkout.ConfirmOrder")</h2>
-                        </div>
-                        <div id="checkout-step-confirm-order" class="step a-item">
-                            <div id="checkout-confirm-order-load">
-                            </div>
-                            <script asp-location="Footer">
-                                ConfirmOrder.init('@(storeLocation)checkout/OpcConfirmOrder/',
-                                    '@Url.RouteUrl(NopRouteNames.Standard.CHECKOUT_COMPLETED)',
-                                    @Model.CheckoutModel.DisplayCaptcha.ToString().ToLowerInvariant(),
-                                    @Model.CheckoutModel.IsReCaptchaV3.ToString().ToLowerInvariant(),
-                                    '@Model.CheckoutModel.ReCaptchaPublicKey',
-                                    '#checkout-step-confirm-order');
-                            </script>
-                            <div class="buttons spc-buttons" id="confirm-order-buttons-container">
-                                <p class="back-link">
-                                    <a href="#" onclick="Checkout.back(); return false;"><small>&laquo; </small>@T("Common.Back")</a>
-                                </p>
-                                <button type="button" id="spc-confirm-order-button" class="button-1 confirm-order-next-step-button" onclick="ConfirmOrder.save()" disabled>@T("Checkout.ConfirmButton")</button>
-                                <span class="please-wait" id="confirm-order-please-wait" style="display: none;">@T("Checkout.SubmittingOrder")</span>
-                            </div>
-                        </div>
-                    </div>
-
                     @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_PromoBoxes.cshtml", Model)
                 </div>
             </div>
@@ -208,6 +183,30 @@
                     </div>
                     <div id="spc-summary-content">
                         @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_Sidebar.cshtml", Model)
+                    </div>
+                </div>
+                <div id="opc-confirm_order" class="tab-section spc-card spc-card-confirm">
+                    <div class="step-title spc-card-title">
+                        <h2>@T("Checkout.ConfirmOrder")</h2>
+                    </div>
+                    <div id="checkout-step-confirm-order" class="step a-item">
+                        <div id="checkout-confirm-order-load">
+                        </div>
+                        <script asp-location="Footer">
+                            ConfirmOrder.init('@(storeLocation)checkout/OpcConfirmOrder/',
+                                '@Url.RouteUrl(NopRouteNames.Standard.CHECKOUT_COMPLETED)',
+                                @Model.CheckoutModel.DisplayCaptcha.ToString().ToLowerInvariant(),
+                                @Model.CheckoutModel.IsReCaptchaV3.ToString().ToLowerInvariant(),
+                                '@Model.CheckoutModel.ReCaptchaPublicKey',
+                                '#checkout-step-confirm-order');
+                        </script>
+                        <div class="buttons spc-buttons" id="confirm-order-buttons-container">
+                            <p class="back-link">
+                                <a href="#" onclick="Checkout.back(); return false;"><small>&laquo; </small>@T("Common.Back")</a>
+                            </p>
+                            <button type="button" id="spc-confirm-order-button" class="button-1 confirm-order-next-step-button" onclick="ConfirmOrder.save()" disabled>@T("Checkout.ConfirmButton")</button>
+                            <span class="please-wait" id="confirm-order-please-wait" style="display: none;">@T("Checkout.SubmittingOrder")</span>
+                        </div>
                     </div>
                 </div>
             </div>
