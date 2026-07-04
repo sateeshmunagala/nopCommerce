@@ -366,6 +366,12 @@
     background: transparent;
 }
 
+.spc-card-payment-info .checkout-data {
+    padding-top: 0;
+    padding-bottom: 0;
+    border: 0;
+}
+
 .spc-card-billing .inputs,
 .spc-card-shipping .inputs,
 .spc-card-estimate .inputs {
@@ -614,12 +620,47 @@
 }
 
 .spc-layout-review-pay .spc-column-secondary .spc-card-payment-method .a-item {
-    padding-bottom: 8px;
+    padding-top: 10px;
+    padding-bottom: 4px;
 }
 
 .spc-layout-review-pay .spc-column-secondary .spc-card-payment-info .a-item {
     padding-top: 0;
-    padding-bottom: 12px;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.spc-layout-review-pay .spc-column-secondary #checkout-payment-method-load,
+.spc-layout-review-pay .spc-column-secondary #checkout-payment-info-load {
+    margin: 0;
+}
+
+.spc-layout-review-pay .spc-column-secondary #checkout-payment-info-load > .section {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.spc-layout-review-pay .spc-column-secondary .payment-info .info {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .payment-info .info tr {
+    margin-bottom: 8px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .payment-info .info tr:last-child {
+    margin-bottom: 0;
+}
+
+.spc-layout-review-pay .spc-column-secondary .payment-info .info td:first-child {
+    margin-bottom: 4px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .payment-info .info p {
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
 #razorpay-instruction-message {
@@ -630,6 +671,8 @@
 
 .spc-layout-review-pay .spc-column-secondary #razorpay-instruction-message {
     line-height: 1.45;
+    margin-top: 0;
+    margin-bottom: 2px;
 }
 
 .razorpay-payment-info #razorpay-pay-button,
@@ -642,6 +685,14 @@
 .spc-layout-review-pay .spc-column-secondary .razorpay-plugin-button {
     padding-top: 10px;
     padding-bottom: 10px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card-payment-info .razorpay-payment-info {
+    gap: 8px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card-payment-info .spc-payment-selection {
+    margin-bottom: 6px;
 }
 
 .spc-razorpay-error,
@@ -683,7 +734,8 @@
 #shipping-buttons-container,
 #payment-info-buttons-container {
     min-height: 18px;
-    margin-top: 8px;
+    margin-top: 0;
+    margin-bottom: 0;
     padding-top: 0;
     border-top: 0;
 }
