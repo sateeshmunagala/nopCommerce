@@ -98,8 +98,7 @@ else
                                 {
                                     <input type="checkbox" name="removefromcart" id="removefromcart@(item.Id)" value="@item.Id" style="display:none;" />
                                     <button type="button" class="remove-btn" onclick="$('#removefromcart@(item.Id)').prop('checked', true); $('#updatecart').trigger('click');" aria-label="@T("ShoppingCart.Remove")" title="@T("ShoppingCart.Remove")">
-                                        <i class="fa-solid fa-trash"></i>
-                                        <span class="remove-text" aria-hidden="true">@T("ShoppingCart.Remove")</span>
+                                        <span class="remove-icon" aria-hidden="true">&times;</span>
                                     </button>
                                 }
                             </td>

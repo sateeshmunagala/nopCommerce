@@ -135,46 +135,48 @@
                     </div>
                 }
 
-                <div id="opc-payment_method" class="tab-section spc-card spc-card-payment-method">
-                    <div class="step-title spc-card-title">
-                        <h2>@T("Checkout.PaymentMethod")</h2>
-                    </div>
-                    <div id="checkout-step-payment-method" class="step a-item">
-                        <form action="" id="co-payment-method-form" method="post">
-                            <div id="checkout-payment-method-load">
+                <div class="spc-payment-cluster">
+                    <div id="opc-payment_method" class="tab-section spc-card spc-card-payment-method">
+                        <div class="step-title spc-card-title">
+                            <h2>@T("Checkout.PaymentMethod")</h2>
+                        </div>
+                        <div id="checkout-step-payment-method" class="step a-item">
+                            <form action="" id="co-payment-method-form" method="post">
+                                <div id="checkout-payment-method-load">
+                                </div>
+                            </form>
+                            <script asp-location="Footer">
+                                var spcPaymentLocalizedData = {
+                                    NotAvailableMethodsError: "@T("PaymentMethod.NotAvailableMethodsError")",
+                                    SpecifyMethodError: "@T("PaymentMethod.SpecifyMethodError")"
+                                };
+                                PaymentMethod.init('#co-payment-method-form', '@(storeLocation)checkout/OpcSavePaymentMethod/', spcPaymentLocalizedData);
+                            </script>
+                            <div class="buttons spc-buttons" id="payment-method-buttons-container">
+                                <p class="back-link">
+                                    <a href="#" onclick="Checkout.back(); return false;"><small>&laquo; </small>@T("Common.Back")</a>
+                                </p>
+                                <button type="button" name="save" class="button-1 payment-method-next-step-button" onclick="PaymentMethod.save()">@T("Common.Continue")</button>
+                                <span class="please-wait" id="payment-method-please-wait" style="display: none;">@T("Common.LoadingNextStep")</span>
                             </div>
-                        </form>
-                        <script asp-location="Footer">
-                            var spcPaymentLocalizedData = {
-                                NotAvailableMethodsError: "@T("PaymentMethod.NotAvailableMethodsError")",
-                                SpecifyMethodError: "@T("PaymentMethod.SpecifyMethodError")"
-                            };
-                            PaymentMethod.init('#co-payment-method-form', '@(storeLocation)checkout/OpcSavePaymentMethod/', spcPaymentLocalizedData);
-                        </script>
-                        <div class="buttons spc-buttons" id="payment-method-buttons-container">
-                            <p class="back-link">
-                                <a href="#" onclick="Checkout.back(); return false;"><small>&laquo; </small>@T("Common.Back")</a>
-                            </p>
-                            <button type="button" name="save" class="button-1 payment-method-next-step-button" onclick="PaymentMethod.save()">@T("Common.Continue")</button>
-                            <span class="please-wait" id="payment-method-please-wait" style="display: none;">@T("Common.LoadingNextStep")</span>
                         </div>
                     </div>
-                </div>
 
-                <div id="opc-payment_info" class="tab-section spc-card spc-card-payment-info">
-                    <div class="step-title spc-card-title">
-                        <h2>@T("Checkout.PaymentInfo")</h2>
-                    </div>
-                    <div id="checkout-step-payment-info" class="step a-item">
-                        <form action="" id="co-payment-info-form" method="post">
-                            <div id="checkout-payment-info-load"></div>
-                        </form>
-                        <script asp-location="Footer">
-                            PaymentInfo.init('#co-payment-info-form', '@(storeLocation)checkout/OpcSavePaymentInfo/');
-                        </script>
-                        <div class="buttons spc-buttons" id="payment-info-buttons-container">
-                            <button type="button" class="button-1 payment-info-next-step-button" onclick="PaymentInfo.save()">@T("Common.Continue")</button>
-                            <span class="please-wait" id="payment-info-please-wait" style="display: none;">@T("Common.LoadingNextStep")</span>
+                    <div id="opc-payment_info" class="tab-section spc-card spc-card-payment-info">
+                        <div class="step-title spc-card-title">
+                            <h2>@T("Checkout.PaymentInfo")</h2>
+                        </div>
+                        <div id="checkout-step-payment-info" class="step a-item">
+                            <form action="" id="co-payment-info-form" method="post">
+                                <div id="checkout-payment-info-load"></div>
+                            </form>
+                            <script asp-location="Footer">
+                                PaymentInfo.init('#co-payment-info-form', '@(storeLocation)checkout/OpcSavePaymentInfo/');
+                            </script>
+                            <div class="buttons spc-buttons" id="payment-info-buttons-container">
+                                <button type="button" class="button-1 payment-info-next-step-button" onclick="PaymentInfo.save()">@T("Common.Continue")</button>
+                                <span class="please-wait" id="payment-info-please-wait" style="display: none;">@T("Common.LoadingNextStep")</span>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -1,6 +1,10 @@
 @model Nop.Plugin.Payments.Razorpay.Models.PaymentInfoModel
 
 <div class="razorpay-payment-info" id="razorpay-payment-info-container">
+    <div class="spc-payment-selection" aria-live="polite">
+        <span class="spc-payment-selection-label">Payment method</span>
+        <strong class="spc-payment-selection-name">Razorpay Hosted Checkout</strong>
+    </div>
     <p id="razorpay-instruction-message">@T("Plugins.Payments.Razorpay.PaymentInfo.Instructions")</p>
     <button type="button" id="razorpay-pay-button" class="button-1 razorpay-plugin-button spc-razorpay-btn">@T("Plugins.Payments.Razorpay.PaymentInfo.PayButton")</button>
 
