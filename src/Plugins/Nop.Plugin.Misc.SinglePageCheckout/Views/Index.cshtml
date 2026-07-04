@@ -143,6 +143,21 @@
                 </div>
 
                 <div class="spc-column spc-column-secondary">
+                    <div class="spc-card spc-card-totals">
+                        <div class="spc-card-title">
+                            <h2>@T("ShoppingCart.Totals.OrderTotal")</h2>
+                        </div>
+                        <div class="spc-card-body">
+                            @await Component.InvokeAsync(typeof(OrderTotalsViewComponent), new { isEditable = Model.ShoppingCartModel.IsEditable })
+                            @if (!string.IsNullOrEmpty(Model.ShoppingCartModel.MinOrderSubtotalWarning))
+                            {
+                                <div class="min-amount-warning">
+                                    @Model.ShoppingCartModel.MinOrderSubtotalWarning
+                                </div>
+                            }
+                        </div>
+                    </div>
+
                     <div class="spc-payment-cluster spc-card">
                         <div class="step-title spc-card-title">
                             <h2>@T("Checkout.PaymentMethod")</h2>

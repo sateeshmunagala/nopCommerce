@@ -41,6 +41,10 @@
     gap: 12px;
 }
 
+.spc-layout-review-pay .spc-column-secondary > .spc-card-totals {
+    margin-bottom: 0;
+}
+
 .spc-card {
     border: 1px solid var(--jb-border, #dedede);
     background: var(--jb-surface, #fff);
@@ -537,6 +541,14 @@
     min-height: 0;
 }
 
+.spc-layout-review-pay .spc-column-secondary .spc-card-totals .cart-total td {
+    padding: 8px 0;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card-totals .min-amount-warning {
+    margin-top: 10px;
+}
+
 .spc-layout-review-pay .spc-column-secondary .spc-card-payment-method .method-list {
     gap: 8px;
 }
@@ -547,7 +559,7 @@
 
 .spc-layout-review-pay .spc-column-secondary .spc-payment-selection {
     padding: 10px 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .spc-card-payment-method .buttons,

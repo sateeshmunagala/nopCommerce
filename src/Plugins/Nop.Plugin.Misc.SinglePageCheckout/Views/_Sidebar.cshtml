@@ -37,21 +37,6 @@
 
         @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_PromoBoxes.cshtml", Model)
 
-        <div class="spc-card spc-card-totals">
-            <div class="spc-card-title">
-                <h2>@T("ShoppingCart.Totals.OrderTotal")</h2>
-            </div>
-            <div class="spc-card-body">
-                @await Component.InvokeAsync(typeof(OrderTotalsViewComponent), new { isEditable = Model.ShoppingCartModel.IsEditable })
-                @if (!string.IsNullOrEmpty(Model.ShoppingCartModel.MinOrderSubtotalWarning))
-                {
-                    <div class="min-amount-warning">
-                        @Model.ShoppingCartModel.MinOrderSubtotalWarning
-                    </div>
-                }
-            </div>
-        </div>
-
         @if (Model.Settings.ShowCheckoutAttributes && Model.ShoppingCartModel.CheckoutAttributes.Any())
         {
             <div class="spc-card spc-card-checkout-attributes">
