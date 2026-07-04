@@ -1,0 +1,20 @@
+@model SinglePageCheckoutPageModel
+@{
+    var showDiscountBox = Model.Settings.ShowDiscountBox && Model.ShoppingCartModel?.DiscountBox?.Display == true;
+    var showGiftCardBox = Model.Settings.ShowGiftCardBox && Model.ShoppingCartModel?.GiftCardBox?.Display == true;
+}
+
+@if (showDiscountBox || showGiftCardBox)
+{
+    <div id="spc-promo-grid" class="spc-summary-grid spc-promo-grid">
+        @if (showDiscountBox)
+        {
+            @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_PromoDiscountBox.cshtml", Model.ShoppingCartModel.DiscountBox)
+        }
+
+        @if (showGiftCardBox)
+        {
+            @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_PromoGiftCardBox.cshtml", Model.ShoppingCartModel.GiftCardBox)
+        }
+    </div>
+}

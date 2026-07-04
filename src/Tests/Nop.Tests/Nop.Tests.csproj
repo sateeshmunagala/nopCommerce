@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <Copyright>Copyright © Nop Solutions, Ltd</Copyright>
     <Company>Nop Solutions, Ltd</Company>
@@ -27,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Presentation\Nop.Web\Nop.Web.csproj" />
     <ProjectReference Include="..\..\Plugins\Nop.Plugin.Misc.AIInterview\Nop.Plugin.Misc.AIInterview.csproj" />
+    <ProjectReference Include="..\..\Plugins\Nop.Plugin.Misc.SinglePageCheckout\Nop.Plugin.Misc.SinglePageCheckout.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,5 +35,4 @@
       <LastGenOutput>Connections.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-
 </Project>
