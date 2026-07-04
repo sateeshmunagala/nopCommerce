@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
+using Nop.Core.Http;
 using Nop.Plugin.Misc.SinglePageCheckout.Factories;
 using Nop.Services.Catalog;
 using Nop.Services.Configuration;
@@ -74,7 +75,7 @@ public class SinglePageCheckoutController : BasePluginController
         var cart = await _shoppingCartService.GetShoppingCartAsync(customer, ShoppingCartType.ShoppingCart, store.Id);
 
         if (!cart.Any())
-            return RedirectToRoute("Cart");
+            return RedirectToRoute(NopRouteNames.General.CART);
 
         var model = await _pageModelFactory.PrepareAsync(cart);
 
@@ -100,7 +101,7 @@ public class SinglePageCheckoutController : BasePluginController
 
         var model = await _pageModelFactory.PrepareAsync(cart);
 
-        return PartialView("~/Plugins/Misc.SinglePageCheckout/Views/_Sidebar.cshtml", model);
+        return PartialView("~/Plugins/Misc.SinglePageCheckout/Views/_SummaryRefresh.cshtml", model);
     }
 
     [HttpPost]
@@ -143,7 +144,7 @@ public class SinglePageCheckoutController : BasePluginController
             {
                 _notificationService.ErrorNotification(warning);
             }
-            return RedirectToRoute("Cart");
+            return RedirectToRoute(NopRouteNames.General.CART);
         }
 
         return RedirectToRoute(SinglePageCheckoutDefaults.CheckoutRouteName);

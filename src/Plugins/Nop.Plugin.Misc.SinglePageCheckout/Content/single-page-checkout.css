@@ -550,16 +550,29 @@
 }
 
 .spc-layout-review-pay .spc-column-secondary .spc-card-payment-method .method-list {
-    gap: 8px;
+    gap: 4px;
 }
 
 .spc-layout-review-pay .spc-column-secondary .spc-card-payment-method .method-list li {
-    padding: 8px 0;
+    padding: 6px 0;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-payment-cluster > .spc-card-title {
+    padding-bottom: 10px;
 }
 
 .spc-layout-review-pay .spc-column-secondary .spc-payment-selection {
-    padding: 10px 12px;
-    margin-bottom: 10px;
+    gap: 2px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-payment-selection-label {
+    display: none;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-payment-selection-name {
+    font-size: 15px;
 }
 
 .spc-card-payment-method .buttons,
@@ -597,7 +610,16 @@
 }
 
 .spc-layout-review-pay .spc-column-secondary .razorpay-payment-info {
-    gap: 12px;
+    gap: 10px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card-payment-method .a-item {
+    padding-bottom: 8px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card-payment-info .a-item {
+    padding-top: 0;
+    padding-bottom: 12px;
 }
 
 #razorpay-instruction-message {
@@ -606,10 +628,20 @@
     line-height: 1.6;
 }
 
+.spc-layout-review-pay .spc-column-secondary #razorpay-instruction-message {
+    line-height: 1.45;
+}
+
 .razorpay-payment-info #razorpay-pay-button,
 .razorpay-plugin-button {
     width: auto;
     margin-top: 0;
+}
+
+.spc-layout-review-pay .spc-column-secondary .razorpay-payment-info #razorpay-pay-button,
+.spc-layout-review-pay .spc-column-secondary .razorpay-plugin-button {
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 .spc-razorpay-error,

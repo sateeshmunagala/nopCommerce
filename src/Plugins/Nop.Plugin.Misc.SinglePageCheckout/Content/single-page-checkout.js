@@ -24,6 +24,7 @@ var SinglePageCheckout = (function () {
     bindStepBehaviors();
     bindEstimateShipping();
     normalizePromoControls();
+    normalizeTotalsControls();
     maybeAutoSubmitBilling();
     updateConfirmButtonState();
     updatePrimaryColumnLayout();
@@ -92,6 +93,11 @@ var SinglePageCheckout = (function () {
       .addClass('button-1');
   }
 
+  function normalizeTotalsControls() {
+    $('#spc-totals-container button, #spc-totals-container input, #spc-totals-container select, #spc-totals-container textarea')
+      .attr('form', 'shopping-cart-form');
+  }
+
   function updatePromoBoxesFromCartResponse(responseHtml) {
     if (typeof responseHtml !== 'string' || (responseHtml.indexOf('coupon-box') === -1 && responseHtml.indexOf('giftcard-box') === -1)) {
       return;
@@ -110,6 +116,7 @@ var SinglePageCheckout = (function () {
     }
 
     normalizePromoControls();
+    normalizeTotalsControls();
   }
 
   function resetSelectionAutoSubmitState() {
@@ -238,8 +245,8 @@ var SinglePageCheckout = (function () {
 
   function bindSummaryForm() {
     $(document)
-      .off('click.spcSummary', '#shopping-cart-form button[type="submit"], #spc-promo-grid button[type="submit"]')
-      .on('click.spcSummary', '#shopping-cart-form button[type="submit"], #spc-promo-grid button[type="submit"]', function () {
+      .off('click.spcSummary', '#shopping-cart-form button[type="submit"], #spc-promo-grid button[type="submit"], #spc-totals-container button[type="submit"]')
+      .on('click.spcSummary', '#shopping-cart-form button[type="submit"], #spc-promo-grid button[type="submit"], #spc-totals-container button[type="submit"]', function () {
         lastSubmitClicked = $(this);
       });
 
@@ -434,8 +441,22 @@ var SinglePageCheckout = (function () {
       },
       success: function (html) {
         if (html && html.trim().length > 0) {
-          $('#spc-summary-content').html(html);
+          var responseDom = $('<div />').html(html);
+          var summaryFragment = responseDom.find('#spc-summary-fragment').first();
+          var totalsFragment = responseDom.find('#spc-totals-fragment').first();
+
+          if (summaryFragment.length) {
+            $('#spc-summary-content').html(summaryFragment.html());
+          } else {
+            $('#spc-summary-content').html(html);
+          }
+
+          if (totalsFragment.length) {
+            $('#spc-totals-container').html(totalsFragment.html());
+          }
+
           normalizePromoControls();
+          normalizeTotalsControls();
           bindSummaryForm();
           updateConfirmButtonState();
           ensureSelectedMethodsAdvance();
