@@ -1,32 +1,44 @@
+.spc-page {
+    background: var(--jb-bg, #f0f0f0);
+}
+
 .spc-page .checkout-data {
-    background: var(--jb-bg, #fafafa);
+    padding: 24px;
+    border: 1px solid var(--jb-border, #dedede);
+    background: var(--jb-surface, #fff);
 }
 
 .spc-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    grid-template-columns: minmax(0, 0.95fr) minmax(360px, 0.85fr);
     gap: 24px;
     align-items: start;
 }
 
 .spc-column,
-.spc-payment-cluster {
+.spc-checkout-workarea,
+.spc-payment-cluster,
+.spc-summary-form {
     display: grid;
-    gap: 20px;
+    gap: 18px;
+}
+
+.spc-column-secondary {
+    align-self: start;
 }
 
 .spc-card {
     border: 1px solid var(--jb-border, #dedede);
     background: var(--jb-surface, #fff);
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(44, 44, 44, 0.04);
+    border-radius: 4px;
+    box-shadow: none;
     overflow: hidden;
 }
 
 .spc-card-title {
-    padding: 12px 16px;
+    padding: 14px 18px;
     border-bottom: 1px solid var(--jb-border, #dedede);
-    background: var(--jb-surface-muted, #f7f7f7);
+    background: #f7f7f7;
 }
 
 .spc-card-title h2 {
@@ -34,7 +46,7 @@
     color: var(--jb-ink, #2c2c2c);
     font-size: 18px;
     font-weight: 600;
-    font-family: 'Fjalla One', Arial, sans-serif;
+    font-family: "Fjalla One", Arial, sans-serif;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
@@ -56,51 +68,53 @@
     border-top: 1px solid var(--jb-border, #dedede);
 }
 
-.spc-card .buttons .button-1,
-.spc-card .buttons .button-2 {
-    min-width: 150px;
-}
-
 .spc-card .spc-placeholder,
 .spc-card .spc-pending-msg {
-    color: var(--jb-muted, #909090);
+    color: var(--jb-muted, #757575);
     min-height: 24px;
 }
 
-.spc-card .button-1,
-.spc-card .confirm-order-next-step-button,
-.spc-card .spc-buttons .button-1,
-.razorpay-plugin-button,
-.spc-card .payment-method-next-step-button {
-    background: var(--jb-accent, #35d6b4);
-    color: var(--jb-white, #fff);
-    border: 1px solid var(--jb-accent, #35d6b4);
-    border-radius: 10px;
+.spc-page .button-1,
+.spc-page .button-2,
+.spc-page .razorpay-plugin-button,
+.spc-page .confirm-order-next-step-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 150px;
     padding: 11px 18px;
+    border: 1px solid var(--jb-accent, #35d6b4);
+    border-radius: 4px;
+    background: var(--jb-accent, #35d6b4);
+    color: #fff;
     font-weight: 600;
     line-height: 1.2;
+    text-align: center;
     transition: background-color .2s ease, border-color .2s ease, color .2s ease, opacity .2s ease;
 }
 
-.spc-card .button-1:hover,
-.spc-card .button-1:focus-visible,
-.razorpay-plugin-button:hover,
-.razorpay-plugin-button:focus-visible,
-.spc-card .confirm-order-next-step-button:hover,
-.spc-card .confirm-order-next-step-button:focus-visible {
-    background: var(--jb-accent-dark, #24b99a);
+.spc-page .button-1:hover,
+.spc-page .button-1:focus-visible,
+.spc-page .button-2:hover,
+.spc-page .button-2:focus-visible,
+.spc-page .razorpay-plugin-button:hover,
+.spc-page .razorpay-plugin-button:focus-visible,
+.spc-page .confirm-order-next-step-button:hover,
+.spc-page .confirm-order-next-step-button:focus-visible {
     border-color: var(--jb-accent-dark, #24b99a);
-    color: var(--jb-white, #fff);
+    background: var(--jb-accent-dark, #24b99a);
+    color: #fff;
 }
 
-.spc-card .button-1[disabled],
+.spc-page .button-1[disabled],
+.spc-page .button-2[disabled],
 .spc-disabled .confirm-order-next-step-button,
-.spc-card .button-1[aria-disabled="true"] {
-    background: #cfd7d5;
+.spc-page .button-1[aria-disabled="true"] {
     border-color: #cfd7d5;
-    color: var(--jb-white, #fff);
+    background: #cfd7d5;
+    color: #fff;
     cursor: not-allowed;
-    opacity: 0.95;
+    opacity: 1;
 }
 
 .spc-subtitle {
@@ -110,13 +124,9 @@
     font-weight: 600;
 }
 
-.spc-summary-form {
-    display: grid;
-    gap: 20px;
-}
-
 .spc-summary-shell {
-    position: relative;
+    position: sticky;
+    top: 16px;
 }
 
 .spc-summary-progress {
@@ -136,7 +146,7 @@
     display: block;
     width: 34%;
     height: 100%;
-    background: linear-gradient(90deg, #56a6f3 0%, #2e7dd1 100%);
+    background: linear-gradient(90deg, var(--jb-accent, #35d6b4) 0%, var(--jb-accent-dark, #24b99a) 100%);
     animation: spc-progress-slide 1s ease-in-out infinite;
 }
 
@@ -157,7 +167,7 @@
     height: 28px;
     margin: -14px 0 0 -14px;
     border: 3px solid #d4dbe3;
-    border-top-color: #2e7dd1;
+    border-top-color: var(--jb-accent-dark, #24b99a);
     border-radius: 50%;
     animation: spc-spinner .7s linear infinite;
     z-index: 6;
@@ -170,7 +180,7 @@
 .spc-summary-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
+    gap: 18px;
 }
 
 .spc-summary-grid > :only-child {
@@ -187,7 +197,7 @@
     padding: 12px 10px;
     border: 1px solid #e6e6e6;
     text-align: left;
-    vertical-align: top;
+    vertical-align: middle;
 }
 
 .spc-cart-table th {
@@ -220,10 +230,54 @@
     font-size: 12px;
 }
 
-.spc-cart-table .qty-input,
+.spc-qty-stepper {
+    position: relative;
+    display: inline-grid;
+    grid-template-columns: 32px minmax(40px, 56px) 32px;
+    align-items: center;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.spc-qty-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-right: 1px solid var(--jb-border, #dedede);
+    border-radius: 0;
+    background: #f7f7f7;
+    color: var(--jb-ink, #2c2c2c);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.spc-qty-increase {
+    border-right: 0;
+    border-left: 1px solid var(--jb-border, #dedede);
+}
+
+.spc-qty-stepper .qty-input,
 .spc-cart-table .qty-dropdown {
-    width: 72px;
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 0;
     text-align: center;
+    background: #fff;
+}
+
+.spc-qty-source {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .spc-card-discount .coupon-box,
@@ -236,6 +290,14 @@
     margin: 0 0 10px;
     color: #4a4a4a;
     font-size: 18px;
+}
+
+.spc-card-discount .hint,
+.spc-card-giftcard .hint {
+    margin-bottom: 12px;
+    color: #666;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 .spc-card-discount .coupon-code,
@@ -255,13 +317,14 @@
 .spc-card-discount .coupon-code .button-1,
 .spc-card-giftcard .coupon-code .button-1 {
     width: auto;
-    min-width: 180px;
+    min-width: 160px;
     white-space: nowrap;
 }
 
 .spc-card-totals .total-info {
-    margin: 0 0 0 auto;
-    max-width: 320px;
+    margin: 0;
+    width: 100%;
+    max-width: none;
 }
 
 .spc-card-billing .section,
@@ -308,11 +371,14 @@
 .spc-card-payment-info select,
 .spc-card-payment-info textarea,
 .spc-card-discount input,
-.spc-card-giftcard input {
+.spc-card-giftcard input,
+.spc-card-checkout-attributes input,
+.spc-card-checkout-attributes select,
+.spc-card-checkout-attributes textarea {
     width: 100%;
     min-height: 38px;
     border: 1px solid #d8d8d8;
-    border-radius: 0;
+    border-radius: 4px;
     background: #fff;
     box-sizing: border-box;
 }
@@ -363,12 +429,12 @@
 
 .spc-card-payment-method .method-list {
     display: grid;
-    gap: 12px;
+    gap: 10px;
 }
 
 .spc-card-payment-method .method-list li,
 .spc-card-shipping-method .method-list li {
-    padding: 12px 0;
+    padding: 10px 0;
     border-bottom: 1px solid #ececec;
 }
 
@@ -406,7 +472,7 @@
 .spc-card-payment-method .payment-description,
 .spc-card-shipping-method .method-description {
     margin-top: 6px;
-    color: var(--jb-muted, #909090);
+    color: var(--jb-muted, #757575);
     font-size: 12px;
 }
 
@@ -414,10 +480,15 @@
     gap: 0;
 }
 
-.spc-payment-cluster .spc-card-payment-method {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-    border-bottom: 0;
+.spc-payment-cluster > .spc-card-title {
+    border-bottom: 1px solid var(--jb-border, #dedede);
+}
+
+.spc-payment-cluster .spc-card-payment-method,
+.spc-payment-cluster .spc-card-payment-info {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     box-shadow: none;
 }
 
@@ -425,38 +496,27 @@
     padding-bottom: 10px;
 }
 
-.spc-payment-cluster .spc-card-payment-info {
-    margin-top: 0;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-    box-shadow: none;
+.spc-payment-cluster .spc-card-payment-info .a-item {
+    padding-top: 0;
 }
 
-.spc-card-payment-info .spc-card-title {
-    display: none;
-}
-
-.spc-card-payment-info .a-item {
-    padding-top: 10px;
-}
-
+.spc-card-payment-method .buttons,
 .spc-card-payment-info .buttons {
-    border-top: 0;
-    padding-top: 10px;
+    display: none;
 }
 
 .spc-payment-selection {
     display: grid;
     gap: 4px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     margin-bottom: 14px;
     border: 1px solid var(--jb-border, #dedede);
-    border-radius: 10px;
-    background: var(--jb-surface-muted, #f7f7f7);
+    border-radius: 4px;
+    background: #f7f7f7;
 }
 
 .spc-payment-selection-label {
-    color: var(--jb-muted, #909090);
+    color: var(--jb-muted, #757575);
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -482,34 +542,43 @@
 
 .razorpay-payment-info #razorpay-pay-button,
 .razorpay-plugin-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     width: auto;
     margin-top: 0;
 }
 
 .spc-razorpay-error,
 .spc-razorpay-pending,
-.spc-razorpay-success {
+.spc-razorpay-success,
+.spc-card .message-error,
+.spc-card .message-failure,
+.spc-card .message-success,
+.spc-card .min-amount-warning {
+    margin-top: 12px;
     padding: 12px 14px;
-    margin-top: 0;
-    border-radius: 10px;
+    border: 1px solid;
+    border-left-width: 4px;
+    border-radius: 4px;
     font-size: 13px;
     line-height: 1.5;
 }
 
 .spc-razorpay-error,
-.spc-razorpay-pending {
+.spc-razorpay-pending,
+.spc-card .message-error,
+.spc-card .message-failure,
+.spc-card .min-amount-warning {
+    border-color: #f2c7c2;
+    border-left-color: #c64135;
     background: #fff1ef;
     color: #b93a2f;
-    border: 1px solid #f2c7c2;
 }
 
-.spc-razorpay-success {
+.spc-razorpay-success,
+.spc-card .message-success {
+    border-color: #bfe5d4;
+    border-left-color: #1f7a55;
     background: #edf9f4;
     color: #1f7a55;
-    border: 1px solid #bfe5d4;
 }
 
 #billing-buttons-container,
@@ -523,7 +592,9 @@
 
 #billing-buttons-container .button-1,
 #shipping-buttons-container .button-1,
-#payment-info-buttons-container .button-1 {
+#payment-info-buttons-container .button-1,
+#shipping-method-buttons-container,
+#payment-method-buttons-container {
     display: none !important;
 }
 
@@ -551,12 +622,6 @@
 
 .spc-disabled .confirm-order-next-step-button {
     cursor: not-allowed;
-}
-
-.spc-card .message-error,
-.spc-card .message-failure,
-.spc-card .message-success {
-    margin-top: 12px;
 }
 
 .spc-card-estimate .buttons {
@@ -597,21 +662,16 @@
     font-size: 12px;
 }
 
-#shipping-method-buttons-container,
-#payment-method-buttons-container {
-    display: none;
-}
-
 .remove-btn {
-    min-width: 36px;
     width: 36px;
+    min-width: 36px;
     height: 36px;
     padding: 0;
-    background: transparent;
     border: 1px solid transparent;
-    border-radius: 999px;
-    cursor: pointer;
+    border-radius: 4px;
+    background: transparent;
     color: #7a7a7a;
+    cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -626,9 +686,62 @@
 }
 
 .remove-icon {
-    font-size: 20px;
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+.spc-card-totals .cart-total {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.spc-card-totals .cart-total td {
+    padding: 10px 0;
+    border-bottom: 1px solid #ececec;
+    vertical-align: top;
+}
+
+.spc-card-totals .cart-total tr:last-child td {
+    border-bottom: 0;
+}
+
+.spc-card-totals .cart-total-left {
+    color: #555;
+    padding-right: 12px;
+}
+
+.spc-card-totals .cart-total-right {
+    text-align: right;
+    color: #2c2c2c;
+}
+
+.spc-card-totals .order-total .cart-total-left label {
     font-weight: 600;
-    line-height: 1;
+}
+
+.spc-card-totals .order-total .cart-total-right .value-summary,
+.spc-card-totals .order-total .cart-total-right .value-summary strong {
+    color: var(--jb-accent, #35d6b4);
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.spc-layout.spc-layout-empty-primary {
+    grid-template-columns: 1fr;
+}
+
+.spc-layout.spc-layout-empty-primary .spc-column-primary {
+    display: none;
+}
+
+.razorpay-container {
+    z-index: 999999 !important;
+    position: fixed !important;
+}
+
+.spc-razorpay-btn {
+    margin-top: 0;
 }
 
 @keyframes spc-progress-slide {
@@ -648,15 +761,23 @@
 }
 
 @media (max-width: 1024px) {
+    .spc-page .checkout-data {
+        padding: 16px;
+    }
+
     .spc-layout {
         grid-template-columns: 1fr;
     }
 
-    .spc-card .button-1,
-    .razorpay-plugin-button,
-    .razorpay-payment-info #razorpay-pay-button {
+    .spc-summary-shell {
+        position: static;
+    }
+
+    .spc-page .button-1,
+    .spc-page .button-2,
+    .spc-page .razorpay-plugin-button,
+    .spc-page .confirm-order-next-step-button {
         width: 100%;
-        display: flex;
     }
 }
 
@@ -666,8 +787,10 @@
     }
 
     .spc-card .a-item,
-    .spc-card-body {
-        padding: 14px;
+    .spc-card-body,
+    .spc-card-title {
+        padding-left: 14px;
+        padding-right: 14px;
     }
 
     .spc-cart-table,
@@ -695,48 +818,4 @@
     .spc-card-totals .total-info {
         max-width: 100%;
     }
-}
-
-.spc-no-shipping .cart-total .shipping-cost {
-    display: none;
-}
-
-.spc-layout.spc-layout-empty-primary {
-    grid-template-columns: 1fr;
-}
-
-.spc-layout.spc-layout-empty-primary .spc-column-primary {
-    display: none;
-}
-
-.spc-layout.spc-layout-empty-primary .spc-column-secondary {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    align-items: start;
-}
-
-.spc-layout.spc-layout-empty-primary .spc-column-secondary > .spc-summary-shell {
-    grid-column: 2;
-    grid-row: 1 / span 4;
-}
-
-@media (max-width: 1024px) {
-    .spc-layout.spc-layout-empty-primary .spc-column-secondary {
-        grid-template-columns: 1fr;
-    }
-
-    .spc-layout.spc-layout-empty-primary .spc-column-secondary > .spc-summary-shell {
-        grid-column: 1;
-        grid-row: auto;
-    }
-}
-
-.razorpay-container {
-    z-index: 999999 !important;
-    position: fixed !important;
-}
-
-.spc-razorpay-btn {
-    margin-top: 0;
 }

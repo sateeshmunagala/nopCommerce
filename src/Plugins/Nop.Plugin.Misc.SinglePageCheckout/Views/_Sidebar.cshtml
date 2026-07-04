@@ -5,7 +5,7 @@
     var showDiscountBox = Model.Settings.ShowDiscountBox && Model.ShoppingCartModel.DiscountBox.Display;
     var showGiftCardBox = Model.Settings.ShowGiftCardBox && Model.ShoppingCartModel.GiftCardBox.Display;
 
-    <form asp-route="@NopRouteNames.General.CART" method="post" enctype="multipart/form-data" id="shopping-cart-form" class="spc-summary-form @(Model.CheckoutModel?.ShippingRequired == true ? "" : "spc-no-shipping")">
+    <form asp-route="@NopRouteNames.General.CART" method="post" enctype="multipart/form-data" id="shopping-cart-form" class="spc-summary-form">
         @if (Model.ShoppingCartModel.Warnings.Any())
         {
             <div class="message-error">

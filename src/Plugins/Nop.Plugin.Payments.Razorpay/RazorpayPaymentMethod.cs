@@ -286,6 +286,8 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.Fields.Signature.Required", "Razorpay Signature is missing.");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.CurrencyMismatch", "Razorpay currency mismatch.");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Instructions", "Please click the button below to complete your payment securely via Razorpay.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.MethodLabel", "Payment method");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.MethodName", "Razorpay Hosted Checkout");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PayButton", "Pay with Razorpay");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Processing", "Processing...");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Success", "Payment successful! You can now continue the checkout.");
@@ -329,6 +331,8 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.Fields.Signature.Required");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.CurrencyMismatch");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Instructions");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.MethodLabel");
+        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.MethodName");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PayButton");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Processing");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Success");

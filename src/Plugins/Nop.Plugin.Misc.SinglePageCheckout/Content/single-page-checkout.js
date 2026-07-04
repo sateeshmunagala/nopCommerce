@@ -33,15 +33,21 @@ var SinglePageCheckout = (function () {
     var primaryColumn = $('.spc-column-primary');
     if (primaryColumn.length === 0) return;
 
-    var targetCards = primaryColumn.find('.spc-card-billing, .spc-card-shipping, .spc-card-discount, .spc-card-giftcard, .spc-card-estimate');
+    var targetCards = primaryColumn.find('.spc-card');
 
     var visibleCards = targetCards.filter(function() {
       if ($(this).css('display') === 'none') return false;
       if ($(this).is(':hidden')) return false;
 
-      // Check if it has any meaningful content (inputs, buttons, visible text)
-      var hasInputs = $(this).find('input:visible, select:visible, textarea:visible, button:visible').length > 0;
-      var textContent = $(this).text().trim();
+      var hasInputs = $(this).find('input:visible:not([type="hidden"]), select:visible, textarea:visible, button:visible, a:visible').length > 0;
+      var textContent = $(this)
+        .clone()
+        .find('script, style, input[type="hidden"]')
+        .remove()
+        .end()
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim();
 
       return hasInputs || textContent.length > 0;
     });
@@ -240,8 +246,55 @@ var SinglePageCheckout = (function () {
     $(document)
       .off('change.spcSummaryQty', '#shopping-cart-form .qty-input, #shopping-cart-form .qty-dropdown')
       .on('change.spcSummaryQty', '#shopping-cart-form .qty-input, #shopping-cart-form .qty-dropdown', function () {
+        var value = parseInt($(this).val(), 10);
+        if (isNaN(value) || value < 1) {
+          $(this).val(1);
+        }
+
         lastSubmitClicked = $('<button type="submit" name="updatecart" value="updatecart"></button>');
         $('#shopping-cart-form').trigger('submit');
+      });
+
+    $(document)
+      .off('click.spcSummaryStepper', '#shopping-cart-form .spc-qty-btn')
+      .on('click.spcSummaryStepper', '#shopping-cart-form .spc-qty-btn', function () {
+        var stepper = $(this).closest('.spc-qty-stepper');
+        var targetId = stepper.data('target');
+        var displayId = stepper.data('display');
+        var input = $('#' + targetId);
+        if (input.length === 0) {
+          return;
+        }
+
+        if (input.is('select')) {
+          var currentIndex = input.prop('selectedIndex');
+          var optionCount = input.find('option').length;
+          var nextIndex = currentIndex;
+
+          if ($(this).hasClass('spc-qty-increase')) {
+            nextIndex = Math.min(optionCount - 1, currentIndex + 1);
+          } else {
+            nextIndex = Math.max(0, currentIndex - 1);
+          }
+
+          input.prop('selectedIndex', nextIndex);
+          if (displayId) {
+            $('#' + displayId).val(input.find('option:selected').val());
+          }
+          input.trigger('change');
+          return;
+        }
+
+        var currentValue = parseInt(input.val(), 10);
+        var nextValue = isNaN(currentValue) ? 1 : currentValue;
+
+        if ($(this).hasClass('spc-qty-increase')) {
+          nextValue += 1;
+        } else {
+          nextValue = Math.max(1, nextValue - 1);
+        }
+
+        input.val(nextValue).trigger('change');
       });
 
     $(document)

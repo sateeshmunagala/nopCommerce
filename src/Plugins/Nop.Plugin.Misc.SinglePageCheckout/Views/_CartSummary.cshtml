@@ -65,16 +65,26 @@ else
                             {
                                 if (item.AllowedQuantities.Any())
                                 {
-                                    <select name="itemquantity@(item.Id)" id="itemquantity@(item.Id)" class="qty-dropdown">
-                                        @foreach (var qty in item.AllowedQuantities)
-                                        {
-                                            <option selected="@qty.Selected" value="@qty.Value">@qty.Value</option>
-                                        }
-                                    </select>
+                                    var selectedQuantity = item.AllowedQuantities.FirstOrDefault(qty => qty.Selected)?.Value ?? item.Quantity.ToString();
+                                    <div class="spc-qty-stepper" data-target="itemquantity@(item.Id)" data-display="itemquantitydisplay@(item.Id)">
+                                        <button type="button" class="spc-qty-btn spc-qty-decrease" aria-label="Decrease quantity">-</button>
+                                        <input id="itemquantitydisplay@(item.Id)" type="text" value="@selectedQuantity" class="qty-input spc-qty-display" readonly aria-label="@T("ShoppingCart.Quantity")" />
+                                        <button type="button" class="spc-qty-btn spc-qty-increase" aria-label="Increase quantity">+</button>
+                                        <select name="itemquantity@(item.Id)" id="itemquantity@(item.Id)" class="qty-dropdown spc-qty-source" tabindex="-1" aria-hidden="true">
+                                            @foreach (var qty in item.AllowedQuantities)
+                                            {
+                                                <option selected="@qty.Selected" value="@qty.Value">@qty.Value</option>
+                                            }
+                                        </select>
+                                    </div>
                                 }
                                 else
                                 {
-                                    <input name="itemquantity@(item.Id)" id="itemquantity@(item.Id)" type="text" value="@item.Quantity" class="qty-input" aria-label="@T("ShoppingCart.Quantity")" />
+                                    <div class="spc-qty-stepper" data-target="itemquantity@(item.Id)">
+                                        <button type="button" class="spc-qty-btn spc-qty-decrease" aria-label="Decrease quantity">-</button>
+                                        <input name="itemquantity@(item.Id)" id="itemquantity@(item.Id)" type="text" value="@item.Quantity" class="qty-input" inputmode="numeric" pattern="[0-9]*" readonly aria-label="@T("ShoppingCart.Quantity")" />
+                                        <button type="button" class="spc-qty-btn spc-qty-increase" aria-label="Increase quantity">+</button>
+                                    </div>
                                 }
                             }
                             else
@@ -98,7 +108,9 @@ else
                                 {
                                     <input type="checkbox" name="removefromcart" id="removefromcart@(item.Id)" value="@item.Id" style="display:none;" />
                                     <button type="button" class="remove-btn" onclick="$('#removefromcart@(item.Id)').prop('checked', true); $('#updatecart').trigger('click');" aria-label="@T("ShoppingCart.Remove")" title="@T("ShoppingCart.Remove")">
-                                        <span class="remove-icon" aria-hidden="true">&times;</span>
+                                        <svg class="remove-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                                            <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 7h2v7h-2v-7Zm4 0h2v7h-2v-7ZM7 10h2v7H7v-7Zm-1 10h12l1-12H5l1 12Z" />
+                                        </svg>
                                     </button>
                                 }
                             </td>
