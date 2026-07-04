@@ -35,17 +35,7 @@
             </div>
         }
 
-        @if (Model.Settings.ShowCheckoutAttributes && Model.ShoppingCartModel.CheckoutAttributes.Any())
-        {
-            <div class="spc-card spc-card-checkout-attributes">
-                <div class="spc-card-title">
-                    <h2>@T("Admin.Catalog.Attributes.CheckoutAttributes")</h2>
-                </div>
-                <div class="spc-card-body">
-                    @await Html.PartialAsync("~/Views/Shared/_CheckoutAttributes.cshtml", Model.ShoppingCartModel)
-                </div>
-            </div>
-        }
+        @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_PromoBoxes.cshtml", Model)
 
         <div class="spc-card spc-card-totals">
             <div class="spc-card-title">
@@ -61,5 +51,17 @@
                 }
             </div>
         </div>
+
+        @if (Model.Settings.ShowCheckoutAttributes && Model.ShoppingCartModel.CheckoutAttributes.Any())
+        {
+            <div class="spc-card spc-card-checkout-attributes">
+                <div class="spc-card-title">
+                    <h2>@T("Admin.Catalog.Attributes.CheckoutAttributes")</h2>
+                </div>
+                <div class="spc-card-body">
+                    @await Html.PartialAsync("~/Views/Shared/_CheckoutAttributes.cshtml", Model.ShoppingCartModel)
+                </div>
+            </div>
+        }
     </form>
 }

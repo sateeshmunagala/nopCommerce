@@ -28,9 +28,8 @@
     <div class="page-body checkout-data">
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OpcContentBefore, additionalData = Model.CheckoutModel })
 
-        <div class="spc-layout" id="checkout-steps">
-            <div class="spc-column spc-column-primary">
-                <div class="spc-checkout-workarea">
+        <div id="checkout-steps">
+            <div class="spc-checkout-workarea spc-prepayment-workarea">
                     <div id="opc-billing" class="tab-section allow spc-card spc-card-billing">
                         <div class="step-title spc-card-title">
                             <h2>@T("Checkout.BillingAddress")</h2>
@@ -129,6 +128,21 @@
                         </div>
                     }
 
+            </div>
+
+            <div class="spc-layout spc-layout-review-pay">
+                <div class="spc-column spc-column-primary">
+                    <div id="spc-summary-container" class="spc-summary-shell">
+                        <div class="spc-summary-progress" aria-hidden="true">
+                            <span></span>
+                        </div>
+                        <div id="spc-summary-content">
+                            @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_Sidebar.cshtml", Model)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="spc-column spc-column-secondary">
                     <div class="spc-payment-cluster spc-card">
                         <div class="step-title spc-card-title">
                             <h2>@T("Checkout.PaymentMethod")</h2>
@@ -172,40 +186,28 @@
                         </div>
                     </div>
 
-                    @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_PromoBoxes.cshtml", Model)
-                </div>
-            </div>
-
-            <div class="spc-column spc-column-secondary">
-                <div id="spc-summary-container" class="spc-summary-shell">
-                    <div class="spc-summary-progress" aria-hidden="true">
-                        <span></span>
-                    </div>
-                    <div id="spc-summary-content">
-                        @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_Sidebar.cshtml", Model)
-                    </div>
-                </div>
-                <div id="opc-confirm_order" class="tab-section spc-card spc-card-confirm">
-                    <div class="step-title spc-card-title">
-                        <h2>@T("Checkout.ConfirmOrder")</h2>
-                    </div>
-                    <div id="checkout-step-confirm-order" class="step a-item">
-                        <div id="checkout-confirm-order-load">
+                    <div id="opc-confirm_order" class="tab-section spc-card spc-card-confirm">
+                        <div class="step-title spc-card-title">
+                            <h2>@T("Checkout.ConfirmOrder")</h2>
                         </div>
-                        <script asp-location="Footer">
-                            ConfirmOrder.init('@(storeLocation)checkout/OpcConfirmOrder/',
-                                '@Url.RouteUrl(NopRouteNames.Standard.CHECKOUT_COMPLETED)',
-                                @Model.CheckoutModel.DisplayCaptcha.ToString().ToLowerInvariant(),
-                                @Model.CheckoutModel.IsReCaptchaV3.ToString().ToLowerInvariant(),
-                                '@Model.CheckoutModel.ReCaptchaPublicKey',
-                                '#checkout-step-confirm-order');
-                        </script>
-                        <div class="buttons spc-buttons" id="confirm-order-buttons-container">
-                            <p class="back-link">
-                                <a href="#" onclick="Checkout.back(); return false;"><small>&laquo; </small>@T("Common.Back")</a>
-                            </p>
-                            <button type="button" id="spc-confirm-order-button" class="button-1 confirm-order-next-step-button" onclick="ConfirmOrder.save()" disabled>@T("Checkout.ConfirmButton")</button>
-                            <span class="please-wait" id="confirm-order-please-wait" style="display: none;">@T("Checkout.SubmittingOrder")</span>
+                        <div id="checkout-step-confirm-order" class="step a-item">
+                            <div id="checkout-confirm-order-load">
+                            </div>
+                            <script asp-location="Footer">
+                                ConfirmOrder.init('@(storeLocation)checkout/OpcConfirmOrder/',
+                                    '@Url.RouteUrl(NopRouteNames.Standard.CHECKOUT_COMPLETED)',
+                                    @Model.CheckoutModel.DisplayCaptcha.ToString().ToLowerInvariant(),
+                                    @Model.CheckoutModel.IsReCaptchaV3.ToString().ToLowerInvariant(),
+                                    '@Model.CheckoutModel.ReCaptchaPublicKey',
+                                    '#checkout-step-confirm-order');
+                            </script>
+                            <div class="buttons spc-buttons" id="confirm-order-buttons-container">
+                                <p class="back-link">
+                                    <a href="#" onclick="Checkout.back(); return false;"><small>&laquo; </small>@T("Common.Back")</a>
+                                </p>
+                                <button type="button" id="spc-confirm-order-button" class="button-1 confirm-order-next-step-button" onclick="ConfirmOrder.save()" disabled>@T("Checkout.ConfirmButton")</button>
+                                <span class="please-wait" id="confirm-order-please-wait" style="display: none;">@T("Checkout.SubmittingOrder")</span>
+                            </div>
                         </div>
                     </div>
                 </div>

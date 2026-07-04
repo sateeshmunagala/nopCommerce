@@ -27,6 +27,20 @@
     align-self: start;
 }
 
+.spc-layout-review-pay {
+    margin-top: 24px;
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.78fr);
+}
+
+.spc-layout-review-pay .spc-column-primary,
+.spc-layout-review-pay .spc-summary-form {
+    gap: 16px;
+}
+
+.spc-layout-review-pay .spc-column-secondary {
+    gap: 12px;
+}
+
 .spc-card {
     border: 1px solid var(--jb-border, #dedede);
     background: var(--jb-surface, #fff);
@@ -127,6 +141,10 @@
 .spc-summary-shell {
     position: sticky;
     top: 16px;
+}
+
+.spc-layout-review-pay .spc-summary-shell {
+    position: static;
 }
 
 .spc-summary-progress {
@@ -500,6 +518,38 @@
     padding-top: 0;
 }
 
+.spc-layout-review-pay .spc-column-secondary .spc-card-title {
+    padding: 12px 16px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card .a-item,
+.spc-layout-review-pay .spc-column-secondary .spc-card-body {
+    padding: 14px 16px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card .buttons {
+    margin-top: 12px;
+    padding-top: 12px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card .spc-placeholder,
+.spc-layout-review-pay .spc-column-secondary .spc-card .spc-pending-msg {
+    min-height: 0;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card-payment-method .method-list {
+    gap: 8px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card-payment-method .method-list li {
+    padding: 8px 0;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-payment-selection {
+    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+
 .spc-card-payment-method .buttons,
 .spc-card-payment-info .buttons {
     display: none;
@@ -532,6 +582,10 @@
 .razorpay-payment-info {
     display: grid;
     gap: 14px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .razorpay-payment-info {
+    gap: 12px;
 }
 
 #razorpay-instruction-message {
@@ -608,6 +662,10 @@
 
 .spc-card-confirm .confirm-order-next-step-button {
     min-width: 170px;
+}
+
+.spc-layout-review-pay .spc-column-secondary .spc-card-confirm .terms-of-service {
+    margin-bottom: 12px;
 }
 
 .spc-order-review-data .payment-method-info,
@@ -767,6 +825,10 @@
 
     .spc-layout {
         grid-template-columns: 1fr;
+    }
+
+    .spc-layout-review-pay {
+        margin-top: 20px;
     }
 
     .spc-summary-shell {
