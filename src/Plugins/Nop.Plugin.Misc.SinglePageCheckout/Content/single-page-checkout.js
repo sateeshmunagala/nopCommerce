@@ -33,8 +33,17 @@ var SinglePageCheckout = (function () {
     var primaryColumn = $('.spc-column-primary');
     if (primaryColumn.length === 0) return;
 
-    var visibleCards = primaryColumn.children('.spc-card').filter(function() {
-      return $(this).css('display') !== 'none';
+    var targetCards = primaryColumn.find('.spc-card-billing, .spc-card-shipping, .spc-card-discount, .spc-card-giftcard, .spc-card-estimate');
+
+    var visibleCards = targetCards.filter(function() {
+      if ($(this).css('display') === 'none') return false;
+      if ($(this).is(':hidden')) return false;
+
+      // Check if it has any meaningful content (inputs, buttons, visible text)
+      var hasInputs = $(this).find('input:visible, select:visible, textarea:visible, button:visible').length > 0;
+      var textContent = $(this).text().trim();
+
+      return hasInputs || textContent.length > 0;
     });
 
     if (visibleCards.length === 0) {
@@ -371,12 +380,14 @@ var SinglePageCheckout = (function () {
         setSummaryBusy(true);
       },
       success: function (html) {
-        $('#spc-summary-content').html(html);
-        normalizePromoControls();
-        bindSummaryForm();
-        updateConfirmButtonState();
-        ensureSelectedMethodsAdvance();
-        updatePrimaryColumnLayout();
+        if (html && html.trim().length > 0) {
+          $('#spc-summary-content').html(html);
+          normalizePromoControls();
+          bindSummaryForm();
+          updateConfirmButtonState();
+          ensureSelectedMethodsAdvance();
+          updatePrimaryColumnLayout();
+        }
       },
       complete: function () {
         setSummaryBusy(false);
@@ -466,8 +477,19 @@ var SinglePageCheckout = (function () {
     var confirmContainer = $('#checkout-confirm-order-load');
     var hasLoadedContent = confirmContainer.children().length > 0 &&
       confirmContainer.find('.spc-placeholder').length === 0 &&
-      confirmContainer.text().trim().length > 0;
+      confirmContainer.find('.spc-pending-msg').length === 0 &&
+      confirmContainer.text().replace('Complete payment to enable order confirmation.', '').trim().length > 0;
+
     var hasConfirmContent = hasLoadedContent || confirmContainer.find('.checkout-data, .confirm-order, .terms-of-service, .captcha-box').length > 0;
+
+    if (!hasConfirmContent) {
+      if (confirmContainer.find('.spc-pending-msg').length === 0) {
+        confirmContainer.empty();
+        confirmContainer.append('<div class="spc-pending-msg">Complete payment to enable order confirmation.</div>');
+      }
+    } else {
+      confirmContainer.find('.spc-pending-msg').remove();
+    }
 
     $('#spc-confirm-order-button').prop('disabled', !hasConfirmContent);
     $('#confirm-order-buttons-container').toggleClass('spc-disabled', !hasConfirmContent);

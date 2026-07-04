@@ -61,7 +61,8 @@
     min-width: 150px;
 }
 
-.spc-card .spc-placeholder {
+.spc-card .spc-placeholder,
+.spc-card .spc-pending-msg {
     color: #7a7a7a;
     min-height: 24px;
 }
@@ -526,8 +527,10 @@
 }
 
 .remove-btn {
-    width: 32px;
+    min-width: 32px;
     height: 32px;
+    padding: 0 8px;
+    gap: 6px;
     background: none;
     border: none;
     cursor: pointer;
@@ -536,6 +539,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.remove-btn .remove-text {
+    font-size: 13px;
 }
 
 .remove-btn:hover {
@@ -578,5 +585,21 @@
 }
 
 .razorpay-container {
-    z-index: 99999 !important;
+    z-index: 999999 !important;
+    position: fixed !important;
+}
+
+.spc-razorpay-btn {
+    margin-top: 10px;
+}
+
+.spc-razorpay-error,
+.spc-razorpay-pending {
+    color: red;
+    margin-top: 10px;
+}
+
+.spc-razorpay-success {
+    color: green;
+    margin-top: 10px;
 }

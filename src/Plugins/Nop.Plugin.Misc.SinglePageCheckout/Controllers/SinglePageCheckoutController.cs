@@ -88,10 +88,14 @@ public class SinglePageCheckoutController : BasePluginController
             return Empty;
 
         var customer = await _workContext.GetCurrentCustomerAsync();
+
+        if (customer == null || customer.Deleted || !await _customerService.IsRegisteredAsync(customer))
+            return Content("");
+
         var store = await _storeContext.GetCurrentStoreAsync();
         var cart = await _shoppingCartService.GetShoppingCartAsync(customer, ShoppingCartType.ShoppingCart, store.Id);
 
-        if (!cart.Any())
+        if (cart == null || !cart.Any())
             return Content("");
 
         var model = await _pageModelFactory.PrepareAsync(cart);

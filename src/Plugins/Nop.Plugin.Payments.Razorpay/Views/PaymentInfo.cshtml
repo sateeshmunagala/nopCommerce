@@ -2,15 +2,15 @@
 
 <div class="razorpay-payment-info" id="razorpay-payment-info-container">
     <p id="razorpay-instruction-message">@T("Plugins.Payments.Razorpay.PaymentInfo.Instructions")</p>
-    <button type="button" id="razorpay-pay-button" class="button-1 razorpay-plugin-button" style="margin-top: 10px;">@T("Plugins.Payments.Razorpay.PaymentInfo.PayButton")</button>
+    <button type="button" id="razorpay-pay-button" class="button-1 razorpay-plugin-button spc-razorpay-btn">@T("Plugins.Payments.Razorpay.PaymentInfo.PayButton")</button>
 
     <input type="hidden" id="RazorpayOrderId" name="RazorpayOrderId" value="" />
     <input type="hidden" id="RazorpayPaymentId" name="RazorpayPaymentId" value="" />
     <input type="hidden" id="RazorpaySignature" name="RazorpaySignature" value="" />
 
-    <div id="razorpay-error-message" style="color: red; display: none; margin-top: 10px;"></div>
-    <div id="razorpay-success-message" style="color: green; display: none; margin-top: 10px;">@T("Plugins.Payments.Razorpay.PaymentInfo.Success")</div>
-    <div id="razorpay-pending-message" style="color: red; display: none; margin-top: 10px;">@T("Plugins.Payments.Razorpay.PaymentInfo.PleaseCompletePayment")</div>
+    <div id="razorpay-error-message" class="spc-razorpay-error" style="display: none;"></div>
+    <div id="razorpay-success-message" class="spc-razorpay-success" style="display: none;">@T("Plugins.Payments.Razorpay.PaymentInfo.Success")</div>
+    <div id="razorpay-pending-message" class="spc-razorpay-pending" style="display: none;">@T("Plugins.Payments.Razorpay.PaymentInfo.PleaseCompletePayment")</div>
 </div>
 
 <script>
