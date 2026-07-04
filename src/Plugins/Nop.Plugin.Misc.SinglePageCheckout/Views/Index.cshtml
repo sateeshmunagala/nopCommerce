@@ -142,7 +142,6 @@
                     <div id="checkout-step-payment-method" class="step a-item">
                         <form action="" id="co-payment-method-form" method="post">
                             <div id="checkout-payment-method-load">
-                                <div class="spc-placeholder">@T("Common.LoadingNextStep")</div>
                             </div>
                         </form>
                         <script asp-location="Footer">
@@ -195,7 +194,6 @@
                     </div>
                     <div id="checkout-step-confirm-order" class="step a-item">
                         <div id="checkout-confirm-order-load">
-                            <div class="spc-placeholder">@T("Common.LoadingNextStep")</div>
                         </div>
                         <script asp-location="Footer">
                             ConfirmOrder.init('@(storeLocation)checkout/OpcConfirmOrder/',

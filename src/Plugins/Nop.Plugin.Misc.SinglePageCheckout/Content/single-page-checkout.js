@@ -26,6 +26,22 @@ var SinglePageCheckout = (function () {
     normalizePromoControls();
     maybeAutoSubmitBilling();
     updateConfirmButtonState();
+    updatePrimaryColumnLayout();
+  }
+
+  function updatePrimaryColumnLayout() {
+    var primaryColumn = $('.spc-column-primary');
+    if (primaryColumn.length === 0) return;
+
+    var visibleCards = primaryColumn.children('.spc-card').filter(function() {
+      return $(this).css('display') !== 'none';
+    });
+
+    if (visibleCards.length === 0) {
+      $('.spc-layout').addClass('spc-layout-empty-primary');
+    } else {
+      $('.spc-layout').removeClass('spc-layout-empty-primary');
+    }
   }
 
   function getSelectValue(selectorOrElement) {
@@ -138,6 +154,8 @@ var SinglePageCheckout = (function () {
         getSelectValue('#billing-address-select')
       );
     }
+
+    updatePrimaryColumnLayout();
   }
 
   function bindStepBehaviors() {
@@ -358,6 +376,7 @@ var SinglePageCheckout = (function () {
         bindSummaryForm();
         updateConfirmButtonState();
         ensureSelectedMethodsAdvance();
+        updatePrimaryColumnLayout();
       },
       complete: function () {
         setSummaryBusy(false);

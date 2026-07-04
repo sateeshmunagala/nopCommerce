@@ -1,7 +1,7 @@
 @model Nop.Plugin.Payments.Razorpay.Models.PaymentInfoModel
 
 <div class="razorpay-payment-info" id="razorpay-payment-info-container">
-    <p>@T("Plugins.Payments.Razorpay.PaymentInfo.Instructions")</p>
+    <p id="razorpay-instruction-message">@T("Plugins.Payments.Razorpay.PaymentInfo.Instructions")</p>
     <button type="button" id="razorpay-pay-button" class="button-1 razorpay-plugin-button" style="margin-top: 10px;">@T("Plugins.Payments.Razorpay.PaymentInfo.PayButton")</button>
 
     <input type="hidden" id="RazorpayOrderId" name="RazorpayOrderId" value="" />
@@ -206,6 +206,7 @@
                     isPaymentVerified = true;
                     pendingMessage.style.display = 'none';
 
+                    document.getElementById('razorpay-instruction-message').style.display = 'none';
                     payButton.style.display = 'none';
                     successContainer.style.display = 'block';
 
