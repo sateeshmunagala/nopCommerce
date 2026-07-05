@@ -9763,6 +9763,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 .jb-pricing-category {
+    width: 100%;
     max-width: 1120px;
     margin: 0 auto;
     --jb-pricing-surface: #ffffff;
@@ -9771,6 +9772,25 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     --jb-pricing-copy: #5f6773;
     --jb-pricing-recommended-line: #24b99a;
     --jb-pricing-shell: #f7fbfa;
+}
+
+.jb-pricing-category-page .master-column-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
+.jb-pricing-category-page .master-column-wrapper > .center-1 {
+    width: 100%;
+    max-width: 1120px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.jb-pricing-category-page .page.category-page,
+.jb-pricing-category-page .page.category-page .page-body {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .jb-pricing-category .page-body {
@@ -9787,12 +9807,15 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 .jb-pricing-shell {
+    width: min(100%, 980px);
     max-width: 980px;
     margin: 0 auto;
+    justify-self: center;
     padding: 24px;
     border: 1px solid var(--jb-pricing-line);
     border-radius: 2px;
     background: var(--jb-pricing-shell);
+    box-sizing: border-box;
 }
 
 .jb-pricing-grid {
@@ -9893,8 +9916,8 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     align-items: baseline;
     gap: 8px 14px;
     margin-top: 18px;
-    padding-top: 22px;
-    border-top: 1px solid #e8eded;
+    padding-bottom: 22px;
+    border-bottom: 1px solid #e8eded;
 }
 
 .jb-pricing-card-old-price {
