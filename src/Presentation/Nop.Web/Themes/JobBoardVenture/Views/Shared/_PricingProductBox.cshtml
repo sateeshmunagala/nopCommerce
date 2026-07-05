@@ -4,6 +4,7 @@
 @using Nop.Core.Domain.Orders
 
 @{
+    var isRecommended = ViewData["IsRecommended"] as bool? ?? false;
     var shoppingCartTypeId = (int)ShoppingCartType.ShoppingCart;
     const int quantity = 1;
     var addToCartLink = Model.ProductPrice.ForceRedirectionAfterAddingToCart
@@ -20,12 +21,18 @@
             shoppingCartTypeId,
             quantity
         });
+    var productUrl = await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName });
 }
 
-<article class="jb-pricing-card" data-productid="@Model.Id">
+<article class="jb-pricing-card @(isRecommended ? "jb-pricing-card-recommended" : null)" data-productid="@Model.Id">
+    @if (isRecommended)
+    {
+        <div class="jb-pricing-card-badge">Popular</div>
+    }
+
     <div class="jb-pricing-card-body">
         <h2 class="jb-pricing-card-title">
-            <a href="@(await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName }))">@Model.Name</a>
+            <a href="@productUrl">@Model.Name</a>
         </h2>
 
         @if (!string.IsNullOrWhiteSpace(Model.ShortDescription))
@@ -49,7 +56,7 @@
         <button type="button"
                 class="button-2 jb-pricing-card-cta"
                 onclick="AjaxCart.addproducttocart_catalog('@addToCartLink');return false;">
-            pricing
+            Buy Now
         </button>
     }
 </article>

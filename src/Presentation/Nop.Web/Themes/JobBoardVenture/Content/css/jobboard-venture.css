@@ -9763,28 +9763,42 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 .jb-pricing-category {
-    max-width: 1240px;
+    max-width: 1320px;
     margin: 0 auto;
-    --jb-pricing-surface: #f7fbfa;
-    --jb-pricing-line: #cfe7e1;
-    --jb-pricing-strong: #1d7467;
+    --jb-pricing-surface: #ffffff;
+    --jb-pricing-line: #d9e3e1;
+    --jb-pricing-strong: #0e1116;
+    --jb-pricing-copy: #5f6773;
+    --jb-pricing-recommended-line: #6cd9c2;
+    --jb-pricing-shell: #f8fbfb;
 }
 
 .jb-pricing-category .page-body {
     display: grid;
-    gap: 28px;
+    gap: 24px;
 }
 
 .jb-pricing-category-description {
-    max-width: 760px;
+    max-width: 680px;
     margin: 0 auto;
     text-align: center;
+    color: var(--jb-pricing-copy);
+    line-height: 1.7;
+}
+
+.jb-pricing-shell {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 34px;
+    border: 1px solid #e6eceb;
+    border-radius: 6px;
+    background: var(--jb-pricing-shell);
 }
 
 .jb-pricing-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 24px;
+    gap: 26px;
     align-items: stretch;
 }
 
@@ -9808,75 +9822,102 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 .jb-pricing-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     min-height: 100%;
-    padding: 32px 28px;
+    padding: 30px 30px 34px;
     border: 1px solid var(--jb-pricing-line);
-    border-radius: 6px;
+    border-radius: 4px;
     background: var(--jb-pricing-surface);
-    box-shadow: 0 8px 18px rgba(44, 44, 44, 0.04);
+    box-shadow: none;
+}
+
+.jb-pricing-card-recommended {
+    border-color: var(--jb-pricing-recommended-line);
+}
+
+.jb-pricing-card-badge {
+    position: absolute;
+    top: 22px;
+    right: 22px;
+    padding: 8px 14px 7px;
+    background: #1f2329;
+    color: #ffffff;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
 }
 
 .jb-pricing-card-body {
     display: grid;
-    gap: 18px;
+    gap: 20px;
 }
 
 .jb-pricing-card-title {
     margin: 0;
-    font-size: 1.625rem;
-    line-height: 1.18;
+    padding-right: 110px;
+    color: var(--jb-pricing-strong);
+    font-size: clamp(1.5rem, 2vw, 1.95rem);
+    line-height: 1.12;
     letter-spacing: -0.03em;
 }
 
 .jb-pricing-card-title a {
-    color: #0f172a;
+    color: var(--jb-pricing-strong);
     text-decoration: none;
 }
 
 .jb-pricing-card-title a:hover {
-    color: var(--jb-pricing-strong);
+    color: var(--jb-accent-dark);
 }
 
 .jb-pricing-card-description {
-    color: #475569;
-    line-height: 1.7;
+    min-height: 64px;
+    color: var(--jb-pricing-copy);
+    font-size: 1rem;
+    line-height: 1.55;
 }
 
 .jb-pricing-card-price-wrap {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 10px 14px;
+    gap: 10px 16px;
+    margin-top: 26px;
+    padding-top: 28px;
+    border-top: 1px solid #e8eded;
 }
 
 .jb-pricing-card-old-price {
-    color: #94a3b8;
-    font-size: 1rem;
+    color: #7d8590;
+    font-size: 1.05rem;
+    font-weight: 600;
     text-decoration: line-through;
 }
 
 .jb-pricing-card-price {
     color: var(--jb-pricing-strong);
-    font-size: clamp(2rem, 3vw, 2.75rem);
-    font-weight: 800;
+    font-size: clamp(2.6rem, 4vw, 4rem);
+    font-weight: 700;
     line-height: 1;
     letter-spacing: -0.04em;
 }
 
 .jb-pricing-card-cta {
     width: 100%;
-    margin-top: 28px;
+    margin-top: 32px;
     border: 1px solid var(--jb-accent);
-    border-radius: 4px;
+    border-radius: 0;
     background: var(--jb-accent);
     color: var(--jb-white);
-    font-size: 0.95rem;
+    font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: 0;
-    text-transform: lowercase;
+    text-transform: none;
     box-shadow: none;
 }
 
@@ -9888,18 +9929,40 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 @media (max-width: 1000px) {
+    .jb-pricing-shell {
+        padding: 24px;
+    }
+
     .jb-pricing-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 640px) {
+    .jb-pricing-shell {
+        padding: 18px;
+    }
+
     .jb-pricing-grid {
         grid-template-columns: 1fr;
     }
 
     .jb-pricing-card {
-        padding: 26px 22px;
+        padding: 24px 20px 28px;
         border-radius: 4px;
+    }
+
+    .jb-pricing-card-title {
+        padding-right: 0;
+    }
+
+    .jb-pricing-card-badge {
+        position: static;
+        justify-self: start;
+        margin-bottom: 2px;
+    }
+
+    .jb-pricing-card-description {
+        min-height: 0;
     }
 }
