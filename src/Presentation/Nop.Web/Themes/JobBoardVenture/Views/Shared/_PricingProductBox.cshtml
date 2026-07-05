@@ -49,6 +49,14 @@
             }
             <span class="jb-pricing-card-price">@Model.ProductPrice.Price</span>
         </div>
+
+        <!-- NEW: Full Description Field -->
+        @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
+        {
+            <div class="jb-pricing-card-full-desc">
+                @Html.Raw(Model.FullDescription)
+            </div>
+        }
     </div>
 
     @if (!Model.ProductPrice.DisableBuyButton)

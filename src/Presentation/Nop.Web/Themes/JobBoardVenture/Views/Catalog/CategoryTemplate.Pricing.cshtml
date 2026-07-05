@@ -34,7 +34,10 @@
     var normalizedName = Regex.Replace(Model.Name ?? string.Empty, "\\s+", " ").Trim();
     var showCategoryDescription = !string.IsNullOrWhiteSpace(Model.Description)
         && !string.Equals(normalizedDescription, normalizedName, StringComparison.OrdinalIgnoreCase);
-    var pricingProducts = Model.CatalogProductsModel.Products.Take(3).ToList();
+    var pricingProducts = Model.CatalogProductsModel.Products
+    .OrderBy(p => p.Id)
+    .Take(3)
+    .ToList();
 
     NopHtml.AddJsonLdParts(Model.JsonLd);
 }
