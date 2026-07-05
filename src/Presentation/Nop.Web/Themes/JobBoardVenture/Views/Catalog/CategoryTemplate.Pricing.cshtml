@@ -90,12 +90,22 @@
 
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsBeforeProductList, additionalData = Model })
 
-        <div class="jb-pricing-grid">
-            @foreach (var product in pricingProducts)
-            {
-                @await Html.PartialAsync("_PricingProductBox", product)
-            }
-        </div>
+        @if (pricingProducts.Any())
+        {
+            <div class="jb-pricing-grid">
+                @foreach (var product in pricingProducts)
+                {
+                    @await Html.PartialAsync("_PricingProductBox", product)
+                }
+            </div>
+        }
+        else
+        {
+            <div class="jb-pricing-empty-state">
+                <h2 class="jb-pricing-empty-state-title">No pricing products available</h2>
+                <p class="jb-pricing-empty-state-text">Pricing options will appear here when products are assigned to this category.</p>
+            </div>
+        }
 
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsBottom, additionalData = Model })
     </div>
