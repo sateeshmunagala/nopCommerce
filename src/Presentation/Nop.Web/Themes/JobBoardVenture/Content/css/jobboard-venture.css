@@ -9761,3 +9761,124 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     transform: none !important;
     box-shadow: none !important;
 }
+
+.jb-pricing-category {
+    max-width: 1240px;
+    margin: 0 auto;
+}
+
+.jb-pricing-category .page-body {
+    display: grid;
+    gap: 28px;
+}
+
+.jb-pricing-category-description {
+    max-width: 760px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.jb-pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    align-items: stretch;
+}
+
+.jb-pricing-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100%;
+    padding: 32px 28px;
+    border: 1px solid rgba(15, 23, 42, 0.09);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at top right, rgba(255, 196, 72, 0.18), transparent 36%),
+        linear-gradient(180deg, #fffdf8 0%, #ffffff 100%);
+    box-shadow: 0 22px 54px rgba(15, 23, 42, 0.08);
+}
+
+.jb-pricing-card-body {
+    display: grid;
+    gap: 18px;
+}
+
+.jb-pricing-card-title {
+    margin: 0;
+    font-size: 1.625rem;
+    line-height: 1.18;
+    letter-spacing: -0.03em;
+}
+
+.jb-pricing-card-title a {
+    color: #0f172a;
+    text-decoration: none;
+}
+
+.jb-pricing-card-title a:hover {
+    color: #b45309;
+}
+
+.jb-pricing-card-description {
+    color: #475569;
+    line-height: 1.7;
+}
+
+.jb-pricing-card-price-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 14px;
+}
+
+.jb-pricing-card-old-price {
+    color: #94a3b8;
+    font-size: 1rem;
+    text-decoration: line-through;
+}
+
+.jb-pricing-card-price {
+    color: #111827;
+    font-size: clamp(2rem, 3vw, 2.75rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+}
+
+.jb-pricing-card-cta {
+    width: 100%;
+    margin-top: 28px;
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow: 0 16px 32px rgba(234, 88, 12, 0.24);
+}
+
+.jb-pricing-card-cta:hover,
+.jb-pricing-card-cta:focus {
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+    color: #fff;
+}
+
+@media (max-width: 1000px) {
+    .jb-pricing-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .jb-pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .jb-pricing-card {
+        padding: 26px 22px;
+        border-radius: 24px;
+    }
+}

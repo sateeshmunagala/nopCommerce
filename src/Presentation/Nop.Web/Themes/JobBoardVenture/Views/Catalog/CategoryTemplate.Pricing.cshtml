@@ -1,0 +1,102 @@
+@model CategoryModel
+
+@using System.Net
+@using System.Text.RegularExpressions
+@using Nop.Core.Domain.Catalog
+@using Nop.Core.Domain.Common
+@using Nop.Core.Domain.Seo
+@using Nop.Services.Helpers
+
+@inject IWebHelper webHelper
+@inject SeoSettings seoSettings
+@inject CommonSettings commonSettings
+
+@{
+    Layout = "_ColumnsOne";
+
+    NopHtml.AddTitleParts(!string.IsNullOrEmpty(Model.MetaTitle) ? Model.MetaTitle : Model.Name);
+    NopHtml.AddMetaDescriptionParts(Model.MetaDescription);
+    NopHtml.AddMetaKeywordParts(Model.MetaKeywords);
+    NopHtml.AppendPageCssClassParts("html-category-page");
+    NopHtml.AppendPageCssClassParts("jb-pricing-category-page");
+
+    if (seoSettings.CanonicalUrlsEnabled)
+    {
+        var categoryUrl = (await NopUrl.RouteGenericUrlAsync<Category>(new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol())).ToLowerInvariant();
+        NopHtml.AddCanonicalUrlParts(categoryUrl, seoSettings.QueryStringInCanonicalUrlsEnabled);
+    }
+
+    var breadcrumbDelimiter = commonSettings.BreadcrumbDelimiter;
+    var descriptionText = string.IsNullOrWhiteSpace(Model.Description)
+        ? string.Empty
+        : WebUtility.HtmlDecode(Regex.Replace(Model.Description, "<.*?>", " "));
+    var normalizedDescription = Regex.Replace(descriptionText, "\\s+", " ").Trim();
+    var normalizedName = Regex.Replace(Model.Name ?? string.Empty, "\\s+", " ").Trim();
+    var showCategoryDescription = !string.IsNullOrWhiteSpace(Model.Description)
+        && !string.Equals(normalizedDescription, normalizedName, StringComparison.OrdinalIgnoreCase);
+    var pricingProducts = Model.CatalogProductsModel.Products.Take(3).ToList();
+
+    NopHtml.AddJsonLdParts(Model.JsonLd);
+}
+@section Breadcrumb
+{
+    @if (Model.DisplayCategoryBreadcrumb)
+    {
+        <div class="breadcrumb">
+            <ul>
+                <li>
+                    <a href="@Url.RouteUrl(NopRouteNames.General.HOMEPAGE)" title="@T("Categories.Breadcrumb.Top")">@T("Categories.Breadcrumb.Top")</a>
+                    <span class="delimiter">@breadcrumbDelimiter</span>
+                </li>
+                @{ int position = 1; }
+                @foreach (var cat in Model.CategoryBreadcrumb)
+                {
+                    var isLastCategory = cat.Id == Model.Id;
+                    <li>
+                        @if (isLastCategory)
+                        {
+                            <strong class="current-item">@cat.Name</strong>
+                            <span id="@(await NopUrl.RouteGenericUrlAsync<Category>(new { SeName = cat.SeName }))"></span>
+                        }
+                        else
+                        {
+                            <a href="@(await NopUrl.RouteGenericUrlAsync<Category>(new { SeName = cat.SeName }))" title="@cat.Name">
+                                <span>@cat.Name</span>
+                            </a>
+                            <span class="delimiter">@breadcrumbDelimiter</span>
+                        }
+                    </li>
+                    position++;
+                }
+            </ul>
+        </div>
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsAfterBreadcrumb, additionalData = Model })
+    }
+}
+
+<div class="page category-page jb-pricing-category">
+    <div class="page-title">
+        <h1>@Model.Name</h1>
+    </div>
+    <div class="page-body">
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsTop, additionalData = Model })
+
+        @if (showCategoryDescription)
+        {
+            <div class="category-description jb-pricing-category-description">
+                @Html.Raw(Model.Description)
+            </div>
+        }
+
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsBeforeProductList, additionalData = Model })
+
+        <div class="jb-pricing-grid">
+            @foreach (var product in pricingProducts)
+            {
+                @await Html.PartialAsync("_PricingProductBox", product)
+            }
+        </div>
+
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CategoryDetailsBottom, additionalData = Model })
+    </div>
+</div>

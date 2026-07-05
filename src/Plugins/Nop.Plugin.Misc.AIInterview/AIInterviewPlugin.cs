@@ -24,6 +24,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     private readonly IWebHelper _webHelper;
     private readonly IMessageTemplateService _messageTemplateService;
     private readonly IProductTemplateService _productTemplateService;
+    private readonly ICategoryTemplateService _categoryTemplateService;
     private readonly WidgetSettings _widgetSettings;
 
     #endregion
@@ -35,6 +36,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         IWebHelper webHelper,
         IMessageTemplateService messageTemplateService,
         IProductTemplateService productTemplateService = null,
+        ICategoryTemplateService categoryTemplateService = null,
         WidgetSettings widgetSettings = null)
     {
         _localizationService = localizationService;
@@ -42,6 +44,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         _webHelper = webHelper;
         _messageTemplateService = messageTemplateService;
         _productTemplateService = productTemplateService;
+        _categoryTemplateService = categoryTemplateService;
         _widgetSettings = widgetSettings;
     }
 
@@ -122,6 +125,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         await _settingService.SaveSettingAsync(settings);
         await EnsureJobProductTemplateAsync();
+        await EnsurePricingCategoryTemplateAsync();
         await EnsureWidgetActiveAsync();
         await EnsureMessageTemplatesAsync();
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());
@@ -232,6 +236,45 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         if (changed)
             await _productTemplateService.UpdateProductTemplateAsync(template);
+    }
+
+    protected async Task EnsurePricingCategoryTemplateAsync()
+    {
+        if (_categoryTemplateService == null)
+            return;
+
+        var templates = await _categoryTemplateService.GetAllCategoryTemplatesAsync();
+        var template = templates.FirstOrDefault(item =>
+            string.Equals(item.ViewPath, AIInterviewDefaults.PricingCategoryTemplateViewPath, StringComparison.OrdinalIgnoreCase)) ??
+            templates.FirstOrDefault(item =>
+                string.Equals(item.Name, AIInterviewDefaults.PricingCategoryTemplateName, StringComparison.OrdinalIgnoreCase));
+
+        if (template == null)
+        {
+            await _categoryTemplateService.InsertCategoryTemplateAsync(new CategoryTemplate
+            {
+                Name = AIInterviewDefaults.PricingCategoryTemplateName,
+                ViewPath = AIInterviewDefaults.PricingCategoryTemplateViewPath,
+                DisplayOrder = 20
+            });
+            return;
+        }
+
+        var changed = false;
+        if (!string.Equals(template.Name, AIInterviewDefaults.PricingCategoryTemplateName, StringComparison.Ordinal))
+        {
+            template.Name = AIInterviewDefaults.PricingCategoryTemplateName;
+            changed = true;
+        }
+
+        if (!string.Equals(template.ViewPath, AIInterviewDefaults.PricingCategoryTemplateViewPath, StringComparison.Ordinal))
+        {
+            template.ViewPath = AIInterviewDefaults.PricingCategoryTemplateViewPath;
+            changed = true;
+        }
+
+        if (changed)
+            await _categoryTemplateService.UpdateCategoryTemplateAsync(template);
     }
 
     protected async Task EnsureWidgetActiveAsync()
@@ -629,6 +672,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _settingService.SaveSettingAsync(mockSettings);
 
         await EnsureJobProductTemplateAsync();
+        await EnsurePricingCategoryTemplateAsync();
         await EnsureWidgetActiveAsync();
         await EnsureMessageTemplatesAsync();
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());

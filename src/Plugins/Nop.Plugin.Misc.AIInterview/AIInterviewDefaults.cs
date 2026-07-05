@@ -68,6 +68,10 @@ public static class AIInterviewDefaults
 
     public static string JobProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.JobDetails.cshtml";
 
+    public static string PricingCategoryTemplateName => "Pricing Category";
+
+    public static string PricingCategoryTemplateViewPath => "CategoryTemplate.Pricing";
+
     public static string JobResumeRequiredAttributeName => "AIInterview.Job.ResumeRequired";
     public static string JobInterviewRequiredAttributeName => "AIInterview.Job.InterviewRequired";
     public static string JobMinimumScoreAttributeName => "AIInterview.Job.MinimumScore";
