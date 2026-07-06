@@ -27,6 +27,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.WebUtilities;
 using Nop.Core.Http;
+using Nop.Plugin.Misc.AIInterview.Infrastructure;
 using Nop.Web.Framework.Mvc.Routing;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
@@ -812,7 +813,10 @@ public class AIInterviewController : BasePluginController
     {
         var result = await SubmitApplicationAsync(model);
         if (!result.Success)
+        {
+            await PopulateApplyModelAsync(model);
             return View("~/Plugins/Misc.AIInterview/Views/Apply.cshtml", model);
+        }
 
         _notificationService.SuccessNotification(result.Message);
         return RedirectToRoute(AIInterviewDefaults.MyApplicationsRouteName);
@@ -858,20 +862,23 @@ public class AIInterviewController : BasePluginController
 
         var product = model.ProductId > 0 ? await _productService.GetProductByIdAsync(model.ProductId) : null;
         var allApplications = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<JobApplication>();
-        var reusableResumeDownloadId = allApplications
-            .OrderByDescending(a => a.CreatedOnUtc)
-            .Where(a => a.ResumeDownloadId > 0)
-            .Select(a => a.ResumeDownloadId)
-            .FirstOrDefault();
+        var ownedResumeDownloadIds = ResumeSelectionHelper.GetOwnedResumeDownloadIds(allApplications);
+        var hasSelectedExistingResume = model.SelectedResumeDownloadId > 0;
+        var validSelectedExistingResume = hasSelectedExistingResume && ownedResumeDownloadIds.Contains(model.SelectedResumeDownloadId);
 
         var jobRequirements = _jobRequirementService == null
             ? new JobRequirementsModel()
             : await _jobRequirementService.GetRequirementsAsync(model.ProductId);
+        model.ResumeRequired = jobRequirements.ResumeRequired;
+        model.AvailableResumes = await ResumeSelectionHelper.BuildResumeSelectListAsync(allApplications, _downloadService, model.SelectedResumeDownloadId);
 
         if (model.ResumeFile == null)
         {
-            if (reusableResumeDownloadId > 0)
+            if (hasSelectedExistingResume)
             {
+                if (!validSelectedExistingResume)
+                    ModelState.AddModelError(nameof(model.SelectedResumeDownloadId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.PreviousResume.Invalid"));
+
                 ModelState.Remove(nameof(model.ResumeFile));
             }
             else if (jobRequirements.ResumeRequired && !ModelState.ContainsKey(nameof(model.ResumeFile)))
@@ -931,7 +938,7 @@ public class AIInterviewController : BasePluginController
             }
         }
 
-        var resumeDownloadId = reusableResumeDownloadId;
+        var resumeDownloadId = validSelectedExistingResume ? model.SelectedResumeDownloadId : 0;
         if (model.ResumeFile != null)
         {
             if (_resumeFileService != null)
@@ -986,6 +993,24 @@ public class AIInterviewController : BasePluginController
             Success = true,
             Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.Success")
         };
+    }
+
+    protected virtual async Task PopulateApplyModelAsync(ApplyModel model)
+    {
+        if (model == null)
+            return;
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null)
+            return;
+
+        var applications = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<JobApplication>();
+        var jobRequirements = _jobRequirementService == null
+            ? new JobRequirementsModel()
+            : await _jobRequirementService.GetRequirementsAsync(model.ProductId);
+
+        model.ResumeRequired = jobRequirements.ResumeRequired;
+        model.AvailableResumes = await ResumeSelectionHelper.BuildResumeSelectListAsync(applications, _downloadService, model.SelectedResumeDownloadId);
     }
 
     protected async Task<bool> IsAuthorizedForEmployerActionsAsync()

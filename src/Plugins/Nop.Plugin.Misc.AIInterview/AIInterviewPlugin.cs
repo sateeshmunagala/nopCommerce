@@ -291,7 +291,11 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     {
         return new Dictionary<string, string>
         {
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile.Help"] = "Upload a PDF or DOCX file up to 5 MB, or leave blank to reuse your most recent resume.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile.Help"] = "Upload a PDF or DOCX file up to 5 MB. If you already used a resume before, you can select it below.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeRequired"] = "Resume required",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.PreviousResume"] = "Use a previous resume",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.PreviousResume.Placeholder"] = "Select a previous resume",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.PreviousResume.Invalid"] = "Please select a valid previous resume.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.SortBy"] = "Sort by",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.AccessDenied"] = "You do not have access to this interview report.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.Title"] = "Interview Session Error",
@@ -691,8 +695,12 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.JobTitle"] = "Job Title",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile"] = "Resume File",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.JobTitle.Required"] = "Job Title is required.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile.Required"] = "Resume file is required.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile.Required"] = "Resume required. Upload a resume or select a previous resume.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile.Invalid"] = "Allowed resume file types: PDF, DOCX. Maximum size: 5 MB.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeRequired"] = "Resume required",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.PreviousResume"] = "Use a previous resume",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.PreviousResume.Placeholder"] = "Select a previous resume",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.PreviousResume.Invalid"] = "Please select a valid previous resume.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.AlreadyApplied"] = "You have already applied for this job.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.InterviewRequired"] = "An interview is required before you can apply.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.MinimumScoreNotReached"] = "A minimum score of {0} is required to apply for this job. Please retake the AI interview to improve your chances.",

@@ -19,6 +19,12 @@
             <div asp-validation-summary="ModelOnly" class="message-error"></div>
             <div class="fieldset">
                 <div class="form-fields">
+                    @if (Model.ResumeRequired)
+                    {
+                        <div class="job-inline-message is-visible is-info">
+                            @T("Plugins.Misc.AIInterview.Apply.ResumeRequired")
+                        </div>
+                    }
                     <div class="inputs">
                         <label asp-for="JobTitle" asp-postfix=":"></label>
                         <input asp-for="JobTitle" class="job-title" />
@@ -31,6 +37,16 @@
                         <span class="field-validation-valid">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</span>
                         <span asp-validation-for="ResumeFile"></span>
                     </div>
+                    @if (Model.AvailableResumes.Any())
+                    {
+                        <div class="inputs">
+                            <label asp-for="SelectedResumeDownloadId" asp-postfix=":"></label>
+                            <select asp-for="SelectedResumeDownloadId" asp-items="Model.AvailableResumes">
+                                <option value="0">@T("Plugins.Misc.AIInterview.Apply.PreviousResume.Placeholder")</option>
+                            </select>
+                            <span asp-validation-for="SelectedResumeDownloadId"></span>
+                        </div>
+                    }
                 </div>
             </div>
             <div class="buttons">

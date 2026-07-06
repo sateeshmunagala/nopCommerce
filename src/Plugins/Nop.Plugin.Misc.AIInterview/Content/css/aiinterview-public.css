@@ -252,6 +252,8 @@
 .mock-start select,
 .apply-job-page input[type="text"],
 .apply-job-page input[type="file"],
+.apply-job-page select,
+.job-ai-card select,
 .job-ai-card input[type="file"] {
     box-sizing: border-box;
     width: 100%;
@@ -427,6 +429,14 @@
 .job-ai-lead {
     color: #687078;
     line-height: 1.55;
+}
+
+.job-ai-note-required {
+    margin-bottom: 10px;
+    color: #1f5c55;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.88rem;
+    text-transform: uppercase;
 }
 
 .vendor-job-form-checkbox-list {

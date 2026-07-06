@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core.Domain.Catalog;
 using Nop.Core;
+using Nop.Plugin.Misc.AIInterview.Infrastructure;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
+using Nop.Services.Media;
 using Nop.Web.Framework.Components;
 using Nop.Web.Framework.Models;
 using Nop.Web.Models.Catalog;
@@ -25,6 +27,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
     private readonly IJobRequirementService _jobRequirementService;
     private readonly ISponsorInviteService _sponsorInviteService;
     private readonly AIInterviewSettings _aiInterviewSettings;
+    private readonly IDownloadService _downloadService;
 
     public AIInterviewProductDetailsViewComponent(ICreditService creditService,
         IWorkContext workContext,
@@ -36,7 +39,8 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         IInterviewSessionService interviewSessionService,
         AIInterviewSettings aiInterviewSettings,
         IJobRequirementService jobRequirementService,
-        ISponsorInviteService sponsorInviteService)
+        ISponsorInviteService sponsorInviteService,
+        IDownloadService downloadService)
     {
         _creditService = creditService;
         _workContext = workContext;
@@ -49,6 +53,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         _jobRequirementService = jobRequirementService;
         _sponsorInviteService = sponsorInviteService;
         _aiInterviewSettings = aiInterviewSettings;
+        _downloadService = downloadService;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData, string formDomId = null, string contextId = null)
@@ -86,7 +91,10 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
             alreadyApplied = applications.Any(application =>
                 application.ProductId == productId &&
                 !JobApplicationStatuses.CanReapply(application.Status));
+            ViewBag.AvailableResumes = await ResumeSelectionHelper.BuildResumeSelectListAsync(applications, _downloadService);
         }
+        else
+            ViewBag.AvailableResumes = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
 
         ViewBag.HasCredits = hasCredits;
         ViewBag.AlreadyApplied = alreadyApplied;

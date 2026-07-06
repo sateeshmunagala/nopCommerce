@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Web.Framework.Models;
 using Nop.Web.Framework.Mvc.ModelBinding;
 
@@ -13,4 +14,11 @@ public record ApplyModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Apply.ResumeFile")]
     public IFormFile ResumeFile { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Apply.PreviousResume")]
+    public int SelectedResumeDownloadId { get; set; }
+
+    public bool ResumeRequired { get; set; }
+
+    public IList<SelectListItem> AvailableResumes { get; set; } = new List<SelectListItem>();
 }

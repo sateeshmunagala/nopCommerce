@@ -26,6 +26,7 @@ public class ServiceTests
     private Nop.Core.Domain.Messages.EmailAccountSettings _emailAccountSettings;
     private Mock<Nop.Core.IStoreContext> _storeContext;
     private Mock<global::Nop.Services.Helpers.IWebHelper> _webHelper;
+    private Mock<Nop.Services.Helpers.IDateTimeHelper> _dateTimeHelper;
     private ApplicationService _applicationService;
 
     [SetUp]
@@ -42,6 +43,7 @@ public class ServiceTests
         _emailAccountSettings = new Nop.Core.Domain.Messages.EmailAccountSettings();
         _storeContext = new Mock<Nop.Core.IStoreContext>();
         _webHelper = new Mock<global::Nop.Services.Helpers.IWebHelper>();
+        _dateTimeHelper = new Mock<Nop.Services.Helpers.IDateTimeHelper>();
 
         _applicationService = new ApplicationService(
             _applicationRepository.Object,
@@ -54,7 +56,8 @@ public class ServiceTests
             _messageTokenProvider.Object,
             _emailAccountSettings,
             _storeContext.Object,
-            _webHelper.Object);
+            _webHelper.Object,
+            _dateTimeHelper.Object);
     }
 
     [Test]
@@ -354,7 +357,8 @@ public class ServiceTests
             _emailAccountSettings,
             _storeContext.Object,
             _webHelper.Object,
-            vendorService.Object);
+            vendorService.Object,
+            _dateTimeHelper.Object);
 
         await service.SendInterviewCompletionNotificationAsync(new InterviewSession
         {
@@ -408,7 +412,8 @@ public class ServiceTests
             _emailAccountSettings,
             _storeContext.Object,
             _webHelper.Object,
-            new Mock<Nop.Services.Vendors.IVendorService>().Object);
+            new Mock<Nop.Services.Vendors.IVendorService>().Object,
+            _dateTimeHelper.Object);
 
         var firstToken = await service.EnsureRecordingShareTokenAsync(sessions[0]);
         var secondToken = await service.EnsureRecordingShareTokenAsync(sessions[0]);

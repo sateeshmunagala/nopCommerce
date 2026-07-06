@@ -222,27 +222,45 @@ public class ApplyFlowTests
     }
 
     [Test]
-    public async Task Apply_Post_ResumeReuse_Successful()
+    public async Task Apply_Post_DoesNotSilentlyReusePreviousResume()
     {
-        // Arrange
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(2))
             .ReturnsAsync(new JobRequirementsModel { ResumeRequired = true });
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "New Job"))
             .ReturnsAsync(new List<JobApplication>());
-        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
-            .ReturnsAsync(new List<JobApplication> {
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id)).ReturnsAsync(new List<JobApplication>
+        {
                 new JobApplication { JobTitle = "Old Job", ResumeDownloadId = 789, CreatedOnUtc = DateTime.UtcNow.AddDays(-1) }
             });
 
-        // Simulate validation error for missing resume
-        _controller.ModelState.AddModelError("ResumeFile", "Required");
-
         var model = new ApplyModel { JobTitle = "New Job", ProductId = 2, ResumeFile = null };
 
-        // Act
         var result = await _controller.Apply(model);
 
-        // Assert
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(_controller.ModelState[nameof(ApplyModel.ResumeFile)].Errors, Is.Not.Empty);
+        _applicationService.Verify(x => x.InsertJobApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Apply_Post_SelectedPreviousResume_Succeeds()
+    {
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(2))
+            .ReturnsAsync(new JobRequirementsModel { ResumeRequired = true });
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(_customer.Id, "New Job"))
+            .ReturnsAsync(new List<JobApplication>());
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id)).ReturnsAsync(new List<JobApplication>
+        {
+            new() { JobTitle = "Old Job", ResumeDownloadId = 789, CreatedOnUtc = DateTime.UtcNow.AddDays(-1) }
+        });
+
+        var result = await _controller.Apply(new ApplyModel
+        {
+            JobTitle = "New Job",
+            ProductId = 2,
+            SelectedResumeDownloadId = 789
+        });
+
         Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
         _applicationService.Verify(x => x.InsertJobApplicationAsync(It.Is<JobApplication>(a =>
             a.JobTitle == "New Job" &&

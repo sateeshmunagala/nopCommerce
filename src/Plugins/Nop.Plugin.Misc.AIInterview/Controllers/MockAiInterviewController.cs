@@ -4,6 +4,7 @@ using Nop.Core;
 using Microsoft.AspNetCore.Mvc.Routing;
 using System.Text.Json;
 using Nop.Plugin.Misc.AIInterview.Domain;
+using Nop.Plugin.Misc.AIInterview.Infrastructure;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Services.Catalog;
@@ -264,11 +265,22 @@ public class MockAiInterviewController : BasePluginController
         await _turnService.DeleteInterviewTurnsAsync(turns);
     }
 
+    protected virtual async Task<HashSet<int>> GetOwnedResumeDownloadIdsAsync(Customer customer)
+    {
+        if (customer == null)
+            return new HashSet<int>();
+
+        var applications = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<JobApplication>();
+        return ResumeSelectionHelper.GetOwnedResumeDownloadIds(applications);
+    }
+
     protected virtual async Task<(string ResourceKey, string ErrorMessage)> ValidateStartResumePreconditionsAsync(
         JobRequirementsModel requirements,
         JobApplication application,
         IFormFile resumeFile,
-        InterviewSession reusableSession)
+        InterviewSession reusableSession,
+        int selectedResumeDownloadId,
+        ISet<int> ownedResumeDownloadIds)
     {
         if (resumeFile != null)
         {
@@ -285,36 +297,47 @@ public class MockAiInterviewController : BasePluginController
             }
         }
 
-        var hasStoredResume = application?.ResumeDownloadId > 0;
+        if (resumeFile == null && selectedResumeDownloadId > 0 && (ownedResumeDownloadIds == null || !ownedResumeDownloadIds.Contains(selectedResumeDownloadId)))
+        {
+            return ("Plugins.Misc.AIInterview.Apply.PreviousResume.Invalid",
+                await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Apply.PreviousResume.Invalid", "Please select a valid previous resume."));
+        }
+
+        var hasStoredResume = application?.ResumeDownloadId > 0 || (selectedResumeDownloadId > 0 && ownedResumeDownloadIds != null && ownedResumeDownloadIds.Contains(selectedResumeDownloadId));
         if (requirements?.ResumeRequired == true && !hasStoredResume && resumeFile == null)
         {
             var canContinueStartedInterview = reusableSession != null && await HasAnsweredTurnsAsync(reusableSession);
             if (!canContinueStartedInterview)
             {
                 return ("Plugins.Misc.AIInterview.Apply.ResumeFile.Required",
-                    await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Required", "Resume file is required."));
+                    await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Required", "Resume required. Upload a resume or select a previous resume."));
             }
         }
 
         return (null, null);
     }
 
-    protected virtual async Task<(JobApplication Application, string ErrorMessage)> ResolveApplicationForStartAsync(Customer customer, Product product, IFormFile resumeFile, JobApplication application = null)
+    protected virtual async Task<(JobApplication Application, string ErrorMessage, bool ResumeChanged)> ResolveApplicationForStartAsync(
+        Customer customer,
+        Product product,
+        IFormFile resumeFile,
+        int selectedResumeDownloadId = 0,
+        JobApplication application = null)
     {
         application ??= await GetLatestApplicationForStartAsync(customer, product);
 
         if (resumeFile != null)
         {
             if (_resumeFileService == null)
-                return (null, "Resume upload is unavailable right now.");
+                return (null, "Resume upload is unavailable right now.", false);
 
             var validation = _resumeFileService.ValidateResumeFile(resumeFile);
             if (!validation.Success)
-                return (null, validation.ErrorMessage);
+                return (null, validation.ErrorMessage, false);
 
             var storedResume = await _resumeFileService.StoreResumeAsync(resumeFile);
             if (!storedResume.Success)
-                return (null, storedResume.ErrorMessage);
+                return (null, storedResume.ErrorMessage, false);
 
             if (application == null)
             {
@@ -341,13 +364,44 @@ public class MockAiInterviewController : BasePluginController
             if (_resumeProfileService != null)
                 await _resumeProfileService.EnsureResumeProfileAsync(application, product, forceRegenerate: true);
 
-            return (application, null);
+            return (application, null, true);
+        }
+
+        if (selectedResumeDownloadId > 0)
+        {
+            var resumeChanged = application == null || application.ResumeDownloadId != selectedResumeDownloadId;
+            if (application == null)
+            {
+                application = new JobApplication
+                {
+                    CustomerId = customer.Id,
+                    ProductId = product?.Id ?? 0,
+                    JobTitle = product?.Name ?? "Interview",
+                    ResumeDownloadId = selectedResumeDownloadId,
+                    Status = JobApplicationStatuses.Applied,
+                    CreatedOnUtc = DateTime.UtcNow
+                };
+                await _applicationService.InsertJobApplicationAsync(application);
+            }
+            else if (resumeChanged)
+            {
+                application.ResumeDownloadId = selectedResumeDownloadId;
+                application.ResumeProfileJson = null;
+                application.ResumeProfileGeneratedOnUtc = null;
+                application.ResumeProfileError = null;
+                await _applicationService.UpdateJobApplicationAsync(application);
+            }
+
+            if (application.ResumeDownloadId > 0 && _resumeProfileService != null)
+                await _resumeProfileService.EnsureResumeProfileAsync(application, product, forceRegenerate: resumeChanged);
+
+            return (application, null, resumeChanged);
         }
 
         if (application != null && application.ResumeDownloadId > 0 && string.IsNullOrWhiteSpace(application.ResumeProfileJson) && _resumeProfileService != null)
             await _resumeProfileService.EnsureResumeProfileAsync(application, product);
 
-        return (application, null);
+        return (application, null, false);
     }
 
     protected virtual async Task<(InterviewSession Session, bool Renewed)> RenewActiveRuntimeTokenAsync(string token, bool forceRenew = false)
@@ -405,7 +459,11 @@ public class MockAiInterviewController : BasePluginController
             difficulty = !string.IsNullOrWhiteSpace(form["difficulty"]) ? form["difficulty"] : difficulty ?? AIInterviewDefaults.DefaultInterviewDifficulty;
 
         var resumeFile = form?.Files?.GetFile("ResumeFile");
+        var selectedResumeDownloadId = int.TryParse(form?["SelectedResumeDownloadId"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSelectedResumeDownloadId)
+            ? parsedSelectedResumeDownloadId
+            : 0;
         var existingApplication = await GetLatestApplicationForStartAsync(customer, product);
+        var ownedResumeDownloadIds = await GetOwnedResumeDownloadIdsAsync(customer);
         var customerSessions = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<InterviewSession>())
             .Where(s => s.ProductId == productId)
             .OrderByDescending(s => s.CreatedOnUtc)
@@ -417,7 +475,7 @@ public class MockAiInterviewController : BasePluginController
             s.IsActive &&
             !s.CompletedOnUtc.HasValue);
         var requirements = await GetStartRequirementsAsync(productId);
-        var resumeValidation = await ValidateStartResumePreconditionsAsync(requirements, existingApplication, resumeFile, reusableSession);
+        var resumeValidation = await ValidateStartResumePreconditionsAsync(requirements, existingApplication, resumeFile, reusableSession, selectedResumeDownloadId, ownedResumeDownloadIds);
         if (!string.IsNullOrWhiteSpace(resumeValidation.ErrorMessage))
             return await LocalizedErrorAsync(resumeValidation.ResourceKey, resumeValidation.ErrorMessage);
 
@@ -430,7 +488,7 @@ public class MockAiInterviewController : BasePluginController
                     reusableSession = renewed.Session;
             }
 
-            var applicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile, existingApplication);
+            var applicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile, selectedResumeDownloadId, existingApplication);
             if (!string.IsNullOrWhiteSpace(applicationResolution.ErrorMessage))
                 return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", applicationResolution.ErrorMessage);
 
@@ -442,7 +500,7 @@ public class MockAiInterviewController : BasePluginController
                 sessionUpdated = true;
             }
 
-            if (resumeFile != null)
+            if (applicationResolution.ResumeChanged)
                 await ResetUnstartedPlannedTurnsAsync(reusableSession);
 
             if (sessionUpdated)
@@ -492,7 +550,7 @@ public class MockAiInterviewController : BasePluginController
                 return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.NoCredits", "Insufficient credits. Please purchase credits to start the interview.");
         }
 
-        var newSessionApplicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile, existingApplication);
+        var newSessionApplicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile, selectedResumeDownloadId, existingApplication);
         if (!string.IsNullOrWhiteSpace(newSessionApplicationResolution.ErrorMessage))
         {
             await LogRuntimeIssueAsync("AI Interview start resume persistence failure",

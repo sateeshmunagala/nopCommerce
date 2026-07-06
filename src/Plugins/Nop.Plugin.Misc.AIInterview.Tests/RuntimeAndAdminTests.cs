@@ -172,6 +172,25 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_Start_NoCredits_ReturnsLocalizedInlineError()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(false);
+
+        var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>()), 1, "Medium");
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var json = (JsonResult)result;
+        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
+        Assert.That(success, Is.False);
+        Assert.That(error, Is.EqualTo("Insufficient credits. Please purchase credits to start the interview."));
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
     public async Task Runtime_InvalidToken_ReturnsLocalizedError()
     {
         var result = await _runtimeController.SubmitAnswer(null, "Answer");

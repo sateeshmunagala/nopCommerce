@@ -139,7 +139,7 @@ public class CandidateFlowTests
     }
 
     [Test]
-    public async Task Apply_ResumeReuse_Path_Works()
+    public async Task Apply_DoesNotSilentlyReuseResume()
     {
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
             .ReturnsAsync(new JobRequirementsModel { ResumeRequired = true });
@@ -157,9 +157,36 @@ public class CandidateFlowTests
             .ReturnsAsync(previousApps);
 
         var model = new ApplyModel { JobTitle = "Senior Dev" };
-        _controller.ModelState.AddModelError("ResumeFile", "Required");
 
         var result = await _controller.Apply(model);
+
+        _applicationService.Verify(x => x.InsertJobApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+        Assert.That(result, Is.InstanceOf<ViewResult>());
+    }
+
+    [Test]
+    public async Task Apply_SelectedPreviousResume_Works()
+    {
+        _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
+            .ReturnsAsync(new JobRequirementsModel { ResumeRequired = true });
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
+
+        var previousApps = new List<JobApplication>
+        {
+            new JobApplication { CustomerId = 1, JobTitle = "Old Job", ResumeDownloadId = 123, CreatedOnUtc = DateTime.UtcNow.AddDays(-1) }
+        };
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAndJobTitleAsync(customer.Id, "Senior Dev"))
+            .ReturnsAsync(new List<JobApplication>());
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(customer.Id))
+            .ReturnsAsync(previousApps);
+
+        var result = await _controller.Apply(new ApplyModel
+        {
+            JobTitle = "Senior Dev",
+            SelectedResumeDownloadId = 123
+        });
 
         _applicationService.Verify(x => x.InsertJobApplicationAsync(It.Is<JobApplication>(a => a.ResumeDownloadId == 123)), Times.Once);
         Assert.That(result, Is.InstanceOf<RedirectToRouteResult>());
@@ -180,6 +207,40 @@ public class CandidateFlowTests
         await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1, "Hard");
 
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.Difficulty == "Hard" && s.ProductId == 1)), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_Start_SelectedPreviousResume_CreatesApplicationWithThatResume()
+    {
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+        _productService.Setup(x => x.GetProductByIdAsync(1)).ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 1, Name = "Backend Engineer" });
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<JobApplication>
+        {
+            new() { CustomerId = 1, ProductId = 7, JobTitle = "Old Job", ResumeDownloadId = 123, CreatedOnUtc = DateTime.UtcNow.AddDays(-1) }
+        });
+        _applicationService.Setup(x => x.InsertJobApplicationAsync(It.IsAny<JobApplication>()))
+            .Callback<JobApplication>(application => application.Id = 99)
+            .Returns(Task.CompletedTask);
+
+        var form = new FormCollection(new Dictionary<string, StringValues>
+        {
+            ["SelectedResumeDownloadId"] = "123"
+        });
+
+        var result = await _runtimeController.StartPost(form, 1, "Medium");
+
+        Assert.That(result, Is.InstanceOf<JsonResult>());
+        _applicationService.Verify(x => x.InsertJobApplicationAsync(It.Is<JobApplication>(application =>
+            application.CustomerId == 1 &&
+            application.ProductId == 1 &&
+            application.ResumeDownloadId == 123)), Times.Once);
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session =>
+            session.CustomerId == 1 &&
+            session.ProductId == 1 &&
+            session.JobApplicationId > 0)), Times.Once);
     }
 
     [Test]
@@ -338,10 +399,13 @@ public class CandidateFlowTests
         Assert.That(viewText, Does.Contain("data-job-ai-action=\"apply\""));
         Assert.That(viewText, Does.Contain("data-start-url=\"@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)\""));
         Assert.That(viewText, Does.Contain("data-apply-url=\"@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)\""));
+        Assert.That(viewText, Does.Contain("SelectedResumeDownloadId"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.Apply.ResumeRequired"));
         Assert.That(viewText, Does.Contain("AppendScriptParts(Nop.Web.Framework.UI.ResourceLocation.Footer, \"~/Plugins/Misc.AIInterview/Content/js/aiinterview-job-card.js\")"));
         Assert.That(viewText, Does.Not.Contain("postJson('@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)'"));
         Assert.That(viewText, Does.Not.Contain("document.addEventListener('click'"));
         Assert.That(viewText, Does.Not.Contain("aiinterview-server-fallback-shell"));
+        Assert.That(viewText, Does.Not.Contain("@T(\"Plugins.Misc.AIInterview.Runtime.Error.NoCredits\")"));
     }
 
     [Test]
@@ -1356,7 +1420,8 @@ public class CandidateFlowTests
             _sessionService.Object,
             new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
             _jobRequirementService.Object,
-            _inviteService.Object);
+            _inviteService.Object,
+            _downloadService.Object);
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?sponsorToken=abc");
 
@@ -1441,7 +1506,8 @@ public class CandidateFlowTests
             _sessionService.Object,
             new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
             _jobRequirementService.Object,
-            _inviteService.Object);
+            _inviteService.Object,
+            _downloadService.Object);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?sponsorToken=inactive-token");
@@ -1516,7 +1582,8 @@ public class CandidateFlowTests
             _sessionService.Object,
             new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
             _jobRequirementService.Object,
-            _inviteService.Object);
+            _inviteService.Object,
+            _downloadService.Object);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?sponsorToken=exhausted-token");
@@ -1595,7 +1662,8 @@ public class CandidateFlowTests
             _sessionService.Object,
             new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
             _jobRequirementService.Object,
-            _inviteService.Object);
+            _inviteService.Object,
+            _downloadService.Object);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?sponsorToken=mismatch-token");
@@ -1672,7 +1740,8 @@ public class CandidateFlowTests
             _sessionService.Object,
             new AIInterviewSettings { CreditPurchasePageUrl = "/pricing" },
             _jobRequirementService.Object,
-            _inviteService.Object);
+            _inviteService.Object,
+            _downloadService.Object);
 
         var result = await component.InvokeAsync(
             "productdetails_before_collateral",

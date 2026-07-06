@@ -109,23 +109,23 @@
             return;
         }
 
-        Array.prototype.forEach.call(applyPanel.querySelectorAll('input'), function (input) {
-            if (!input.name) {
+        Array.prototype.forEach.call(applyPanel.querySelectorAll('input, select, textarea'), function (field) {
+            if (!field.name) {
                 return;
             }
 
-            if (input.type === 'file') {
-                Array.prototype.forEach.call(input.files || [], function (file) {
-                    formData.append(input.name, file);
+            if (field.type === 'file') {
+                Array.prototype.forEach.call(field.files || [], function (file) {
+                    formData.append(field.name, file);
                 });
                 return;
             }
 
-            if ((input.type === 'radio' || input.type === 'checkbox') && !input.checked) {
+            if ((field.type === 'radio' || field.type === 'checkbox') && !field.checked) {
                 return;
             }
 
-            formData.append(input.name, input.value);
+            formData.append(field.name, field.value);
         });
     }
 
@@ -155,10 +155,6 @@
             method: 'POST',
             body: formData
         }).then(function (response) {
-            if (!response.ok) {
-                return { success: false, error: requestErrorText };
-            }
-
             var contentType = response.headers.get('content-type') || '';
             if (contentType.indexOf('application/json') === -1) {
                 return { success: false, error: requestErrorText };
