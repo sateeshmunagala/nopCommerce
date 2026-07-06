@@ -10001,3 +10001,506 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
         min-height: 0;
     }
 }
+
+/* Phase 1 AI interview homepage landing content. */
+.jb-home-landing {
+    overflow-x: clip;
+}
+
+.jb-home-landing .page-body {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 24px 16px 40px;
+    box-sizing: border-box;
+}
+
+.jb-home-landing .page-body > * {
+    width: min(100%, 1200px);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.jb-home-landing .page-body > * + * {
+    margin-top: 20px;
+}
+
+.jb-home-landing .page-body > script,
+.jb-home-landing .page-body > style {
+    width: auto;
+    margin: 0;
+}
+
+.jb-home-section,
+.jb-home-dynamic-components,
+.jb-home-topic-faq {
+    border: 1px solid #dbe4e1;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 8px 24px rgba(27, 39, 35, 0.05);
+    box-sizing: border-box;
+}
+
+.jb-home-hero {
+    margin-top: 0 !important;
+}
+
+.jb-home-hero-shell {
+    position: relative;
+    border: 1px solid #dbe4e1;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #ffffff 0%, #f6fbfa 100%);
+    box-shadow: 0 8px 24px rgba(27, 39, 35, 0.05);
+    overflow: hidden;
+}
+
+.jb-home-hero-shell::before,
+.jb-home-hero-shell::after {
+    content: none;
+    display: none;
+}
+
+.jb-home-hero-content {
+    display: grid;
+    gap: 18px;
+    max-width: 760px;
+    padding: 56px;
+}
+
+.jb-home-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #178d75;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.jb-home-hero-content h1,
+.jb-home-section-head h2,
+.jb-home-step-card h3 {
+    margin: 0;
+    color: var(--jb-ink);
+}
+
+.jb-home-hero-content h1 {
+    font-size: clamp(2.4rem, 5vw, 4.5rem);
+    line-height: 0.95;
+}
+
+.jb-home-hero-content p,
+.jb-home-section-head p,
+.jb-home-feature-card p,
+.jb-home-step-card p,
+.jb-home-topic-faq p,
+.jb-home-topic-faq li {
+    margin: 0;
+    color: #5f6773;
+    line-height: 1.65;
+}
+
+.jb-home-search-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+    width: 100%;
+    max-width: 720px;
+    margin: 0;
+}
+
+.jb-home-search-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+    white-space: nowrap;
+}
+
+.jb-home-search-form input[type="search"] {
+    width: 100%;
+    min-width: 0;
+    height: 52px;
+    padding: 0 16px;
+    border: 1px solid #cfdad6;
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--jb-ink);
+    font-family: "Lato", Arial, sans-serif;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.jb-home-search-form input[type="search"]:focus {
+    border-color: var(--jb-accent);
+    outline: 2px solid rgba(53, 214, 180, 0.18);
+    outline-offset: 0;
+}
+
+.jb-home-search-form button,
+.jb-home-hero-actions .button-1,
+.jb-home-final-actions .button-1 {
+    height: 52px;
+    padding: 0 22px;
+    border: 1px solid var(--jb-accent);
+    border-radius: 6px;
+    background: var(--jb-accent);
+    color: var(--jb-white);
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 50px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.jb-home-search-form button:hover,
+.jb-home-search-form button:focus,
+.jb-home-hero-actions .button-1:hover,
+.jb-home-hero-actions .button-1:focus,
+.jb-home-final-actions .button-1:hover,
+.jb-home-final-actions .button-1:focus {
+    background: var(--jb-accent-dark);
+    border-color: var(--jb-accent-dark);
+    color: var(--jb-white);
+}
+
+.jb-home-hero-actions,
+.jb-home-final-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.jb-home-hero-actions .button-1,
+.jb-home-hero-actions .button-2,
+.jb-home-final-actions .button-1,
+.jb-home-final-actions .button-2 {
+    min-width: 180px;
+    text-decoration: none;
+}
+
+.jb-home-hero-actions .button-2,
+.jb-home-final-actions .button-2 {
+    height: 52px;
+    padding: 0 22px;
+    border: 1px solid #cfdad6;
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--jb-ink);
+    line-height: 50px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.jb-home-hero-actions .button-2:hover,
+.jb-home-hero-actions .button-2:focus,
+.jb-home-final-actions .button-2:hover,
+.jb-home-final-actions .button-2:focus {
+    border-color: var(--jb-accent);
+    color: var(--jb-accent-dark);
+}
+
+.jb-home-section,
+.jb-home-final-cta,
+.jb-home-topic-faq {
+    padding: 32px;
+}
+
+.jb-home-trust-strip {
+    background: #ffffff;
+}
+
+.jb-home-trust-strip::before {
+    content: "";
+    display: block;
+    width: 64px;
+    height: 4px;
+    margin-bottom: 18px;
+    border-radius: 999px;
+    background: var(--jb-accent);
+}
+
+.jb-home-section-head {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 22px;
+}
+
+.jb-home-section-head p {
+    max-width: 720px;
+}
+
+.jb-home-trust-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.jb-home-trust-pills span,
+.jb-home-card-accent {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid #d5e5e1;
+    border-radius: 999px;
+    background: #f7fbfa;
+    color: #176f5e;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.jb-home-categories-section,
+.jb-home-steps-section,
+.jb-home-final-cta {
+    background: #f4fbf9;
+}
+
+.jb-home-feature-section {
+    background: #ffffff;
+}
+
+.jb-home-filters,
+.jb-home-category-component,
+.jb-home-products-component,
+.jb-home-bestsellers-component {
+    padding: 28px;
+}
+
+.jb-home-filters {
+    background: #ffffff;
+}
+
+.jb-home-category-component .title,
+.jb-home-products-component > .product-grid > .title,
+.jb-home-bestsellers-component > .bestsellers > .title {
+    margin-bottom: 18px;
+}
+
+.jb-home-products-component > .product-grid > .title {
+    display: none;
+}
+
+.jb-home-category-component .home-page-category-grid,
+.jb-home-products-component .home-page-product-grid,
+.jb-home-bestsellers-component .bestsellers {
+    margin: 0;
+}
+
+.jb-home-category-component .item-grid,
+.jb-home-products-component .item-grid,
+.jb-home-bestsellers-component .item-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    width: 100%;
+    margin: 0;
+}
+
+.jb-home-category-component .item-box,
+.jb-home-products-component .item-box,
+.jb-home-bestsellers-component .item-box {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    float: none;
+}
+
+.jb-home-category-component .item-box {
+    border: 1px solid #dbe4e1;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 6px 18px rgba(27, 39, 35, 0.04);
+    overflow: hidden;
+}
+
+.jb-home-category-component .category-item {
+    height: 100%;
+}
+
+.jb-home-category-component .picture {
+    margin: 0;
+    background: #edf8f5;
+}
+
+.jb-home-category-component .picture a {
+    display: block;
+    aspect-ratio: 16 / 10;
+}
+
+.jb-home-category-component .picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.jb-home-category-component .title {
+    padding: 18px 18px 20px;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.15rem;
+    line-height: 1.15;
+}
+
+.jb-home-category-component .title a {
+    color: var(--jb-ink);
+}
+
+.jb-home-category-component .title a:hover,
+.jb-home-category-component .title a:focus {
+    color: var(--jb-accent-dark);
+}
+
+.jb-home-feature-grid,
+.jb-home-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.jb-home-steps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.jb-home-feature-card,
+.jb-home-step-card {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+    min-height: 100%;
+    padding: 24px;
+    border: 1px solid #dbe4e1;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 6px 18px rgba(27, 39, 35, 0.04);
+    box-sizing: border-box;
+}
+
+.jb-home-step-card .jb-home-eyebrow {
+    font-size: 1rem;
+}
+
+.jb-home-topic-faq {
+    background: #ffffff;
+}
+
+.jb-home-topic-faq .topic-block {
+    margin: 0;
+}
+
+.jb-home-topic-faq .topic-block-title,
+.jb-home-topic-faq h1,
+.jb-home-topic-faq h2,
+.jb-home-topic-faq h3 {
+    margin: 0 0 14px;
+    color: var(--jb-ink);
+}
+
+.jb-home-topic-faq .topic-block-body > *:first-child {
+    margin-top: 0;
+}
+
+.jb-home-topic-faq .topic-block-body > *:last-child {
+    margin-bottom: 0;
+}
+
+.jb-home-topic-faq ul,
+.jb-home-topic-faq ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.jb-home-topic-faq a {
+    color: var(--jb-accent-dark);
+}
+
+.jb-home-final-cta {
+    display: grid;
+    gap: 10px;
+}
+
+@media (max-width: 1000px) {
+    .jb-home-landing .page-body {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .jb-home-hero-content,
+    .jb-home-section,
+    .jb-home-final-cta,
+    .jb-home-topic-faq,
+    .jb-home-filters,
+    .jb-home-category-component,
+    .jb-home-products-component,
+    .jb-home-bestsellers-component {
+        padding: 24px;
+    }
+
+    .jb-home-category-component .item-grid,
+    .jb-home-products-component .item-grid,
+    .jb-home-bestsellers-component .item-grid,
+    .jb-home-feature-grid,
+    .jb-home-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    .jb-home-landing .page-body {
+        padding-top: 16px;
+        padding-bottom: 32px;
+    }
+
+    .jb-home-landing .page-body > * + * {
+        margin-top: 16px;
+    }
+
+    .jb-home-hero-content {
+        padding: 28px 20px;
+    }
+
+    .jb-home-hero-content h1 {
+        font-size: clamp(2rem, 11vw, 3rem);
+    }
+
+    .jb-home-section,
+    .jb-home-final-cta,
+    .jb-home-topic-faq,
+    .jb-home-filters,
+    .jb-home-category-component,
+    .jb-home-products-component,
+    .jb-home-bestsellers-component {
+        padding: 20px;
+    }
+
+    .jb-home-search-form {
+        grid-template-columns: 1fr;
+    }
+
+    .jb-home-search-form button,
+    .jb-home-hero-actions .button-1,
+    .jb-home-hero-actions .button-2,
+    .jb-home-final-actions .button-1,
+    .jb-home-final-actions .button-2 {
+        width: 100%;
+    }
+
+    .jb-home-hero-actions,
+    .jb-home-final-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .jb-home-category-component .item-grid,
+    .jb-home-products-component .item-grid,
+    .jb-home-bestsellers-component .item-grid,
+    .jb-home-feature-grid,
+    .jb-home-steps {
+        grid-template-columns: 1fr;
+    }
+}
