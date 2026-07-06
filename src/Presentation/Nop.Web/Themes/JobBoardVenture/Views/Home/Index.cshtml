@@ -28,17 +28,17 @@
         <section class="jb-home-hero" aria-labelledby="jb-home-hero-title">
             <div class="jb-home-hero-shell">
                 <div class="jb-home-hero-content">
-                    <span class="jb-home-eyebrow">AI interview preparation platform</span>
+                    <p class="jb-home-eyebrow">AI interview preparation platform</p>
                     <h1 id="jb-home-hero-title">Find jobs faster with AI interviews</h1>
-                    <p>Search roles, apply with confidence, and prove your skills through AI-powered interview reports.</p>
+                    <p class="jb-home-hero-copy">Search roles, apply with confidence, and prove your skills through AI-powered interview reports.</p>
                     <form class="jb-home-search-form" action="/search" method="get" role="search">
                         <label class="jb-home-search-label" for="jb-home-search-term">Search jobs</label>
-                        <input id="jb-home-search-term" name="q" type="search" placeholder="Search jobs, skills, or locations" />
-                        <button type="submit">Search</button>
+                        <input class="search-box-text" id="jb-home-search-term" name="q" type="search" placeholder="Search jobs, skills, or locations" />
+                        <button class="search-box-button" type="submit">Search</button>
                     </form>
-                    <div class="jb-home-hero-actions">
-                        <a class="button-1" href="/jobs">Browse jobs</a>
-                        <a class="button-2" href="/mockaiinterview/start">Practice interview</a>
+                    <div class="jb-home-hero-actions" aria-label="Primary actions">
+                        <a class="button-1 jb-home-button-primary" href="/jobs">Browse jobs</a>
+                        <a class="button-2 jb-home-button-secondary" href="/mockaiinterview/start">Practice interview</a>
                     </div>
                 </div>
             </div>
@@ -48,10 +48,11 @@
 
         <section class="jb-home-section jb-home-trust-strip" aria-labelledby="jb-home-trust-title">
             <div class="jb-home-section-head">
+                <span class="jb-home-eyebrow">Trusted workflow</span>
                 <h2 id="jb-home-trust-title">Prepare with clarity before you apply</h2>
                 <p>Practice interviews, understand your readiness, and move through applications with more confidence.</p>
             </div>
-            <div class="jb-home-trust-pills" aria-label="Platform benefits">
+            <div class="jb-home-trust-pills" aria-label="Platform strengths">
                 <span>AI-guided practice</span>
                 <span>Role-based preparation</span>
                 <span>Interview feedback</span>
@@ -61,101 +62,110 @@
 
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories })
 
-        <div class="jb-home-dynamic-components jb-home-filters">
+        <div class="jb-home-filters">
             @await Component.InvokeAsync(typeof(FilterLevelValueSearchViewComponent))
         </div>
 
-        <section class="jb-home-section jb-home-categories-section" aria-labelledby="jb-home-categories-title">
-            <div class="jb-home-section-head">
-                <h2 id="jb-home-categories-title">Browse by category</h2>
-                <p>Explore open roles by skill area, department, or career path.</p>
-            </div>
-            <div class="jb-home-dynamic-components jb-home-category-component">
-                @await Component.InvokeAsync(typeof(HomepageCategoriesViewComponent))
-            </div>
-        </section>
+        <div class="jb-home-native-components jb-home-dynamic-components">
+            <section class="jb-home-section jb-home-categories-section" aria-labelledby="jb-home-categories-title">
+                <div class="jb-home-section-head">
+                    <span class="jb-home-eyebrow">Explore roles</span>
+                    <h2 id="jb-home-categories-title">Browse by category</h2>
+                    <p>Explore open roles by skill area, department, or career path.</p>
+                </div>
+                <div class="jb-home-category-component">
+                    @await Component.InvokeAsync(typeof(HomepageCategoriesViewComponent))
+                </div>
+            </section>
 
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeProducts })
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeProducts })
 
-        <section class="jb-home-section jb-home-featured-jobs" aria-labelledby="jb-home-featured-jobs-title">
-            <div class="jb-home-section-head">
-                <h2 id="jb-home-featured-jobs-title">Fresh roles for your next move</h2>
-                <p>Explore current openings where skill, preparation, and interview readiness matter.</p>
-            </div>
-            <div class="jb-home-dynamic-components jb-home-products-component">
-                @await Component.InvokeAsync(typeof(HomepageProductsViewComponent))
-            </div>
-        </section>
+            <section class="jb-home-section jb-home-featured-jobs" aria-labelledby="jb-home-featured-title">
+                <div class="jb-home-section-head">
+                    <span class="jb-home-eyebrow">Featured jobs</span>
+                    <h2 id="jb-home-featured-title">Fresh roles for your next move</h2>
+                    <p>Explore current openings where skill, preparation, and interview readiness matter.</p>
+                </div>
+                <div class="jb-home-products-component">
+                    @await Component.InvokeAsync(typeof(HomepageProductsViewComponent))
+                </div>
+            </section>
 
-        <section class="jb-home-section jb-home-feature-section" aria-labelledby="jb-home-feature-title">
-            <div class="jb-home-section-head">
-                <h2 id="jb-home-feature-title">Build your career faster</h2>
-                <p>Everything candidates need to discover roles, practice interviews, and track progress in one place.</p>
-            </div>
-            <div class="jb-home-feature-grid">
-                <article class="jb-home-feature-card">
-                    <span class="jb-home-card-accent">AI job matching</span>
-                    <p>Find roles that align with your skills, interests, and experience.</p>
-                </article>
-                <article class="jb-home-feature-card">
-                    <span class="jb-home-card-accent">AI interview</span>
-                    <p>Practice realistic interviews and understand how you perform before you apply.</p>
-                </article>
-                <article class="jb-home-feature-card">
-                    <span class="jb-home-card-accent">Instant feedback</span>
-                    <p>Review scores, reports, and application progress after every interview.</p>
-                </article>
-            </div>
-        </section>
+            <section class="jb-home-section jb-home-feature-section" aria-labelledby="jb-home-features-title">
+                <div class="jb-home-section-head">
+                    <span class="jb-home-eyebrow">Candidate platform</span>
+                    <h2 id="jb-home-features-title">Build your career faster</h2>
+                    <p>Everything candidates need to discover roles, practice interviews, and track progress in one place.</p>
+                </div>
+                <div class="jb-home-feature-grid">
+                    <article class="jb-home-feature-card">
+                        <span class="jb-home-card-accent"></span>
+                        <h3>AI job matching</h3>
+                        <p>Find roles that align with your skills, interests, and experience.</p>
+                    </article>
+                    <article class="jb-home-feature-card">
+                        <span class="jb-home-card-accent"></span>
+                        <h3>AI interview</h3>
+                        <p>Practice realistic interviews and understand how you perform before you apply.</p>
+                    </article>
+                    <article class="jb-home-feature-card">
+                        <span class="jb-home-card-accent"></span>
+                        <h3>Instant feedback</h3>
+                        <p>Review scores, reports, and application progress after every interview.</p>
+                    </article>
+                </div>
+            </section>
 
-        <section class="jb-home-section jb-home-steps-section" aria-labelledby="jb-home-steps-title">
-            <div class="jb-home-section-head">
-                <h2 id="jb-home-steps-title">Move from search to interview-ready</h2>
-                <p>Go from discovery to preparation with a focused path for every application.</p>
-            </div>
-            <div class="jb-home-steps">
-                <article class="jb-home-step-card">
-                    <span class="jb-home-eyebrow">01</span>
-                    <h3>Search jobs</h3>
-                    <p>Find open roles by title, skill, or category.</p>
-                </article>
-                <article class="jb-home-step-card">
-                    <span class="jb-home-eyebrow">02</span>
-                    <h3>Apply or practice</h3>
-                    <p>Choose a role and begin the application or mock interview flow.</p>
-                </article>
-                <article class="jb-home-step-card">
-                    <span class="jb-home-eyebrow">03</span>
-                    <h3>Complete AI interview</h3>
-                    <p>Answer structured questions in a guided interview experience.</p>
-                </article>
-                <article class="jb-home-step-card">
-                    <span class="jb-home-eyebrow">04</span>
-                    <h3>Track results</h3>
-                    <p>Use reports and application status to plan your next move.</p>
-                </article>
-            </div>
-        </section>
+            <section class="jb-home-section jb-home-steps-section" aria-labelledby="jb-home-steps-title">
+                <div class="jb-home-section-head">
+                    <span class="jb-home-eyebrow">How it works</span>
+                    <h2 id="jb-home-steps-title">Move from search to interview-ready</h2>
+                    <p>Go from discovery to preparation with a focused path for every application.</p>
+                </div>
+                <div class="jb-home-steps">
+                    <article class="jb-home-step-card">
+                        <span>01</span>
+                        <h3>Search jobs</h3>
+                        <p>Find open roles by title, skill, or category.</p>
+                    </article>
+                    <article class="jb-home-step-card">
+                        <span>02</span>
+                        <h3>Apply or practice</h3>
+                        <p>Choose a role and begin the application or mock interview flow.</p>
+                    </article>
+                    <article class="jb-home-step-card">
+                        <span>03</span>
+                        <h3>Complete AI interview</h3>
+                        <p>Answer structured questions in a guided interview experience.</p>
+                    </article>
+                    <article class="jb-home-step-card">
+                        <span>04</span>
+                        <h3>Track results</h3>
+                        <p>Use reports and application status to plan your next move.</p>
+                    </article>
+                </div>
+            </section>
 
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeBestSellers })
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeBestSellers })
 
-        <div class="jb-home-dynamic-components jb-home-products-component jb-home-bestsellers-component">
-            @await Component.InvokeAsync(typeof(HomepageBestSellersViewComponent))
+            <div class="jb-home-bestsellers-component">
+                @await Component.InvokeAsync(typeof(HomepageBestSellersViewComponent))
+            </div>
         </div>
 
         <div class="jb-home-topic-faq">
             @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageFAQ" })
         </div>
 
-        <section class="jb-home-section jb-home-final-cta" aria-labelledby="jb-home-final-cta-title">
-            <div class="jb-home-section-head">
+        <section class="jb-home-section jb-home-final-cta" aria-labelledby="jb-home-final-title">
+            <div>
                 <span class="jb-home-eyebrow">Get started</span>
-                <h2 id="jb-home-final-cta-title">Start your AI-powered job search today</h2>
+                <h2 id="jb-home-final-title">Start your AI-powered job search today</h2>
                 <p>Browse open roles or practice with an AI interview before you apply.</p>
             </div>
             <div class="jb-home-final-actions">
-                <a class="button-1" href="/jobs">Browse jobs</a>
-                <a class="button-2" href="/mockaiinterview/start">Practice interview</a>
+                <a class="button-1 jb-home-button-primary" href="/jobs">Browse jobs</a>
+                <a class="button-2 jb-home-button-secondary" href="/mockaiinterview/start">Practice interview</a>
             </div>
         </section>
 
