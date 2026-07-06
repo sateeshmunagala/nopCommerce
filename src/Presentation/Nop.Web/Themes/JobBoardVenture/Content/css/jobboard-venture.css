@@ -10007,12 +10007,16 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     overflow-x: clip;
 }
 
+.html-home-page .master-wrapper-content {
+    padding-bottom: 16px;
+}
+
 .jb-home-landing .page-body {
     box-sizing: border-box;
     width: 100%;
     max-width: none;
     margin: 0;
-    padding: 0 0 56px;
+    padding: 0 0 12px;
 }
 
 .jb-home-landing .page-body,
@@ -10101,7 +10105,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 .jb-home-landing .jb-home-hero h1 {
-    max-width: 12ch;
+    max-width: 18ch;
     font-size: clamp(2.4rem, 4vw, 3.15rem);
     line-height: 1;
     text-align: center;
@@ -10494,7 +10498,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 @media (max-width: 1000px) {
     .jb-home-landing .page-body {
-        padding: 0 14px 48px;
+        padding: 0 14px 10px;
     }
 
     .jb-home-landing .jb-home-hero,
@@ -10535,7 +10539,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 @media (max-width: 767px) {
     .jb-home-landing .page-body {
-        padding: 0 12px 36px;
+        padding: 0 12px 8px;
     }
 
     .jb-home-landing .page-body > .nop-jw-wrapper,
@@ -10603,5 +10607,135 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     .jb-home-landing .jb-home-feature-grid,
     .jb-home-landing .jb-home-steps {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Register page label fix. */
+.html-registration-page .registration-page .fieldset,
+.html-registration-page .registration-page .form-fields,
+.html-registration-page .registration-page .inputs:not(.accept-consent) {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: none !important;
+    overflow: visible !important;
+}
+
+.html-registration-page .registration-page .inputs:not(.accept-consent) {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr) 18px;
+    align-items: center;
+    gap: 6px 12px;
+    min-width: 0;
+}
+
+.html-registration-page .registration-page .inputs:not(.accept-consent) > label:first-child,
+.html-registration-page .registration-page .inputs:not(.accept-consent) > label:first-of-type {
+    position: static !important;
+    grid-column: 1;
+    grid-row: 1;
+    display: block !important;
+    width: 180px !important;
+    min-width: 180px;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #30363c !important;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.82rem !important;
+    line-height: 1.3 !important;
+    text-align: left !important;
+    text-transform: uppercase;
+    opacity: 1 !important;
+    visibility: visible !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: normal;
+}
+
+.html-registration-page .registration-page .jb-register-field-label {
+    position: static !important;
+    grid-column: 1;
+    grid-row: 1;
+    display: block !important;
+    width: 180px !important;
+    min-width: 180px;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #30363c !important;
+    font-family: "Fjalla One", Arial, sans-serif !important;
+    font-size: 0.82rem !important;
+    line-height: 1.3 !important;
+    text-align: left !important;
+    text-transform: uppercase;
+    opacity: 1 !important;
+    visibility: visible !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: normal !important;
+}
+
+.html-registration-page .registration-page .inputs:not(.accept-consent) > input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+.html-registration-page .registration-page .inputs:not(.accept-consent) > select,
+.html-registration-page .registration-page .inputs:not(.accept-consent) > textarea,
+.html-registration-page .registration-page .inputs:not(.accept-consent) > .gender,
+.html-registration-page .registration-page .inputs:not(.accept-consent) > .jb-auth-date-fields,
+.html-registration-page .registration-page .inputs:not(.accept-consent) > .form-input-wrapper {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+}
+
+.html-registration-page .registration-page .inputs:not(.accept-consent) > nop-required,
+.html-registration-page .registration-page .inputs:not(.accept-consent) > .required {
+    grid-column: 3;
+    grid-row: 1;
+    margin: 0;
+    text-align: center;
+}
+
+.html-registration-page .registration-page .inputs:not(.accept-consent) > .field-validation-error,
+.html-registration-page .registration-page .inputs:not(.accept-consent) > .field-validation-valid,
+.html-registration-page .registration-page .inputs:not(.accept-consent) > .vat-note,
+.html-registration-page .registration-page .inputs:not(.accept-consent) > .phone-info,
+.html-registration-page .registration-page .inputs:not(.accept-consent) > .please-wait {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    margin-top: 0;
+}
+
+@media (max-width: 1000px) {
+    .html-registration-page .registration-page .inputs:not(.accept-consent),
+    .html-registration-page .registration-page .date-of-birth {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+    }
+
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > label:first-child,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > label:first-of-type,
+    .html-registration-page .registration-page .jb-register-field-label,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .gender,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .jb-auth-date-fields {
+        grid-column: 1 / -1;
+        width: auto !important;
+        min-width: 0;
+    }
+
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > select,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > textarea {
+        grid-column: 1;
+    }
+
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .field-validation-error,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .field-validation-valid,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .vat-note,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .phone-info,
+    .html-registration-page .registration-page .inputs:not(.accept-consent) > .please-wait {
+        grid-column: 1 / -1;
     }
 }

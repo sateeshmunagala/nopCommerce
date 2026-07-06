@@ -166,7 +166,14 @@
                                         <td class="col-resume">
                                             @if (app.HasResume && !string.IsNullOrWhiteSpace(app.ResumeDownloadUrl))
                                             {
-                                                <a href="@app.ResumeDownloadUrl" title="@T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume")">@T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume")</a>
+                                                var downloadResumeText = T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume").Text;
+                                                <a href="@app.ResumeDownloadUrl"
+                                                   class="ai-icon-action ai-resume-download-link"
+                                                   aria-label="@($"{downloadResumeText} - {candidateDisplay}")"
+                                                   title="@($"{downloadResumeText} - {candidateDisplay}")">
+                                                    <i class="fa-solid fa-download" aria-hidden="true"></i>
+                                                    <span class="sr-only">@downloadResumeText</span>
+                                                </a>
                                             }
                                             else
                                             {
@@ -263,7 +270,14 @@
                                     <span class="responsive-data-card-value">
                                         @if (app.HasResume && !string.IsNullOrWhiteSpace(app.ResumeDownloadUrl))
                                         {
-                                            <a href="@app.ResumeDownloadUrl" title="@T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume")">@T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume")</a>
+                                            var downloadResumeText = T("Plugins.Misc.AIInterview.Employer.Applications.DownloadResume").Text;
+                                            <a href="@app.ResumeDownloadUrl"
+                                               class="ai-icon-action ai-resume-download-link"
+                                               aria-label="@($"{downloadResumeText} - {candidateDisplay}")"
+                                               title="@($"{downloadResumeText} - {candidateDisplay}")">
+                                                <i class="fa-solid fa-download" aria-hidden="true"></i>
+                                                <span class="sr-only">@downloadResumeText</span>
+                                            </a>
                                         }
                                         else
                                         {

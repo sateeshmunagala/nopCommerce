@@ -3253,6 +3253,11 @@ body.ai-job-preview-open .item-box {
     min-width: 170px;
 }
 
+.html-aiinterview-employer-applications-page .employer-table .col-resume {
+    width: 92px;
+    min-width: 92px;
+}
+
 .html-aiinterview-employer-applications-page .employer-table .col-message {
     width: 220px;
     min-width: 220px;
@@ -3340,7 +3345,8 @@ body.ai-job-preview-open .item-box {
 
 .html-aiinterview-employer-applications-page .employer-table .col-score,
 .html-aiinterview-employer-applications-page .employer-table .col-attempts,
-.html-aiinterview-employer-applications-page .employer-table .col-report {
+.html-aiinterview-employer-applications-page .employer-table .col-report,
+.html-aiinterview-employer-applications-page .employer-table .col-resume {
     text-align: center;
 }
 
@@ -3349,8 +3355,24 @@ body.ai-job-preview-open .item-box {
     font-variant-numeric: tabular-nums;
 }
 
+.html-aiinterview-employer-applications-page .employer-table .col-resume,
+.html-aiinterview-employer-applications-page .employer-table .col-resume a,
+.html-aiinterview-employer-applications-page .employer-table .col-resume span {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
 .html-aiinterview-employer-applications-page .col-report .ai-view-report-link {
     white-space: nowrap;
+}
+
+.html-aiinterview-employer-applications-page .col-resume .ai-resume-download-link {
+    margin: 0 auto;
+}
+
+.html-aiinterview-employer-applications-page .responsive-data-card-value .ai-resume-download-link {
+    vertical-align: middle;
 }
 
 .html-aiinterview-employer-applications-page .status-form .employer-status-select,

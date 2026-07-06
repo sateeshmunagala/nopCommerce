@@ -1,9 +1,22 @@
 @using Nop.Services.Localization
 @using Nop.Core
+@using System.IO
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Html
 @inject ILocalizationService localizationService
 @inject IStoreContext storeContext
 
 @{
+    static string ToHtmlString(IHtmlContent content)
+    {
+        if (content == null)
+            return string.Empty;
+
+        using var writer = new StringWriter();
+        content.WriteTo(writer, HtmlEncoder.Default);
+        return writer.ToString();
+    }
+
     Layout = "_ColumnsOne";
 
     var currentStore = await storeContext.GetCurrentStoreAsync();
@@ -22,6 +35,17 @@
     }
 
     NopHtml.AppendPageCssClassParts("html-home-page");
+
+    var homepageTopContent = ToHtmlString(await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop }));
+    var homepageBeforeCategoriesContent = ToHtmlString(await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories }));
+    var filterContent = ToHtmlString(await Component.InvokeAsync(typeof(FilterLevelValueSearchViewComponent)));
+    var homepageCategoriesContent = ToHtmlString(await Component.InvokeAsync(typeof(HomepageCategoriesViewComponent)));
+    var homepageBeforeProductsContent = ToHtmlString(await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeProducts }));
+    var homepageProductsContent = ToHtmlString(await Component.InvokeAsync(typeof(HomepageProductsViewComponent)));
+    var homepageBeforeBestSellersContent = ToHtmlString(await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeBestSellers }));
+    var homepageBestSellersContent = ToHtmlString(await Component.InvokeAsync(typeof(HomepageBestSellersViewComponent)));
+    var homepageFaqContent = ToHtmlString(await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageFAQ" }));
+    var homepageBottomContent = ToHtmlString(await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBottom }));
 }
 <div class="page home-page jb-home-landing">
     <div class="page-body">
@@ -44,7 +68,10 @@
             </div>
         </section>
 
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop })
+        @if (!string.IsNullOrWhiteSpace(homepageTopContent))
+        {
+            @Html.Raw(homepageTopContent)
+        }
 
         <section class="jb-home-section jb-home-trust-strip" aria-labelledby="jb-home-trust-title">
             <div class="jb-home-section-head">
@@ -60,36 +87,51 @@
             </div>
         </section>
 
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories })
+        @if (!string.IsNullOrWhiteSpace(homepageBeforeCategoriesContent))
+        {
+            @Html.Raw(homepageBeforeCategoriesContent)
+        }
 
-        <div class="jb-home-filters">
-            @await Component.InvokeAsync(typeof(FilterLevelValueSearchViewComponent))
-        </div>
+        @if (!string.IsNullOrWhiteSpace(filterContent))
+        {
+            <div class="jb-home-filters">
+                @Html.Raw(filterContent)
+            </div>
+        }
 
         <div class="jb-home-native-components jb-home-dynamic-components">
-            <section class="jb-home-section jb-home-categories-section" aria-labelledby="jb-home-categories-title">
-                <div class="jb-home-section-head">
-                    <span class="jb-home-eyebrow">Explore roles</span>
-                    <h2 id="jb-home-categories-title">Browse by category</h2>
-                    <p>Explore open roles by skill area, department, or career path.</p>
-                </div>
-                <div class="jb-home-category-component">
-                    @await Component.InvokeAsync(typeof(HomepageCategoriesViewComponent))
-                </div>
-            </section>
+            @if (!string.IsNullOrWhiteSpace(homepageCategoriesContent))
+            {
+                <section class="jb-home-section jb-home-categories-section" aria-labelledby="jb-home-categories-title">
+                    <div class="jb-home-section-head">
+                        <span class="jb-home-eyebrow">Explore roles</span>
+                        <h2 id="jb-home-categories-title">Browse by category</h2>
+                        <p>Explore open roles by skill area, department, or career path.</p>
+                    </div>
+                    <div class="jb-home-category-component">
+                        @Html.Raw(homepageCategoriesContent)
+                    </div>
+                </section>
+            }
 
-            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeProducts })
+            @if (!string.IsNullOrWhiteSpace(homepageBeforeProductsContent))
+            {
+                @Html.Raw(homepageBeforeProductsContent)
+            }
 
-            <section class="jb-home-section jb-home-featured-jobs" aria-labelledby="jb-home-featured-title">
-                <div class="jb-home-section-head">
-                    <span class="jb-home-eyebrow">Featured jobs</span>
-                    <h2 id="jb-home-featured-title">Fresh roles for your next move</h2>
-                    <p>Explore current openings where skill, preparation, and interview readiness matter.</p>
-                </div>
-                <div class="jb-home-products-component">
-                    @await Component.InvokeAsync(typeof(HomepageProductsViewComponent))
-                </div>
-            </section>
+            @if (!string.IsNullOrWhiteSpace(homepageProductsContent))
+            {
+                <section class="jb-home-section jb-home-featured-jobs" aria-labelledby="jb-home-featured-title">
+                    <div class="jb-home-section-head">
+                        <span class="jb-home-eyebrow">Featured jobs</span>
+                        <h2 id="jb-home-featured-title">Fresh roles for your next move</h2>
+                        <p>Explore current openings where skill, preparation, and interview readiness matter.</p>
+                    </div>
+                    <div class="jb-home-products-component">
+                        @Html.Raw(homepageProductsContent)
+                    </div>
+                </section>
+            }
 
             <section class="jb-home-section jb-home-feature-section" aria-labelledby="jb-home-features-title">
                 <div class="jb-home-section-head">
@@ -146,16 +188,25 @@
                 </div>
             </section>
 
-            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeBestSellers })
+            @if (!string.IsNullOrWhiteSpace(homepageBeforeBestSellersContent))
+            {
+                @Html.Raw(homepageBeforeBestSellersContent)
+            }
 
-            <div class="jb-home-bestsellers-component">
-                @await Component.InvokeAsync(typeof(HomepageBestSellersViewComponent))
+            @if (!string.IsNullOrWhiteSpace(homepageBestSellersContent))
+            {
+                <div class="jb-home-bestsellers-component">
+                    @Html.Raw(homepageBestSellersContent)
+                </div>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(homepageFaqContent))
+        {
+            <div class="jb-home-topic-faq">
+                @Html.Raw(homepageFaqContent)
             </div>
-        </div>
-
-        <div class="jb-home-topic-faq">
-            @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "HomepageFAQ" })
-        </div>
+        }
 
         <section class="jb-home-section jb-home-final-cta" aria-labelledby="jb-home-final-title">
             <div>
@@ -169,6 +220,9 @@
             </div>
         </section>
 
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBottom })
+        @if (!string.IsNullOrWhiteSpace(homepageBottomContent))
+        {
+            @Html.Raw(homepageBottomContent)
+        }
     </div>
 </div>
