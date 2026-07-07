@@ -9,7 +9,7 @@
         return userDateTime.ToString("g");
     }
 
-    async Task<string> FormatUtcDateTimeAsync(DateTime? utcDateTime)
+    async Task<string> FormatNullableUtcDateTimeAsync(DateTime? utcDateTime)
     {
         if (!utcDateTime.HasValue)
             return "-";
@@ -92,7 +92,7 @@
         </div>
         <div class="ai-report-stat">
             <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Date")</div>
-            <div class="ai-report-stat-value is-muted">@(await FormatUtcDateTimeAsync(Model.ReportDateUtc))</div>
+            <div class="ai-report-stat-value is-muted">@(await FormatNullableUtcDateTimeAsync(Model.ReportDateUtc))</div>
         </div>
         <div class="ai-report-stat">
             <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Questions")</div>
@@ -158,7 +158,7 @@
                     <span><strong>@T("Plugins.Misc.AIInterview.Report.Asked"):</strong> @(await FormatUtcDateTimeAsync(turn.AskedOnUtc))</span>
                     @if (turn.AnsweredOnUtc.HasValue)
                     {
-                        <span><strong>@T("Plugins.Misc.AIInterview.Report.Answered"):</strong> @(await FormatUtcDateTimeAsync(turn.AnsweredOnUtc))</span>
+                        <span><strong>@T("Plugins.Misc.AIInterview.Report.Answered"):</strong> @(await FormatNullableUtcDateTimeAsync(turn.AnsweredOnUtc))</span>
                     }
                 </div>
             </div>
