@@ -9996,7 +9996,10 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     .jb-pricing-card-badge {
         position: static;
         justify-self: start;
-        margin-bottom: 4px;
+        margin-bottom: 8px;
+        padding: 8px 14px;
+        font-size: 0.92rem;
+        letter-spacing: 0.1em;
     }
 
     .jb-pricing-card-description {
