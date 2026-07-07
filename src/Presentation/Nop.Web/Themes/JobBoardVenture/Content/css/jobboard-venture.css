@@ -9280,8 +9280,13 @@ body.jb-filter-panel-open .product-filters {
     align-items: start;
     padding: 10px 12px;
     min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
+/* AI interview job cards sit inside item-box wrappers on listing pages, so suppress the inner card chrome to avoid double borders. */
 .html-category-page .product-item.ai-job-product-card .ai-job-card-media,
 .html-search-page .product-item.ai-job-product-card .ai-job-card-media,
 .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-media {
