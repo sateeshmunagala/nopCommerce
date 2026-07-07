@@ -2520,6 +2520,8 @@ body.jb-search-open .jb-drawer-overlay {
     border: 0;
     background: transparent;
     box-shadow: none;
+    /* Temporary fix: hide the follow-us footer block while investigating extra footer separators. */
+    visibility: hidden;
 }
 
 .social {
