@@ -2209,6 +2209,19 @@ body.ai-job-preview-open .item-box {
     font-weight: 700;
 }
 
+.runtime-header-status {
+    min-height: 0;
+    padding: 10px 12px;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.runtime-header-status.message-success {
+    color: #166534;
+}
+
 .runtime-progress {
     height: 6px;
     border-radius: 999px;
@@ -3193,7 +3206,7 @@ body.ai-job-preview-open .item-box {
 
 .practice-start-form {
     display: grid;
-    gap: 14px;
+    gap: 8px;
 }
 
 .practice-start-form label {
@@ -3246,8 +3259,8 @@ body.ai-job-preview-open .item-box {
 
 .practice-shell .job-hero {
     align-items: start;
-    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 400px);
-    gap: 32px;
+    grid-template-columns: minmax(0, 1.2fr) minmax(384px, 480px);
+    gap: 10px;
     padding: 30px;
 }
 
@@ -3317,30 +3330,30 @@ body.ai-job-preview-open .item-box {
 
 .practice-start-panel .job-ai-grid {
     display: grid;
-    gap: 18px;
+    gap: 2px;
 }
 
 .practice-start-panel .job-ai-lead {
     color: var(--job-muted);
-    font-size: 16px;
-    line-height: 1.65;
+    font-size: 10px;
+    line-height: 1.4;
 }
 
 .practice-start-panel .job-ai-card {
-    padding: 22px;
+    padding: 10px;
     border-radius: 8px;
 }
 
 .practice-start-form .attributes {
     display: grid;
-    gap: 14px;
+    gap: 8px;
     margin: 0;
     min-width: 0;
 }
 
 .practice-start-form .attributes dl {
     display: grid;
-    gap: 14px;
+    gap: 8px;
     margin: 0;
     min-width: 0;
 }
@@ -3354,22 +3367,20 @@ body.ai-job-preview-open .item-box {
 
 .practice-start-form .attributes dt {
     display: grid;
-    gap: 6px;
+    gap: 2px;
 }
 
 .practice-start-form .attributes .text-prompt,
 .practice-start-form label {
     color: var(--job-text);
-    font-size: 13px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
 
 .practice-start-form .attributes .attribute-description {
-    color: var(--job-muted);
-    font-size: 14px;
-    line-height: 1.55;
+    display: none;
 }
 
 .practice-start-form .attributes select,
@@ -3379,7 +3390,7 @@ body.ai-job-preview-open .item-box {
 .practice-start-form textarea {
     display: block;
     box-sizing: border-box;
-    min-height: 50px;
+    min-height: 36px;
     padding: 10px 12px;
     border: 1px solid #d6dde4;
     border-radius: 6px;
@@ -3396,8 +3407,9 @@ body.ai-job-preview-open .item-box {
 
 .practice-start-form .attributes select,
 .practice-start-form select {
-    height: 46px;
-    padding-right: 36px;
+    height: 32px;
+    min-height: 32px;
+    padding: 6px 30px 6px 10px;
 }
 
 /* Keep mock-practice controls inside the start card on narrow screens. */
@@ -3453,8 +3465,8 @@ body.ai-job-preview-open .item-box {
 .practice-start-form .job-ai-note {
     margin: 0;
     color: var(--job-muted);
-    font-size: 14px;
-    line-height: 1.65;
+    font-size: 10px;
+    line-height: 1.4;
 }
 
 .practice-start-form .job-ai-actions {

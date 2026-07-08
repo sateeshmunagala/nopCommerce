@@ -104,13 +104,8 @@
             <section class="job-hero">
                 <div class="job-hero-copy">
                     <p class="job-kicker">Generic AI interview practice</p>
-                    <h1>@Model.Name</h1>
+                    <h3>@Model.Name</h3>
                     <div class="job-lead">@Html.Raw(summary)</div>
-                    <div class="job-highlight-pills">
-                        <span>No job application</span>
-                        <span>No company sponsor</span>
-                        <span>Practice only</span>
-                    </div>
                     <div class="job-grid">
                         <div class="job-card">
                             <strong>Session length</strong>
@@ -135,7 +130,6 @@
                     <div class="job-ai-grid">
                         <div>
                             <h2>Start practice</h2>
-                            <p class="job-ai-lead">Select how hard the interview should be. Then choose one skill area or upload a resume so the AI can focus the mock interview.</p>
                         </div>
 
                         @if (!isAuthenticated)

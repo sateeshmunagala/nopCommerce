@@ -33,6 +33,8 @@
             </div>
         </div>
 
+        <div id="runtime-header-status" class="runtime-header-status runtime-status runtime-js-hidden" aria-live="polite"></div>
+
         @if (Model.QuestionCount > 0)
         {
             <div class="runtime-question-count" aria-label="Interview question count">
@@ -198,6 +200,7 @@
         const transcriptBody = document.getElementById('transcript-body');
         const conversation = document.getElementById('conversation');
         const progressBar = document.getElementById('runtime-progress-bar');
+        const headerStatusBox = document.getElementById('runtime-header-status');
         const video = document.getElementById('runtime-video');
         const cameraPlaceholder = document.getElementById('camera-placeholder');
         const recordingStatus = document.getElementById('recording-status');
@@ -247,7 +250,10 @@
         let guidelinesAcknowledgedAt = null;
         let completedRedirectTimer = null;
         let completedCountdown = null;
+        let completedCleanupTimer = null;
         const autoSubmitDelaySeconds = 10;
+        const completedRedirectDelaySeconds = 15;
+        const completedMediaGraceDelaySeconds = 10;
 
         let countdownTimer = null;
         let countdownValue = autoSubmitDelaySeconds;
@@ -449,8 +455,10 @@
         const clearCompletedRedirectState = () => {
             clearInterval(completedCountdown);
             clearTimeout(completedRedirectTimer);
+            clearTimeout(completedCleanupTimer);
             completedCountdown = null;
             completedRedirectTimer = null;
+            completedCleanupTimer = null;
         };
 
         const clearActiveInterviewTimers = () => {
@@ -561,6 +569,17 @@
             const isVisible = !!message && (isError || runtimeStoppedOrCompleted || stopInProgress);
             statusBox.className = `runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
         };
+
+        const setHeaderStatus = (message, isError = false) => {
+            if (!headerStatusBox)
+                return;
+
+            headerStatusBox.textContent = message || '';
+            headerStatusBox.className = `runtime-header-status runtime-status ${message ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
+        };
+
+        const buildCompletedRedirectMessage = (remainingSeconds) =>
+            `Interview completed. Please wait, creating the report. Redirecting to report in ${remainingSeconds}s.`;
 
         const setRecordingStatus = (message, isError) => {
             if (!recordingStatus)
@@ -948,16 +967,13 @@
                 resetTimers();
         };
 
-        const setCompletedState = async (result) => {
-            runtimeStoppedOrCompleted = true;
-            stopInProgress = false;
+        const finalizeCompletedState = async (result) => {
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
-            const completionText = 'Interview completed. Redirecting to report...';
-            clearActiveInterviewTimers();
+            const completionText = 'Interview completed. Please wait, creating the report.';
+
             isSpeakingOrSubmitting = true;
             await stopRecording(false);
             recordingEnabled = false;
-            interviewStarted = false;
             stopScreenShare();
             if (recordingButton)
                 recordingButton.disabled = true;
@@ -978,29 +994,59 @@
             questionBox.textContent = completionText;
             messageBox.textContent = completionText;
             messageBox.classList.add('runtime-js-hidden');
-            completionBox.classList.remove('runtime-js-hidden');
-            completionBox.style.display = '';
-            completionBox.textContent = reportUrl
-                ? 'Interview completed. Redirecting to report shortly.'
-                : completionText;
+            completionBox.classList.add('runtime-js-hidden');
+            completionBox.style.display = 'none';
             updateAnswerInputState();
-            submitButton.disabled = true;
             updateStartButtonState();
+            updateAuxiliaryControlsState();
             if (reportUrl) {
                 actionsPanel?.classList.remove('runtime-js-hidden');
                 reportButton.style.display = 'inline-flex';
                 reportButton.onclick = () => window.location.href = reportUrl;
-                let remaining = 5;
-                clearCompletedRedirectState();
+            } else {
+                actionsPanel?.classList.add('runtime-js-hidden');
+                reportButton.style.display = 'none';
+            }
+        };
+
+        const setCompletedState = async (result) => {
+            runtimeStoppedOrCompleted = true;
+            stopInProgress = false;
+            const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
+            clearActiveInterviewTimers();
+            interviewStarted = false;
+            answerNeedsEditAfterFailure = false;
+            setStatus('', false);
+            messageBox.classList.add('runtime-js-hidden');
+            completionBox.classList.add('runtime-js-hidden');
+            completionBox.style.display = 'none';
+            updateAnswerInputState();
+            submitButton.disabled = true;
+            updateStartButtonState();
+            setHeaderStatus(buildCompletedRedirectMessage(completedRedirectDelaySeconds), false);
+            clearCompletedRedirectState();
+            completedCleanupTimer = setTimeout(async () => {
+                await finalizeCompletedState(result);
+            }, completedMediaGraceDelaySeconds * 1000);
+            if (reportUrl) {
+                actionsPanel?.classList.remove('runtime-js-hidden');
+                reportButton.style.display = 'inline-flex';
+                reportButton.onclick = () => window.location.href = reportUrl;
+                let remaining = completedRedirectDelaySeconds;
                 completedCountdown = setInterval(() => {
-                    if (remaining <= 0) return;
-                    completionBox.textContent = `Interview completed. Redirecting to report in ${remaining}s.`;
                     remaining -= 1;
+                    if (remaining < 0)
+                        return;
+
+                    setHeaderStatus(buildCompletedRedirectMessage(remaining), false);
+                    if (remaining <= 0)
+                        clearInterval(completedCountdown);
                 }, 1000);
                 completedRedirectTimer = setTimeout(() => {
                     clearInterval(completedCountdown);
+                    setHeaderStatus('', false);
                     window.location.href = reportUrl;
-                }, 5000);
+                }, completedRedirectDelaySeconds * 1000);
             } else {
                 actionsPanel?.classList.add('runtime-js-hidden');
                 reportButton.style.display = 'none';
@@ -1861,23 +1907,21 @@
                 }, turns.length));
             }
 
-            questionBox.textContent = isTerminated ? 'Interview completed. Redirecting to report...' : resultQuestion;
+            questionBox.textContent = isTerminated ? currentQuestionText() : resultQuestion;
             if (!isTerminated && resultQuestion) logActivity('Question shown: ' + resultQuestion);
             if (!isTerminated && resultQuestion)
                 interviewUnavailable = false;
-            messageBox.textContent = isTerminated ? 'Interview completed. Redirecting to report...' : 'Please answer the next question.';
+            messageBox.textContent = isTerminated ? '' : 'Please answer the next question.';
             messageBox.classList.add('runtime-js-hidden');
             if (!isTerminated)
                 messageBox.textContent = 'Please answer the next question.';
-            setStatus(isTerminated ? 'Interview completed. Redirecting to report...' : (resultMessage || 'Answer saved.'), false);
+            setStatus(isTerminated ? '' : (resultMessage || 'Answer saved.'), false);
             answerBox.value = '';
             renderTranscript();
             updateSubmitAvailability();
             resetSubmitButtonText();
 
             if (isTerminated) {
-                if (mediaRecorder && recordingEnabled)
-                    await stopRecording(true);
                 await setCompletedState(result);
                 return;
             }

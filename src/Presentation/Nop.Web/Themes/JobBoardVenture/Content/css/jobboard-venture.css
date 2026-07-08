@@ -2439,10 +2439,10 @@ body.jb-search-open .jb-drawer-overlay {
 }
 
 .footer {
-    margin-top: 64px;
+    margin-top: 10px;
     padding: 0 20px 28px;
     background: var(--jb-surface);
-    border-top: 1px solid var(--jb-border);
+    border-top: 0;
 }
 
 .footer-upper,
@@ -2453,10 +2453,10 @@ body.jb-search-open .jb-drawer-overlay {
 }
 
 .footer-upper {
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
-    padding: 38px 0 26px;
+    /* Temporary hard collapse: the upper footer area is intentionally hidden to remove the large empty gap. */
+    display: none;
+    padding: 0;
+    gap: 0;
 }
 
 .footer-main {
@@ -2520,8 +2520,8 @@ body.jb-search-open .jb-drawer-overlay {
     border: 0;
     background: transparent;
     box-shadow: none;
-    /* Temporary fix: hide the follow-us footer block while investigating extra footer separators. */
-    visibility: hidden;
+    /* Temporary fix: remove the follow-us footer block entirely so it doesn't reserve blank space. */
+    display: none;
 }
 
 .social {
@@ -2578,11 +2578,11 @@ body.jb-search-open .jb-drawer-overlay {
 }
 
 .footer-lower {
-    display: flex;
+    /*display: flex;*/
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    padding: 26px 0 0;
+    padding: 10px 0 0;
     border-top: 1px dashed #cfcfcf;
     text-align: center;
 }
@@ -10748,4 +10748,23 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     .html-registration-page .registration-page .inputs:not(.accept-consent) > .please-wait {
         grid-column: 1 / -1;
     }
+}
+
+/* Temporary hard override: keep only a single separator above copyright and remove the empty footer gap on every viewport. */
+.footer {
+    margin-top: 10px !important;
+    border-top: 0 !important;
+}
+
+.footer-upper {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    min-height: 0 !important;
+}
+
+.footer-lower {
+    padding-top: 10px !important;
+    border-top: 1px dashed #cfcfcf !important;
 }

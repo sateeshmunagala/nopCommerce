@@ -492,11 +492,12 @@ public class MockAiInterviewController : BasePluginController
         ISet<int> ownedResumeDownloadIds)
     {
         var validationErrors = new List<string>();
+        var isDifficultyMissing = string.IsNullOrWhiteSpace(selectionResult?.Difficulty);
 
         if (selectionResult?.Errors?.Count > 0)
             validationErrors.AddRange(selectionResult.Errors.Where(error => !string.IsNullOrWhiteSpace(error)));
 
-        if (string.IsNullOrWhiteSpace(selectionResult?.Difficulty))
+        if (isDifficultyMissing)
         {
             validationErrors.Add(await GetLocalizedTextAsync(
                 "Plugins.Misc.AIInterview.MockPractice.DifficultyRequired",
@@ -507,7 +508,8 @@ public class MockAiInterviewController : BasePluginController
             ownedResumeDownloadIds != null &&
             ownedResumeDownloadIds.Contains(selectedResumeDownloadId);
         var hasResumeSource = resumeFile != null || hasOwnedSelectedResume || reusableSession?.ResumeDownloadId > 0;
-        if (!(selectionResult?.HasPracticeSkill ?? false) && !hasResumeSource)
+        var isSkillOrResumeMissing = !(selectionResult?.HasPracticeSkill ?? false) && !hasResumeSource;
+        if (isSkillOrResumeMissing)
         {
             validationErrors.Add(await GetLocalizedTextAsync(
                 "Plugins.Misc.AIInterview.MockPractice.SkillOrResumeRequired",
@@ -516,6 +518,13 @@ public class MockAiInterviewController : BasePluginController
 
         if (validationErrors.Count == 0)
             return (null, null);
+
+        if (isDifficultyMissing && isSkillOrResumeMissing)
+        {
+            return (
+                "Plugins.Misc.AIInterview.MockPractice.SelectionRequired",
+                "We couldn't start your mock interview. Please select a difficulty level, a skill, or upload your resume before continuing.");
+        }
 
         var distinctMessage = string.Join(" ", validationErrors.Distinct(StringComparer.OrdinalIgnoreCase));
         return ("Plugins.Misc.AIInterview.MockPractice.StartValidationFailed", distinctMessage);

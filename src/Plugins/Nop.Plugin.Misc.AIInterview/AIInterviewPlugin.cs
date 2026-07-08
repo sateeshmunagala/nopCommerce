@@ -980,6 +980,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.Unavailable"] = "The interview service is temporarily unavailable. Please try again.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MockPractice.DifficultyRequired"] = "Please select a practice difficulty.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MockPractice.SkillOrResumeRequired"] = "Select a practice skill or provide a resume to start the practice interview.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MockPractice.SelectionRequired"] = "We couldn't start your mock interview. Please select a difficulty level, a skill, or upload your resume before continuing.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MockPractice.StartValidationFailed"] = "Please review the practice inputs and try again.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.NextQuestion"] = "Next question ready.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.SponsorMessage"] = "This interview is company-sponsored.",
