@@ -24,7 +24,13 @@
                 </button>
                 <div class="runtime-title-block">
                     <p class="runtime-eyebrow">AI Interview Room</p>
-                    <h1>@Model.ProductName</h1>
+                    <div class="runtime-title-line">
+                        <h1>@Model.ProductName</h1>
+                        @if (Model.QuestionCount > 0)
+                        {
+                            <span id="runtime-question-counter" class="runtime-question-counter runtime-js-hidden" aria-label="Interview question count"></span>
+                        }
+                    </div>
                 </div>
             </div>
             <div class="runtime-meta">
@@ -34,14 +40,6 @@
         </div>
 
         <div id="runtime-header-status" class="runtime-header-status runtime-status runtime-js-hidden" aria-live="polite"></div>
-
-        @if (Model.QuestionCount > 0)
-        {
-            <div class="runtime-question-count" aria-label="Interview question count">
-                <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
-                <span>@Model.QuestionCount @(Model.QuestionCount == 1 ? "question" : "questions")</span>
-            </div>
-        }
 
         <div class="runtime-progress"><span id="runtime-progress-bar"></span></div>
 
@@ -200,6 +198,7 @@
         const transcriptBody = document.getElementById('transcript-body');
         const conversation = document.getElementById('conversation');
         const progressBar = document.getElementById('runtime-progress-bar');
+        const questionCounter = document.getElementById('runtime-question-counter');
         const headerStatusBox = document.getElementById('runtime-header-status');
         const video = document.getElementById('runtime-video');
         const cameraPlaceholder = document.getElementById('camera-placeholder');
@@ -1186,8 +1185,16 @@
             });
 
             const answered = normalizedTurns.filter(turn => turn?.answerText).length;
+            const asked = normalizedTurns.filter(turn => (turn?.questionText || '').trim()).length;
+            const activeQuestionNumber = asked > 0
+                ? Math.min(totalQuestions, asked)
+                : (interviewStarted && hasActiveQuestion() ? 1 : 0);
             const progress = Math.min(100, Math.max(0, (answered / totalQuestions) * 100));
             progressBar.style.width = `${progress}%`;
+            if (questionCounter) {
+                questionCounter.textContent = activeQuestionNumber > 0 ? `Question ${activeQuestionNumber}/${totalQuestions}` : '';
+                questionCounter.classList.toggle('runtime-js-hidden', activeQuestionNumber <= 0);
+            }
             conversation.scrollTop = conversation.scrollHeight;
             transcriptBody.scrollTop = transcriptBody.scrollHeight;
         };

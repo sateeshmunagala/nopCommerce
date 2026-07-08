@@ -2113,7 +2113,7 @@ body.ai-job-preview-open .item-box {
     border-radius: 8px;
     background: #f8fafc;
     display: grid;
-    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     gap: 14px;
     box-sizing: border-box;
     overflow: hidden;
@@ -2144,6 +2144,13 @@ body.ai-job-preview-open .item-box {
 .runtime-title-block {
     display: grid;
     gap: 3px;
+}
+
+.runtime-title-line {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .runtime-eyebrow {
@@ -2194,19 +2201,17 @@ body.ai-job-preview-open .item-box {
     min-width: 148px;
 }
 
-.runtime-question-count {
+.runtime-question-counter {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    width: fit-content;
     margin: 0;
-    padding: 7px 10px;
-    border: 1px solid #d0d7e2;
-    border-radius: 6px;
-    background: #ffffff;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: #374151;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
+    line-height: 1.2;
 }
 
 .runtime-header-status {
@@ -2883,6 +2888,10 @@ body.ai-job-preview-open .item-box {
 
     .runtime-topbar h1 {
         font-size: 18px;
+    }
+
+    .runtime-question-counter {
+        font-size: 13px;
     }
 
     .runtime-video {
