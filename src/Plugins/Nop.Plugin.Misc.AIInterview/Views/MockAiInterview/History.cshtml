@@ -15,23 +15,21 @@
     NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-history-page");
 
-    var interviewText = T("Plugins.Misc.AIInterview.Common.Interview").Text;
+    var practiceText = "Mock Practice";
     var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
     var shareText = T("Plugins.Misc.AIInterview.Report.Share").Text;
     var openSharePageText = T("Plugins.Misc.AIInterview.Report.OpenSharePage").Text;
-    var jobReportTitleFormat = T("Plugins.Misc.AIInterview.Report.JobReportTitle").Text;
-    var jobRecordingTitleFormat = T("Plugins.Misc.AIInterview.Report.JobRecordingTitle").Text;
     var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
 }
 
 @section left
 {
-    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MyApplicationsNavigationTab })
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MockHistoryNavigationTab })
 }
 
 <div class="page mock-history">
     <div class="page-title">
-        <h1>@T("Plugins.Misc.AIInterview.History.Title")</h1>
+        <h1>Mock practice history</h1>
     </div>
     <div class="page-body">
         @if (Model.Any())
@@ -40,21 +38,21 @@
                 <table class="history-table">
                     <thead>
                         <tr>
-                            <th>@interviewText</th>
+                            <th>@practiceText</th>
                             <th>@T("Plugins.Misc.AIInterview.History.Date")</th>
                             <th>@T("Plugins.Misc.AIInterview.History.Status")</th>
                             <th>@T("Plugins.Misc.AIInterview.History.Score")</th>
-                            <th>@T("Plugins.Misc.AIInterview.Report.Title")</th>
+                            <th>Practice Report</th>
                             <th>@T("Plugins.Misc.AIInterview.Report.Recording")</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var session in Model)
                         {
-                            var reportTitle = string.Format(jobReportTitleFormat, session.JobTitle);
-                            var recordingTitle = string.Format(jobRecordingTitleFormat, session.JobTitle);
-                            var reportActionLabel = $"{viewReportText} - {session.JobTitle}";
-                            var openRecordingLabel = $"{T("Plugins.Misc.AIInterview.Report.OpenRecording").Text} - {session.JobTitle}";
+                            var reportTitle = $"Practice report - {session.JobTitle}";
+                            var recordingTitle = $"Practice recording - {session.JobTitle}";
+                            var reportActionLabel = $"Open practice report - {session.JobTitle}";
+                            var openRecordingLabel = $"Open practice recording - {session.JobTitle}";
                             var copyShareLabel = $"{copyShareLinkText} - {session.JobTitle}";
                             var shareActionLabel = $"{shareText} - {session.JobTitle}";
                             <tr>
@@ -117,13 +115,13 @@
                 </table>
             </div>
 
-            <div class="responsive-data-list history-mobile-list" aria-label="@T("Plugins.Misc.AIInterview.History.Title")">
+            <div class="responsive-data-list history-mobile-list" aria-label="Mock practice history">
                 @foreach (var session in Model)
                 {
-                    var reportTitle = string.Format(jobReportTitleFormat, session.JobTitle);
-                    var recordingTitle = string.Format(jobRecordingTitleFormat, session.JobTitle);
-                    var reportActionLabel = $"{viewReportText} - {session.JobTitle}";
-                    var openRecordingLabel = $"{T("Plugins.Misc.AIInterview.Report.OpenRecording").Text} - {session.JobTitle}";
+                    var reportTitle = $"Practice report - {session.JobTitle}";
+                    var recordingTitle = $"Practice recording - {session.JobTitle}";
+                    var reportActionLabel = $"Open practice report - {session.JobTitle}";
+                    var openRecordingLabel = $"Open practice recording - {session.JobTitle}";
                     var copyShareLabel = $"{copyShareLinkText} - {session.JobTitle}";
                     var shareActionLabel = $"{shareText} - {session.JobTitle}";
                     <article class="responsive-data-card">

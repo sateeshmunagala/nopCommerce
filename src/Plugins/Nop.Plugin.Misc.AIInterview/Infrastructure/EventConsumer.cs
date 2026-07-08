@@ -42,6 +42,18 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     });
                 }
 
+                if (!navigationModel.CustomerNavigationItems.Any(item =>
+                    string.Equals(item.RouteName, AIInterviewDefaults.MockHistoryRouteName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                    {
+                        RouteName = AIInterviewDefaults.MockHistoryRouteName,
+                        Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.History.MockTitle"),
+                        Tab = AIInterviewDefaults.MockHistoryNavigationTab,
+                        ItemClass = "customer-mock-practice-history"
+                    });
+                }
+
                 var customer = await _workContext.GetCurrentCustomerAsync();
                 if (customer != null && customer.VendorId > 0)
                 {

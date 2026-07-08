@@ -88,4 +88,24 @@ public class UpgradeTests
         Assert.That(migrationText, Does.Contain("Index(\"IX_AIInterview_CreditPurchaseGrant_OrderItemId\").Exists()"));
         Assert.That(migrationText, Does.Contain("Delete.Index(\"IX_AIInterview_CreditPurchaseGrant_OrderItemId\")"));
     }
+
+    [Test]
+    public void InterviewSessionMockPracticeMigration_Guards_All_New_Columns()
+    {
+        var migrationText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Data", "InterviewSessionMockPracticeMigration.cs"));
+
+        foreach (var columnName in new[]
+                 {
+                     "InterviewType",
+                     "SourceProductId",
+                     "ResumeDownloadId",
+                     "ResumeProfileJson",
+                     "ResumeProfileGeneratedOnUtc",
+                     "ResumeProfileError",
+                     "SelectedProductAttributesJson"
+                 })
+        {
+            Assert.That(migrationText, Does.Contain($"nameof(InterviewSession.{columnName})"), $"Missing migration guard for {columnName}.");
+        }
+    }
 }

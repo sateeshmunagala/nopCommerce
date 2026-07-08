@@ -191,6 +191,48 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task MockPractice_History_Shows_Only_MockPractice_Sessions()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>
+        {
+            new()
+            {
+                Id = 11,
+                CustomerId = customer.Id,
+                ProductId = 50,
+                SourceProductId = 50,
+                InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+                CreatedOnUtc = DateTime.UtcNow.AddDays(-1),
+                CompletedOnUtc = DateTime.UtcNow,
+                ReportData = "Practice report"
+            },
+            new()
+            {
+                Id = 12,
+                CustomerId = customer.Id,
+                ProductId = 51,
+                JobApplicationId = 9,
+                InterviewType = AIInterviewDefaults.InterviewTypeJob,
+                CreatedOnUtc = DateTime.UtcNow.AddDays(-2),
+                CompletedOnUtc = DateTime.UtcNow,
+                ReportData = "Job report"
+            }
+        });
+        _productService.Setup(x => x.GetProductByIdAsync(50)).ReturnsAsync(new Product { Id = 50, Name = "Practice Product" });
+        _productService.Setup(x => x.GetProductByIdAsync(51)).ReturnsAsync(new Product { Id = 51, Name = "Job Product" });
+
+        var result = await _runtimeController.History();
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = ((ViewResult)result).Model as IList<InterviewHistoryItemModel>;
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.Count, Is.EqualTo(1));
+        Assert.That(model[0].JobTitle, Is.EqualTo("Practice Product"));
+    }
+
+    [Test]
     public async Task Runtime_InvalidToken_ReturnsLocalizedError()
     {
         var result = await _runtimeController.SubmitAnswer(null, "Answer");

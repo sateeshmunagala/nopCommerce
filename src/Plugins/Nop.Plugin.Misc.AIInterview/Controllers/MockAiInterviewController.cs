@@ -32,6 +32,7 @@ public class MockAiInterviewController : BasePluginController
 {
     private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, int ValueId, string Value);
     private sealed record SelectedProductAttributesSnapshot(IList<SelectedProductAttributeValueSnapshot> Attributes);
+    private sealed record MockPracticeSelectionResult(string SelectedProductAttributesJson, string Difficulty, bool HasPracticeSkill, IList<string> Errors);
 
     private readonly IInterviewSessionService _interviewSessionService;
     private readonly ILocalizationService _localizationService;
@@ -300,19 +301,40 @@ public class MockAiInterviewController : BasePluginController
             string.Equals(productTemplate.Name, AIInterviewDefaults.MockPracticeProductTemplateName, StringComparison.OrdinalIgnoreCase);
     }
 
-    protected virtual async Task<string> SerializeSelectedProductAttributesAsync(Product product, IFormCollection form)
+    protected virtual string NormalizeInterviewType(InterviewSession session)
+    {
+        if (!string.IsNullOrWhiteSpace(session?.InterviewType))
+            return session.InterviewType;
+
+        return session?.JobApplicationId > 0 || session?.ProductId > 0
+            ? AIInterviewDefaults.InterviewTypeJob
+            : string.Empty;
+    }
+
+    protected virtual bool MatchesStartInterviewType(InterviewSession session, bool isMockPracticeProduct)
+    {
+        var normalizedInterviewType = NormalizeInterviewType(session);
+        return isMockPracticeProduct
+            ? string.Equals(normalizedInterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase)
+            : !string.Equals(normalizedInterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<MockPracticeSelectionResult> SerializeSelectedProductAttributesAsync(Product product, IFormCollection form)
     {
         if (product == null || form == null || _productAttributeParser == null || _productAttributeService == null)
-            return null;
+            return new MockPracticeSelectionResult(null, null, false, new List<string>());
 
         var errors = new List<string>();
         var attributesXml = await _productAttributeParser.ParseProductAttributesAsync(product, form, errors);
+        if (errors.Count > 0)
+            return new MockPracticeSelectionResult(null, null, false, errors);
+
         if (string.IsNullOrWhiteSpace(attributesXml))
-            return null;
+            return new MockPracticeSelectionResult(null, null, false, new List<string>());
 
         var values = await _productAttributeParser.ParseProductAttributeValuesAsync(attributesXml);
         if (values == null || values.Count == 0)
-            return null;
+            return new MockPracticeSelectionResult(null, null, false, new List<string>());
 
         var snapshots = new List<SelectedProductAttributeValueSnapshot>();
         foreach (var value in values.Where(value => value != null))
@@ -333,9 +355,19 @@ public class MockAiInterviewController : BasePluginController
         }
 
         if (snapshots.Count == 0)
-            return null;
+            return new MockPracticeSelectionResult(null, null, false, new List<string>());
 
-        return JsonSerializer.Serialize(new SelectedProductAttributesSnapshot(snapshots), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var difficulty = snapshots.FirstOrDefault(attribute =>
+            string.Equals(attribute.AttributeName, "Practice Difficulty", StringComparison.OrdinalIgnoreCase))?.Value;
+        var hasPracticeSkill = snapshots.Any(attribute =>
+            string.Equals(attribute.AttributeName, "Practice Skill", StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(attribute.Value));
+
+        return new MockPracticeSelectionResult(
+            JsonSerializer.Serialize(new SelectedProductAttributesSnapshot(snapshots), new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            difficulty,
+            hasPracticeSkill,
+            new List<string>());
     }
 
     protected virtual string ResolveMockPracticeDifficulty(string selectedProductAttributesJson, string difficultyFallback)
@@ -356,6 +388,43 @@ public class MockAiInterviewController : BasePluginController
         }
 
         return !string.IsNullOrWhiteSpace(difficultyFallback) ? difficultyFallback : AIInterviewDefaults.DefaultInterviewDifficulty;
+    }
+
+    private async Task<(string ResourceKey, string ErrorMessage)> ValidateMockPracticeStartAsync(
+        MockPracticeSelectionResult selectionResult,
+        IFormFile resumeFile,
+        InterviewSession reusableSession,
+        int selectedResumeDownloadId,
+        ISet<int> ownedResumeDownloadIds)
+    {
+        var validationErrors = new List<string>();
+
+        if (selectionResult?.Errors?.Count > 0)
+            validationErrors.AddRange(selectionResult.Errors.Where(error => !string.IsNullOrWhiteSpace(error)));
+
+        if (string.IsNullOrWhiteSpace(selectionResult?.Difficulty))
+        {
+            validationErrors.Add(await GetLocalizedTextAsync(
+                "Plugins.Misc.AIInterview.MockPractice.DifficultyRequired",
+                "Please select a practice difficulty."));
+        }
+
+        var hasOwnedSelectedResume = selectedResumeDownloadId > 0 &&
+            ownedResumeDownloadIds != null &&
+            ownedResumeDownloadIds.Contains(selectedResumeDownloadId);
+        var hasResumeSource = resumeFile != null || hasOwnedSelectedResume || reusableSession?.ResumeDownloadId > 0;
+        if (!(selectionResult?.HasPracticeSkill ?? false) && !hasResumeSource)
+        {
+            validationErrors.Add(await GetLocalizedTextAsync(
+                "Plugins.Misc.AIInterview.MockPractice.SkillOrResumeRequired",
+                "Select a practice skill or provide a resume to start the practice interview."));
+        }
+
+        if (validationErrors.Count == 0)
+            return (null, null);
+
+        var distinctMessage = string.Join(" ", validationErrors.Distinct(StringComparer.OrdinalIgnoreCase));
+        return ("Plugins.Misc.AIInterview.MockPractice.StartValidationFailed", distinctMessage);
     }
 
     protected virtual async Task<(string ResourceKey, string ErrorMessage)> ValidateStartResumePreconditionsAsync(
@@ -596,11 +665,14 @@ public class MockAiInterviewController : BasePluginController
 
         var product = productId > 0 ? await _productService.GetProductByIdAsync(productId) : null;
         var isMockPracticeProduct = await IsMockPracticeProductAsync(product);
+        MockPracticeSelectionResult mockPracticeSelection = null;
         string selectedProductAttributesJson = null;
         if (isMockPracticeProduct)
         {
-            selectedProductAttributesJson = await SerializeSelectedProductAttributesAsync(product, form);
-            difficulty = ResolveMockPracticeDifficulty(selectedProductAttributesJson, !string.IsNullOrWhiteSpace(form["difficulty"]) ? form["difficulty"] : difficulty);
+            mockPracticeSelection = await SerializeSelectedProductAttributesAsync(product, form);
+            selectedProductAttributesJson = mockPracticeSelection.SelectedProductAttributesJson;
+            difficulty = ResolveMockPracticeDifficulty(selectedProductAttributesJson,
+                !string.IsNullOrWhiteSpace(mockPracticeSelection.Difficulty) ? mockPracticeSelection.Difficulty : (!string.IsNullOrWhiteSpace(form["difficulty"]) ? form["difficulty"] : difficulty));
         }
         else if (product != null && _jobInterviewExperienceService != null)
             difficulty = await _jobInterviewExperienceService.ResolveInterviewDifficultyAsync(product, form) ?? AIInterviewDefaults.DefaultInterviewDifficulty;
@@ -621,12 +693,19 @@ public class MockAiInterviewController : BasePluginController
 
         var now = DateTime.UtcNow;
         var reusableSession = customerSessions.FirstOrDefault(s =>
-            s.IsActive &&
-            !s.CompletedOnUtc.HasValue);
+            IsSessionUsable(s, now) &&
+            MatchesStartInterviewType(s, isMockPracticeProduct));
         var requirements = await GetStartRequirementsAsync(productId);
         var resumeValidation = await ValidateStartResumePreconditionsAsync(requirements, existingApplication, resumeFile, reusableSession, selectedResumeDownloadId, ownedResumeDownloadIds);
         if (!string.IsNullOrWhiteSpace(resumeValidation.ErrorMessage))
             return await LocalizedErrorAsync(resumeValidation.ResourceKey, resumeValidation.ErrorMessage);
+
+        if (isMockPracticeProduct)
+        {
+            var mockPracticeValidation = await ValidateMockPracticeStartAsync(mockPracticeSelection, resumeFile, reusableSession, selectedResumeDownloadId, ownedResumeDownloadIds);
+            if (!string.IsNullOrWhiteSpace(mockPracticeValidation.ErrorMessage))
+                return await LocalizedErrorAsync(mockPracticeValidation.ResourceKey, mockPracticeValidation.ErrorMessage);
+        }
 
         if (reusableSession != null)
         {
@@ -1179,10 +1258,13 @@ public class MockAiInterviewController : BasePluginController
         if (customer == null)
             return Challenge();
 
-        var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id);
+        var sessions = ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
+            .Where(session => string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         var model = await Task.WhenAll((sessions ?? new List<InterviewSession>()).Select(async session =>
         {
-            var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+            var sourceProductId = session.SourceProductId > 0 ? session.SourceProductId : session.ProductId;
+            var product = sourceProductId > 0 ? await _productService.GetProductByIdAsync(sourceProductId) : null;
 
             return new InterviewHistoryItemModel
             {

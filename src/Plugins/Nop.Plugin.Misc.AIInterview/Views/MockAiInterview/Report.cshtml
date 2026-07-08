@@ -9,13 +9,13 @@
 
 @section left
 {
-    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MyApplicationsNavigationTab })
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MockHistoryNavigationTab })
 }
 
 <div class="page mock-report">
     <div class="page-title">
         <div class="ai-report-page-head">
-            <h1>@T("Plugins.Misc.AIInterview.Report.Title")</h1>
+            <h1>Practice Report</h1>
             <button type="button"
                     class="button-2 ai-report-back-button"
                     onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href='@Url.RouteUrl(AIInterviewDefaults.MockHistoryRouteName)'; }">

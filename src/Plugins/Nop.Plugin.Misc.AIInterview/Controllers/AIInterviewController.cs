@@ -315,6 +315,9 @@ public class AIInterviewController : BasePluginController
 
     protected static bool SessionMatchesApplication(InterviewSession session, JobApplication application)
     {
+        if (string.Equals(session?.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
+            return false;
+
         return session.JobApplicationId == application.Id ||
             (session.JobApplicationId == 0 && application.ProductId > 0 && session.ProductId == application.ProductId);
     }

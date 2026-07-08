@@ -775,6 +775,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Difficulty.Hard"] = "Hard",
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.Title"] = "Your Interview History",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.MockTitle"] = "Mock Practice History",
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.Date"] = "Date",
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.Status"] = "Status",
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.Score"] = "Score",
@@ -977,6 +978,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.NoCredits.Link"] = "View Pricing",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.ExpiredLink"] = "Your previous interview link expired. Start the interview again from this page.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.Unavailable"] = "The interview service is temporarily unavailable. Please try again.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MockPractice.DifficultyRequired"] = "Please select a practice difficulty.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MockPractice.SkillOrResumeRequired"] = "Select a practice skill or provide a resume to start the practice interview.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MockPractice.StartValidationFailed"] = "Please review the practice inputs and try again.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.NextQuestion"] = "Next question ready.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.SponsorMessage"] = "This interview is company-sponsored.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.Title"] = "Employer Scoreboard",

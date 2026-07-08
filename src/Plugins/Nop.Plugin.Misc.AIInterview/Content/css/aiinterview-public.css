@@ -3209,6 +3209,314 @@ body.ai-job-preview-open .item-box {
     line-height: 1.8;
 }
 
+.practice-details-page {
+    --job-bg: #f4f6f8;
+    --job-card: #ffffff;
+    --job-border: #d7dfe5;
+    --job-text: #18212b;
+    --job-muted: #5b6776;
+    --job-primary: #20b486;
+    --job-primary-strong: #14805f;
+    --job-secondary: #eefaf5;
+    --job-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+}
+
+.practice-details-page .page-body {
+    padding-top: 12px;
+}
+
+.practice-shell {
+    gap: 28px;
+}
+
+.practice-shell .job-hero {
+    align-items: start;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 400px);
+    gap: 32px;
+    padding: 30px;
+}
+
+.practice-shell .job-hero-copy {
+    gap: 22px;
+}
+
+.practice-shell .job-kicker {
+    padding: 8px 14px;
+    background: #e9f1ff;
+    color: #113c7a;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.practice-shell .job-hero-copy h1 {
+    color: var(--job-text);
+    font-size: 52px;
+    line-height: 1.02;
+}
+
+.practice-shell .job-lead {
+    max-width: 760px;
+    color: var(--job-muted);
+    font-size: 18px;
+    line-height: 1.75;
+}
+
+.practice-shell .job-highlight-pills span {
+    padding: 10px 15px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--job-text);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.practice-shell .job-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.practice-shell .job-grid .job-card {
+    display: grid;
+    gap: 8px;
+    min-height: 0;
+    padding: 20px 22px;
+}
+
+.practice-shell .job-grid .job-card strong {
+    color: var(--job-text);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.practice-shell .job-grid .job-card span {
+    color: var(--job-muted);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.practice-start-panel {
+    padding: 22px;
+}
+
+.practice-start-panel .job-ai-grid {
+    display: grid;
+    gap: 18px;
+}
+
+.practice-start-panel .job-ai-lead {
+    color: var(--job-muted);
+    font-size: 16px;
+    line-height: 1.65;
+}
+
+.practice-start-panel .job-ai-card {
+    padding: 22px;
+    border-radius: 8px;
+}
+
+.practice-start-form .attributes {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    min-width: 0;
+}
+
+.practice-start-form .attributes dl {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    min-width: 0;
+}
+
+.practice-start-form .attributes dt,
+.practice-start-form .attributes dd {
+    margin: 0;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.practice-start-form .attributes dt {
+    display: grid;
+    gap: 6px;
+}
+
+.practice-start-form .attributes .text-prompt,
+.practice-start-form label {
+    color: var(--job-text);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.practice-start-form .attributes .attribute-description {
+    color: var(--job-muted);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.practice-start-form .attributes select,
+.practice-start-form select,
+.practice-start-form input[type="text"],
+.practice-start-form input[type="file"],
+.practice-start-form textarea {
+    display: block;
+    min-height: 50px;
+    padding: 10px 12px;
+    border: 1px solid #d6dde4;
+    border-radius: 6px;
+    background: #fff;
+    color: var(--job-text);
+    font-size: 14px;
+    line-height: 1.4;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.practice-start-form .attributes select,
+.practice-start-form select {
+    height: 46px;
+    padding-right: 36px;
+}
+
+.practice-start-form .attributes select:focus,
+.practice-start-form select:focus,
+.practice-start-form input[type="text"]:focus,
+.practice-start-form input[type="file"]:focus,
+.practice-start-form textarea:focus {
+    border-color: #20b486;
+    box-shadow: 0 0 0 3px rgba(32, 180, 134, 0.16);
+    outline: 0;
+}
+
+.practice-start-form .option-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.practice-start-form .option-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 12px 14px;
+    border: 1px solid #d6dde4;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.practice-start-form .option-list label {
+    margin: 0;
+    color: var(--job-text);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.practice-start-form .job-ai-note {
+    margin: 0;
+    color: var(--job-muted);
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.practice-start-form .job-ai-actions {
+    margin-top: 4px;
+}
+
+.practice-start-form [data-practice-start-submit="true"] {
+    width: 100%;
+    min-height: 52px;
+    padding: 14px 18px;
+    border: 1px solid #20b486;
+    border-radius: 6px;
+    background: #20b486;
+    color: #ffffff !important;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.practice-start-form [data-practice-start-submit="true"]:hover:not(:disabled),
+.practice-start-form [data-practice-start-submit="true"]:focus-visible {
+    border-color: #14805f;
+    background: #14805f;
+    color: #ffffff !important;
+}
+
+.practice-content-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.practice-content-grid > .job-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+}
+
+.practice-content-grid .job-card {
+    padding: 24px;
+}
+
+.practice-content-grid .job-card h2 {
+    color: var(--job-text);
+    font-size: 28px;
+    line-height: 1.15;
+}
+
+.practice-content-grid .practice-detail-list li,
+.practice-content-grid .practice-description {
+    color: var(--job-muted);
+    font-size: 16px;
+    line-height: 1.75;
+}
+
+@media (max-width: 1024px) {
+    .practice-shell .job-hero {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .practice-content-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 767px) {
+    .practice-shell .job-hero {
+        padding: 22px;
+        gap: 24px;
+    }
+
+    .practice-shell .job-hero-copy h1 {
+        font-size: 38px;
+    }
+
+    .practice-shell .job-lead {
+        font-size: 16px;
+        line-height: 1.7;
+    }
+
+    .practice-shell .job-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .practice-start-panel,
+    .practice-start-panel .job-ai-card,
+    .practice-content-grid .job-card {
+        padding: 18px;
+    }
+}
+
 .job-spec-groups {
     display: grid;
     gap: 18px;
@@ -4136,4 +4444,33 @@ body.ai-job-preview-open .item-box {
         width: 100%;
         min-width: 0;
     }
+}
+
+.practice-start-error {
+    display: block;
+    margin-top: 12px;
+}
+
+.practice-start-form [data-practice-start-submit="true"] {
+    border: 1px solid #24b99a;
+    background: #24b99a;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.practice-start-form [data-practice-start-submit="true"]:hover:not(:disabled),
+.practice-start-form [data-practice-start-submit="true"]:focus-visible {
+    border-color: #0f766e;
+    background: #0f766e;
+    color: #ffffff;
+}
+
+.practice-start-form button:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+
+.applications-toolbar-links {
+    display: flex;
+    align-items: center;
 }

@@ -5544,7 +5544,7 @@ body.jb-search-open .jb-drawer-overlay {
     max-width: 1200px;
     margin: 0 auto 8px;
     padding: 4px 24px 8px;
-    text-align: center;
+    text-align: left;
     background: transparent;
 }
 
@@ -5553,7 +5553,7 @@ body.jb-search-open .jb-drawer-overlay {
 .html-product-details-page .breadcrumb ul {
     display: block;
     width: 100%;
-    text-align: center;
+    text-align: left;
     font-size: 0;
 }
 

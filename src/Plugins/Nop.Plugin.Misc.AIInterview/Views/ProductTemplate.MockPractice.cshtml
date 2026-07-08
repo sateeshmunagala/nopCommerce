@@ -3,10 +3,11 @@
 @using Microsoft.AspNetCore.Mvc.Rendering
 @using Nop.Core
 @using Nop.Core.Domain.Catalog
+@using Nop.Core.Domain.Media
 @using Nop.Core.Domain.Seo
-@using Nop.Plugin.Misc.AIInterview.Infrastructure
 @using Nop.Plugin.Misc.AIInterview.Services
 @using Nop.Services.Customers
+@using Nop.Services.Helpers
 @using Nop.Services.Media
 @inject IWorkContext workContext
 @inject ICustomerService customerService
@@ -19,24 +20,73 @@
 @{
     Layout = "_ColumnsOne";
 
-    NopHtml.AddTitleParts(Model.MetaTitle);
+    NopHtml.AddTitleParts(string.IsNullOrWhiteSpace(Model.MetaTitle) ? Model.Name : Model.MetaTitle);
     NopHtml.AddMetaDescriptionParts(Model.MetaDescription);
     NopHtml.AddMetaKeywordParts(Model.MetaKeywords);
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
     NopHtml.AppendPageCssClassParts("html-product-details-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-mock-practice-product-page");
 
-    var canonicalUrl = (await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol())).ToLowerInvariant();
-    NopHtml.AppendCanonicalUrlParts(canonicalUrl, seoSettings.QueryStringInCanonicalUrlsEnabled);
+    if (seoSettings.CanonicalUrlsEnabled)
+    {
+        var canonicalUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol())?.ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(canonicalUrl))
+            NopHtml.AddCanonicalUrlParts(canonicalUrl, seoSettings.QueryStringInCanonicalUrlsEnabled);
+    }
     NopHtml.AddJsonLdParts(Model.JsonLd);
 
     var customer = await workContext.GetCurrentCustomerAsync();
     var isAuthenticated = customer != null && !await customerService.IsGuestAsync(customer);
     var applications = isAuthenticated ? await applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<Nop.Plugin.Misc.AIInterview.Domain.JobApplication>() : new List<Nop.Plugin.Misc.AIInterview.Domain.JobApplication>();
     var sessions = isAuthenticated ? await interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>() : new List<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>();
-    var availableResumes = isAuthenticated
-        ? await ResumeSelectionHelper.BuildResumeSelectListAsync(applications, sessions, downloadService)
-        : new List<SelectListItem>();
+    var availableResumes = new List<SelectListItem>();
+    if (isAuthenticated)
+    {
+        var resumeEntries = applications
+            .Where(application => application.ResumeDownloadId > 0)
+            .Select(application => new
+            {
+                DownloadId = application.ResumeDownloadId,
+                application.CreatedOnUtc,
+                DefaultLabel = "Application resume"
+            })
+            .Concat(sessions
+                .Where(session => session.ResumeDownloadId > 0)
+                .Select(session => new
+                {
+                    DownloadId = session.ResumeDownloadId,
+                    session.CreatedOnUtc,
+                    DefaultLabel = "Practice resume"
+                }))
+            .OrderByDescending(entry => entry.CreatedOnUtc)
+            .ThenByDescending(entry => entry.DownloadId)
+            .GroupBy(entry => entry.DownloadId)
+            .Select(group => group.First())
+            .ToList();
+
+        foreach (var entry in resumeEntries)
+        {
+            var download = await downloadService.GetDownloadByIdAsync(entry.DownloadId);
+            if (download == null)
+                continue;
+
+            var fileName = string.IsNullOrWhiteSpace(download.Filename)
+                ? $"{entry.DefaultLabel} #{entry.DownloadId}"
+                : download.Filename;
+            var createdLabel = entry.CreatedOnUtc == default
+                ? string.Empty
+                : entry.CreatedOnUtc.ToString("yyyy-MM-dd");
+            var optionText = string.IsNullOrWhiteSpace(createdLabel)
+                ? fileName
+                : $"{fileName} ({createdLabel})";
+
+            availableResumes.Add(new SelectListItem
+            {
+                Value = entry.DownloadId.ToString(),
+                Text = optionText
+            });
+        }
+    }
 
     var summary = !string.IsNullOrWhiteSpace(Model.ShortDescription)
         ? Model.ShortDescription
@@ -98,7 +148,8 @@
                         else
                         {
                             <div class="job-ai-card">
-                                <form asp-route="@AIInterviewDefaults.MockStartRouteName" method="post" enctype="multipart/form-data" class="practice-start-form">
+                                <form asp-route="@AIInterviewDefaults.MockStartRouteName" method="post" enctype="multipart/form-data" class="practice-start-form" id="product-details-form">
+                                    @Html.AntiForgeryToken()
                                     <input type="hidden" name="productId" value="@Model.Id" />
                                     @{
                                         var dataDictAttributes = new ViewDataDictionary(ViewData);
@@ -121,9 +172,10 @@
                                     <label for="practice-resume-upload">Upload new resume</label>
                                     <input id="practice-resume-upload" name="ResumeFile" type="file" accept=".pdf,.docx" />
                                     <p class="job-ai-note">Upload a resume only when you want the AI interview to pull questions from your actual experience.</p>
+                                    <div class="message-error practice-start-error aiinterview-hidden" data-practice-start-error="true" role="alert" aria-live="polite"></div>
 
                                     <div class="job-ai-actions">
-                                        <button type="submit" class="button-1">Start AI practice interview</button>
+                                        <button type="submit" class="button-1" data-practice-start-submit="true">Start AI practice interview</button>
                                     </div>
                                 </form>
                             </div>
@@ -167,3 +219,87 @@
         </div>
     </div>
 </div>
+
+<script asp-location="Footer">
+    (() => {
+        const form = document.querySelector('.practice-start-form');
+        if (!form)
+            return;
+
+        const button = form.querySelector('[data-practice-start-submit="true"]');
+        const errorContainer = form.querySelector('[data-practice-start-error="true"]');
+        const safeRequestError = 'Unable to start the practice interview. Please try again.';
+
+        const setBusy = (isBusy) => {
+            if (button)
+                button.disabled = !!isBusy;
+        };
+
+        const showError = (message) => {
+            if (!errorContainer)
+                return;
+
+            errorContainer.textContent = message || safeRequestError;
+            errorContainer.classList.remove('aiinterview-hidden');
+        };
+
+        const clearError = () => {
+            if (!errorContainer)
+                return;
+
+            errorContainer.textContent = '';
+            errorContainer.classList.add('aiinterview-hidden');
+        };
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (button?.disabled)
+                return;
+
+            clearError();
+            setBusy(true);
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                const contentType = response.headers.get('content-type') || '';
+                if (!response.ok || !contentType.includes('application/json')) {
+                    let responseText = '';
+                    try {
+                        responseText = (await response.text()).trim();
+                    } catch {
+                    }
+
+                    showError(responseText || safeRequestError);
+                    return;
+                }
+
+                let result;
+                try {
+                    result = await response.json();
+                } catch {
+                    showError(safeRequestError);
+                    return;
+                }
+
+                if (result?.runtimeUrl) {
+                    window.location.href = result.runtimeUrl;
+                    return;
+                }
+
+                showError(result?.error || result?.message || safeRequestError);
+            } catch {
+                showError(safeRequestError);
+            } finally {
+                if (!window.location.href.includes('/mockaiinterview/runtime'))
+                    setBusy(false);
+            }
+        });
+    })();
+</script>

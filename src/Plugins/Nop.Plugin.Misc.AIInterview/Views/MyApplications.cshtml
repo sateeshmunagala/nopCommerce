@@ -45,6 +45,9 @@
                 <div>
                     <strong>@Model.TotalCount</strong> @T("Plugins.Misc.AIInterview.MyApplications.ApplicationsCountLabel")
                 </div>
+                <div class="applications-toolbar-links">
+                    <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.MockHistoryRouteName)">Mock practice history</a>
+                </div>
                 <div class="applications-sort">
                     <label for="sortOrder">@T("Plugins.Misc.AIInterview.MyApplications.SortBy")</label>
                     <select id="sortOrder" onchange="location.href='@Url.Action("MyApplications")?sortOrder=' + this.value;">

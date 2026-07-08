@@ -543,6 +543,7 @@ public class ResumePlanningTests
         var extractionService = new Mock<IResumeTextExtractionService>();
         var aiClient = new Mock<IAIInterviewClient>();
         var applicationService = new Mock<IApplicationService>();
+        var interviewSessionService = new Mock<IInterviewSessionService>();
         var productService = new Mock<IProductService>();
         var nopLogger = new Mock<NopLogger>();
 
@@ -581,6 +582,7 @@ public class ResumePlanningTests
             extractionService.Object,
             aiClient.Object,
             applicationService.Object,
+            interviewSessionService.Object,
             productService.Object,
             nopLogger.Object);
 

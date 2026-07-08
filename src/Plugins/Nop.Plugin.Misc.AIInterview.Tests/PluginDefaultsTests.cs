@@ -359,4 +359,25 @@ public class PluginDefaultsTests
 
         Assert.That(text, Does.Contain("\"Version\": \"1.29\""));
     }
+
+    [Test]
+    public void MockPractice_Defaults_And_Project_Content_Are_Configured()
+    {
+        var projectText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Nop.Plugin.Misc.AIInterview.csproj"));
+        var templateViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "ProductTemplate.MockPractice.cshtml"));
+        var pluginText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("AIInterviewPlugin.cs"));
+
+        Assert.That(AIInterviewDefaults.MockPracticeProductTemplateName, Is.EqualTo("AI Interview Mock Practice"));
+        Assert.That(AIInterviewDefaults.MockPracticeProductTemplateViewPath, Is.EqualTo("~/Plugins/Misc.AIInterview/Views/ProductTemplate.MockPractice.cshtml"));
+        Assert.That(AIInterviewDefaults.InterviewTypeMockPractice, Is.EqualTo("MockPractice"));
+        Assert.That(AIInterviewDefaults.InterviewTypeJob, Is.EqualTo("Job"));
+        Assert.That(projectText, Does.Contain("<None Remove=\"Views\\ProductTemplate.MockPractice.cshtml\" />"));
+        Assert.That(projectText, Does.Contain("<Content Include=\"Views\\ProductTemplate.MockPractice.cshtml\">"));
+        Assert.That(templateViewText, Does.Contain("data-practice-start-error=\"true\""));
+        Assert.That(templateViewText, Does.Contain("window.location.href = result.runtimeUrl;"));
+        Assert.That(templateViewText, Does.Contain("seoSettings.CanonicalUrlsEnabled"));
+        Assert.That(pluginText, Does.Contain("Plugins.Misc.AIInterview.History.MockTitle"));
+        Assert.That(pluginText, Does.Contain("Plugins.Misc.AIInterview.MockPractice.DifficultyRequired"));
+        Assert.That(pluginText, Does.Contain("Plugins.Misc.AIInterview.MockPractice.SkillOrResumeRequired"));
+    }
 }

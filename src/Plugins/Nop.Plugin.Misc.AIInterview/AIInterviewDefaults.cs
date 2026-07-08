@@ -137,6 +137,7 @@ public static class AIInterviewDefaults
     public static string LocalizationPrefix => "Plugins.Misc.AIInterview";
 
     public const int MyApplicationsNavigationTab = 160;
+    public const int MockHistoryNavigationTab = 165;
     public const int VendorScoreboardNavigationTab = 170;
     public const int VendorJobCreationNavigationTab = 180;
     public const int EmployerApplicationsNavigationTab = 190;
