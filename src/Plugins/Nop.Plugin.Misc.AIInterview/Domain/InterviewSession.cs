@@ -6,9 +6,16 @@ public class InterviewSession : BaseEntity
 {
     public int CustomerId { get; set; }
     public int JobApplicationId { get; set; }
+    public string InterviewType { get; set; }
     public string SessionKey { get; set; }
     public int ProductId { get; set; }
+    public int SourceProductId { get; set; }
     public string Difficulty { get; set; }
+    public int ResumeDownloadId { get; set; }
+    public string ResumeProfileJson { get; set; }
+    public DateTime? ResumeProfileGeneratedOnUtc { get; set; }
+    public string ResumeProfileError { get; set; }
+    public string SelectedProductAttributesJson { get; set; }
     public string Token { get; set; }
     public DateTime? TokenExpiryUtc { get; set; }
     public bool IsActive { get; set; }

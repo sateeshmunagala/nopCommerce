@@ -9,12 +9,18 @@
 
 @inject CatalogSettings catalogSettings
 @inject IWorkContext workContext
+@inject Microsoft.AspNetCore.Mvc.ViewComponents.IViewComponentSelector viewComponentSelector
 
 @{
-    var aiInterviewCard = await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = Model });
-    var aiInterviewCardWriter = new StringWriter();
-    aiInterviewCard.WriteTo(aiInterviewCardWriter, HtmlEncoder.Default);
-    var aiInterviewCardMarkup = aiInterviewCardWriter.ToString();
+    var aiInterviewCardMarkup = string.Empty;
+    var aiInterviewJobProductCardComponent = viewComponentSelector.SelectComponent("AIInterviewJobProductCard");
+    if (aiInterviewJobProductCardComponent != null)
+    {
+        var aiInterviewCard = await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = Model });
+        var aiInterviewCardWriter = new StringWriter();
+        aiInterviewCard.WriteTo(aiInterviewCardWriter, HtmlEncoder.Default);
+        aiInterviewCardMarkup = aiInterviewCardWriter.ToString();
+    }
 
     //prepare "Add to cart" AJAX link
     var addtocartlink = "";

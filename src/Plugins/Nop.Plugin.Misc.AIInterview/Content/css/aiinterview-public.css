@@ -3154,6 +3154,61 @@ body.ai-job-preview-open .item-box {
     gap: 24px;
 }
 
+.practice-shell .job-hero-copy h1,
+.practice-shell .job-card h2,
+.practice-shell .job-ai-panel h2 {
+    margin: 0;
+}
+
+.job-highlight-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.job-highlight-pills span {
+    display: inline-flex;
+    padding: 9px 14px;
+    border: 1px solid var(--job-border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--job-text);
+    font-weight: 600;
+}
+
+.practice-start-form {
+    display: grid;
+    gap: 14px;
+}
+
+.practice-start-form label {
+    color: var(--job-text);
+    font-weight: 600;
+}
+
+.practice-start-form input[type="file"],
+.practice-start-form select,
+.practice-start-form textarea,
+.practice-start-form input[type="text"] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.practice-detail-list {
+    margin: 0;
+    padding-left: 22px;
+}
+
+.practice-detail-list li + li {
+    margin-top: 10px;
+}
+
+.practice-description {
+    color: var(--job-text);
+    line-height: 1.8;
+}
+
 .job-spec-groups {
     display: grid;
     gap: 18px;

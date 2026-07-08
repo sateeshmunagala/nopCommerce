@@ -30,6 +30,9 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
 public class MockAiInterviewController : BasePluginController
 {
+    private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, int ValueId, string Value);
+    private sealed record SelectedProductAttributesSnapshot(IList<SelectedProductAttributeValueSnapshot> Attributes);
+
     private readonly IInterviewSessionService _interviewSessionService;
     private readonly ILocalizationService _localizationService;
     private readonly IWorkContext _workContext;
@@ -50,6 +53,9 @@ public class MockAiInterviewController : BasePluginController
     private readonly INopUrlHelper _nopUrlHelper;
     private readonly IResumeFileService _resumeFileService;
     private readonly IResumeProfileService _resumeProfileService;
+    private readonly IProductTemplateService _productTemplateService;
+    private readonly IProductAttributeParser _productAttributeParser;
+    private readonly IProductAttributeService _productAttributeService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -70,7 +76,10 @@ public class MockAiInterviewController : BasePluginController
         ILogger<MockAiInterviewController> logger = null,
         INopUrlHelper nopUrlHelper = null,
         IResumeFileService resumeFileService = null,
-        IResumeProfileService resumeProfileService = null)
+        IResumeProfileService resumeProfileService = null,
+        IProductTemplateService productTemplateService = null,
+        IProductAttributeParser productAttributeParser = null,
+        IProductAttributeService productAttributeService = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -92,6 +101,9 @@ public class MockAiInterviewController : BasePluginController
         _nopUrlHelper = nopUrlHelper;
         _resumeFileService = resumeFileService;
         _resumeProfileService = resumeProfileService;
+        _productTemplateService = productTemplateService;
+        _productAttributeParser = productAttributeParser;
+        _productAttributeService = productAttributeService;
     }
 
     protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
@@ -271,7 +283,79 @@ public class MockAiInterviewController : BasePluginController
             return new HashSet<int>();
 
         var applications = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<JobApplication>();
-        return ResumeSelectionHelper.GetOwnedResumeDownloadIds(applications);
+        var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<InterviewSession>();
+        return ResumeSelectionHelper.GetOwnedResumeDownloadIds(applications, sessions);
+    }
+
+    protected virtual async Task<bool> IsMockPracticeProductAsync(Product product)
+    {
+        if (product == null || product.ProductTemplateId <= 0 || _productTemplateService == null)
+            return false;
+
+        var productTemplate = await _productTemplateService.GetProductTemplateByIdAsync(product.ProductTemplateId);
+        if (productTemplate == null)
+            return false;
+
+        return string.Equals(productTemplate.ViewPath, AIInterviewDefaults.MockPracticeProductTemplateViewPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(productTemplate.Name, AIInterviewDefaults.MockPracticeProductTemplateName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    protected virtual async Task<string> SerializeSelectedProductAttributesAsync(Product product, IFormCollection form)
+    {
+        if (product == null || form == null || _productAttributeParser == null || _productAttributeService == null)
+            return null;
+
+        var errors = new List<string>();
+        var attributesXml = await _productAttributeParser.ParseProductAttributesAsync(product, form, errors);
+        if (string.IsNullOrWhiteSpace(attributesXml))
+            return null;
+
+        var values = await _productAttributeParser.ParseProductAttributeValuesAsync(attributesXml);
+        if (values == null || values.Count == 0)
+            return null;
+
+        var snapshots = new List<SelectedProductAttributeValueSnapshot>();
+        foreach (var value in values.Where(value => value != null))
+        {
+            var mapping = await _productAttributeService.GetProductAttributeMappingByIdAsync(value.ProductAttributeMappingId);
+            if (mapping == null)
+                continue;
+
+            var attribute = await _productAttributeService.GetProductAttributeByIdAsync(mapping.ProductAttributeId);
+            if (attribute == null)
+                continue;
+
+            snapshots.Add(new SelectedProductAttributeValueSnapshot(
+                attribute.Id,
+                attribute.Name,
+                value.Id,
+                value.Name));
+        }
+
+        if (snapshots.Count == 0)
+            return null;
+
+        return JsonSerializer.Serialize(new SelectedProductAttributesSnapshot(snapshots), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    }
+
+    protected virtual string ResolveMockPracticeDifficulty(string selectedProductAttributesJson, string difficultyFallback)
+    {
+        if (!string.IsNullOrWhiteSpace(selectedProductAttributesJson))
+        {
+            try
+            {
+                var snapshot = JsonSerializer.Deserialize<SelectedProductAttributesSnapshot>(selectedProductAttributesJson);
+                var selectedDifficulty = snapshot?.Attributes?.FirstOrDefault(attribute =>
+                    string.Equals(attribute.AttributeName, "Practice Difficulty", StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrWhiteSpace(selectedDifficulty?.Value))
+                    return selectedDifficulty.Value;
+            }
+            catch
+            {
+            }
+        }
+
+        return !string.IsNullOrWhiteSpace(difficultyFallback) ? difficultyFallback : AIInterviewDefaults.DefaultInterviewDifficulty;
     }
 
     protected virtual async Task<(string ResourceKey, string ErrorMessage)> ValidateStartResumePreconditionsAsync(
@@ -404,6 +488,64 @@ public class MockAiInterviewController : BasePluginController
         return (application, null, false);
     }
 
+    protected virtual async Task<(int ResumeDownloadId, string ErrorMessage, bool ResumeChanged)> ResolvePracticeResumeForStartAsync(
+        Product product,
+        IFormFile resumeFile,
+        int selectedResumeDownloadId,
+        InterviewSession session = null)
+    {
+        if (resumeFile != null)
+        {
+            if (_resumeFileService == null)
+                return (0, "Resume upload is unavailable right now.", false);
+
+            var validation = _resumeFileService.ValidateResumeFile(resumeFile);
+            if (!validation.Success)
+                return (0, validation.ErrorMessage, false);
+
+            var storedResume = await _resumeFileService.StoreResumeAsync(resumeFile);
+            if (!storedResume.Success)
+                return (0, storedResume.ErrorMessage, false);
+
+            if (session != null)
+            {
+                session.ResumeDownloadId = storedResume.DownloadId;
+                session.ResumeProfileJson = null;
+                session.ResumeProfileGeneratedOnUtc = null;
+                session.ResumeProfileError = null;
+                if (_resumeProfileService != null)
+                    await _resumeProfileService.EnsureResumeProfileAsync(session, product, forceRegenerate: true);
+                else
+                    await _interviewSessionService.UpdateInterviewSessionAsync(session);
+            }
+
+            return (storedResume.DownloadId, null, true);
+        }
+
+        if (selectedResumeDownloadId > 0)
+        {
+            var resumeChanged = session == null || session.ResumeDownloadId != selectedResumeDownloadId;
+            if (session != null && resumeChanged)
+            {
+                session.ResumeDownloadId = selectedResumeDownloadId;
+                session.ResumeProfileJson = null;
+                session.ResumeProfileGeneratedOnUtc = null;
+                session.ResumeProfileError = null;
+                if (_resumeProfileService != null)
+                    await _resumeProfileService.EnsureResumeProfileAsync(session, product, forceRegenerate: true);
+                else
+                    await _interviewSessionService.UpdateInterviewSessionAsync(session);
+            }
+
+            return (selectedResumeDownloadId, null, resumeChanged);
+        }
+
+        if (session != null && session.ResumeDownloadId > 0 && string.IsNullOrWhiteSpace(session.ResumeProfileJson) && _resumeProfileService != null)
+            await _resumeProfileService.EnsureResumeProfileAsync(session, product);
+
+        return (session?.ResumeDownloadId ?? 0, null, false);
+    }
+
     protected virtual async Task<(InterviewSession Session, bool Renewed)> RenewActiveRuntimeTokenAsync(string token, bool forceRenew = false)
     {
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
@@ -453,7 +595,14 @@ public class MockAiInterviewController : BasePluginController
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request.", 401);
 
         var product = productId > 0 ? await _productService.GetProductByIdAsync(productId) : null;
-        if (product != null && _jobInterviewExperienceService != null)
+        var isMockPracticeProduct = await IsMockPracticeProductAsync(product);
+        string selectedProductAttributesJson = null;
+        if (isMockPracticeProduct)
+        {
+            selectedProductAttributesJson = await SerializeSelectedProductAttributesAsync(product, form);
+            difficulty = ResolveMockPracticeDifficulty(selectedProductAttributesJson, !string.IsNullOrWhiteSpace(form["difficulty"]) ? form["difficulty"] : difficulty);
+        }
+        else if (product != null && _jobInterviewExperienceService != null)
             difficulty = await _jobInterviewExperienceService.ResolveInterviewDifficultyAsync(product, form) ?? AIInterviewDefaults.DefaultInterviewDifficulty;
         else
             difficulty = !string.IsNullOrWhiteSpace(form["difficulty"]) ? form["difficulty"] : difficulty ?? AIInterviewDefaults.DefaultInterviewDifficulty;
@@ -462,7 +611,7 @@ public class MockAiInterviewController : BasePluginController
         var selectedResumeDownloadId = int.TryParse(form?["SelectedResumeDownloadId"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSelectedResumeDownloadId)
             ? parsedSelectedResumeDownloadId
             : 0;
-        var existingApplication = await GetLatestApplicationForStartAsync(customer, product);
+        var existingApplication = isMockPracticeProduct ? null : await GetLatestApplicationForStartAsync(customer, product);
         var ownedResumeDownloadIds = await GetOwnedResumeDownloadIdsAsync(customer);
         var customerSessions = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<InterviewSession>())
             .Where(s => s.ProductId == productId)
@@ -488,20 +637,56 @@ public class MockAiInterviewController : BasePluginController
                     reusableSession = renewed.Session;
             }
 
-            var applicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile, selectedResumeDownloadId, existingApplication);
-            if (!string.IsNullOrWhiteSpace(applicationResolution.ErrorMessage))
-                return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", applicationResolution.ErrorMessage);
-
-            var application = applicationResolution.Application;
             var sessionUpdated = false;
-            if (application != null && reusableSession.JobApplicationId != application.Id)
+            if (isMockPracticeProduct)
             {
-                reusableSession.JobApplicationId = application.Id;
-                sessionUpdated = true;
-            }
+                var resumeResolution = await ResolvePracticeResumeForStartAsync(product, resumeFile, selectedResumeDownloadId, reusableSession);
+                if (!string.IsNullOrWhiteSpace(resumeResolution.ErrorMessage))
+                    return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", resumeResolution.ErrorMessage);
 
-            if (applicationResolution.ResumeChanged)
-                await ResetUnstartedPlannedTurnsAsync(reusableSession);
+                if (!string.Equals(reusableSession.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.Ordinal))
+                {
+                    reusableSession.InterviewType = AIInterviewDefaults.InterviewTypeMockPractice;
+                    sessionUpdated = true;
+                }
+
+                if (reusableSession.SourceProductId != productId)
+                {
+                    reusableSession.SourceProductId = productId;
+                    sessionUpdated = true;
+                }
+
+                if (!string.Equals(reusableSession.Difficulty, difficulty, StringComparison.Ordinal))
+                {
+                    reusableSession.Difficulty = difficulty;
+                    sessionUpdated = true;
+                }
+
+                if (!string.Equals(reusableSession.SelectedProductAttributesJson, selectedProductAttributesJson, StringComparison.Ordinal))
+                {
+                    reusableSession.SelectedProductAttributesJson = selectedProductAttributesJson;
+                    sessionUpdated = true;
+                }
+
+                if (resumeResolution.ResumeChanged)
+                    await ResetUnstartedPlannedTurnsAsync(reusableSession);
+            }
+            else
+            {
+                var applicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile, selectedResumeDownloadId, existingApplication);
+                if (!string.IsNullOrWhiteSpace(applicationResolution.ErrorMessage))
+                    return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", applicationResolution.ErrorMessage);
+
+                var application = applicationResolution.Application;
+                if (application != null && reusableSession.JobApplicationId != application.Id)
+                {
+                    reusableSession.JobApplicationId = application.Id;
+                    sessionUpdated = true;
+                }
+
+                if (applicationResolution.ResumeChanged)
+                    await ResetUnstartedPlannedTurnsAsync(reusableSession);
+            }
 
             if (sessionUpdated)
                 await _interviewSessionService.UpdateInterviewSessionAsync(reusableSession);
@@ -550,24 +735,46 @@ public class MockAiInterviewController : BasePluginController
                 return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.NoCredits", "Insufficient credits. Please purchase credits to start the interview.");
         }
 
-        var newSessionApplicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile, selectedResumeDownloadId, existingApplication);
-        if (!string.IsNullOrWhiteSpace(newSessionApplicationResolution.ErrorMessage))
+        JobApplication newSessionApplication = null;
+        var sessionResumeDownloadId = 0;
+        if (isMockPracticeProduct)
         {
-            await LogRuntimeIssueAsync("AI Interview start resume persistence failure",
-                $"ProductId={productId}; CustomerId={customer.Id}; Reason={newSessionApplicationResolution.ErrorMessage}.",
-                customer);
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", newSessionApplicationResolution.ErrorMessage);
-        }
+            var newSessionResumeResolution = await ResolvePracticeResumeForStartAsync(product, resumeFile, selectedResumeDownloadId);
+            if (!string.IsNullOrWhiteSpace(newSessionResumeResolution.ErrorMessage))
+            {
+                await LogRuntimeIssueAsync("AI Interview start resume persistence failure",
+                    $"ProductId={productId}; CustomerId={customer.Id}; Reason={newSessionResumeResolution.ErrorMessage}.",
+                    customer);
+                return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", newSessionResumeResolution.ErrorMessage);
+            }
 
-        var newSessionApplication = newSessionApplicationResolution.Application;
+            sessionResumeDownloadId = newSessionResumeResolution.ResumeDownloadId;
+        }
+        else
+        {
+            var newSessionApplicationResolution = await ResolveApplicationForStartAsync(customer, product, resumeFile, selectedResumeDownloadId, existingApplication);
+            if (!string.IsNullOrWhiteSpace(newSessionApplicationResolution.ErrorMessage))
+            {
+                await LogRuntimeIssueAsync("AI Interview start resume persistence failure",
+                    $"ProductId={productId}; CustomerId={customer.Id}; Reason={newSessionApplicationResolution.ErrorMessage}.",
+                    customer);
+                return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", newSessionApplicationResolution.ErrorMessage);
+            }
+
+            newSessionApplication = newSessionApplicationResolution.Application;
+        }
 
         var session = new InterviewSession
         {
             CustomerId = customer.Id,
             ProductId = productId,
             JobApplicationId = newSessionApplication?.Id ?? 0,
+            InterviewType = isMockPracticeProduct ? AIInterviewDefaults.InterviewTypeMockPractice : AIInterviewDefaults.InterviewTypeJob,
+            SourceProductId = productId,
             SessionKey = Guid.NewGuid().ToString("N"),
             Difficulty = difficulty,
+            ResumeDownloadId = sessionResumeDownloadId,
+            SelectedProductAttributesJson = selectedProductAttributesJson,
             Token = Guid.NewGuid().ToString("N"),
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(30),
             IsActive = true,
@@ -577,6 +784,8 @@ public class MockAiInterviewController : BasePluginController
             CreatedOnUtc = DateTime.UtcNow
         };
         await _interviewSessionService.InsertInterviewSessionAsync(session);
+        if (isMockPracticeProduct && session.ResumeDownloadId > 0 && _resumeProfileService != null)
+            await _resumeProfileService.EnsureResumeProfileAsync(session, product, forceRegenerate: true);
         _logger?.LogInformation("AIInterview new session created for customer {CustomerId}, product {ProductId}, session {SessionId}.",
             customer.Id, productId, session.Id);
 

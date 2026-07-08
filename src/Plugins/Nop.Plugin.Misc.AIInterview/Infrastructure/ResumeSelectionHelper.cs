@@ -16,6 +16,18 @@ internal static class ResumeSelectionHelper
             ?? new HashSet<int>();
     }
 
+    public static HashSet<int> GetOwnedResumeDownloadIds(IEnumerable<JobApplication> applications, IEnumerable<InterviewSession> sessions)
+    {
+        var ownedResumeIds = GetOwnedResumeDownloadIds(applications);
+        foreach (var session in sessions ?? Enumerable.Empty<InterviewSession>())
+        {
+            if (session?.ResumeDownloadId > 0)
+                ownedResumeIds.Add(session.ResumeDownloadId);
+        }
+
+        return ownedResumeIds;
+    }
+
     public static async Task<IList<SelectListItem>> BuildResumeSelectListAsync(IEnumerable<JobApplication> applications,
         IDownloadService downloadService,
         int selectedResumeDownloadId = 0)
@@ -54,6 +66,62 @@ internal static class ResumeSelectionHelper
                 Value = application.ResumeDownloadId.ToString(CultureInfo.InvariantCulture),
                 Text = text,
                 Selected = application.ResumeDownloadId == selectedResumeDownloadId
+            });
+        }
+
+        return items;
+    }
+
+    public static async Task<IList<SelectListItem>> BuildResumeSelectListAsync(IEnumerable<JobApplication> applications,
+        IEnumerable<InterviewSession> sessions,
+        IDownloadService downloadService,
+        int selectedResumeDownloadId = 0)
+    {
+        var items = new List<SelectListItem>();
+        if (downloadService == null)
+            return items;
+
+        var orderedEntries = new List<(int DownloadId, DateTime CreatedOnUtc, string DefaultLabel)>();
+
+        orderedEntries.AddRange((applications ?? Enumerable.Empty<JobApplication>())
+            .Where(application => application.ResumeDownloadId > 0)
+            .Select(application => (
+                application.ResumeDownloadId,
+                application.CreatedOnUtc,
+                "Application resume")));
+
+        orderedEntries.AddRange((sessions ?? Enumerable.Empty<InterviewSession>())
+            .Where(session => session.ResumeDownloadId > 0)
+            .Select(session => (
+                session.ResumeDownloadId,
+                session.CreatedOnUtc,
+                "Practice resume")));
+
+        foreach (var entry in orderedEntries
+                     .OrderByDescending(entry => entry.CreatedOnUtc)
+                     .ThenByDescending(entry => entry.DownloadId)
+                     .GroupBy(entry => entry.DownloadId)
+                     .Select(group => group.First()))
+        {
+            var download = await downloadService.GetDownloadByIdAsync(entry.DownloadId);
+            if (download == null)
+                continue;
+
+            var fileName = string.IsNullOrWhiteSpace(download.Filename)
+                ? $"{entry.DefaultLabel} #{entry.DownloadId.ToString(CultureInfo.InvariantCulture)}"
+                : download.Filename;
+            var createdLabel = entry.CreatedOnUtc == default
+                ? string.Empty
+                : entry.CreatedOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var text = string.IsNullOrWhiteSpace(createdLabel)
+                ? fileName
+                : $"{fileName} ({createdLabel})";
+
+            items.Add(new SelectListItem
+            {
+                Value = entry.DownloadId.ToString(CultureInfo.InvariantCulture),
+                Text = text,
+                Selected = entry.DownloadId == selectedResumeDownloadId
             });
         }
 

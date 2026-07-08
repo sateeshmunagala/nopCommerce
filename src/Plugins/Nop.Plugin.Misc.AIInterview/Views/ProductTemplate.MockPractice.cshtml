@@ -1,0 +1,169 @@
+@model Nop.Web.Models.Catalog.ProductDetailsModel
+
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Nop.Core
+@using Nop.Core.Domain.Catalog
+@using Nop.Core.Domain.Seo
+@using Nop.Plugin.Misc.AIInterview.Infrastructure
+@using Nop.Plugin.Misc.AIInterview.Services
+@using Nop.Services.Customers
+@using Nop.Services.Media
+@inject IWorkContext workContext
+@inject ICustomerService customerService
+@inject IApplicationService applicationService
+@inject IInterviewSessionService interviewSessionService
+@inject IDownloadService downloadService
+@inject IWebHelper webHelper
+@inject SeoSettings seoSettings
+
+@{
+    Layout = "_ColumnsOne";
+
+    NopHtml.AddTitleParts(Model.MetaTitle);
+    NopHtml.AddMetaDescriptionParts(Model.MetaDescription);
+    NopHtml.AddMetaKeywordParts(Model.MetaKeywords);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-product-details-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-mock-practice-product-page");
+
+    var canonicalUrl = (await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol())).ToLowerInvariant();
+    NopHtml.AppendCanonicalUrlParts(canonicalUrl, seoSettings.QueryStringInCanonicalUrlsEnabled);
+    NopHtml.AddJsonLdParts(Model.JsonLd);
+
+    var customer = await workContext.GetCurrentCustomerAsync();
+    var isAuthenticated = customer != null && !await customerService.IsGuestAsync(customer);
+    var applications = isAuthenticated ? await applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<Nop.Plugin.Misc.AIInterview.Domain.JobApplication>() : new List<Nop.Plugin.Misc.AIInterview.Domain.JobApplication>();
+    var sessions = isAuthenticated ? await interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>() : new List<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>();
+    var availableResumes = isAuthenticated
+        ? await ResumeSelectionHelper.BuildResumeSelectListAsync(applications, sessions, downloadService)
+        : new List<SelectListItem>();
+
+    var summary = !string.IsNullOrWhiteSpace(Model.ShortDescription)
+        ? Model.ShortDescription
+        : "Choose a difficulty level and either select a skill or upload a resume. The AI interview will use those selections to create practice questions without connecting you to any company, job post, or application.";
+}
+
+@section Breadcrumb
+{
+    @await Html.PartialAsync("_ProductBreadcrumb", Model.Breadcrumb)
+}
+
+<div class="page product-details-page practice-details-page">
+    <div class="page-body">
+        <div class="job-shell practice-shell">
+            <section class="job-hero">
+                <div class="job-hero-copy">
+                    <p class="job-kicker">Generic AI interview practice</p>
+                    <h1>@Model.Name</h1>
+                    <div class="job-lead">@Html.Raw(summary)</div>
+                    <div class="job-highlight-pills">
+                        <span>No job application</span>
+                        <span>No company sponsor</span>
+                        <span>Practice only</span>
+                    </div>
+                    <div class="job-grid">
+                        <div class="job-card">
+                            <strong>Session length</strong>
+                            <span>15-25 minutes</span>
+                        </div>
+                        <div class="job-card">
+                            <strong>Question style</strong>
+                            <span>Role based</span>
+                        </div>
+                        <div class="job-card">
+                            <strong>Difficulty</strong>
+                            <span>Low to advanced</span>
+                        </div>
+                        <div class="job-card">
+                            <strong>Input</strong>
+                            <span>Skill or resume</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="job-ai-panel practice-start-panel">
+                    <div class="job-ai-grid">
+                        <div>
+                            <h2>Start practice</h2>
+                            <p class="job-ai-lead">Select how hard the interview should be. Then choose one skill area or upload a resume so the AI can focus the mock interview.</p>
+                        </div>
+
+                        @if (!isAuthenticated)
+                        {
+                            <div class="job-ai-card">
+                                <p class="job-ai-lead">Sign in to start a saved mock practice session and keep your report in your account.</p>
+                                <a class="button-1" href="@Url.RouteUrl("Login")">Sign in</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="job-ai-card">
+                                <form asp-route="@AIInterviewDefaults.MockStartRouteName" method="post" enctype="multipart/form-data" class="practice-start-form">
+                                    <input type="hidden" name="productId" value="@Model.Id" />
+                                    @{
+                                        var dataDictAttributes = new ViewDataDictionary(ViewData);
+                                        dataDictAttributes.TemplateInfo.HtmlFieldPrefix = $"attributes_{Model.Id}";
+                                        @await Html.PartialAsync("_ProductAttributes", Model, dataDictAttributes)
+                                    }
+
+                                    @if (availableResumes.Any())
+                                    {
+                                        <label for="practice-existing-resume">Previous resume</label>
+                                        <select id="practice-existing-resume" name="SelectedResumeDownloadId">
+                                            <option value="0">Select a previous resume</option>
+                                            @foreach (var option in availableResumes)
+                                            {
+                                                <option value="@option.Value">@option.Text</option>
+                                            }
+                                        </select>
+                                    }
+
+                                    <label for="practice-resume-upload">Upload new resume</label>
+                                    <input id="practice-resume-upload" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                                    <p class="job-ai-note">Upload a resume only when you want the AI interview to pull questions from your actual experience.</p>
+
+                                    <div class="job-ai-actions">
+                                        <button type="submit" class="button-1">Start AI practice interview</button>
+                                    </div>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            <div class="job-content-grid practice-content-grid">
+                <section class="job-card">
+                    <h2>What this practice covers</h2>
+                    <ul class="practice-detail-list">
+                        <li>Questions are adjusted by the selected difficulty: Low, Medium, or Advanced.</li>
+                        <li>The applicant can select a skill when they want quick focused practice.</li>
+                        <li>The applicant can upload a resume when they want the interview to use their real experience.</li>
+                        <li>Clear feedback after the session helps the applicant improve.</li>
+                        <li>Practice report is saved to the user account when signed in.</li>
+                    </ul>
+                </section>
+
+                <section class="job-card">
+                    <h2>Practice details</h2>
+                    <ul class="practice-detail-list">
+                        <li><strong>Difficulty:</strong> Low, Medium, Advanced</li>
+                        <li><strong>Skill source:</strong> Selectable or resume upload</li>
+                        <li><strong>Connection:</strong> Not tied to job application or company</li>
+                        <li><strong>Credits:</strong> Uses normal available user credits</li>
+                    </ul>
+                </section>
+
+                @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
+                {
+                    <section class="job-card">
+                        <h2>About this practice</h2>
+                        <div class="practice-description">
+                            @Html.Raw(Model.FullDescription)
+                        </div>
+                    </section>
+                }
+            </div>
+        </div>
+    </div>
+</div>

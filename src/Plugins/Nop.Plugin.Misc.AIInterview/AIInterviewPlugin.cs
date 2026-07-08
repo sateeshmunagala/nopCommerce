@@ -125,6 +125,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         await _settingService.SaveSettingAsync(settings);
         await EnsureJobProductTemplateAsync();
+        await EnsureMockPracticeProductTemplateAsync();
         await EnsurePricingCategoryTemplateAsync();
         await EnsureWidgetActiveAsync();
         await EnsureMessageTemplatesAsync();
@@ -231,6 +232,59 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (!string.Equals(template.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.Ordinal))
         {
             template.ViewPath = AIInterviewDefaults.JobProductTemplateViewPath;
+            changed = true;
+        }
+
+        if (changed)
+            await _productTemplateService.UpdateProductTemplateAsync(template);
+    }
+
+    protected async Task EnsureMockPracticeProductTemplateAsync()
+    {
+        if (_productTemplateService == null)
+            return;
+
+        var templates = await _productTemplateService.GetAllProductTemplatesAsync();
+        var template = templates.FirstOrDefault(item =>
+            string.Equals(item.ViewPath, AIInterviewDefaults.MockPracticeProductTemplateViewPath, StringComparison.OrdinalIgnoreCase)) ??
+            templates.FirstOrDefault(item =>
+                string.Equals(item.Name, AIInterviewDefaults.MockPracticeProductTemplateName, StringComparison.OrdinalIgnoreCase));
+
+        if (template == null)
+        {
+            await _productTemplateService.InsertProductTemplateAsync(new ProductTemplate
+            {
+                Name = AIInterviewDefaults.MockPracticeProductTemplateName,
+                ViewPath = AIInterviewDefaults.MockPracticeProductTemplateViewPath,
+                DisplayOrder = 21,
+                IgnoredProductTypes = ((int)ProductType.GroupedProduct).ToString()
+            });
+            return;
+        }
+
+        var changed = false;
+        if (!string.Equals(template.Name, AIInterviewDefaults.MockPracticeProductTemplateName, StringComparison.Ordinal))
+        {
+            template.Name = AIInterviewDefaults.MockPracticeProductTemplateName;
+            changed = true;
+        }
+
+        if (!string.Equals(template.ViewPath, AIInterviewDefaults.MockPracticeProductTemplateViewPath, StringComparison.Ordinal))
+        {
+            template.ViewPath = AIInterviewDefaults.MockPracticeProductTemplateViewPath;
+            changed = true;
+        }
+
+        if (template.DisplayOrder != 21)
+        {
+            template.DisplayOrder = 21;
+            changed = true;
+        }
+
+        var ignoredProductTypes = ((int)ProductType.GroupedProduct).ToString();
+        if (!string.Equals(template.IgnoredProductTypes, ignoredProductTypes, StringComparison.Ordinal))
+        {
+            template.IgnoredProductTypes = ignoredProductTypes;
             changed = true;
         }
 
@@ -676,6 +730,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _settingService.SaveSettingAsync(mockSettings);
 
         await EnsureJobProductTemplateAsync();
+        await EnsureMockPracticeProductTemplateAsync();
         await EnsurePricingCategoryTemplateAsync();
         await EnsureWidgetActiveAsync();
         await EnsureMessageTemplatesAsync();

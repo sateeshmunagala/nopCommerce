@@ -72,6 +72,7 @@ public interface IResumeTextExtractionService
 public interface IResumeProfileService
 {
     Task<ResumeProfileGenerationResult> EnsureResumeProfileAsync(JobApplication application, Product product = null, bool forceRegenerate = false);
+    Task<ResumeProfileGenerationResult> EnsureResumeProfileAsync(InterviewSession session, Product product = null, bool forceRegenerate = false);
     AIResumeProfileResponse ParseProfile(string resumeProfileJson);
 }
 

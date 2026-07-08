@@ -35,6 +35,7 @@
     }
 
     NopHtml.AppendPageCssClassParts("html-home-page");
+    const string mockPracticeUrl = "/generic-ai-interview-practice";
 
     var homepageTopContent = ToHtmlString(await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop }));
     var homepageBeforeCategoriesContent = ToHtmlString(await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories }));
@@ -62,7 +63,7 @@
                     </form>
                     <div class="jb-home-hero-actions" aria-label="Primary actions">
                         <a class="button-1 jb-home-button-primary" href="/jobs">Browse jobs</a>
-                        <a class="button-2 jb-home-button-secondary" href="/mockaiinterview/start">Practice interview</a>
+                        <a class="button-2 jb-home-button-secondary" href="@mockPracticeUrl">Practice interview</a>
                     </div>
                 </div>
             </div>
@@ -216,7 +217,7 @@
             </div>
             <div class="jb-home-final-actions">
                 <a class="button-1 jb-home-button-primary" href="/jobs">Browse jobs</a>
-                <a class="button-2 jb-home-button-secondary" href="/mockaiinterview/start">Practice interview</a>
+                <a class="button-2 jb-home-button-secondary" href="@mockPracticeUrl">Practice interview</a>
             </div>
         </section>
 

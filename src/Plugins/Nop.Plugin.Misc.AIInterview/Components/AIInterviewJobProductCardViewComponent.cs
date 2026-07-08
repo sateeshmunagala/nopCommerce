@@ -5,6 +5,7 @@ using Nop.Web.Models.Catalog;
 
 namespace Nop.Plugin.Misc.AIInterview.Components;
 
+[ViewComponent(Name = "AIInterviewJobProductCard")]
 public class AIInterviewJobProductCardViewComponent : NopViewComponent
 {
     private readonly IAIInterviewJobDisplayService _aiInterviewJobDisplayService;

@@ -1652,8 +1652,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
 
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
-        var jobTitle = product?.Name ?? await GetJobTitleAsync(session.ProductId);
-        var jobContext = BuildJobContext(product);
+        var jobTitle = product?.Name ?? await GetJobTitleAsync(session.SourceProductId > 0 ? session.SourceProductId : session.ProductId);
+        var jobContext = BuildInterviewContext(session, product);
         var resumeProfileJson = await GetResumeProfileJsonAsync(session, product);
         var evaluation = await _aiClient.ScoreAnswerAsync(new AIInterviewClientRequest
         {
@@ -2090,8 +2090,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             .ToList();
         var response = await _aiClient.GenerateQuestionPlanAsync(new AIInterviewQuestionPlanRequest
         {
-            JobTitle = product?.Name ?? await GetJobTitleAsync(session.ProductId),
-            JobContext = BuildJobContext(product),
+            JobTitle = product?.Name ?? await GetJobTitleAsync(session.SourceProductId > 0 ? session.SourceProductId : session.ProductId),
+            JobContext = BuildInterviewContext(session, product),
             Difficulty = session.Difficulty,
             QuestionCount = questionCount,
             TotalQuestionCount = totalQuestionCount,
@@ -2144,8 +2144,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
         var request = new AIInterviewClientRequest
         {
-            JobTitle = product?.Name ?? await GetJobTitleAsync(session.ProductId),
-            JobContext = BuildJobContext(product),
+            JobTitle = product?.Name ?? await GetJobTitleAsync(session.SourceProductId > 0 ? session.SourceProductId : session.ProductId),
+            JobContext = BuildInterviewContext(session, product),
             Difficulty = session.Difficulty,
             Prompt = _settings.Prompt,
             QuestionNumber = sequenceNumber,
@@ -2439,7 +2439,24 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     protected virtual async Task<string> GetResumeProfileJsonAsync(InterviewSession session, Product product = null)
     {
-        if (session == null || _resumeProfileService == null || _applicationService == null)
+        if (session == null || _resumeProfileService == null)
+            return string.Empty;
+
+        if (string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
+        {
+            if (session.ResumeDownloadId <= 0)
+                return string.Empty;
+
+            if (string.IsNullOrWhiteSpace(session.ResumeProfileJson))
+            {
+                var profileResult = await _resumeProfileService.EnsureResumeProfileAsync(session, product);
+                return profileResult.Success ? profileResult.ProfileJson ?? string.Empty : string.Empty;
+            }
+
+            return session.ResumeProfileJson;
+        }
+
+        if (_applicationService == null)
             return string.Empty;
 
         var application = await GetLinkedApplicationAsync(session);
@@ -2453,6 +2470,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
 
         return application.ResumeProfileJson;
+    }
+
+    protected static string NormalizeInterviewType(InterviewSession session)
+    {
+        if (!string.IsNullOrWhiteSpace(session?.InterviewType))
+            return session.InterviewType;
+
+        return session != null && session.ProductId > 0
+            ? AIInterviewDefaults.InterviewTypeJob
+            : AIInterviewDefaults.InterviewTypeMockPractice;
     }
 
     protected virtual async Task<JobApplication> GetLinkedApplicationAsync(InterviewSession session)
@@ -2496,6 +2523,22 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         var context = string.Join(Environment.NewLine, parts);
         return context.Length <= 4000 ? context : context[..4000];
+    }
+
+    protected static string BuildInterviewContext(InterviewSession session, Product product)
+    {
+        var context = BuildJobContext(product);
+        if (!string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(session?.SelectedProductAttributesJson))
+        {
+            return context;
+        }
+
+        var combined = string.IsNullOrWhiteSpace(context)
+            ? $"Selected practice inputs: {session.SelectedProductAttributesJson}"
+            : $"{context}{Environment.NewLine}Selected practice inputs: {session.SelectedProductAttributesJson}";
+
+        return combined.Length <= 4000 ? combined : combined[..4000];
     }
 
     protected static string StripMarkup(string value)

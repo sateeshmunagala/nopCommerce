@@ -270,6 +270,7 @@ public class ResumeProfileService : IResumeProfileService
     private readonly IResumeTextExtractionService _resumeTextExtractionService;
     private readonly IAIInterviewClient _aiInterviewClient;
     private readonly IApplicationService _applicationService;
+    private readonly IInterviewSessionService _interviewSessionService;
     private readonly IProductService _productService;
     private readonly NopLogger _nopLogger;
 
@@ -278,6 +279,7 @@ public class ResumeProfileService : IResumeProfileService
         IResumeTextExtractionService resumeTextExtractionService,
         IAIInterviewClient aiInterviewClient,
         IApplicationService applicationService,
+        IInterviewSessionService interviewSessionService,
         IProductService productService,
         NopLogger nopLogger = null)
     {
@@ -285,6 +287,7 @@ public class ResumeProfileService : IResumeProfileService
         _resumeTextExtractionService = resumeTextExtractionService;
         _aiInterviewClient = aiInterviewClient;
         _applicationService = applicationService;
+        _interviewSessionService = interviewSessionService;
         _productService = productService;
         _nopLogger = nopLogger;
     }
@@ -366,6 +369,85 @@ public class ResumeProfileService : IResumeProfileService
         };
     }
 
+    public async Task<ResumeProfileGenerationResult> EnsureResumeProfileAsync(InterviewSession session, Product product = null, bool forceRegenerate = false)
+    {
+        if (session == null || session.ResumeDownloadId <= 0)
+        {
+            return new ResumeProfileGenerationResult
+            {
+                Success = false,
+                ErrorCode = "missing_resume",
+                ErrorMessage = "Resume file is not available for profiling."
+            };
+        }
+
+        var storedProfile = forceRegenerate ? null : ParseProfile(session.ResumeProfileJson);
+        if (!forceRegenerate && storedProfile != null && storedProfile.Success)
+        {
+            return new ResumeProfileGenerationResult
+            {
+                Success = true,
+                ProfileJson = session.ResumeProfileJson,
+                Profile = storedProfile
+            };
+        }
+
+        product ??= session.SourceProductId > 0
+            ? await _productService.GetProductByIdAsync(session.SourceProductId)
+            : session.ProductId > 0
+                ? await _productService.GetProductByIdAsync(session.ProductId)
+                : null;
+
+        var download = await _downloadService.GetDownloadByIdAsync(session.ResumeDownloadId);
+        var extraction = await _resumeTextExtractionService.ExtractTextAsync(download);
+        if (!extraction.Success || string.IsNullOrWhiteSpace(extraction.Text))
+        {
+            await PersistProfileFailureAsync(session, extraction.ErrorCode, extraction.ErrorMessage);
+            await TryLogResumeProfileFailureAsync(session, product, download, extraction.ErrorCode, extraction.ErrorMessage, extraction.ExceptionType, extraction.DiagnosticMessage);
+            return new ResumeProfileGenerationResult
+            {
+                Success = false,
+                ErrorCode = extraction.ErrorCode,
+                ErrorMessage = extraction.ErrorMessage
+            };
+        }
+
+        var response = await _aiInterviewClient.AnalyzeResumeAsync(new AIResumeProfileRequest
+        {
+            JobTitle = ResolveSessionTitle(session, product),
+            JobContext = BuildJobContext(product),
+            ResumeText = extraction.Text
+        });
+
+        if (response == null || !response.Success)
+        {
+            var errorMessage = response?.ErrorMessage ?? "Resume profiling is unavailable.";
+            await PersistProfileFailureAsync(session, "profile_generation_failed", errorMessage);
+            await TryLogResumeProfileFailureAsync(session, product, download, "profile_generation_failed", errorMessage);
+            return new ResumeProfileGenerationResult
+            {
+                Success = false,
+                ErrorCode = "profile_generation_failed",
+                ErrorMessage = errorMessage
+            };
+        }
+
+        var sanitized = SanitizeProfile(response);
+        var profileJson = JsonSerializer.Serialize(sanitized, SerializerOptions);
+
+        session.ResumeProfileJson = profileJson;
+        session.ResumeProfileGeneratedOnUtc = DateTime.UtcNow;
+        session.ResumeProfileError = null;
+        await _interviewSessionService.UpdateInterviewSessionAsync(session);
+
+        return new ResumeProfileGenerationResult
+        {
+            Success = true,
+            ProfileJson = profileJson,
+            Profile = sanitized
+        };
+    }
+
     public AIResumeProfileResponse ParseProfile(string resumeProfileJson)
     {
         if (string.IsNullOrWhiteSpace(resumeProfileJson))
@@ -388,6 +470,14 @@ public class ResumeProfileService : IResumeProfileService
         application.ResumeProfileGeneratedOnUtc = null;
         application.ResumeProfileError = Truncate($"{errorCode}: {errorMessage}", 1000);
         await _applicationService.UpdateJobApplicationAsync(application);
+    }
+
+    private async Task PersistProfileFailureAsync(InterviewSession session, string errorCode, string errorMessage)
+    {
+        session.ResumeProfileJson = null;
+        session.ResumeProfileGeneratedOnUtc = null;
+        session.ResumeProfileError = Truncate($"{errorCode}: {errorMessage}", 1000);
+        await _interviewSessionService.UpdateInterviewSessionAsync(session);
     }
 
     private async Task TryLogResumeProfileFailureAsync(JobApplication application, Product product, Download download, string errorCode, string errorMessage, string exceptionType = null, string diagnosticMessage = null)
@@ -431,6 +521,48 @@ public class ResumeProfileService : IResumeProfileService
         }
     }
 
+    private async Task TryLogResumeProfileFailureAsync(InterviewSession session, Product product, Download download, string errorCode, string errorMessage, string exceptionType = null, string diagnosticMessage = null)
+    {
+        if (_nopLogger == null)
+            return;
+
+        try
+        {
+            var metadata = new List<string>
+            {
+                $"ErrorCode={Truncate(errorCode, 80)}",
+                $"SessionId={session?.Id ?? 0}",
+                $"CustomerId={session?.CustomerId ?? 0}",
+                $"ProductId={session?.ProductId ?? product?.Id ?? 0}",
+                $"SourceProductId={session?.SourceProductId ?? 0}",
+                $"ResumeDownloadId={session?.ResumeDownloadId ?? download?.Id ?? 0}",
+                $"FileExtension={Truncate(ResolveExtension(download), 20)}",
+                $"ContentType={Truncate(download?.ContentType, 120)}",
+                $"FileSizeBytes={download?.DownloadBinary?.LongLength ?? 0}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(exceptionType))
+                metadata.Add($"ExceptionType={Truncate(exceptionType, 80)}");
+            if (!string.IsNullOrWhiteSpace(diagnosticMessage))
+                metadata.Add($"Diagnostic={Truncate(diagnosticMessage, 220)}");
+            if (!string.IsNullOrWhiteSpace(errorMessage))
+                metadata.Add($"Message={Truncate(errorMessage, 220)}");
+
+            var level = string.Equals(errorCode, "extraction_failed", StringComparison.OrdinalIgnoreCase)
+                ? LogLevel.Error
+                : LogLevel.Warning;
+
+            await _nopLogger.InsertLogAsync(
+                level,
+                "AI Interview practice resume extraction failed",
+                string.Join("; ", metadata) + ".",
+                null);
+        }
+        catch
+        {
+        }
+    }
+
     private static string ResolveJobTitle(Product product, JobApplication application)
     {
         if (!string.IsNullOrWhiteSpace(product?.Name))
@@ -440,6 +572,16 @@ public class ResumeProfileService : IResumeProfileService
             return application.JobTitle;
 
         return "Interview";
+    }
+
+    private static string ResolveSessionTitle(InterviewSession session, Product product)
+    {
+        if (!string.IsNullOrWhiteSpace(product?.Name))
+            return product.Name;
+
+        return string.Equals(session?.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase)
+            ? "Mock Practice Interview"
+            : "Interview";
     }
 
     private static string BuildJobContext(Product product)
