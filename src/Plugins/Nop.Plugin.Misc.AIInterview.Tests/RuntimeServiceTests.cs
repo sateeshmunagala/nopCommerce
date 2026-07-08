@@ -199,6 +199,40 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task GetRuntimeModelAsync_Populates_QuestionCount_From_Session()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession
+        {
+            Id = 303,
+            ProductId = 10,
+            CustomerId = 99,
+            SessionKey = "key303",
+            Token = "token303",
+            Difficulty = "Medium",
+            QuestionCount = 5,
+            IsActive = true
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token303")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(303)).ReturnsAsync(new List<InterviewTurn>());
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var model = await service.GetRuntimeModelAsync("token303");
+
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.QuestionCount, Is.EqualTo(5));
+        Assert.That(model.ClientSettings.QuestionCount, Is.EqualTo(5));
+    }
+
+    [Test]
     public async Task GetRuntimeModelAsync_WithExistingUnansweredTurn_HidesQuestionAndTurns_UntilBegin()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -1430,6 +1464,7 @@ public class RuntimeServiceTests
     {
         var json = System.Text.Json.JsonSerializer.Serialize(new RuntimeClientSettingsModel
         {
+            QuestionCount = 5,
             SubmitAnswerUrl = "/submit",
             StopInterviewUrl = "/stop",
             SpeechAvailable = true
@@ -1438,6 +1473,7 @@ public class RuntimeServiceTests
             PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
         });
 
+        Assert.That(json, Does.Contain("\"questionCount\""));
         Assert.That(json, Does.Contain("\"submitAnswerUrl\""));
         Assert.That(json, Does.Contain("\"stopInterviewUrl\""));
         Assert.That(json, Does.Contain("\"speechAvailable\""));

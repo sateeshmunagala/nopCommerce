@@ -6,6 +6,7 @@ public record InterviewRuntimeModel : BaseNopModel
 {
     public int SessionId { get; set; }
     public int ProductId { get; set; }
+    public int QuestionCount { get; set; }
     public string Token { get; set; }
     public string SessionKey { get; set; }
     public string ProductName { get; set; }
@@ -39,6 +40,7 @@ public record InterviewTurnViewModel
 
 public record RuntimeClientSettingsModel
 {
+    public int QuestionCount { get; set; }
     public string SubmitAnswerUrl { get; set; }
     public string CompleteInterviewUrl { get; set; }
     public string RefreshTokenUrl { get; set; }

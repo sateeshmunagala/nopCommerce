@@ -2194,6 +2194,21 @@ body.ai-job-preview-open .item-box {
     min-width: 148px;
 }
 
+.runtime-question-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    margin: 12px 0 10px;
+    padding: 7px 10px;
+    border: 1px solid #d0d7e2;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 700;
+}
+
 .runtime-progress {
     height: 6px;
     border-radius: 999px;

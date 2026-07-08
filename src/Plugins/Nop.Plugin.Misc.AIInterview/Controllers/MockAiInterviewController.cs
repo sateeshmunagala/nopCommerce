@@ -334,6 +334,19 @@ public class MockAiInterviewController : BasePluginController
             : !string.Equals(normalizedInterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase);
     }
 
+    protected virtual int NormalizeRuntimeQuestionCount(InterviewSession session)
+    {
+        if (session?.QuestionCount > 0)
+            return Math.Clamp(session.QuestionCount, 1, 10);
+
+        return (session?.Difficulty ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "easy" => 2,
+            "hard" => 4,
+            _ => 3
+        };
+    }
+
     private static string NormalizeAttributeLabel(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -975,6 +988,7 @@ public class MockAiInterviewController : BasePluginController
             {
                 SessionId = session.Id,
                 ProductId = session.ProductId,
+                QuestionCount = NormalizeRuntimeQuestionCount(session),
                 SessionKey = session.SessionKey,
                 Token = session.Token,
                 Difficulty = session.Difficulty,
@@ -995,6 +1009,8 @@ public class MockAiInterviewController : BasePluginController
             return;
 
         model.ClientSettings ??= new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel();
+        model.QuestionCount = model.QuestionCount > 0 ? Math.Clamp(model.QuestionCount, 1, 10) : NormalizeRuntimeQuestionCount(session);
+        model.ClientSettings.QuestionCount = model.QuestionCount;
         model.ClientSettings.SubmitAnswerUrl = Url?.RouteUrl(AIInterviewDefaults.MockSubmitAnswerRouteName);
         model.ClientSettings.BeginInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockBeginRouteName);
         model.ClientSettings.CompleteInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);

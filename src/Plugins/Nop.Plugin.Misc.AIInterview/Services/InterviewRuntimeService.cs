@@ -1980,6 +1980,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
         var candidate = customer ?? await _customerService.GetCustomerByIdAsync(session.CustomerId);
+        var questionCount = GetMaxQuestions(session);
         var currentTurn = turns
             .OrderBy(turn => turn.SequenceNumber)
             .ThenBy(turn => turn.Id)
@@ -1996,6 +1997,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             SessionId = session.Id,
             ProductId = session.ProductId,
+            QuestionCount = questionCount,
             SessionKey = session.SessionKey,
             Token = session.Token,
             ProductName = product?.Name ?? "Interview",
@@ -2018,6 +2020,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             }).ToList(),
             ClientSettings = new RuntimeClientSettingsModel
             {
+                QuestionCount = questionCount,
                 SpeechRegion = _settings.AzureSpeechRegion,
                 SpeechVoiceName = string.Empty,
                 ProductName = product?.Name,

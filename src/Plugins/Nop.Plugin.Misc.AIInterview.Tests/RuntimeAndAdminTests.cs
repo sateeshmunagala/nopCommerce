@@ -582,11 +582,13 @@ public class RuntimeAndAdminTests
         {
             SessionId = 1,
             ProductId = 1,
+            QuestionCount = 5,
             SessionKey = "session-key",
             Token = "token",
             CurrentQuestion = "Q1",
             ClientSettings = new RuntimeClientSettingsModel
             {
+                QuestionCount = 5,
                 SpeechAvailable = false,
                 RecordingAvailable = false
             }
@@ -638,8 +640,50 @@ public class RuntimeAndAdminTests
 
         Assert.That(model.ClientSettings.SpeechAvailable, Is.False);
         Assert.That(model.ClientSettings.RecordingAvailable, Is.False);
+        Assert.That(model.QuestionCount, Is.EqualTo(5));
+        Assert.That(model.ClientSettings.QuestionCount, Is.EqualTo(5));
         Assert.That(model.ReportUrl, Is.EqualTo("/mockaiinterview/report/1"));
         Assert.That(model.ClientSettings.ReportUrl, Is.EqualTo("/mockaiinterview/report/1"));
+    }
+
+    [Test]
+    public async Task Runtime_Fallback_Model_Includes_QuestionCount()
+    {
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("fallback-question-count")).ReturnsAsync(new InterviewSession
+        {
+            Id = 41,
+            CustomerId = 1,
+            ProductId = 9,
+            SessionKey = "fallback-session",
+            Token = "fallback-question-count",
+            Difficulty = "Medium",
+            QuestionCount = 5,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        _productService.Setup(x => x.GetProductByIdAsync(9)).ReturnsAsync(new Product { Id = 9, Name = "Practice Product" });
+
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
+            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext ctx) => ctx.RouteName switch
+            {
+                var name when name == AIInterviewDefaults.MockReportRouteName => "/mockaiinterview/report/41",
+                var name when name == AIInterviewDefaults.MockSubmitAnswerRouteName => "/mockaiinterview/submit-answer",
+                var name when name == AIInterviewDefaults.MockBeginRouteName => "/mockaiinterview/begin",
+                var name when name == AIInterviewDefaults.MockStopRouteName => "/mockaiinterview/stop",
+                var name when name == AIInterviewDefaults.MockRefreshTokenRouteName => "/mockaiinterview/refresh-token",
+                var name when name == AIInterviewDefaults.MockSpeechTokenRouteName => "/mockaiinterview/speech-token",
+                var name when name == AIInterviewDefaults.MockRecordingUploadRouteName => "/mockaiinterview/upload-recording",
+                _ => string.Empty
+            });
+        _runtimeController.Url = urlHelper.Object;
+
+        var result = await _runtimeController.Runtime("fallback-question-count");
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (InterviewRuntimeModel)((ViewResult)result).Model;
+        Assert.That(model.QuestionCount, Is.EqualTo(5));
+        Assert.That(model.ClientSettings.QuestionCount, Is.EqualTo(5));
     }
 
     [Test]
@@ -831,6 +875,9 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("beginInterviewUrl"));
         Assert.That(runtimeViewText, Does.Contain("submitAnswer"));
         Assert.That(runtimeViewText, Does.Contain("stopInterview"));
+        Assert.That(runtimeViewText, Does.Contain("runtime-question-count"));
+        Assert.That(runtimeViewText, Does.Contain("config.questionCount"));
+        Assert.That(runtimeViewText, Does.Contain("(answered / totalQuestions) * 100"));
         Assert.That(runtimeViewText, Does.Contain("<textarea id=\"runtime-answer\""));
         Assert.That(runtimeViewText, Does.Contain("const answerPanel = answerBox?.closest('.runtime-answer');"));
         Assert.That(runtimeViewText, Does.Contain("const updateAnswerInputState = () =>"));

@@ -33,6 +33,14 @@
             </div>
         </div>
 
+        @if (Model.QuestionCount > 0)
+        {
+            <div class="runtime-question-count" aria-label="Interview question count">
+                <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
+                <span>@Model.QuestionCount @(Model.QuestionCount == 1 ? "question" : "questions")</span>
+            </div>
+        }
+
         <div class="runtime-progress"><span id="runtime-progress-bar"></span></div>
 
         <div class="runtime-layout">
@@ -176,6 +184,7 @@
     (() => {
         const config = @Html.Raw(clientSettings);
         const turns = @Html.Raw(turns);
+        const totalQuestions = Math.max(1, Number(config.questionCount || @Model.QuestionCount || 0));
         const debugRuntime = new URLSearchParams(window.location.search).get('debugRuntime') === '1';
         let sessionToken = config.token || '@Model.Token';
         let tokenExpiryUtc = config.tokenExpiryUtc ? new Date(config.tokenExpiryUtc) : null;
@@ -1131,7 +1140,7 @@
             });
 
             const answered = normalizedTurns.filter(turn => turn?.answerText).length;
-            const progress = Math.min(100, Math.max(0, (answered / Math.max(1, normalizedTurns.length)) * 100));
+            const progress = Math.min(100, Math.max(0, (answered / totalQuestions) * 100));
             progressBar.style.width = `${progress}%`;
             conversation.scrollTop = conversation.scrollHeight;
             transcriptBody.scrollTop = transcriptBody.scrollHeight;
