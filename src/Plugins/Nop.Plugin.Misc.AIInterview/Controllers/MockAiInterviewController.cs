@@ -30,6 +30,21 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
 public class MockAiInterviewController : BasePluginController
 {
+    private static readonly string[] PracticeDifficultyKeywords =
+    [
+        "practice difficulty",
+        "difficulty",
+        "interview difficulty"
+    ];
+
+    private static readonly string[] PracticeSkillKeywords =
+    [
+        "practice skill",
+        "skill",
+        "skills",
+        "interview skill"
+    ];
+
     private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, int ValueId, string Value);
     private sealed record SelectedProductAttributesSnapshot(IList<SelectedProductAttributeValueSnapshot> Attributes);
     private sealed record MockPracticeSelectionResult(string SelectedProductAttributesJson, string Difficulty, bool HasPracticeSkill, IList<string> Errors);
@@ -228,16 +243,16 @@ public class MockAiInterviewController : BasePluginController
 
     protected virtual int NormalizeQuestionCount(int questionCount)
     {
-        return Math.Clamp(questionCount <= 0 ? 3 : questionCount, 1, 10);
+        return Math.Clamp(questionCount <= 0 ? 5 : questionCount, 1, 10);
     }
 
     protected virtual async Task<int> ResolveQuestionCountAsync(int productId)
     {
         if (productId <= 0 || _jobRequirementService == null)
-            return 3;
+            return 5;
 
         var requirements = await _jobRequirementService.GetRequirementsAsync(productId);
-        return NormalizeQuestionCount(requirements?.QuestionCount ?? 3);
+        return NormalizeQuestionCount(requirements?.QuestionCount ?? 5);
     }
 
     protected virtual async Task<JobApplication> GetLatestApplicationForStartAsync(Customer customer, Product product)
@@ -319,6 +334,37 @@ public class MockAiInterviewController : BasePluginController
             : !string.Equals(normalizedInterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static string NormalizeAttributeLabel(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var sanitized = new string(value
+            .Trim()
+            .Select(character => char.IsLetterOrDigit(character) ? char.ToLowerInvariant(character) : ' ')
+            .ToArray());
+
+        return string.Join(" ", sanitized
+            .Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+            .ToLowerInvariant();
+    }
+
+    private static bool MatchesAttributeKeyword(IEnumerable<string> candidates, IEnumerable<string> keywords)
+    {
+        var normalizedCandidates = (candidates ?? Enumerable.Empty<string>())
+            .Select(NormalizeAttributeLabel)
+            .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        return normalizedCandidates.Any(candidate => keywords.Any(keyword =>
+        {
+            var normalizedKeyword = NormalizeAttributeLabel(keyword);
+            return string.Equals(candidate, normalizedKeyword, StringComparison.Ordinal) ||
+                   candidate.Contains(normalizedKeyword, StringComparison.Ordinal);
+        }));
+    }
+
     private async Task<MockPracticeSelectionResult> SerializeSelectedProductAttributesAsync(Product product, IFormCollection form)
     {
         if (product == null || form == null || _productAttributeParser == null || _productAttributeService == null)
@@ -337,6 +383,7 @@ public class MockAiInterviewController : BasePluginController
             return new MockPracticeSelectionResult(null, null, false, new List<string>());
 
         var snapshots = new List<SelectedProductAttributeValueSnapshot>();
+        var snapshotLabelsByValueId = new Dictionary<int, string[]>();
         foreach (var value in values.Where(value => value != null))
         {
             var mapping = await _productAttributeService.GetProductAttributeMappingByIdAsync(value.ProductAttributeMappingId);
@@ -352,16 +399,50 @@ public class MockAiInterviewController : BasePluginController
                 attribute.Name,
                 value.Id,
                 value.Name));
+            snapshotLabelsByValueId[value.Id] =
+            [
+                attribute.Name,
+                mapping.TextPrompt
+            ];
         }
 
         if (snapshots.Count == 0)
             return new MockPracticeSelectionResult(null, null, false, new List<string>());
 
-        var difficulty = snapshots.FirstOrDefault(attribute =>
-            string.Equals(attribute.AttributeName, "Practice Difficulty", StringComparison.OrdinalIgnoreCase))?.Value;
-        var hasPracticeSkill = snapshots.Any(attribute =>
-            string.Equals(attribute.AttributeName, "Practice Skill", StringComparison.OrdinalIgnoreCase) &&
-            !string.IsNullOrWhiteSpace(attribute.Value));
+        string difficulty = null;
+        var hasPracticeSkill = false;
+
+        foreach (var snapshot in snapshots)
+        {
+            snapshotLabelsByValueId.TryGetValue(snapshot.ValueId, out var attributeLabels);
+            attributeLabels ??=
+            [
+                snapshot.AttributeName
+            ];
+
+            if (string.IsNullOrWhiteSpace(difficulty) &&
+                MatchesAttributeKeyword(attributeLabels, PracticeDifficultyKeywords) &&
+                !string.IsNullOrWhiteSpace(snapshot.Value))
+            {
+                difficulty = snapshot.Value;
+            }
+
+            if (!hasPracticeSkill &&
+                MatchesAttributeKeyword(attributeLabels, PracticeSkillKeywords) &&
+                !string.IsNullOrWhiteSpace(snapshot.Value))
+            {
+                hasPracticeSkill = true;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(difficulty) && !hasPracticeSkill)
+        {
+            _logger?.LogWarning(
+                "AI Interview mock practice attributes were parsed but not identified for product {ProductId}. Posted form keys: {FormKeys}. Snapshot labels: {AttributeLabels}.",
+                product.Id,
+                string.Join(", ", form.Keys),
+                string.Join(", ", snapshotLabelsByValueId.Values.SelectMany(labels => labels).Where(label => !string.IsNullOrWhiteSpace(label)).Distinct(StringComparer.OrdinalIgnoreCase)));
+        }
 
         return new MockPracticeSelectionResult(
             JsonSerializer.Serialize(new SelectedProductAttributesSnapshot(snapshots), new JsonSerializerOptions(JsonSerializerDefaults.Web)),
@@ -378,7 +459,7 @@ public class MockAiInterviewController : BasePluginController
             {
                 var snapshot = JsonSerializer.Deserialize<SelectedProductAttributesSnapshot>(selectedProductAttributesJson);
                 var selectedDifficulty = snapshot?.Attributes?.FirstOrDefault(attribute =>
-                    string.Equals(attribute.AttributeName, "Practice Difficulty", StringComparison.OrdinalIgnoreCase));
+                    MatchesAttributeKeyword([attribute.AttributeName], PracticeDifficultyKeywords));
                 if (!string.IsNullOrWhiteSpace(selectedDifficulty?.Value))
                     return selectedDifficulty.Value;
             }

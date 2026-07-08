@@ -3363,6 +3363,7 @@ body.ai-job-preview-open .item-box {
 .practice-start-form input[type="file"],
 .practice-start-form textarea {
     display: block;
+    box-sizing: border-box;
     min-height: 50px;
     padding: 10px 12px;
     border: 1px solid #d6dde4;
@@ -3382,6 +3383,18 @@ body.ai-job-preview-open .item-box {
 .practice-start-form select {
     height: 46px;
     padding-right: 36px;
+}
+
+/* Keep mock-practice controls inside the start card on narrow screens. */
+.practice-start-form .attributes .required,
+.practice-start-form .attributes .option-list-control,
+.practice-start-form .attributes .option-list,
+.practice-start-form .attributes .input-box,
+.practice-start-form .attributes .datepicker {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .practice-start-form .attributes select:focus,

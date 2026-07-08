@@ -1,4 +1,4 @@
-using Nop.Core.Domain.Catalog;
+﻿using Nop.Core.Domain.Catalog;
 using Nop.Plugin.Misc.AIInterview;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Services.Catalog;
@@ -8,8 +8,8 @@ namespace Nop.Plugin.Misc.AIInterview.Services;
 
 public class JobRequirementService : IJobRequirementService
 {
-    private const int DefaultQuestionCount = 3;
-    private const int MinQuestionCount = 1;
+    private const int DefaultQuestionCount = 5;
+    private const int MinQuestionCount = 5;
     private const int MaxQuestionCount = 10;
 
     private readonly IGenericAttributeService _genericAttributeService;

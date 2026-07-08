@@ -548,6 +548,308 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public async Task Runtime_Start_MockPractice_ParserErrors_Block_Before_CreditCharge()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        var product = new Product { Id = 16, Name = "Generic AI Interview Practice", ProductTemplateId = 8 };
+        var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeParser = new Mock<IProductAttributeParser>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
+        _productService.Setup(x => x.GetProductByIdAsync(product.Id)).ReturnsAsync(product);
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(product.ProductTemplateId))
+            .ReturnsAsync(new ProductTemplate
+            {
+                Id = product.ProductTemplateId,
+                Name = AIInterviewDefaults.MockPracticeProductTemplateName,
+                ViewPath = AIInterviewDefaults.MockPracticeProductTemplateViewPath
+            });
+        productAttributeParser.Setup(x => x.ParseProductAttributesAsync(product, It.IsAny<IFormCollection>(), It.IsAny<List<string>>()))
+            .ReturnsAsync((Product parsedProduct, IFormCollection parsedForm, List<string> errors) =>
+            {
+                errors.Add("Please select a practice difficulty.");
+                return "<attributes />";
+            });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            _applicationService.Object,
+            null,
+            _jobInterviewExperienceService.Object,
+            null,
+            _turnService.Object,
+            null,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null,
+            null,
+            null,
+            productTemplateService.Object,
+            productAttributeParser.Object,
+            productAttributeService.Object);
+
+        var result = await controller.StartPost(new FormCollection(new Dictionary<string, StringValues>()), product.Id, "Medium");
+
+        Assert.That(result, Is.InstanceOf<JsonResult>());
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Start_MockPractice_WithPreviousPracticeResume_AllowsResumeOnlyStart()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        var product = new Product { Id = 17, Name = "Generic AI Interview Practice", ProductTemplateId = 8 };
+        var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeParser = new Mock<IProductAttributeParser>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>
+        {
+            new()
+            {
+                Id = 90,
+                CustomerId = customer.Id,
+                ProductId = 999,
+                SourceProductId = 999,
+                ResumeDownloadId = 555,
+                InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+                CreatedOnUtc = DateTime.UtcNow.AddDays(-2)
+            }
+        });
+        _productService.Setup(x => x.GetProductByIdAsync(product.Id)).ReturnsAsync(product);
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(product.ProductTemplateId))
+            .ReturnsAsync(new ProductTemplate
+            {
+                Id = product.ProductTemplateId,
+                Name = AIInterviewDefaults.MockPracticeProductTemplateName,
+                ViewPath = AIInterviewDefaults.MockPracticeProductTemplateViewPath
+            });
+        productAttributeParser.Setup(x => x.ParseProductAttributesAsync(product, It.IsAny<IFormCollection>(), It.IsAny<List<string>>()))
+            .ReturnsAsync("<attributes />");
+        productAttributeParser.Setup(x => x.ParseProductAttributeValuesAsync("<attributes />", 0))
+            .ReturnsAsync(new List<ProductAttributeValue>
+            {
+                new() { Id = 301, Name = "Low", ProductAttributeMappingId = 61 }
+            });
+        productAttributeService.Setup(x => x.GetProductAttributeMappingByIdAsync(61))
+            .ReturnsAsync(new ProductAttributeMapping { Id = 61, ProductAttributeId = 71 });
+        productAttributeService.Setup(x => x.GetProductAttributeByIdAsync(71))
+            .ReturnsAsync(new ProductAttribute { Id = 71, Name = "Practice Difficulty" });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            _applicationService.Object,
+            null,
+            _jobInterviewExperienceService.Object,
+            null,
+            _turnService.Object,
+            null,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null,
+            null,
+            null,
+            productTemplateService.Object,
+            productAttributeParser.Object,
+            productAttributeService.Object);
+
+        var form = new FormCollection(new Dictionary<string, StringValues>
+        {
+            ["SelectedResumeDownloadId"] = "555"
+        });
+
+        var result = await controller.StartPost(form, product.Id, "Low");
+
+        Assert.That(result, Is.InstanceOf<JsonResult>());
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session =>
+            session.CustomerId == customer.Id &&
+            session.ProductId == product.Id &&
+            session.ResumeDownloadId == 555 &&
+            session.JobApplicationId == 0 &&
+            session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice)), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_Start_MockPractice_WithPromptSynonyms_CreatesSession()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        var product = new Product { Id = 19, Name = "Generic AI Interview Practice", ProductTemplateId = 8 };
+        var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeParser = new Mock<IProductAttributeParser>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
+        _productService.Setup(x => x.GetProductByIdAsync(product.Id)).ReturnsAsync(product);
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(product.ProductTemplateId))
+            .ReturnsAsync(new ProductTemplate
+            {
+                Id = product.ProductTemplateId,
+                Name = AIInterviewDefaults.MockPracticeProductTemplateName,
+                ViewPath = AIInterviewDefaults.MockPracticeProductTemplateViewPath
+            });
+        productAttributeParser.Setup(x => x.ParseProductAttributesAsync(product, It.IsAny<IFormCollection>(), It.IsAny<List<string>>()))
+            .ReturnsAsync("<attributes />");
+        productAttributeParser.Setup(x => x.ParseProductAttributeValuesAsync("<attributes />", 0))
+            .ReturnsAsync(new List<ProductAttributeValue>
+            {
+                new() { Id = 501, Name = "Medium", ProductAttributeMappingId = 101 },
+                new() { Id = 502, Name = "Python", ProductAttributeMappingId = 102 }
+            });
+        productAttributeService.Setup(x => x.GetProductAttributeMappingByIdAsync(101))
+            .ReturnsAsync(new ProductAttributeMapping { Id = 101, ProductAttributeId = 111, TextPrompt = "Difficulty" });
+        productAttributeService.Setup(x => x.GetProductAttributeMappingByIdAsync(102))
+            .ReturnsAsync(new ProductAttributeMapping { Id = 102, ProductAttributeId = 112, TextPrompt = "Skill" });
+        productAttributeService.Setup(x => x.GetProductAttributeByIdAsync(111))
+            .ReturnsAsync(new ProductAttribute { Id = 111, Name = "Practice Setup" });
+        productAttributeService.Setup(x => x.GetProductAttributeByIdAsync(112))
+            .ReturnsAsync(new ProductAttribute { Id = 112, Name = "Practice Focus" });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            _applicationService.Object,
+            null,
+            _jobInterviewExperienceService.Object,
+            null,
+            _turnService.Object,
+            null,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null,
+            null,
+            null,
+            productTemplateService.Object,
+            productAttributeParser.Object,
+            productAttributeService.Object);
+
+        var result = await controller.StartPost(new FormCollection(new Dictionary<string, StringValues>()), product.Id, "Medium");
+
+        Assert.That(result, Is.InstanceOf<JsonResult>());
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session =>
+            session.ProductId == product.Id &&
+            session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice &&
+            session.Difficulty == "Medium" &&
+            !string.IsNullOrWhiteSpace(session.SelectedProductAttributesJson))), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_Start_MockPractice_DoesNotReuse_ActiveJobSession_ForSameProduct()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        var product = new Product { Id = 18, Name = "Generic AI Interview Practice", ProductTemplateId = 8 };
+        var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeParser = new Mock<IProductAttributeParser>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>
+        {
+            new()
+            {
+                Id = 77,
+                CustomerId = customer.Id,
+                ProductId = product.Id,
+                JobApplicationId = 12,
+                InterviewType = AIInterviewDefaults.InterviewTypeJob,
+                SessionKey = "job-session",
+                Token = "job-token",
+                IsActive = true,
+                CreatedOnUtc = DateTime.UtcNow.AddMinutes(-15),
+                TokenExpiryUtc = DateTime.UtcNow.AddMinutes(15)
+            }
+        });
+        _productService.Setup(x => x.GetProductByIdAsync(product.Id)).ReturnsAsync(product);
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(product.ProductTemplateId))
+            .ReturnsAsync(new ProductTemplate
+            {
+                Id = product.ProductTemplateId,
+                Name = AIInterviewDefaults.MockPracticeProductTemplateName,
+                ViewPath = AIInterviewDefaults.MockPracticeProductTemplateViewPath
+            });
+        productAttributeParser.Setup(x => x.ParseProductAttributesAsync(product, It.IsAny<IFormCollection>(), It.IsAny<List<string>>()))
+            .ReturnsAsync("<attributes />");
+        productAttributeParser.Setup(x => x.ParseProductAttributeValuesAsync("<attributes />", 0))
+            .ReturnsAsync(new List<ProductAttributeValue>
+            {
+                new() { Id = 401, Name = "Advanced", ProductAttributeMappingId = 81 },
+                new() { Id = 402, Name = "Python", ProductAttributeMappingId = 82 }
+            });
+        productAttributeService.Setup(x => x.GetProductAttributeMappingByIdAsync(81))
+            .ReturnsAsync(new ProductAttributeMapping { Id = 81, ProductAttributeId = 91 });
+        productAttributeService.Setup(x => x.GetProductAttributeMappingByIdAsync(82))
+            .ReturnsAsync(new ProductAttributeMapping { Id = 82, ProductAttributeId = 92 });
+        productAttributeService.Setup(x => x.GetProductAttributeByIdAsync(91))
+            .ReturnsAsync(new ProductAttribute { Id = 91, Name = "Practice Difficulty" });
+        productAttributeService.Setup(x => x.GetProductAttributeByIdAsync(92))
+            .ReturnsAsync(new ProductAttribute { Id = 92, Name = "Practice Skill" });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            _applicationService.Object,
+            null,
+            _jobInterviewExperienceService.Object,
+            null,
+            _turnService.Object,
+            null,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null,
+            null,
+            null,
+            productTemplateService.Object,
+            productAttributeParser.Object,
+            productAttributeService.Object);
+
+        var result = await controller.StartPost(new FormCollection(new Dictionary<string, StringValues>()), product.Id, "Advanced");
+
+        Assert.That(result, Is.InstanceOf<JsonResult>());
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session =>
+            session.ProductId == product.Id &&
+            session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice &&
+            session.Token != "job-token")), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()), Times.Once);
+    }
+
+    [Test]
     public void ProductDetails_And_StartViews_Handle_Fetch_Errors_Safely()
     {
         var productViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "Components", "AIInterviewProductDetails", "Default.cshtml"));
