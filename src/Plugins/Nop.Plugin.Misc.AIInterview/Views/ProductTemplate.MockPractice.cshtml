@@ -248,7 +248,20 @@
                     }
                 });
                 const contentType = response.headers.get('content-type') || '';
-                if (!response.ok || !contentType.includes('application/json')) {
+                let result = null;
+                if (contentType.includes('application/json')) {
+                    try {
+                        result = await response.json();
+                    } catch {
+                    }
+                }
+
+                if (!response.ok) {
+                    showError(result?.error || result?.message || safeRequestError);
+                    return;
+                }
+
+                if (!contentType.includes('application/json')) {
                     let responseText = '';
                     try {
                         responseText = (await response.text()).trim();
@@ -259,10 +272,7 @@
                     return;
                 }
 
-                let result;
-                try {
-                    result = await response.json();
-                } catch {
+                if (!result) {
                     showError(safeRequestError);
                     return;
                 }

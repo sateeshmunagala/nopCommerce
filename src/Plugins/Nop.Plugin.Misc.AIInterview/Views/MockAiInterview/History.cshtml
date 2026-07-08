@@ -131,7 +131,7 @@
                                 <div class="applications-footnote">@(await FormatUtcDateAsync(session.CreatedOnUtc))</div>
                             </div>
                             <div class="responsive-data-card-chip-group">
-                                <span class="score-chip">@(string.IsNullOrWhiteSpace(session.Score) ? "-" : session.Score)</span>
+                                <span class="score-chip">@session.Score</span>
                                 <span class="status-pill">@session.Status</span>
                             </div>
                         </div>
@@ -142,7 +142,7 @@
                             </div>
                             <div class="responsive-data-card-item">
                                 <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Score")</span>
-                                <span class="responsive-data-card-value">@(string.IsNullOrWhiteSpace(session.Score) ? "-" : session.Score)</span>
+                                <span class="responsive-data-card-value">@session.Score</span>
                             </div>
                         </div>
                         <div class="responsive-data-card-actions">
