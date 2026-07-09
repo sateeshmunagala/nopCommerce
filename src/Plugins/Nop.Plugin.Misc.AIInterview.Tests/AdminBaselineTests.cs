@@ -49,6 +49,8 @@ public class AdminBaselineTests
     private Mock<IWorkContext> _workContext;
     private Mock<ISettingService> _settingService;
     private Mock<IRepository<Customer>> _customerRepository;
+    private Mock<IRepository<InterviewSession>> _sessionRepository;
+    private Mock<IRepository<Product>> _productRepository;
     private Mock<IRepository<CreditWallet>> _walletRepository;
     private Mock<IRepository<CreditLedgerEntry>> _ledgerRepository;
     private Mock<IRepository<CreditPurchaseGrant>> _creditPurchaseGrantRepository;
@@ -57,6 +59,8 @@ public class AdminBaselineTests
     private AIInterviewAdminController _controller;
     private MockAiInterviewAdminController _legacyController;
     private List<Customer> _customers;
+    private List<InterviewSession> _sessions;
+    private List<Product> _products;
     private List<CreditWallet> _wallets;
     private List<CreditLedgerEntry> _ledgerEntries;
     private List<CreditPurchaseGrant> _creditPurchaseGrants;
@@ -77,6 +81,8 @@ public class AdminBaselineTests
         _workContext = new Mock<IWorkContext>();
         _settingService = new Mock<ISettingService>();
         _customerRepository = new Mock<IRepository<Customer>>();
+        _sessionRepository = new Mock<IRepository<InterviewSession>>();
+        _productRepository = new Mock<IRepository<Product>>();
         _walletRepository = new Mock<IRepository<CreditWallet>>();
         _ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
         _creditPurchaseGrantRepository = new Mock<IRepository<CreditPurchaseGrant>>();
@@ -105,10 +111,14 @@ public class AdminBaselineTests
             .ReturnsAsync((string key) => key);
 
         _customers = new List<Customer>();
+        _sessions = new List<InterviewSession>();
+        _products = new List<Product>();
         _wallets = new List<CreditWallet>();
         _ledgerEntries = new List<CreditLedgerEntry>();
         _creditPurchaseGrants = new List<CreditPurchaseGrant>();
         _customerRepository.SetupGet(x => x.Table).Returns(() => _customers.AsQueryable());
+        _sessionRepository.SetupGet(x => x.Table).Returns(() => _sessions.AsQueryable());
+        _productRepository.SetupGet(x => x.Table).Returns(() => _products.AsQueryable());
         _walletRepository.SetupGet(x => x.Table).Returns(() => _wallets.AsQueryable());
         _ledgerRepository.SetupGet(x => x.Table).Returns(() => _ledgerEntries.AsQueryable());
         _creditPurchaseGrantRepository.SetupGet(x => x.Table).Returns(() => _creditPurchaseGrants.AsQueryable());
@@ -142,7 +152,11 @@ public class AdminBaselineTests
             _ledgerRepository.Object,
             _creditPurchaseGrantRepository.Object,
             _aiInterviewSettings,
-            _mockAIInterviewSettings);
+            _mockAIInterviewSettings,
+            null,
+            null,
+            _sessionRepository.Object,
+            _productRepository.Object);
 
         var defaultUrlHelper = new Mock<IUrlHelper>();
         defaultUrlHelper.Setup(x => x.Action(It.IsAny<UrlActionContext>()))
@@ -203,7 +217,7 @@ public class AdminBaselineTests
         var parent = root.ChildNodes.FirstOrDefault(item => item.SystemName == AIInterviewDefaults.AdminMenuSystemName);
         Assert.That(parent, Is.Not.Null);
         Assert.That(string.IsNullOrWhiteSpace(parent.Url), Is.True);
-        Assert.That(parent.ChildNodes.Count, Is.EqualTo(6));
+        Assert.That(parent.ChildNodes.Count, Is.EqualTo(7));
         Assert.That(parent.ChildNodes.Select(x => x.SystemName), Is.EquivalentTo(new[]
         {
             AIInterviewDefaults.AdminConfigureMenuSystemName,
@@ -211,7 +225,8 @@ public class AdminBaselineTests
             AIInterviewDefaults.AdminSponsorInvitesMenuSystemName,
             AIInterviewDefaults.AdminVendorCreditsMenuSystemName,
             AIInterviewDefaults.AdminApplicantCreditsMenuSystemName,
-            AIInterviewDefaults.AdminScoreboardMenuSystemName
+            AIInterviewDefaults.AdminScoreboardMenuSystemName,
+            AIInterviewDefaults.AdminMockPracticeSessionsMenuSystemName
         }));
     }
 
@@ -392,6 +407,262 @@ public class AdminBaselineTests
         Assert.That(text, Does.Contain("@await Html.PartialAsync(\"Table\", new DataTablesModel"));
         Assert.That(text, Does.Contain("UrlRead = new DataUrl(\"ScoreboardList\", \"AIInterviewAdmin\", null)"));
         Assert.That(text, Does.Contain("ColumnCollection = new List<ColumnProperty>"));
+    }
+
+    [Test]
+    public void MockPracticeSessions_View_Uses_Nopcommerce_DataTables_Helper_And_Active_Menu()
+    {
+        var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "MockPracticeSessions.cshtml"));
+
+        Assert.That(text, Does.Contain("@await Html.PartialAsync(\"Table\", new DataTablesModel"));
+        Assert.That(text, Does.Contain("UrlRead = new DataUrl(\"MockPracticeSessionsList\", \"AIInterviewAdmin\", null)"));
+        Assert.That(text, Does.Contain("NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminMockPracticeSessionsMenuSystemName)"));
+        Assert.That(text, Does.Contain("SearchButtonId = \"search-mock-practice-sessions\""));
+    }
+
+    [Test]
+    public void MockPracticeSessions_Controller_Uses_Standard_Paging_Patterns()
+    {
+        var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "AIInterviewAdminController.cs"));
+
+        Assert.That(text, Does.Contain("searchModel.SetGridPageSize()"));
+        Assert.That(text, Does.Contain("PrepareToGridAsync(searchModel"));
+        Assert.That(text, Does.Contain(".Skip(searchModel.Start)"));
+        Assert.That(text, Does.Contain(".Take(searchModel.Length)"));
+    }
+
+    [Test]
+    public async Task MockPracticeSessions_Page_Prepares_Search_Model()
+    {
+        var result = await _controller.MockPracticeSessions(null);
+
+        Assert.That(result, Is.InstanceOf<ViewResult>());
+        var model = ((ViewResult)result).Model as MockPracticeSessionSearchModel;
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.PageSize, Is.GreaterThan(0));
+        Assert.That(model.AvailableStatuses, Is.Not.Empty);
+        Assert.That(model.AvailableDifficulties, Is.Not.Empty);
+        Assert.That(model.AvailableHasResumeOptions, Is.Not.Empty);
+    }
+
+    [Test]
+    public async Task MockPracticeSessionsList_Includes_Only_MockPractice_Sessions()
+    {
+        SeedMockPracticeCatalog();
+        _sessions.Add(new InterviewSession
+        {
+            Id = 1,
+            CustomerId = 1,
+            ProductId = 10,
+            SourceProductId = 20,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            CreatedOnUtc = new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc)
+        });
+        _sessions.Add(new InterviewSession
+        {
+            Id = 2,
+            CustomerId = 2,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeJob,
+            CreatedOnUtc = new DateTime(2026, 7, 2, 10, 0, 0, DateTimeKind.Utc)
+        });
+
+        var model = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel { Start = 0, Length = 10 });
+
+        Assert.That(model.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 1 }));
+    }
+
+    [Test]
+    public async Task MockPracticeSessionsList_CustomerKeyword_Filter_Matches_Name_And_Email()
+    {
+        SeedMockPracticeCatalog();
+        _sessions.Add(new InterviewSession
+        {
+            Id = 10,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            CreatedOnUtc = new DateTime(2026, 7, 2, 8, 0, 0, DateTimeKind.Utc)
+        });
+        _sessions.Add(new InterviewSession
+        {
+            Id = 11,
+            CustomerId = 2,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            CreatedOnUtc = new DateTime(2026, 7, 2, 9, 0, 0, DateTimeKind.Utc)
+        });
+
+        var nameMatch = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel { CustomerKeyword = "Alice", Start = 0, Length = 10 });
+        var emailMatch = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel { CustomerKeyword = "bob@example.com", Start = 0, Length = 10 });
+
+        Assert.That(nameMatch.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 10 }));
+        Assert.That(emailMatch.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 11 }));
+    }
+
+    [Test]
+    public async Task MockPracticeSessionsList_Status_Filter_Works_For_Active_And_Completed()
+    {
+        SeedMockPracticeCatalog();
+        _sessions.Add(new InterviewSession
+        {
+            Id = 21,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            IsActive = true,
+            CreatedOnUtc = new DateTime(2026, 7, 3, 8, 0, 0, DateTimeKind.Utc)
+        });
+        _sessions.Add(new InterviewSession
+        {
+            Id = 22,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            IsActive = false,
+            CompletedOnUtc = new DateTime(2026, 7, 3, 9, 0, 0, DateTimeKind.Utc),
+            CreatedOnUtc = new DateTime(2026, 7, 3, 7, 0, 0, DateTimeKind.Utc)
+        });
+
+        var active = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel { Status = "Active", Start = 0, Length = 10 });
+        var completed = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel { Status = "Completed", Start = 0, Length = 10 });
+
+        Assert.That(active.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 21 }));
+        Assert.That(completed.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 22 }));
+    }
+
+    [Test]
+    public async Task MockPracticeSessionsList_HasResume_Filter_Works()
+    {
+        SeedMockPracticeCatalog();
+        _sessions.Add(new InterviewSession
+        {
+            Id = 31,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            ResumeDownloadId = 15,
+            CreatedOnUtc = new DateTime(2026, 7, 4, 8, 0, 0, DateTimeKind.Utc)
+        });
+        _sessions.Add(new InterviewSession
+        {
+            Id = 32,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            ResumeDownloadId = 0,
+            CreatedOnUtc = new DateTime(2026, 7, 4, 7, 0, 0, DateTimeKind.Utc)
+        });
+
+        var withResume = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel { HasResume = true, Start = 0, Length = 10 });
+        var withoutResume = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel { HasResume = false, Start = 0, Length = 10 });
+
+        Assert.That(withResume.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 31 }));
+        Assert.That(withoutResume.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 32 }));
+    }
+
+    [Test]
+    public async Task MockPracticeSessionsList_QuestionCount_Filter_Works()
+    {
+        SeedMockPracticeCatalog();
+        _sessions.Add(new InterviewSession
+        {
+            Id = 41,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            QuestionCount = 3,
+            CreatedOnUtc = new DateTime(2026, 7, 5, 8, 0, 0, DateTimeKind.Utc)
+        });
+        _sessions.Add(new InterviewSession
+        {
+            Id = 42,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            QuestionCount = 5,
+            CreatedOnUtc = new DateTime(2026, 7, 5, 7, 0, 0, DateTimeKind.Utc)
+        });
+
+        var model = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel { QuestionCount = 5, Start = 0, Length = 10 });
+
+        Assert.That(model.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 42 }));
+    }
+
+    [Test]
+    public async Task MockPracticeSessionsList_DateRange_Filter_Uses_CreatedOnUtc()
+    {
+        SeedMockPracticeCatalog();
+        _sessions.Add(new InterviewSession
+        {
+            Id = 51,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            CreatedOnUtc = new DateTime(2026, 7, 6, 0, 15, 0, DateTimeKind.Utc)
+        });
+        _sessions.Add(new InterviewSession
+        {
+            Id = 52,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            CreatedOnUtc = new DateTime(2026, 7, 7, 23, 45, 0, DateTimeKind.Utc)
+        });
+        _sessions.Add(new InterviewSession
+        {
+            Id = 53,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            CreatedOnUtc = new DateTime(2026, 7, 8, 0, 5, 0, DateTimeKind.Utc)
+        });
+
+        var model = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel
+        {
+            DateFrom = new DateTime(2026, 7, 6),
+            DateTo = new DateTime(2026, 7, 7),
+            Start = 0,
+            Length = 10
+        });
+
+        Assert.That(model.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 52, 51 }));
+    }
+
+    [Test]
+    public async Task MockPracticeSessionsList_Paging_And_SelectedInputs_Summary_Are_Standardized()
+    {
+        SeedMockPracticeCatalog();
+        _sessions.Add(new InterviewSession
+        {
+            Id = 61,
+            CustomerId = 1,
+            ProductId = 10,
+            SourceProductId = 20,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            SelectedProductAttributesJson = "{\"Attributes\":[{\"AttributeName\":\"Difficulty\",\"Value\":\"Medium\"},{\"AttributeName\":\"Skill\",\"Value\":\"Software Development\"}]}",
+            CreatedOnUtc = new DateTime(2026, 7, 9, 10, 0, 0, DateTimeKind.Utc)
+        });
+        _sessions.Add(new InterviewSession
+        {
+            Id = 60,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            SelectedProductAttributesJson = "{\"Attributes\":[{\"AttributeName\":\"Difficulty\",\"Value\":\"Low\"}]}",
+            CreatedOnUtc = new DateTime(2026, 7, 9, 9, 0, 0, DateTimeKind.Utc)
+        });
+
+        var model = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel { Start = 0, Length = 1 });
+        var row = model.Data.Single();
+
+        Assert.That(model.RecordsTotal, Is.EqualTo(2));
+        Assert.That(model.Data.Count(), Is.EqualTo(1));
+        Assert.That(row.SessionId, Is.EqualTo(61));
+        Assert.That(row.SelectedInputs, Is.EqualTo("Difficulty: Medium; Skill: Software Development"));
+        Assert.That(row.SelectedInputs, Does.Not.Contain("\"Attributes\""));
+        Assert.That(row.ProductId, Is.EqualTo(20));
+        Assert.That(row.ProductName, Is.EqualTo("Practice Source"));
     }
 
     [Test]
@@ -1396,5 +1667,31 @@ public class AdminBaselineTests
         Assert.That(model.Rows.Single().CandidateName, Is.EqualTo("Casey Jones"));
         Assert.That(model.Rows.Single().VendorName, Is.EqualTo("Example Vendor"));
         Assert.That(model.Rows.Single().JobTitle, Is.EqualTo("Platform Engineer"));
+    }
+
+    private void SeedMockPracticeCatalog()
+    {
+        _customers.Clear();
+        _products.Clear();
+        _sessions.Clear();
+
+        _customers.AddRange(new[]
+        {
+            new Customer { Id = 1, FirstName = "Alice", LastName = "Johnson", Email = "alice@example.com" },
+            new Customer { Id = 2, FirstName = "Bob", LastName = "Smith", Email = "bob@example.com" }
+        });
+
+        _products.AddRange(new[]
+        {
+            new Product { Id = 10, Name = "Practice Product" },
+            new Product { Id = 20, Name = "Practice Source" }
+        });
+    }
+
+    private async Task<MockPracticeSessionListModel> GetMockPracticeListAsync(MockPracticeSessionSearchModel searchModel)
+    {
+        var result = await _controller.MockPracticeSessionsList(searchModel);
+        Assert.That(result, Is.InstanceOf<JsonResult>());
+        return ((JsonResult)result).Value as MockPracticeSessionListModel;
     }
 }

@@ -1,0 +1,254 @@
+@model Nop.Plugin.Misc.AIInterview.Models.MockPracticeSessionSearchModel
+@using Nop.Plugin.Misc.AIInterview
+@using Nop.Plugin.Misc.AIInterview.Models
+@using Nop.Web.Framework.Models.DataTables
+
+@{
+    Layout = "_AdminLayout";
+    ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Title").Text;
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-admin.css");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-plugin-admin-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-admin-mock-practice-sessions-page");
+    NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminMockPracticeSessionsMenuSystemName);
+}
+
+<div class="content-header clearfix aiinterview-admin-header">
+    <div class="float-left">
+        <h1>@T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Title")</h1>
+        <div class="aiinterview-admin-subtitle">@T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Search")</div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid aiinterview-admin-shell">
+        <div class="card card-default card-search aiinterview-admin-card aiinterview-admin-search-card">
+            <div class="card-body">
+                <div class="search-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="CustomerKeyword" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-editor asp-for="CustomerKeyword" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="ProductKeyword" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-editor asp-for="ProductKeyword" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="Difficulty" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-select asp-for="Difficulty" asp-items="Model.AvailableDifficulties" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="Status" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-select asp-for="Status" asp-items="Model.AvailableStatuses" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="HasResume" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-select asp-for="HasResume" asp-items="Model.AvailableHasResumeOptions" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="QuestionCount" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-editor asp-for="QuestionCount" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="MinScore" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-editor asp-for="MinScore" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="MaxScore" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-editor asp-for="MaxScore" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="DateFrom" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-editor asp-for="DateFrom" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="DateTo" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-editor asp-for="DateTo" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="text-center col-12">
+                            <button type="button" id="search-mock-practice-sessions" class="btn btn-primary btn-search aiinterview-admin-action-button" aria-label="@T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Search")" title="@T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Search")">
+                                <i class="fas fa-magnifying-glass"></i>
+                                @T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Search")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-default aiinterview-admin-card">
+            <div class="card-body">
+                @await Html.PartialAsync("Table", new DataTablesModel
+                {
+                    Name = "mock-practice-sessions-grid",
+                    UrlRead = new DataUrl("MockPracticeSessionsList", "AIInterviewAdmin", null),
+                    SearchButtonId = "search-mock-practice-sessions",
+                    Length = Model.PageSize,
+                    LengthMenu = Model.AvailablePageSizes,
+                    Filters = new List<FilterParameter>
+                    {
+                        new FilterParameter(nameof(Model.CustomerKeyword)),
+                        new FilterParameter(nameof(Model.ProductKeyword)),
+                        new FilterParameter(nameof(Model.Difficulty)),
+                        new FilterParameter(nameof(Model.Status)),
+                        new FilterParameter(nameof(Model.HasResume)),
+                        new FilterParameter(nameof(Model.QuestionCount)),
+                        new FilterParameter(nameof(Model.MinScore)),
+                        new FilterParameter(nameof(Model.MaxScore)),
+                        new FilterParameter(nameof(Model.DateFrom)),
+                        new FilterParameter(nameof(Model.DateTo))
+                    },
+                    ColumnCollection = new List<ColumnProperty>
+                    {
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.SessionId))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.SessionId").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.CustomerName))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Customer").Text,
+                            Render = new RenderCustom("renderMockPracticeCustomer")
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.CustomerEmail))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.CustomerEmail").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.ProductName))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Product").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.Difficulty))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Difficulty").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.Status))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.HasResume))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.HasResume").Text,
+                            Render = new RenderBoolean()
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.QuestionCount))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.QuestionCount").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.Score))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Score").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.SelectedInputs))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.SelectedInputs").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.CreatedOnUtc))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.CreatedOn").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.StartedOnUtc))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.StartedOn").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.CompletedOnUtc))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.CompletedOn").Text
+                        },
+                        new ColumnProperty(nameof(MockPracticeSessionRowModel.ReportUrl))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.ViewReport").Text,
+                            Width = "140",
+                            ClassName = NopColumnClassDefaults.Button,
+                            Render = new RenderCustom("renderMockPracticeReport")
+                        }
+                    }
+                })
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    function mockPracticeEncodeHtml(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderMockPracticeCustomer(data, type, row) {
+        if (type !== 'display') {
+            return data;
+        }
+
+        if (!row.CustomerAdminUrl) {
+            return mockPracticeEncodeHtml(row.CustomerName || '');
+        }
+
+        return '<a href="' + mockPracticeEncodeHtml(row.CustomerAdminUrl) + '">' + mockPracticeEncodeHtml(row.CustomerName || '') + '</a>';
+    }
+
+    function renderMockPracticeReport(data, type, row) {
+        if (type !== 'display') {
+            return data;
+        }
+
+        if (!row.ReportUrl) {
+            return '';
+        }
+
+        return '<a class="btn btn-default aiinterview-admin-link-button" href="' + mockPracticeEncodeHtml(row.ReportUrl) + '" title="@T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.ViewReport").Text" aria-label="@T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.ViewReport").Text">@T("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.ViewReport").Text</a>';
+    }
+</script>

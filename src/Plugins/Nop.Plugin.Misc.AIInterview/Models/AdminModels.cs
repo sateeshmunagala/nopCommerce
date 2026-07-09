@@ -241,6 +241,66 @@ public record ScoreboardRowModel : BaseNopModel
     public string ReportUrl { get; set; }
 }
 
+public record MockPracticeSessionSearchModel : BaseSearchModel
+{
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Customer")]
+    public string CustomerKeyword { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Product")]
+    public string ProductKeyword { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Difficulty")]
+    public string Difficulty { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status")]
+    public string Status { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.HasResume")]
+    public bool? HasResume { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.QuestionCount")]
+    public int? QuestionCount { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.MinScore")]
+    public decimal? MinScore { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.MaxScore")]
+    public decimal? MaxScore { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.DateFrom")]
+    public DateTime? DateFrom { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.DateTo")]
+    public DateTime? DateTo { get; set; }
+
+    public IList<SelectListItem> AvailableStatuses { get; set; } = new List<SelectListItem>();
+    public IList<SelectListItem> AvailableDifficulties { get; set; } = new List<SelectListItem>();
+    public IList<SelectListItem> AvailableHasResumeOptions { get; set; } = new List<SelectListItem>();
+}
+
+public record MockPracticeSessionListModel : BasePagedListModel<MockPracticeSessionRowModel>;
+
+public record MockPracticeSessionRowModel : BaseNopModel
+{
+    public int SessionId { get; set; }
+    public int CustomerId { get; set; }
+    public string CustomerName { get; set; }
+    public string CustomerEmail { get; set; }
+    public string CustomerAdminUrl { get; set; }
+    public int ProductId { get; set; }
+    public string ProductName { get; set; }
+    public string Difficulty { get; set; }
+    public string Status { get; set; }
+    public bool HasResume { get; set; }
+    public int QuestionCount { get; set; }
+    public decimal Score { get; set; }
+    public string SelectedInputs { get; set; }
+    public DateTime CreatedOnUtc { get; set; }
+    public DateTime? StartedOnUtc { get; set; }
+    public DateTime? CompletedOnUtc { get; set; }
+    public string ReportUrl { get; set; }
+}
+
 public record CandidateDetailsModel : BaseNopModel
 {
     public int SessionId { get; set; }

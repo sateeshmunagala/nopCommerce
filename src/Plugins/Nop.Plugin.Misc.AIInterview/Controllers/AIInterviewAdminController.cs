@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
@@ -38,6 +39,8 @@ public class AIInterviewAdminController : BasePluginController
     private sealed record CreditLedgerSnapshot(int CustomerId, decimal Amount, DateTime CreatedOnUtc);
     private sealed record CreditGrantSnapshot(int CustomerId, DateTime CreatedOnUtc);
     private sealed record ApplicantCreditActivityProjection(int CustomerId, string FirstName, string LastName, string Email, decimal WalletBalance, decimal TotalDeposited, decimal TotalWithdrawn, DateTime? LastCreditActivityUtc);
+    private sealed record SelectedProductAttributeSummary([property: JsonPropertyName("AttributeName")] string AttributeName, [property: JsonPropertyName("Value")] string Value);
+    private sealed record SelectedProductAttributesSummarySnapshot([property: JsonPropertyName("Attributes")] IList<SelectedProductAttributeSummary> Attributes);
 
     private readonly ICreditService _creditService;
     private readonly ISponsorInviteService _inviteService;
@@ -54,6 +57,8 @@ public class AIInterviewAdminController : BasePluginController
     private readonly IWorkContext _workContext;
     private readonly ISettingService _settingService;
     private readonly IRepository<Customer> _customerRepository;
+    private readonly IRepository<InterviewSession> _sessionRepository;
+    private readonly IRepository<Product> _productRepository;
     private readonly IRepository<CreditWallet> _walletRepository;
     private readonly IRepository<CreditLedgerEntry> _ledgerRepository;
     private readonly IRepository<CreditPurchaseGrant> _creditPurchaseGrantRepository;
@@ -79,7 +84,9 @@ public class AIInterviewAdminController : BasePluginController
         AIInterviewSettings aiInterviewSettings,
         MockAIInterviewSettings mockAIInterviewSettings,
         IJobRequirementService jobRequirementService = null,
-        IInterviewTurnService interviewTurnService = null)
+        IInterviewTurnService interviewTurnService = null,
+        IRepository<InterviewSession> sessionRepository = null,
+        IRepository<Product> productRepository = null)
     {
         _creditService = creditService;
         _inviteService = inviteService;
@@ -96,6 +103,8 @@ public class AIInterviewAdminController : BasePluginController
         _workContext = workContext;
         _settingService = settingService;
         _customerRepository = customerRepository;
+        _sessionRepository = sessionRepository;
+        _productRepository = productRepository;
         _walletRepository = walletRepository;
         _ledgerRepository = ledgerRepository;
         _creditPurchaseGrantRepository = creditPurchaseGrantRepository;
@@ -301,6 +310,133 @@ public class AIInterviewAdminController : BasePluginController
     {
         var prepared = await PrepareScoreboardModelAsync(model);
         return View("~/Plugins/Misc.AIInterview/Views/Admin/Scoreboard.cshtml", prepared);
+    }
+
+    public async Task<IActionResult> MockPracticeSessions(MockPracticeSessionSearchModel searchModel)
+    {
+        searchModel ??= new MockPracticeSessionSearchModel();
+        searchModel.SetGridPageSize();
+        await PrepareMockPracticeSessionSearchModelAsync(searchModel);
+
+        return View("~/Plugins/Misc.AIInterview/Views/Admin/MockPracticeSessions.cshtml", searchModel);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> MockPracticeSessionsList(MockPracticeSessionSearchModel searchModel)
+    {
+        searchModel ??= new MockPracticeSessionSearchModel();
+        await PrepareMockPracticeSessionSearchModelAsync(searchModel);
+
+        if (_sessionRepository == null || _productRepository == null)
+        {
+            var emptyPagedList = new Nop.Core.PagedList<MockPracticeSessionRowModel>(new List<MockPracticeSessionRowModel>(), Math.Max(searchModel.Page - 1, 0), searchModel.PageSize > 0 ? searchModel.PageSize : 10, 0);
+            return Json(await new MockPracticeSessionListModel().PrepareToGridAsync(searchModel, emptyPagedList, () => AsyncEnumerable.Empty<MockPracticeSessionRowModel>()));
+        }
+
+        if (searchModel.Length <= 0)
+            searchModel.Length = searchModel.PageSize > 0 ? searchModel.PageSize : 10;
+
+        var customerKeyword = searchModel.CustomerKeyword?.Trim();
+        var productKeyword = searchModel.ProductKeyword?.Trim();
+        var normalizedDifficulty = searchModel.Difficulty?.Trim();
+        var normalizedStatus = searchModel.Status?.Trim();
+        var dateFromUtc = searchModel.DateFrom?.Date;
+        var dateToExclusiveUtc = searchModel.DateTo?.Date.AddDays(1);
+
+        var query =
+            from session in _sessionRepository.Table
+            join customer in _customerRepository.Table on session.CustomerId equals customer.Id into customerJoin
+            from customer in customerJoin.DefaultIfEmpty()
+            join product in _productRepository.Table on session.ProductId equals product.Id into productJoin
+            from product in productJoin.DefaultIfEmpty()
+            join sourceProduct in _productRepository.Table on session.SourceProductId equals sourceProduct.Id into sourceProductJoin
+            from sourceProduct in sourceProductJoin.DefaultIfEmpty()
+            where session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice
+            select new
+            {
+                Session = session,
+                Customer = customer,
+                ProductId = session.SourceProductId > 0 ? session.SourceProductId : session.ProductId,
+                ProductName = sourceProduct != null && sourceProduct.Name != null && sourceProduct.Name != string.Empty
+                    ? sourceProduct.Name
+                    : (product != null ? product.Name : string.Empty)
+            };
+
+        if (!string.IsNullOrWhiteSpace(customerKeyword))
+        {
+            query = query.Where(item =>
+                (item.Customer != null && (item.Customer.FirstName ?? string.Empty).Contains(customerKeyword)) ||
+                (item.Customer != null && (item.Customer.LastName ?? string.Empty).Contains(customerKeyword)) ||
+                (item.Customer != null && (item.Customer.Email ?? string.Empty).Contains(customerKeyword)) ||
+                (item.Customer != null && (((item.Customer.FirstName ?? string.Empty) + " " + (item.Customer.LastName ?? string.Empty)).Trim()).Contains(customerKeyword)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(productKeyword))
+            query = query.Where(item => (item.ProductName ?? string.Empty).Contains(productKeyword));
+
+        if (!string.IsNullOrWhiteSpace(normalizedDifficulty))
+            query = query.Where(item => (item.Session.Difficulty ?? string.Empty) == normalizedDifficulty);
+
+        if (string.Equals(normalizedStatus, "Active", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(item => item.Session.IsActive && !item.Session.CompletedOnUtc.HasValue);
+        else if (string.Equals(normalizedStatus, "Completed", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(item => item.Session.CompletedOnUtc.HasValue);
+
+        if (searchModel.HasResume == true)
+            query = query.Where(item => item.Session.ResumeDownloadId > 0);
+        else if (searchModel.HasResume == false)
+            query = query.Where(item => item.Session.ResumeDownloadId <= 0);
+
+        if (searchModel.QuestionCount.HasValue)
+            query = query.Where(item => item.Session.QuestionCount == searchModel.QuestionCount.Value);
+
+        if (searchModel.MinScore.HasValue)
+            query = query.Where(item => item.Session.Score >= searchModel.MinScore.Value);
+
+        if (searchModel.MaxScore.HasValue)
+            query = query.Where(item => item.Session.Score <= searchModel.MaxScore.Value);
+
+        if (dateFromUtc.HasValue)
+            query = query.Where(item => item.Session.CreatedOnUtc >= dateFromUtc.Value);
+
+        if (dateToExclusiveUtc.HasValue)
+            query = query.Where(item => item.Session.CreatedOnUtc < dateToExclusiveUtc.Value);
+
+        query = query
+            .OrderByDescending(item => item.Session.CreatedOnUtc)
+            .ThenByDescending(item => item.Session.Id);
+
+        var totalCount = await query.CountAsync();
+        var pageItems = await query
+            .Skip(searchModel.Start)
+            .Take(searchModel.Length)
+            .ToListAsync();
+
+        var activeStatusText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.Active");
+        var completedStatusText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.Completed");
+        var pagedList = new Nop.Core.PagedList<object>(pageItems.Cast<object>().ToList(), Math.Max(searchModel.Page - 1, 0), searchModel.PageSize, totalCount);
+
+        return Json(await new MockPracticeSessionListModel().PrepareToGridAsync(searchModel, pagedList, () =>
+            pageItems.ToAsyncEnumerable().Select(item => new MockPracticeSessionRowModel
+            {
+                SessionId = item.Session.Id,
+                CustomerId = item.Session.CustomerId,
+                CustomerName = BuildCustomerDisplayName(item.Customer),
+                CustomerEmail = item.Customer?.Email ?? string.Empty,
+                CustomerAdminUrl = item.Session.CustomerId > 0 ? BuildCustomerAdminUrl(item.Session.CustomerId) : string.Empty,
+                ProductId = item.ProductId,
+                ProductName = item.ProductName ?? string.Empty,
+                Difficulty = item.Session.Difficulty ?? string.Empty,
+                Status = item.Session.CompletedOnUtc.HasValue ? completedStatusText : (item.Session.IsActive ? activeStatusText : string.Empty),
+                HasResume = item.Session.ResumeDownloadId > 0,
+                QuestionCount = item.Session.QuestionCount,
+                Score = item.Session.Score,
+                SelectedInputs = BuildMockPracticeSelectedInputsSummary(item.Session.SelectedProductAttributesJson),
+                CreatedOnUtc = item.Session.CreatedOnUtc,
+                StartedOnUtc = item.Session.StartedOnUtc,
+                CompletedOnUtc = item.Session.CompletedOnUtc,
+                ReportUrl = Url.RouteUrl(AIInterviewDefaults.ReportRouteName, new { sessionId = item.Session.Id }) ?? string.Empty
+            })));
     }
 
     [HttpPost]
@@ -1223,6 +1359,123 @@ public class AIInterviewAdminController : BasePluginController
         }));
 
         return items;
+    }
+
+    protected virtual async Task PrepareMockPracticeSessionSearchModelAsync(MockPracticeSessionSearchModel searchModel)
+    {
+        if (searchModel == null)
+            return;
+
+        searchModel.AvailableStatuses = await BuildMockPracticeStatusSelectListAsync(searchModel.Status);
+        searchModel.AvailableHasResumeOptions = await BuildMockPracticeHasResumeSelectListAsync(searchModel.HasResume);
+        searchModel.AvailableDifficulties = await BuildMockPracticeDifficultySelectListAsync(searchModel.Difficulty);
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildMockPracticeStatusSelectListAsync(string selectedStatus)
+    {
+        return new List<SelectListItem>
+        {
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.All"), Value = string.Empty, Selected = string.IsNullOrWhiteSpace(selectedStatus) },
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.Active"), Value = "Active", Selected = string.Equals(selectedStatus, "Active", StringComparison.OrdinalIgnoreCase) },
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.Completed"), Value = "Completed", Selected = string.Equals(selectedStatus, "Completed", StringComparison.OrdinalIgnoreCase) }
+        };
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildMockPracticeHasResumeSelectListAsync(bool? selectedValue)
+    {
+        return new List<SelectListItem>
+        {
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.HasResume.All"), Value = string.Empty, Selected = !selectedValue.HasValue },
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.HasResume.Yes"), Value = bool.TrueString, Selected = selectedValue == true },
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.HasResume.No"), Value = bool.FalseString, Selected = selectedValue == false }
+        };
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildMockPracticeDifficultySelectListAsync(string selectedDifficulty)
+    {
+        var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Low",
+            "Medium",
+            "Advanced"
+        };
+
+        foreach (var difficultyValue in AIInterviewDefaults.InterviewDifficultyValues)
+            values.Add(difficultyValue);
+
+        if (_sessionRepository != null)
+        {
+            var existingValues = await _sessionRepository.Table
+                .Where(session => session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice && session.Difficulty != null && session.Difficulty != string.Empty)
+                .Select(session => session.Difficulty)
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var existingValue in existingValues)
+                values.Add(existingValue);
+        }
+
+        var items = new List<SelectListItem>
+        {
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Difficulty.All"), Value = string.Empty, Selected = string.IsNullOrWhiteSpace(selectedDifficulty) }
+        };
+
+        items.AddRange(values
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .Select(value => new SelectListItem
+            {
+                Text = value,
+                Value = value,
+                Selected = string.Equals(value, selectedDifficulty, StringComparison.OrdinalIgnoreCase)
+            }));
+
+        return items;
+    }
+
+    protected virtual string BuildMockPracticeSessionStatus(InterviewSession session)
+    {
+        if (session?.CompletedOnUtc.HasValue == true)
+            return "Completed";
+
+        return session?.IsActive == true ? "Active" : string.Empty;
+    }
+
+    protected virtual string BuildCustomerDisplayName(Customer customer)
+    {
+        if (customer == null)
+            return string.Empty;
+
+        var fullName = $"{customer.FirstName} {customer.LastName}".Trim();
+        return !string.IsNullOrWhiteSpace(fullName) ? fullName : customer.Email ?? string.Empty;
+    }
+
+    protected virtual string BuildMockPracticeSelectedInputsSummary(string selectedProductAttributesJson, int maxLength = 160)
+    {
+        if (string.IsNullOrWhiteSpace(selectedProductAttributesJson))
+            return string.Empty;
+
+        try
+        {
+            var snapshot = JsonSerializer.Deserialize<SelectedProductAttributesSummarySnapshot>(selectedProductAttributesJson);
+            var pairs = snapshot?.Attributes?
+                .Where(attribute => !string.IsNullOrWhiteSpace(attribute?.AttributeName) && !string.IsNullOrWhiteSpace(attribute.Value))
+                .Select(attribute => $"{attribute.AttributeName.Trim()}: {attribute.Value.Trim()}")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (pairs == null || pairs.Count == 0)
+                return string.Empty;
+
+            var summary = string.Join("; ", pairs);
+            if (summary.Length <= maxLength)
+                return summary;
+
+            return summary.Substring(0, Math.Max(0, maxLength - 3)).TrimEnd() + "...";
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     protected virtual string BuildProductAdminUrl(int productId)

@@ -103,6 +103,50 @@ public class PluginDefaultsTests
     }
 
     [Test]
+    public void MockPracticeSessions_Route_Constants_And_Mappings_Are_Configured()
+    {
+        var routeProviderText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Infrastructure", "RouteProvider.cs"));
+
+        Assert.That(AIInterviewDefaults.AdminMockPracticeSessionsRouteName, Is.EqualTo("Plugin.Misc.AIInterview.Admin.MockPracticeSessions"));
+        Assert.That(AIInterviewDefaults.AdminMockPracticeSessionsListRouteName, Is.EqualTo("Plugin.Misc.AIInterview.Admin.MockPracticeSessions.List"));
+        Assert.That(AIInterviewDefaults.AdminMockPracticeSessionsMenuSystemName, Is.EqualTo("AIInterview.MockPracticeSessions"));
+        Assert.That(routeProviderText, Does.Contain("pattern: \"Admin/AIInterviewAdmin/MockPracticeSessions\""));
+        Assert.That(routeProviderText, Does.Contain("pattern: \"Admin/AIInterviewAdmin/MockPracticeSessionsList\""));
+        Assert.That(routeProviderText, Does.Contain("name: AIInterviewDefaults.AdminMockPracticeSessionsRouteName"));
+        Assert.That(routeProviderText, Does.Contain("name: AIInterviewDefaults.AdminMockPracticeSessionsListRouteName"));
+    }
+
+    [Test]
+    public void MockPracticeSessions_Locale_Resources_Contain_All_Used_Admin_Keys()
+    {
+        var adminMethod = typeof(AIInterviewPlugin).GetMethod("GetAdminLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var adminResources = (Dictionary<string, string>)adminMethod.Invoke(null, null);
+
+        var usedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var filePath in new[]
+                 {
+                     TestFilePathHelper.GetPluginFilePath("Views", "Admin", "MockPracticeSessions.cshtml"),
+                     TestFilePathHelper.GetPluginFilePath("Controllers", "AIInterviewAdminController.cs")
+                 })
+        {
+            foreach (System.Text.RegularExpressions.Match match in Regex.Matches(File.ReadAllText(filePath), "\"(Plugins\\.Misc\\.AIInterview\\.Admin\\.MockPracticeSessions\\.[^\"]+)\""))
+                usedKeys.Add(match.Groups[1].Value);
+        }
+
+        foreach (var property in typeof(MockPracticeSessionSearchModel).GetProperties(BindingFlags.Instance | BindingFlags.Public))
+        {
+            var attribute = property.GetCustomAttribute<NopResourceDisplayNameAttribute>();
+            if (attribute?.ResourceKey?.StartsWith("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.", StringComparison.OrdinalIgnoreCase) == true)
+                usedKeys.Add(attribute.ResourceKey);
+        }
+
+        Assert.That(usedKeys, Is.Not.Empty);
+
+        foreach (var key in usedKeys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase))
+            Assert.That(adminResources.ContainsKey(key), Is.True, $"Missing mock practice locale resource: {key}");
+    }
+
+    [Test]
     public void ApplicantCredits_Locale_Resources_Contain_All_Used_Admin_Keys()
     {
         var adminMethod = typeof(AIInterviewPlugin).GetMethod("GetAdminLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
