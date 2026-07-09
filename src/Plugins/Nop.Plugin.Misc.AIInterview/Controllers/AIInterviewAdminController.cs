@@ -1107,9 +1107,11 @@ public class AIInterviewAdminController : BasePluginController
 
         var pagedList = new Nop.Core.PagedList<object>(pageItems.Cast<object>().ToList(), searchModel.Page - 1, searchModel.PageSize, totalCount);
 
-        return await new ApplicantCreditActivityListModel().PrepareToGridAsync(searchModel, pagedList, () =>
+        var rows = new List<ApplicantCreditActivityRowModel>(pageItems.Count);
+
+        foreach (var item in pageItems)
         {
-            return pageItems.ToAsyncEnumerable().SelectAwait(async item => new ApplicantCreditActivityRowModel
+            rows.Add(new ApplicantCreditActivityRowModel
             {
                 CustomerId = item.CustomerId,
                 CustomerName = $"{item.FirstName} {item.LastName}".Trim(),
@@ -1122,6 +1124,11 @@ public class AIInterviewAdminController : BasePluginController
                 LastCreditActivityUtc = item.LastCreditActivityUtc,
                 LastCreditActivity = await FormatAdminLocalDateTimeAsync(item.LastCreditActivityUtc)
             });
+        }
+
+        return await new ApplicantCreditActivityListModel().PrepareToGridAsync<ApplicantCreditActivityListModel, ApplicantCreditActivityRowModel, object>(searchModel, pagedList, () =>
+        {
+            return rows.ToAsyncEnumerable();
         });
     }
 
