@@ -113,9 +113,9 @@
                         {
                             Title = T("Plugins.Misc.AIInterview.Admin.Credits.Activity.TotalWithdrawn").Text
                         },
-                        new ColumnProperty(nameof(Nop.Plugin.Misc.AIInterview.Models.ApplicantCreditActivityRowModel.LastCreditActivityUtc))
+                        new ColumnProperty(nameof(Nop.Plugin.Misc.AIInterview.Models.ApplicantCreditActivityRowModel.LastCreditActivity))
                         {
-                            Title = T("Plugins.Misc.AIInterview.Admin.Credits.Activity.LastCreditActivityUtc").Text,
+                            Title = T("Plugins.Misc.AIInterview.Admin.Credits.Activity.LastCreditActivity").Text,
                             Render = new RenderCustom("renderApplicantCreditDate")
                         },
                         new ColumnProperty(nameof(Nop.Plugin.Misc.AIInterview.Models.ApplicantCreditActivityRowModel.ViewLedgerUrl))
@@ -182,7 +182,7 @@
                                     <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Amount")</th>
                                     <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Type")</th>
                                     <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Remarks")</th>
-                                    <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.Utc")</th>
+                                    <th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.CreatedOn")</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -204,7 +204,7 @@
                                             <td>@entry.Amount</td>
                                             <td>@entry.TransactionType</td>
                                             <td>@entry.Remarks</td>
-                                            <td>@entry.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                            <td>@entry.CreatedOn</td>
                                         </tr>
                                     }
                                 }
@@ -260,7 +260,7 @@
             return data;
         }
 
-        return row.LastCreditActivityUtc ? row.LastCreditActivityUtc : '';
+        return row.LastCreditActivity || '';
     }
 
     function renderApplicantCreditViewLedger(data, type, row) {

@@ -147,6 +147,17 @@ public class PluginDefaultsTests
     }
 
     [Test]
+    public void Admin_Time_Labels_No_Longer_Say_Utc_For_Local_Displays()
+    {
+        var adminMethod = typeof(AIInterviewPlugin).GetMethod("GetAdminLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var adminResources = (Dictionary<string, string>)adminMethod.Invoke(null, null);
+
+        Assert.That(adminResources["Plugins.Misc.AIInterview.Admin.Credits.Activity.LastCreditActivityUtc"], Is.EqualTo("Last Credit Activity"));
+        Assert.That(adminResources["Plugins.Misc.AIInterview.Admin.Credits.Ledger.Utc"], Is.EqualTo("Created On"));
+        Assert.That(adminResources["Plugins.Misc.AIInterview.Admin.SponsorInvites.ExpiryDateUtc"], Is.EqualTo("Expiry Date"));
+    }
+
+    [Test]
     public void ApplicantCredits_Locale_Resources_Contain_All_Used_Admin_Keys()
     {
         var adminMethod = typeof(AIInterviewPlugin).GetMethod("GetAdminLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);

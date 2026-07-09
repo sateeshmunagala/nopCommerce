@@ -182,7 +182,7 @@
                         {
                             Title = T("Plugins.Misc.AIInterview.Admin.Scoreboard.MinScore").Text
                         },
-                        new ColumnProperty(nameof(ScoreboardRowModel.CompletedOnUtc))
+                        new ColumnProperty(nameof(ScoreboardRowModel.CompletedOn))
                         {
                             Title = T("Plugins.Misc.AIInterview.Admin.Scoreboard.EndDate").Text,
                             Render = new RenderCustom("renderScoreboardCompleted")
@@ -252,7 +252,7 @@
             return data;
         }
 
-        return row.CompletedOnUtc || '-';
+        return row.CompletedOn || '-';
     }
 
     function renderScoreboardReport(data, type, row) {

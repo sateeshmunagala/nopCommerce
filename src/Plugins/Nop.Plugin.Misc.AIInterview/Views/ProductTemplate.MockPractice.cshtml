@@ -13,6 +13,7 @@
 @inject ICustomerService customerService
 @inject IApplicationService applicationService
 @inject IInterviewSessionService interviewSessionService
+@inject IDateTimeHelper dateTimeHelper
 @inject IDownloadService downloadService
 @inject IWebHelper webHelper
 @inject SeoSettings seoSettings
@@ -75,7 +76,7 @@
                 : download.Filename;
             var createdLabel = entry.CreatedOnUtc == default
                 ? string.Empty
-                : entry.CreatedOnUtc.ToString("yyyy-MM-dd");
+                : (await dateTimeHelper.ConvertToUserTimeAsync(entry.CreatedOnUtc, DateTimeKind.Utc)).ToString("yyyy-MM-dd");
             var optionText = string.IsNullOrWhiteSpace(createdLabel)
                 ? fileName
                 : $"{fileName} ({createdLabel})";

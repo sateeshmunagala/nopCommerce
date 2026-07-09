@@ -117,10 +117,12 @@ public record SponsorInviteRowModel : BaseNopModel
     public string InviteCode { get; set; }
     public int MaxAttempts { get; set; }
     public DateTime? ExpiryDateUtc { get; set; }
+    public string ExpiryDate { get; set; }
     public bool IsActive { get; set; }
     public bool IsAccepted { get; set; }
     public bool IsExpired { get; set; }
     public DateTime CreatedOnUtc { get; set; }
+    public string CreatedOn { get; set; }
     public string Status { get; set; }
     public string StatusText { get; set; }
 }
@@ -160,6 +162,7 @@ public record CreditLedgerRowModel : BaseNopModel
     public string TransactionType { get; set; }
     public string Remarks { get; set; }
     public DateTime CreatedOnUtc { get; set; }
+    public string CreatedOn { get; set; }
 }
 
 public record ApplicantCreditActivitySearchModel : BaseSearchModel
@@ -181,6 +184,7 @@ public record ApplicantCreditActivityRowModel : BaseNopModel
     public decimal TotalDeposited { get; set; }
     public decimal TotalWithdrawn { get; set; }
     public DateTime? LastCreditActivityUtc { get; set; }
+    public string LastCreditActivity { get; set; }
 }
 
 public record ScoreboardFilterModel : BaseSearchModel
@@ -238,6 +242,7 @@ public record ScoreboardRowModel : BaseNopModel
     public string Status { get; set; }
     public decimal Score { get; set; }
     public DateTime? CompletedOnUtc { get; set; }
+    public string CompletedOn { get; set; }
     public string ReportUrl { get; set; }
 }
 
@@ -298,6 +303,9 @@ public record MockPracticeSessionRowModel : BaseNopModel
     public DateTime CreatedOnUtc { get; set; }
     public DateTime? StartedOnUtc { get; set; }
     public DateTime? CompletedOnUtc { get; set; }
+    public string CreatedOn { get; set; }
+    public string StartedOn { get; set; }
+    public string CompletedOn { get; set; }
     public string ReportUrl { get; set; }
 }
 
@@ -340,6 +348,10 @@ public record CandidateDetailsModel : BaseNopModel
     public DateTime CreatedOnUtc { get; set; }
     public DateTime? StartedOnUtc { get; set; }
     public DateTime? CompletedOnUtc { get; set; }
+    public string AppliedOn { get; set; }
+    public string CreatedOn { get; set; }
+    public string StartedOn { get; set; }
+    public string CompletedOn { get; set; }
     public string SummaryText { get; set; }
     public string FeedbackText { get; set; }
     public string ReportData { get; set; }
@@ -368,6 +380,8 @@ public record CandidateDetailsTurnModel : BaseNopModel
     public decimal? PositiveAttitudeScore { get; set; }
     public DateTime AskedOnUtc { get; set; }
     public DateTime? AnsweredOnUtc { get; set; }
+    public string AskedOn { get; set; }
+    public string AnsweredOn { get; set; }
     public string RubricJson { get; set; }
     public string RawAiResponseJson { get; set; }
 }

@@ -20,6 +20,7 @@ using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Configuration;
 using Nop.Services.Customers;
+using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Plugins;
@@ -45,6 +46,7 @@ public class AdminBaselineTests
     private Mock<IVendorService> _vendorService;
     private Mock<ILocalizationService> _localizationService;
     private Mock<INotificationService> _notificationService;
+    private Mock<IDateTimeHelper> _dateTimeHelper;
     private Mock<ILogger<AIInterviewAdminController>> _logger;
     private Mock<IWorkContext> _workContext;
     private Mock<ISettingService> _settingService;
@@ -77,6 +79,7 @@ public class AdminBaselineTests
         _vendorService = new Mock<IVendorService>();
         _localizationService = new Mock<ILocalizationService>();
         _notificationService = new Mock<INotificationService>();
+        _dateTimeHelper = new Mock<IDateTimeHelper>();
         _logger = new Mock<ILogger<AIInterviewAdminController>>();
         _workContext = new Mock<IWorkContext>();
         _settingService = new Mock<ISettingService>();
@@ -109,6 +112,12 @@ public class AdminBaselineTests
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
+        var mockTimeZone = TimeZoneInfo.CreateCustomTimeZone("MockAdminZone", TimeSpan.FromHours(5.5), "MockAdminZone", "MockAdminZone");
+        _dateTimeHelper.Setup(x => x.GetCurrentTimeZoneAsync()).ReturnsAsync(mockTimeZone);
+        _dateTimeHelper.Setup(x => x.ConvertToUserTimeAsync(It.IsAny<DateTime>(), It.IsAny<DateTimeKind>()))
+            .ReturnsAsync((DateTime value, DateTimeKind _) => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(value, DateTimeKind.Utc), mockTimeZone));
+        _dateTimeHelper.Setup(x => x.ConvertToUtcTime(It.IsAny<DateTime>(), It.IsAny<TimeZoneInfo>()))
+            .Returns((DateTime value, TimeZoneInfo sourceTimeZone) => TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(value, DateTimeKind.Unspecified), sourceTimeZone));
 
         _customers = new List<Customer>();
         _sessions = new List<InterviewSession>();
@@ -144,6 +153,7 @@ public class AdminBaselineTests
             _vendorService.Object,
             _localizationService.Object,
             _notificationService.Object,
+            _dateTimeHelper.Object,
             _logger.Object,
             _workContext.Object,
             _settingService.Object,
@@ -418,6 +428,12 @@ public class AdminBaselineTests
         Assert.That(text, Does.Contain("UrlRead = new DataUrl(\"MockPracticeSessionsList\", \"AIInterviewAdmin\", null)"));
         Assert.That(text, Does.Contain("NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminMockPracticeSessionsMenuSystemName)"));
         Assert.That(text, Does.Contain("SearchButtonId = \"search-mock-practice-sessions\""));
+        Assert.That(text, Does.Contain("nameof(MockPracticeSessionRowModel.CreatedOn)"));
+        Assert.That(text, Does.Contain("nameof(MockPracticeSessionRowModel.StartedOn)"));
+        Assert.That(text, Does.Contain("nameof(MockPracticeSessionRowModel.CompletedOn)"));
+        Assert.That(text, Does.Not.Contain("nameof(MockPracticeSessionRowModel.CreatedOnUtc)"));
+        Assert.That(text, Does.Not.Contain("nameof(MockPracticeSessionRowModel.StartedOnUtc)"));
+        Assert.That(text, Does.Not.Contain("nameof(MockPracticeSessionRowModel.CompletedOnUtc)"));
     }
 
     [Test]
@@ -595,6 +611,14 @@ public class AdminBaselineTests
         SeedMockPracticeCatalog();
         _sessions.Add(new InterviewSession
         {
+            Id = 50,
+            CustomerId = 1,
+            ProductId = 10,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            CreatedOnUtc = new DateTime(2026, 7, 5, 19, 0, 0, DateTimeKind.Utc)
+        });
+        _sessions.Add(new InterviewSession
+        {
             Id = 51,
             CustomerId = 1,
             ProductId = 10,
@@ -607,7 +631,7 @@ public class AdminBaselineTests
             CustomerId = 1,
             ProductId = 10,
             InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
-            CreatedOnUtc = new DateTime(2026, 7, 7, 23, 45, 0, DateTimeKind.Utc)
+            CreatedOnUtc = new DateTime(2026, 7, 7, 18, 29, 0, DateTimeKind.Utc)
         });
         _sessions.Add(new InterviewSession
         {
@@ -615,7 +639,7 @@ public class AdminBaselineTests
             CustomerId = 1,
             ProductId = 10,
             InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
-            CreatedOnUtc = new DateTime(2026, 7, 8, 0, 5, 0, DateTimeKind.Utc)
+            CreatedOnUtc = new DateTime(2026, 7, 7, 18, 31, 0, DateTimeKind.Utc)
         });
 
         var model = await GetMockPracticeListAsync(new MockPracticeSessionSearchModel
@@ -626,7 +650,7 @@ public class AdminBaselineTests
             Length = 10
         });
 
-        Assert.That(model.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 52, 51 }));
+        Assert.That(model.Data.Select(item => item.SessionId), Is.EqualTo(new[] { 52, 51, 50 }));
     }
 
     [Test]
@@ -661,8 +685,48 @@ public class AdminBaselineTests
         Assert.That(row.SessionId, Is.EqualTo(61));
         Assert.That(row.SelectedInputs, Is.EqualTo("Difficulty: Medium; Skill: Software Development"));
         Assert.That(row.SelectedInputs, Does.Not.Contain("\"Attributes\""));
+        Assert.That(row.CreatedOn, Is.EqualTo("09 Jul 2026, 03:30 PM"));
         Assert.That(row.ProductId, Is.EqualTo(20));
         Assert.That(row.ProductName, Is.EqualTo("Practice Source"));
+    }
+
+    [Test]
+    public async Task Scoreboard_Completed_Date_Is_Localized_For_Display()
+    {
+        var customer = new Customer { Id = 5, FirstName = "Casey", LastName = "Jones", Email = "casey@example.com" };
+        var product = new Product { Id = 9, Name = "Platform Engineer", VendorId = 3 };
+        var vendor = new Vendor { Id = 3, Name = "Example Vendor" };
+        var application = new JobApplication { Id = 1, CustomerId = 5, ProductId = 9, JobTitle = "Platform Engineer", Status = "Reviewed", CreatedOnUtc = DateTime.UtcNow.AddDays(-1) };
+        var session = new InterviewSession { Id = 77, CustomerId = 5, ProductId = 9, JobApplicationId = 1, CompletedOnUtc = new DateTime(2026, 7, 9, 10, 0, 0, DateTimeKind.Utc), Score = 88 };
+
+        _applicationService.Setup(x => x.GetApplicationsAsync(null, null, null, null, null, null, 0, 0, 0, int.MaxValue, false))
+            .ReturnsAsync(new Nop.Core.PagedList<JobApplication>(new List<JobApplication> { application }, 0, 1, 1));
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(5)).ReturnsAsync(new List<InterviewSession> { session });
+        _customerService.Setup(x => x.GetCustomersByIdsAsync(It.Is<int[]>(ids => ids.Contains(5)))).ReturnsAsync(new List<Customer> { customer });
+        _productService.Setup(x => x.GetProductsByIdsAsync(It.Is<int[]>(ids => ids.Contains(9)))).ReturnsAsync(new List<Product> { product });
+        _vendorService.Setup(x => x.GetVendorByIdAsync(3)).ReturnsAsync(vendor);
+
+        var result = await _controller.Scoreboard(new ScoreboardFilterModel());
+        var model = (ScoreboardFilterModel)((ViewResult)result).Model;
+
+        Assert.That(model.Rows.Single().CompletedOn, Is.EqualTo("09 Jul 2026, 03:30 PM"));
+    }
+
+    [Test]
+    public void Admin_Time_Display_Views_No_Longer_Render_Raw_Utc_Formatting()
+    {
+        var candidateDetails = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Areas", "Admin", "Views", "AIInterviewAdmin", "CandidateDetails.cshtml"));
+        var applicantCredits = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "ApplicantCredits.cshtml"));
+        var vendorCredits = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "VendorCredits.cshtml"));
+        var sponsorInvites = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "SponsorInvites.cshtml"));
+
+        Assert.That(candidateDetails, Does.Not.Contain("ToString(\"g\")"));
+        Assert.That(applicantCredits, Does.Not.Contain("ToString(\"yyyy-MM-dd HH:mm:ss\")"));
+        Assert.That(vendorCredits, Does.Not.Contain("ToString(\"yyyy-MM-dd HH:mm:ss\")"));
+        Assert.That(sponsorInvites, Does.Not.Contain("ToString(\"yyyy-MM-dd HH:mm:ss\")"));
+        Assert.That(applicantCredits, Does.Not.Contain(")Z"));
+        Assert.That(vendorCredits, Does.Not.Contain(")Z"));
+        Assert.That(sponsorInvites, Does.Not.Contain(")Z"));
     }
 
     [Test]
@@ -796,6 +860,7 @@ public class AdminBaselineTests
             _vendorService.Object,
             _localizationService.Object,
             _notificationService.Object,
+            _dateTimeHelper.Object,
             _logger.Object,
             _workContext.Object,
             _settingService.Object,

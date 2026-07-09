@@ -43,7 +43,7 @@
                             <th>@T("Plugins.Misc.AIInterview.Admin.SponsorInvites.Status")</th>
                             <th>Product</th>
                             <th>Sponsor</th>
-                            <th>Created</th>
+                            <th>@T("Plugins.Misc.AIInterview.Admin.SponsorInvites.CreatedOn")</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -74,7 +74,7 @@
                                         @invite.VendorName
                                     }
                                 </td>
-                                <td>@invite.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                <td>@invite.CreatedOn</td>
                                 <td>
                                     @if (string.Equals(invite.Status, "Plugins.Misc.AIInterview.Employer.Invite.Active", StringComparison.OrdinalIgnoreCase))
                                     {

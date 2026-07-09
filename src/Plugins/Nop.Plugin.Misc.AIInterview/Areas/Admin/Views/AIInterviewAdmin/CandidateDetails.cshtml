@@ -62,7 +62,7 @@
                                 </div>
                                 <div class="candidate-dashboard-field">
                                     <div class="candidate-dashboard-label">Applied Date</div>
-                                    <div class="candidate-dashboard-value">@(Model.AppliedOnUtc?.ToString("g") ?? "-")</div>
+                                    <div class="candidate-dashboard-value">@Model.AppliedOn</div>
                                 </div>
                                 <div class="candidate-dashboard-field">
                                     <div class="candidate-dashboard-label">Target Role</div>
@@ -106,15 +106,15 @@
                             <div class="candidate-dashboard-timeline">
                                 <div class="candidate-dashboard-timeline-item">
                                     <span class="candidate-dashboard-timeline-label">Created</span>
-                                    <span class="candidate-dashboard-timeline-value">@Model.CreatedOnUtc.ToString("g")</span>
+                                    <span class="candidate-dashboard-timeline-value">@Model.CreatedOn</span>
                                 </div>
                                 <div class="candidate-dashboard-timeline-item">
                                     <span class="candidate-dashboard-timeline-label">Started</span>
-                                    <span class="candidate-dashboard-timeline-value">@(Model.StartedOnUtc?.ToString("g") ?? "-")</span>
+                                    <span class="candidate-dashboard-timeline-value">@Model.StartedOn</span>
                                 </div>
                                 <div class="candidate-dashboard-timeline-item">
                                     <span class="candidate-dashboard-timeline-label">Completed</span>
-                                    <span class="candidate-dashboard-timeline-value">@(Model.CompletedOnUtc?.ToString("g") ?? "-")</span>
+                                    <span class="candidate-dashboard-timeline-value">@Model.CompletedOn</span>
                                 </div>
                             </div>
                         </div>
@@ -260,8 +260,8 @@
                                         <div><span class="candidate-dashboard-label">Positive Attitude</span><strong>@(turn.PositiveAttitudeScore?.ToString("N0") ?? "-")</strong></div>
                                     </div>
                                     <div class="candidate-dashboard-question-meta">
-                                        <span>Asked @(turn.AskedOnUtc.ToString("g"))</span>
-                                        <span>Answered @(turn.AnsweredOnUtc?.ToString("g") ?? "-")</span>
+                                        <span>Asked @turn.AskedOn</span>
+                                        <span>Answered @turn.AnsweredOn</span>
                                         @if (!string.IsNullOrWhiteSpace(Model.RecordingUrl))
                                         {
                                             <a href="@Model.RecordingUrl" target="_blank" rel="noopener">Playback Asset</a>

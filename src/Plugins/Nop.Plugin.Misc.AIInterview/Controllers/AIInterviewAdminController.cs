@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
@@ -19,6 +20,7 @@ using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Vendors;
+using Nop.Services.Helpers;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Models.DataTables;
@@ -32,6 +34,7 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 [AutoValidateAntiforgeryToken]
 public class AIInterviewAdminController : BasePluginController
 {
+    private const string AdminDateTimeDisplayFormat = "dd MMM yyyy, hh:mm tt";
     private const string AzureOpenAiProviderValue = "Azure OpenAI";
     private const string SecretMask = "********";
 
@@ -53,6 +56,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly IJobRequirementService _jobRequirementService;
     private readonly ILocalizationService _localizationService;
     private readonly INotificationService _notificationService;
+    private readonly IDateTimeHelper _dateTimeHelper;
     private readonly ILogger<AIInterviewAdminController> _logger;
     private readonly IWorkContext _workContext;
     private readonly ISettingService _settingService;
@@ -74,6 +78,7 @@ public class AIInterviewAdminController : BasePluginController
         IVendorService vendorService,
         ILocalizationService localizationService,
         INotificationService notificationService,
+        IDateTimeHelper dateTimeHelper,
         ILogger<AIInterviewAdminController> logger,
         IWorkContext workContext,
         ISettingService settingService,
@@ -99,6 +104,7 @@ public class AIInterviewAdminController : BasePluginController
         _jobRequirementService = jobRequirementService;
         _localizationService = localizationService;
         _notificationService = notificationService;
+        _dateTimeHelper = dateTimeHelper;
         _logger = logger;
         _workContext = workContext;
         _settingService = settingService;
@@ -127,6 +133,28 @@ public class AIInterviewAdminController : BasePluginController
         {
             StatusCode = statusCode
         };
+    }
+
+    protected virtual async Task<string> FormatAdminLocalDateTimeAsync(DateTime? utcDateTime, string emptyDisplay = "")
+    {
+        if (!utcDateTime.HasValue)
+            return emptyDisplay;
+
+        var localDateTime = await _dateTimeHelper.ConvertToUserTimeAsync(utcDateTime.Value, DateTimeKind.Utc);
+        return localDateTime.ToString(AdminDateTimeDisplayFormat, CultureInfo.InvariantCulture);
+    }
+
+    protected virtual async Task<(DateTime? StartUtc, DateTime? EndUtcExclusive)> ConvertLocalDateRangeToUtcAsync(DateTime? localDateFrom, DateTime? localDateTo)
+    {
+        var currentTimeZone = await _dateTimeHelper.GetCurrentTimeZoneAsync();
+        var startUtc = localDateFrom.HasValue
+            ? _dateTimeHelper.ConvertToUtcTime(localDateFrom.Value.Date, currentTimeZone)
+            : (DateTime?)null;
+        var endUtcExclusive = localDateTo.HasValue
+            ? _dateTimeHelper.ConvertToUtcTime(localDateTo.Value.Date.AddDays(1), currentTimeZone)
+            : (DateTime?)null;
+
+        return (startUtc, endUtcExclusive);
     }
 
     public async Task<IActionResult> AiService()
@@ -340,8 +368,7 @@ public class AIInterviewAdminController : BasePluginController
         var productKeyword = searchModel.ProductKeyword?.Trim();
         var normalizedDifficulty = searchModel.Difficulty?.Trim();
         var normalizedStatus = searchModel.Status?.Trim();
-        var dateFromUtc = searchModel.DateFrom?.Date;
-        var dateToExclusiveUtc = searchModel.DateTo?.Date.AddDays(1);
+        var (dateFromUtc, dateToExclusiveUtc) = await ConvertLocalDateRangeToUtcAsync(searchModel.DateFrom, searchModel.DateTo);
 
         var query =
             from session in _sessionRepository.Table
@@ -416,8 +443,10 @@ public class AIInterviewAdminController : BasePluginController
         var completedStatusText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.Completed");
         var pagedList = new Nop.Core.PagedList<object>(pageItems.Cast<object>().ToList(), Math.Max(searchModel.Page - 1, 0), searchModel.PageSize, totalCount);
 
-        return Json(await new MockPracticeSessionListModel().PrepareToGridAsync(searchModel, pagedList, () =>
-            pageItems.ToAsyncEnumerable().Select(item => new MockPracticeSessionRowModel
+        var rows = new List<MockPracticeSessionRowModel>();
+        foreach (var item in pageItems)
+        {
+            rows.Add(new MockPracticeSessionRowModel
             {
                 SessionId = item.Session.Id,
                 CustomerId = item.Session.CustomerId,
@@ -435,8 +464,14 @@ public class AIInterviewAdminController : BasePluginController
                 CreatedOnUtc = item.Session.CreatedOnUtc,
                 StartedOnUtc = item.Session.StartedOnUtc,
                 CompletedOnUtc = item.Session.CompletedOnUtc,
+                CreatedOn = await FormatAdminLocalDateTimeAsync(item.Session.CreatedOnUtc),
+                StartedOn = await FormatAdminLocalDateTimeAsync(item.Session.StartedOnUtc),
+                CompletedOn = await FormatAdminLocalDateTimeAsync(item.Session.CompletedOnUtc),
                 ReportUrl = Url.RouteUrl(AIInterviewDefaults.ReportRouteName, new { sessionId = item.Session.Id }) ?? string.Empty
-            })));
+            });
+        }
+
+        return Json(await new MockPracticeSessionListModel().PrepareToGridAsync(searchModel, pagedList, () => rows.ToAsyncEnumerable()));
     }
 
     [HttpPost]
@@ -508,6 +543,31 @@ public class AIInterviewAdminController : BasePluginController
         var questionCount = Math.Max(session.QuestionCount, turns.Count);
         var answeredQuestionCount = turns.Count(turn => !string.IsNullOrWhiteSpace(turn.AnswerText));
         var scoredTurns = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score!.Value).ToList();
+        var turnModels = new List<CandidateDetailsTurnModel>();
+
+        foreach (var turn in turns)
+        {
+            turnModels.Add(new CandidateDetailsTurnModel
+            {
+                TurnId = turn.Id,
+                SequenceNumber = turn.SequenceNumber,
+                QuestionLabel = $"Question {turn.SequenceNumber}",
+                QuestionText = turn.QuestionText,
+                AnswerText = turn.AnswerText,
+                Feedback = turn.Feedback,
+                Score = turn.Score,
+                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
+                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
+                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
+                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
+                AskedOnUtc = turn.AskedOnUtc,
+                AnsweredOnUtc = turn.AnsweredOnUtc,
+                AskedOn = await FormatAdminLocalDateTimeAsync(turn.AskedOnUtc, "-"),
+                AnsweredOn = await FormatAdminLocalDateTimeAsync(turn.AnsweredOnUtc, "-"),
+                RubricJson = turn.RubricJson,
+                RawAiResponseJson = turn.RawAIResponseJson
+            });
+        }
 
         var model = new CandidateDetailsModel
         {
@@ -548,6 +608,10 @@ public class AIInterviewAdminController : BasePluginController
             CreatedOnUtc = session.CreatedOnUtc,
             StartedOnUtc = session.StartedOnUtc,
             CompletedOnUtc = session.CompletedOnUtc,
+            AppliedOn = await FormatAdminLocalDateTimeAsync(application?.CreatedOnUtc, "-"),
+            CreatedOn = await FormatAdminLocalDateTimeAsync(session.CreatedOnUtc, "-"),
+            StartedOn = await FormatAdminLocalDateTimeAsync(session.StartedOnUtc, "-"),
+            CompletedOn = await FormatAdminLocalDateTimeAsync(session.CompletedOnUtc, "-"),
             SummaryText = reportSections.Summary,
             FeedbackText = reportSections.Feedback,
             ReportData = session.ReportData,
@@ -558,24 +622,7 @@ public class AIInterviewAdminController : BasePluginController
             ApplicationTrackingReference = application != null ? $"APP-{application.Id}" : $"SESSION-{session.Id}",
             StatusComment = application?.StatusComment ?? string.Empty,
             ParsedQuestionScores = parsedQuestionScores,
-            Turns = turns.Select(turn => new CandidateDetailsTurnModel
-            {
-                TurnId = turn.Id,
-                SequenceNumber = turn.SequenceNumber,
-                QuestionLabel = $"Question {turn.SequenceNumber}",
-                QuestionText = turn.QuestionText,
-                AnswerText = turn.AnswerText,
-                Feedback = turn.Feedback,
-                Score = turn.Score,
-                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
-                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
-                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
-                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
-                AskedOnUtc = turn.AskedOnUtc,
-                AnsweredOnUtc = turn.AnsweredOnUtc,
-                RubricJson = turn.RubricJson,
-                RawAiResponseJson = turn.RawAIResponseJson
-            }).ToList()
+            Turns = turnModels
         };
 
         return View("~/Plugins/Misc.AIInterview/Areas/Admin/Views/AIInterviewAdmin/CandidateDetails.cshtml", model);
@@ -833,10 +880,12 @@ public class AIInterviewAdminController : BasePluginController
                 InviteCode = invite.InviteCode,
                 MaxAttempts = invite.MaxAttempts,
                 ExpiryDateUtc = invite.ExpiryDateUtc,
+                ExpiryDate = await FormatAdminLocalDateTimeAsync(invite.ExpiryDateUtc),
                 IsActive = invite.IsActive,
                 IsAccepted = invite.IsAccepted,
                 IsExpired = invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow,
                 CreatedOnUtc = invite.CreatedOnUtc,
+                CreatedOn = await FormatAdminLocalDateTimeAsync(invite.CreatedOnUtc),
                 Status = GetInviteStatus(invite, attemptCount),
                 StatusText = await GetInviteStatusTextAsync(invite, attemptCount)
             });
@@ -960,6 +1009,9 @@ public class AIInterviewAdminController : BasePluginController
             })
             .ToListAsync();
 
+        foreach (var ledgerEntry in model.LedgerEntries)
+            ledgerEntry.CreatedOn = await FormatAdminLocalDateTimeAsync(ledgerEntry.CreatedOnUtc);
+
         return model;
     }
 
@@ -1057,7 +1109,7 @@ public class AIInterviewAdminController : BasePluginController
 
         return await new ApplicantCreditActivityListModel().PrepareToGridAsync(searchModel, pagedList, () =>
         {
-            return pageItems.ToAsyncEnumerable().Select(item => new ApplicantCreditActivityRowModel
+            return pageItems.ToAsyncEnumerable().SelectAwait(async item => new ApplicantCreditActivityRowModel
             {
                 CustomerId = item.CustomerId,
                 CustomerName = $"{item.FirstName} {item.LastName}".Trim(),
@@ -1067,7 +1119,8 @@ public class AIInterviewAdminController : BasePluginController
                 WalletBalance = item.WalletBalance,
                 TotalDeposited = item.TotalDeposited,
                 TotalWithdrawn = item.TotalWithdrawn,
-                LastCreditActivityUtc = item.LastCreditActivityUtc
+                LastCreditActivityUtc = item.LastCreditActivityUtc,
+                LastCreditActivity = await FormatAdminLocalDateTimeAsync(item.LastCreditActivityUtc)
             });
         });
     }
@@ -1120,6 +1173,7 @@ public class AIInterviewAdminController : BasePluginController
         filter ??= new ScoreboardFilterModel();
         filter.SetGridPageSize();
         filter.AvailableStatuses = BuildStatusSelectList(filter.Status);
+        var (startDateUtc, endDateUtcExclusive) = await ConvertLocalDateRangeToUtcAsync(filter.StartDate, filter.EndDate);
 
         var applications = await _applicationService.GetApplicationsAsync(pageSize: int.MaxValue) ?? new Nop.Core.PagedList<JobApplication>(new List<JobApplication>(), 0, 1, 1);
         var filteredApplications = applications.AsEnumerable();
@@ -1169,6 +1223,7 @@ public class AIInterviewAdminController : BasePluginController
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{JobApplicationStatuses.Normalize(application.Status)}"),
                 Score = session?.Score ?? 0,
                 CompletedOnUtc = session?.CompletedOnUtc,
+                CompletedOn = await FormatAdminLocalDateTimeAsync(session?.CompletedOnUtc, "-"),
                 ReportUrl = session != null ? Url.RouteUrl(AIInterviewDefaults.ReportRouteName, new { sessionId = session.Id }) : string.Empty
             };
 
@@ -1189,11 +1244,11 @@ public class AIInterviewAdminController : BasePluginController
             rows = rows.Where(row => string.Equals(row.Status, localizedStatus, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
-        if (filter.StartDate.HasValue)
-            rows = rows.Where(row => row.CompletedOnUtc.HasValue ? row.CompletedOnUtc.Value >= filter.StartDate.Value : true).ToList();
+        if (startDateUtc.HasValue)
+            rows = rows.Where(row => row.CompletedOnUtc.HasValue ? row.CompletedOnUtc.Value >= startDateUtc.Value : true).ToList();
 
-        if (filter.EndDate.HasValue)
-            rows = rows.Where(row => row.CompletedOnUtc.HasValue ? row.CompletedOnUtc.Value <= filter.EndDate.Value : true).ToList();
+        if (endDateUtcExclusive.HasValue)
+            rows = rows.Where(row => row.CompletedOnUtc.HasValue ? row.CompletedOnUtc.Value < endDateUtcExclusive.Value : true).ToList();
 
         if (!string.IsNullOrWhiteSpace(filter.Vendor))
             rows = rows.Where(row => row.VendorName.Contains(filter.Vendor, StringComparison.OrdinalIgnoreCase)).ToList();

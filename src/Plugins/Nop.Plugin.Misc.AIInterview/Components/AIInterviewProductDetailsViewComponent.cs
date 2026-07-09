@@ -7,6 +7,7 @@ using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
+using Nop.Services.Helpers;
 using Nop.Services.Media;
 using Nop.Web.Framework.Components;
 using Nop.Web.Framework.Models;
@@ -28,6 +29,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
     private readonly ISponsorInviteService _sponsorInviteService;
     private readonly AIInterviewSettings _aiInterviewSettings;
     private readonly IDownloadService _downloadService;
+    private readonly IDateTimeHelper _dateTimeHelper;
 
     public AIInterviewProductDetailsViewComponent(ICreditService creditService,
         IWorkContext workContext,
@@ -40,7 +42,8 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         AIInterviewSettings aiInterviewSettings,
         IJobRequirementService jobRequirementService,
         ISponsorInviteService sponsorInviteService,
-        IDownloadService downloadService)
+        IDownloadService downloadService,
+        IDateTimeHelper dateTimeHelper = null)
     {
         _creditService = creditService;
         _workContext = workContext;
@@ -54,6 +57,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         _sponsorInviteService = sponsorInviteService;
         _aiInterviewSettings = aiInterviewSettings;
         _downloadService = downloadService;
+        _dateTimeHelper = dateTimeHelper;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData, string formDomId = null, string contextId = null)
@@ -91,7 +95,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
             alreadyApplied = applications.Any(application =>
                 application.ProductId == productId &&
                 !JobApplicationStatuses.CanReapply(application.Status));
-            ViewBag.AvailableResumes = await ResumeSelectionHelper.BuildResumeSelectListAsync(applications, _downloadService);
+            ViewBag.AvailableResumes = await ResumeSelectionHelper.BuildResumeSelectListAsync(applications, _downloadService, dateTimeHelper: _dateTimeHelper);
         }
         else
             ViewBag.AvailableResumes = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();

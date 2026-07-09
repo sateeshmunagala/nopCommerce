@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Plugin.Misc.AIInterview.Domain;
+using Nop.Services.Helpers;
 using Nop.Services.Media;
 
 namespace Nop.Plugin.Misc.AIInterview.Infrastructure;
@@ -30,7 +31,8 @@ internal static class ResumeSelectionHelper
 
     public static async Task<IList<SelectListItem>> BuildResumeSelectListAsync(IEnumerable<JobApplication> applications,
         IDownloadService downloadService,
-        int selectedResumeDownloadId = 0)
+        int selectedResumeDownloadId = 0,
+        IDateTimeHelper dateTimeHelper = null)
     {
         var items = new List<SelectListItem>();
         if (applications == null || downloadService == null)
@@ -54,9 +56,7 @@ internal static class ResumeSelectionHelper
             var fileName = string.IsNullOrWhiteSpace(download.Filename)
                 ? $"Resume #{application.ResumeDownloadId.ToString(CultureInfo.InvariantCulture)}"
                 : download.Filename;
-            var createdLabel = application.CreatedOnUtc == default
-                ? string.Empty
-                : application.CreatedOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var createdLabel = await FormatResumeCreatedLabelAsync(application.CreatedOnUtc, dateTimeHelper);
             var text = string.IsNullOrWhiteSpace(createdLabel)
                 ? fileName
                 : $"{fileName} ({createdLabel})";
@@ -75,7 +75,8 @@ internal static class ResumeSelectionHelper
     public static async Task<IList<SelectListItem>> BuildResumeSelectListAsync(IEnumerable<JobApplication> applications,
         IEnumerable<InterviewSession> sessions,
         IDownloadService downloadService,
-        int selectedResumeDownloadId = 0)
+        int selectedResumeDownloadId = 0,
+        IDateTimeHelper dateTimeHelper = null)
     {
         var items = new List<SelectListItem>();
         if (downloadService == null)
@@ -110,9 +111,7 @@ internal static class ResumeSelectionHelper
             var fileName = string.IsNullOrWhiteSpace(download.Filename)
                 ? $"{entry.DefaultLabel} #{entry.DownloadId.ToString(CultureInfo.InvariantCulture)}"
                 : download.Filename;
-            var createdLabel = entry.CreatedOnUtc == default
-                ? string.Empty
-                : entry.CreatedOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var createdLabel = await FormatResumeCreatedLabelAsync(entry.CreatedOnUtc, dateTimeHelper);
             var text = string.IsNullOrWhiteSpace(createdLabel)
                 ? fileName
                 : $"{fileName} ({createdLabel})";
@@ -126,5 +125,17 @@ internal static class ResumeSelectionHelper
         }
 
         return items;
+    }
+
+    private static async Task<string> FormatResumeCreatedLabelAsync(DateTime createdOnUtc, IDateTimeHelper dateTimeHelper)
+    {
+        if (createdOnUtc == default)
+            return string.Empty;
+
+        if (dateTimeHelper == null)
+            return createdOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(createdOnUtc, DateTimeKind.Utc);
+        return userDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
 }

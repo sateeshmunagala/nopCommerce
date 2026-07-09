@@ -873,7 +873,7 @@ public class AIInterviewController : BasePluginController
             ? new JobRequirementsModel()
             : await _jobRequirementService.GetRequirementsAsync(model.ProductId);
         model.ResumeRequired = jobRequirements.ResumeRequired;
-        model.AvailableResumes = await ResumeSelectionHelper.BuildResumeSelectListAsync(allApplications, _downloadService, model.SelectedResumeDownloadId);
+        model.AvailableResumes = await ResumeSelectionHelper.BuildResumeSelectListAsync(allApplications, _downloadService, model.SelectedResumeDownloadId, _dateTimeHelper);
 
         if (model.ResumeFile == null)
         {
@@ -1013,7 +1013,7 @@ public class AIInterviewController : BasePluginController
             : await _jobRequirementService.GetRequirementsAsync(model.ProductId);
 
         model.ResumeRequired = jobRequirements.ResumeRequired;
-        model.AvailableResumes = await ResumeSelectionHelper.BuildResumeSelectListAsync(applications, _downloadService, model.SelectedResumeDownloadId);
+        model.AvailableResumes = await ResumeSelectionHelper.BuildResumeSelectListAsync(applications, _downloadService, model.SelectedResumeDownloadId, _dateTimeHelper);
     }
 
     protected async Task<bool> IsAuthorizedForEmployerActionsAsync()

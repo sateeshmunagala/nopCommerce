@@ -49,7 +49,7 @@
                 <div class="card-header">Ledger</div>
                 <div class="card-body">
                     <table class="table table-bordered table-striped">
-                        <thead><tr><th>Customer</th><th>Amount</th><th>Type</th><th>Remarks</th><th>UTC</th></tr></thead>
+                        <thead><tr><th>Customer</th><th>Amount</th><th>Type</th><th>Remarks</th><th>@T("Plugins.Misc.AIInterview.Admin.Credits.Ledger.CreatedOn")</th></tr></thead>
                         <tbody>
                             @foreach (var entry in Model.LedgerEntries)
                             {
@@ -67,7 +67,7 @@
                                     <td>@entry.Amount</td>
                                     <td>@entry.TransactionType</td>
                                     <td>@entry.Remarks</td>
-                                    <td>@entry.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss")Z</td>
+                                    <td>@entry.CreatedOn</td>
                                 </tr>
                             }
                         </tbody>
