@@ -823,6 +823,96 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task SubmitAnswerAsync_Scores_Local_Intro_Turn_Through_Existing_Path()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession
+        {
+            Id = 223,
+            ProductId = 20,
+            CustomerId = 5,
+            SessionKey = "key223",
+            Token = "token223",
+            Difficulty = "Medium",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            QuestionCount = 1
+        };
+        var store = new List<InterviewTurn>();
+        InterviewTurn updatedTurn = null;
+        AIInterviewClientRequest scoreRequest = null;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token223")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(223)).ReturnsAsync(() => store.OrderBy(turn => turn.SequenceNumber).ToList());
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn turn) =>
+            {
+                turn.Id = 1;
+                store.Add(turn);
+                return turn;
+            });
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback<InterviewTurn>(turn =>
+            {
+                updatedTurn = turn;
+                store.RemoveAll(existing => existing.Id == turn.Id);
+                store.Add(turn);
+            })
+            .Returns(Task.CompletedTask);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        productService.Setup(x => x.GetProductByIdAsync(20)).ReturnsAsync(new Product { Id = 20, Name = "Platform Engineer" });
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
+            .Callback<AIInterviewClientRequest>(request => scoreRequest = request)
+            .ReturnsAsync(new AIInterviewClientResponse
+            {
+                Success = true,
+                TechnicalScore = 91,
+                CommunicationScore = 88,
+                ProfessionalismScore = 90,
+                PositiveAttitudeScore = 87,
+                Score = 89,
+                Feedback = "Strong introduction with clear project ownership.",
+                RawJson = "{\"score\":89,\"feedback\":\"Strong introduction with clear project ownership.\",\"complete\":true}",
+                RubricJson = "{\"technicalScore\":91,\"communicationScore\":88,\"professionalismScore\":90,\"positiveAttitudeScore\":87,\"score\":89,\"feedback\":\"Strong introduction with clear project ownership.\"}"
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
+
+        await service.EnsureInterviewStartedAsync(session, new Customer { Id = 5, FirstName = "Jane", LastName = "Doe" });
+        var result = await service.SubmitAnswerAsync("token223", "I am a platform engineer with seven years of experience. I led our payments modernization project on .NET and Azure, owned the API redesign, handled rollback and observability gaps during cutover, and improved transaction success rates by reducing failures after launch.");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(updatedTurn, Is.Not.Null);
+        Assert.That(updatedTurn.SequenceNumber, Is.EqualTo(1));
+        Assert.That(updatedTurn.AnswerText, Does.Contain("payments modernization project"));
+        Assert.That(updatedTurn.Score, Is.EqualTo(89));
+        Assert.That(updatedTurn.Feedback, Is.EqualTo("Strong introduction with clear project ownership."));
+        Assert.That(scoreRequest, Is.Not.Null);
+        Assert.That(scoreRequest.QuestionNumber, Is.EqualTo(1));
+        Assert.That(scoreRequest.CurrentTurnRubricJson, Does.Contain("Introduction & Project Experience"));
+        using (var rubricDocument = JsonDocument.Parse(updatedTurn.RubricJson))
+        {
+            Assert.That(rubricDocument.RootElement.GetProperty("technicalScore").GetDecimal(), Is.EqualTo(91));
+            Assert.That(rubricDocument.RootElement.GetProperty("score").GetDecimal(), Is.EqualTo(89));
+            Assert.That(rubricDocument.RootElement.GetProperty("feedback").GetString(), Is.EqualTo("Strong introduction with clear project ownership."));
+            Assert.That(rubricDocument.RootElement.GetProperty("plan").GetProperty("category").GetString(), Is.EqualTo("Introduction & Project Experience"));
+            Assert.That(rubricDocument.RootElement.GetProperty("scoring").GetProperty("communicationScore").GetDecimal(), Is.EqualTo(88));
+        }
+
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Never);
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+    }
+
+    [Test]
     public async Task SubmitAnswerAsync_PreservesQuestionPlanMetadataAfterScoring()
     {
         var sessionService = new Mock<IInterviewSessionService>();

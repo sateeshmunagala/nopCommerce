@@ -200,7 +200,8 @@ public partial class InterviewAiClient
         builder.AppendLine("Resume profile JSON:");
         builder.AppendLine(TruncateSafe(request.ResumeProfileJson, 4000));
         builder.AppendLine("Sequence 1 is reserved by the runtime for the candidate introduction and project-experience question.");
-        builder.AppendLine("Generate only the remaining requested questions; do not duplicate the introduction/project-experience question.");
+        builder.AppendLine("Generate exactly the requested remaining questions for this call; do not duplicate the introduction/project-experience question.");
+        builder.AppendLine("Use remaining sequence numbers only. If sequence 1 already exists, begin generated questions at sequence 2 and continue from there.");
         builder.AppendLine("Remaining questions should build on resume and job context, cover role-relevant technical depth, feel natural and conversational, and ask one clear question at a time.");
         builder.AppendLine("Allowed categories: skill, project_scenario, job_fit, behavioral");
         if (request.ExistingQuestions?.Any() == true)
@@ -218,7 +219,7 @@ public partial class InterviewAiClient
 {
   "questions": [
     {
-      "sequenceNumber": 1,
+      "sequenceNumber": 2,
       "category": "skill",
       "question": "string",
       "resumeEvidence": "string",
