@@ -1752,6 +1752,12 @@
                 speechRecognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
 
                 speechRecognizer.recognizing = (_, e) => {
+                    const interimText = (e.result?.text || '').trim();
+                    if (interimText) {
+                        const committedText = (answerBox.value || '').trim();
+                        const combinedText = `${committedText ? `${committedText} ` : ''}${interimText}`.trim();
+                        setRuntimeCaption('You', combinedText);
+                    }
                     resetTimers();
                 };
 

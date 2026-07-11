@@ -1014,9 +1014,15 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("Enable screen share, camera, or microphone before recording."));
         Assert.That(runtimeViewText, Does.Not.Contain("setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);"));
         Assert.That(runtimeViewText, Does.Contain("Recording paused until screen sharing resumes."));
+        Assert.That(runtimeViewText, Does.Contain("speechRecognizer.recognizing = (_, e) => {"));
+        Assert.That(runtimeViewText, Does.Contain("const interimText = (e.result?.text || '').trim();"));
+        Assert.That(runtimeViewText, Does.Contain("const committedText = (answerBox.value || '').trim();"));
+        Assert.That(runtimeViewText, Does.Contain("const combinedText = `${committedText ? `${committedText} ` : ''}${interimText}`.trim();"));
+        Assert.That(runtimeViewText, Does.Contain("setRuntimeCaption('You', combinedText);"));
         Assert.That(runtimeViewText, Does.Contain("speechRecognizer.recognized = (_, e) => {"));
         Assert.That(runtimeViewText, Does.Contain("answerBox.value = `${answerBox.value ? `${answerBox.value.trim()} ` : ''}${e.result.text}`.trim();"));
         Assert.That(runtimeViewText, Does.Contain("syncAnswerCaption();"));
+        Assert.That(runtimeViewText, Does.Contain("updateSubmitAvailability();"));
         Assert.That(runtimeViewText, Does.Contain("answerBox.addEventListener('input', () => {"));
         Assert.That(runtimeViewText, Does.Contain("const trimmedAnswer = (answerBox.value || '').trim();"));
         Assert.That(runtimeViewText, Does.Contain("updateAnswerInputState();"));
