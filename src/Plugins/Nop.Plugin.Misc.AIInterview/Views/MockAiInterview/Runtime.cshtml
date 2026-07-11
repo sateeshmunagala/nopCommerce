@@ -1004,6 +1004,7 @@
 
             sessionToken = newToken;
             config.token = newToken;
+            updateRuntimeUrlToken(newToken);
             const expiry = getValue(result, 'tokenExpiryUtc', 'TokenExpiryUtc');
             tokenExpiryUtc = expiry ? new Date(expiry) : tokenExpiryUtc;
             scheduleTokenRefresh();
@@ -1023,6 +1024,18 @@
         };
 
         const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        const updateRuntimeUrlToken = (newToken) => {
+            if (!newToken || !window.history?.replaceState)
+                return;
+
+            const url = new URL(window.location.href);
+            if (url.searchParams.get('token') === newToken)
+                return;
+
+            url.searchParams.set('token', newToken);
+            window.history.replaceState(window.history.state, document.title, url.toString());
+        };
 
         const refreshTokenWithRetry = (attempt = 0) => {
             if (runtimeStoppedOrCompleted || stopInProgress)

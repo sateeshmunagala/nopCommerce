@@ -760,6 +760,7 @@ public class CandidateFlowTests
             session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice &&
             session.Difficulty == "Medium" &&
             session.SelectedProductAttributesJson.Contains("\"attributeName\":\"Practice Focus\"") &&
+            session.SelectedProductAttributesJson.Contains("\"textPrompt\":\"Skill\"") &&
             session.SelectedProductAttributesJson.Contains("\"value\":\"JAVA\"") &&
             !string.IsNullOrWhiteSpace(session.SelectedProductAttributesJson))), Times.Once);
     }

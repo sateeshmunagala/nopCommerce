@@ -45,7 +45,7 @@ public class MockAiInterviewController : BasePluginController
         "interview skill"
     ];
 
-    private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, int ValueId, string Value);
+    private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, string TextPrompt, int ValueId, string Value);
     private sealed record SelectedProductAttributesSnapshot(IList<SelectedProductAttributeValueSnapshot> Attributes);
     private sealed record MockPracticeSelectionResult(string SelectedProductAttributesJson, string Difficulty, bool HasPracticeSkill, IList<string> Errors);
 
@@ -410,6 +410,7 @@ public class MockAiInterviewController : BasePluginController
             snapshots.Add(new SelectedProductAttributeValueSnapshot(
                 attribute.Id,
                 attribute.Name,
+                mapping.TextPrompt,
                 value.Id,
                 value.Name));
             snapshotLabelsByValueId[value.Id] =
@@ -430,7 +431,8 @@ public class MockAiInterviewController : BasePluginController
             snapshotLabelsByValueId.TryGetValue(snapshot.ValueId, out var attributeLabels);
             attributeLabels ??=
             [
-                snapshot.AttributeName
+                snapshot.AttributeName,
+                snapshot.TextPrompt
             ];
 
             if (string.IsNullOrWhiteSpace(difficulty) &&

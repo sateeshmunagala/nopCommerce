@@ -1288,7 +1288,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         "interview skill"
     ];
 
-    private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, int ValueId, string Value);
+    private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, string TextPrompt, int ValueId, string Value);
     private sealed record SelectedProductAttributesSnapshot(IList<SelectedProductAttributeValueSnapshot> Attributes);
 
     private static readonly JsonSerializerOptions StorageSerializerOptions = new(JsonSerializerDefaults.Web)
@@ -2547,7 +2547,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 return string.Empty;
 
             var skill = attributes.FirstOrDefault(attribute =>
-                MatchesAttributeKeyword([attribute.AttributeName], PracticeSkillKeywords) &&
+                MatchesAttributeKeyword([attribute.AttributeName, attribute.TextPrompt], PracticeSkillKeywords) &&
                 !string.IsNullOrWhiteSpace(attribute.Value));
             if (!string.IsNullOrWhiteSpace(skill?.Value))
                 return skill.Value.Trim();
@@ -2555,7 +2555,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             var selectedDifficulty = !string.IsNullOrWhiteSpace(difficultyFallback)
                 ? difficultyFallback.Trim()
                 : attributes.FirstOrDefault(attribute =>
-                    MatchesAttributeKeyword([attribute.AttributeName], AIInterviewDefaults.InterviewDifficultyValues) ||
+                    MatchesAttributeKeyword([attribute.AttributeName, attribute.TextPrompt], AIInterviewDefaults.InterviewDifficultyValues) ||
                     AIInterviewDefaults.InterviewDifficultyValues.Any(value =>
                         string.Equals(value, attribute.Value?.Trim(), StringComparison.OrdinalIgnoreCase)))
                     ?.Value?.Trim();

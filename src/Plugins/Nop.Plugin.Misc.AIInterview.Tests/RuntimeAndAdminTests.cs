@@ -903,6 +903,11 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("tokenRefreshPromise"));
         Assert.That(runtimeViewText, Does.Contain("if (tokenRefreshPromise)"));
         Assert.That(runtimeViewText, Does.Not.Contain("tokenRefreshInFlight"));
+        Assert.That(runtimeViewText, Does.Contain("const updateRuntimeUrlToken = (newToken) =>"));
+        Assert.That(runtimeViewText, Does.Contain("if (!newToken || !window.history?.replaceState)"));
+        Assert.That(runtimeViewText, Does.Contain("url.searchParams.set('token', newToken);"));
+        Assert.That(runtimeViewText, Does.Contain("window.history.replaceState(window.history.state, document.title, url.toString());"));
+        Assert.That(runtimeViewText, Does.Contain("updateRuntimeUrlToken(newToken);"));
         Assert.That(runtimeViewText, Does.Contain("showUnavailableQuestionState"));
         Assert.That(runtimeViewText, Does.Contain("normalized === 'AI service unavailable. Please try again later.'"));
         Assert.That(runtimeViewText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
