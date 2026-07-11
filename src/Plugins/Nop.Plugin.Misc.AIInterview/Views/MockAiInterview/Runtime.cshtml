@@ -914,7 +914,6 @@
             if (recordingEnabled && mediaRecorder)
                 await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording paused until screen sharing resumes.' });
             setScreenShareStatus('Screen sharing ended. Resume screen sharing to continue.', 'warning');
-            setStatus('Screen sharing ended. Resume screen sharing to continue the interview.', true);
             updateStartButtonState();
             updateSubmitAvailability();
             updateAuxiliaryControlsState();
