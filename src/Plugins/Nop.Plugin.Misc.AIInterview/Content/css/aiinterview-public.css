@@ -2184,6 +2184,8 @@ body.ai-job-preview-open .item-box {
 
 .runtime-meta {
     justify-content: flex-end;
+    align-self: flex-end;
+    padding-bottom: 4px;
     color: #4b5563;
     font-weight: 700;
 }
@@ -2192,17 +2194,23 @@ body.ai-job-preview-open .item-box {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
-    padding: 0 16px;
+    min-height: 34px;
+    padding: 0 14px;
     border: 1px solid #d6dee8;
     border-radius: 1px;
     background: #ffffff;
     color: #111827;
+    line-height: 1;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .runtime-stop-button {
     min-width: 148px;
+    min-height: 34px !important;
+    margin: 0;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    line-height: 1.1;
 }
 
 .runtime-question-counter {
@@ -2252,9 +2260,9 @@ body.ai-job-preview-open .item-box {
     display: grid;
     grid-template-columns: minmax(0, 2.25fr) minmax(360px, 1fr);
     gap: 18px;
-    height: 100%;
+    height: auto;
     min-height: 0;
-    align-items: stretch;
+    align-items: start;
     padding-top: 18px;
 }
 
@@ -2273,9 +2281,10 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-stage {
-    grid-template-rows: minmax(0, 1fr) auto auto auto;
-    height: 100%;
-    align-content: stretch;
+    grid-template-rows: auto auto auto auto;
+    height: auto;
+    align-content: start;
+    gap: 18px;
 }
 
 .runtime-video {
@@ -2283,8 +2292,9 @@ body.ai-job-preview-open .item-box {
     display: grid;
     place-items: center;
     min-height: 0;
-    height: 100%;
-    min-height: 520px;
+    height: auto;
+    min-height: min(560px, 64vh);
+    max-height: 64vh;
     border: 1px solid #c6d1db;
     border-radius: 1px;
     background:
@@ -2410,12 +2420,12 @@ body.ai-job-preview-open .item-box {
 
 .runtime-video-caption {
     position: absolute;
-    right: 22px;
     bottom: 22px;
-    left: 22px;
+    left: 50%;
     display: grid;
     gap: 6px;
-    max-width: min(72%, 760px);
+    width: min(72%, 860px);
+    max-width: calc(100% - 44px);
     padding: 14px 16px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 1px;
@@ -2424,6 +2434,7 @@ body.ai-job-preview-open .item-box {
     backdrop-filter: blur(10px);
     box-shadow: 0 14px 34px rgba(15, 23, 42, 0.22);
     z-index: 2;
+    transform: translateX(-50%);
 }
 
 .runtime-video-caption-speaker {
@@ -2445,19 +2456,20 @@ body.ai-job-preview-open .item-box {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     width: 100%;
-    padding: 14px 16px;
+    padding: 10px 14px;
     border: 1px solid #dbe3ec;
     border-radius: 1px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(242, 246, 249, 0.94) 100%);
     box-sizing: border-box;
+    margin-top: 0;
 }
 
 .runtime-control-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
 }
 
@@ -2484,17 +2496,20 @@ body.ai-job-preview-open .item-box {
     flex: 0 0 auto;
     white-space: nowrap;
     min-width: 180px;
+    min-height: 36px;
+    padding-top: 8px;
+    padding-bottom: 8px;
 }
 
 .runtime-icon-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 44px;
-    width: 44px;
-    height: 44px;
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
     padding: 0;
-    flex: 0 0 44px;
+    flex: 0 0 36px;
 }
 
 .runtime-icon-button i {
@@ -2605,6 +2620,10 @@ body.ai-job-preview-open .item-box {
     display: grid;
     gap: 12px;
     align-content: start;
+}
+
+.runtime-sidebar-panel[hidden] {
+    display: none !important;
 }
 
 #runtime-panel-conversation {
@@ -2814,7 +2833,7 @@ body.ai-job-preview-open .item-box {
 
 .runtime-detail-item {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     gap: 14px;
     padding: 12px 14px;
@@ -2829,6 +2848,7 @@ body.ai-job-preview-open .item-box {
     font-weight: 400;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    text-align: center;
 }
 
 .runtime-detail-value {
@@ -2836,6 +2856,7 @@ body.ai-job-preview-open .item-box {
     font-weight: 400;
     text-align: center;
     overflow-wrap: anywhere;
+    max-width: 70%;
 }
 
 .runtime-shell .button-1,
@@ -3027,13 +3048,13 @@ body.ai-job-preview-open .item-box {
     display: flex;
     align-items: end;
     gap: 4px;
-    height: 34px;
+    height: 24px;
     justify-content: center;
 }
 
 .runtime-meter span {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 1px;
     background: #cbd5e1;
     transition: height 0.15s ease, background 0.15s ease;
@@ -3042,6 +3063,7 @@ body.ai-job-preview-open .item-box {
 @media (max-width: 1024px) {
     .runtime-layout {
         grid-template-columns: 1fr;
+        height: auto;
     }
 
     .runtime-stage,
@@ -3050,7 +3072,8 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video {
-        min-height: 420px;
+        min-height: min(460px, 58vh);
+        max-height: 58vh;
     }
 }
 
