@@ -196,8 +196,10 @@ public class ResumePlanningTests
         Assert.That(plan.Success, Is.True);
         Assert.That(plan.Questions.Count, Is.EqualTo(5));
         Assert.That(plan.Questions.Select(question => question.SequenceNumber).Distinct().Count(), Is.EqualTo(5));
-        Assert.That(plan.Questions.Any(question => question.Category == "skill"), Is.True);
-        Assert.That(plan.Questions.Any(question => question.Category == "project_scenario"), Is.True);
+        Assert.That(plan.Questions.First().Category, Is.EqualTo("Introduction & Project Experience"));
+        Assert.That(plan.Questions.First().Question, Does.Contain("introduce yourself"));
+        Assert.That(plan.Questions.Skip(1).Any(question => question.Category == "skill"), Is.True);
+        Assert.That(plan.Questions.Skip(1).Any(question => question.Category == "project_scenario"), Is.True);
         Assert.That(plan.Questions.All(question => !string.IsNullOrWhiteSpace(question.Question)), Is.True);
     }
 

@@ -124,14 +124,14 @@ public class RuntimeServiceTests
         var store = new List<InterviewTurn>();
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(1)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
         aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
-            .ReturnsAsync(new AIInterviewQuestionPlanResponse
+            .ReturnsAsync((AIInterviewQuestionPlanRequest request) => new AIInterviewQuestionPlanResponse
             {
                 Success = true,
-                Questions = Enumerable.Range(1, 5).Select(index => new AIInterviewQuestionPlanItem
+                Questions = Enumerable.Range(1, request.QuestionCount).Select(index => new AIInterviewQuestionPlanItem
                 {
                     SequenceNumber = index,
                     Category = index <= 2 ? "skill" : index <= 4 ? "project_scenario" : "job_fit",
-                    Question = $"Planned question {index}",
+                    Question = $"Planned technical question {index}",
                     ResumeEvidence = index <= 2 ? "C#" : "Payments platform",
                     ExpectedSignals = new List<string> { "Signal A", "Signal B" },
                     Rubric = new AIInterviewQuestionRubric
@@ -161,16 +161,54 @@ public class RuntimeServiceTests
         var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99, FirstName = "Jane", LastName = "Doe" });
 
         Assert.That(model, Is.Not.Null);
-        Assert.That(model.CurrentQuestion, Is.EqualTo("Planned question 1"));
+        Assert.That(model.CurrentQuestion, Does.Contain("Hello Jane Doe, let's start with you"));
+        Assert.That(model.CurrentQuestion, Does.Contain("one or two projects"));
         Assert.That(insertedTurns.Count, Is.EqualTo(5));
         Assert.That(insertedTurns.All(turn => turn.InterviewSessionId == 1), Is.True);
         Assert.That(insertedTurns.Select(turn => turn.SequenceNumber), Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
         Assert.That(store.Count, Is.EqualTo(5));
         aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.Is<AIInterviewQuestionPlanRequest>(request =>
             request.JobTitle == "Backend Engineer" &&
-            request.QuestionCount == 5 &&
-            request.Difficulty == "Medium")), Times.Once);
+            request.QuestionCount == 4 &&
+            request.TotalQuestionCount == 5 &&
+            request.Difficulty == "Medium" &&
+            request.ExistingQuestions.Any(question => question.Contains("introduce yourself")) &&
+            !request.ExistingCategories.Any(category => category == "Introduction & Project Experience"))), Times.Once);
+        var firstRubric = JsonDocument.Parse(insertedTurns.Single(turn => turn.SequenceNumber == 1).RubricJson).RootElement;
+        Assert.That(firstRubric.GetProperty("category").GetString(), Is.EqualTo("Introduction & Project Experience"));
+        Assert.That(firstRubric.GetProperty("expectedSignals").EnumerateArray().Any(signal => signal.GetString() == "Relevant project ownership"), Is.True);
         aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task EnsureInterviewStartedAsync_QuestionCountOne_Creates_Only_Intro_Turn()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var session = new InterviewSession { Id = 11, ProductId = 10, CustomerId = 99, Token = "token", Difficulty = "Medium", QuestionCount = 1 };
+        var store = new List<InterviewTurn>();
+
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(11)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
+        productService.Setup(x => x.GetProductByIdAsync(10)).ReturnsAsync(new Product { Id = 10, Name = "Backend Engineer" });
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn turn) =>
+            {
+                store.Add(turn);
+                return turn;
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99 });
+
+        Assert.That(model.CurrentQuestion, Does.StartWith("Let's start with you."));
+        Assert.That(store.Count, Is.EqualTo(1));
+        Assert.That(store.Single().SequenceNumber, Is.EqualTo(1));
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Never);
     }
 
     [Test]

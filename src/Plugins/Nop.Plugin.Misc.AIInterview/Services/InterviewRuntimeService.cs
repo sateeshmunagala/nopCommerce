@@ -2087,7 +2087,19 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (questionCount <= 0)
             return (Array.Empty<InterviewTurn>(), null);
 
+        var locallyPlannedTurns = new List<InterviewTurn>();
+        if (sequenceNumbers.Contains(1))
+        {
+            locallyPlannedTurns.Add(BuildIntroductionProjectTurn(session, customer));
+            sequenceNumbers.Remove(1);
+            questionCount = sequenceNumbers.Count;
+        }
+
+        if (questionCount <= 0)
+            return (locallyPlannedTurns, null);
+
         var plannedContext = (existingTurns ?? new List<InterviewTurn>())
+            .Concat(locallyPlannedTurns)
             .OrderBy(turn => turn.SequenceNumber)
             .ThenBy(turn => turn.Id)
             .ToList();
@@ -2106,7 +2118,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 .ToList(),
             ExistingCategories = plannedContext
                 .Select(turn => ExtractPlanCategory(turn.RubricJson))
-                .Where(category => !string.IsNullOrWhiteSpace(category))
+                .Where(category => !string.IsNullOrWhiteSpace(category) &&
+                    !string.Equals(category, "Introduction & Project Experience", StringComparison.OrdinalIgnoreCase))
                 .ToList()
         });
 
@@ -2139,7 +2152,69 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             CreatedOnUtc = now
         }).ToList();
 
-        return (turns, null);
+        return (locallyPlannedTurns.Concat(turns).OrderBy(turn => turn.SequenceNumber).ToList(), null);
+    }
+
+    protected virtual InterviewTurn BuildIntroductionProjectTurn(InterviewSession session, Customer customer)
+    {
+        var now = DateTime.UtcNow;
+        var questionText = BuildIntroductionProjectQuestionText(customer);
+        var rubric = new AIInterviewQuestionRubric
+        {
+            Technical = "Evaluate evidence of real project experience, architecture or implementation details, tools, tradeoffs, debugging or challenges, and impact.",
+            Communication = "Evaluate clarity, structure, confidence, and ability to explain experience naturally.",
+            Professionalism = "Evaluate ownership, honesty, relevance to the role, maturity, and responsibility.",
+            PositiveAttitude = "Evaluate curiosity, learning mindset, constructive framing, and motivation."
+        };
+        var expectedSignals = new[]
+        {
+            "Clear self-introduction",
+            "Relevant project ownership",
+            "Technologies used",
+            "Implementation details and tradeoffs",
+            "Challenges solved",
+            "Measurable impact or outcome",
+            "Communication clarity"
+        };
+        var planItem = new AIInterviewQuestionPlanItem
+        {
+            SequenceNumber = 1,
+            Category = "Introduction & Project Experience",
+            Question = questionText,
+            ResumeEvidence = string.Empty,
+            ExpectedSignals = expectedSignals,
+            Rubric = rubric
+        };
+
+        return new InterviewTurn
+        {
+            InterviewSessionId = session.Id,
+            SequenceNumber = 1,
+            QuestionId = 1,
+            QuestionText = questionText,
+            RubricJson = JsonSerializer.Serialize(new
+            {
+                category = planItem.Category,
+                resumeEvidence = planItem.ResumeEvidence,
+                expectedSignals,
+                rubric
+            }, StorageSerializerOptions),
+            RawAIResponseJson = JsonSerializer.Serialize(planItem, StorageSerializerOptions),
+            AskedOnUtc = now,
+            CreatedOnUtc = now
+        };
+    }
+
+    protected static string BuildIntroductionProjectQuestionText(Customer customer)
+    {
+        var candidateName = string.Join(" ", new[] { customer?.FirstName, customer?.LastName }
+                .Where(namePart => !string.IsNullOrWhiteSpace(namePart))
+                .Select(namePart => namePart.Trim()))
+            .Trim();
+
+        return string.IsNullOrWhiteSpace(candidateName)
+            ? "Let's start with you. Please introduce yourself and walk me through one or two projects you are most proud of. I'd like to understand your role, the technologies you used, the main challenges you handled, and the impact of the work."
+            : $"Hello {candidateName}, let's start with you. Please introduce yourself and walk me through one or two projects you are most proud of. I'd like to understand your role, the technologies you used, the main challenges you handled, and the impact of the work.";
     }
 
     protected virtual async Task<(InterviewTurn Turn, string FailureReason)> GenerateQuestionTurnAsync(InterviewSession session, int sequenceNumber, IList<InterviewTurn> turns)

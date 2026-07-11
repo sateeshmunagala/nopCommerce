@@ -199,6 +199,9 @@ public partial class InterviewAiClient
         builder.AppendLine($"Global prompt: {request.Prompt}");
         builder.AppendLine("Resume profile JSON:");
         builder.AppendLine(TruncateSafe(request.ResumeProfileJson, 4000));
+        builder.AppendLine("Sequence 1 is reserved by the runtime for the candidate introduction and project-experience question.");
+        builder.AppendLine("Generate only the remaining requested questions; do not duplicate the introduction/project-experience question.");
+        builder.AppendLine("Remaining questions should build on resume and job context, cover role-relevant technical depth, feel natural and conversational, and ask one clear question at a time.");
         builder.AppendLine("Allowed categories: skill, project_scenario, job_fit, behavioral");
         if (request.ExistingQuestions?.Any() == true)
         {
@@ -428,15 +431,25 @@ public partial class InterviewAiClient
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         var existingCategories = (request.ExistingCategories ?? new List<string>())
-            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Where(category => !string.IsNullOrWhiteSpace(category) &&
+                !string.Equals(category, "Introduction & Project Experience", StringComparison.OrdinalIgnoreCase))
             .Select(NormalizePlanCategory)
             .ToList();
-        var categories = BuildRemainingQuestionCategories(totalQuestionCount, questionCount, existingCategories, profile.Projects.Any());
+        var shouldIncludeIntroQuestion = ShouldIncludeMockIntroductionQuestion(request, totalQuestionCount, existingQuestions);
+        var generatedQuestionCount = shouldIncludeIntroQuestion ? questionCount - 1 : questionCount;
+        var categories = BuildRemainingQuestionCategories(totalQuestionCount, generatedQuestionCount, existingCategories, profile.Projects.Any());
         var primarySkills = profile.PrimarySkills.Any() ? profile.PrimarySkills : profile.Skills.Any() ? profile.Skills : new List<string> { request.JobTitle, "problem solving" };
         var seenQuestions = new HashSet<string>(existingQuestions, StringComparer.OrdinalIgnoreCase);
         var questions = new List<AIInterviewQuestionPlanItem>();
 
-        for (var index = 0; index < questionCount; index++)
+        if (shouldIncludeIntroQuestion)
+        {
+            var introQuestion = BuildMockIntroductionQuestionPlanItem();
+            questions.Add(introQuestion);
+            seenQuestions.Add(introQuestion.Question);
+        }
+
+        for (var index = 0; index < generatedQuestionCount; index++)
         {
             var category = categories[index];
             var skill = primarySkills[index % primarySkills.Count];
@@ -456,7 +469,7 @@ public partial class InterviewAiClient
 
             questions.Add(new AIInterviewQuestionPlanItem
             {
-                SequenceNumber = index + 1,
+                SequenceNumber = questions.Count + 1,
                 Category = category,
                 Question = questionText,
                 ResumeEvidence = category == "project_scenario" && project != null
@@ -484,6 +497,43 @@ public partial class InterviewAiClient
             Success = true,
             Questions = questions,
             RawJson = JsonSerializer.Serialize(new { questions }, ResumePlanSerializerOptions)
+        };
+    }
+
+    private static bool ShouldIncludeMockIntroductionQuestion(AIInterviewQuestionPlanRequest request, int totalQuestionCount, IList<string> existingQuestions)
+    {
+        if (request == null || request.QuestionCount <= 0 || request.QuestionCount != totalQuestionCount)
+            return false;
+
+        return existingQuestions?.Any(question => question.Contains("let's start with you", StringComparison.OrdinalIgnoreCase) ||
+            question.Contains("introduce yourself", StringComparison.OrdinalIgnoreCase)) != true;
+    }
+
+    private static AIInterviewQuestionPlanItem BuildMockIntroductionQuestionPlanItem()
+    {
+        return new AIInterviewQuestionPlanItem
+        {
+            SequenceNumber = 1,
+            Category = "Introduction & Project Experience",
+            Question = "Let's start with you. Please introduce yourself and walk me through one or two projects you are most proud of. I'd like to understand your role, the technologies you used, the main challenges you handled, and the impact of the work.",
+            ResumeEvidence = string.Empty,
+            ExpectedSignals = new List<string>
+            {
+                "Clear self-introduction",
+                "Relevant project ownership",
+                "Technologies used",
+                "Implementation details and tradeoffs",
+                "Challenges solved",
+                "Measurable impact or outcome",
+                "Communication clarity"
+            },
+            Rubric = new AIInterviewQuestionRubric
+            {
+                Technical = "Evaluate evidence of real project experience, architecture or implementation details, tools, tradeoffs, debugging or challenges, and impact.",
+                Communication = "Evaluate clarity, structure, confidence, and ability to explain experience naturally.",
+                Professionalism = "Evaluate ownership, honesty, relevance to the role, maturity, and responsibility.",
+                PositiveAttitude = "Evaluate curiosity, learning mindset, constructive framing, and motivation."
+            }
         };
     }
 
