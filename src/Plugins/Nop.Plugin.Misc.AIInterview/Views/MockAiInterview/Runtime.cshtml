@@ -3,14 +3,12 @@
 @using System.Text.Json.Serialization
 @{
     Layout = "_Root.Head";
-    var practiceSkill = !string.IsNullOrWhiteSpace(Model.PracticeSkill)
-        ? Model.PracticeSkill
-        : (!string.IsNullOrWhiteSpace(Model.RuntimeTopic) ? Model.RuntimeTopic : "Resume Practice");
+    var practiceSkill = !string.IsNullOrWhiteSpace(Model.PracticeSkill) ? Model.PracticeSkill : string.Empty;
     var runtimeTopic = !string.IsNullOrWhiteSpace(Model.RuntimeTopic) ? Model.RuntimeTopic : Model.ProductName;
     var runtimeTitle = Model.IsPracticeInterview
-        ? (!string.IsNullOrWhiteSpace(Model.Difficulty)
-            ? $"Interview on {practiceSkill} - {Model.Difficulty}"
-            : $"Interview on {practiceSkill}")
+        ? (!string.IsNullOrWhiteSpace(practiceSkill) || !string.IsNullOrWhiteSpace(Model.Difficulty)
+            ? $"Interview on {(!string.IsNullOrWhiteSpace(practiceSkill) ? practiceSkill : "Resume Practice")}{(!string.IsNullOrWhiteSpace(Model.Difficulty) ? $" - {Model.Difficulty}" : string.Empty)}"
+            : $"Interview on {(!string.IsNullOrWhiteSpace(Model.ProductName) ? Model.ProductName : "Interview")}")
         : $"Interview for {runtimeTopic}";
     var jsonOptions = new JsonSerializerOptions
     {
@@ -36,12 +34,16 @@
                         <h3>@runtimeTitle</h3>
                         @if (Model.QuestionCount > 0)
                         {
-                            <span id="runtime-question-counter" class="runtime-question-counter runtime-js-hidden" aria-label="Interview question count"></span>
+                            <span id="runtime-question-counter" class="runtime-question-counter runtime-js-hidden" aria-label="Interview question count" hidden></span>
                         }
                     </div>
                 </div>
             </div>
             <div class="runtime-meta">
+                @if (!string.IsNullOrWhiteSpace(Model.CandidateName))
+                {
+                    <span class="runtime-candidate-chip">Candidate: @Model.CandidateName</span>
+                }
                 <span class="runtime-timer-chip"><i class="fa-regular fa-clock" aria-hidden="true"></i><span id="runtime-timer">00:00</span></span>
                 <button type="button" id="stop-interview-top" class="button-2 runtime-stop-button" disabled>@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
             </div>
@@ -74,7 +76,7 @@
                             <small>Role-based interviewer</small>
                         </div>
                     </div>
-                    <div id="runtime-video-caption" class="runtime-video-caption runtime-js-hidden" aria-live="polite">
+                    <div id="runtime-video-caption" class="runtime-video-caption runtime-js-hidden" aria-live="polite" hidden>
                         <div id="runtime-video-caption-speaker" class="runtime-video-caption-speaker"></div>
                         <div id="runtime-video-caption-text" class="runtime-video-caption-text"></div>
                     </div>
@@ -412,6 +414,7 @@
             const normalizedText = (text || '').trim();
             if (!normalizedText) {
                 videoCaption.classList.add('runtime-js-hidden');
+                videoCaption.hidden = true;
                 videoCaptionSpeaker.textContent = '';
                 videoCaptionText.textContent = '';
                 return;
@@ -420,6 +423,7 @@
             videoCaptionSpeaker.textContent = `${speaker}:`;
             videoCaptionText.textContent = normalizedText;
             videoCaption.classList.remove('runtime-js-hidden');
+            videoCaption.hidden = false;
         };
 
         const syncAnswerCaption = () => {
@@ -1331,6 +1335,7 @@
             if (questionCounter) {
                 questionCounter.textContent = activeQuestionNumber > 0 ? `Question ${activeQuestionNumber}/${totalQuestions}` : '';
                 questionCounter.classList.toggle('runtime-js-hidden', activeQuestionNumber <= 0);
+                questionCounter.hidden = activeQuestionNumber <= 0;
             }
             if (questionCountDetails)
                 questionCountDetails.textContent = `${answered} / ${totalQuestions} answered`;

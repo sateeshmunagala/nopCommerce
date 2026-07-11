@@ -2101,7 +2101,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-js-hidden {
-    display: none;
+    display: none !important;
 }
 
 [hidden] {
@@ -2194,6 +2194,24 @@ body.ai-job-preview-open .item-box {
     font-weight: 700;
 }
 
+.runtime-candidate-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: min(34vw, 320px);
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid #d6dee8;
+    border-radius: 1px;
+    background: #f8fbfd;
+    color: #30404e;
+    font-size: 0.83rem;
+    font-weight: 400;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .runtime-timer-chip {
     display: inline-flex;
     align-items: center;
@@ -2235,6 +2253,11 @@ body.ai-job-preview-open .item-box {
     display: none !important;
 }
 
+.runtime-question-counter[hidden],
+.runtime-video-caption[hidden] {
+    display: none !important;
+}
+
 .runtime-header-status {
     min-height: 0;
     padding: 10px 12px;
@@ -2272,6 +2295,7 @@ body.ai-job-preview-open .item-box {
     min-height: 0;
     align-items: start;
     padding-top: 18px;
+    overflow: hidden;
 }
 
 .runtime-stage,
@@ -2627,6 +2651,7 @@ body.ai-job-preview-open .item-box {
 .runtime-sidebar-panels {
     display: grid;
     min-height: 0;
+    height: 100%;
     overflow: hidden;
 }
 
@@ -2635,6 +2660,7 @@ body.ai-job-preview-open .item-box {
     gap: 12px;
     align-content: start;
     min-height: 0;
+    height: 100%;
     overflow-y: auto;
 }
 
@@ -3080,6 +3106,7 @@ body.ai-job-preview-open .item-box {
     .runtime-layout {
         grid-template-columns: 1fr;
         height: auto;
+        overflow: visible;
     }
 
     .runtime-stage,
@@ -3090,6 +3117,18 @@ body.ai-job-preview-open .item-box {
     .runtime-video {
         min-height: min(460px, 58vh);
         max-height: 58vh;
+    }
+}
+
+@media (min-width: 1025px) {
+    .runtime-page {
+        height: calc(100vh - 28px);
+        min-height: 0;
+    }
+
+    .runtime-video {
+        min-height: min(480px, 56vh);
+        max-height: 56vh;
     }
 }
 

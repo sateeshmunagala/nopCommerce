@@ -1065,12 +1065,25 @@ public class RuntimeAndAdminTests
     public void RuntimeView_Uses_Contextual_Title_And_Separates_Candidate_Details()
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+        var runtimeCssText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
 
         Assert.That(runtimeViewText, Does.Contain("Model.IsPracticeInterview"));
-        Assert.That(runtimeViewText, Does.Contain("Interview on {practiceSkill} - {Model.Difficulty}"));
+        Assert.That(runtimeViewText, Does.Contain("Interview on {(!string.IsNullOrWhiteSpace(practiceSkill) ? practiceSkill : \"Resume Practice\")}{(!string.IsNullOrWhiteSpace(Model.Difficulty) ? $\" - {Model.Difficulty}\" : string.Empty)}"));
         Assert.That(runtimeViewText, Does.Contain("Interview for {runtimeTopic}"));
+        Assert.That(runtimeViewText, Does.Contain("<span class=\"runtime-candidate-chip\">Candidate: @Model.CandidateName</span>"));
         Assert.That(runtimeViewText, Does.Contain("<span class=\"runtime-detail-label\">Candidate</span>"));
         Assert.That(runtimeViewText, Does.Not.Contain("Interview on {Model.ProductName} - {Model.CandidateName}"));
+        Assert.That(runtimeViewText, Does.Contain("id=\"runtime-question-counter\" class=\"runtime-question-counter runtime-js-hidden\" aria-label=\"Interview question count\" hidden"));
+        Assert.That(runtimeViewText, Does.Contain("id=\"runtime-video-caption\" class=\"runtime-video-caption runtime-js-hidden\" aria-live=\"polite\" hidden"));
+        Assert.That(runtimeViewText, Does.Contain("videoCaption.hidden = true;"));
+        Assert.That(runtimeViewText, Does.Contain("videoCaption.hidden = false;"));
+        Assert.That(runtimeViewText, Does.Contain("questionCounter.hidden = activeQuestionNumber <= 0;"));
+        Assert.That(runtimeViewText, Does.Contain("panel.hidden = !isActive;"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-js-hidden {\r\n    display: none !important;").Or.Contain(".runtime-js-hidden {\n    display: none !important;"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-question-counter[hidden],"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-video-caption[hidden] {"));
+        Assert.That(runtimeCssText, Does.Contain("@media (min-width: 1025px)"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-video {\r\n        min-height: min(480px, 56vh);").Or.Contain(".runtime-video {\n        min-height: min(480px, 56vh);"));
     }
 
     [Test]
