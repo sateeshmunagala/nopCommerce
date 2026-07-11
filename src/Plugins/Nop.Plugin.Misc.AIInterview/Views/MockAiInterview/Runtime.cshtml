@@ -3,6 +3,9 @@
 @using System.Text.Json.Serialization
 @{
     Layout = "_Root.Head";
+    var runtimeTitle = !string.IsNullOrWhiteSpace(Model.CandidateName)
+        ? $"Interview on {Model.ProductName} - {Model.CandidateName}"
+        : $"Interview on {Model.ProductName}";
     var jsonOptions = new JsonSerializerOptions
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -22,10 +25,16 @@
                     <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
                     <span class="sr-only">Back</span>
                 </button>
+                <div class="runtime-brandmark" aria-hidden="true">
+                    <span class="runtime-brandmark-core">V</span>
+                </div>
                 <div class="runtime-title-block">
-                    <p class="runtime-eyebrow">AI Interview Room</p>
+                    <p class="runtime-eyebrow">Live interview</p>
                     <div class="runtime-title-line">
-                        <h1>@Model.ProductName</h1>
+                        <h1>@runtimeTitle</h1>
+                    </div>
+                    <div class="runtime-title-meta">
+                        <span class="runtime-title-badge">Venture Interview Room</span>
                         @if (Model.QuestionCount > 0)
                         {
                             <span id="runtime-question-counter" class="runtime-question-counter runtime-js-hidden" aria-label="Interview question count"></span>
@@ -56,41 +65,59 @@
                         <span>Camera preview</span>
                     </div>
                     <div class="runtime-avatar">
-                        <div class="runtime-avatar-label"><i class="fa-solid fa-robot" aria-hidden="true"></i><span>AI Interviewer</span></div>
+                        <div class="runtime-avatar-status">
+                            <span class="runtime-avatar-status-dot"></span>
+                            <span>Listening live</span>
+                        </div>
+                        <div class="runtime-avatar-label">
+                            <i class="fa-solid fa-robot" aria-hidden="true"></i>
+                            <span>AI Interviewer</span>
+                            <small>Role-based interviewer</small>
+                        </div>
+                    </div>
+                    <div id="runtime-video-caption" class="runtime-video-caption runtime-js-hidden" aria-live="polite">
+                        <div id="runtime-video-caption-speaker" class="runtime-video-caption-speaker"></div>
+                        <div id="runtime-video-caption-text" class="runtime-video-caption-text"></div>
                     </div>
                 </div>
                 <div class="runtime-controls">
-                    <div class="runtime-control-icons">
-                        <button type="button" id="toggle-camera" class="runtime-icon-button button-2" aria-label="Turn camera on" title="Turn camera on">
-                            <i class="fa-solid fa-video" aria-hidden="true"></i>
-                            <span class="sr-only">Turn camera on</span>
-                        </button>
-                        <button type="button" id="toggle-mic" class="runtime-icon-button button-2" aria-label="Turn microphone on" title="Turn microphone on">
-                            <i class="fa-solid fa-microphone" aria-hidden="true"></i>
-                            <span class="sr-only">Turn microphone on</span>
-                        </button>
-                        <button type="button" id="toggle-screen-share" class="runtime-icon-button button-2" aria-label="Enable screen share" title="Enable screen share">
-                            <i class="fa-solid fa-display" aria-hidden="true"></i>
-                            <span class="sr-only">Enable screen share</span>
-                        </button>
-                        <button type="button" id="toggle-recording" class="runtime-icon-button button-2" aria-label="Recording status" title="Recording status">
-                            <i class="fa-solid fa-circle" aria-hidden="true"></i>
-                            <span class="sr-only">Recording status</span>
-                        </button>
+                    <div class="runtime-control-group runtime-control-group-left">
                         <button type="button" id="view-guidelines" class="runtime-icon-button button-2" aria-label="Guidelines" title="Guidelines">
                             <i class="fa-solid fa-book-open" aria-hidden="true"></i>
                             <span class="sr-only">@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Title")</span>
-                        </button>
-                        <button type="button" id="open-transcript" class="runtime-icon-button button-2" aria-label="Transcript" title="Transcript">
-                            <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
-                            <span class="sr-only">@T("Plugins.Misc.AIInterview.Runtime.Transcript")</span>
                         </button>
                         <button type="button" id="repeat-question" class="runtime-icon-button button-2" aria-label="Repeat question" title="Repeat question">
                             <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
                             <span class="sr-only">Repeat question</span>
                         </button>
                     </div>
-                    <button type="button" id="start-or-next" class="button-1" disabled>@T("Plugins.Misc.AIInterview.Runtime.StartInterview")</button>
+                    <div class="runtime-control-group runtime-control-group-center">
+                        <button type="button" id="toggle-mic" class="runtime-icon-button button-2" aria-label="Turn microphone on" title="Turn microphone on">
+                            <i class="fa-solid fa-microphone" aria-hidden="true"></i>
+                            <span class="sr-only">Turn microphone on</span>
+                        </button>
+                        <button type="button" id="start-or-next" class="button-1" disabled>@T("Plugins.Misc.AIInterview.Runtime.StartInterview")</button>
+                        <button type="button" id="toggle-camera" class="runtime-icon-button button-2" aria-label="Turn camera on" title="Turn camera on">
+                            <i class="fa-solid fa-video" aria-hidden="true"></i>
+                            <span class="sr-only">Turn camera on</span>
+                        </button>
+                    </div>
+                    <div class="runtime-control-group runtime-control-group-right">
+                        <div class="runtime-control-icons">
+                            <button type="button" id="toggle-screen-share" class="runtime-icon-button button-2" aria-label="Enable screen share" title="Enable screen share">
+                                <i class="fa-solid fa-display" aria-hidden="true"></i>
+                                <span class="sr-only">Enable screen share</span>
+                            </button>
+                            <button type="button" id="toggle-recording" class="runtime-icon-button button-2" aria-label="Recording status" title="Recording status">
+                                <i class="fa-solid fa-circle" aria-hidden="true"></i>
+                                <span class="sr-only">Recording status</span>
+                            </button>
+                            <button type="button" id="open-transcript" class="runtime-icon-button button-2" aria-label="Transcript" title="Transcript">
+                                <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                                <span class="sr-only">@T("Plugins.Misc.AIInterview.Runtime.Transcript")</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div id="screen-share-status" class="runtime-screen-share-status runtime-js-hidden" aria-live="polite"></div>
                 <div class="runtime-status runtime-js-hidden" id="recording-status"></div>
@@ -107,38 +134,76 @@
 
             <aside class="runtime-sidebar">
                 <div class="runtime-sidebar-head">
-                    <div>
-                        <h3>Interview chat</h3>
+                    <div class="runtime-sidebar-tabs" role="tablist" aria-label="Runtime panels">
+                        <button type="button" class="runtime-tab is-active" id="runtime-tab-conversation" data-runtime-tab="conversation" role="tab" aria-selected="true" aria-controls="runtime-panel-conversation">Conversation</button>
+                        <button type="button" class="runtime-tab" id="runtime-tab-details" data-runtime-tab="details" role="tab" aria-selected="false" aria-controls="runtime-panel-details">Interview details</button>
                     </div>
                 </div>
-                <div id="runtime-question" class="runtime-question runtime-js-hidden">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
-                <div id="runtime-message" class="runtime-message is-info runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
+                <div class="runtime-sidebar-panels">
+                    <section class="runtime-sidebar-panel is-active" id="runtime-panel-conversation" data-runtime-panel="conversation" role="tabpanel" aria-labelledby="runtime-tab-conversation">
+                        <div id="runtime-question" class="runtime-question runtime-js-hidden">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
+                        <div id="runtime-message" class="runtime-message is-info runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
 
-                <div class="runtime-conversation" id="conversation">
-                    <div class="runtime-chat-placeholder" id="conversation-empty-state">
-                        <div class="runtime-chat-placeholder-icon">
-                            <i class="fa-solid fa-comments" aria-hidden="true"></i>
+                        <div class="runtime-conversation" id="conversation">
+                            <div class="runtime-chat-placeholder" id="conversation-empty-state">
+                                <div class="runtime-chat-placeholder-icon">
+                                    <i class="fa-solid fa-comments" aria-hidden="true"></i>
+                                </div>
+                                <div class="runtime-chat-placeholder-copy">
+                                    <div class="runtime-chat-placeholder-title">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
+                                    <div class="runtime-chat-placeholder-text">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="runtime-chat-placeholder-copy">
-                            <div class="runtime-chat-placeholder-title">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
-                            <div class="runtime-chat-placeholder-text">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
+
+                        <div class="runtime-answer runtime-answer-hidden runtime-js-hidden">
+                            <label class="sr-only" for="runtime-answer">Your answer</label>
+                            <div class="runtime-answer-composer">
+                                <textarea id="runtime-answer" placeholder="@T("Plugins.Misc.AIInterview.Runtime.AnswerPlaceholder")" disabled></textarea>
+                                <button type="button" id="submit-answer" class="button-1 runtime-composer-send runtime-js-hidden" disabled title="Send answer">
+                                    <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+                                    <span class="sr-only">@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</span>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="runtime-answer runtime-answer-hidden runtime-js-hidden">
-                    <label class="sr-only" for="runtime-answer">Your answer</label>
-                    <textarea id="runtime-answer" placeholder="@T("Plugins.Misc.AIInterview.Runtime.AnswerPlaceholder")" disabled></textarea>
-                </div>
+                        <div id="runtime-status" class="runtime-status runtime-js-hidden"></div>
+                        <div id="runtime-completion" class="runtime-message is-info runtime-js-hidden"></div>
+                    </section>
 
-                <div id="runtime-actions" class="runtime-actions runtime-js-hidden">
-                    <button type="button" id="submit-answer" class="button-1 runtime-js-hidden" disabled>@T("Plugins.Misc.AIInterview.Interview.SubmitAnswer")</button>
-                    <button type="button" id="stop-interview" class="button-2 runtime-js-hidden" disabled tabindex="-1" aria-hidden="true">@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
-                    <button type="button" id="view-report" class="button-2 runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</button>
+                    <section class="runtime-sidebar-panel" id="runtime-panel-details" data-runtime-panel="details" role="tabpanel" aria-labelledby="runtime-tab-details" hidden>
+                        <div class="runtime-detail-list">
+                            <div class="runtime-detail-item">
+                                <span class="runtime-detail-label">Interview</span>
+                                <span class="runtime-detail-value">@runtimeTitle</span>
+                            </div>
+                            <div class="runtime-detail-item">
+                                <span class="runtime-detail-label">Progress</span>
+                                <span class="runtime-detail-value" id="runtime-question-count">0 / @Model.QuestionCount answered</span>
+                            </div>
+                            <div class="runtime-detail-item">
+                                <span class="runtime-detail-label">Timer</span>
+                                <span class="runtime-detail-value" id="runtime-timer-details">00:00</span>
+                            </div>
+                            <div class="runtime-detail-item">
+                                <span class="runtime-detail-label">Camera</span>
+                                <span class="runtime-detail-value" id="runtime-camera-status">Off</span>
+                            </div>
+                            <div class="runtime-detail-item">
+                                <span class="runtime-detail-label">Microphone</span>
+                                <span class="runtime-detail-value" id="runtime-mic-status">Off</span>
+                            </div>
+                            <div class="runtime-detail-item">
+                                <span class="runtime-detail-label">Screen share</span>
+                                <span class="runtime-detail-value" id="runtime-screen-share-details-status">Required</span>
+                            </div>
+                        </div>
+                        <div id="runtime-actions" class="runtime-actions runtime-js-hidden">
+                            <button type="button" id="stop-interview" class="button-2 runtime-js-hidden" disabled tabindex="-1" aria-hidden="true">@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
+                            <button type="button" id="view-report" class="button-2 runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</button>
+                        </div>
+                    </section>
                 </div>
-
-                <div id="runtime-status" class="runtime-status runtime-js-hidden"></div>
-                <div id="runtime-completion" class="runtime-message is-info runtime-js-hidden"></div>
             </aside>
         </div>
     </div>
@@ -199,11 +264,19 @@
         const conversation = document.getElementById('conversation');
         const progressBar = document.getElementById('runtime-progress-bar');
         const questionCounter = document.getElementById('runtime-question-counter');
+        const questionCountDetails = document.getElementById('runtime-question-count');
         const headerStatusBox = document.getElementById('runtime-header-status');
         const video = document.getElementById('runtime-video');
+        const videoCaption = document.getElementById('runtime-video-caption');
+        const videoCaptionSpeaker = document.getElementById('runtime-video-caption-speaker');
+        const videoCaptionText = document.getElementById('runtime-video-caption-text');
         const cameraPlaceholder = document.getElementById('camera-placeholder');
         const recordingStatus = document.getElementById('recording-status');
         const screenShareStatus = document.getElementById('screen-share-status');
+        const timerDetails = document.getElementById('runtime-timer-details');
+        const cameraStatusDetails = document.getElementById('runtime-camera-status');
+        const micStatusDetails = document.getElementById('runtime-mic-status');
+        const screenShareDetailsStatus = document.getElementById('runtime-screen-share-details-status');
         const recordingButton = document.getElementById('toggle-recording');
         const startButton = document.getElementById('start-or-next');
         const submitButton = document.getElementById('submit-answer');
@@ -262,6 +335,8 @@
         let timerStartedAt = null;
         let answerNeedsEditAfterFailure = false;
         let screenShareAudioAvailable = false;
+        const runtimeTabs = Array.from(document.querySelectorAll('[data-runtime-tab]'));
+        const runtimePanels = Array.from(document.querySelectorAll('[data-runtime-panel]'));
 
         const setButtonLabel = (button, text) => {
             if (!button)
@@ -322,6 +397,50 @@
         const clearGuidelinesModalTimer = () => {
             clearTimeout(guidelinesModalTimer);
             guidelinesModalTimer = null;
+        };
+
+        const setRuntimeCaption = (speaker, text) => {
+            if (!videoCaption || !videoCaptionSpeaker || !videoCaptionText)
+                return;
+
+            const normalizedText = (text || '').trim();
+            if (!normalizedText) {
+                videoCaption.classList.add('runtime-js-hidden');
+                videoCaptionSpeaker.textContent = '';
+                videoCaptionText.textContent = '';
+                return;
+            }
+
+            videoCaptionSpeaker.textContent = `${speaker}:`;
+            videoCaptionText.textContent = normalizedText;
+            videoCaption.classList.remove('runtime-js-hidden');
+        };
+
+        const syncAnswerCaption = () => {
+            const currentAnswer = (answerBox?.value || '').trim();
+            if (currentAnswer) {
+                setRuntimeCaption('You', currentAnswer);
+                return;
+            }
+
+            if (hasActiveQuestion())
+                setRuntimeCaption('Interviewer', currentQuestionText());
+            else
+                setRuntimeCaption('', '');
+        };
+
+        const setActiveRuntimePanel = (panelName) => {
+            runtimeTabs.forEach(tab => {
+                const isActive = tab.dataset.runtimeTab === panelName;
+                tab.classList.toggle('is-active', isActive);
+                tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+
+            runtimePanels.forEach(panel => {
+                const isActive = panel.dataset.runtimePanel === panelName;
+                panel.classList.toggle('is-active', isActive);
+                panel.hidden = !isActive;
+            });
         };
 
         const setGuidelinesModalOpen = (open) => {
@@ -485,6 +604,8 @@
                 const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
                 const seconds = String(elapsedSeconds % 60).padStart(2, '0');
                 document.getElementById('runtime-timer').textContent = `${minutes}:${seconds}`;
+                if (timerDetails)
+                    timerDetails.textContent = `${minutes}:${seconds}`;
             }, 1000);
         };
 
@@ -532,6 +653,7 @@
 
         answerBox.addEventListener('input', () => {
             answerNeedsEditAfterFailure = false;
+            syncAnswerCaption();
             updateSubmitAvailability();
             resetTimers();
         });
@@ -716,6 +838,13 @@
                 title: 'Repeat question',
                 disabled: !config.speechAvailable || !interviewStarted || !hasActiveQuestion()
             });
+
+            if (cameraStatusDetails)
+                cameraStatusDetails.textContent = isCameraActive() ? 'On' : 'Off';
+            if (micStatusDetails)
+                micStatusDetails.textContent = isMicActive() ? 'On' : 'Off';
+            if (screenShareDetailsStatus)
+                screenShareDetailsStatus.textContent = screenShareActive && !screenShareInterrupted ? 'Active' : screenShareInterrupted ? 'Interrupted' : 'Required';
         }
 
         const updateSubmitAvailability = () => {
@@ -849,6 +978,7 @@
             questionBox.textContent = message;
             messageBox.textContent = message;
             messageBox.classList.add('runtime-js-hidden');
+            setRuntimeCaption('Interviewer', message);
             updateAnswerInputState();
             setStatus(message, true);
             updateSubmitAvailability();
@@ -993,6 +1123,7 @@
             questionBox.textContent = completionText;
             messageBox.textContent = completionText;
             messageBox.classList.add('runtime-js-hidden');
+            setRuntimeCaption('Interviewer', completionText);
             completionBox.classList.add('runtime-js-hidden');
             completionBox.style.display = 'none';
             updateAnswerInputState();
@@ -1195,6 +1326,8 @@
                 questionCounter.textContent = activeQuestionNumber > 0 ? `Question ${activeQuestionNumber}/${totalQuestions}` : '';
                 questionCounter.classList.toggle('runtime-js-hidden', activeQuestionNumber <= 0);
             }
+            if (questionCountDetails)
+                questionCountDetails.textContent = `${answered} / ${totalQuestions} answered`;
             conversation.scrollTop = conversation.scrollHeight;
             transcriptBody.scrollTop = transcriptBody.scrollHeight;
         };
@@ -1626,6 +1759,7 @@
                     if (e.result?.reason === SpeechSDK.ResultReason.RecognizedSpeech && e.result.text) {
                         answerBox.value = `${answerBox.value ? `${answerBox.value.trim()} ` : ''}${e.result.text}`.trim();
                         logActivity('Speech recognized and appended.');
+                        syncAnswerCaption();
                         updateSubmitAvailability();
                         resetTimers();
                     }
@@ -1924,6 +2058,10 @@
                 messageBox.textContent = 'Please answer the next question.';
             setStatus(isTerminated ? '' : (resultMessage || 'Answer saved.'), false);
             answerBox.value = '';
+            if (!isTerminated && resultQuestion)
+                setRuntimeCaption('Interviewer', resultQuestion);
+            else
+                syncAnswerCaption();
             renderTranscript();
             updateSubmitAvailability();
             resetSubmitButtonText();
@@ -2116,6 +2254,7 @@
             setStatus('Please answer the question.', false);
             messageBox.textContent = 'Please answer the question.';
             messageBox.classList.add('runtime-js-hidden');
+            setRuntimeCaption('Interviewer', firstQuestion);
             renderTranscript();
             updateStartButtonState();
             if (config.recordingAvailable && recordingEnabled)
@@ -2132,6 +2271,9 @@
 
         if (guidelinesButton)
             guidelinesButton.addEventListener('click', openGuidelinesModal);
+        runtimeTabs.forEach(tab => {
+            tab.addEventListener('click', () => setActiveRuntimePanel(tab.dataset.runtimeTab));
+        });
         if (guidelinesCheckbox)
             guidelinesCheckbox.addEventListener('change', updateGuidelinesAcknowledgementState);
         if (guidelinesAgreeButton) {
@@ -2224,6 +2366,7 @@
         });
 
         renderTranscript();
+        setActiveRuntimePanel('conversation');
         updateAnswerInputState();
         submitButton.disabled = true;
         updateStopButtonsState();
@@ -2233,6 +2376,7 @@
         updateStartButtonState();
         updateSubmitAvailability();
         updateAuxiliaryControlsState();
+        syncAnswerCaption();
         guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);
         scheduleTokenRefresh();
     })();
