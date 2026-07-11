@@ -42,7 +42,7 @@
             <div class="runtime-meta">
                 @if (!string.IsNullOrWhiteSpace(Model.CandidateName))
                 {
-                    <span class="runtime-candidate-chip">Candidate: @Model.CandidateName</span>
+                    <span class="runtime-candidate-chip">@Model.CandidateName</span>
                 }
                 <span class="runtime-timer-chip"><i class="fa-regular fa-clock" aria-hidden="true"></i><span id="runtime-timer">00:00</span></span>
                 <button type="button" id="stop-interview-top" class="button-2 runtime-stop-button" disabled>@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>

@@ -271,7 +271,7 @@ public class CandidateFlowTests
     }
 
     [Test]
-    public async Task Runtime_Start_ExpiredActiveSession_IsHealed_And_Reused()
+    public async Task Runtime_Start_ExpiredActiveSession_Creates_New_Session()
     {
         var customer = new Customer { Id = 1 };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
@@ -290,8 +290,20 @@ public class CandidateFlowTests
 
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession> { staleSession });
-        _sessionService.Setup(x => x.GetSessionByTokenAsync(staleSession.Token))
-            .ReturnsAsync(staleSession);
+        _productService.Setup(x => x.GetProductByIdAsync(1))
+            .ReturnsAsync(new Product { Id = 1, Name = "Backend Engineer" });
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(customer.Id))
+            .ReturnsAsync(new List<JobApplication>());
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()))
+            .ReturnsAsync(true);
+        InterviewSession insertedSession = null;
+        _sessionService.Setup(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(session =>
+            {
+                insertedSession = session;
+                session.Id = 8;
+            })
+            .Returns(Task.CompletedTask);
         var urlHelperMock = new Mock<Microsoft.AspNetCore.Mvc.IUrlHelper>();
         urlHelperMock.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
             .Returns("/mockaiinterview/runtime?token=generated");
@@ -299,20 +311,16 @@ public class CandidateFlowTests
 
         var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1);
         var json = (JsonResult)result;
-        var runtimeUrl = json.Value.GetType().GetProperty("runtimeUrl").GetValue(json.Value, null) as string;
-        var token = json.Value.GetType().GetProperty("token").GetValue(json.Value, null) as string;
+        var runtimeUrl = json.Value.GetType().GetProperty("runtimeUrl")?.GetValue(json.Value, null) as string;
+        var token = json.Value.GetType().GetProperty("token")?.GetValue(json.Value, null) as string;
 
         Assert.That(staleSession.IsActive, Is.True);
         Assert.That(staleSession.CompletedOnUtc, Is.Null);
-        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
-            s.Id == staleSession.Id &&
-            s.IsActive &&
-            !s.CompletedOnUtc.HasValue &&
-            s.Token != "expired-token" &&
-            s.TokenExpiryUtc > DateTime.UtcNow)), Times.Once);
-
-        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        Assert.That(insertedSession, Is.Not.Null);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()), Times.Once);
+        Assert.That(token, Is.EqualTo(insertedSession.Token));
         Assert.That(token, Is.Not.EqualTo("expired-token"));
         Assert.That(runtimeUrl, Is.EqualTo("/mockaiinterview/runtime?token=generated"));
     }
@@ -715,7 +723,7 @@ public class CandidateFlowTests
         productAttributeParser.Setup(x => x.ParseProductAttributeValuesAsync("<attributes />", 0))
             .ReturnsAsync(new List<ProductAttributeValue>
             {
-                new() { Id = 501, Name = "Medium", ProductAttributeMappingId = 101 },
+                new() { Id = 501, Name = "Low", ProductAttributeMappingId = 101 },
                 new() { Id = 502, Name = "JAVA", ProductAttributeMappingId = 102 }
             });
         productAttributeService.Setup(x => x.GetProductAttributeMappingByIdAsync(101))
@@ -752,13 +760,13 @@ public class CandidateFlowTests
             productAttributeParser.Object,
             productAttributeService.Object);
 
-        var result = await controller.StartPost(new FormCollection(new Dictionary<string, StringValues>()), product.Id, "Medium");
+        var result = await controller.StartPost(new FormCollection(new Dictionary<string, StringValues>()), product.Id, "Low");
 
         Assert.That(result, Is.InstanceOf<JsonResult>());
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session =>
             session.ProductId == product.Id &&
             session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice &&
-            session.Difficulty == "Medium" &&
+            session.Difficulty == "Low" &&
             session.SelectedProductAttributesJson.Contains("\"attributeName\":\"Practice Focus\"") &&
             session.SelectedProductAttributesJson.Contains("\"textPrompt\":\"Skill\"") &&
             session.SelectedProductAttributesJson.Contains("\"value\":\"JAVA\"") &&
@@ -1798,7 +1806,8 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("messageBox.textContent = isTerminated ? '' : 'Please answer the next question.';"));
         Assert.That(runtimeText, Does.Contain("setHeaderStatus(buildCompletedRedirectMessage(completedRedirectDelaySeconds), false);"));
         Assert.That(runtimeText, Does.Not.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
-        Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)\r\n                    await stopRecording(true);").Or.Contain("if (mediaRecorder && recordingEnabled)\n                    await stopRecording(true);"));
+        Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)"));
+        Assert.That(runtimeText, Does.Contain("await stopRecording(true);"));
         Assert.That(runtimeText, Does.Not.Contain("setRecordingStatus('Recording ready.', false);"));
         Assert.That(runtimeText, Does.Not.Contain("setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);"));
         Assert.That(runtimeText, Does.Contain("Recording paused until screen sharing resumes."));

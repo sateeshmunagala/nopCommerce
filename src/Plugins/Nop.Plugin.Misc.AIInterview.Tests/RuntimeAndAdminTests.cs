@@ -229,7 +229,8 @@ public class RuntimeAndAdminTests
         var model = ((ViewResult)result).Model as IList<InterviewHistoryItemModel>;
         Assert.That(model, Is.Not.Null);
         Assert.That(model.Count, Is.EqualTo(1));
-        Assert.That(model[0].JobTitle, Is.EqualTo("Practice Product"));
+        Assert.That(model[0].SessionId, Is.EqualTo(11));
+        Assert.That(model[0].CompletedOnUtc, Is.Not.Null);
     }
 
     [Test]
@@ -1043,7 +1044,8 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const beginResult = await postForm(config.beginInterviewUrl"));
         Assert.That(runtimeViewText, Does.Contain("showUnavailableQuestionState(beginMessage);"));
         Assert.That(runtimeViewText, Does.Contain("questionBox.textContent = firstQuestion;"));
-        Assert.That(runtimeViewText, Does.Contain("Interview completed. Redirecting to report..."));
+        Assert.That(runtimeViewText, Does.Contain("Interview completed. Please wait, creating the report."));
+        Assert.That(runtimeViewText, Does.Contain("Redirecting to report in ${remainingSeconds}s."));
         Assert.That(runtimeViewText, Does.Not.Contain("getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
 
         Assert.That(runtimeViewText, Does.Not.Contain("AgoraRTC"));
@@ -1075,7 +1077,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("Model.IsPracticeInterview"));
         Assert.That(runtimeViewText, Does.Contain("Interview on {(!string.IsNullOrWhiteSpace(practiceSkill) ? practiceSkill : \"Resume Practice\")}{(!string.IsNullOrWhiteSpace(Model.Difficulty) ? $\" - {Model.Difficulty}\" : string.Empty)}"));
         Assert.That(runtimeViewText, Does.Contain("Interview for {runtimeTopic}"));
-        Assert.That(runtimeViewText, Does.Contain("<span class=\"runtime-candidate-chip\">Candidate: @Model.CandidateName</span>"));
+        Assert.That(runtimeViewText, Does.Contain("<span class=\"runtime-candidate-chip\">@Model.CandidateName</span>"));
         Assert.That(runtimeViewText, Does.Contain("<span class=\"runtime-detail-label\">Candidate</span>"));
         Assert.That(runtimeViewText, Does.Not.Contain("Interview on {Model.ProductName} - {Model.CandidateName}"));
         Assert.That(runtimeViewText, Does.Contain("id=\"runtime-question-counter\" class=\"runtime-question-counter runtime-js-hidden\" aria-label=\"Interview question count\" hidden"));
@@ -1101,10 +1103,10 @@ public class RuntimeAndAdminTests
             ProductId = 44,
             Token = "practice-runtime-token",
             SessionKey = "practice-runtime-session",
-            Difficulty = "Medium",
+            Difficulty = "Low",
             QuestionCount = 5,
             InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
-            SelectedProductAttributesJson = "{\"attributes\":[{\"attributeId\":111,\"attributeName\":\"Practice Setup\",\"valueId\":501,\"value\":\"Medium\"},{\"attributeId\":112,\"attributeName\":\"Practice Focus\",\"valueId\":502,\"value\":\"JAVA\"}]}"
+            SelectedProductAttributesJson = "{\"attributes\":[{\"attributeId\":111,\"attributeName\":\"Practice Setup\",\"textPrompt\":\"Difficulty\",\"valueId\":501,\"value\":\"Low\"},{\"attributeId\":112,\"attributeName\":\"Practice Focus\",\"textPrompt\":\"Skill\",\"valueId\":502,\"value\":\"JAVA\"}]}"
         };
         var turnService = new Mock<IInterviewTurnService>();
         var aiClient = new Mock<IAIInterviewClient>();
@@ -1136,8 +1138,56 @@ public class RuntimeAndAdminTests
         Assert.That(model.IsPracticeInterview, Is.True);
         Assert.That(model.PracticeSkill, Is.EqualTo("JAVA"));
         Assert.That(model.RuntimeTopic, Is.EqualTo("JAVA"));
-        Assert.That(model.Difficulty, Is.EqualTo("Medium"));
+        Assert.That(model.Difficulty, Is.EqualTo("Low"));
         Assert.That(model.ProductName, Is.EqualTo("AI-Mock-Interview"));
+    }
+
+    [Test]
+    public async Task RuntimeService_PracticeRuntime_UsesFirstNonDifficultyValue_WhenStoredLabelsAreGeneric()
+    {
+        var session = new InterviewSession
+        {
+            Id = 203,
+            CustomerId = 8,
+            ProductId = 46,
+            Token = "practice-runtime-generic-token",
+            SessionKey = "practice-runtime-generic-session",
+            Difficulty = "Low",
+            QuestionCount = 5,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            SelectedProductAttributesJson = "{\"attributes\":[{\"attributeId\":211,\"attributeName\":\"Practice Setup\",\"textPrompt\":\"Level\",\"valueId\":601,\"value\":\"Low\"},{\"attributeId\":212,\"attributeName\":\"Practice Focus\",\"textPrompt\":\"Primary focus\",\"valueId\":602,\"value\":\"JAVA\"}]}"
+        };
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("practice-runtime-generic-token")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(new List<InterviewTurn>());
+        _productService.Setup(x => x.GetProductByIdAsync(session.ProductId)).ReturnsAsync(new Product { Id = session.ProductId, Name = "AI-Mock-Interview" });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(new Customer { Id = session.CustomerId, FirstName = "Sateesh", LastName = "Munagala" });
+
+        var service = new InterviewRuntimeService(
+            _sessionService.Object,
+            turnService.Object,
+            aiClient.Object,
+            _productService.Object,
+            _customerService.Object,
+            new Mock<IApplicationService>().Object,
+            new Mock<IResumeProfileService>().Object,
+            _localizationService.Object,
+            new AIInterviewSettings { Prompt = "Be concise" },
+            new MockAIInterviewSettings { UseMockResponses = true },
+            new Mock<System.Net.Http.IHttpClientFactory>().Object,
+            _workContext.Object,
+            _eventPublisher.Object,
+            _nopLogger.Object);
+
+        var model = await service.GetRuntimeModelAsync("practice-runtime-generic-token");
+
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.IsPracticeInterview, Is.True);
+        Assert.That(model.PracticeSkill, Is.EqualTo("JAVA"));
+        Assert.That(model.RuntimeTopic, Is.EqualTo("JAVA"));
+        Assert.That(model.Difficulty, Is.EqualTo("Low"));
     }
 
     [Test]

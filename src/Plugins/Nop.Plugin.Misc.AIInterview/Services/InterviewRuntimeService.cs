@@ -1288,8 +1288,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         "interview skill"
     ];
 
-    private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, string TextPrompt, int ValueId, string Value);
-    private sealed record SelectedProductAttributesSnapshot(IList<SelectedProductAttributeValueSnapshot> Attributes);
+    private static readonly string[] PracticeDifficultyValueAliases =
+    [
+        "low",
+        "easy",
+        "medium",
+        "hard",
+        "advanced"
+    ];
+
+    private sealed record SelectedProductAttributeValueSnapshot(string AttributeName, string TextPrompt, string Value);
 
     private static readonly JsonSerializerOptions StorageSerializerOptions = new(JsonSerializerDefaults.Web)
     {
@@ -2006,6 +2014,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var isPracticeInterview = string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase);
         var practiceSkill = isPracticeInterview ? ExtractPracticeSkill(session.SelectedProductAttributesJson, session.Difficulty) : string.Empty;
         var runtimeTopic = ResolveRuntimeTopic(session, product, practiceSkill);
+        if (isPracticeInterview)
+        {
+            _logger?.LogDebug(
+                "Runtime practice display context for session {SessionId}: difficulty={Difficulty}; selectedInputs={SelectedProductAttributesJson}; extractedSkill={PracticeSkill}.",
+                session.Id,
+                session.Difficulty,
+                session.SelectedProductAttributesJson,
+                practiceSkill);
+        }
 
         return new InterviewRuntimeModel
         {
@@ -2539,10 +2556,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         try
         {
-            var snapshot = JsonSerializer.Deserialize<SelectedProductAttributesSnapshot>(selectedProductAttributesJson);
-            var attributes = snapshot?.Attributes?
-                .Where(attribute => attribute != null && !string.IsNullOrWhiteSpace(attribute.Value))
-                .ToList();
+            var attributes = ParseSelectedPracticeAttributes(selectedProductAttributesJson);
             if (attributes == null || attributes.Count == 0)
                 return string.Empty;
 
@@ -2556,8 +2570,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 ? difficultyFallback.Trim()
                 : attributes.FirstOrDefault(attribute =>
                     MatchesAttributeKeyword([attribute.AttributeName, attribute.TextPrompt], AIInterviewDefaults.InterviewDifficultyValues) ||
-                    AIInterviewDefaults.InterviewDifficultyValues.Any(value =>
-                        string.Equals(value, attribute.Value?.Trim(), StringComparison.OrdinalIgnoreCase)))
+                    IsPracticeDifficultyValue(attribute.Value))
                     ?.Value?.Trim();
 
             var fallbackSkill = attributes.FirstOrDefault(attribute =>
@@ -2565,8 +2578,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 var value = attribute.Value?.Trim();
                 return !string.IsNullOrWhiteSpace(value) &&
                     !string.Equals(value, selectedDifficulty, StringComparison.OrdinalIgnoreCase) &&
-                    !AIInterviewDefaults.InterviewDifficultyValues.Any(difficulty =>
-                        string.Equals(difficulty, value, StringComparison.OrdinalIgnoreCase));
+                    !IsPracticeDifficultyValue(value);
             });
 
             return fallbackSkill?.Value?.Trim() ?? string.Empty;
@@ -2575,6 +2587,37 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             return string.Empty;
         }
+    }
+
+    private static List<SelectedProductAttributeValueSnapshot> ParseSelectedPracticeAttributes(string selectedProductAttributesJson)
+    {
+        if (string.IsNullOrWhiteSpace(selectedProductAttributesJson))
+            return new List<SelectedProductAttributeValueSnapshot>();
+
+        using var document = JsonDocument.Parse(selectedProductAttributesJson);
+        if (!document.RootElement.TryGetProperty("attributes", out var attributesElement) ||
+            attributesElement.ValueKind != JsonValueKind.Array)
+        {
+            return new List<SelectedProductAttributeValueSnapshot>();
+        }
+
+        var attributes = new List<SelectedProductAttributeValueSnapshot>();
+        foreach (var attributeElement in attributesElement.EnumerateArray())
+        {
+            if (attributeElement.ValueKind != JsonValueKind.Object)
+                continue;
+
+            var value = TryGetJsonString(attributeElement, "value");
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            attributes.Add(new SelectedProductAttributeValueSnapshot(
+                TryGetJsonString(attributeElement, "attributeName"),
+                TryGetJsonString(attributeElement, "textPrompt"),
+                value));
+        }
+
+        return attributes;
     }
 
     protected static bool MatchesAttributeKeyword(IEnumerable<string> attributeLabels, IEnumerable<string> keywords)
@@ -2602,6 +2645,33 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
 
         return false;
+    }
+
+    private static string TryGetJsonString(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var property))
+            return null;
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.String => property.GetString(),
+            JsonValueKind.Number => property.GetRawText(),
+            JsonValueKind.True => bool.TrueString,
+            JsonValueKind.False => bool.FalseString,
+            _ => property.GetRawText()
+        };
+    }
+
+    protected static bool IsPracticeDifficultyValue(string value)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+            return false;
+
+        return PracticeDifficultyValueAliases.Any(alias =>
+            string.Equals(alias, normalized, StringComparison.OrdinalIgnoreCase)) ||
+            AIInterviewDefaults.InterviewDifficultyValues.Any(alias =>
+                string.Equals(alias, normalized, StringComparison.OrdinalIgnoreCase));
     }
 
     protected static string ResolveRuntimeTopic(InterviewSession session, Product product, string practiceSkill)
