@@ -716,7 +716,7 @@ public class CandidateFlowTests
             .ReturnsAsync(new List<ProductAttributeValue>
             {
                 new() { Id = 501, Name = "Medium", ProductAttributeMappingId = 101 },
-                new() { Id = 502, Name = "Python", ProductAttributeMappingId = 102 }
+                new() { Id = 502, Name = "JAVA", ProductAttributeMappingId = 102 }
             });
         productAttributeService.Setup(x => x.GetProductAttributeMappingByIdAsync(101))
             .ReturnsAsync(new ProductAttributeMapping { Id = 101, ProductAttributeId = 111, TextPrompt = "Difficulty" });
@@ -759,6 +759,8 @@ public class CandidateFlowTests
             session.ProductId == product.Id &&
             session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice &&
             session.Difficulty == "Medium" &&
+            session.SelectedProductAttributesJson.Contains("\"attributeName\":\"Practice Focus\"") &&
+            session.SelectedProductAttributesJson.Contains("\"value\":\"JAVA\"") &&
             !string.IsNullOrWhiteSpace(session.SelectedProductAttributesJson))), Times.Once);
     }
 
@@ -1792,7 +1794,8 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Not.Contain("startButton.textContent = 'Next Question';"));
         Assert.That(runtimeText, Does.Contain("const normalizeTurn = (turn, index = 0) =>"));
         Assert.That(runtimeText, Does.Contain("getValue(turn, 'questionText', 'QuestionText')"));
-        Assert.That(runtimeText, Does.Contain("messageBox.textContent = isTerminated ? 'Interview completed. Redirecting to report...' : 'Please answer the next question.';"));
+        Assert.That(runtimeText, Does.Contain("messageBox.textContent = isTerminated ? '' : 'Please answer the next question.';"));
+        Assert.That(runtimeText, Does.Contain("setHeaderStatus(buildCompletedRedirectMessage(completedRedirectDelaySeconds), false);"));
         Assert.That(runtimeText, Does.Not.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
         Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)\r\n                    await stopRecording(true);").Or.Contain("if (mediaRecorder && recordingEnabled)\n                    await stopRecording(true);"));
         Assert.That(runtimeText, Does.Not.Contain("setRecordingStatus('Recording ready.', false);"));

@@ -2004,7 +2004,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             .ThenBy(turn => turn.Id)
             .ToList();
         var isPracticeInterview = string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase);
-        var practiceSkill = isPracticeInterview ? ExtractPracticeSkill(session.SelectedProductAttributesJson) : string.Empty;
+        var practiceSkill = isPracticeInterview ? ExtractPracticeSkill(session.SelectedProductAttributesJson, session.Difficulty) : string.Empty;
         var runtimeTopic = ResolveRuntimeTopic(session, product, practiceSkill);
 
         return new InterviewRuntimeModel
@@ -2532,7 +2532,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         return product?.Name ?? "Practice Interview";
     }
 
-    protected static string ExtractPracticeSkill(string selectedProductAttributesJson)
+    protected static string ExtractPracticeSkill(string selectedProductAttributesJson, string difficultyFallback = null)
     {
         if (string.IsNullOrWhiteSpace(selectedProductAttributesJson))
             return string.Empty;
@@ -2540,11 +2540,36 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         try
         {
             var snapshot = JsonSerializer.Deserialize<SelectedProductAttributesSnapshot>(selectedProductAttributesJson);
-            var skill = snapshot?.Attributes?.FirstOrDefault(attribute =>
+            var attributes = snapshot?.Attributes?
+                .Where(attribute => attribute != null && !string.IsNullOrWhiteSpace(attribute.Value))
+                .ToList();
+            if (attributes == null || attributes.Count == 0)
+                return string.Empty;
+
+            var skill = attributes.FirstOrDefault(attribute =>
                 MatchesAttributeKeyword([attribute.AttributeName], PracticeSkillKeywords) &&
                 !string.IsNullOrWhiteSpace(attribute.Value));
+            if (!string.IsNullOrWhiteSpace(skill?.Value))
+                return skill.Value.Trim();
 
-            return skill?.Value?.Trim() ?? string.Empty;
+            var selectedDifficulty = !string.IsNullOrWhiteSpace(difficultyFallback)
+                ? difficultyFallback.Trim()
+                : attributes.FirstOrDefault(attribute =>
+                    MatchesAttributeKeyword([attribute.AttributeName], AIInterviewDefaults.InterviewDifficultyValues) ||
+                    AIInterviewDefaults.InterviewDifficultyValues.Any(value =>
+                        string.Equals(value, attribute.Value?.Trim(), StringComparison.OrdinalIgnoreCase)))
+                    ?.Value?.Trim();
+
+            var fallbackSkill = attributes.FirstOrDefault(attribute =>
+            {
+                var value = attribute.Value?.Trim();
+                return !string.IsNullOrWhiteSpace(value) &&
+                    !string.Equals(value, selectedDifficulty, StringComparison.OrdinalIgnoreCase) &&
+                    !AIInterviewDefaults.InterviewDifficultyValues.Any(difficulty =>
+                        string.Equals(difficulty, value, StringComparison.OrdinalIgnoreCase));
+            });
+
+            return fallbackSkill?.Value?.Trim() ?? string.Empty;
         }
         catch
         {

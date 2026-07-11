@@ -1083,7 +1083,103 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeCssText, Does.Contain(".runtime-question-counter[hidden],"));
         Assert.That(runtimeCssText, Does.Contain(".runtime-video-caption[hidden] {"));
         Assert.That(runtimeCssText, Does.Contain("@media (min-width: 1025px)"));
-        Assert.That(runtimeCssText, Does.Contain(".runtime-video {\r\n        min-height: min(480px, 56vh);").Or.Contain(".runtime-video {\n        min-height: min(480px, 56vh);"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-video {\r\n        min-height: min(450px, 53vh);").Or.Contain(".runtime-video {\n        min-height: min(450px, 53vh);"));
+    }
+
+    [Test]
+    public async Task RuntimeService_PracticeRuntime_UsesStoredSelectedSkill_ForDisplay()
+    {
+        var session = new InterviewSession
+        {
+            Id = 201,
+            CustomerId = 8,
+            ProductId = 44,
+            Token = "practice-runtime-token",
+            SessionKey = "practice-runtime-session",
+            Difficulty = "Medium",
+            QuestionCount = 5,
+            InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+            SelectedProductAttributesJson = "{\"attributes\":[{\"attributeId\":111,\"attributeName\":\"Practice Setup\",\"valueId\":501,\"value\":\"Medium\"},{\"attributeId\":112,\"attributeName\":\"Practice Focus\",\"valueId\":502,\"value\":\"JAVA\"}]}"
+        };
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("practice-runtime-token")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(new List<InterviewTurn>());
+        _productService.Setup(x => x.GetProductByIdAsync(session.ProductId)).ReturnsAsync(new Product { Id = session.ProductId, Name = "AI-Mock-Interview" });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(new Customer { Id = session.CustomerId, FirstName = "Sateesh", LastName = "Munagala" });
+
+        var service = new InterviewRuntimeService(
+            _sessionService.Object,
+            turnService.Object,
+            aiClient.Object,
+            _productService.Object,
+            _customerService.Object,
+            new Mock<IApplicationService>().Object,
+            new Mock<IResumeProfileService>().Object,
+            _localizationService.Object,
+            new AIInterviewSettings { Prompt = "Be concise" },
+            new MockAIInterviewSettings { UseMockResponses = true },
+            new Mock<System.Net.Http.IHttpClientFactory>().Object,
+            _workContext.Object,
+            _eventPublisher.Object,
+            _nopLogger.Object);
+
+        var model = await service.GetRuntimeModelAsync("practice-runtime-token");
+
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.IsPracticeInterview, Is.True);
+        Assert.That(model.PracticeSkill, Is.EqualTo("JAVA"));
+        Assert.That(model.RuntimeTopic, Is.EqualTo("JAVA"));
+        Assert.That(model.Difficulty, Is.EqualTo("Medium"));
+        Assert.That(model.ProductName, Is.EqualTo("AI-Mock-Interview"));
+    }
+
+    [Test]
+    public async Task RuntimeService_JobRuntime_UsesJobTitleWithoutPracticeDifficultyFormatting()
+    {
+        var session = new InterviewSession
+        {
+            Id = 202,
+            CustomerId = 8,
+            ProductId = 45,
+            Token = "job-runtime-token",
+            SessionKey = "job-runtime-session",
+            Difficulty = "Hard",
+            QuestionCount = 5,
+            InterviewType = AIInterviewDefaults.InterviewTypeJob
+        };
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("job-runtime-token")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(new List<InterviewTurn>());
+        _productService.Setup(x => x.GetProductByIdAsync(session.ProductId)).ReturnsAsync(new Product { Id = session.ProductId, Name = "Senior Java Developer" });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(new Customer { Id = session.CustomerId, FirstName = "Sateesh", LastName = "Munagala" });
+
+        var service = new InterviewRuntimeService(
+            _sessionService.Object,
+            turnService.Object,
+            aiClient.Object,
+            _productService.Object,
+            _customerService.Object,
+            new Mock<IApplicationService>().Object,
+            new Mock<IResumeProfileService>().Object,
+            _localizationService.Object,
+            new AIInterviewSettings { Prompt = "Be concise" },
+            new MockAIInterviewSettings { UseMockResponses = true },
+            new Mock<System.Net.Http.IHttpClientFactory>().Object,
+            _workContext.Object,
+            _eventPublisher.Object,
+            _nopLogger.Object);
+
+        var model = await service.GetRuntimeModelAsync("job-runtime-token");
+
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.IsPracticeInterview, Is.False);
+        Assert.That(model.PracticeSkill, Is.EqualTo(string.Empty));
+        Assert.That(model.RuntimeTopic, Is.EqualTo("Senior Java Developer"));
+        Assert.That(model.Difficulty, Is.EqualTo("Hard"));
     }
 
     [Test]

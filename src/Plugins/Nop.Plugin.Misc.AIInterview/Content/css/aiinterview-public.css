@@ -2290,21 +2290,21 @@ body.ai-job-preview-open .item-box {
 .runtime-layout {
     display: grid;
     grid-template-columns: minmax(0, 2.25fr) minmax(360px, 1fr);
-    gap: 18px;
+    gap: 14px;
     height: auto;
     min-height: 0;
     align-items: start;
-    padding-top: 18px;
+    padding-top: 12px;
     overflow: hidden;
 }
 
 .runtime-stage,
 .runtime-sidebar {
     display: grid;
-    gap: 14px;
+    gap: 12px;
     min-width: 0;
     min-height: 0;
-    padding: 18px;
+    padding: 14px;
     border: 1px solid #dbe2ea;
     border-radius: 1px;
     background: rgba(255, 255, 255, 0.88);
@@ -2320,7 +2320,7 @@ body.ai-job-preview-open .item-box {
     grid-template-rows: auto auto auto auto;
     height: auto;
     align-content: start;
-    gap: 18px;
+    gap: 14px;
 }
 
 .runtime-video {
@@ -2494,7 +2494,7 @@ body.ai-job-preview-open .item-box {
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 10px 14px;
+    padding: 8px 12px;
     border: 1px solid #dbe3ec;
     border-radius: 1px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(242, 246, 249, 0.94) 100%);
@@ -3127,8 +3127,8 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video {
-        min-height: min(480px, 56vh);
-        max-height: 56vh;
+        min-height: min(450px, 53vh);
+        max-height: 53vh;
     }
 }
 
