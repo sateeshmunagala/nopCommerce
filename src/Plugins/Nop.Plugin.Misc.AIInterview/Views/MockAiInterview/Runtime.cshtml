@@ -3,9 +3,15 @@
 @using System.Text.Json.Serialization
 @{
     Layout = "_Root.Head";
-    var runtimeTitle = !string.IsNullOrWhiteSpace(Model.CandidateName)
-        ? $"Interview on {Model.ProductName} - {Model.CandidateName}"
-        : $"Interview on {Model.ProductName}";
+    var practiceSkill = !string.IsNullOrWhiteSpace(Model.PracticeSkill)
+        ? Model.PracticeSkill
+        : (!string.IsNullOrWhiteSpace(Model.RuntimeTopic) ? Model.RuntimeTopic : "Resume Practice");
+    var runtimeTopic = !string.IsNullOrWhiteSpace(Model.RuntimeTopic) ? Model.RuntimeTopic : Model.ProductName;
+    var runtimeTitle = Model.IsPracticeInterview
+        ? (!string.IsNullOrWhiteSpace(Model.Difficulty)
+            ? $"Interview on {practiceSkill} - {Model.Difficulty}"
+            : $"Interview on {practiceSkill}")
+        : $"Interview for {runtimeTopic}";
     var jsonOptions = new JsonSerializerOptions
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -170,6 +176,13 @@
                                 <span class="runtime-detail-label">Interview</span>
                                 <span class="runtime-detail-value">@runtimeTitle</span>
                             </div>
+                            @if (!string.IsNullOrWhiteSpace(Model.CandidateName))
+                            {
+                                <div class="runtime-detail-item">
+                                    <span class="runtime-detail-label">Candidate</span>
+                                    <span class="runtime-detail-value">@Model.CandidateName</span>
+                                </div>
+                            }
                             <div class="runtime-detail-item">
                                 <span class="runtime-detail-label">Progress</span>
                                 <span class="runtime-detail-value" id="runtime-question-count">0 / @Model.QuestionCount answered</span>

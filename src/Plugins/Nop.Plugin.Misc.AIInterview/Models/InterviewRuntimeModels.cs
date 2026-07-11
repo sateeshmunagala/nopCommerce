@@ -12,6 +12,9 @@ public record InterviewRuntimeModel : BaseNopModel
     public string ProductName { get; set; }
     public string Difficulty { get; set; }
     public string CandidateName { get; set; }
+    public bool IsPracticeInterview { get; set; }
+    public string PracticeSkill { get; set; }
+    public string RuntimeTopic { get; set; }
     public string CurrentQuestion { get; set; }
     public string ReportUrl { get; set; }
     public DateTime? TokenExpiryUtc { get; set; }

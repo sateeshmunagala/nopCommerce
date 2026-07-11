@@ -2104,6 +2104,10 @@ body.ai-job-preview-open .item-box {
     display: none;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 .runtime-page {
     min-height: calc(100vh - 28px);
     max-width: 1600px;
@@ -2227,6 +2231,10 @@ body.ai-job-preview-open .item-box {
     line-height: 1.2;
 }
 
+.runtime-question-counter:empty {
+    display: none !important;
+}
+
 .runtime-header-status {
     min-height: 0;
     padding: 10px 12px;
@@ -2278,6 +2286,10 @@ body.ai-job-preview-open .item-box {
     background: rgba(255, 255, 255, 0.88);
     box-sizing: border-box;
     box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
+}
+
+.runtime-sidebar {
+    grid-template-rows: auto minmax(0, 1fr);
 }
 
 .runtime-stage {
@@ -2614,12 +2626,16 @@ body.ai-job-preview-open .item-box {
 
 .runtime-sidebar-panels {
     display: grid;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .runtime-sidebar-panel {
     display: grid;
     gap: 12px;
     align-content: start;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .runtime-sidebar-panel[hidden] {

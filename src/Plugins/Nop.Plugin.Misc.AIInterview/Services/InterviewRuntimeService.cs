@@ -1280,6 +1280,17 @@ internal static class InterviewReportSummaryHelper
 
 public class InterviewRuntimeService : IInterviewRuntimeService
 {
+    private static readonly string[] PracticeSkillKeywords =
+    [
+        "practice skill",
+        "skill",
+        "skills",
+        "interview skill"
+    ];
+
+    private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, int ValueId, string Value);
+    private sealed record SelectedProductAttributesSnapshot(IList<SelectedProductAttributeValueSnapshot> Attributes);
+
     private static readonly JsonSerializerOptions StorageSerializerOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -1992,6 +2003,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             .OrderBy(turn => turn.SequenceNumber)
             .ThenBy(turn => turn.Id)
             .ToList();
+        var isPracticeInterview = string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase);
+        var practiceSkill = isPracticeInterview ? ExtractPracticeSkill(session.SelectedProductAttributesJson) : string.Empty;
+        var runtimeTopic = ResolveRuntimeTopic(session, product, practiceSkill);
 
         return new InterviewRuntimeModel
         {
@@ -2003,6 +2017,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             ProductName = product?.Name ?? "Interview",
             CandidateName = candidate != null ? $"{candidate.FirstName} {candidate.LastName}".Trim() : string.Empty,
             Difficulty = session.Difficulty,
+            IsPracticeInterview = isPracticeInterview,
+            PracticeSkill = practiceSkill,
+            RuntimeTopic = runtimeTopic,
             CurrentQuestion = lastQuestion,
             Score = session.Score,
             IsCompleted = session.CompletedOnUtc.HasValue,
@@ -2513,6 +2530,61 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         var product = await _productService.GetProductByIdAsync(productId);
         return product?.Name ?? "Practice Interview";
+    }
+
+    protected static string ExtractPracticeSkill(string selectedProductAttributesJson)
+    {
+        if (string.IsNullOrWhiteSpace(selectedProductAttributesJson))
+            return string.Empty;
+
+        try
+        {
+            var snapshot = JsonSerializer.Deserialize<SelectedProductAttributesSnapshot>(selectedProductAttributesJson);
+            var skill = snapshot?.Attributes?.FirstOrDefault(attribute =>
+                MatchesAttributeKeyword([attribute.AttributeName], PracticeSkillKeywords) &&
+                !string.IsNullOrWhiteSpace(attribute.Value));
+
+            return skill?.Value?.Trim() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    protected static bool MatchesAttributeKeyword(IEnumerable<string> attributeLabels, IEnumerable<string> keywords)
+    {
+        if (attributeLabels == null || keywords == null)
+            return false;
+
+        var labels = attributeLabels
+            .Where(label => !string.IsNullOrWhiteSpace(label))
+            .Select(label => label.Trim())
+            .ToList();
+        if (!labels.Any())
+            return false;
+
+        foreach (var label in labels)
+        {
+            foreach (var keyword in keywords)
+            {
+                if (!string.IsNullOrWhiteSpace(keyword) &&
+                    label.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    protected static string ResolveRuntimeTopic(InterviewSession session, Product product, string practiceSkill)
+    {
+        if (string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
+            return !string.IsNullOrWhiteSpace(practiceSkill) ? practiceSkill : "Resume Practice";
+
+        return !string.IsNullOrWhiteSpace(product?.Name) ? product.Name : "Interview";
     }
 
     protected virtual async Task<string> GetResumeProfileJsonAsync(InterviewSession session, Product product = null)

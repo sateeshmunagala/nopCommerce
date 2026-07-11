@@ -992,20 +992,29 @@ public class MockAiInterviewController : BasePluginController
                 return RedirectToAction(nameof(Runtime), new { token = renewed.Session.Token });
         }
 
-        var model = _interviewRuntimeService == null
-            ? new Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel
+        Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel model;
+        if (_interviewRuntimeService == null)
+        {
+            var productName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview";
+            model = new Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel
             {
+                IsPracticeInterview = string.Equals(session.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase),
                 SessionId = session.Id,
                 ProductId = session.ProductId,
                 QuestionCount = NormalizeRuntimeQuestionCount(session),
                 SessionKey = session.SessionKey,
                 Token = session.Token,
                 Difficulty = session.Difficulty,
-                ProductName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview",
+                ProductName = productName,
+                RuntimeTopic = productName,
                 CurrentQuestion = string.Empty,
                 IsMockMode = true
-            }
-            : await _interviewRuntimeService.GetRuntimeModelAsync(token);
+            };
+        }
+        else
+        {
+            model = await _interviewRuntimeService.GetRuntimeModelAsync(token);
+        }
 
         ApplyRuntimeClientSettings(model, session);
 

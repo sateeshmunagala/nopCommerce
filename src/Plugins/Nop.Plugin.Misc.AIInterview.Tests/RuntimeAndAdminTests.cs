@@ -1062,6 +1062,18 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void RuntimeView_Uses_Contextual_Title_And_Separates_Candidate_Details()
+    {
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+
+        Assert.That(runtimeViewText, Does.Contain("Model.IsPracticeInterview"));
+        Assert.That(runtimeViewText, Does.Contain("Interview on {practiceSkill} - {Model.Difficulty}"));
+        Assert.That(runtimeViewText, Does.Contain("Interview for {runtimeTopic}"));
+        Assert.That(runtimeViewText, Does.Contain("<span class=\"runtime-detail-label\">Candidate</span>"));
+        Assert.That(runtimeViewText, Does.Not.Contain("Interview on {Model.ProductName} - {Model.CandidateName}"));
+    }
+
+    [Test]
     public async Task Runtime_Get_WithExistingUnansweredTurn_DoesNotExposeQuestionInInitialModel()
     {
         var runtimeModel = new InterviewRuntimeModel
