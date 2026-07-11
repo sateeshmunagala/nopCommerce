@@ -25,20 +25,13 @@
                     <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
                     <span class="sr-only">Back</span>
                 </button>
-                <div class="runtime-brandmark" aria-hidden="true">
-                    <span class="runtime-brandmark-core">V</span>
-                </div>
                 <div class="runtime-title-block">
-                    <p class="runtime-eyebrow">Live interview</p>
                     <div class="runtime-title-line">
-                        <h1>@runtimeTitle</h1>
-                    </div>
-                    <div class="runtime-title-meta">
-                        <span class="runtime-title-badge">Venture Interview Room</span>
                         @if (Model.QuestionCount > 0)
                         {
                             <span id="runtime-question-counter" class="runtime-question-counter runtime-js-hidden" aria-label="Interview question count"></span>
                         }
+                        <h3>@runtimeTitle</h3>
                     </div>
                 </div>
             </div>
@@ -82,6 +75,9 @@
                 </div>
                 <div class="runtime-controls">
                     <div class="runtime-control-group runtime-control-group-left">
+                        <div class="runtime-meter" id="audio-meter" aria-label="microphone level">
+                            <span></span><span></span><span></span><span></span><span></span><span></span>
+                        </div>
                         <button type="button" id="view-guidelines" class="runtime-icon-button button-2" aria-label="Guidelines" title="Guidelines">
                             <i class="fa-solid fa-book-open" aria-hidden="true"></i>
                             <span class="sr-only">@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Title")</span>
@@ -127,9 +123,6 @@
                         @T("Plugins.Misc.AIInterview.Runtime.MockMode.Warning")
                     </div>
                 }
-                <div class="runtime-meter" id="audio-meter" aria-label="microphone level">
-                    <span></span><span></span><span></span><span></span><span></span><span></span>
-                </div>
             </section>
 
             <aside class="runtime-sidebar">
