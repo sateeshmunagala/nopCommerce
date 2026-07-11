@@ -2661,7 +2661,7 @@ body.ai-job-preview-open .item-box {
     align-content: start;
     min-height: 0;
     height: 100%;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 .runtime-sidebar-panel[hidden] {
@@ -2670,6 +2670,10 @@ body.ai-job-preview-open .item-box {
 
 #runtime-panel-conversation {
     grid-template-rows: auto auto 420px auto auto;
+}
+
+#runtime-panel-details {
+    overflow-y: auto;
 }
 
 .runtime-question,
@@ -2696,7 +2700,7 @@ body.ai-job-preview-open .item-box {
     align-content: start;
     min-height: 0;
     padding-right: 6px;
-    overflow-y: scroll;
+    overflow-y: auto;
 }
 
 .runtime-transcript-body {
