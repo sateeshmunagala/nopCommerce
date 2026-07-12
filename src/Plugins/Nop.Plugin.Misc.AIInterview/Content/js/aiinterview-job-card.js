@@ -183,6 +183,11 @@
         setJobAiBusy(panel, true);
         return postJobAiJson(url, buildJobAiFormData(panel), requestErrorText)
             .then(function (result) {
+                if (result && result.requiresLogin && result.redirect) {
+                    window.location.href = result.redirect;
+                    return;
+                }
+
                 if (action === 'start' && result && result.runtimeUrl) {
                     window.location.href = result.runtimeUrl;
                     return;
