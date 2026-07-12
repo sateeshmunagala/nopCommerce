@@ -230,6 +230,27 @@ public class MockAiInterviewController : BasePluginController
         return relativeUrl;
     }
 
+    protected virtual async Task<string> BuildStartLoginRedirectUrlAsync(int productId, string sponsorToken = null)
+    {
+        var returnUrl = Request?.Headers?.Referer.ToString();
+        if (string.IsNullOrWhiteSpace(returnUrl) && productId > 0)
+        {
+            var product = await _productService.GetProductByIdAsync(productId);
+            if (product != null)
+            {
+                returnUrl = await BuildProductRedirectUrlAsync(product, new Dictionary<string, string>
+                {
+                    ["sponsorToken"] = sponsorToken
+                });
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(returnUrl))
+            returnUrl = Url?.RouteUrl(AIInterviewDefaults.IndexRouteName);
+
+        return Url?.RouteUrl(global::Nop.Core.Http.NopRouteNames.General.LOGIN, new { returnUrl });
+    }
+
     protected virtual async Task<string> BuildRecordingShareUrlAsync(InterviewSession session)
     {
         if (session == null || string.IsNullOrWhiteSpace(session.RecordingUrl))
@@ -765,8 +786,21 @@ public class MockAiInterviewController : BasePluginController
     public async Task<IActionResult> StartPost(Microsoft.AspNetCore.Http.IFormCollection form, int productId = 0, string difficulty = AIInterviewDefaults.DefaultInterviewDifficulty, string sponsorToken = null)
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
-        if (customer == null)
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request.", 401);
+        var isRegisteredCustomer = customer != null &&
+            await _customerService.IsRegisteredAsync(customer) &&
+            !string.IsNullOrWhiteSpace(customer.Email);
+        if (!isRegisteredCustomer)
+        {
+            var redirectUrl = await BuildStartLoginRedirectUrlAsync(productId, sponsorToken);
+            return Json(new
+            {
+                success = false,
+                message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request."),
+                error = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request."),
+                requiresLogin = true,
+                redirect = redirectUrl
+            });
+        }
 
         var product = productId > 0 ? await _productService.GetProductByIdAsync(productId) : null;
         var isMockPracticeProduct = await IsMockPracticeProductAsync(product);

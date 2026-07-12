@@ -1,4 +1,5 @@
 @model Nop.Web.Models.Catalog.ProductDetailsModel
+@using Nop.Web.Framework.Mvc.Routing
 @{
     bool hasCredits = ViewBag.HasCredits != null && (bool)ViewBag.HasCredits;
     bool hasSponsorCredits = ViewBag.HasSponsorCredits != null && (bool)ViewBag.HasSponsorCredits;
@@ -31,6 +32,7 @@
      data-feedback-id="@feedbackId"
      data-start-url="@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)"
      data-apply-url="@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)"
+     data-login-url="@Url.RouteUrl(NopRouteNames.General.LOGIN)"
      data-sponsor-token="@sponsorToken"
      data-request-error="Unable to reach the interview service. Please check your network and try again.">
     <div class="job-ai-grid">
