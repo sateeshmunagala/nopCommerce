@@ -1346,6 +1346,67 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public async Task ApplicantCreditActivityList_Keyword_Search_Includes_New_Applicant_Without_Wallet_Or_History()
+    {
+        _customers.Add(new Customer
+        {
+            Id = 205,
+            FirstName = "New",
+            LastName = "Applicant",
+            Email = "new.applicant@example.com",
+            VendorId = 0
+        });
+
+        var result = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel
+        {
+            SearchKeyword = "new.applicant@example.com",
+            Start = 0,
+            Length = 10,
+            Draw = "1"
+        });
+        var model = (ApplicantCreditActivityListModel)((JsonResult)result).Value;
+
+        Assert.That(model.RecordsTotal, Is.EqualTo(1));
+        Assert.That(model.Data, Has.Count.EqualTo(1));
+        Assert.That(model.Data.Single().CustomerId, Is.EqualTo(205));
+        Assert.That(model.Data.Single().WalletBalance, Is.Zero);
+        Assert.That(model.Data.Single().TotalDeposited, Is.Zero);
+        Assert.That(model.Data.Single().TotalWithdrawn, Is.Zero);
+        Assert.That(model.Data.Single().LastCreditActivity, Is.Null.Or.Empty);
+    }
+
+    [Test]
+    public async Task ApplicantCreditActivityList_Keyword_Search_Still_Excludes_Vendor_And_Deleted_Customers()
+    {
+        _customers.AddRange(new[]
+        {
+            new Customer { Id = 206, FirstName = "Vendor", LastName = "User", Email = "vendor.search@example.com", VendorId = 12 },
+            new Customer { Id = 207, FirstName = "Deleted", LastName = "User", Email = "deleted.search@example.com", VendorId = 0, Deleted = true }
+        });
+
+        var vendorResult = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel
+        {
+            SearchKeyword = "vendor.search@example.com",
+            Start = 0,
+            Length = 10,
+            Draw = "1"
+        });
+        var vendorModel = (ApplicantCreditActivityListModel)((JsonResult)vendorResult).Value;
+
+        var deletedResult = await _controller.ApplicantCreditActivityList(new ApplicantCreditActivitySearchModel
+        {
+            SearchKeyword = "deleted.search@example.com",
+            Start = 0,
+            Length = 10,
+            Draw = "2"
+        });
+        var deletedModel = (ApplicantCreditActivityListModel)((JsonResult)deletedResult).Value;
+
+        Assert.That(vendorModel.Data, Is.Empty);
+        Assert.That(deletedModel.Data, Is.Empty);
+    }
+
+    [Test]
     public async Task ApplicantCreditActivityList_Duplicate_Wallets_Aggregate_Balance_Deterministically()
     {
         _customers.Add(new Customer { Id = 202, FirstName = "Jane", LastName = "Doe", Email = "jane@example.com", VendorId = 0 });
@@ -1395,6 +1456,40 @@ public class AdminBaselineTests
         Assert.That(wallets.Single(item => item.Id == 1).Balance, Is.EqualTo(6));
         Assert.That(wallets.Single(item => item.Id == 2).Balance, Is.EqualTo(3));
         Assert.That(ledgerEntries.Single().CreditWalletId, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task ApplicantCreditWalletCustomerRegisteredConsumer_Creates_Zero_Balance_Wallet_Only_For_NonVendor_Customers()
+    {
+        var wallets = new List<CreditWallet>();
+        var ledgerEntries = new List<CreditLedgerEntry>();
+        var walletRepository = new Mock<IRepository<CreditWallet>>();
+        var ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
+
+        walletRepository.SetupGet(x => x.Table).Returns(() => wallets.AsQueryable());
+        walletRepository.Setup(x => x.GetAllAsync(It.IsAny<Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>>>(), It.IsAny<Func<ICacheKeyService, CacheKey>>(), true))
+            .ReturnsAsync((Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>> func, Func<ICacheKeyService, CacheKey> _, bool __) =>
+                func == null ? wallets.ToList() : func(wallets.AsQueryable()).ToList());
+        walletRepository.Setup(x => x.InsertAsync(It.IsAny<CreditWallet>(), true))
+            .Callback<CreditWallet, bool>((wallet, _) =>
+            {
+                wallet.Id = wallets.Count + 1;
+                wallets.Add(wallet);
+            })
+            .Returns(Task.CompletedTask);
+        ledgerRepository.Setup(x => x.InsertAsync(It.IsAny<CreditLedgerEntry>(), true))
+            .Callback<CreditLedgerEntry, bool>((entry, _) => ledgerEntries.Add(entry))
+            .Returns(Task.CompletedTask);
+
+        var consumer = new ApplicantCreditWalletCustomerRegisteredConsumer(new CreditService(walletRepository.Object, ledgerRepository.Object));
+
+        await consumer.HandleEventAsync(new CustomerRegisteredEvent(new Customer { Id = 501, Email = "new@example.com", VendorId = 0 }));
+        await consumer.HandleEventAsync(new CustomerRegisteredEvent(new Customer { Id = 502, Email = "vendor@example.com", VendorId = 77 }));
+
+        Assert.That(wallets, Has.Count.EqualTo(1));
+        Assert.That(wallets.Single().CustomerId, Is.EqualTo(501));
+        Assert.That(wallets.Single().Balance, Is.Zero);
+        Assert.That(ledgerEntries, Is.Empty);
     }
 
     [Test]

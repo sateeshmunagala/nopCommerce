@@ -1025,6 +1025,7 @@ public class AIInterviewAdminController : BasePluginController
     protected virtual async Task<ApplicantCreditActivityListModel> PrepareApplicantCreditActivityListModelAsync(ApplicantCreditActivitySearchModel searchModel)
     {
         ArgumentNullException.ThrowIfNull(searchModel);
+        var hasKeyword = !string.IsNullOrWhiteSpace(searchModel.SearchKeyword);
 
         var walletBalancesQuery = _walletRepository.Table
             .GroupBy(wallet => wallet.CustomerId)
@@ -1060,17 +1061,26 @@ public class AIInterviewAdminController : BasePluginController
             .Union(ledgerAggregatesQuery.Where(ledger => ledger.LedgerCount > 0).Select(ledger => ledger.CustomerId))
             .Union(grantAggregatesQuery.Where(grant => grant.GrantCount > 0).Select(grant => grant.CustomerId));
 
+        var customerBaseQuery = _customerRepository.Table.Where(customer =>
+            !customer.Deleted &&
+            customer.VendorId <= 0);
+
+        if (!hasKeyword)
+        {
+            customerBaseQuery =
+                from customer in customerBaseQuery
+                join eligibleCustomerId in eligibleCustomerIds on customer.Id equals eligibleCustomerId
+                select customer;
+        }
+
         var activityQuery =
-            from customer in _customerRepository.Table
-            join eligibleCustomerId in eligibleCustomerIds on customer.Id equals eligibleCustomerId
+            from customer in customerBaseQuery
             join wallet in walletBalancesQuery on customer.Id equals wallet.CustomerId into walletJoin
             from wallet in walletJoin.DefaultIfEmpty()
             join ledger in ledgerAggregatesQuery on customer.Id equals ledger.CustomerId into ledgerJoin
             from ledger in ledgerJoin.DefaultIfEmpty()
             join grant in grantAggregatesQuery on customer.Id equals grant.CustomerId into grantJoin
             from grant in grantJoin.DefaultIfEmpty()
-            where !customer.Deleted
-                  && customer.VendorId <= 0
             select new
             {
                 CustomerId = customer.Id,
@@ -1085,7 +1095,7 @@ public class AIInterviewAdminController : BasePluginController
                     : (ledger != null ? ledger.LastLedgerActivityUtc : (grant != null ? grant.LastGrantActivityUtc : null))
             };
 
-        if (!string.IsNullOrWhiteSpace(searchModel.SearchKeyword))
+        if (hasKeyword)
         {
             var keyword = searchModel.SearchKeyword.Trim();
             activityQuery = activityQuery.Where(item =>
