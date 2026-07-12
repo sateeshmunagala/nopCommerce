@@ -1,4 +1,4 @@
-using Nop.Core.Domain.Catalog;
+﻿using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Cms;
 using Nop.Services.Catalog;
 using Nop.Services.Cms;

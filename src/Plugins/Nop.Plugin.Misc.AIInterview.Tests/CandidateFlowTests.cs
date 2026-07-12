@@ -113,6 +113,8 @@ public class CandidateFlowTests
             null,
             _jobInterviewExperienceService.Object);
 
+        _customerService.Setup(x => x.IsRegisteredAsync(It.IsAny<Customer>(), true)).ReturnsAsync(true);
+
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
     }
@@ -1866,6 +1868,7 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
@@ -1933,6 +1936,61 @@ public class CandidateFlowTests
         Assert.That(component.ViewBag.ProductId, Is.EqualTo(99));
         Assert.That(component.ViewBag.SponsorToken, Is.EqualTo("abc"));
         Assert.That(component.ViewBag.CreditPurchasePageUrl, Is.EqualTo("/buy-credits"));
+        Assert.That(component.ViewBag.IsAuthenticated, Is.True);
+    }
+
+    [Test]
+    public async Task WidgetView_GuestCustomerRecord_IsNotAuthenticated_And_DoesNotCreateWallet()
+    {
+        var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+        var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        _productService.Setup(x => x.GetProductByIdAsync(103))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 103, ProductTemplateId = 7 });
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
+            {
+                Id = 7,
+                ViewPath = AIInterviewDefaults.JobProductTemplateViewPath
+            });
+        var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
+            _creditService.Object,
+            _workContext.Object,
+            _customerService.Object,
+            productAttributeService.Object,
+            jobInterviewExperienceService.Object,
+            _productService.Object,
+            productTemplateService.Object,
+            _applicationService.Object,
+            _sessionService.Object,
+            new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
+            _jobRequirementService.Object,
+            _inviteService.Object,
+            _downloadService.Object);
+
+        component.ViewComponentContext = new Microsoft.AspNetCore.Mvc.ViewComponents.ViewComponentContext
+        {
+            ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var guest = new Customer { Id = 88, Email = null };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(guest);
+        _customerService.Setup(x => x.IsRegisteredAsync(guest, true)).ReturnsAsync(false);
+
+        var productDetailsModel = new Nop.Web.Models.Catalog.ProductDetailsModel { Id = 103 };
+        productDetailsModel.ProductAttributes.Add(new Nop.Web.Models.Catalog.ProductDetailsModel.ProductAttributeModel
+        {
+            Id = 14,
+            Name = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            TextPrompt = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            AttributeControlType = Nop.Core.Domain.Catalog.AttributeControlType.RadioList
+        });
+
+        var result = await component.InvokeAsync("productdetails_before_collateral", productDetailsModel);
+
+        Assert.That(result, Is.TypeOf<Microsoft.AspNetCore.Mvc.ViewComponents.ViewViewComponentResult>());
+        Assert.That(component.ViewBag.IsAuthenticated, Is.False);
+        _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
     }
 
     [Test]
@@ -1952,6 +2010,7 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
@@ -2028,6 +2087,7 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
@@ -2108,6 +2168,7 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
@@ -2186,6 +2247,7 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,

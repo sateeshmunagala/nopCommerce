@@ -173,6 +173,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Content\css\aiinterview-admin.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Views\Admin\MockPracticeSessions.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -68,6 +68,7 @@ public class ApplicationService : IApplicationService
 
         var customer = await _customerRepository.GetByIdAsync(application.CustomerId);
         if (customer == null) return;
+        if (string.IsNullOrWhiteSpace(customer.Email)) return;
 
         var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(template.EmailAccountId > 0 ? template.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId);
         if (emailAccount == null) emailAccount = (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();

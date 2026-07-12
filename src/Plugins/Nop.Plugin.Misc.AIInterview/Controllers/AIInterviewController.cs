@@ -817,6 +817,9 @@ public class AIInterviewController : BasePluginController
         var result = await SubmitApplicationAsync(model);
         if (!result.Success)
         {
+            if (result.RequiresLogin && !string.IsNullOrWhiteSpace(result.RedirectUrl))
+                return Redirect(result.RedirectUrl);
+
             await PopulateApplyModelAsync(model);
             return View("~/Plugins/Misc.AIInterview/Views/Apply.cshtml", model);
         }
@@ -830,7 +833,7 @@ public class AIInterviewController : BasePluginController
     {
         var result = await SubmitApplicationAsync(model);
         if (!result.Success)
-            return Json(new { success = false, error = result.Message });
+            return Json(new { success = false, error = result.Message, redirect = result.RedirectUrl, requiresLogin = result.RequiresLogin });
 
         return Json(new { success = true, message = result.Message });
     }
@@ -845,11 +848,16 @@ public class AIInterviewController : BasePluginController
             };
 
         var customer = await _workContext.GetCurrentCustomerAsync();
-        if (customer == null)
+        var isRegisteredCustomer = customer != null &&
+            await _customerService.IsRegisteredAsync(customer) &&
+            !string.IsNullOrWhiteSpace(customer.Email);
+        if (!isRegisteredCustomer)
             return new ApplySubmissionResult
             {
                 Success = false,
-                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized")
+                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized"),
+                RequiresLogin = true,
+                RedirectUrl = BuildLoginRedirectUrl(model)
             };
 
         var applications = await GetApplicationsForJobAsync(customer.Id, model.ProductId, model.JobTitle);
@@ -1020,6 +1028,15 @@ public class AIInterviewController : BasePluginController
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
         return customer != null && (await _customerService.IsAdminAsync(customer) || customer.VendorId > 0);
+    }
+
+    protected virtual string BuildLoginRedirectUrl(ApplyModel model)
+    {
+        var returnUrl = Request?.Headers?.Referer.ToString();
+        if (string.IsNullOrWhiteSpace(returnUrl))
+            returnUrl = Url.RouteUrl(AIInterviewDefaults.ApplyRouteName, new { productId = model?.ProductId, jobTitle = model?.JobTitle });
+
+        return Url.RouteUrl(NopRouteNames.General.LOGIN, new { returnUrl });
     }
 
     protected async Task<SpecificationAttribute> GetSpecificationAttributeByNameAsync(params string[] names)

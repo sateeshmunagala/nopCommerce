@@ -168,4 +168,6 @@ public record ApplySubmissionResult
 {
     public bool Success { get; init; }
     public string Message { get; init; }
+    public bool RequiresLogin { get; init; }
+    public string RedirectUrl { get; init; }
 }
