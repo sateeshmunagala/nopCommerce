@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using Nop.Core.Domain.Customers;
 using Nop.Plugin.Misc.AIInterview;
@@ -69,6 +70,10 @@ public class AIInterviewControllerTests
             null,
             null,
             null);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
     }
 
     [Test]
@@ -192,5 +197,51 @@ public class AIInterviewControllerTests
         Assert.That(result, Is.TypeOf<FileContentResult>());
         var fileResult = (FileContentResult)result;
         Assert.That(fileResult.ContentType, Is.EqualTo("text/csv"));
+    }
+
+    [Test]
+    public async Task MyActivity_Defaults_To_AppliedJobs_Tab()
+    {
+        // Act
+        var result = await _controller.MyActivity();
+
+        // Assert
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        Assert.That(viewResult.ViewName, Is.EqualTo("~/Plugins/Misc.AIInterview/Views/MyActivity.cshtml"));
+
+        var model = (MyActivityPageModel)viewResult.Model;
+        Assert.That(model.ActiveTab, Is.EqualTo(AIInterviewDefaults.MyActivityAppliedJobsTabKey));
+        Assert.That(model.AppliedJobs, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task MyActivity_Unknown_Tab_Falls_Back_To_AppliedJobs()
+    {
+        // Act
+        var result = await _controller.MyActivity("not-a-real-tab");
+
+        // Assert
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (MyActivityPageModel)((ViewResult)result).Model;
+        Assert.That(model.ActiveTab, Is.EqualTo(AIInterviewDefaults.MyActivityAppliedJobsTabKey));
+    }
+
+    [Test]
+    public async Task MyActivity_Htmx_Request_Returns_Tab_Partial()
+    {
+        // Arrange
+        _controller.ControllerContext.HttpContext.Request.Headers["HX-Request"] = "true";
+
+        // Act
+        var result = await _controller.MyActivity(AIInterviewDefaults.MyActivityAppliedJobsTabKey);
+
+        // Assert
+        Assert.That(result, Is.TypeOf<PartialViewResult>());
+        var partialViewResult = (PartialViewResult)result;
+        Assert.That(partialViewResult.ViewName, Is.EqualTo("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityTabContent.cshtml"));
+
+        var model = (MyActivityPageModel)partialViewResult.Model;
+        Assert.That(model.ActiveTab, Is.EqualTo(AIInterviewDefaults.MyActivityAppliedJobsTabKey));
     }
 }

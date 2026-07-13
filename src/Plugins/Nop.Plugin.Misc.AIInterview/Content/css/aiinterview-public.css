@@ -4804,3 +4804,108 @@ body.ai-job-preview-open .item-box {
     display: flex;
     align-items: center;
 }
+
+.my-activity-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.my-activity-tabs {
+    display: flex;
+    gap: 12px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #d6dee6;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+}
+
+.my-activity-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid #d6dee6;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #23374a;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.my-activity-tab:hover,
+.my-activity-tab:focus-visible {
+    border-color: #0f6cbd;
+    color: #0f6cbd;
+    text-decoration: none;
+}
+
+.my-activity-tab.is-active {
+    border-color: #0f6cbd;
+    background: #0f6cbd;
+    color: #ffffff;
+}
+
+.my-activity-loading {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    color: #4a5c6d;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.my-activity-loading::before {
+    content: "";
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(15, 108, 189, 0.18);
+    border-top-color: #0f6cbd;
+    border-radius: 50%;
+    animation: my-activity-spin 0.7s linear infinite;
+}
+
+.my-activity-shell.is-loading .my-activity-loading,
+#my-activity-loading.htmx-request {
+    display: inline-flex;
+}
+
+.my-activity-content {
+    min-height: 120px;
+}
+
+.my-activity-saved-jobs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+}
+
+.my-activity-empty-state {
+    padding: 28px 24px;
+    border: 1px solid #d6dee6;
+    border-radius: 18px;
+    background: #ffffff;
+    color: #4a5c6d;
+}
+
+.my-activity-empty-state p {
+    margin: 0;
+}
+
+@keyframes my-activity-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 1000px) {
+    .my-activity-tabs {
+        margin: 0 -8px;
+        padding: 0 8px 6px;
+    }
+}

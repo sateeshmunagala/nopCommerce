@@ -74,6 +74,10 @@ public class RouteProvider : IRouteProvider
             pattern: "aiinterview/apply-inline",
             defaults: new { controller = "AIInterview", action = "ApplyInline" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MyActivityRouteName,
+            pattern: "my-activity",
+            defaults: new { controller = "AIInterview", action = "MyActivity" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MyApplicationsRouteName,
             pattern: "aiinterview/my-applications",
             defaults: new { controller = "AIInterview", action = "MyApplications" });

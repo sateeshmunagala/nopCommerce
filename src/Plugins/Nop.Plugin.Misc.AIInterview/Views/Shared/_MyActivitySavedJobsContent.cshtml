@@ -1,0 +1,17 @@
+@model SavedJobsListModel
+
+@if (Model.Products.Any())
+{
+    <div class="my-activity-saved-jobs-grid">
+        @foreach (var product in Model.Products)
+        {
+            @await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = product })
+        }
+    </div>
+}
+else
+{
+    <div class="my-activity-empty-state">
+        <p>@T("Plugins.Misc.AIInterview.MyActivity.SavedJobs.Empty")</p>
+    </div>
+}

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Nop.Web.Framework.Models;
 using Nop.Web.Framework.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Nop.Web.Models.Catalog;
 
 namespace Nop.Plugin.Misc.AIInterview.Models;
 
@@ -80,6 +81,31 @@ public record InterviewHistoryItemModel : BaseNopModel
     public string InterviewReportPanelUrl { get; set; }
     public string RecordingUrl { get; set; }
     public string RecordingShareUrl { get; set; }
+}
+
+public record SavedJobsListModel : BaseNopModel
+{
+    public SavedJobsListModel()
+    {
+        Products = new List<ProductOverviewModel>();
+    }
+
+    public IList<ProductOverviewModel> Products { get; set; }
+}
+
+public record MyActivityPageModel : BaseNopModel
+{
+    public MyActivityPageModel()
+    {
+        AppliedJobs = new ApplicationListModel();
+        SavedJobs = new SavedJobsListModel();
+        MockInterviews = new List<InterviewHistoryItemModel>();
+    }
+
+    public string ActiveTab { get; set; } = AIInterviewDefaults.MyActivityAppliedJobsTabKey;
+    public ApplicationListModel AppliedJobs { get; set; }
+    public SavedJobsListModel SavedJobs { get; set; }
+    public IList<InterviewHistoryItemModel> MockInterviews { get; set; }
 }
 
 public record UpdateStatusModel : BaseNopModel

@@ -1,6 +1,115 @@
 (function () {
     'use strict';
 
+    function normalizeMyActivityTab(tab) {
+        switch ((tab || '').toLowerCase()) {
+            case 'saved-jobs':
+                return 'saved-jobs';
+            case 'mock-interviews':
+                return 'mock-interviews';
+            default:
+                return 'applied-jobs';
+        }
+    }
+
+    function getMyActivityShell() {
+        return document.querySelector('[data-my-activity-shell="true"]');
+    }
+
+    function getMyActivityContent() {
+        return document.getElementById('my-activity-content');
+    }
+
+    function getMyActivityTabFromUrl(url) {
+        try {
+            var parsedUrl = new URL(url || window.location.href, window.location.origin);
+            return normalizeMyActivityTab(parsedUrl.searchParams.get('tab'));
+        } catch (error) {
+            return 'applied-jobs';
+        }
+    }
+
+    function setMyActivityLoading(isLoading) {
+        var shell = getMyActivityShell();
+        if (!shell) {
+            return;
+        }
+
+        shell.classList.toggle('is-loading', !!isLoading);
+    }
+
+    function syncMyActivityTabs(activeTab) {
+        var shell = getMyActivityShell();
+        if (!shell) {
+            return;
+        }
+
+        var normalizedTab = normalizeMyActivityTab(activeTab || getMyActivityTabFromUrl(window.location.href));
+        var tabLinks = shell.querySelectorAll('[data-my-activity-tab]');
+        for (var i = 0; i < tabLinks.length; i++) {
+            var tabLink = tabLinks[i];
+            var isActive = normalizeMyActivityTab(tabLink.getAttribute('data-my-activity-tab')) === normalizedTab;
+            tabLink.classList.toggle('is-active', isActive);
+            if (isActive) {
+                tabLink.setAttribute('aria-current', 'page');
+            } else {
+                tabLink.removeAttribute('aria-current');
+            }
+        }
+    }
+
+    function syncMyActivityFromContent() {
+        var content = getMyActivityContent();
+        if (!content) {
+            return;
+        }
+
+        var panel = content.querySelector('[data-my-activity-tab-panel="true"]');
+        var activeTab = panel ? panel.getAttribute('data-active-tab') : getMyActivityTabFromUrl(window.location.href);
+        syncMyActivityTabs(activeTab);
+    }
+
+    function bindMyActivityHtmx() {
+        if (window.__jbMyActivityHtmxBound || !window.htmx) {
+            return;
+        }
+
+        window.__jbMyActivityHtmxBound = true;
+
+        document.body.addEventListener('htmx:beforeRequest', function (event) {
+            var trigger = event.detail && event.detail.elt && event.detail.elt.closest('[data-my-activity-tab]');
+            if (!trigger) {
+                return;
+            }
+
+            syncMyActivityTabs(trigger.getAttribute('data-my-activity-tab'));
+            setMyActivityLoading(true);
+        });
+
+        document.body.addEventListener('htmx:afterSwap', function (event) {
+            if (!event.detail || !event.detail.target || event.detail.target.id !== 'my-activity-content') {
+                return;
+            }
+
+            setMyActivityLoading(false);
+            syncMyActivityFromContent();
+        });
+
+        document.body.addEventListener('htmx:responseError', function (event) {
+            if (event.detail && event.detail.target && event.detail.target.id === 'my-activity-content') {
+                setMyActivityLoading(false);
+                syncMyActivityFromContent();
+            }
+        });
+
+        document.body.addEventListener('htmx:sendError', function (event) {
+            if (event.detail && event.detail.target && event.detail.target.id === 'my-activity-content') {
+                setMyActivityLoading(false);
+                syncMyActivityFromContent();
+            }
+        });
+    }
+
     function cloneForDrawer(source, target) {
         if (!source || !target || target.children.length) {
             return;
@@ -629,6 +738,13 @@
         });
         syncExpandedState();
         syncCustomerNavState();
+        syncMyActivityFromContent();
+        bindMyActivityHtmx();
+        window.setTimeout(bindMyActivityHtmx, 0);
+        window.addEventListener('popstate', function () {
+            setMyActivityLoading(false);
+            window.setTimeout(syncMyActivityFromContent, 0);
+        });
     }
 
     if (document.readyState === 'loading') {

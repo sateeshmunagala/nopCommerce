@@ -536,27 +536,35 @@ public class AIInterviewController : BasePluginController
         return View("~/Plugins/Misc.AIInterview/Views/Index.cshtml", model);
     }
 
-    public async Task<IActionResult> MyApplications(string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null)
+    protected virtual string NormalizeMyActivityTab(string tab)
     {
-        if (!_aiInterviewSettings.Enabled)
-            return RedirectToRoute("Homepage");
-
-        var customer = await _workContext.GetCurrentCustomerAsync();
-        if (customer == null)
-            return Challenge();
-
-        var applications = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id);
-        var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id);
-
-        var applicationModels = await Task.WhenAll(applications.Select(async a =>
+        return (tab ?? string.Empty).Trim().ToLowerInvariant() switch
         {
-            var appSessions = sessions.Where(s => SessionMatchesApplication(s, a)).ToList();
+            var value when string.Equals(value, AIInterviewDefaults.MyActivitySavedJobsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.MyActivitySavedJobsTabKey,
+            var value when string.Equals(value, AIInterviewDefaults.MyActivityMockInterviewsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.MyActivityMockInterviewsTabKey,
+            _ => AIInterviewDefaults.MyActivityAppliedJobsTabKey
+        };
+    }
+
+    protected virtual bool IsHtmxRequest()
+    {
+        return string.Equals(HttpContext?.Request?.Headers["HX-Request"], "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    protected virtual async Task<ApplicationListModel> BuildMyApplicationsModelAsync(Customer customer, string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null)
+    {
+        var applications = (await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<JobApplication>()).ToList();
+        var sessions = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<InterviewSession>()).ToList();
+
+        var applicationModels = await Task.WhenAll(applications.Select(async application =>
+        {
+            var appSessions = sessions.Where(session => SessionMatchesApplication(session, application)).ToList();
             var latestSession = appSessions
-                .Where(s => s.CompletedOnUtc.HasValue)
-                .OrderByDescending(s => s.CompletedOnUtc)
-                .ThenByDescending(s => s.Id)
+                .Where(session => session.CompletedOnUtc.HasValue)
+                .OrderByDescending(session => session.CompletedOnUtc)
+                .ThenByDescending(session => session.Id)
                 .FirstOrDefault();
-            var normalizedStatus = JobApplicationStatuses.Normalize(a.Status);
+            var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
             var questionScores = ParseQuestionScores(latestSession?.QuestionScores);
             var reportSections = SplitReportSections(latestSession?.ReportData);
             var turns = latestSession != null && _interviewTurnService != null
@@ -565,9 +573,9 @@ public class AIInterviewController : BasePluginController
 
             return new ApplicationModel
             {
-                Id = a.Id,
+                Id = application.Id,
                 InterviewSessionId = latestSession?.Id ?? 0,
-                JobTitle = a.JobTitle,
+                JobTitle = application.JobTitle,
                 InterviewScore = latestSession?.Score,
                 InterviewReportUrl = latestSession != null ? BuildAuthenticatedReportUrl(latestSession.Id) : null,
                 InterviewReportPanelUrl = latestSession != null ? BuildReportPanelUrl(latestSession.Id) : null,
@@ -575,7 +583,7 @@ public class AIInterviewController : BasePluginController
                 RecordingShareUrl = latestSession != null ? await BuildRecordingShareUrlAsync(latestSession) : null,
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
                 RawStatus = normalizedStatus,
-                CreatedOn = a.CreatedOnUtc,
+                CreatedOn = application.CreatedOnUtc,
                 AttemptCount = appSessions.Count,
                 LatestScoreDate = latestSession?.CompletedOnUtc,
                 CompletedOn = latestSession?.CompletedOnUtc,
@@ -602,14 +610,14 @@ public class AIInterviewController : BasePluginController
 
         query = normalizedSortOrder switch
         {
-            "OldestApplied" => query.OrderBy(a => a.CreatedOn),
-            "HighestScore" => query.OrderByDescending(a => a.InterviewScore ?? 0),
-            "LowestScore" => query.OrderBy(a => a.InterviewScore ?? 0),
-            "LatestInterviewDate" => query.OrderByDescending(a => a.LatestScoreDate ?? DateTime.MinValue),
-            _ => query.OrderByDescending(a => a.CreatedOn)
+            "OldestApplied" => query.OrderBy(application => application.CreatedOn),
+            "HighestScore" => query.OrderByDescending(application => application.InterviewScore ?? 0),
+            "LowestScore" => query.OrderBy(application => application.InterviewScore ?? 0),
+            "LatestInterviewDate" => query.OrderByDescending(application => application.LatestScoreDate ?? DateTime.MinValue),
+            _ => query.OrderByDescending(application => application.CreatedOn)
         };
 
-        var model = new ApplicationListModel
+        return new ApplicationListModel
         {
             Applications = query.ToList(),
             SortOrder = normalizedSortOrder,
@@ -618,7 +626,136 @@ public class AIInterviewController : BasePluginController
             MaxScore = maxScore,
             TotalCount = query.Count()
         };
+    }
 
+    protected virtual async Task<IList<InterviewHistoryItemModel>> BuildMockInterviewHistoryModelAsync(Customer customer)
+    {
+        var sessions = ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
+            .Where(session => string.Equals(session.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var model = await Task.WhenAll(sessions.Select(async session =>
+        {
+            var sourceProductId = session.SourceProductId > 0 ? session.SourceProductId : session.ProductId;
+            var product = sourceProductId > 0 ? await _productService.GetProductByIdAsync(sourceProductId) : null;
+
+            return new InterviewHistoryItemModel
+            {
+                SessionId = session.Id,
+                JobTitle = product?.Name ?? "Interview",
+                CreatedOnUtc = session.CreatedOnUtc,
+                CompletedOnUtc = session.CompletedOnUtc,
+                Status = session.CompletedOnUtc.HasValue
+                    ? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Completed")
+                    : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Active"),
+                Score = session.Score,
+                InterviewReportUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
+                    ? Url?.RouteUrl(AIInterviewDefaults.MockReportRouteName, new { sessionId = session.Id })
+                    : null,
+                InterviewReportPanelUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
+                    ? Url?.Action("ReportPanel", "AIInterview", new { sessionId = session.Id })
+                    : null,
+                RecordingUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.RecordingUrl)
+                    ? Url?.Action("Recording", "AIInterview", new { sessionId = session.Id })
+                    : null,
+                RecordingShareUrl = session.CompletedOnUtc.HasValue
+                    ? await BuildRecordingShareUrlAsync(session)
+                    : null
+            };
+        }));
+
+        return model.ToList();
+    }
+
+    protected virtual async Task<SavedJobsListModel> BuildSavedJobsModelAsync(Customer customer)
+    {
+        var model = new SavedJobsListModel();
+        if (_shoppingCartService == null || _storeContext == null || _productModelFactory == null || _jobRequirementService == null)
+            return model;
+
+        var store = await _storeContext.GetCurrentStoreAsync();
+        var wishlistItems = (await _shoppingCartService.GetShoppingCartAsync(customer, ShoppingCartType.Wishlist, store.Id, customWishlistId: 0) ?? new List<ShoppingCartItem>())
+            .OrderByDescending(item => item.CreatedOnUtc)
+            .ToList();
+        var productIds = wishlistItems.Select(item => item.ProductId).Distinct().ToArray();
+        if (!productIds.Any())
+            return model;
+
+        var products = await _productService.GetProductsByIdsAsync(productIds) ?? new List<Product>();
+        var productSortOrder = wishlistItems
+            .GroupBy(item => item.ProductId)
+            .ToDictionary(group => group.Key, group => group.Min(item => item.CreatedOnUtc));
+
+        var jobProducts = new List<Product>();
+        foreach (var product in products
+                     .Where(product => product != null && !product.Deleted && product.Published)
+                     .OrderByDescending(product => productSortOrder.GetValueOrDefault(product.Id)))
+        {
+            if (!await _jobRequirementService.IsJobProductAsync(product))
+                continue;
+
+            jobProducts.Add(product);
+        }
+
+        if (!jobProducts.Any())
+            return model;
+
+        model.Products = (await _productModelFactory.PrepareProductOverviewModelsAsync(jobProducts)).ToList();
+        return model;
+    }
+
+    protected virtual async Task<MyActivityPageModel> BuildMyActivityPageModelAsync(Customer customer, string tab, string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null)
+    {
+        var activeTab = NormalizeMyActivityTab(tab);
+        var model = new MyActivityPageModel
+        {
+            ActiveTab = activeTab
+        };
+
+        switch (activeTab)
+        {
+            case var value when string.Equals(value, AIInterviewDefaults.MyActivitySavedJobsTabKey, StringComparison.Ordinal):
+                model.SavedJobs = await BuildSavedJobsModelAsync(customer);
+                break;
+            case var value when string.Equals(value, AIInterviewDefaults.MyActivityMockInterviewsTabKey, StringComparison.Ordinal):
+                model.MockInterviews = await BuildMockInterviewHistoryModelAsync(customer);
+                break;
+            default:
+                model.AppliedJobs = await BuildMyApplicationsModelAsync(customer, sortOrder, status, minScore, maxScore);
+                break;
+        }
+
+        return model;
+    }
+
+    public async Task<IActionResult> MyActivity(string tab = null, string sortOrder = null, string status = null, decimal? minScore = null, decimal? maxScore = null)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null)
+            return Challenge();
+
+        var model = await BuildMyActivityPageModelAsync(customer, tab, sortOrder, status, minScore, maxScore);
+        ViewData["IsMyActivity"] = true;
+
+        if (IsHtmxRequest())
+            return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityTabContent.cshtml", model);
+
+        return View("~/Plugins/Misc.AIInterview/Views/MyActivity.cshtml", model);
+    }
+
+    public async Task<IActionResult> MyApplications(string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null)
+            return Challenge();
+
+        var model = await BuildMyApplicationsModelAsync(customer, sortOrder, status, minScore, maxScore);
         return View("~/Plugins/Misc.AIInterview/Views/MyApplications.cshtml", model);
     }
 

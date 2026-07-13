@@ -1,0 +1,73 @@
+@model MyActivityPageModel
+
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.MyActivity.Title").Text);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-my-activity-page");
+
+    var appliedJobsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityAppliedJobsTabKey });
+    var savedJobsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivitySavedJobsTabKey });
+    var mockInterviewsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityMockInterviewsTabKey });
+    ViewData["IsMyActivity"] = true;
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MyActivityNavigationTab })
+}
+
+<div class="page ai-my-activity-page" data-my-activity-shell="true">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.MyActivity.Title")</h1>
+    </div>
+    <div class="page-body">
+        <div class="my-activity-shell">
+            <nav class="my-activity-tabs js-my-activity-tabs" aria-label="@T("Plugins.Misc.AIInterview.MyActivity.NavigationLabel")">
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivityAppliedJobsTabKey ? "is-active" : null)"
+                   href="@appliedJobsUrl"
+                   data-my-activity-tab="@AIInterviewDefaults.MyActivityAppliedJobsTabKey"
+                   hx-get="@appliedJobsUrl"
+                   hx-target="#my-activity-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   hx-indicator="#my-activity-loading"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivityAppliedJobsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.MyActivity.Tab.AppliedJobs")
+                </a>
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivitySavedJobsTabKey ? "is-active" : null)"
+                   href="@savedJobsUrl"
+                   data-my-activity-tab="@AIInterviewDefaults.MyActivitySavedJobsTabKey"
+                   hx-get="@savedJobsUrl"
+                   hx-target="#my-activity-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   hx-indicator="#my-activity-loading"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivitySavedJobsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.MyActivity.Tab.SavedJobs")
+                </a>
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivityMockInterviewsTabKey ? "is-active" : null)"
+                   href="@mockInterviewsUrl"
+                   data-my-activity-tab="@AIInterviewDefaults.MyActivityMockInterviewsTabKey"
+                   hx-get="@mockInterviewsUrl"
+                   hx-target="#my-activity-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   hx-indicator="#my-activity-loading"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivityMockInterviewsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.MyActivity.Tab.MockInterviews")
+                </a>
+            </nav>
+
+            <div id="my-activity-loading" class="my-activity-loading" aria-live="polite">
+                @T("Plugins.Misc.AIInterview.MyActivity.Loading")
+            </div>
+
+            <section id="my-activity-content" class="my-activity-content" aria-live="polite">
+                @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityTabContent.cshtml", Model)
+            </section>
+        </div>
+    </div>
+</div>

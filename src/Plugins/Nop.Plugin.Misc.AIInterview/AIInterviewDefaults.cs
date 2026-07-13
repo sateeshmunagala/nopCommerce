@@ -57,6 +57,8 @@ public static class AIInterviewDefaults
     /// </summary>
     public static string MyApplicationsRouteName => "Plugin.Misc.AIInterview.MyApplications";
 
+    public static string MyActivityRouteName => "Plugin.Misc.AIInterview.MyActivity";
+
     /// <summary>
     /// Gets the employer applications route name
     /// </summary>
@@ -141,6 +143,11 @@ public static class AIInterviewDefaults
     /// </summary>
     public static string LocalizationPrefix => "Plugins.Misc.AIInterview";
 
+    public static string MyActivityAppliedJobsTabKey => "applied-jobs";
+    public static string MyActivitySavedJobsTabKey => "saved-jobs";
+    public static string MyActivityMockInterviewsTabKey => "mock-interviews";
+
+    public const int MyActivityNavigationTab = 160;
     public const int MyApplicationsNavigationTab = 160;
     public const int MockHistoryNavigationTab = 165;
     public const int VendorScoreboardNavigationTab = 170;

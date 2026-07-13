@@ -30,27 +30,24 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
         {
             if (_aiInterviewSettings.Enabled)
             {
-                if (!navigationModel.CustomerNavigationItems.Any(item =>
-                    string.Equals(item.RouteName, AIInterviewDefaults.MyApplicationsRouteName, StringComparison.OrdinalIgnoreCase)))
-                {
-                    navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
-                    {
-                        RouteName = AIInterviewDefaults.MyApplicationsRouteName,
-                        Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.MyApplications.Title"),
-                        Tab = AIInterviewDefaults.MyApplicationsNavigationTab,
-                        ItemClass = "customer-applications"
-                    });
-                }
+                var legacyActivityItems = navigationModel.CustomerNavigationItems
+                    .Where(item =>
+                        string.Equals(item.RouteName, AIInterviewDefaults.MyApplicationsRouteName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(item.RouteName, AIInterviewDefaults.MockHistoryRouteName, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                foreach (var legacyActivityItem in legacyActivityItems)
+                    navigationModel.CustomerNavigationItems.Remove(legacyActivityItem);
 
                 if (!navigationModel.CustomerNavigationItems.Any(item =>
-                    string.Equals(item.RouteName, AIInterviewDefaults.MockHistoryRouteName, StringComparison.OrdinalIgnoreCase)))
+                    string.Equals(item.RouteName, AIInterviewDefaults.MyActivityRouteName, StringComparison.OrdinalIgnoreCase)))
                 {
                     navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
                     {
-                        RouteName = AIInterviewDefaults.MockHistoryRouteName,
-                        Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.History.MockTitle"),
-                        Tab = AIInterviewDefaults.MockHistoryNavigationTab,
-                        ItemClass = "customer-mock-practice-history"
+                        RouteName = AIInterviewDefaults.MyActivityRouteName,
+                        Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.MyActivity.Title"),
+                        Tab = AIInterviewDefaults.MyActivityNavigationTab,
+                        ItemClass = "customer-my-activity"
                     });
                 }
 
