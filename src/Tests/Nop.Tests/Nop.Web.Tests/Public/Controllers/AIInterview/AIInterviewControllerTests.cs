@@ -12,8 +12,15 @@ using Nop.Services.Messages;
 using Nop.Services.Media;
 using Nop.Services.Customers;
 using Nop.Services.Catalog;
+using Nop.Services.Orders;
+using Nop.Services.Stores;
 using Nop.Core;
+using Nop.Core.Domain.Catalog;
 using NUnit.Framework;
+using Nop.Core.Domain.Orders;
+using Nop.Core.Domain.Stores;
+using Nop.Web.Factories;
+using Nop.Web.Models.Catalog;
 
 namespace Nop.Tests.Nop.Web.Tests.Public.Controllers.AIInterview;
 
@@ -29,6 +36,9 @@ public class AIInterviewControllerTests
     private Mock<ICustomerService> _customerService;
     private Mock<IProductService> _productService;
     private Mock<IJobRequirementService> _jobRequirementService;
+    private Mock<IShoppingCartService> _shoppingCartService;
+    private Mock<IStoreContext> _storeContext;
+    private Mock<IProductModelFactory> _productModelFactory;
     private AIInterviewSettings _aiInterviewSettings;
     private AIInterviewController _controller;
     private Customer _customer;
@@ -45,6 +55,9 @@ public class AIInterviewControllerTests
         _customerService = new Mock<ICustomerService>();
         _productService = new Mock<IProductService>();
         _jobRequirementService = new Mock<IJobRequirementService>();
+        _shoppingCartService = new Mock<IShoppingCartService>();
+        _storeContext = new Mock<IStoreContext>();
+        _productModelFactory = new Mock<IProductModelFactory>();
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
             .ReturnsAsync(new JobRequirementsModel());
         _aiInterviewSettings = new AIInterviewSettings { Enabled = true };
@@ -67,9 +80,9 @@ public class AIInterviewControllerTests
             _customerService.Object,
             _productService.Object,
             _jobRequirementService.Object,
-            null,
-            null,
-            null);
+            shoppingCartService: _shoppingCartService.Object,
+            storeContext: _storeContext.Object,
+            productModelFactory: _productModelFactory.Object);
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext()
@@ -243,5 +256,133 @@ public class AIInterviewControllerTests
 
         var model = (MyActivityPageModel)partialViewResult.Model;
         Assert.That(model.ActiveTab, Is.EqualTo(AIInterviewDefaults.MyActivityAppliedJobsTabKey));
+    }
+
+    [Test]
+    public async Task MyActivity_SavedJobs_Filters_Deduplicates_And_Uses_Latest_Wishlist_Order()
+    {
+        // Arrange
+        var store = new Store { Id = 7 };
+        var olderDate = new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc);
+        var newerDate = olderDate.AddDays(5);
+        var middleDate = olderDate.AddDays(2);
+        var wishlistItems = new List<ShoppingCartItem>
+        {
+            new() { ProductId = 1, CreatedOnUtc = olderDate },
+            new() { ProductId = 1, CreatedOnUtc = newerDate },
+            new() { ProductId = 2, CreatedOnUtc = middleDate },
+            new() { ProductId = 3, CreatedOnUtc = middleDate.AddHours(-1) },
+            new() { ProductId = 4, CreatedOnUtc = middleDate.AddHours(-2) }
+        };
+        var products = new List<Product>
+        {
+            new() { Id = 1, Name = "Newest saved job", Published = true, Deleted = false },
+            new() { Id = 2, Name = "Catalog item", Published = true, Deleted = false },
+            new() { Id = 3, Name = "Deleted job", Published = true, Deleted = true },
+            new() { Id = 4, Name = "Hidden job", Published = false, Deleted = false }
+        };
+
+        _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
+        _shoppingCartService.Setup(x => x.GetShoppingCartAsync(_customer, ShoppingCartType.Wishlist, store.Id, null, null, null, 0))
+            .ReturnsAsync(wishlistItems);
+        _productService.Setup(x => x.GetProductsByIdsAsync(It.IsAny<int[]>()))
+            .ReturnsAsync((int[] ids) => products.Where(product => ids.Contains(product.Id)).ToList());
+        _jobRequirementService.Setup(x => x.IsJobProductAsync(It.Is<Product>(product => product.Id == 1))).ReturnsAsync(true);
+        _jobRequirementService.Setup(x => x.IsJobProductAsync(It.Is<Product>(product => product.Id == 2))).ReturnsAsync(false);
+        _jobRequirementService.Setup(x => x.IsJobProductAsync(It.Is<Product>(product => product.Id == 3))).ReturnsAsync(true);
+        _jobRequirementService.Setup(x => x.IsJobProductAsync(It.Is<Product>(product => product.Id == 4))).ReturnsAsync(true);
+        _productModelFactory.Setup(x => x.PrepareProductOverviewModelsAsync(It.IsAny<IEnumerable<Product>>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<int?>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .ReturnsAsync((IEnumerable<Product> selectedProducts, bool preparePriceModel, bool preparePictureModel, int? productThumbPictureSize, bool prepareSpecificationAttributes, bool forceRedirectionAfterAddingToCart) => selectedProducts
+                .Select(product => new ProductOverviewModel { Id = product.Id, Name = product.Name })
+                .ToList());
+
+        // Act
+        var result = await _controller.MyActivity(AIInterviewDefaults.MyActivitySavedJobsTabKey);
+
+        // Assert
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (MyActivityPageModel)((ViewResult)result).Model;
+        Assert.That(model.ActiveTab, Is.EqualTo(AIInterviewDefaults.MyActivitySavedJobsTabKey));
+        Assert.That(model.SavedJobs.Products.Select(product => product.Id).ToArray(), Is.EqualTo(new[] { 1 }));
+    }
+
+    [Test]
+    public async Task MyActivity_SavedJobs_Empty_Wishlist_Returns_Empty_Model()
+    {
+        // Arrange
+        var store = new Store { Id = 9 };
+        _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
+        _shoppingCartService.Setup(x => x.GetShoppingCartAsync(_customer, ShoppingCartType.Wishlist, store.Id, null, null, null, 0))
+            .ReturnsAsync(new List<ShoppingCartItem>());
+
+        // Act
+        var result = await _controller.MyActivity(AIInterviewDefaults.MyActivitySavedJobsTabKey);
+
+        // Assert
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (MyActivityPageModel)((ViewResult)result).Model;
+        Assert.That(model.SavedJobs, Is.Not.Null);
+        Assert.That(model.SavedJobs.Products, Is.Empty);
+    }
+
+    [Test]
+    public async Task MyActivity_Htmx_SavedJobs_Request_Returns_SavedJobs_Partial_Model()
+    {
+        // Arrange
+        var store = new Store { Id = 11 };
+        _controller.ControllerContext.HttpContext.Request.Headers["HX-Request"] = "true";
+        _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
+        _shoppingCartService.Setup(x => x.GetShoppingCartAsync(_customer, ShoppingCartType.Wishlist, store.Id, null, null, null, 0))
+            .ReturnsAsync(new List<ShoppingCartItem>());
+
+        // Act
+        var result = await _controller.MyActivity(AIInterviewDefaults.MyActivitySavedJobsTabKey);
+
+        // Assert
+        Assert.That(result, Is.TypeOf<PartialViewResult>());
+        var partialViewResult = (PartialViewResult)result;
+        var model = (MyActivityPageModel)partialViewResult.Model;
+        Assert.That(model.ActiveTab, Is.EqualTo(AIInterviewDefaults.MyActivitySavedJobsTabKey));
+    }
+
+    [Test]
+    public async Task MyActivity_AppliedJobs_SortOrder_Is_Preserved()
+    {
+        // Arrange
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<JobApplication>
+            {
+                new() { Id = 1, JobTitle = "First role", Status = "Applied", CreatedOnUtc = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new() { Id = 2, JobTitle = "Second role", Status = "Applied", CreatedOnUtc = new DateTime(2026, 7, 2, 0, 0, 0, DateTimeKind.Utc) }
+            });
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<InterviewSession>
+            {
+                new() { Id = 10, ProductId = 1, JobTitle = "First role", Score = 65, CompletedOnUtc = new DateTime(2026, 7, 3, 0, 0, 0, DateTimeKind.Utc) },
+                new() { Id = 11, ProductId = 2, JobTitle = "Second role", Score = 92, CompletedOnUtc = new DateTime(2026, 7, 4, 0, 0, 0, DateTimeKind.Utc) }
+            });
+
+        // Act
+        var result = await _controller.MyActivity(AIInterviewDefaults.MyActivityAppliedJobsTabKey, "HighestScore");
+
+        // Assert
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (MyActivityPageModel)((ViewResult)result).Model;
+        Assert.That(model.ActiveTab, Is.EqualTo(AIInterviewDefaults.MyActivityAppliedJobsTabKey));
+        Assert.That(model.AppliedJobs.SortOrder, Is.EqualTo("HighestScore"));
+    }
+
+    [Test]
+    public async Task MyApplications_Legacy_Route_Still_Returns_Standalone_View()
+    {
+        // Act
+        var result = await _controller.MyApplications("LatestApplied");
+
+        // Assert
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        Assert.That(viewResult.ViewName, Is.EqualTo("~/Plugins/Misc.AIInterview/Views/MyApplications.cshtml"));
+        var model = (ApplicationListModel)viewResult.Model;
+        Assert.That(model.SortOrder, Is.EqualTo("LatestApplied"));
     }
 }

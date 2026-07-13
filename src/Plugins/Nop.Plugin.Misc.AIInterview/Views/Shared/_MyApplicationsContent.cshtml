@@ -1,4 +1,5 @@
 @model ApplicationListModel
+@using System.Globalization
 @using Microsoft.AspNetCore.WebUtilities
 @using Nop.Services.Helpers
 @inject IDateTimeHelper dateTimeHelper
@@ -27,8 +28,23 @@
     var sortBaseUrl = isMyActivity
         ? Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityAppliedJobsTabKey })
         : Url.RouteUrl(AIInterviewDefaults.MyApplicationsRouteName);
+    var sortQuery = new Dictionary<string, string>();
+    if (!string.IsNullOrWhiteSpace(Model.Status))
+        sortQuery["status"] = Model.Status;
+    if (Model.MinScore.HasValue)
+        sortQuery["minScore"] = Model.MinScore.Value.ToString(CultureInfo.InvariantCulture);
+    if (Model.MaxScore.HasValue)
+        sortQuery["maxScore"] = Model.MaxScore.Value.ToString(CultureInfo.InvariantCulture);
 
-    string BuildSortUrl(string value) => QueryHelpers.AddQueryString(sortBaseUrl ?? string.Empty, "sortOrder", value);
+    string BuildSortUrl(string value)
+    {
+        var values = new Dictionary<string, string>(sortQuery)
+        {
+            ["sortOrder"] = value
+        };
+
+        return QueryHelpers.AddQueryString(sortBaseUrl ?? string.Empty, values);
+    }
 }
 
 <div class="applications-card">
@@ -39,18 +55,38 @@
         @if (!isMyActivity)
         {
             <div class="applications-toolbar-links">
-                <a class="button-2" href="@mockHistoryUrl">Mock practice history</a>
+                <a class="button-2" href="@mockHistoryUrl">@T("Plugins.Misc.AIInterview.History.MockTitle")</a>
             </div>
         }
         <div class="applications-sort">
             <label for="sortOrder">@T("Plugins.Misc.AIInterview.MyApplications.SortBy")</label>
-            <select id="sortOrder" onchange="location.href=this.value;">
-                <option value="@BuildSortUrl("LatestApplied")" selected="@(Model.SortOrder == "LatestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.LatestApplied")</option>
-                <option value="@BuildSortUrl("OldestApplied")" selected="@(Model.SortOrder == "OldestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.OldestApplied")</option>
-                <option value="@BuildSortUrl("HighestScore")" selected="@(Model.SortOrder == "HighestScore")">@T("Plugins.Misc.AIInterview.History.Sort.HighestScore")</option>
-                <option value="@BuildSortUrl("LowestScore")" selected="@(Model.SortOrder == "LowestScore")">@T("Plugins.Misc.AIInterview.History.Sort.LowestScore")</option>
-                <option value="@BuildSortUrl("LatestInterviewDate")" selected="@(Model.SortOrder == "LatestInterviewDate")">@T("Plugins.Misc.AIInterview.History.Sort.LatestInterviewDate")</option>
-            </select>
+            @if (isMyActivity)
+            {
+                <select id="sortOrder"
+                        name="sortOrder"
+                        hx-get="@sortBaseUrl"
+                        hx-target="#my-activity-content"
+                        hx-swap="innerHTML"
+                        hx-push-url="true"
+                        hx-indicator="#my-activity-loading"
+                        onchange="if (!window.htmx) { location.href = this.options[this.selectedIndex].getAttribute('data-navigate-url'); }">
+                    <option value="LatestApplied" data-navigate-url="@BuildSortUrl("LatestApplied")" selected="@(Model.SortOrder == "LatestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.LatestApplied")</option>
+                    <option value="OldestApplied" data-navigate-url="@BuildSortUrl("OldestApplied")" selected="@(Model.SortOrder == "OldestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.OldestApplied")</option>
+                    <option value="HighestScore" data-navigate-url="@BuildSortUrl("HighestScore")" selected="@(Model.SortOrder == "HighestScore")">@T("Plugins.Misc.AIInterview.History.Sort.HighestScore")</option>
+                    <option value="LowestScore" data-navigate-url="@BuildSortUrl("LowestScore")" selected="@(Model.SortOrder == "LowestScore")">@T("Plugins.Misc.AIInterview.History.Sort.LowestScore")</option>
+                    <option value="LatestInterviewDate" data-navigate-url="@BuildSortUrl("LatestInterviewDate")" selected="@(Model.SortOrder == "LatestInterviewDate")">@T("Plugins.Misc.AIInterview.History.Sort.LatestInterviewDate")</option>
+                </select>
+            }
+            else
+            {
+                <select id="sortOrder" onchange="location.href=this.value;">
+                    <option value="@BuildSortUrl("LatestApplied")" selected="@(Model.SortOrder == "LatestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.LatestApplied")</option>
+                    <option value="@BuildSortUrl("OldestApplied")" selected="@(Model.SortOrder == "OldestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.OldestApplied")</option>
+                    <option value="@BuildSortUrl("HighestScore")" selected="@(Model.SortOrder == "HighestScore")">@T("Plugins.Misc.AIInterview.History.Sort.HighestScore")</option>
+                    <option value="@BuildSortUrl("LowestScore")" selected="@(Model.SortOrder == "LowestScore")">@T("Plugins.Misc.AIInterview.History.Sort.LowestScore")</option>
+                    <option value="@BuildSortUrl("LatestInterviewDate")" selected="@(Model.SortOrder == "LatestInterviewDate")">@T("Plugins.Misc.AIInterview.History.Sort.LatestInterviewDate")</option>
+                </select>
+            }
         </div>
     </div>
 

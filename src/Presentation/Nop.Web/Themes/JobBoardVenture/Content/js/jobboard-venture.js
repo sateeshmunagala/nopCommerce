@@ -20,12 +20,30 @@
         return document.getElementById('my-activity-content');
     }
 
+    function getMyActivityPanel() {
+        var content = getMyActivityContent();
+        if (!content) {
+            return null;
+        }
+
+        return content.querySelector('[data-my-activity-tab-panel="true"]');
+    }
+
     function getMyActivityTabFromUrl(url) {
         try {
             var parsedUrl = new URL(url || window.location.href, window.location.origin);
             return normalizeMyActivityTab(parsedUrl.searchParams.get('tab'));
         } catch (error) {
             return 'applied-jobs';
+        }
+    }
+
+    function buildComparableMyActivityUrl(url) {
+        try {
+            var parsedUrl = new URL(url || window.location.href, window.location.origin);
+            return parsedUrl.pathname + parsedUrl.search;
+        } catch (error) {
+            return window.location.pathname + window.location.search;
         }
     }
 
@@ -59,30 +77,58 @@
     }
 
     function syncMyActivityFromContent() {
-        var content = getMyActivityContent();
-        if (!content) {
-            return;
-        }
-
-        var panel = content.querySelector('[data-my-activity-tab-panel="true"]');
+        var panel = getMyActivityPanel();
         var activeTab = panel ? panel.getAttribute('data-active-tab') : getMyActivityTabFromUrl(window.location.href);
         syncMyActivityTabs(activeTab);
     }
 
-    function bindMyActivityHtmx() {
-        if (window.__jbMyActivityHtmxBound || !window.htmx) {
+    function restoreMyActivityStateFromUrl() {
+        var shell = getMyActivityShell();
+        var content = getMyActivityContent();
+        if (!shell || !content) {
             return;
+        }
+
+        var currentUrl = buildComparableMyActivityUrl(window.location.href);
+        var panel = getMyActivityPanel();
+        var panelUrl = panel ? panel.getAttribute('data-request-url') : '';
+
+        syncMyActivityTabs(getMyActivityTabFromUrl(window.location.href));
+
+        if (panelUrl === currentUrl) {
+            return;
+        }
+
+        if (!window.htmx) {
+            syncMyActivityFromContent();
+            return;
+        }
+
+        setMyActivityLoading(true);
+        window.htmx.ajax('GET', currentUrl, {
+            source: content,
+            target: content,
+            swap: 'innerHTML'
+        });
+    }
+
+    function bindMyActivityHtmx() {
+        if (window.__jbMyActivityHtmxBound || !window.htmx || !document.body) {
+            return false;
         }
 
         window.__jbMyActivityHtmxBound = true;
 
         document.body.addEventListener('htmx:beforeRequest', function (event) {
-            var trigger = event.detail && event.detail.elt && event.detail.elt.closest('[data-my-activity-tab]');
-            if (!trigger) {
+            if (!event.detail || !event.detail.target || event.detail.target.id !== 'my-activity-content') {
                 return;
             }
 
-            syncMyActivityTabs(trigger.getAttribute('data-my-activity-tab'));
+            var trigger = event.detail && event.detail.elt && event.detail.elt.closest('[data-my-activity-tab]');
+            if (trigger) {
+                syncMyActivityTabs(trigger.getAttribute('data-my-activity-tab'));
+            }
+
             setMyActivityLoading(true);
         });
 
@@ -108,6 +154,22 @@
                 syncMyActivityFromContent();
             }
         });
+
+        return true;
+    }
+
+    function scheduleMyActivityHtmxBind(attempt) {
+        if (bindMyActivityHtmx()) {
+            return;
+        }
+
+        if (attempt >= 20) {
+            return;
+        }
+
+        window.setTimeout(function () {
+            scheduleMyActivityHtmxBind(attempt + 1);
+        }, 50);
     }
 
     function cloneForDrawer(source, target) {
@@ -739,11 +801,10 @@
         syncExpandedState();
         syncCustomerNavState();
         syncMyActivityFromContent();
-        bindMyActivityHtmx();
-        window.setTimeout(bindMyActivityHtmx, 0);
+        scheduleMyActivityHtmxBind(0);
         window.addEventListener('popstate', function () {
             setMyActivityLoading(false);
-            window.setTimeout(syncMyActivityFromContent, 0);
+            window.setTimeout(restoreMyActivityStateFromUrl, 0);
         });
     }
 

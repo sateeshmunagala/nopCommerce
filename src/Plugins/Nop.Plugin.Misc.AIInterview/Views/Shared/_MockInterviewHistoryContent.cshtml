@@ -8,11 +8,16 @@
         return userDateTime.ToString("yyyy-MM-dd");
     }
 
-    var practiceText = "Mock Practice";
+    var practiceText = T("Plugins.Misc.AIInterview.History.MockPracticeLabel").Text;
+    var mockHistoryTitleText = T("Plugins.Misc.AIInterview.History.MockTitle").Text;
     var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
     var shareText = T("Plugins.Misc.AIInterview.Report.Share").Text;
     var openSharePageText = T("Plugins.Misc.AIInterview.Report.OpenSharePage").Text;
     var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
+    var practiceReportTitleFormat = T("Plugins.Misc.AIInterview.History.PracticeReportTitle").Text;
+    var practiceRecordingTitleFormat = T("Plugins.Misc.AIInterview.History.PracticeRecordingTitle").Text;
+    var openPracticeReportFormat = T("Plugins.Misc.AIInterview.History.OpenPracticeReport").Text;
+    var openPracticeRecordingFormat = T("Plugins.Misc.AIInterview.History.OpenPracticeRecording").Text;
 }
 
 <div class="applications-card">
@@ -33,10 +38,10 @@
                 <tbody>
                     @foreach (var session in Model)
                     {
-                        var reportTitle = $"Practice report - {session.JobTitle}";
-                        var recordingTitle = $"Practice recording - {session.JobTitle}";
-                        var reportActionLabel = $"Open practice report - {session.JobTitle}";
-                        var openRecordingLabel = $"Open practice recording - {session.JobTitle}";
+                        var reportTitle = string.Format(practiceReportTitleFormat, session.JobTitle);
+                        var recordingTitle = string.Format(practiceRecordingTitleFormat, session.JobTitle);
+                        var reportActionLabel = string.Format(openPracticeReportFormat, session.JobTitle);
+                        var openRecordingLabel = string.Format(openPracticeRecordingFormat, session.JobTitle);
                         var copyShareLabel = $"{copyShareLinkText} - {session.JobTitle}";
                         var shareActionLabel = $"{shareText} - {session.JobTitle}";
                         <tr>
@@ -102,13 +107,13 @@
             </table>
         </div>
 
-        <div class="responsive-data-list history-mobile-list" aria-label="Mock practice history">
+        <div class="responsive-data-list history-mobile-list" aria-label="@mockHistoryTitleText">
             @foreach (var session in Model)
             {
-                var reportTitle = $"Practice report - {session.JobTitle}";
-                var recordingTitle = $"Practice recording - {session.JobTitle}";
-                var reportActionLabel = $"Open practice report - {session.JobTitle}";
-                var openRecordingLabel = $"Open practice recording - {session.JobTitle}";
+                var reportTitle = string.Format(practiceReportTitleFormat, session.JobTitle);
+                var recordingTitle = string.Format(practiceRecordingTitleFormat, session.JobTitle);
+                var reportActionLabel = string.Format(openPracticeReportFormat, session.JobTitle);
+                var openRecordingLabel = string.Format(openPracticeRecordingFormat, session.JobTitle);
                 var copyShareLabel = $"{copyShareLinkText} - {session.JobTitle}";
                 var shareActionLabel = $"{shareText} - {session.JobTitle}";
                 <article class="responsive-data-card">

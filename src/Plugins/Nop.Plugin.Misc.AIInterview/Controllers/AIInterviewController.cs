@@ -630,6 +630,7 @@ public class AIInterviewController : BasePluginController
 
     protected virtual async Task<IList<InterviewHistoryItemModel>> BuildMockInterviewHistoryModelAsync(Customer customer)
     {
+        var fallbackInterviewTitle = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Common.Interview");
         var sessions = ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
             .Where(session => string.Equals(session.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -642,7 +643,7 @@ public class AIInterviewController : BasePluginController
             return new InterviewHistoryItemModel
             {
                 SessionId = session.Id,
-                JobTitle = product?.Name ?? "Interview",
+                JobTitle = product?.Name ?? fallbackInterviewTitle,
                 CreatedOnUtc = session.CreatedOnUtc,
                 CompletedOnUtc = session.CompletedOnUtc,
                 Status = session.CompletedOnUtc.HasValue
@@ -684,7 +685,7 @@ public class AIInterviewController : BasePluginController
         var products = await _productService.GetProductsByIdsAsync(productIds) ?? new List<Product>();
         var productSortOrder = wishlistItems
             .GroupBy(item => item.ProductId)
-            .ToDictionary(group => group.Key, group => group.Min(item => item.CreatedOnUtc));
+            .ToDictionary(group => group.Key, group => group.Max(item => item.CreatedOnUtc));
 
         var jobProducts = new List<Product>();
         foreach (var product in products

@@ -1409,6 +1409,7 @@ public class MockAiInterviewController : BasePluginController
         if (customer == null)
             return Challenge();
 
+        var fallbackInterviewTitle = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Common.Interview");
         var sessions = ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
             .Where(session => string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -1420,7 +1421,7 @@ public class MockAiInterviewController : BasePluginController
             return new InterviewHistoryItemModel
             {
                 SessionId = session.Id,
-                JobTitle = product?.Name ?? "Interview",
+                JobTitle = product?.Name ?? fallbackInterviewTitle,
                 CreatedOnUtc = session.CreatedOnUtc,
                 CompletedOnUtc = session.CompletedOnUtc,
                 Status = session.CompletedOnUtc.HasValue
