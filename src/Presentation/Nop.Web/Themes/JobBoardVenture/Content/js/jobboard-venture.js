@@ -235,7 +235,6 @@
                 }
 
                 var isExcluded = link.classList.contains('ico-cart') ||
-                    link.classList.contains('ico-wishlist') ||
                     link.classList.contains('ico-inbox');
 
                 if (!isExcluded) {
