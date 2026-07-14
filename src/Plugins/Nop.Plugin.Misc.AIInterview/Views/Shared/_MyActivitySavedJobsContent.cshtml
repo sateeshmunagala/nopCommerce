@@ -2,7 +2,7 @@
 
 @if (Model.Products.Any())
 {
-    <div class="my-activity-saved-jobs-grid">
+    <div class="my-activity-saved-jobs-list">
         @foreach (var product in Model.Products)
         {
             @await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = product })

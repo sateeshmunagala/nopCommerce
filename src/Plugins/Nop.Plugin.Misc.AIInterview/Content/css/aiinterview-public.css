@@ -4813,42 +4813,67 @@ body.ai-job-preview-open .item-box {
 
 .my-activity-tabs {
     display: flex;
-    gap: 12px;
-    padding-bottom: 4px;
+    gap: 28px;
+    padding: 0 0 1px;
     border-bottom: 1px solid #d6dee6;
     overflow-x: auto;
+    overflow-y: hidden;
     overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
 }
 
 .my-activity-tab {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 42px;
-    padding: 0 18px;
-    border: 1px solid #d6dee6;
-    border-radius: 999px;
-    background: #ffffff;
+    flex: 0 0 auto;
+    min-height: 0;
+    padding: 0 0 12px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     color: #23374a;
     font-size: 14px;
     font-weight: 700;
     text-decoration: none;
     white-space: nowrap;
-    transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+    transition: color 0.18s ease;
+}
+
+.my-activity-tab::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    background: var(--jb-accent-dark, #24b99a);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.18s ease;
 }
 
 .my-activity-tab:hover,
 .my-activity-tab:focus-visible {
-    border-color: #0f6cbd;
-    color: #0f6cbd;
+    color: var(--jb-accent-dark, #24b99a);
     text-decoration: none;
 }
 
+.my-activity-tab:hover::after,
+.my-activity-tab:focus-visible::after,
+.my-activity-tab.is-active::after {
+    transform: scaleX(1);
+}
+
+.my-activity-tab:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.22);
+}
+
 .my-activity-tab.is-active {
-    border-color: #0f6cbd;
-    background: #0f6cbd;
-    color: #ffffff;
+    color: var(--jb-accent-dark, #24b99a);
 }
 
 .my-activity-loading {
@@ -4879,10 +4904,33 @@ body.ai-job-preview-open .item-box {
     min-height: 120px;
 }
 
-.my-activity-saved-jobs-grid {
+.my-activity-saved-jobs-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 18px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+}
+
+.my-activity-saved-jobs-list .ai-job-product-card {
+    width: 100%;
+    max-width: 100%;
+    padding: 16px 18px;
+    gap: 16px;
+}
+
+.my-activity-saved-jobs-list .ai-job-card-summary {
+    -webkit-line-clamp: 3;
+}
+
+.my-activity-saved-jobs-list .ai-job-card-meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.my-activity-saved-jobs-list .ai-job-card-actions {
+    padding-top: 10px;
+}
+
+.my-activity-saved-jobs-list .ai-job-card-view-job {
+    margin-left: 0;
 }
 
 .my-activity-empty-state {
@@ -4906,6 +4954,20 @@ body.ai-job-preview-open .item-box {
 @media (max-width: 1000px) {
     .my-activity-tabs {
         margin: 0 -8px;
-        padding: 0 8px 6px;
+        padding: 0 8px 1px;
+    }
+
+    .my-activity-saved-jobs-list .ai-job-card-meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .my-activity-saved-jobs-list .ai-job-product-card {
+        padding: 14px;
+    }
+
+    .my-activity-saved-jobs-list .ai-job-card-meta {
+        grid-template-columns: 1fr;
     }
 }
