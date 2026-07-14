@@ -825,6 +825,10 @@ public class LocalizationMigration : MigrationBase
             //#8093
             ["Admin.Address.Fields.PhoneNumber.NotValid"] = "Phone number is not valid.",
             ["Admin.Customers.Customers.Fields.Phone.NotValid"] = "Phone number is not valid.",
+
+            //#3456
+            ["Admin.Configuration.Settings.Order.ReturnRequestsForCompletedOrdersOnly"] = "Allow return requests only for completed orders",
+            ["Admin.Configuration.Settings.Order.ReturnRequestsForCompletedOrdersOnly.Hint"] = "Check this option to allow return requests only for completed orders.",
         });
 
         #endregion
