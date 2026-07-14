@@ -4811,6 +4811,16 @@ body.ai-job-preview-open .item-box {
     gap: 20px;
 }
 
+.html-aiinterview-my-activity-page .applications-card,
+.html-aiinterview-my-activity-page .my-activity-empty-state,
+.html-aiinterview-my-activity-page .responsive-data-card,
+.html-aiinterview-my-activity-page .responsive-data-card-item,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-product-card,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-card-logo,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-card-save {
+    border-radius: 1px;
+}
+
 .my-activity-tabs {
     display: flex;
     gap: 28px;
@@ -5039,7 +5049,7 @@ body.ai-job-preview-open .item-box {
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card {
         gap: 12px;
         padding: 14px;
-        border-radius: 14px;
+        border-radius: 1px;
         border-color: #d9e6e2;
         box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
     }
@@ -5096,7 +5106,7 @@ body.ai-job-preview-open .item-box {
         gap: 4px;
         padding: 10px 12px;
         border: 1px solid #e5eeeb;
-        border-radius: 12px;
+        border-radius: 1px;
         background: linear-gradient(180deg, #fbfdfd 0%, #f4fbf9 100%);
     }
 
@@ -5191,4 +5201,15 @@ body.ai-job-preview-open .item-box {
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Final hard override for My Activity card corners across desktop and mobile. */
+.html-aiinterview-my-activity-page .applications-card,
+.html-aiinterview-my-activity-page .my-activity-empty-state,
+.html-aiinterview-my-activity-page .responsive-data-card,
+.html-aiinterview-my-activity-page .responsive-data-card-item,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-product-card,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-card-logo,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-card-save {
+    border-radius: 1px !important;
 }
