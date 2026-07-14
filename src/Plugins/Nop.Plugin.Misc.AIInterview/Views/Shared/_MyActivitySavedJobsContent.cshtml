@@ -8,6 +8,17 @@
             @await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = product })
         }
     </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityPager.cshtml", new MyActivityPagerModel
+        {
+            Page = Model.Page,
+            PageSize = Model.PageSize,
+            TotalCount = Model.TotalCount,
+            TotalPages = Model.TotalPages
+        })
+    }
 }
 else
 {

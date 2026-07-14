@@ -4934,15 +4934,77 @@ body.ai-job-preview-open .item-box {
 }
 
 .my-activity-empty-state {
-    padding: 28px 24px;
+    padding: 24px;
     border: 1px solid #d6dee6;
-    border-radius: 18px;
+    border-radius: 4px;
     background: #ffffff;
     color: #4a5c6d;
 }
 
 .my-activity-empty-state p {
     margin: 0;
+}
+
+.my-activity-pager {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 16px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.my-activity-pager-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.my-activity-pager-link,
+.my-activity-pager-current {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid #d6dee6;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #23374a;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.92rem;
+    line-height: 1;
+    text-decoration: none;
+    text-transform: uppercase;
+    box-sizing: border-box;
+}
+
+.my-activity-pager-link:hover,
+.my-activity-pager-link:focus-visible {
+    border-color: var(--jb-accent, #35d6b4);
+    background: #eefaf7;
+    color: var(--jb-accent-dark, #24b99a);
+}
+
+.my-activity-pager-link:focus-visible {
+    outline: 2px solid rgba(53, 214, 180, 0.35);
+    outline-offset: 2px;
+}
+
+.my-activity-pager-current {
+    border-color: var(--jb-accent-dark, #24b99a);
+    background: #eefaf7;
+    color: var(--jb-accent-dark, #24b99a);
+}
+
+.my-activity-pager-summary {
+    color: #4a5c6d;
+    font-size: 0.92rem;
+    line-height: 1.4;
 }
 
 @keyframes my-activity-spin {
@@ -4963,11 +5025,170 @@ body.ai-job-preview-open .item-box {
 }
 
 @media (max-width: 640px) {
+    .html-aiinterview-my-activity-page .applications-table-wrap {
+        display: none;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list,
+    .html-aiinterview-my-activity-page .history-mobile-list {
+        display: grid;
+        gap: 12px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card {
+        gap: 12px;
+        padding: 14px;
+        border-radius: 14px;
+        border-color: #d9e6e2;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-head,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-head {
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-head-copy,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-head-copy {
+        gap: 2px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-title,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-title {
+        font-size: 0.96rem;
+        line-height: 1.1;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .applications-footnote,
+    .html-aiinterview-my-activity-page .history-mobile-list .applications-footnote {
+        font-size: 0.84rem;
+        line-height: 1.35;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-chip-group,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-chip-group {
+        gap: 6px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .score-chip,
+    .html-aiinterview-my-activity-page .history-mobile-list .score-chip {
+        min-width: 36px;
+        min-height: 36px;
+        padding: 4px 8px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .status-pill,
+    .html-aiinterview-my-activity-page .history-mobile-list .status-pill {
+        min-height: 36px;
+        padding: 4px 10px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-grid,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-item,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-item {
+        gap: 4px;
+        padding: 10px 12px;
+        border: 1px solid #e5eeeb;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #fbfdfd 0%, #f4fbf9 100%);
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-label,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-label {
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-value,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-value {
+        font-size: 0.92rem;
+        line-height: 1.35;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .candidate-recording-actions,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .candidate-recording-actions {
+        display: flex !important;
+        grid-template-columns: none !important;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link,
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .button-1,
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .button-2,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .ai-view-report-link,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .button-1,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .button-2 {
+        flex: 0 0 40px !important;
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        padding: 0 !important;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .ai-view-report-link {
+        gap: 0;
+        justify-content: center;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link span,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .ai-view-report-link span {
+        display: none;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link i,
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .candidate-recording-actions .button-1 i,
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .candidate-recording-actions .button-2 i,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .ai-view-report-link i,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .candidate-recording-actions .button-1 i,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .candidate-recording-actions .button-2 i {
+        font-size: 0.82rem !important;
+    }
+
     .my-activity-saved-jobs-list .ai-job-product-card {
         padding: 14px;
     }
 
     .my-activity-saved-jobs-list .ai-job-card-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .my-activity-pager {
+        align-items: stretch;
+    }
+
+    .my-activity-pager-links {
+        width: 100%;
+    }
+
+    .my-activity-pager-summary {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-grid,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-grid {
         grid-template-columns: 1fr;
     }
 }

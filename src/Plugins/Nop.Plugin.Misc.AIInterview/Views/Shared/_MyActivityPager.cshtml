@@ -1,0 +1,83 @@
+@model Nop.Plugin.Misc.AIInterview.Models.MyActivityPagerModel
+@using System.Globalization
+@using Microsoft.AspNetCore.WebUtilities
+
+@{
+    if (Model.TotalPages <= 1)
+    {
+        return;
+    }
+
+    var isMyActivity = ViewData["IsMyActivity"] is bool isMyActivityValue && isMyActivityValue;
+    var basePath = Context.Request.Path.Value ?? string.Empty;
+    var baseQuery = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    foreach (var pair in Context.Request.Query)
+    {
+        var value = pair.Value.ToString();
+        if (string.IsNullOrWhiteSpace(value))
+            continue;
+
+        baseQuery[pair.Key] = value;
+    }
+
+    baseQuery["pageSize"] = Model.PageSize.ToString(CultureInfo.InvariantCulture);
+
+    string BuildPageUrl(int targetPage)
+    {
+        var values = new Dictionary<string, string>(baseQuery, StringComparer.OrdinalIgnoreCase)
+        {
+            ["page"] = targetPage.ToString(CultureInfo.InvariantCulture),
+            ["pageSize"] = Model.PageSize.ToString(CultureInfo.InvariantCulture)
+        };
+
+        return QueryHelpers.AddQueryString(basePath, values);
+    }
+
+    var startPage = Math.Max(1, Model.Page - 2);
+    var endPage = Math.Min(Model.TotalPages, Model.Page + 2);
+}
+
+<nav class="my-activity-pager" aria-label="Pagination">
+    <div class="my-activity-pager-links">
+        @if (Model.Page > 1)
+        {
+            var previousUrl = BuildPageUrl(Model.Page - 1);
+            <a class="my-activity-pager-link my-activity-pager-link-nav"
+               href="@previousUrl"
+               @if (isMyActivity)
+               {
+                   <text>hx-get="@previousUrl" hx-target="#my-activity-content" hx-swap="innerHTML" hx-push-url="true" hx-indicator="#my-activity-loading"</text>
+               }>Previous</a>
+        }
+
+        @for (var pageNumber = startPage; pageNumber <= endPage; pageNumber++)
+        {
+            if (pageNumber == Model.Page)
+            {
+                <span class="my-activity-pager-current" aria-current="page">@pageNumber</span>
+                continue;
+            }
+
+            var pageUrl = BuildPageUrl(pageNumber);
+            <a class="my-activity-pager-link"
+               href="@pageUrl"
+               @if (isMyActivity)
+               {
+                   <text>hx-get="@pageUrl" hx-target="#my-activity-content" hx-swap="innerHTML" hx-push-url="true" hx-indicator="#my-activity-loading"</text>
+               }>@pageNumber</a>
+        }
+
+        @if (Model.Page < Model.TotalPages)
+        {
+            var nextUrl = BuildPageUrl(Model.Page + 1);
+            <a class="my-activity-pager-link my-activity-pager-link-nav"
+               href="@nextUrl"
+               @if (isMyActivity)
+               {
+                   <text>hx-get="@nextUrl" hx-target="#my-activity-content" hx-swap="innerHTML" hx-push-url="true" hx-indicator="#my-activity-loading"</text>
+               }>Next</a>
+        }
+    </div>
+    <div class="my-activity-pager-summary">Page @Model.Page of @Model.TotalPages</div>
+</nav>

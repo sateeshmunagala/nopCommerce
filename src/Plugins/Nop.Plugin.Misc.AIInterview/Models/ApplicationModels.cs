@@ -30,7 +30,9 @@ public record ApplicationListModel : BaseNopModel
     public string InterviewSort { get; set; } = "TopScorersFirst";
     public bool OnlyWithInterviewScore { get; set; }
     public int PageSize { get; set; } = 20;
+    public int Page { get; set; } = 1;
     public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
 
     public IList<ApplicationModel> Applications { get; set; }
 }
@@ -90,7 +92,33 @@ public record SavedJobsListModel : BaseNopModel
         Products = new List<ProductOverviewModel>();
     }
 
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 5;
+    public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
     public IList<ProductOverviewModel> Products { get; set; }
+}
+
+public record MockInterviewHistoryListModel : BaseNopModel
+{
+    public MockInterviewHistoryListModel()
+    {
+        Items = new List<InterviewHistoryItemModel>();
+    }
+
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 5;
+    public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
+    public IList<InterviewHistoryItemModel> Items { get; set; }
+}
+
+public record MyActivityPagerModel : BaseNopModel
+{
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
 }
 
 public record MyActivityPageModel : BaseNopModel
@@ -99,13 +127,13 @@ public record MyActivityPageModel : BaseNopModel
     {
         AppliedJobs = new ApplicationListModel();
         SavedJobs = new SavedJobsListModel();
-        MockInterviews = new List<InterviewHistoryItemModel>();
+        MockInterviews = new MockInterviewHistoryListModel();
     }
 
     public string ActiveTab { get; set; } = AIInterviewDefaults.MyActivityAppliedJobsTabKey;
     public ApplicationListModel AppliedJobs { get; set; }
     public SavedJobsListModel SavedJobs { get; set; }
-    public IList<InterviewHistoryItemModel> MockInterviews { get; set; }
+    public MockInterviewHistoryListModel MockInterviews { get; set; }
 }
 
 public record UpdateStatusModel : BaseNopModel

@@ -35,6 +35,8 @@
         sortQuery["minScore"] = Model.MinScore.Value.ToString(CultureInfo.InvariantCulture);
     if (Model.MaxScore.HasValue)
         sortQuery["maxScore"] = Model.MaxScore.Value.ToString(CultureInfo.InvariantCulture);
+    if (Model.PageSize > 0)
+        sortQuery["pageSize"] = Model.PageSize.ToString(CultureInfo.InvariantCulture);
 
     string BuildSortUrl(string value)
     {
@@ -62,6 +64,22 @@
             <label for="sortOrder">@T("Plugins.Misc.AIInterview.MyApplications.SortBy")</label>
             @if (isMyActivity)
             {
+                <div class="aiinterview-hidden" data-my-activity-sort-context="true">
+                    <input type="hidden" name="page" value="1" />
+                    <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                    @if (!string.IsNullOrWhiteSpace(Model.Status))
+                    {
+                        <input type="hidden" name="status" value="@Model.Status" />
+                    }
+                    @if (Model.MinScore.HasValue)
+                    {
+                        <input type="hidden" name="minScore" value="@Model.MinScore.Value.ToString(CultureInfo.InvariantCulture)" />
+                    }
+                    @if (Model.MaxScore.HasValue)
+                    {
+                        <input type="hidden" name="maxScore" value="@Model.MaxScore.Value.ToString(CultureInfo.InvariantCulture)" />
+                    }
+                </div>
                 <select id="sortOrder"
                         name="sortOrder"
                         hx-get="@sortBaseUrl"
@@ -69,6 +87,7 @@
                         hx-swap="innerHTML"
                         hx-push-url="true"
                         hx-indicator="#my-activity-loading"
+                        hx-include="[data-my-activity-sort-context='true']"
                         onchange="if (!window.htmx) { location.href = this.options[this.selectedIndex].getAttribute('data-navigate-url'); }">
                     <option value="LatestApplied" data-navigate-url="@BuildSortUrl("LatestApplied")" selected="@(Model.SortOrder == "LatestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.LatestApplied")</option>
                     <option value="OldestApplied" data-navigate-url="@BuildSortUrl("OldestApplied")" selected="@(Model.SortOrder == "OldestApplied")">@T("Plugins.Misc.AIInterview.History.Sort.OldestApplied")</option>
@@ -267,6 +286,17 @@
                 </article>
             }
         </div>
+
+        @if (isMyActivity && Model.TotalPages > 1)
+        {
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityPager.cshtml", new MyActivityPagerModel
+            {
+                Page = Model.Page,
+                PageSize = Model.PageSize,
+                TotalCount = Model.TotalCount,
+                TotalPages = Model.TotalPages
+            })
+        }
     }
     else
     {

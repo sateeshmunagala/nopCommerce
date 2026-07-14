@@ -34,6 +34,9 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
 public class AIInterviewController : BasePluginController
 {
+    private const int DefaultMyActivityPageSize = 5;
+    private const int MaxMyActivityPageSize = 50;
+
     private readonly IApplicationService _applicationService;
     private readonly IInterviewSessionService _interviewSessionService;
     private readonly AIInterviewSettings _aiInterviewSettings;
@@ -551,7 +554,24 @@ public class AIInterviewController : BasePluginController
         return string.Equals(HttpContext?.Request?.Headers["HX-Request"], "true", StringComparison.OrdinalIgnoreCase);
     }
 
+    protected virtual (int Page, int PageSize, int TotalPages) NormalizeMyActivityPaging(int totalCount, int page, int pageSize)
+    {
+        var normalizedPageSize = pageSize < 1 ? DefaultMyActivityPageSize : Math.Min(pageSize, MaxMyActivityPageSize);
+        var totalPages = totalCount > 0 ? (int)Math.Ceiling(totalCount / (double)normalizedPageSize) : 0;
+        var normalizedPage = page < 1 ? 1 : page;
+
+        if (totalPages > 0 && normalizedPage > totalPages)
+            normalizedPage = totalPages;
+
+        return (normalizedPage, normalizedPageSize, totalPages);
+    }
+
     protected virtual async Task<ApplicationListModel> BuildMyApplicationsModelAsync(Customer customer, string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null)
+    {
+        return await BuildMyApplicationsModelAsync(customer, sortOrder, status, minScore, maxScore, 1, DefaultMyActivityPageSize, false);
+    }
+
+    protected virtual async Task<ApplicationListModel> BuildMyApplicationsModelAsync(Customer customer, string sortOrder, string status, decimal? minScore, decimal? maxScore, int page, int pageSize, bool paginate)
     {
         var applications = (await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<JobApplication>()).ToList();
         var sessions = (await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<InterviewSession>()).ToList();
@@ -617,18 +637,30 @@ public class AIInterviewController : BasePluginController
             _ => query.OrderByDescending(application => application.CreatedOn)
         };
 
+        var orderedApplications = query.ToList();
+        var totalCount = orderedApplications.Count;
+        var (normalizedPage, normalizedPageSize, totalPages) = paginate
+            ? NormalizeMyActivityPaging(totalCount, page, pageSize)
+            : (1, totalCount > 0 ? totalCount : DefaultMyActivityPageSize, totalCount > 0 ? 1 : 0);
+        var pagedApplications = paginate
+            ? orderedApplications.Skip((normalizedPage - 1) * normalizedPageSize).Take(normalizedPageSize).ToList()
+            : orderedApplications;
+
         return new ApplicationListModel
         {
-            Applications = query.ToList(),
+            Applications = pagedApplications,
+            Page = normalizedPage,
+            PageSize = normalizedPageSize,
             SortOrder = normalizedSortOrder,
             Status = status,
             MinScore = minScore,
             MaxScore = maxScore,
-            TotalCount = query.Count()
+            TotalCount = totalCount,
+            TotalPages = totalPages
         };
     }
 
-    protected virtual async Task<IList<InterviewHistoryItemModel>> BuildMockInterviewHistoryModelAsync(Customer customer)
+    protected virtual async Task<IList<InterviewHistoryItemModel>> BuildMockInterviewHistoryItemsAsync(Customer customer)
     {
         var fallbackInterviewTitle = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Common.Interview");
         var sessions = ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
@@ -668,9 +700,33 @@ public class AIInterviewController : BasePluginController
         return model.ToList();
     }
 
-    protected virtual async Task<SavedJobsListModel> BuildSavedJobsModelAsync(Customer customer)
+    protected virtual async Task<MockInterviewHistoryListModel> BuildMockInterviewHistoryModelAsync(Customer customer, int page, int pageSize)
     {
-        var model = new SavedJobsListModel();
+        var items = (await BuildMockInterviewHistoryItemsAsync(customer))
+            .OrderByDescending(item => item.CompletedOnUtc ?? item.CreatedOnUtc)
+            .ThenByDescending(item => item.CreatedOnUtc)
+            .ToList();
+        var (normalizedPage, normalizedPageSize, totalPages) = NormalizeMyActivityPaging(items.Count, page, pageSize);
+
+        return new MockInterviewHistoryListModel
+        {
+            Items = items.Skip((normalizedPage - 1) * normalizedPageSize).Take(normalizedPageSize).ToList(),
+            Page = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalCount = items.Count,
+            TotalPages = totalPages
+        };
+    }
+
+    protected virtual async Task<SavedJobsListModel> BuildSavedJobsModelAsync(Customer customer, int page, int pageSize)
+    {
+        var normalizedPageSize = pageSize < 1 ? DefaultMyActivityPageSize : Math.Min(pageSize, MaxMyActivityPageSize);
+        var model = new SavedJobsListModel
+        {
+            Page = page < 1 ? 1 : page,
+            PageSize = normalizedPageSize
+        };
+
         if (_shoppingCartService == null || _storeContext == null || _productModelFactory == null || _jobRequirementService == null)
             return model;
 
@@ -701,11 +757,21 @@ public class AIInterviewController : BasePluginController
         if (!jobProducts.Any())
             return model;
 
-        model.Products = (await _productModelFactory.PrepareProductOverviewModelsAsync(jobProducts)).ToList();
+        var (normalizedPage, normalizedEffectivePageSize, totalPages) = NormalizeMyActivityPaging(jobProducts.Count, page, pageSize);
+        var pagedProducts = jobProducts
+            .Skip((normalizedPage - 1) * normalizedEffectivePageSize)
+            .Take(normalizedEffectivePageSize)
+            .ToList();
+
+        model.Products = (await _productModelFactory.PrepareProductOverviewModelsAsync(pagedProducts)).ToList();
+        model.Page = normalizedPage;
+        model.PageSize = normalizedEffectivePageSize;
+        model.TotalCount = jobProducts.Count;
+        model.TotalPages = totalPages;
         return model;
     }
 
-    protected virtual async Task<MyActivityPageModel> BuildMyActivityPageModelAsync(Customer customer, string tab, string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null)
+    protected virtual async Task<MyActivityPageModel> BuildMyActivityPageModelAsync(Customer customer, string tab, string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null, int page = 1, int pageSize = DefaultMyActivityPageSize)
     {
         var activeTab = NormalizeMyActivityTab(tab);
         var model = new MyActivityPageModel
@@ -716,20 +782,20 @@ public class AIInterviewController : BasePluginController
         switch (activeTab)
         {
             case var value when string.Equals(value, AIInterviewDefaults.MyActivitySavedJobsTabKey, StringComparison.Ordinal):
-                model.SavedJobs = await BuildSavedJobsModelAsync(customer);
+                model.SavedJobs = await BuildSavedJobsModelAsync(customer, page, pageSize);
                 break;
             case var value when string.Equals(value, AIInterviewDefaults.MyActivityMockInterviewsTabKey, StringComparison.Ordinal):
-                model.MockInterviews = await BuildMockInterviewHistoryModelAsync(customer);
+                model.MockInterviews = await BuildMockInterviewHistoryModelAsync(customer, page, pageSize);
                 break;
             default:
-                model.AppliedJobs = await BuildMyApplicationsModelAsync(customer, sortOrder, status, minScore, maxScore);
+                model.AppliedJobs = await BuildMyApplicationsModelAsync(customer, sortOrder, status, minScore, maxScore, page, pageSize, true);
                 break;
         }
 
         return model;
     }
 
-    public async Task<IActionResult> MyActivity(string tab = null, string sortOrder = null, string status = null, decimal? minScore = null, decimal? maxScore = null)
+    public async Task<IActionResult> MyActivity(string tab = null, string sortOrder = null, string status = null, decimal? minScore = null, decimal? maxScore = null, int page = 1, int pageSize = DefaultMyActivityPageSize)
     {
         if (!_aiInterviewSettings.Enabled)
             return RedirectToRoute("Homepage");
@@ -738,7 +804,7 @@ public class AIInterviewController : BasePluginController
         if (customer == null)
             return Challenge();
 
-        var model = await BuildMyActivityPageModelAsync(customer, tab, sortOrder, status, minScore, maxScore);
+        var model = await BuildMyActivityPageModelAsync(customer, tab, sortOrder, status, minScore, maxScore, page, pageSize);
         ViewData["IsMyActivity"] = true;
 
         if (IsHtmxRequest())

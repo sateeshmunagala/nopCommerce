@@ -49,6 +49,7 @@
     <None Remove="Views\Shared\_AIInterviewJobDetailsContent.cshtml" />
     <None Remove="Views\Shared\_AIInterviewJobDetailsDrawer.cshtml" />
     <None Remove="Views\Shared\_InterviewReportContent.cshtml" />
+    <None Remove="Views\Shared\_MyActivityPager.cshtml" />
     <None Remove="Views\Shared\_MyActivitySavedJobsContent.cshtml" />
     <None Remove="Views\Shared\_MyActivityTabContent.cshtml" />
     <None Remove="Views\Shared\_MyApplicationsContent.cshtml" />
@@ -141,6 +142,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\_InterviewReportContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivityPager.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\_MyActivitySavedJobsContent.cshtml">

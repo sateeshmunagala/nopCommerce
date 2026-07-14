@@ -373,6 +373,108 @@ public class AIInterviewControllerTests
     }
 
     [Test]
+    public async Task MyActivity_AppliedJobs_Paginates_Results()
+    {
+        // Arrange
+        var applications = Enumerable.Range(1, 6)
+            .Select(index => new JobApplication
+            {
+                Id = index,
+                JobTitle = $"Role {index}",
+                Status = "Applied",
+                CreatedOnUtc = new DateTime(2026, 7, index, 0, 0, 0, DateTimeKind.Utc)
+            })
+            .ToList();
+
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(applications);
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<InterviewSession>());
+
+        // Act
+        var result = await _controller.MyActivity(AIInterviewDefaults.MyActivityAppliedJobsTabKey, page: 2, pageSize: 5);
+
+        // Assert
+        var model = (MyActivityPageModel)((ViewResult)result).Model;
+        Assert.That(model.AppliedJobs.TotalCount, Is.EqualTo(6));
+        Assert.That(model.AppliedJobs.TotalPages, Is.EqualTo(2));
+        Assert.That(model.AppliedJobs.Page, Is.EqualTo(2));
+        Assert.That(model.AppliedJobs.PageSize, Is.EqualTo(5));
+        Assert.That(model.AppliedJobs.Applications.Select(application => application.Id).ToArray(), Is.EqualTo(new[] { 1 }));
+    }
+
+    [Test]
+    public async Task MyActivity_SavedJobs_Paginates_Filtered_Job_Products()
+    {
+        // Arrange
+        var store = new Store { Id = 12 };
+        var wishlistItems = Enumerable.Range(1, 6)
+            .Select(index => new ShoppingCartItem
+            {
+                ProductId = index,
+                CreatedOnUtc = new DateTime(2026, 7, index, 8, 0, 0, DateTimeKind.Utc)
+            })
+            .ToList();
+        var products = Enumerable.Range(1, 6)
+            .Select(index => new Product
+            {
+                Id = index,
+                Name = $"Saved job {index}",
+                Published = true,
+                Deleted = false
+            })
+            .ToList();
+
+        _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
+        _shoppingCartService.Setup(x => x.GetShoppingCartAsync(_customer, ShoppingCartType.Wishlist, store.Id, null, null, null, 0))
+            .ReturnsAsync(wishlistItems);
+        _productService.Setup(x => x.GetProductsByIdsAsync(It.IsAny<int[]>()))
+            .ReturnsAsync((int[] ids) => products.Where(product => ids.Contains(product.Id)).ToList());
+        _jobRequirementService.Setup(x => x.IsJobProductAsync(It.IsAny<Product>())).ReturnsAsync(true);
+        _productModelFactory.Setup(x => x.PrepareProductOverviewModelsAsync(It.IsAny<IEnumerable<Product>>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<int?>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .ReturnsAsync((IEnumerable<Product> selectedProducts, bool preparePriceModel, bool preparePictureModel, int? productThumbPictureSize, bool prepareSpecificationAttributes, bool forceRedirectionAfterAddingToCart) => selectedProducts
+                .Select(product => new ProductOverviewModel { Id = product.Id, Name = product.Name })
+                .ToList());
+
+        // Act
+        var result = await _controller.MyActivity(AIInterviewDefaults.MyActivitySavedJobsTabKey, page: 2, pageSize: 5);
+
+        // Assert
+        var model = (MyActivityPageModel)((ViewResult)result).Model;
+        Assert.That(model.SavedJobs.TotalCount, Is.EqualTo(6));
+        Assert.That(model.SavedJobs.TotalPages, Is.EqualTo(2));
+        Assert.That(model.SavedJobs.Page, Is.EqualTo(2));
+        Assert.That(model.SavedJobs.Products.Select(product => product.Id).ToArray(), Is.EqualTo(new[] { 1 }));
+    }
+
+    [Test]
+    public async Task MyActivity_MockInterviews_Paginates_Results()
+    {
+        // Arrange
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(Enumerable.Range(1, 6)
+                .Select(index => new InterviewSession
+                {
+                    Id = index,
+                    ProductId = index,
+                    InterviewType = AIInterviewDefaults.InterviewTypeMockPractice,
+                    CreatedOnUtc = new DateTime(2026, 7, index, 0, 0, 0, DateTimeKind.Utc),
+                    Score = 50 + index
+                })
+                .ToList());
+
+        // Act
+        var result = await _controller.MyActivity(AIInterviewDefaults.MyActivityMockInterviewsTabKey, page: 2, pageSize: 5);
+
+        // Assert
+        var model = (MyActivityPageModel)((ViewResult)result).Model;
+        Assert.That(model.MockInterviews.TotalCount, Is.EqualTo(6));
+        Assert.That(model.MockInterviews.TotalPages, Is.EqualTo(2));
+        Assert.That(model.MockInterviews.Page, Is.EqualTo(2));
+        Assert.That(model.MockInterviews.Items.Count, Is.EqualTo(1));
+    }
+
+    [Test]
     public async Task MyApplications_Legacy_Route_Still_Returns_Standalone_View()
     {
         // Act
