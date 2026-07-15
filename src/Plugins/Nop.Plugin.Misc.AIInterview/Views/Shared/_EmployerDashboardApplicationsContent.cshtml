@@ -1,3 +1,5 @@
+@using System.Collections.Generic
+@using System.Globalization
 @model ApplicationListModel
 @using Nop.Plugin.Misc.AIInterview.Domain
 @using Nop.Services.Helpers
@@ -13,6 +15,37 @@
     var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
     var appliedFromLabelText = T("Plugins.Misc.AIInterview.Employer.Applications.AppliedFromUtc").Text.Replace(" (UTC)", string.Empty);
     var appliedToLabelText = T("Plugins.Misc.AIInterview.Employer.Applications.AppliedToUtc").Text.Replace(" (UTC)", string.Empty);
+    var pagerRouteValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["tab"] = AIInterviewDefaults.EmployerDashboardApplicationsTabKey,
+        ["InterviewSort"] = Model.InterviewSort
+    };
+    var pagerModel = new MyActivityPagerModel
+    {
+        Page = Model.Page,
+        PageSize = Model.PageSize,
+        TotalCount = Model.TotalCount,
+        TotalPages = Model.TotalPages,
+        RouteValues = pagerRouteValues
+    };
+
+    if (!string.IsNullOrWhiteSpace(Model.CandidateNameOrEmail))
+        pagerRouteValues["CandidateNameOrEmail"] = Model.CandidateNameOrEmail;
+
+    if (!string.IsNullOrWhiteSpace(Model.Status))
+        pagerRouteValues["Status"] = Model.Status;
+
+    if (Model.MinScore.HasValue)
+        pagerRouteValues["MinScore"] = Model.MinScore.Value.ToString(CultureInfo.InvariantCulture);
+
+    if (Model.MaxScore.HasValue)
+        pagerRouteValues["MaxScore"] = Model.MaxScore.Value.ToString(CultureInfo.InvariantCulture);
+
+    if (Model.StartDate.HasValue)
+        pagerRouteValues["StartDate"] = Model.StartDate.Value.ToString("yyyy-MM-dd");
+
+    if (Model.EndDate.HasValue)
+        pagerRouteValues["EndDate"] = Model.EndDate.Value.ToString("yyyy-MM-dd");
 
     string GetStatusLabel(string status) => T($"Plugins.Misc.AIInterview.Status.{JobApplicationStatuses.Normalize(status)}").Text;
 }
@@ -65,21 +98,6 @@
                         <label for="EndDate">@appliedToLabelText</label>
                         <input id="EndDate" name="EndDate" type="date" value="@(Model.EndDate?.ToString("yyyy-MM-dd"))" />
                     </div>
-                    <div class="employer-field">
-                        <label for="PageSize">@T("Plugins.Misc.AIInterview.Employer.Applications.PageSize")</label>
-                        <select id="PageSize" name="PageSize">
-                            <option value="10" selected="@(Model.PageSize == 10)">10</option>
-                            <option value="20" selected="@(Model.PageSize == 20)">20</option>
-                            <option value="50" selected="@(Model.PageSize == 50)">50</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="employer-filter-meta">
-                    <label class="employer-checkbox">
-                        <input type="checkbox" name="OnlyWithInterviewScore" value="true" checked="@Model.OnlyWithInterviewScore" />
-                        @T("Plugins.Misc.AIInterview.Employer.Applications.OnlyWithInterviewScore")
-                    </label>
                 </div>
 
                 <div class="employer-filter-actions">
@@ -92,8 +110,7 @@
                         MaxScore = Model.MaxScore,
                         StartDate = Model.StartDate?.ToString("o"),
                         EndDate = Model.EndDate?.ToString("o"),
-                        InterviewSort = Model.InterviewSort,
-                        OnlyWithInterviewScore = Model.OnlyWithInterviewScore
+                        InterviewSort = Model.InterviewSort
                     })" title="@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")">@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")</a>
                 </div>
             </div>
@@ -103,13 +120,10 @@
             <div class="filter-summary">
                 @string.Format(T("Plugins.Misc.AIInterview.Employer.Applications.ResultsSummary").Text, Model.TotalCount)
             </div>
-            <div class="page-size-wrap">
-                @T("Plugins.Misc.AIInterview.Employer.Applications.PageSize") @Model.PageSize
-            </div>
         </div>
 
         <div class="table-wrapper">
-            <div class="employer-table-wrapper">
+            <div class="employer-dashboard-table-wrapper employer-table-wrapper">
                 <table class="data-table employer-table">
                     <thead>
                         <tr>
@@ -132,7 +146,7 @@
                             var candidateDisplay = string.IsNullOrWhiteSpace(app.CandidateName) ? app.CandidateEmail : app.CandidateName;
                             var updateLabel = $"{T("Plugins.Misc.AIInterview.Employer.Applications.Update").Text} - {candidateDisplay}";
                             <tr>
-                                <td class="col-candidate">@app.CandidateName</td>
+                                <td class="col-candidate">@candidateDisplay</td>
                                 <td class="col-email">@app.CandidateEmail</td>
                                 <td class="col-phone">@app.CandidatePhone</td>
                                 <td class="col-charge"><span class="charge-pill">@app.ChargeMode</span></td>
@@ -209,5 +223,6 @@
                 </table>
             </div>
         </div>
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityPager.cshtml", pagerModel)
     </div>
 </div>

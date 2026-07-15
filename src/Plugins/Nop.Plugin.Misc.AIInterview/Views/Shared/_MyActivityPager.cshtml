@@ -10,25 +10,40 @@
 
     var isMyActivity = ViewData["IsMyActivity"] is bool isMyActivityValue && isMyActivityValue;
     var basePath = Context.Request.Path.Value ?? string.Empty;
+    var pageQueryParameterName = string.IsNullOrWhiteSpace(Model.PageQueryParameterName) ? "page" : Model.PageQueryParameterName;
+    var pageSizeQueryParameterName = string.IsNullOrWhiteSpace(Model.PageSizeQueryParameterName) ? "pageSize" : Model.PageSizeQueryParameterName;
     var baseQuery = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-    foreach (var pair in Context.Request.Query)
+    if (Model.RouteValues?.Any() ?? false)
     {
-        var value = pair.Value.ToString();
-        if (string.IsNullOrWhiteSpace(value))
-            continue;
+        foreach (var pair in Model.RouteValues)
+        {
+            if (string.IsNullOrWhiteSpace(pair.Value))
+                continue;
 
-        baseQuery[pair.Key] = value;
+            baseQuery[pair.Key] = pair.Value;
+        }
+    }
+    else
+    {
+        foreach (var pair in Context.Request.Query)
+        {
+            var value = pair.Value.ToString();
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            baseQuery[pair.Key] = value;
+        }
     }
 
-    baseQuery["pageSize"] = Model.PageSize.ToString(CultureInfo.InvariantCulture);
+    baseQuery[pageSizeQueryParameterName] = Model.PageSize.ToString(CultureInfo.InvariantCulture);
 
     string BuildPageUrl(int targetPage)
     {
         var values = new Dictionary<string, string>(baseQuery, StringComparer.OrdinalIgnoreCase)
         {
-            ["page"] = targetPage.ToString(CultureInfo.InvariantCulture),
-            ["pageSize"] = Model.PageSize.ToString(CultureInfo.InvariantCulture)
+            [pageQueryParameterName] = targetPage.ToString(CultureInfo.InvariantCulture),
+            [pageSizeQueryParameterName] = Model.PageSize.ToString(CultureInfo.InvariantCulture)
         };
 
         return QueryHelpers.AddQueryString(basePath, values);

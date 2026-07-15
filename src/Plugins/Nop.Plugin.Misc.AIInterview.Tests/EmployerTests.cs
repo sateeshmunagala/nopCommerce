@@ -378,6 +378,25 @@ public class EmployerTests
     }
 
     [Test]
+    public async Task CreateInvite_DateOnlyExpiry_Normalizes_To_EndOfDayUtc()
+    {
+        _productService.Setup(x => x.GetProductByIdAsync(10))
+            .ReturnsAsync(new Product { Id = 10, VendorId = _employer.VendorId, Name = "AI Developer" });
+
+        var selectedDate = DateTime.UtcNow.Date.AddDays(3);
+
+        await _mockAiController.CreateInvite("invited@test.com", 10, 1, selectedDate);
+
+        _inviteService.Verify(x => x.CreateInviteAsync(
+            123,
+            "invited@test.com",
+            10,
+            1,
+            It.Is<DateTime?>(value => value == selectedDate.Date.AddDays(1).AddTicks(-1))),
+            Times.Once);
+    }
+
+    [Test]
     public async Task CreateInvite_InvalidEmail_ReturnsFailure()
     {
         _productService.Setup(x => x.GetProductByIdAsync(10))
@@ -969,6 +988,38 @@ public class EmployerTests
         Assert.That(cssText, Does.Contain("[data-start-interview-button=\"true\"].job-ai-action"));
         Assert.That(cssText, Does.Not.Contain("#job-apply-button.job-ai-action"));
         Assert.That(cssText, Does.Not.Contain("#start-job-interview.job-ai-action"));
+    }
+
+    [Test]
+    public void EmployerDashboard_Partials_Use_Pagers_Compact_Actions_And_DateOnly_Invites()
+    {
+        var overviewPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardOverviewContent.cshtml"));
+        var jobsPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardJobsContent.cshtml"));
+        var applicationsPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardApplicationsContent.cshtml"));
+        var invitesPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardInvitesContent.cshtml"));
+
+        Assert.That(overviewPartial, Does.Not.Contain("ReviewApplicationsAction"));
+        Assert.That(overviewPartial, Does.Not.Contain("ManageInvitesAction"));
+        Assert.That(overviewPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Dashboard.Action.ReviewQueue"));
+        Assert.That(overviewPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Dashboard.Action.ViewAnalysis"));
+        Assert.That(overviewPartial, Does.Contain("fa-solid fa-list-check"));
+        Assert.That(overviewPartial, Does.Contain("fa-solid fa-chart-column"));
+        Assert.That(overviewPartial, Does.Contain("_MyActivityPager.cshtml"));
+
+        Assert.That(jobsPartial, Does.Contain("fa-solid fa-pen-to-square"));
+        Assert.That(jobsPartial, Does.Contain("fa-eye-slash"));
+        Assert.That(jobsPartial, Does.Contain("employer-dashboard-table-wrapper"));
+        Assert.That(jobsPartial, Does.Contain("_MyActivityPager.cshtml"));
+
+        Assert.That(applicationsPartial, Does.Contain("employer-dashboard-table-wrapper employer-table-wrapper"));
+        Assert.That(applicationsPartial, Does.Contain("_MyActivityPager.cshtml"));
+
+        Assert.That(invitesPartial, Does.Contain("name=\"maxAttempts\" value=\"1\""));
+        Assert.That(invitesPartial, Does.Not.Contain("id=\"expiryDateUtc\""));
+        Assert.That(invitesPartial, Does.Not.Contain("id=\"maxAttempts\" type=\"number\""));
+        Assert.That(invitesPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Deactivate.Tooltip"));
+        Assert.That(invitesPartial, Does.Contain("employer-dashboard-long-link"));
+        Assert.That(invitesPartial, Does.Contain("_MyActivityPager.cshtml"));
     }
 
     [Test]

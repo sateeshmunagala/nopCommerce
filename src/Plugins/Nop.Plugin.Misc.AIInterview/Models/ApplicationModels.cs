@@ -120,6 +120,9 @@ public record MyActivityPagerModel : BaseNopModel
     public int PageSize { get; set; }
     public int TotalCount { get; set; }
     public int TotalPages { get; set; }
+    public string PageQueryParameterName { get; set; } = "page";
+    public string PageSizeQueryParameterName { get; set; } = "pageSize";
+    public IDictionary<string, string> RouteValues { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 }
 
 public record MyActivityPageModel : BaseNopModel
@@ -153,6 +156,10 @@ public record VendorScoreboardModel : BaseNopModel
     public int ActiveFlaggedViolations { get; set; }
     public decimal? AverageScore { get; set; }
     public decimal? HighestScore { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+    public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
     public IList<ApplicationModel> RecentApplications { get; set; } = new List<ApplicationModel>();
 }
 
@@ -249,11 +256,19 @@ public record EmployerDashboardJobModel : BaseNopModel
 
 public record EmployerDashboardJobsTabModel : BaseNopModel
 {
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+    public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
     public IList<EmployerDashboardJobModel> Jobs { get; set; } = new List<EmployerDashboardJobModel>();
 }
 
 public record EmployerDashboardInvitesTabModel : BaseNopModel
 {
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+    public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
     public IList<SponsorInvite> Invites { get; set; } = new List<SponsorInvite>();
     public IDictionary<int, string> InviteStatuses { get; set; } = new Dictionary<int, string>();
     public IList<SelectListItem> AvailableProducts { get; set; } = new List<SelectListItem>();

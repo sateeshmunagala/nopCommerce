@@ -1,3 +1,4 @@
+@using System.Collections.Generic
 @using Nop.Plugin.Misc.AIInterview.Domain
 @using Nop.Services.Helpers
 @model VendorScoreboardModel
@@ -15,6 +16,19 @@
     var totalSubmissionsText = string.Format(T("Plugins.Misc.AIInterview.VendorScoreboard.TotalSubmissions").Text, Model.TotalApplications);
     var highestScoreText = string.Format(T("Plugins.Misc.AIInterview.VendorScoreboard.HighestRecordedScore").Text, Model.HighestScore?.ToString("N2") ?? "-");
     var shortlistedText = string.Format(T("Plugins.Misc.AIInterview.VendorScoreboard.ShortlistedDetail").Text, Model.ShortlistedApplications);
+    var reviewQueueText = T("Plugins.Misc.AIInterview.Employer.Dashboard.Action.ReviewQueue").Text;
+    var viewAnalysisText = T("Plugins.Misc.AIInterview.Employer.Dashboard.Action.ViewAnalysis").Text;
+    var pagerModel = new MyActivityPagerModel
+    {
+        Page = Model.Page,
+        PageSize = Model.PageSize,
+        TotalCount = Model.TotalCount,
+        TotalPages = Model.TotalPages,
+        RouteValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["tab"] = AIInterviewDefaults.EmployerDashboardOverviewTabKey
+        }
+    };
 
     static string GetVerificationLabel(string rawStatus)
     {
@@ -38,44 +52,34 @@
 }
 
 <div class="section scoreboard-deck-shell">
-    <div class="scoreboard-deck-header">
+    @* <div class="scoreboard-deck-header employer-dashboard-section-header">
         <div>
             <strong class="scoreboard-deck-eyebrow">@eyebrowText</strong>
             <p class="scoreboard-deck-title">@T("Plugins.Misc.AIInterview.VendorScoreboard.AssessmentWorkflow")</p>
             <p class="scoreboard-deck-copy">@introText</p>
         </div>
-        <div class="buttons scoreboard-deck-actions">
-            <a class="button-1 scoreboard-deck-action-primary" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobCreationRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.CreateJobAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.CreateJobAction")</a>
-            <a class="button-2 scoreboard-deck-action-secondary" href="@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey })" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewApplicationsAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewApplicationsAction")</a>
-            <a class="button-2 scoreboard-deck-action-secondary" href="@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardInvitesTabKey })" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ManageInvitesAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ManageInvitesAction")</a>
-        </div>
-    </div>
+    </div> *@
 
-    <div class="fieldset scoreboard-deck-summary">
-        <div class="scoreboard-deck-metrics">
-            <div class="scoreboard-deck-metric">
-                <span class="scoreboard-deck-metric-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.TotalCompletedAssessments")</span>
-                <strong class="scoreboard-deck-metric-value">@Model.CompletedInterviews</strong>
-                <span class="scoreboard-deck-metric-detail">@totalSubmissionsText</span>
-            </div>
-            <div class="scoreboard-deck-metric">
-                <span class="scoreboard-deck-metric-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.AverageAnalyticalScore")</span>
-                <strong class="scoreboard-deck-metric-value">@(Model.AverageScore?.ToString("N2") ?? "-")</strong>
-                <span class="scoreboard-deck-metric-detail">@highestScoreText</span>
-            </div>
-            <div class="scoreboard-deck-metric">
-                <span class="scoreboard-deck-metric-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.ActiveFlaggedViolations")</span>
-                <strong class="scoreboard-deck-metric-value">@Model.ActiveFlaggedViolations</strong>
-                <span class="scoreboard-deck-metric-detail">@shortlistedText</span>
-            </div>
+    <div class="scoreboard-deck-metrics employer-dashboard-metrics">
+        <div class="scoreboard-deck-metric">
+            <span class="scoreboard-deck-metric-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.TotalCompletedAssessments")</span>
+            <strong class="scoreboard-deck-metric-value">@Model.CompletedInterviews</strong>
+            <span class="scoreboard-deck-metric-detail">@totalSubmissionsText</span>
         </div>
-    </div>
-
-    <div class="fieldset scoreboard-deck-overview">
-        <div class="scoreboard-deck-overview-card">
+        @* <div class="scoreboard-deck-metric">
+            <span class="scoreboard-deck-metric-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.AverageAnalyticalScore")</span>
+            <strong class="scoreboard-deck-metric-value">@(Model.AverageScore?.ToString("N2") ?? "-")</strong>
+            <span class="scoreboard-deck-metric-detail">@highestScoreText</span>
+        </div> *@
+        @* <div class="scoreboard-deck-metric">
+            <span class="scoreboard-deck-metric-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.ActiveFlaggedViolations")</span>
+            <strong class="scoreboard-deck-metric-value">@Model.ActiveFlaggedViolations</strong>
+            <span class="scoreboard-deck-metric-detail">@shortlistedText</span>
+        </div> *@
+        @* <div class="scoreboard-deck-overview-card">
             <span class="scoreboard-deck-overview-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.OpenJobModules")</span>
             <strong class="scoreboard-deck-overview-value">@Model.TotalJobs</strong>
-        </div>
+        </div> *@
         <div class="scoreboard-deck-overview-card">
             <span class="scoreboard-deck-overview-label">@T("Plugins.Misc.AIInterview.VendorScoreboard.CandidateVolume")</span>
             <strong class="scoreboard-deck-overview-value">@Model.TotalApplications</strong>
@@ -93,7 +97,7 @@
     </div>
     @if (Model.RecentApplications.Any())
     {
-        <div class="table-wrapper scoreboard-deck-table-wrapper">
+        <div class="table-wrapper employer-dashboard-table-wrapper scoreboard-deck-table-wrapper">
             <table class="data-table scoreboard-deck-table">
                 <thead>
                     <tr>
@@ -146,11 +150,23 @@
                                 <div class="buttons scoreboard-deck-row-actions">
                                     @if (!string.IsNullOrWhiteSpace(application.InterviewReportUrl))
                                     {
-                                        <a class="button-2 scoreboard-deck-row-link" href="@application.InterviewReportUrl" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ViewAnalysis")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ViewAnalysis")</a>
+                                        <a class="button-2 ai-icon-action employer-dashboard-action-icon"
+                                           href="@application.InterviewReportUrl"
+                                           title="@viewAnalysisText"
+                                           aria-label="@viewAnalysisText">
+                                            <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
+                                            <span class="sr-only">@viewAnalysisText</span>
+                                        </a>
                                     }
                                     else
                                     {
-                                        <a class="button-2 scoreboard-deck-row-link" href="@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey })" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")</a>
+                                        <a class="button-2 ai-icon-action employer-dashboard-action-icon"
+                                           href="@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey })"
+                                           title="@reviewQueueText"
+                                           aria-label="@reviewQueueText">
+                                            <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                                            <span class="sr-only">@reviewQueueText</span>
+                                        </a>
                                     }
                                 </div>
                             </td>
@@ -159,6 +175,7 @@
                 </tbody>
             </table>
         </div>
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityPager.cshtml", pagerModel)
     }
     else
     {

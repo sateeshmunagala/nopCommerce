@@ -1631,6 +1631,8 @@ public class MockAiInterviewController : BasePluginController
         if (maxAttempts <= 0)
             return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidAttempts") });
 
+        expiryDateUtc = NormalizeInviteExpiryDateUtc(expiryDateUtc);
+
         if (expiryDateUtc.HasValue && expiryDateUtc.Value <= DateTime.UtcNow)
             return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidExpiry") });
 
@@ -1720,6 +1722,14 @@ public class MockAiInterviewController : BasePluginController
         var customer = await _workContext.GetCurrentCustomerAsync();
         await _inviteService.DeactivateInviteAsync(id, customer.Id);
         return Json(new { success = true, message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Deactivated") });
+    }
+
+    protected virtual DateTime? NormalizeInviteExpiryDateUtc(DateTime? expiryDateUtc)
+    {
+        if (!expiryDateUtc.HasValue)
+            return null;
+
+        return DateTime.SpecifyKind(expiryDateUtc.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
     }
 
     protected virtual async Task<string> GetInviteStatusTextAsync(SponsorInvite invite)

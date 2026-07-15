@@ -39,6 +39,8 @@ public class AIInterviewController : BasePluginController
 {
     private const int DefaultMyActivityPageSize = 5;
     private const int MaxMyActivityPageSize = 50;
+    private const int DefaultEmployerDashboardTablePageSize = 10;
+    private const int DefaultEmployerApplicationsPageSize = 20;
 
     private readonly IApplicationService _applicationService;
     private readonly IInterviewSessionService _interviewSessionService;
@@ -871,7 +873,7 @@ public class AIInterviewController : BasePluginController
         return values;
     }
 
-    protected virtual async Task<EmployerDashboardPageModel> BuildEmployerDashboardPageModelAsync(Customer customer, string tab, ApplicationListModel applicationsModel = null, int pageIndex = 0, int pageSize = 10)
+    protected virtual async Task<EmployerDashboardPageModel> BuildEmployerDashboardPageModelAsync(Customer customer, string tab, ApplicationListModel applicationsModel = null, int page = 1, int pageSize = DefaultEmployerDashboardTablePageSize)
     {
         var activeTab = NormalizeEmployerDashboardTab(tab);
         var model = new EmployerDashboardPageModel
@@ -882,28 +884,35 @@ public class AIInterviewController : BasePluginController
         switch (activeTab)
         {
             case var value when string.Equals(value, AIInterviewDefaults.EmployerDashboardJobsTabKey, StringComparison.Ordinal):
-                model.Jobs = await BuildEmployerDashboardJobsTabModelAsync(customer);
+                model.Jobs = await BuildEmployerDashboardJobsTabModelAsync(customer, page, pageSize);
                 break;
             case var value when string.Equals(value, AIInterviewDefaults.EmployerDashboardApplicationsTabKey, StringComparison.Ordinal):
-                model.Applications = await BuildEmployerApplicationsModelAsync(customer, applicationsModel ?? new ApplicationListModel(), pageIndex, pageSize);
+                model.Applications = await BuildEmployerApplicationsModelAsync(customer, applicationsModel ?? new ApplicationListModel(), page > 0 ? page - 1 : 0, pageSize);
                 break;
             case var value when string.Equals(value, AIInterviewDefaults.EmployerDashboardInvitesTabKey, StringComparison.Ordinal):
-                model.Invites = await BuildEmployerDashboardInvitesTabModelAsync(customer);
+                model.Invites = await BuildEmployerDashboardInvitesTabModelAsync(customer, page, pageSize);
                 break;
             default:
-                model.Overview = await BuildVendorScoreboardModelAsync(customer);
+                model.Overview = await BuildVendorScoreboardModelAsync(customer, page, pageSize);
                 break;
         }
 
         return model;
     }
 
-    public async Task<IActionResult> EmployerDashboard(string tab = null, string candidateNameOrEmail = null, string status = null, decimal? minScore = null, decimal? maxScore = null, DateTime? startDate = null, DateTime? endDate = null, string interviewSort = "TopScorersFirst", bool onlyWithInterviewScore = false, int page = 1, int pageSize = 20, int pageIndex = 0)
+    public async Task<IActionResult> EmployerDashboard(string tab = null, string candidateNameOrEmail = null, string status = null, decimal? minScore = null, decimal? maxScore = null, DateTime? startDate = null, DateTime? endDate = null, string interviewSort = "TopScorersFirst", bool onlyWithInterviewScore = false, int page = 1, int pageSize = DefaultEmployerApplicationsPageSize, int pageIndex = 0)
     {
         if (!await IsAuthorizedForEmployerActionsAsync())
             return Challenge();
 
         var customer = await _workContext.GetCurrentCustomerAsync();
+        var activeTab = NormalizeEmployerDashboardTab(tab);
+        var effectivePage = page > 0 ? page : pageIndex + 1;
+        var effectivePageSize = pageSize > 0
+            ? pageSize
+            : string.Equals(activeTab, AIInterviewDefaults.EmployerDashboardApplicationsTabKey, StringComparison.Ordinal)
+                ? DefaultEmployerApplicationsPageSize
+                : DefaultEmployerDashboardTablePageSize;
         var applicationsModel = new ApplicationListModel
         {
             CandidateNameOrEmail = candidateNameOrEmail,
@@ -914,11 +923,11 @@ public class AIInterviewController : BasePluginController
             EndDate = endDate,
             InterviewSort = string.IsNullOrWhiteSpace(interviewSort) ? "TopScorersFirst" : interviewSort,
             OnlyWithInterviewScore = onlyWithInterviewScore,
-            Page = page,
-            PageSize = pageSize
+            Page = effectivePage,
+            PageSize = effectivePageSize
         };
 
-        var model = await BuildEmployerDashboardPageModelAsync(customer, tab, applicationsModel, pageIndex, pageSize);
+        var model = await BuildEmployerDashboardPageModelAsync(customer, activeTab, applicationsModel, effectivePage, effectivePageSize);
         ViewData["EmployerDashboardRouteValues"] = BuildEmployerDashboardRouteValues(model.ActiveTab, model.Applications);
 
         return View("~/Plugins/Misc.AIInterview/Views/EmployerDashboard.cshtml", model);
@@ -1486,7 +1495,7 @@ public class AIInterviewController : BasePluginController
         });
     }
 
-    protected virtual async Task<VendorScoreboardModel> BuildVendorScoreboardModelAsync(Customer customer)
+    protected virtual async Task<VendorScoreboardModel> BuildVendorScoreboardModelAsync(Customer customer, int page = 1, int pageSize = DefaultEmployerDashboardTablePageSize)
     {
         var isAdmin = await _customerService.IsAdminAsync(customer);
         var vendorId = isAdmin ? 0 : customer.VendorId;
@@ -1538,6 +1547,16 @@ public class AIInterviewController : BasePluginController
                 };
             }));
 
+        var pagedApplications = ApplyInMemoryPaging(
+            recentApplications.ToList(),
+            page,
+            pageSize,
+            DefaultEmployerDashboardTablePageSize,
+            out var normalizedPage,
+            out var normalizedPageSize,
+            out var totalCount,
+            out var totalPages);
+
         return new VendorScoreboardModel
         {
             TotalJobs = products?.Count ?? 0,
@@ -1553,17 +1572,22 @@ public class AIInterviewController : BasePluginController
             }),
             AverageScore = completedScores.Any() ? completedScores.Average() : null,
             HighestScore = completedScores.Any() ? completedScores.Max() : null,
-            RecentApplications = recentApplications.ToList()
+            Page = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            RecentApplications = pagedApplications
         };
     }
 
-    protected virtual async Task<ApplicationListModel> BuildEmployerApplicationsModelAsync(Customer customer, ApplicationListModel model, int pageIndex = 0, int pageSize = 10)
+    protected virtual async Task<ApplicationListModel> BuildEmployerApplicationsModelAsync(Customer customer, ApplicationListModel model, int pageIndex = 0, int pageSize = DefaultEmployerApplicationsPageSize)
     {
         var isEmployer = !await _customerService.IsAdminAsync(customer) && customer.VendorId > 0;
         var (startDateUtc, endDateUtc) = await ConvertApplicationFilterDatesToUtcAsync(model.StartDate, model.EndDate);
+        var currentPage = model.Page > 0 ? model.Page : pageIndex + 1;
+        var effectivePageSize = model.PageSize > 0 ? model.PageSize : pageSize;
 
-        pageSize = model.PageSize > 0 ? model.PageSize : pageSize;
-
+        // Keep dashboard filtering accurate by enriching the employer-owned result set first, then paging in memory.
         var applications = await _applicationService.GetApplicationsAsync(
             candidateNameOrEmail: model.CandidateNameOrEmail,
             status: model.Status,
@@ -1572,8 +1596,8 @@ public class AIInterviewController : BasePluginController
             startDate: startDateUtc,
             endDate: endDateUtc,
             vendorId: isEmployer ? customer.VendorId : 0,
-            pageIndex: pageIndex,
-            pageSize: pageSize,
+            pageIndex: 0,
+            pageSize: int.MaxValue,
             sortByScore: model.SortByScore);
 
         var customerIds = applications.Select(application => application.CustomerId).Distinct().ToList();
@@ -1635,11 +1659,24 @@ public class AIInterviewController : BasePluginController
                 .ToList();
         }
 
-        model.TotalCount = model.Applications.Count;
+        model.Applications = ApplyInMemoryPaging(
+            model.Applications,
+            currentPage,
+            effectivePageSize,
+            DefaultEmployerApplicationsPageSize,
+            out var normalizedPage,
+            out var normalizedPageSize,
+            out var totalCount,
+            out var totalPages);
+        model.Page = normalizedPage;
+        model.PageSize = normalizedPageSize;
+        model.TotalCount = totalCount;
+        model.TotalPages = totalPages;
+
         return model;
     }
 
-    protected virtual async Task<EmployerDashboardJobsTabModel> BuildEmployerDashboardJobsTabModelAsync(Customer customer)
+    protected virtual async Task<EmployerDashboardJobsTabModel> BuildEmployerDashboardJobsTabModelAsync(Customer customer, int page = 1, int pageSize = DefaultEmployerDashboardTablePageSize)
     {
         var model = new EmployerDashboardJobsTabModel();
         if (_jobRequirementService == null || _productService == null)
@@ -1670,27 +1707,75 @@ public class AIInterviewController : BasePluginController
             });
         }
 
+        model.Jobs = ApplyInMemoryPaging(
+            model.Jobs,
+            page,
+            pageSize,
+            DefaultEmployerDashboardTablePageSize,
+            out var normalizedPage,
+            out var normalizedPageSize,
+            out var totalCount,
+            out var totalPages);
+        model.Page = normalizedPage;
+        model.PageSize = normalizedPageSize;
+        model.TotalCount = totalCount;
+        model.TotalPages = totalPages;
+
         return model;
     }
 
-    protected virtual async Task<EmployerDashboardInvitesTabModel> BuildEmployerDashboardInvitesTabModelAsync(Customer customer)
+    protected virtual async Task<EmployerDashboardInvitesTabModel> BuildEmployerDashboardInvitesTabModelAsync(Customer customer, int page = 1, int pageSize = DefaultEmployerDashboardTablePageSize)
     {
         var model = new EmployerDashboardInvitesTabModel();
         if (_inviteService == null || _creditService == null)
             return model;
 
-        var invites = await _inviteService.GetSponsorInvitesAsync(customer.Id) ?? new List<SponsorInvite>();
+        var invites = (await _inviteService.GetSponsorInvitesAsync(customer.Id) ?? new List<SponsorInvite>())
+            .OrderByDescending(invite => invite.CreatedOnUtc)
+            .ToList();
         var wallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
 
-        model.Invites = invites;
         model.CreditBalance = wallet.Balance;
         model.CreditBalanceDisplay = decimal.Truncate(wallet.Balance).ToString("0", CultureInfo.InvariantCulture);
         model.AvailableProducts = await BuildEmployerInviteProductSelectListAsync(customer);
+        model.Invites = ApplyInMemoryPaging(
+            invites,
+            page,
+            pageSize,
+            DefaultEmployerDashboardTablePageSize,
+            out var normalizedPage,
+            out var normalizedPageSize,
+            out var totalCount,
+            out var totalPages);
+        model.Page = normalizedPage;
+        model.PageSize = normalizedPageSize;
+        model.TotalCount = totalCount;
+        model.TotalPages = totalPages;
 
-        foreach (var invite in invites)
+        foreach (var invite in model.Invites)
             model.InviteStatuses[invite.Id] = await GetInviteStatusTextAsync(invite);
 
         return model;
+    }
+
+    protected virtual IList<T> ApplyInMemoryPaging<T>(IList<T> items, int page, int pageSize, int defaultPageSize, out int normalizedPage, out int normalizedPageSize, out int totalCount, out int totalPages)
+    {
+        items ??= new List<T>();
+        totalCount = items.Count;
+        normalizedPageSize = pageSize > 0 ? pageSize : Math.Max(1, defaultPageSize);
+        totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)normalizedPageSize);
+        normalizedPage = page > 0 ? page : 1;
+
+        if (totalPages > 0 && normalizedPage > totalPages)
+            normalizedPage = totalPages;
+
+        if (totalPages == 0)
+            normalizedPage = 1;
+
+        return items
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToList();
     }
 
     protected virtual async Task<IList<SelectListItem>> BuildEmployerInviteProductSelectListAsync(Customer customer)

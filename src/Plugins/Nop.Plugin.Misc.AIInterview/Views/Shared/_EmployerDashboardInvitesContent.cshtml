@@ -1,14 +1,33 @@
+@using System.Collections.Generic
 @model EmployerDashboardInvitesTabModel
 
-<div class="credit-balance">
-    <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Balance"):</strong> @Model.CreditBalanceDisplay
-</div>
+@{
+    var deactivateInviteText = T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate.Tooltip").Text;
+    var pagerModel = new MyActivityPagerModel
+    {
+        Page = Model.Page,
+        PageSize = Model.PageSize,
+        TotalCount = Model.TotalCount,
+        TotalPages = Model.TotalPages,
+        RouteValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["tab"] = AIInterviewDefaults.EmployerDashboardInvitesTabKey
+        }
+    };
+}
 
 <div class="section create-invite">
-    <div class="title">
-        <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle")</strong>
+    <div class="scoreboard-deck-header employer-dashboard-section-header employer-invite-header">
+        <div>
+            <strong class="scoreboard-deck-eyebrow">@T("Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Invites")</strong>
+            @* <p class="scoreboard-deck-title">@T("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle")</p> *@
+        </div>
+        <div class="credit-balance employer-credit-chip">
+            <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Balance"):</strong> @Model.CreditBalanceDisplay
+        </div>
     </div>
     <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post" class="invite-create-form">
+        <input type="hidden" name="maxAttempts" value="1" />
         <div class="fieldset">
             <div class="invite-fieldset">
                 <div class="form-fields invite-form-grid">
@@ -25,19 +44,11 @@
                             }
                         </select>
                     </div>
-                    <div class="inputs invite-field">
-                        <label for="maxAttempts">@T("Plugins.Misc.AIInterview.Employer.Invite.MaxAttempts"):</label>
-                        <input id="maxAttempts" type="number" name="maxAttempts" value="1" required class="form-control" />
-                    </div>
-                    <div class="inputs invite-field">
-                        <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
-                        <input id="expiryDateUtc" type="datetime-local" name="expiryDateUtc" class="form-control" />
+                    <div class="inputs invite-field invite-field-action">
+                        <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="buttons invite-actions">
-            <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
         </div>
     </form>
 </div>
@@ -49,7 +60,7 @@
     @if (Model.Invites.Any())
     {
         <div class="table-wrapper">
-            <div class="invite-table-wrapper">
+            <div class="employer-dashboard-table-wrapper invite-table-wrapper">
                 <table class="data-table invite-table">
                     <thead>
                         <tr>
@@ -70,14 +81,20 @@
                             var isActiveInvite = string.Equals(statusKey, activeStatus, StringComparison.OrdinalIgnoreCase);
                             <tr>
                                 <td>@invite.Email</td>
-                                <td>@invite.InviteCode</td>
-                                <td><a href="@inviteUrl">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</a></td>
+                                <td><span class="employer-dashboard-code">@invite.InviteCode</span></td>
+                                <td><a class="employer-dashboard-long-link" href="@inviteUrl">link</a></td>
                                 <td>@(string.IsNullOrWhiteSpace(statusKey) ? T("Plugins.Misc.AIInterview.Employer.Invite.Active") : statusKey)</td>
                                 <td>
                                     @if (isActiveInvite)
                                     {
                                         <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post" class="invite-deactivate-form">
-                                            <button type="submit" class="button-2 invite-deactivate-button">@T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate")</button>
+                                            <button type="submit"
+                                                    class="button-2 ai-icon-action invite-deactivate-button employer-dashboard-action-icon"
+                                                    title="@deactivateInviteText"
+                                                    aria-label="@deactivateInviteText">
+                                                <i class="fa-solid fa-ban" aria-hidden="true"></i>
+                                                <span class="sr-only">@deactivateInviteText</span>
+                                            </button>
                                         </form>
                                     }
                                 </td>
@@ -87,6 +104,7 @@
                 </table>
             </div>
         </div>
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityPager.cshtml", pagerModel)
     }
     else
     {

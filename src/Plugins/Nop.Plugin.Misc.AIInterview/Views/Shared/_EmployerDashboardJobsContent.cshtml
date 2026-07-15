@@ -1,3 +1,4 @@
+@using System.Collections.Generic
 @using Nop.Services.Helpers
 @model EmployerDashboardJobsTabModel
 @inject IDateTimeHelper dateTimeHelper
@@ -8,13 +9,25 @@
         var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(utcDateTime, DateTimeKind.Utc);
         return userDateTime.ToString("d");
     }
+
+    var pagerModel = new MyActivityPagerModel
+    {
+        Page = Model.Page,
+        PageSize = Model.PageSize,
+        TotalCount = Model.TotalCount,
+        TotalPages = Model.TotalPages,
+        RouteValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["tab"] = AIInterviewDefaults.EmployerDashboardJobsTabKey
+        }
+    };
 }
 
 <div class="section">
     <div class="scoreboard-deck-header">
         <div>
             <strong class="scoreboard-deck-eyebrow">@T("Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Jobs")</strong>
-            <p class="scoreboard-deck-title">@T("Plugins.Misc.AIInterview.Employer.Jobs.Title")</p>
+            @* <p class="scoreboard-deck-title">@T("Plugins.Misc.AIInterview.Employer.Jobs.Title")</p> *@
         </div>
         <div class="buttons scoreboard-deck-actions">
             <a class="button-1 scoreboard-deck-action-primary" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobCreationRouteName)" title="@T("Plugins.Misc.AIInterview.Employer.Jobs.Create")">@T("Plugins.Misc.AIInterview.Employer.Jobs.Create")</a>
@@ -23,8 +36,8 @@
 
     @if (Model.Jobs.Any())
     {
-        <div class="table-wrapper">
-            <table class="data-table employer-table">
+        <div class="table-wrapper employer-dashboard-table-wrapper">
+            <table class="data-table employer-table employer-dashboard-jobs-table">
                 <thead>
                     <tr>
                         <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.JobTitle")</th>
@@ -45,10 +58,28 @@
                             <td>@(await FormatUtcDateAsync(job.CreatedOnUtc))</td>
                             <td>@job.ApplicationCount</td>
                             <td>
+                                @{
+                                    var editText = T("Plugins.Misc.AIInterview.Employer.Jobs.Edit").Text;
+                                    var publishText = job.Published
+                                        ? T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublish").Text
+                                        : T("Plugins.Misc.AIInterview.Employer.Jobs.Publish").Text;
+                                }
                                 <div class="buttons scoreboard-deck-row-actions">
-                                    <a class="button-2 scoreboard-deck-row-link" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobEditRouteName, new { productId = job.ProductId })" title="@T("Plugins.Misc.AIInterview.Employer.Jobs.Edit")">@T("Plugins.Misc.AIInterview.Employer.Jobs.Edit")</a>
+                                    <a class="button-2 ai-icon-action employer-dashboard-action-icon"
+                                       href="@Url.RouteUrl(AIInterviewDefaults.VendorJobEditRouteName, new { productId = job.ProductId })"
+                                       title="@editText"
+                                       aria-label="@editText">
+                                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                                        <span class="sr-only">@editText</span>
+                                    </a>
                                     <form asp-route="@AIInterviewDefaults.VendorJobPublishToggleRouteName" asp-route-productId="@job.ProductId" method="post" class="inline">
-                                        <button type="submit" class="button-2 scoreboard-deck-row-link" title="@(job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublish") : T("Plugins.Misc.AIInterview.Employer.Jobs.Publish"))">@(job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublish") : T("Plugins.Misc.AIInterview.Employer.Jobs.Publish"))</button>
+                                        <button type="submit"
+                                                class="button-2 ai-icon-action employer-dashboard-action-icon"
+                                                title="@publishText"
+                                                aria-label="@publishText">
+                                            <i class="fa-solid @(job.Published ? "fa-eye-slash" : "fa-eye")" aria-hidden="true"></i>
+                                            <span class="sr-only">@publishText</span>
+                                        </button>
                                     </form>
                                 </div>
                             </td>
@@ -57,6 +88,7 @@
                 </tbody>
             </table>
         </div>
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityPager.cshtml", pagerModel)
     }
     else
     {
