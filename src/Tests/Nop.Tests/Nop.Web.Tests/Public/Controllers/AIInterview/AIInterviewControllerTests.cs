@@ -62,9 +62,10 @@ public class AIInterviewControllerTests
             .ReturnsAsync(new JobRequirementsModel());
         _aiInterviewSettings = new AIInterviewSettings { Enabled = true };
 
-        _customer = new Customer { Id = 123 };
+        _customer = new Customer { Id = 123, Email = "candidate@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_customer);
         _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
+        _customerService.Setup(x => x.IsRegisteredAsync(_customer)).ReturnsAsync(true);
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
@@ -358,8 +359,8 @@ public class AIInterviewControllerTests
         _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
             .ReturnsAsync(new List<InterviewSession>
             {
-                new() { Id = 10, ProductId = 1, JobTitle = "First role", Score = 65, CompletedOnUtc = new DateTime(2026, 7, 3, 0, 0, 0, DateTimeKind.Utc) },
-                new() { Id = 11, ProductId = 2, JobTitle = "Second role", Score = 92, CompletedOnUtc = new DateTime(2026, 7, 4, 0, 0, 0, DateTimeKind.Utc) }
+                new() { Id = 10, ProductId = 1, Score = 65, CompletedOnUtc = new DateTime(2026, 7, 3, 0, 0, 0, DateTimeKind.Utc) },
+                new() { Id = 11, ProductId = 2, Score = 92, CompletedOnUtc = new DateTime(2026, 7, 4, 0, 0, 0, DateTimeKind.Utc) }
             });
 
         // Act

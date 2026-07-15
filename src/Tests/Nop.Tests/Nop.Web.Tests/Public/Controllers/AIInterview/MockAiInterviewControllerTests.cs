@@ -45,8 +45,9 @@ public class MockAiInterviewControllerTests
         _applicationService = new Mock<IApplicationService>();
         _eventPublisher = new Mock<global::Nop.Core.Events.IEventPublisher>();
 
-        _customer = new Customer { Id = 123 };
+        _customer = new Customer { Id = 123, Email = "candidate@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_customer);
+        _customerService.Setup(x => x.IsRegisteredAsync(_customer)).ReturnsAsync(true);
 
         _controller = new MockAiInterviewController(
             _interviewSessionService.Object,
