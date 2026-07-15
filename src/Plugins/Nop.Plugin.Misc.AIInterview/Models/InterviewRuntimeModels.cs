@@ -50,6 +50,7 @@ public record RuntimeClientSettingsModel
     public string StopInterviewUrl { get; set; }
     public string TranscriptUrl { get; set; }
     public string SpeechTokenUrl { get; set; }
+    public string SpeechUsageUrl { get; set; }
     public string RecordingUploadUrl { get; set; }
     public string BeginInterviewUrl { get; set; }
     public string AcknowledgeGuidelinesUrl { get; set; }
@@ -76,6 +77,9 @@ public record SubmitInterviewAnswerRequest
 {
     public string Token { get; init; }
     public string Answer { get; init; }
+    public int SpeechRecognitionCharacters { get; init; }
+    public long SpeechRecognitionDurationMs { get; init; }
+    public string SpeechRecognitionClientEventId { get; init; }
 }
 
 public record SubmitInterviewAnswerResponse
@@ -122,6 +126,16 @@ public record SpeechTokenResponseModel
     public string Token { get; init; }
     public string Region { get; init; }
     public int ExpiresInSeconds { get; init; }
+}
+
+public record SpeechSynthesisUsageRequest
+{
+    public string Token { get; init; }
+    public int? TurnId { get; init; }
+    public int? SequenceNumber { get; init; }
+    public string Purpose { get; init; }
+    public int SpeechSynthesisCharacters { get; init; }
+    public string ClientEventId { get; init; }
 }
 
 public record InterviewReportModel : BaseNopModel

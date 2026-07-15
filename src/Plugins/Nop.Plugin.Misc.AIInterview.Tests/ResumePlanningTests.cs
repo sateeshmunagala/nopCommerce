@@ -586,6 +586,7 @@ public class ResumePlanningTests
             applicationService.Object,
             interviewSessionService.Object,
             productService.Object,
+            new Mock<IAzureUsageService>().Object,
             nopLogger.Object);
 
         var result = await service.EnsureResumeProfileAsync(application, product, true);

@@ -85,7 +85,7 @@ public class ApplyFlowTests
         urlHelper.Setup(x => x.RouteUrl(It.IsAny<UrlRouteContext>()))
             .Returns((UrlRouteContext context) =>
             {
-                if (string.Equals(context.RouteName, Nop.Web.Framework.Mvc.Routing.NopRouteNames.General.LOGIN, StringComparison.Ordinal))
+                if (string.Equals(context.RouteName, Nop.Core.Http.NopRouteNames.General.LOGIN, StringComparison.Ordinal))
                     return "/login";
 
                 if (string.Equals(context.RouteName, AIInterviewDefaults.ApplyRouteName, StringComparison.Ordinal))

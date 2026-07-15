@@ -5,36 +5,23 @@ using Nop.Plugin.Misc.AIInterview.Domain;
 
 namespace Nop.Plugin.Misc.AIInterview.Data;
 
-[NopMigration("2024/05/20 12:00:00", "Misc.AIInterview base schema", MigrationProcessType.Installation)]
-public class SchemaMigration : Migration
+[NopMigration("2026/07/15 09:00:00", "Misc.AIInterview azure usage metrics", MigrationProcessType.Update)]
+public class AzureUsageMetricMigration : Migration
 {
     public override void Up()
     {
-        this.CreateTableIfNotExists<JobApplication>();
-        this.CreateTableIfNotExists<InterviewSession>();
-        this.CreateTableIfNotExists<InterviewTurn>();
-        this.CreateTableIfNotExists<CreditWallet>();
-        this.CreateTableIfNotExists<CreditLedgerEntry>();
-        this.CreateTableIfNotExists<SponsorInvite>();
-        this.CreateTableIfNotExists<CreditPurchaseGrant>();
         this.CreateTableIfNotExists<AzureUsageMetric>();
+        CreateIndexes();
+    }
 
-        if (!Schema.Table(nameof(CreditPurchaseGrant)).Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId").Exists())
-        {
-            Create.Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId")
-                .OnTable(nameof(CreditPurchaseGrant))
-                .OnColumn(nameof(CreditPurchaseGrant.OrderItemId)).Ascending()
-                .WithOptions().Unique();
-        }
+    public override void Down()
+    {
+        DeleteIndexes();
+        this.DeleteTableIfExists<AzureUsageMetric>();
+    }
 
-        if (!Schema.Table(nameof(InterviewTurn)).Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber").Exists())
-        {
-            Create.Index("IX_AIInterview_InterviewTurn_SessionId_SequenceNumber")
-                .OnTable(nameof(InterviewTurn))
-                .OnColumn(nameof(InterviewTurn.InterviewSessionId)).Ascending()
-                .OnColumn(nameof(InterviewTurn.SequenceNumber)).Ascending();
-        }
-
+    protected virtual void CreateIndexes()
+    {
         if (!Schema.Table(nameof(AzureUsageMetric)).Index("IX_AIInterview_AzureUsageMetric_InterviewSessionId").Exists())
         {
             Create.Index("IX_AIInterview_AzureUsageMetric_InterviewSessionId")
@@ -71,15 +58,21 @@ public class SchemaMigration : Migration
         }
     }
 
-    public override void Down()
+    protected virtual void DeleteIndexes()
     {
-        this.DeleteTableIfExists<JobApplication>();
-        this.DeleteTableIfExists<InterviewSession>();
-        this.DeleteTableIfExists<InterviewTurn>();
-        this.DeleteTableIfExists<CreditWallet>();
-        this.DeleteTableIfExists<CreditLedgerEntry>();
-        this.DeleteTableIfExists<SponsorInvite>();
-        this.DeleteTableIfExists<CreditPurchaseGrant>();
-        this.DeleteTableIfExists<AzureUsageMetric>();
+        var indexes = new[]
+        {
+            "IX_AIInterview_AzureUsageMetric_ClientEventId",
+            "IX_AIInterview_AzureUsageMetric_CreatedOnUtc",
+            "IX_AIInterview_AzureUsageMetric_UsageKind",
+            "IX_AIInterview_AzureUsageMetric_InterviewTurnId",
+            "IX_AIInterview_AzureUsageMetric_InterviewSessionId"
+        };
+
+        foreach (var indexName in indexes)
+        {
+            if (Schema.Table(nameof(AzureUsageMetric)).Index(indexName).Exists())
+                Delete.Index(indexName).OnTable(nameof(AzureUsageMetric));
+        }
     }
 }

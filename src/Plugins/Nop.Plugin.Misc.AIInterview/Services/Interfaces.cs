@@ -52,9 +52,10 @@ public interface IInterviewRuntimeService
     Task<InterviewRuntimeModel> GetRuntimeModelAsync(string token);
     Task<InterviewRuntimeModel> BeginInterviewAsync(string token, Customer customer = null);
     Task<InterviewRuntimeModel> EnsureInterviewStartedAsync(InterviewSession session, Customer customer = null);
-    Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(string token, string answer);
+    Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(SubmitInterviewAnswerRequest request);
     Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null);
     Task<SpeechTokenResponseModel> GetSpeechTokenAsync(string token);
+    Task TrackSpeechSynthesisUsageAsync(SpeechSynthesisUsageRequest request);
     Task<RecordingUploadResponseModel> UploadRecordingAsync(string token, IFormFile recording);
 }
 
@@ -82,6 +83,47 @@ public interface IAIInterviewClient
     Task<AIResumeProfileResponse> AnalyzeResumeAsync(AIResumeProfileRequest request);
     Task<AIInterviewQuestionPlanResponse> GenerateQuestionPlanAsync(AIInterviewQuestionPlanRequest request);
     Task<AIInterviewClientResponse> ScoreAnswerAsync(AIInterviewClientRequest request);
+}
+
+public sealed record AzureOpenAiUsageInfo
+{
+    public string DeploymentOrModel { get; init; }
+    public string ModelName { get; init; }
+    public int PromptTokens { get; init; }
+    public int CompletionTokens { get; init; }
+    public int TotalTokens { get; init; }
+    public string RawUsageJson { get; init; }
+    public string MetadataJson { get; init; }
+}
+
+public sealed record AzureOpenAiUsageRecordRequest
+{
+    public int InterviewSessionId { get; init; }
+    public int? InterviewTurnId { get; init; }
+    public string UsageKind { get; init; }
+    public string OperationName { get; init; }
+    public AzureOpenAiUsageInfo UsageInfo { get; init; }
+    public string MetadataJson { get; init; }
+}
+
+public sealed record AzureSpeechUsageRecordRequest
+{
+    public int InterviewSessionId { get; init; }
+    public int? InterviewTurnId { get; init; }
+    public string UsageKind { get; init; }
+    public string OperationName { get; init; }
+    public int SpeechRecognitionCharacters { get; init; }
+    public int SpeechSynthesisCharacters { get; init; }
+    public long SpeechDurationMs { get; init; }
+    public string ClientEventId { get; init; }
+    public string MetadataJson { get; init; }
+}
+
+public interface IAzureUsageService
+{
+    Task RecordOpenAiUsageAsync(AzureOpenAiUsageRecordRequest request);
+    Task RecordSpeechUsageAsync(AzureSpeechUsageRecordRequest request);
+    Task RecalculateSessionSummaryAsync(int interviewSessionId);
 }
 
 public record AIInterviewClientRequest
@@ -153,6 +195,7 @@ public record AIResumeProfileResponse
     public IList<string> MissingOrUnclearAreas { get; init; } = new List<string>();
     public string ErrorMessage { get; init; }
     public string RawJson { get; init; }
+    public AzureOpenAiUsageInfo UsageInfo { get; init; }
 }
 
 public record AIResumeProjectProfile
@@ -183,6 +226,7 @@ public record AIInterviewQuestionPlanResponse
     public IList<AIInterviewQuestionPlanItem> Questions { get; init; } = new List<AIInterviewQuestionPlanItem>();
     public string ErrorMessage { get; init; }
     public string RawJson { get; init; }
+    public AzureOpenAiUsageInfo UsageInfo { get; init; }
 }
 
 public record AIInterviewQuestionPlanItem
@@ -230,6 +274,8 @@ public record AIInterviewClientResponse
     public string ErrorMessage { get; init; }
     public string RawJson { get; init; }
     public string RubricJson { get; init; }
+    public AzureOpenAiUsageInfo UsageInfo { get; init; }
+    public IList<AzureOpenAiUsageInfo> AdditionalUsageInfos { get; init; } = new List<AzureOpenAiUsageInfo>();
 }
 
 public interface ICreditService

@@ -143,6 +143,10 @@ public class RouteProvider : IRouteProvider
             pattern: "mockaiinterview/speech-token",
             defaults: new { controller = "MockAiInterview", action = "SpeechToken" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockSpeechUsageRouteName,
+            pattern: "mockaiinterview/speech-usage",
+            defaults: new { controller = "MockAiInterview", action = "SpeechUsage" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockRecordingUploadRouteName,
             pattern: "mockaiinterview/upload-recording",
             defaults: new { controller = "MockAiInterview", action = "UploadRecording" });

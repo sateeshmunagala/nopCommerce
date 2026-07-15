@@ -117,11 +117,23 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (enabledSetting == null)
             settings.Enabled = true;
 
+        if (await _settingService.GetSettingAsync("aiinterviewsettings.trackazureopenaiusage") == null)
+            settings.TrackAzureOpenAiUsage = true;
+
+        if (await _settingService.GetSettingAsync("aiinterviewsettings.trackazurespeechusage") == null)
+            settings.TrackAzureSpeechUsage = true;
+
+        if (await _settingService.GetSettingAsync("aiinterviewsettings.calculateazurecostperinterview") == null)
+            settings.CalculateAzureCostPerInterview = true;
+
         if (string.IsNullOrWhiteSpace(settings.CreditProductSkuMappingsJson))
             settings.CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson;
 
         if (string.IsNullOrWhiteSpace(settings.CreditPurchasePageUrl))
             settings.CreditPurchasePageUrl = AIInterviewDefaults.DefaultCreditPurchasePageUrl;
+
+        if (string.IsNullOrWhiteSpace(settings.AzureUsageCurrencyCode))
+            settings.AzureUsageCurrencyCode = "USD";
 
         await _settingService.SaveSettingAsync(settings);
         await EnsureJobProductTemplateAsync();
@@ -617,6 +629,14 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel"] = "Azure OpenAI Deployment / Model",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechKey"] = "Azure Speech Key",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRegion"] = "Azure Speech Region",
+            ["Plugins.Misc.AIInterview.Admin.AiService.TrackAzureOpenAiUsage"] = "Track Azure OpenAI Usage",
+            ["Plugins.Misc.AIInterview.Admin.AiService.TrackAzureSpeechUsage"] = "Track Azure Speech Usage",
+            ["Plugins.Misc.AIInterview.Admin.AiService.CalculateAzureCostPerInterview"] = "Calculate Azure Cost Per Interview",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiPromptTokenPricePerThousand"] = "Azure OpenAI Prompt Token Price Per Thousand",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiCompletionTokenPricePerThousand"] = "Azure OpenAI Completion Token Price Per Thousand",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRecognitionPricePerHour"] = "Azure Speech Recognition Price Per Hour",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechSynthesisPricePerThousandCharacters"] = "Azure Speech Synthesis Price Per Thousand Characters",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureUsageCurrencyCode"] = "Azure Usage Currency Code",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl"] = "Azure Blob Storage Container URL",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
@@ -765,6 +785,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             Enabled = true,
             ApiKey = string.Empty,
             MinimumScore = 0,
+            TrackAzureOpenAiUsage = true,
+            TrackAzureSpeechUsage = true,
+            CalculateAzureCostPerInterview = true,
+            AzureUsageCurrencyCode = "USD",
             CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson,
             CreditPurchasePageUrl = AIInterviewDefaults.DefaultCreditPurchasePageUrl
         };

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -118,6 +119,10 @@ public partial class InterviewAiClient : IAIInterviewClient
         if (response == null || !response.Success)
             return response ?? BuildUnavailableResponse();
 
+        var additionalUsageInfos = new List<AzureOpenAiUsageInfo>();
+        if (response.UsageInfo != null)
+            additionalUsageInfos.Add(response.UsageInfo);
+
         if (ShouldRetrySuspiciousZeroScore(request, response))
         {
             var retryPrompt = string.Join(" ", new[]
@@ -128,8 +133,17 @@ public partial class InterviewAiClient : IAIInterviewClient
             }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
             var retriedResponse = await CallAzureAsync(request with { Prompt = retryPrompt }, "score");
+            if (retriedResponse?.UsageInfo != null)
+                additionalUsageInfos.Add(retriedResponse.UsageInfo);
             if (retriedResponse != null && retriedResponse.Success)
-                response = retriedResponse;
+            {
+                response = retriedResponse with
+                {
+                    AdditionalUsageInfos = additionalUsageInfos
+                        .Take(Math.Max(0, additionalUsageInfos.Count - 1))
+                        .ToList()
+                };
+            }
 
             if (response.Score.GetValueOrDefault() == 0)
             {
@@ -229,12 +243,13 @@ public partial class InterviewAiClient : IAIInterviewClient
             }
 
             using var document = JsonDocument.Parse(json);
+            var usageInfo = BuildAzureOpenAiUsageInfo(document.RootElement, mode, endpoint);
             if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
             {
                 var detail = $"Mode={mode}; Reason=empty response choices; Endpoint={BuildSanitizedEndpointValue(endpoint)}; Sample={BuildResponseSnippet(json)}.";
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty choices.", mode);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
-                return BuildUnavailableResponse(detail);
+                return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
             }
 
             if (!choices[0].TryGetProperty("message", out var message) || !message.TryGetProperty("content", out var contentProperty))
@@ -242,7 +257,7 @@ public partial class InterviewAiClient : IAIInterviewClient
                 var detail = $"Mode={mode}; Reason=missing message content; Endpoint={BuildSanitizedEndpointValue(endpoint)}; Sample={BuildResponseSnippet(json)}.";
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Missing message content.", mode);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
-                return BuildUnavailableResponse(detail);
+                return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
             }
 
             var content = contentProperty.GetString();
@@ -251,17 +266,17 @@ public partial class InterviewAiClient : IAIInterviewClient
                 var detail = $"Mode={mode}; Reason=empty response content; Endpoint={BuildSanitizedEndpointValue(endpoint)}; Sample={BuildResponseSnippet(json)}.";
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty content string.", mode);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
-                return BuildUnavailableResponse(detail);
+                return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
             }
 
             var parsed = ParseStructuredResponse(content);
             if (parsed != null)
-                return parsed;
+                return parsed with { UsageInfo = usageInfo };
 
             var contractReason = BuildStructuredResponseFailureLog(content, mode);
             _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON or failed contract parsing.", mode);
             await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", contractReason);
-            return BuildUnavailableResponse(contractReason);
+            return BuildUnavailableResponse(contractReason) with { UsageInfo = usageInfo };
         }
         catch (System.Text.Json.JsonException ex)
         {
@@ -555,7 +570,9 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
             AnswerQuality = response?.AnswerQuality,
             NonSubstantiveReason = response?.NonSubstantiveReason,
             RawJson = response?.RawJson,
-            RubricJson = response?.RubricJson
+            RubricJson = response?.RubricJson,
+            UsageInfo = response?.UsageInfo,
+            AdditionalUsageInfos = response?.AdditionalUsageInfos ?? new List<AzureOpenAiUsageInfo>()
         };
     }
 
@@ -1301,6 +1318,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     private static readonly JsonSerializerOptions StorageSerializerOptions = new(JsonSerializerDefaults.Web)
     {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = false
     };
@@ -1312,6 +1330,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     private readonly ICustomerService _customerService;
     private readonly IApplicationService _applicationService;
     private readonly IResumeProfileService _resumeProfileService;
+    private readonly IAzureUsageService _azureUsageService;
     private readonly ILocalizationService _localizationService;
     private readonly AIInterviewSettings _settings;
     private readonly MockAIInterviewSettings _mockSettings;
@@ -1329,6 +1348,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         ICustomerService customerService,
         IApplicationService applicationService,
         IResumeProfileService resumeProfileService,
+        IAzureUsageService azureUsageService,
         ILocalizationService localizationService,
         AIInterviewSettings settings,
         MockAIInterviewSettings mockSettings,
@@ -1345,6 +1365,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         _customerService = customerService;
         _applicationService = applicationService;
         _resumeProfileService = resumeProfileService;
+        _azureUsageService = azureUsageService;
         _localizationService = localizationService;
         _settings = settings;
         _mockSettings = mockSettings;
@@ -1619,8 +1640,19 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         return await BuildRuntimeModelAsync(session, turns, customer);
     }
 
-    public async Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(string token, string answer)
+    public Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(string token, string answer)
     {
+        return SubmitAnswerAsync(new SubmitInterviewAnswerRequest
+        {
+            Token = token,
+            Answer = answer
+        });
+    }
+
+    public async Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(SubmitInterviewAnswerRequest request)
+    {
+        var token = request?.Token;
+        var answer = request?.Answer;
         var session = await _sessionService.GetSessionByTokenAsync(token);
         var now = DateTime.UtcNow;
         if (!IsSessionUsable(session, now))
@@ -1689,6 +1721,18 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList(),
             PreviousTurns = BuildPreviousTurnContext(turns, currentTurn)
         });
+        await TrackOpenAiUsageAsync(
+            session.Id,
+            currentTurn.Id,
+            AzureUsageMetricDefaults.UsageKindOpenAiAnswerScoring,
+            "ScoreAnswer",
+            evaluation?.UsageInfo,
+            evaluation?.AdditionalUsageInfos,
+            JsonSerializer.Serialize(new
+            {
+                questionNumber = currentTurn.SequenceNumber,
+                mode = "score"
+            }, StorageSerializerOptions));
 
         if (evaluation == null || !evaluation.Success || !evaluation.Score.HasValue)
         {
@@ -1713,6 +1757,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         currentTurn.RawAIResponseJson = BuildMergedRawAiResponseJson(currentTurn.RawAIResponseJson, evaluation.RawJson);
         currentTurn.AnsweredOnUtc = DateTime.UtcNow;
         await _turnService.UpdateInterviewTurnAsync(currentTurn);
+        await TrackSpeechRecognitionUsageAsync(session, currentTurn, request);
 
         turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
         var averageScore = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
@@ -1887,6 +1932,37 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 await ResolveLogCustomerAsync(session));
             return null;
         }
+    }
+
+    public async Task TrackSpeechSynthesisUsageAsync(SpeechSynthesisUsageRequest request)
+    {
+        if (request == null || _azureUsageService == null)
+            return;
+
+        var session = await _sessionService.GetSessionByTokenAsync(request.Token);
+        if (!IsSessionUsable(session, DateTime.UtcNow))
+            return;
+
+        var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
+        var turn = ResolveSpeechTurn(turns, request.TurnId, request.SequenceNumber);
+
+        await _azureUsageService.RecordSpeechUsageAsync(new AzureSpeechUsageRecordRequest
+        {
+            InterviewSessionId = session.Id,
+            InterviewTurnId = turn?.Id,
+            UsageKind = AzureUsageMetricDefaults.UsageKindSpeechSynthesis,
+            OperationName = string.IsNullOrWhiteSpace(request.Purpose) ? "SpeechSynthesis" : request.Purpose.Trim(),
+            SpeechSynthesisCharacters = request.SpeechSynthesisCharacters,
+            ClientEventId = request.ClientEventId,
+            MetadataJson = JsonSerializer.Serialize(new
+            {
+                source = "browser",
+                purpose = request.Purpose,
+                sequenceNumber = request.SequenceNumber,
+                reportedTurnId = request.TurnId,
+                speechRegion = _settings?.AzureSpeechRegion
+            }, StorageSerializerOptions)
+        });
     }
 
     public async Task<RecordingUploadResponseModel> UploadRecordingAsync(string token, IFormFile recording)
@@ -2156,6 +2232,18 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     !string.Equals(category, "Introduction & Project Experience", StringComparison.OrdinalIgnoreCase))
                 .ToList()
         });
+        await TrackOpenAiUsageAsync(
+            session.Id,
+            null,
+            AzureUsageMetricDefaults.UsageKindOpenAiQuestionPlanning,
+            "GenerateQuestionPlan",
+            response?.UsageInfo,
+            metadataJson: JsonSerializer.Serialize(new
+            {
+                requestedQuestionCount = questionCount,
+                totalQuestionCount,
+                targetSequenceNumbers = sequenceNumbers
+            }, StorageSerializerOptions));
 
         if (response == null || !response.Success || response.Questions == null)
             return (Array.Empty<InterviewTurn>(), response?.ErrorMessage ?? "Question plan generation failed.");
@@ -2268,6 +2356,18 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         };
 
         var aiResponse = await _aiClient.GenerateQuestionAsync(request);
+        await TrackOpenAiUsageAsync(
+            session.Id,
+            null,
+            AzureUsageMetricDefaults.UsageKindOpenAiQuestionGeneration,
+            "GenerateQuestion",
+            aiResponse?.UsageInfo,
+            aiResponse?.AdditionalUsageInfos,
+            JsonSerializer.Serialize(new
+            {
+                sequenceNumber,
+                mode = "generate"
+            }, StorageSerializerOptions));
         if (aiResponse == null || !aiResponse.Success || string.IsNullOrWhiteSpace(aiResponse.Question))
         {
             _logger?.LogWarning("GenerateQuestion failure for session {SessionId}. Reason: {Reason}.",
@@ -2286,6 +2386,82 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             RawAIResponseJson = aiResponse.RawJson,
             RubricJson = aiResponse.RubricJson
         }, null);
+    }
+
+    protected virtual async Task TrackOpenAiUsageAsync(int interviewSessionId, int? interviewTurnId, string usageKind, string operationName, AzureOpenAiUsageInfo usageInfo, IEnumerable<AzureOpenAiUsageInfo> additionalUsageInfos = null, string metadataJson = null)
+    {
+        if (_azureUsageService == null || interviewSessionId <= 0)
+            return;
+
+        var usageEvents = new List<AzureOpenAiUsageInfo>();
+        if (additionalUsageInfos != null)
+            usageEvents.AddRange(additionalUsageInfos.Where(item => item != null));
+        if (usageInfo != null)
+            usageEvents.Add(usageInfo);
+
+        foreach (var usageEvent in usageEvents)
+        {
+            await _azureUsageService.RecordOpenAiUsageAsync(new AzureOpenAiUsageRecordRequest
+            {
+                InterviewSessionId = interviewSessionId,
+                InterviewTurnId = interviewTurnId,
+                UsageKind = usageKind,
+                OperationName = operationName,
+                UsageInfo = usageEvent,
+                MetadataJson = metadataJson
+            });
+        }
+    }
+
+    protected virtual async Task TrackSpeechRecognitionUsageAsync(InterviewSession session, InterviewTurn currentTurn, SubmitInterviewAnswerRequest request)
+    {
+        if (_azureUsageService == null || session == null || request == null)
+            return;
+
+        await _azureUsageService.RecordSpeechUsageAsync(new AzureSpeechUsageRecordRequest
+        {
+            InterviewSessionId = session.Id,
+            InterviewTurnId = currentTurn?.Id,
+            UsageKind = AzureUsageMetricDefaults.UsageKindSpeechRecognition,
+            OperationName = "SpeechRecognition",
+            SpeechRecognitionCharacters = request.SpeechRecognitionCharacters,
+            SpeechDurationMs = request.SpeechRecognitionDurationMs,
+            ClientEventId = request.SpeechRecognitionClientEventId,
+            MetadataJson = JsonSerializer.Serialize(new
+            {
+                source = "browser",
+                eventType = "answerSubmit",
+                sequenceNumber = currentTurn?.SequenceNumber,
+                speechRegion = _settings?.AzureSpeechRegion
+            }, StorageSerializerOptions)
+        });
+    }
+
+    protected virtual InterviewTurn ResolveSpeechTurn(IList<InterviewTurn> turns, int? turnId, int? sequenceNumber)
+    {
+        if (turns == null || !turns.Any())
+            return null;
+
+        if (turnId.GetValueOrDefault() > 0)
+        {
+            var matchedTurn = turns.FirstOrDefault(turn => turn.Id == turnId.Value);
+            if (matchedTurn != null)
+                return matchedTurn;
+        }
+
+        if (sequenceNumber.GetValueOrDefault() > 0)
+        {
+            return turns
+                .Where(turn => turn.SequenceNumber == sequenceNumber.Value)
+                .OrderByDescending(turn => turn.Id)
+                .FirstOrDefault();
+        }
+
+        return turns
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .FirstOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText))
+            ?? turns.OrderByDescending(turn => turn.SequenceNumber).ThenByDescending(turn => turn.Id).FirstOrDefault();
     }
 
     protected virtual async Task<CompleteInterviewResponse> CompleteInterviewInternalAsync(InterviewSession session, IList<InterviewTurn> turns, string reason, string aiCompletion = null)

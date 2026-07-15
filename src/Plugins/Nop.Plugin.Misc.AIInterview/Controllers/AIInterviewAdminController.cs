@@ -197,6 +197,14 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.AzureOpenAiDeploymentOrModel = settingsModel.AzureOpenAiDeploymentOrModel;
             currentAiInterviewSettings.AzureSpeechKey = PreserveSecretIfBlank(settingsModel.AzureSpeechKey, currentAiInterviewSettings.AzureSpeechKey);
             currentAiInterviewSettings.AzureSpeechRegion = settingsModel.AzureSpeechRegion;
+            currentAiInterviewSettings.TrackAzureOpenAiUsage = settingsModel.TrackAzureOpenAiUsage;
+            currentAiInterviewSettings.TrackAzureSpeechUsage = settingsModel.TrackAzureSpeechUsage;
+            currentAiInterviewSettings.CalculateAzureCostPerInterview = settingsModel.CalculateAzureCostPerInterview;
+            currentAiInterviewSettings.AzureOpenAiPromptTokenPricePerThousand = settingsModel.AzureOpenAiPromptTokenPricePerThousand;
+            currentAiInterviewSettings.AzureOpenAiCompletionTokenPricePerThousand = settingsModel.AzureOpenAiCompletionTokenPricePerThousand;
+            currentAiInterviewSettings.AzureSpeechRecognitionPricePerHour = settingsModel.AzureSpeechRecognitionPricePerHour;
+            currentAiInterviewSettings.AzureSpeechSynthesisPricePerThousandCharacters = settingsModel.AzureSpeechSynthesisPricePerThousandCharacters;
+            currentAiInterviewSettings.AzureUsageCurrencyCode = settingsModel.AzureUsageCurrencyCode;
             currentAiInterviewSettings.AzureBlobStorageContainerUrl = settingsModel.AzureBlobStorageContainerUrl;
             currentAiInterviewSettings.AzureBlobStorageSasToken = PreserveSecretIfBlank(settingsModel.AzureBlobStorageSasToken, currentAiInterviewSettings.AzureBlobStorageSasToken);
             await _settingService.SaveSettingAsync(currentAiInterviewSettings);
@@ -1307,6 +1315,14 @@ public class AIInterviewAdminController : BasePluginController
             AzureOpenAiDeploymentOrModel = aiInterviewSettings.AzureOpenAiDeploymentOrModel,
             AzureSpeechKey = aiInterviewSettings.AzureSpeechKey,
             AzureSpeechRegion = aiInterviewSettings.AzureSpeechRegion,
+            TrackAzureOpenAiUsage = aiInterviewSettings.TrackAzureOpenAiUsage,
+            TrackAzureSpeechUsage = aiInterviewSettings.TrackAzureSpeechUsage,
+            CalculateAzureCostPerInterview = aiInterviewSettings.CalculateAzureCostPerInterview,
+            AzureOpenAiPromptTokenPricePerThousand = aiInterviewSettings.AzureOpenAiPromptTokenPricePerThousand,
+            AzureOpenAiCompletionTokenPricePerThousand = aiInterviewSettings.AzureOpenAiCompletionTokenPricePerThousand,
+            AzureSpeechRecognitionPricePerHour = aiInterviewSettings.AzureSpeechRecognitionPricePerHour,
+            AzureSpeechSynthesisPricePerThousandCharacters = aiInterviewSettings.AzureSpeechSynthesisPricePerThousandCharacters,
+            AzureUsageCurrencyCode = aiInterviewSettings.AzureUsageCurrencyCode,
             AzureBlobStorageContainerUrl = aiInterviewSettings.AzureBlobStorageContainerUrl,
             AzureBlobStorageSasToken = aiInterviewSettings.AzureBlobStorageSasToken
         };

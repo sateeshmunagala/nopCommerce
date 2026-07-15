@@ -1071,6 +1071,7 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.RefreshTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockRefreshTokenRouteName);
         model.ClientSettings.StopInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
         model.ClientSettings.SpeechTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechTokenRouteName);
+        model.ClientSettings.SpeechUsageUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechUsageRouteName);
         model.ClientSettings.AcknowledgeGuidelinesUrl = Url?.RouteUrl(AIInterviewDefaults.MockAcknowledgeGuidelinesRouteName);
         model.ClientSettings.ProductName = model.ProductName;
         model.ClientSettings.Token = session?.Token;
@@ -1190,19 +1191,30 @@ public class MockAiInterviewController : BasePluginController
         return Json(new { success = true, message = "Guidelines acknowledgement logged." });
     }
 
-    [HttpPost]
-    public async Task<IActionResult> SubmitAnswer(string token, string answer)
+    [NonAction]
+    public Task<IActionResult> SubmitAnswer(string token, string answer)
     {
+        return SubmitAnswer(new SubmitInterviewAnswerRequest
+        {
+            Token = token,
+            Answer = answer
+        });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SubmitAnswer(SubmitInterviewAnswerRequest request)
+    {
+        var token = request?.Token;
         _logger?.LogInformation("SubmitAnswer called with session token {Token}", MaskToken(token));
 
         var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
         if (tokenRenewal.Session != null && tokenRenewal.Renewed)
-            token = tokenRenewal.Session.Token;
+            request = request with { Token = tokenRenewal.Session.Token };
 
         if (_interviewRuntimeService != null)
         {
-            var runtimeResponse = await _interviewRuntimeService.SubmitAnswerAsync(token, answer);
-            var sessionInfo = await _interviewSessionService.GetSessionByTokenAsync(token);
+            var runtimeResponse = await _interviewRuntimeService.SubmitAnswerAsync(request);
+            var sessionInfo = await _interviewSessionService.GetSessionByTokenAsync(request?.Token);
             var reportUrl = runtimeResponse?.IsTerminated == true ? GetMockReportUrl(sessionInfo?.Id ?? 0) : runtimeResponse?.ReportUrl;
             if (runtimeResponse != null && !runtimeResponse.Success)
             {
@@ -1237,14 +1249,14 @@ public class MockAiInterviewController : BasePluginController
             });
         }
 
-        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
+        var session = await _interviewSessionService.GetSessionByTokenAsync(request?.Token);
         if (!IsSessionUsable(session))
         {
-            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"SubmitAnswer rejected invalid session for token {MaskToken(token)}.", await ResolveLogCustomerAsync(session));
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"SubmitAnswer rejected invalid session for token {MaskToken(request?.Token)}.", await ResolveLogCustomerAsync(session));
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
-        if (string.IsNullOrEmpty(answer))
+        if (string.IsNullOrEmpty(request?.Answer))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer", "Answer cannot be empty.");
 
         // Mock answer processing
@@ -1369,6 +1381,37 @@ public class MockAiInterviewController : BasePluginController
         }
 
         return Json(new { success = true, token = result.Token, region = result.Region, expiresInSeconds = result.ExpiresInSeconds });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SpeechUsage(SpeechSynthesisUsageRequest request)
+    {
+        if (_interviewRuntimeService == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech usage service is unavailable.");
+
+        if (request == null || string.IsNullOrWhiteSpace(request.Token))
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(request?.Token);
+        if (tokenRenewal.Session == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+
+        if (tokenRenewal.Renewed)
+            request = request with { Token = tokenRenewal.Session.Token };
+
+        await _interviewRuntimeService.TrackSpeechSynthesisUsageAsync(request);
+
+        if (tokenRenewal.Renewed)
+        {
+            return Json(new
+            {
+                success = true,
+                newToken = tokenRenewal.Session.Token,
+                tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+            });
+        }
+
+        return Json(new { success = true });
     }
 
     [HttpPost]

@@ -233,7 +233,9 @@
         <p>@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Intro")</p>
         <ul class="runtime-guidelines">
             <li>Please be in a quiet place with stable internet.</li>
-            <li>Camera, Microphone access, Screen sharing is required before the interview starts and must remain active while answering.</li>
+            <li>Mobile phones and tablets are not allowed by policy, but they are not blocked technically.</li>
+            <li>Camera and microphone access are required for this interview.</li>
+            <li>Screen sharing is required before the interview starts and must remain active while answering.</li>
             <li>Do not use outside help, another person, unauthorized notes, or AI tools during the interview.</li>
             <li>Keep this interview tab open until the interview is completed.</li>
         </ul>
@@ -338,6 +340,10 @@
         let timerStartedAt = null;
         let answerNeedsEditAfterFailure = false;
         let screenShareAudioAvailable = false;
+        let recognitionTurnCharacters = 0;
+        let recognitionTurnDurationMs = 0;
+        let recognitionActiveSinceMs = null;
+        let pendingRecognitionClientEventId = null;
         const runtimeTabs = Array.from(document.querySelectorAll('[data-runtime-tab]'));
         const runtimePanels = Array.from(document.querySelectorAll('[data-runtime-panel]'));
 
@@ -346,6 +352,63 @@
                 return;
 
             button.textContent = text;
+        };
+
+        const createClientEventId = () => {
+            if (window.crypto?.randomUUID)
+                return window.crypto.randomUUID();
+
+            return `speech-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        };
+
+        const appendRecognitionDuration = () => {
+            if (!recognitionActiveSinceMs)
+                return;
+
+            recognitionTurnDurationMs += Math.max(0, Date.now() - recognitionActiveSinceMs);
+            recognitionActiveSinceMs = null;
+        };
+
+        const getRecognitionDurationMs = () => {
+            const activeDuration = recognitionActiveSinceMs
+                ? Math.max(0, Date.now() - recognitionActiveSinceMs)
+                : 0;
+            return recognitionTurnDurationMs + activeDuration;
+        };
+
+        const resetRecognitionTracking = (restartActiveTimer = false) => {
+            recognitionTurnCharacters = 0;
+            recognitionTurnDurationMs = 0;
+            pendingRecognitionClientEventId = null;
+            recognitionActiveSinceMs = restartActiveTimer && speechRecognizer ? Date.now() : null;
+        };
+
+        const getActiveTurn = () => {
+            const normalizedTurns = (turns || []).map((turn, index) => normalizeTurn(turn, index)).filter(Boolean);
+            return normalizedTurns.find(turn => !turn.answerText) || normalizedTurns[normalizedTurns.length - 1] || null;
+        };
+
+        const reportSpeechSynthesisUsage = async ({ turnId, sequenceNumber, purpose, speechSynthesisCharacters, clientEventId }) => {
+            if (!config.speechUsageUrl || !speechSynthesisCharacters)
+                return;
+
+            if (!await ensureRuntimeTokenFresh())
+                return;
+
+            const body = new URLSearchParams({
+                token: sessionToken,
+                purpose: purpose || '',
+                speechSynthesisCharacters: String(Math.max(0, speechSynthesisCharacters)),
+                clientEventId: clientEventId || createClientEventId()
+            });
+            if (turnId)
+                body.append('turnId', String(turnId));
+            if (sequenceNumber)
+                body.append('sequenceNumber', String(sequenceNumber));
+
+            const result = await postForm(config.speechUsageUrl, body);
+            if (!isSuccess(result))
+                logActivity('Speech usage reporting failed: ' + getRuntimeMessage(result, 'Unable to save speech usage.'));
         };
 
         const setIconButtonState = (button, options) => {
@@ -1709,6 +1772,8 @@
 
 
         const stopSpeechRecognition = async () => {
+            appendRecognitionDuration();
+
             if (!speechRecognizer)
                 return;
 
@@ -1768,6 +1833,7 @@
                 speechConfig.speechRecognitionLanguage = 'en-US';
                 const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 speechRecognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+                recognitionActiveSinceMs ??= Date.now();
 
                 speechRecognizer.recognizing = (_, e) => {
                     const interimText = (e.result?.text || '').trim();
@@ -1780,8 +1846,11 @@
                 };
 
                 speechRecognizer.recognized = (_, e) => {
-                    if (e.result?.reason === SpeechSDK.ResultReason.RecognizedSpeech && e.result.text) {
+                    const recognizedText = (e.result?.text || '').trim();
+                    if (e.result?.reason === SpeechSDK.ResultReason.RecognizedSpeech && recognizedText) {
                         answerBox.value = `${answerBox.value ? `${answerBox.value.trim()} ` : ''}${e.result.text}`.trim();
+                        recognitionTurnCharacters += recognizedText.length;
+                        pendingRecognitionClientEventId ??= createClientEventId();
                         logActivity('Speech recognized and appended.');
                         syncAnswerCaption();
                         updateSubmitAvailability();
@@ -1789,9 +1858,16 @@
                     }
                 };
 
-                speechRecognizer.sessionStarted = () => logActivity('Speech recognition session started.');
-                speechRecognizer.sessionStopped = () => logActivity('Speech recognition session stopped.');
+                speechRecognizer.sessionStarted = () => {
+                    recognitionActiveSinceMs ??= Date.now();
+                    logActivity('Speech recognition session started.');
+                };
+                speechRecognizer.sessionStopped = () => {
+                    appendRecognitionDuration();
+                    logActivity('Speech recognition session stopped.');
+                };
                 speechRecognizer.canceled = () => {
+                    appendRecognitionDuration();
                     logActivity('Speech recognition canceled.');
                     setStatus('Speech recognition stopped.', false);
                 };
@@ -1800,6 +1876,7 @@
                     speechRecognizer.startContinuousRecognitionAsync(resolve, reject);
                 });
             } catch {
+                appendRecognitionDuration();
                 await stopSpeechRecognition();
                 setStatus('Speech recognition could not be started.', true);
             }
@@ -1846,6 +1923,14 @@
                     logActivity('Question speech completed.');
                 else if (purpose === 'reminder')
                     logActivity('Reminder spoken.');
+                const activeTurn = getActiveTurn();
+                await reportSpeechSynthesisUsage({
+                    turnId: activeTurn?.turnId,
+                    sequenceNumber: activeTurn?.sequenceNumber,
+                    purpose,
+                    speechSynthesisCharacters: text.length,
+                    clientEventId: createClientEventId()
+                });
             } catch (error) {
                 const reason = error?.message || 'Speech synthesis failed.';
                 logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${reason}`);
@@ -1990,7 +2075,7 @@
             const auto = options.auto === true;
             if (isScreenShareBlockingInterview()) {
                 logActivity(`${auto ? 'Auto-submit' : 'Manual submit'} blocked; screen sharing is inactive.`);
-                setStatus('Resume screen sharing to continue the interview.', true);
+                setStatus('Screen sharing ended. Resume screen sharing to continue the interview.', true);
                 updateSubmitAvailability();
                 return;
             }
@@ -2025,7 +2110,18 @@
             const originalText = submitBtn.textContent;
             submitBtn.textContent = auto ? 'Auto submitting...' : 'Submitting...';
 
+            const speechRecognitionCharacters = Math.max(0, recognitionTurnCharacters);
+            const speechRecognitionDurationMs = Math.max(0, Math.round(getRecognitionDurationMs()));
+            if ((speechRecognitionCharacters > 0 || speechRecognitionDurationMs > 0) && !pendingRecognitionClientEventId)
+                pendingRecognitionClientEventId = createClientEventId();
+
             const body = new URLSearchParams({ token: sessionToken, answer: trimmedAnswer });
+            if (speechRecognitionCharacters > 0)
+                body.append('speechRecognitionCharacters', String(speechRecognitionCharacters));
+            if (speechRecognitionDurationMs > 0)
+                body.append('speechRecognitionDurationMs', String(speechRecognitionDurationMs));
+            if (pendingRecognitionClientEventId)
+                body.append('speechRecognitionClientEventId', pendingRecognitionClientEventId);
             const result = await postForm(config.submitAnswerUrl, body);
 
             submitBtn.classList.remove('is-loading');
@@ -2097,10 +2193,13 @@
 
             updateStartButtonState();
             updateSubmitAvailability();
-            if (config.speechAvailable && !isPlaceholderSpeechText(resultQuestion))
+            if (config.speechAvailable && !isPlaceholderSpeechText(resultQuestion)) {
                 await speakText(resultQuestion, 'question');
-            else
+                resetRecognitionTracking(!!speechRecognizer);
+            } else {
+                resetRecognitionTracking(!!speechRecognizer);
                 resetTimers();
+            }
         };
 
         const stopInterview = async () => {
@@ -2287,10 +2386,13 @@
             if (questionBox.textContent) logActivity('Question shown: ' + questionBox.textContent);
             updateSubmitAvailability();
             updateAuxiliaryControlsState();
-            if (config.speechAvailable && hasActiveQuestion())
+            if (config.speechAvailable && hasActiveQuestion()) {
                 await speakText(questionBox.textContent, 'question');
-            else
+                resetRecognitionTracking(!!speechRecognizer);
+            } else {
+                resetRecognitionTracking(!!speechRecognizer);
                 resetTimers();
+            }
         };
 
         if (guidelinesButton)

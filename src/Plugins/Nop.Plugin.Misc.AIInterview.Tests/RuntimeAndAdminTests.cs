@@ -457,7 +457,7 @@ public class RuntimeAndAdminTests
         };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("expired-submit")).ReturnsAsync(session);
         _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
-        _interviewRuntimeService.Setup(x => x.SubmitAnswerAsync(It.IsAny<string>(), It.IsAny<string>()))
+        _interviewRuntimeService.Setup(x => x.SubmitAnswerAsync(It.IsAny<SubmitInterviewAnswerRequest>()))
             .ReturnsAsync(new SubmitInterviewAnswerResponse
             {
                 Success = true,
@@ -699,7 +699,7 @@ public class RuntimeAndAdminTests
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
         };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("complete-token")).ReturnsAsync(session);
-        _interviewRuntimeService.Setup(x => x.SubmitAnswerAsync("complete-token", "Answer"))
+        _interviewRuntimeService.Setup(x => x.SubmitAnswerAsync(It.Is<SubmitInterviewAnswerRequest>(request => request.Token == "complete-token" && request.Answer == "Answer")))
             .ReturnsAsync(new SubmitInterviewAnswerResponse
             {
                 Success = true,
@@ -796,7 +796,7 @@ public class RuntimeAndAdminTests
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
         };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("runtime-json-token")).ReturnsAsync(session);
-        _interviewRuntimeService.Setup(x => x.SubmitAnswerAsync("runtime-json-token", "Answer"))
+        _interviewRuntimeService.Setup(x => x.SubmitAnswerAsync(It.Is<SubmitInterviewAnswerRequest>(request => request.Token == "runtime-json-token" && request.Answer == "Answer")))
             .ReturnsAsync(new SubmitInterviewAnswerResponse
             {
                 Success = true,
@@ -1124,6 +1124,7 @@ public class RuntimeAndAdminTests
             _customerService.Object,
             new Mock<IApplicationService>().Object,
             new Mock<IResumeProfileService>().Object,
+            new Mock<IAzureUsageService>().Object,
             _localizationService.Object,
             new AIInterviewSettings { Prompt = "Be concise" },
             new MockAIInterviewSettings { UseMockResponses = true },
@@ -1173,6 +1174,7 @@ public class RuntimeAndAdminTests
             _customerService.Object,
             new Mock<IApplicationService>().Object,
             new Mock<IResumeProfileService>().Object,
+            new Mock<IAzureUsageService>().Object,
             _localizationService.Object,
             new AIInterviewSettings { Prompt = "Be concise" },
             new MockAIInterviewSettings { UseMockResponses = true },
@@ -1220,6 +1222,7 @@ public class RuntimeAndAdminTests
             _customerService.Object,
             new Mock<IApplicationService>().Object,
             new Mock<IResumeProfileService>().Object,
+            new Mock<IAzureUsageService>().Object,
             _localizationService.Object,
             new AIInterviewSettings { Prompt = "Be concise" },
             new MockAIInterviewSettings { UseMockResponses = true },

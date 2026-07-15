@@ -272,6 +272,7 @@ public class ResumeProfileService : IResumeProfileService
     private readonly IApplicationService _applicationService;
     private readonly IInterviewSessionService _interviewSessionService;
     private readonly IProductService _productService;
+    private readonly IAzureUsageService _azureUsageService;
     private readonly NopLogger _nopLogger;
 
     public ResumeProfileService(
@@ -281,6 +282,7 @@ public class ResumeProfileService : IResumeProfileService
         IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
         IProductService productService,
+        IAzureUsageService azureUsageService,
         NopLogger nopLogger = null)
     {
         _downloadService = downloadService;
@@ -289,6 +291,7 @@ public class ResumeProfileService : IResumeProfileService
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
         _productService = productService;
+        _azureUsageService = azureUsageService;
         _nopLogger = nopLogger;
     }
 
@@ -418,6 +421,21 @@ public class ResumeProfileService : IResumeProfileService
             JobContext = BuildJobContext(product),
             ResumeText = extraction.Text
         });
+        if (_azureUsageService != null)
+        {
+            await _azureUsageService.RecordOpenAiUsageAsync(new AzureOpenAiUsageRecordRequest
+            {
+                InterviewSessionId = session.Id,
+                UsageKind = AzureUsageMetricDefaults.UsageKindOpenAiResumeAnalysis,
+                OperationName = "AnalyzeResume",
+                UsageInfo = response?.UsageInfo,
+                MetadataJson = JsonSerializer.Serialize(new
+                {
+                    source = "resumeProfile",
+                    scope = "interviewSession"
+                }, SerializerOptions)
+            });
+        }
 
         if (response == null || !response.Success)
         {

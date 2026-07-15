@@ -43,16 +43,16 @@ public partial class InterviewAiClient
             1400);
 
         if (!result.Success)
-            return new AIResumeProfileResponse { Success = false, ErrorMessage = result.ErrorMessage };
+            return new AIResumeProfileResponse { Success = false, ErrorMessage = result.ErrorMessage, UsageInfo = result.UsageInfo };
 
         var parsed = ParseResumeProfileResponse(result.Content);
         if (parsed != null)
-            return parsed with { RawJson = TruncateSafe(result.Content, 4000) };
+            return parsed with { RawJson = TruncateSafe(result.Content, 4000), UsageInfo = result.UsageInfo };
 
         var contractReason = $"Mode=resume-profile; Reason=invalid JSON or failed contract parsing; Sample={TruncateSafe(result.Content, 800)}.";
         _logger?.LogWarning("Azure OpenAI resume profile call failed contract validation.");
         await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview resume profile contract failure", contractReason);
-        return new AIResumeProfileResponse { Success = false, ErrorMessage = "Resume profiling is unavailable." };
+        return new AIResumeProfileResponse { Success = false, ErrorMessage = "Resume profiling is unavailable.", UsageInfo = result.UsageInfo };
     }
 
     public async Task<AIInterviewQuestionPlanResponse> GenerateQuestionPlanAsync(AIInterviewQuestionPlanRequest request)
@@ -71,13 +71,14 @@ public partial class InterviewAiClient
             return new AIInterviewQuestionPlanResponse
             {
                 Success = false,
-                ErrorMessage = result.ErrorMessage
+                ErrorMessage = result.ErrorMessage,
+                UsageInfo = result.UsageInfo
             };
         }
 
         var parsed = ParseQuestionPlanResponse(result.Content, request.QuestionCount);
         if (parsed != null)
-            return parsed with { RawJson = TruncateSafe(result.Content, 4000) };
+            return parsed with { RawJson = TruncateSafe(result.Content, 4000), UsageInfo = result.UsageInfo };
 
         var contractReason = $"Mode=question-plan; Reason=invalid JSON or failed contract parsing; Sample={TruncateSafe(result.Content, 800)}.";
         _logger?.LogWarning("Azure OpenAI question plan call failed contract validation.");
@@ -85,11 +86,12 @@ public partial class InterviewAiClient
         return new AIInterviewQuestionPlanResponse
         {
             Success = false,
-            ErrorMessage = "Question plan generation is unavailable."
+            ErrorMessage = "Question plan generation is unavailable.",
+            UsageInfo = result.UsageInfo
         };
     }
 
-    private async Task<(bool Success, string Content, string ErrorMessage)> CallAzureContentAsync(string mode, string systemPrompt, string prompt, int maxTokens)
+    private async Task<AzureContentCallResult> CallAzureContentAsync(string mode, string systemPrompt, string prompt, int maxTokens)
     {
         var endpointConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiEndpointUrl);
         var apiKeyConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiApiKey);
@@ -98,7 +100,7 @@ public partial class InterviewAiClient
         {
             var detail = BuildConfigurationIncompleteLog(mode, endpointConfigured, apiKeyConfigured, deploymentConfigured);
             await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI unavailable", detail);
-            return (false, string.Empty, $"AI service unavailable. {detail}");
+            return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", null);
         }
 
         try
@@ -132,26 +134,27 @@ public partial class InterviewAiClient
             {
                 var detail = BuildAzureHttpFailureLog(mode, endpoint, (int)response.StatusCode, response.ReasonPhrase, json);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", detail);
-                return (false, string.Empty, $"AI service unavailable. {detail}");
+                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", null);
             }
 
             using var document = JsonDocument.Parse(json);
+            var usageInfo = BuildAzureOpenAiUsageInfo(document.RootElement, mode, endpoint);
             if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
-                return (false, string.Empty, "AI service unavailable. Empty response choices.");
+                return new AzureContentCallResult(false, string.Empty, "AI service unavailable. Empty response choices.", usageInfo);
 
             if (!choices[0].TryGetProperty("message", out var message) || !message.TryGetProperty("content", out var contentProperty))
-                return (false, string.Empty, "AI service unavailable. Missing response content.");
+                return new AzureContentCallResult(false, string.Empty, "AI service unavailable. Missing response content.", usageInfo);
 
             var content = contentProperty.GetString();
             return string.IsNullOrWhiteSpace(content)
-                ? (false, string.Empty, "AI service unavailable. Empty response content.")
-                : (true, content, string.Empty);
+                ? new AzureContentCallResult(false, string.Empty, "AI service unavailable. Empty response content.", usageInfo)
+                : new AzureContentCallResult(true, content, string.Empty, usageInfo);
         }
         catch (Exception ex)
         {
             var detail = $"Mode={mode}; Reason={ex.GetType().Name}; Message={TruncateSafe(ex.Message, 220)}.";
             await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI exception", detail);
-            return (false, string.Empty, $"AI service unavailable. {detail}");
+            return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", null);
         }
     }
 
