@@ -14,11 +14,11 @@ namespace Nop.Plugin.Misc.AIInterview.Tests;
 public class EventConsumerTests
 {
     [Test]
-    public async Task HandleEventAsync_AddsMyApplications_WhenPluginEnabled()
+    public async Task HandleEventAsync_AddsMyActivity_WhenPluginEnabled()
     {
         // Arrange
         var localizationService = new Mock<ILocalizationService>();
-        localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.MyApplications.Title")).ReturnsAsync("My Applications");
+        localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.MyActivity.Title")).ReturnsAsync("My Activity");
 
         var creditService = new Mock<Services.ICreditService>();
         var workContext = new Mock<Nop.Core.IWorkContext>();
@@ -35,10 +35,10 @@ public class EventConsumerTests
         // Assert
         Assert.That(model.CustomerNavigationItems.Count, Is.EqualTo(1));
         var addedItem = model.CustomerNavigationItems.First();
-        Assert.That(addedItem.RouteName, Is.EqualTo(AIInterviewDefaults.MyApplicationsRouteName));
-        Assert.That(addedItem.Title, Is.EqualTo("My Applications"));
-        Assert.That(addedItem.ItemClass, Is.EqualTo("customer-applications"));
-        Assert.That(addedItem.Tab, Is.EqualTo(AIInterviewDefaults.MyApplicationsNavigationTab));
+        Assert.That(addedItem.RouteName, Is.EqualTo(AIInterviewDefaults.MyActivityRouteName));
+        Assert.That(addedItem.Title, Is.EqualTo("My Activity"));
+        Assert.That(addedItem.ItemClass, Is.EqualTo("customer-my-activity"));
+        Assert.That(addedItem.Tab, Is.EqualTo(AIInterviewDefaults.MyActivityNavigationTab));
     }
 
     [Test]
@@ -83,11 +83,8 @@ public class EventConsumerTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.MyApplicationsRouteName), Is.EqualTo(1));
-            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.VendorScoreboardRouteName), Is.EqualTo(1));
-            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.VendorJobCreationRouteName), Is.EqualTo(1));
-            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.EmployerApplicationsRouteName), Is.EqualTo(1));
-            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.MockEmployerManageRouteName), Is.EqualTo(1));
+            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.MyActivityRouteName), Is.EqualTo(1));
+            Assert.That(model.CustomerNavigationItems.Count(item => item.RouteName == AIInterviewDefaults.EmployerDashboardRouteName), Is.EqualTo(1));
         });
     }
 }

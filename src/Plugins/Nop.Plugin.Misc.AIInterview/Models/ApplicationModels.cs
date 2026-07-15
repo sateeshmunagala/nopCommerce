@@ -3,6 +3,7 @@ using Nop.Web.Framework.Models;
 using Nop.Web.Framework.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Web.Models.Catalog;
+using Nop.Plugin.Misc.AIInterview.Domain;
 
 namespace Nop.Plugin.Misc.AIInterview.Models;
 
@@ -157,6 +158,10 @@ public record VendorScoreboardModel : BaseNopModel
 
 public record VendorJobModel : BaseNopModel
 {
+    public int Id { get; set; }
+
+    public bool IsEditMode { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Name")]
     public string Name { get; set; }
 
@@ -199,6 +204,12 @@ public record VendorJobModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange")]
     public string SalaryRange { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.SalaryMinCtcPa")]
+    public decimal? SalaryMinCtcPa { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.SalaryMaxCtcPa")]
+    public decimal? SalaryMaxCtcPa { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc")]
     public DateTime? ApplyUntilUtc { get; set; }
 
@@ -224,4 +235,37 @@ public record ApplySubmissionResult
     public string Message { get; init; }
     public bool RequiresLogin { get; init; }
     public string RedirectUrl { get; init; }
+}
+
+public record EmployerDashboardJobModel : BaseNopModel
+{
+    public int ProductId { get; set; }
+    public string JobTitle { get; set; }
+    public bool Published { get; set; }
+    public string SalaryRange { get; set; }
+    public DateTime CreatedOnUtc { get; set; }
+    public int ApplicationCount { get; set; }
+}
+
+public record EmployerDashboardJobsTabModel : BaseNopModel
+{
+    public IList<EmployerDashboardJobModel> Jobs { get; set; } = new List<EmployerDashboardJobModel>();
+}
+
+public record EmployerDashboardInvitesTabModel : BaseNopModel
+{
+    public IList<SponsorInvite> Invites { get; set; } = new List<SponsorInvite>();
+    public IDictionary<int, string> InviteStatuses { get; set; } = new Dictionary<int, string>();
+    public IList<SelectListItem> AvailableProducts { get; set; } = new List<SelectListItem>();
+    public decimal CreditBalance { get; set; }
+    public string CreditBalanceDisplay { get; set; }
+}
+
+public record EmployerDashboardPageModel : BaseNopModel
+{
+    public string ActiveTab { get; set; } = AIInterviewDefaults.EmployerDashboardOverviewTabKey;
+    public VendorScoreboardModel Overview { get; set; } = new();
+    public EmployerDashboardJobsTabModel Jobs { get; set; } = new();
+    public ApplicationListModel Applications { get; set; } = new();
+    public EmployerDashboardInvitesTabModel Invites { get; set; } = new();
 }

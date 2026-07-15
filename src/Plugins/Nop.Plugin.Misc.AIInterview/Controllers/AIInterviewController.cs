@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Http;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
@@ -29,6 +30,8 @@ using Microsoft.AspNetCore.WebUtilities;
 using Nop.Core.Http;
 using Nop.Plugin.Misc.AIInterview.Infrastructure;
 using Nop.Web.Framework.Mvc.Routing;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
@@ -60,6 +63,10 @@ public class AIInterviewController : BasePluginController
     private readonly IResumeFileService _resumeFileService;
     private readonly IResumeProfileService _resumeProfileService;
     private readonly IDateTimeHelper _dateTimeHelper;
+    private readonly IGenericAttributeService _genericAttributeService;
+    private readonly IAIInterviewJobDisplayService _aiInterviewJobDisplayService;
+    private readonly ISponsorInviteService _inviteService;
+    private readonly ICreditService _creditService;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -83,7 +90,11 @@ public class AIInterviewController : BasePluginController
         IProductModelFactory productModelFactory = null,
         IResumeFileService resumeFileService = null,
         IResumeProfileService resumeProfileService = null,
-        IDateTimeHelper dateTimeHelper = null)
+        IDateTimeHelper dateTimeHelper = null,
+        IGenericAttributeService genericAttributeService = null,
+        IAIInterviewJobDisplayService aiInterviewJobDisplayService = null,
+        ISponsorInviteService inviteService = null,
+        ICreditService creditService = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -108,6 +119,10 @@ public class AIInterviewController : BasePluginController
         _resumeFileService = resumeFileService;
         _resumeProfileService = resumeProfileService;
         _dateTimeHelper = dateTimeHelper;
+        _genericAttributeService = genericAttributeService;
+        _aiInterviewJobDisplayService = aiInterviewJobDisplayService;
+        _inviteService = inviteService;
+        _creditService = creditService;
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -129,7 +144,11 @@ public class AIInterviewController : BasePluginController
         IProductModelFactory productModelFactory = null,
         IResumeFileService resumeFileService = null,
         IResumeProfileService resumeProfileService = null,
-        IDateTimeHelper dateTimeHelper = null)
+        IDateTimeHelper dateTimeHelper = null,
+        IGenericAttributeService genericAttributeService = null,
+        IAIInterviewJobDisplayService aiInterviewJobDisplayService = null,
+        ISponsorInviteService inviteService = null,
+        ICreditService creditService = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -152,7 +171,11 @@ public class AIInterviewController : BasePluginController
             productModelFactory,
             resumeFileService,
             resumeProfileService,
-            dateTimeHelper)
+            dateTimeHelper,
+            genericAttributeService,
+            aiInterviewJobDisplayService,
+            inviteService,
+            creditService)
     {
     }
 
@@ -813,6 +836,94 @@ public class AIInterviewController : BasePluginController
         return View("~/Plugins/Misc.AIInterview/Views/MyActivity.cshtml", model);
     }
 
+    protected virtual string NormalizeEmployerDashboardTab(string tab)
+    {
+        return (tab ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            var value when string.Equals(value, AIInterviewDefaults.EmployerDashboardJobsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.EmployerDashboardJobsTabKey,
+            var value when string.Equals(value, AIInterviewDefaults.EmployerDashboardApplicationsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.EmployerDashboardApplicationsTabKey,
+            var value when string.Equals(value, AIInterviewDefaults.EmployerDashboardInvitesTabKey, StringComparison.Ordinal) => AIInterviewDefaults.EmployerDashboardInvitesTabKey,
+            _ => AIInterviewDefaults.EmployerDashboardOverviewTabKey
+        };
+    }
+
+    protected virtual RouteValueDictionary BuildEmployerDashboardRouteValues(string tab, ApplicationListModel applicationsModel = null)
+    {
+        var values = new RouteValueDictionary
+        {
+            ["tab"] = NormalizeEmployerDashboardTab(tab)
+        };
+
+        if (applicationsModel == null)
+            return values;
+
+        values["CandidateNameOrEmail"] = applicationsModel.CandidateNameOrEmail;
+        values["Status"] = applicationsModel.Status;
+        values["MinScore"] = applicationsModel.MinScore;
+        values["MaxScore"] = applicationsModel.MaxScore;
+        values["StartDate"] = applicationsModel.StartDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        values["EndDate"] = applicationsModel.EndDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        values["InterviewSort"] = applicationsModel.InterviewSort;
+        values["OnlyWithInterviewScore"] = applicationsModel.OnlyWithInterviewScore;
+        values["PageSize"] = applicationsModel.PageSize;
+        values["Page"] = applicationsModel.Page;
+
+        return values;
+    }
+
+    protected virtual async Task<EmployerDashboardPageModel> BuildEmployerDashboardPageModelAsync(Customer customer, string tab, ApplicationListModel applicationsModel = null, int pageIndex = 0, int pageSize = 10)
+    {
+        var activeTab = NormalizeEmployerDashboardTab(tab);
+        var model = new EmployerDashboardPageModel
+        {
+            ActiveTab = activeTab
+        };
+
+        switch (activeTab)
+        {
+            case var value when string.Equals(value, AIInterviewDefaults.EmployerDashboardJobsTabKey, StringComparison.Ordinal):
+                model.Jobs = await BuildEmployerDashboardJobsTabModelAsync(customer);
+                break;
+            case var value when string.Equals(value, AIInterviewDefaults.EmployerDashboardApplicationsTabKey, StringComparison.Ordinal):
+                model.Applications = await BuildEmployerApplicationsModelAsync(customer, applicationsModel ?? new ApplicationListModel(), pageIndex, pageSize);
+                break;
+            case var value when string.Equals(value, AIInterviewDefaults.EmployerDashboardInvitesTabKey, StringComparison.Ordinal):
+                model.Invites = await BuildEmployerDashboardInvitesTabModelAsync(customer);
+                break;
+            default:
+                model.Overview = await BuildVendorScoreboardModelAsync(customer);
+                break;
+        }
+
+        return model;
+    }
+
+    public async Task<IActionResult> EmployerDashboard(string tab = null, string candidateNameOrEmail = null, string status = null, decimal? minScore = null, decimal? maxScore = null, DateTime? startDate = null, DateTime? endDate = null, string interviewSort = "TopScorersFirst", bool onlyWithInterviewScore = false, int page = 1, int pageSize = 20, int pageIndex = 0)
+    {
+        if (!await IsAuthorizedForEmployerActionsAsync())
+            return Challenge();
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        var applicationsModel = new ApplicationListModel
+        {
+            CandidateNameOrEmail = candidateNameOrEmail,
+            Status = status,
+            MinScore = minScore,
+            MaxScore = maxScore,
+            StartDate = startDate,
+            EndDate = endDate,
+            InterviewSort = string.IsNullOrWhiteSpace(interviewSort) ? "TopScorersFirst" : interviewSort,
+            OnlyWithInterviewScore = onlyWithInterviewScore,
+            Page = page,
+            PageSize = pageSize
+        };
+
+        var model = await BuildEmployerDashboardPageModelAsync(customer, tab, applicationsModel, pageIndex, pageSize);
+        ViewData["EmployerDashboardRouteValues"] = BuildEmployerDashboardRouteValues(model.ActiveTab, model.Applications);
+
+        return View("~/Plugins/Misc.AIInterview/Views/EmployerDashboard.cshtml", model);
+    }
+
     public async Task<IActionResult> MyApplications(string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null)
     {
         if (!_aiInterviewSettings.Enabled)
@@ -1375,12 +1486,79 @@ public class AIInterviewController : BasePluginController
         });
     }
 
-    public async Task<IActionResult> EmployerApplications(ApplicationListModel model, int pageIndex = 0, int pageSize = 10)
+    protected virtual async Task<VendorScoreboardModel> BuildVendorScoreboardModelAsync(Customer customer)
     {
-        if (!await IsAuthorizedForEmployerActionsAsync())
-            return Challenge();
+        var isAdmin = await _customerService.IsAdminAsync(customer);
+        var vendorId = isAdmin ? 0 : customer.VendorId;
+        var applications = await _applicationService.GetApplicationsAsync(vendorId: vendorId);
+        var products = await _productService.SearchProductsAsync(vendorId: vendorId, showHidden: true);
+        var completedScores = new List<decimal>();
+        var customers = (await _customerService.GetCustomersByIdsAsync(applications.Select(application => application.CustomerId).Distinct().ToArray()))?.ToList()
+            ?? new List<Customer>();
+        var unknownCandidate = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
 
-        var customer = await _workContext.GetCurrentCustomerAsync();
+        foreach (var application in applications)
+        {
+            var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
+            completedScores.AddRange(sessions
+                .Where(s => SessionMatchesApplication(s, application) && s.CompletedOnUtc.HasValue)
+                .Select(s => s.Score));
+        }
+
+        var recentApplications = await Task.WhenAll(applications
+            .OrderByDescending(application => application.CreatedOnUtc)
+            .Select(async application =>
+            {
+                var appCustomer = customers.FirstOrDefault(entry => entry.Id == application.CustomerId);
+                var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
+                var appSessions = sessions.Where(session => SessionMatchesApplication(session, application)).ToList();
+                var latestCompletedSession = appSessions
+                    .Where(session => session.CompletedOnUtc.HasValue)
+                    .OrderByDescending(session => session.CompletedOnUtc)
+                    .ThenByDescending(session => session.Id)
+                    .FirstOrDefault();
+                var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
+                var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : string.Empty;
+
+                return new ApplicationModel
+                {
+                    Id = application.Id,
+                    JobTitle = application.JobTitle,
+                    CandidateName = string.IsNullOrWhiteSpace(candidateName) ? unknownCandidate : candidateName,
+                    CandidateEmail = appCustomer?.Email ?? unknownCandidate,
+                    RawStatus = normalizedStatus,
+                    Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
+                    InterviewScore = latestCompletedSession?.Score,
+                    InterviewReportUrl = latestCompletedSession != null ? Url?.Action("Report", "AIInterview", new { sessionId = latestCompletedSession.Id }) : null,
+                    RecordingUrl = latestCompletedSession != null && !string.IsNullOrWhiteSpace(latestCompletedSession.RecordingUrl)
+                        ? Url?.Action("Recording", "AIInterview", new { sessionId = latestCompletedSession.Id })
+                        : null,
+                    CreatedOn = application.CreatedOnUtc,
+                    CompletedOn = latestCompletedSession?.CompletedOnUtc
+                };
+            }));
+
+        return new VendorScoreboardModel
+        {
+            TotalJobs = products?.Count ?? 0,
+            TotalApplications = applications.Count,
+            CompletedInterviews = completedScores.Count,
+            ShortlistedApplications = applications.Count(application =>
+                string.Equals(JobApplicationStatuses.Normalize(application.Status), JobApplicationStatuses.Shortlisted, StringComparison.OrdinalIgnoreCase)),
+            ActiveFlaggedViolations = applications.Count(application =>
+            {
+                var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
+                return string.Equals(normalizedStatus, JobApplicationStatuses.Rejected, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(normalizedStatus, JobApplicationStatuses.Withdrawn, StringComparison.OrdinalIgnoreCase);
+            }),
+            AverageScore = completedScores.Any() ? completedScores.Average() : null,
+            HighestScore = completedScores.Any() ? completedScores.Max() : null,
+            RecentApplications = recentApplications.ToList()
+        };
+    }
+
+    protected virtual async Task<ApplicationListModel> BuildEmployerApplicationsModelAsync(Customer customer, ApplicationListModel model, int pageIndex = 0, int pageSize = 10)
+    {
         var isEmployer = !await _customerService.IsAdminAsync(customer) && customer.VendorId > 0;
         var (startDateUtc, endDateUtc) = await ConvertApplicationFilterDatesToUtcAsync(model.StartDate, model.EndDate);
 
@@ -1398,54 +1576,49 @@ public class AIInterviewController : BasePluginController
             pageSize: pageSize,
             sortByScore: model.SortByScore);
 
-        var customerIds = applications.Select(a => a.CustomerId).Distinct().ToList();
+        var customerIds = applications.Select(application => application.CustomerId).Distinct().ToList();
         var customers = await _customerService.GetCustomersByIdsAsync(customerIds.ToArray());
 
-        // Optimize session fetching by getting all sessions for these applications
-        // Note: IInterviewSessionService doesn't have GetByApplicationIds, so we'll just fetch by customer if needed,
-        // or just leave as is if we want to avoid modifying service for now.
-        // Actually, for a small page size, fetching per item is acceptable but let's try to be better.
-
-        model.Applications = await Task.WhenAll(applications.Select(async a =>
+        model.Applications = await Task.WhenAll(applications.Select(async application =>
         {
-            var appCustomer = customers.FirstOrDefault(c => c.Id == a.CustomerId);
-            var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(a.CustomerId);
-            var appSessions = sessions.Where(s => SessionMatchesApplication(s, a)).ToList();
+            var appCustomer = customers.FirstOrDefault(entry => entry.Id == application.CustomerId);
+            var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
+            var appSessions = sessions.Where(session => SessionMatchesApplication(session, application)).ToList();
             var session = appSessions
-                .Where(s => s.CompletedOnUtc.HasValue)
-                .OrderByDescending(s => s.CompletedOnUtc)
-                .ThenByDescending(s => s.Id)
+                .Where(entry => entry.CompletedOnUtc.HasValue)
+                .OrderByDescending(entry => entry.CompletedOnUtc)
+                .ThenByDescending(entry => entry.Id)
                 .FirstOrDefault();
-            var normalizedStatus = JobApplicationStatuses.Normalize(a.Status);
+            var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
             var questionScores = ParseQuestionScores(session?.QuestionScores);
             var reportSections = SplitReportSections(session?.ReportData);
 
             return new ApplicationModel
             {
-                Id = a.Id,
-                JobTitle = a.JobTitle,
+                Id = application.Id,
+                JobTitle = application.JobTitle,
                 CandidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown"),
                 CandidateEmail = appCustomer?.Email ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown"),
                 CandidatePhone = string.IsNullOrWhiteSpace(appCustomer?.Phone) ? "+1 555 201 001" : appCustomer.Phone,
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
                 RawStatus = normalizedStatus,
-                StatusComment = a.StatusComment,
-                ResumeDownloadId = a.ResumeDownloadId,
-                HasResume = a.ResumeDownloadId > 0,
-                ResumeDownloadUrl = a.ResumeDownloadId > 0 ? Url.RouteUrl(AIInterviewDefaults.EmployerDownloadResumeRouteName, new { applicationId = a.Id }) : null,
+                StatusComment = application.StatusComment,
+                ResumeDownloadId = application.ResumeDownloadId,
+                HasResume = application.ResumeDownloadId > 0,
+                ResumeDownloadUrl = application.ResumeDownloadId > 0 ? Url.RouteUrl(AIInterviewDefaults.EmployerDownloadResumeRouteName, new { applicationId = application.Id }) : null,
                 InterviewScore = session?.Score,
                 InterviewReportUrl = session != null ? Url.Action("Report", "AIInterview", new { sessionId = session.Id }) : null,
                 InterviewReportPanelUrl = session != null ? BuildReportPanelUrl(session.Id) : null,
-                CreatedOn = a.CreatedOnUtc,
+                CreatedOn = application.CreatedOnUtc,
                 AttemptCount = appSessions.Count,
                 CompletedOn = session?.CompletedOnUtc,
                 ChargeMode = await GetEmployerChargeModeLabelAsync(session != null && session.SponsorInviteId > 0),
                 PromptSource = string.IsNullOrWhiteSpace(_aiInterviewSettings.Provider) && string.IsNullOrWhiteSpace(_aiInterviewSettings.Model)
                     ? "Resume-backed template"
                     : $"Provider: {_aiInterviewSettings.Provider}, Model: {_aiInterviewSettings.Model}",
-                CoverMessage = !string.IsNullOrWhiteSpace(a.StatusComment)
-                    ? a.StatusComment
-                    : $"Applied for {a.JobTitle} with a resume-backed profile and interview history.",
+                CoverMessage = !string.IsNullOrWhiteSpace(application.StatusComment)
+                    ? application.StatusComment
+                    : $"Applied for {application.JobTitle} with a resume-backed profile and interview history.",
                 QuestionScores = session?.QuestionScores,
                 QuestionScoreValues = questionScores,
                 ReportSummary = reportSections.Summary,
@@ -1456,11 +1629,132 @@ public class AIInterviewController : BasePluginController
         model.Applications = ApplyEmployerInterviewFiltersAndSorting(model.Applications, model);
 
         if (!string.IsNullOrWhiteSpace(model.JobTitleOrKeyword))
+        {
             model.Applications = model.Applications
                 .Where(application => (application.JobTitle ?? string.Empty).Contains(model.JobTitleOrKeyword, StringComparison.OrdinalIgnoreCase))
                 .ToList();
+        }
 
         model.TotalCount = model.Applications.Count;
+        return model;
+    }
+
+    protected virtual async Task<EmployerDashboardJobsTabModel> BuildEmployerDashboardJobsTabModelAsync(Customer customer)
+    {
+        var model = new EmployerDashboardJobsTabModel();
+        if (_jobRequirementService == null || _productService == null)
+            return model;
+
+        var isAdmin = await _customerService.IsAdminAsync(customer);
+        var vendorId = isAdmin ? 0 : customer.VendorId;
+        var products = await _productService.SearchProductsAsync(vendorId: vendorId, showHidden: true, pageSize: int.MaxValue)
+            ?? new PagedList<Product>(new List<Product>(), 0, 1, 1);
+
+        foreach (var product in products.OrderByDescending(product => product.CreatedOnUtc))
+        {
+            if (product == null || product.Deleted || !await _jobRequirementService.IsJobProductAsync(product))
+                continue;
+
+            var salarySnapshot = _aiInterviewJobDisplayService == null
+                ? new AIInterviewJobSpecificationSnapshotModel()
+                : await _aiInterviewJobDisplayService.GetSpecificationSnapshotAsync(product.Id);
+
+            model.Jobs.Add(new EmployerDashboardJobModel
+            {
+                ProductId = product.Id,
+                JobTitle = product.Name,
+                Published = product.Published,
+                SalaryRange = AIInterviewJobDisplayService.SanitizeSalaryDisplay(salarySnapshot?.SalaryRange),
+                CreatedOnUtc = product.CreatedOnUtc,
+                ApplicationCount = await _applicationService.GetApplicationCountAsync(productId: product.Id)
+            });
+        }
+
+        return model;
+    }
+
+    protected virtual async Task<EmployerDashboardInvitesTabModel> BuildEmployerDashboardInvitesTabModelAsync(Customer customer)
+    {
+        var model = new EmployerDashboardInvitesTabModel();
+        if (_inviteService == null || _creditService == null)
+            return model;
+
+        var invites = await _inviteService.GetSponsorInvitesAsync(customer.Id) ?? new List<SponsorInvite>();
+        var wallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
+
+        model.Invites = invites;
+        model.CreditBalance = wallet.Balance;
+        model.CreditBalanceDisplay = decimal.Truncate(wallet.Balance).ToString("0", CultureInfo.InvariantCulture);
+        model.AvailableProducts = await BuildEmployerInviteProductSelectListAsync(customer);
+
+        foreach (var invite in invites)
+            model.InviteStatuses[invite.Id] = await GetInviteStatusTextAsync(invite);
+
+        return model;
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildEmployerInviteProductSelectListAsync(Customer customer)
+    {
+        var products = await _productService.SearchProductsAsync(pageSize: int.MaxValue, showHidden: true)
+            ?? new PagedList<Product>(new List<Product>(), 0, 1, 1);
+
+        var filteredProducts = products.AsEnumerable();
+        if (customer?.VendorId > 0)
+            filteredProducts = filteredProducts.Where(product => product.VendorId == customer.VendorId);
+
+        var items = new List<SelectListItem>
+        {
+            new()
+            {
+                Value = string.Empty,
+                Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Select")
+            }
+        };
+
+        foreach (var product in filteredProducts.OrderBy(product => product.Name))
+        {
+            if (_jobRequirementService != null && !await _jobRequirementService.IsJobProductAsync(product))
+                continue;
+
+            items.Add(new SelectListItem
+            {
+                Value = product.Id.ToString(),
+                Text = $"{product.Name} (ID: {product.Id})"
+            });
+        }
+
+        return items;
+    }
+
+    protected virtual async Task<string> GetInviteStatusTextAsync(SponsorInvite invite)
+    {
+        if (invite == null)
+            return string.Empty;
+
+        var attempts = _interviewSessionService == null
+            ? 0
+            : await _interviewSessionService.GetSponsorInviteAttemptCountAsync(invite.Id);
+
+        var statusKey = attempts >= invite.MaxAttempts && invite.MaxAttempts > 0
+            ? "Plugins.Misc.AIInterview.Employer.Invite.Exhausted"
+            : !invite.IsActive
+                ? "Plugins.Misc.AIInterview.Employer.Invite.Inactive"
+                : invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow
+                    ? "Plugins.Misc.AIInterview.Employer.Invite.Expired"
+                    : attempts > 0 || invite.IsAccepted
+                        ? "Plugins.Misc.AIInterview.Employer.Invite.Accepted"
+                        : "Plugins.Misc.AIInterview.Employer.Invite.Active";
+
+        return await _localizationService.GetResourceAsync(statusKey);
+    }
+
+    public async Task<IActionResult> EmployerApplications(ApplicationListModel model, int pageIndex = 0, int pageSize = 10)
+    {
+        if (!await IsAuthorizedForEmployerActionsAsync())
+            return Challenge();
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        model = await BuildEmployerApplicationsModelAsync(customer, model, pageIndex, pageSize);
 
         return View("~/Plugins/Misc.AIInterview/Views/EmployerApplications.cshtml", model);
     }
@@ -1515,7 +1809,7 @@ public class AIInterviewController : BasePluginController
         if (!JobApplicationStatuses.IsValid(normalizedStatus))
         {
             _notificationService.ErrorNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.UpdateStatus.Invalid"));
-            return RedirectToAction("EmployerApplications");
+            return RedirectToRoute(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey });
         }
 
         var customer = await _workContext.GetCurrentCustomerAsync();
@@ -1536,7 +1830,7 @@ public class AIInterviewController : BasePluginController
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Applications.UpdateStatus.Success"));
 
-        return RedirectToAction("EmployerApplications");
+        return RedirectToRoute(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey });
     }
 
     public async Task<IActionResult> ExportCsv(ApplicationListModel model)
@@ -1620,73 +1914,7 @@ public class AIInterviewController : BasePluginController
             return Challenge();
 
         var customer = await _workContext.GetCurrentCustomerAsync();
-        var isAdmin = await _customerService.IsAdminAsync(customer);
-        var vendorId = isAdmin ? 0 : customer.VendorId;
-        var applications = await _applicationService.GetApplicationsAsync(vendorId: vendorId);
-        var products = await _productService.SearchProductsAsync(vendorId: vendorId, showHidden: true);
-        var completedScores = new List<decimal>();
-        var customers = (await _customerService.GetCustomersByIdsAsync(applications.Select(application => application.CustomerId).Distinct().ToArray()))?.ToList()
-            ?? new List<Customer>();
-        var unknownCandidate = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
-
-        foreach (var application in applications)
-        {
-            var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
-            completedScores.AddRange(sessions
-                .Where(s => SessionMatchesApplication(s, application) && s.CompletedOnUtc.HasValue)
-                .Select(s => s.Score));
-        }
-
-        var recentApplications = await Task.WhenAll(applications
-            .OrderByDescending(application => application.CreatedOnUtc)
-            .Select(async application =>
-            {
-                var appCustomer = customers.FirstOrDefault(entry => entry.Id == application.CustomerId);
-                var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
-                var appSessions = sessions.Where(session => SessionMatchesApplication(session, application)).ToList();
-                var latestCompletedSession = appSessions
-                    .Where(session => session.CompletedOnUtc.HasValue)
-                    .OrderByDescending(session => session.CompletedOnUtc)
-                    .ThenByDescending(session => session.Id)
-                    .FirstOrDefault();
-                var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
-                var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : string.Empty;
-
-                return new ApplicationModel
-                {
-                    Id = application.Id,
-                    JobTitle = application.JobTitle,
-                    CandidateName = string.IsNullOrWhiteSpace(candidateName) ? unknownCandidate : candidateName,
-                    CandidateEmail = appCustomer?.Email ?? unknownCandidate,
-                    RawStatus = normalizedStatus,
-                    Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
-                    InterviewScore = latestCompletedSession?.Score,
-                    InterviewReportUrl = latestCompletedSession != null ? Url?.Action("Report", "AIInterview", new { sessionId = latestCompletedSession.Id }) : null,
-                    RecordingUrl = latestCompletedSession != null && !string.IsNullOrWhiteSpace(latestCompletedSession.RecordingUrl)
-                        ? Url?.Action("Recording", "AIInterview", new { sessionId = latestCompletedSession.Id })
-                        : null,
-                    CreatedOn = application.CreatedOnUtc,
-                    CompletedOn = latestCompletedSession?.CompletedOnUtc
-                };
-            }));
-
-        var model = new VendorScoreboardModel
-        {
-            TotalJobs = products?.Count ?? 0,
-            TotalApplications = applications.Count,
-            CompletedInterviews = completedScores.Count,
-            ShortlistedApplications = applications.Count(application =>
-                string.Equals(JobApplicationStatuses.Normalize(application.Status), JobApplicationStatuses.Shortlisted, StringComparison.OrdinalIgnoreCase)),
-            ActiveFlaggedViolations = applications.Count(application =>
-            {
-                var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
-                return string.Equals(normalizedStatus, JobApplicationStatuses.Rejected, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(normalizedStatus, JobApplicationStatuses.Withdrawn, StringComparison.OrdinalIgnoreCase);
-            }),
-            AverageScore = completedScores.Any() ? completedScores.Average() : null,
-            HighestScore = completedScores.Any() ? completedScores.Max() : null,
-            RecentApplications = recentApplications.ToList()
-        };
+        var model = await BuildVendorScoreboardModelAsync(customer);
 
         return View("~/Plugins/Misc.AIInterview/Views/VendorScoreboard.cshtml", model);
     }
@@ -1711,22 +1939,166 @@ public class AIInterviewController : BasePluginController
         if (customer.VendorId <= 0)
             return Challenge();
 
-        NormalizeVendorJobModel(model);
+        return await SaveVendorJobAsync(model);
+    }
 
+    public async Task<IActionResult> VendorJobEdit(int productId)
+    {
+        if (!await IsAuthorizedForEmployerActionsAsync())
+            return Challenge();
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        var product = await _productService.GetProductByIdAsync(productId);
+        if (product == null)
+            return NotFound();
+
+        if (_jobRequirementService != null && !await _jobRequirementService.IsJobProductAsync(product))
+            return NotFound();
+
+        if (!await CanManageVendorJobAsync(customer, product))
+            return Challenge();
+
+        var model = new VendorJobModel();
+        await PopulateVendorJobModelFromProductAsync(model, product);
+        await PrepareVendorJobModelAsync(model);
+        return View("~/Plugins/Misc.AIInterview/Views/VendorJobCreation.cshtml", model);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> VendorJobEdit(int productId, VendorJobModel model)
+    {
+        if (!await IsAuthorizedForEmployerActionsAsync())
+            return Challenge();
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        var product = await _productService.GetProductByIdAsync(productId);
+        if (product == null)
+            return NotFound();
+
+        if (_jobRequirementService != null && !await _jobRequirementService.IsJobProductAsync(product))
+            return NotFound();
+
+        if (!await CanManageVendorJobAsync(customer, product))
+            return Challenge();
+
+        model.Id = productId;
+        model.IsEditMode = true;
+
+        return await SaveVendorJobAsync(model, product);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ToggleVendorJobPublish(int productId)
+    {
+        if (!await IsAuthorizedForEmployerActionsAsync())
+            return Challenge();
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        var product = await _productService.GetProductByIdAsync(productId);
+        if (product == null)
+            return NotFound();
+
+        if (_jobRequirementService != null && !await _jobRequirementService.IsJobProductAsync(product))
+            return NotFound();
+
+        if (!await CanManageVendorJobAsync(customer, product))
+            return Challenge();
+
+        product.Published = !product.Published;
+        product.UpdatedOnUtc = DateTime.UtcNow;
+        await _productService.UpdateProductAsync(product);
+
+        return RedirectToRoute(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardJobsTabKey });
+    }
+
+    protected virtual async Task<IActionResult> SaveVendorJobAsync(VendorJobModel model, Product existingProduct = null)
+    {
+        NormalizeVendorJobModel(model);
+        var (productTemplate, salaryRangeOptionId) = await ValidateVendorJobModelAsync(model, existingProduct == null);
+
+        if (!ModelState.IsValid)
+        {
+            await PrepareVendorJobModelAsync(model);
+            return View("~/Plugins/Misc.AIInterview/Views/VendorJobCreation.cshtml", model);
+        }
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        var now = DateTime.UtcNow;
+        var isEditMode = existingProduct != null;
+        var product = existingProduct ?? new Product
+        {
+            ProductType = ProductType.SimpleProduct,
+            ProductTemplateId = productTemplate.Id,
+            VendorId = customer.VendorId,
+            VisibleIndividually = true,
+            DisableBuyButton = true,
+            IsShipEnabled = false,
+            ManageInventoryMethod = ManageInventoryMethod.DontManageStock,
+            OrderMinimumQuantity = 1,
+            OrderMaximumQuantity = 1,
+            CreatedOnUtc = now
+        };
+
+        product.Name = model.Name;
+        product.ShortDescription = model.ShortDescription;
+        product.FullDescription = model.FullDescription;
+        product.Sku = string.IsNullOrWhiteSpace(model.Sku)
+            ? (string.IsNullOrWhiteSpace(product.Sku) ? $"AIJOB-{DateTime.UtcNow:yyyyMMddHHmmssfff}" : product.Sku)
+            : model.Sku;
+        product.Published = model.Published;
+        product.AvailableEndDateTimeUtc = GetInclusiveApplyUntilUtc(model.ApplyUntilUtc);
+        product.UpdatedOnUtc = now;
+
+        if (isEditMode)
+            await _productService.UpdateProductAsync(product);
+        else
+            await _productService.InsertProductAsync(product);
+
+        await SaveJobSalaryAttributesAsync(product, model);
+        await ReplaceVendorJobSpecificationAttributesAsync(product, model, salaryRangeOptionId);
+
+        if (_jobInterviewExperienceService != null)
+            await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
+
+        if (_jobRequirementService != null)
+            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, 0m, 3);
+
+        var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
+        await _urlRecordService.SaveSlugAsync(product, seName, 0);
+
+        var successKey = isEditMode
+            ? "Plugins.Misc.AIInterview.VendorJobCreation.UpdateSuccess"
+            : "Plugins.Misc.AIInterview.VendorJobCreation.Success";
+        _notificationService.SuccessNotification(await _localizationService.GetResourceAsync(successKey));
+
+        return RedirectToRoute(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardJobsTabKey });
+    }
+
+    protected virtual async Task<(ProductTemplate ProductTemplate, int SalaryRangeOptionId)> ValidateVendorJobModelAsync(VendorJobModel model, bool isCreate)
+    {
         if (string.IsNullOrWhiteSpace(model.Name))
             ModelState.AddModelError(nameof(model.Name), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Name.Required"));
 
         if (model.ApplyUntilUtc.HasValue && model.ApplyUntilUtc.Value.Date < DateTime.UtcNow.Date)
             ModelState.AddModelError(nameof(model.ApplyUntilUtc), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc.Past"));
 
-        if (_productTemplateService == null || _urlRecordService == null)
+        if (model.SalaryMinCtcPa.HasValue && model.SalaryMinCtcPa.Value < 0)
+            ModelState.AddModelError(nameof(model.SalaryMinCtcPa), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.SalaryMinCtcPa.Invalid"));
+
+        if (model.SalaryMaxCtcPa.HasValue && model.SalaryMaxCtcPa.Value < 0)
+            ModelState.AddModelError(nameof(model.SalaryMaxCtcPa), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.SalaryMaxCtcPa.Invalid"));
+
+        if (model.SalaryMinCtcPa.HasValue && model.SalaryMaxCtcPa.HasValue && model.SalaryMaxCtcPa.Value < model.SalaryMinCtcPa.Value)
+            ModelState.AddModelError(nameof(model.SalaryMaxCtcPa), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange.Invalid"));
+
+        if (_urlRecordService == null || _productTemplateService == null)
             ModelState.AddModelError(string.Empty, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Unavailable"));
 
         var productTemplate = _productTemplateService == null
             ? null
-            : (await _productTemplateService.GetAllProductTemplatesAsync()).FirstOrDefault(template =>
+            : ((await _productTemplateService.GetAllProductTemplatesAsync()) ?? new List<ProductTemplate>()).FirstOrDefault(template =>
                 string.Equals(template.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase));
-        if (productTemplate == null)
+        if (isCreate && productTemplate == null)
             ModelState.AddModelError(string.Empty, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Unavailable"));
 
         var experienceAttribute = await GetExperienceLevelSpecificationAttributeAsync();
@@ -1749,47 +2121,108 @@ public class AIInterviewController : BasePluginController
             ModelState.AddModelError(nameof(model.JobLocationOptionId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Invalid"));
 
         var salaryRangeOptionId = 0;
-        if (!string.IsNullOrWhiteSpace(model.SalaryRange))
+        var salaryDisplay = AIInterviewJobDisplayService.BuildSalaryDisplayText(model.SalaryMinCtcPa, model.SalaryMaxCtcPa);
+        if (!string.IsNullOrWhiteSpace(salaryDisplay))
         {
             salaryRangeOptionId = await ResolveSalaryRangeSpecificationOptionIdAsync();
             if (salaryRangeOptionId <= 0)
                 ModelState.AddModelError(nameof(model.SalaryRange), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange.Unsupported"));
         }
 
-        if (!ModelState.IsValid)
+        return (productTemplate, salaryRangeOptionId);
+    }
+
+    protected virtual async Task PopulateVendorJobModelFromProductAsync(VendorJobModel model, Product product)
+    {
+        if (model == null || product == null)
+            return;
+
+        model.Id = product.Id;
+        model.IsEditMode = true;
+        model.Name = product.Name;
+        model.ShortDescription = product.ShortDescription;
+        model.FullDescription = product.FullDescription;
+        model.Sku = product.Sku;
+        model.Published = product.Published;
+        model.ApplyUntilUtc = product.AvailableEndDateTimeUtc?.Date;
+
+        if (_jobRequirementService != null)
         {
-            await PrepareVendorJobModelAsync(model);
-            return View("~/Plugins/Misc.AIInterview/Views/VendorJobCreation.cshtml", model);
+            var requirements = await _jobRequirementService.GetRequirementsAsync(product);
+            model.ResumeRequired = requirements?.ResumeRequired ?? false;
+            model.InterviewRequired = requirements?.InterviewRequired ?? false;
         }
 
-        var now = DateTime.UtcNow;
-        var product = new Product
-        {
-            ProductType = ProductType.SimpleProduct,
-            ProductTemplateId = productTemplate.Id,
-            VendorId = customer.VendorId,
-            Name = model.Name.Trim(),
-            ShortDescription = model.ShortDescription,
-            FullDescription = model.FullDescription,
-            Sku = string.IsNullOrWhiteSpace(model.Sku) ? $"AIJOB-{DateTime.UtcNow:yyyyMMddHHmmssfff}" : model.Sku,
-            VisibleIndividually = true,
-            Published = model.Published,
-            DisableBuyButton = true,
-            IsShipEnabled = false,
-            ManageInventoryMethod = ManageInventoryMethod.DontManageStock,
-            OrderMinimumQuantity = 1,
-            OrderMaximumQuantity = 1,
-            AvailableEndDateTimeUtc = GetInclusiveApplyUntilUtc(model.ApplyUntilUtc),
-            CreatedOnUtc = now,
-            UpdatedOnUtc = now
-        };
+        await LoadVendorJobSpecificationSelectionsAsync(model, product.Id);
+        await LoadJobSalaryAttributesAsync(product, model);
+    }
 
-        await _productService.InsertProductAsync(product);
+    protected virtual async Task LoadVendorJobSpecificationSelectionsAsync(VendorJobModel model, int productId)
+    {
+        var mappings = await GetProductSpecificationMappingsAsync(productId);
+
+        foreach (var mapping in mappings)
+        {
+            var attributeName = mapping.Attribute?.Name ?? string.Empty;
+            if (IsSpecificationAliasMatch(attributeName, GetExperienceLevelAttributeAliases()))
+                model.ExperienceLevelOptionId = mapping.Option?.Id;
+            else if (IsSpecificationAliasMatch(attributeName, GetWorkArrangementAttributeAliases()))
+                model.WorkModeOptionId = mapping.Option?.Id;
+            else if (IsSpecificationAliasMatch(attributeName, GetEmploymentTypeAttributeAliases()))
+                model.EmploymentTypeOptionId = mapping.Option?.Id;
+            else if (IsSpecificationAliasMatch(attributeName, GetJobLocationAttributeAliases()))
+                model.JobLocationOptionId = mapping.Option?.Id;
+        }
+    }
+
+    protected virtual async Task LoadJobSalaryAttributesAsync(Product product, VendorJobModel model)
+    {
+        if (product == null || model == null || _genericAttributeService == null)
+            return;
+
+        model.SalaryMinCtcPa = ParseNullableDecimal(await _genericAttributeService.GetAttributeAsync<string>(product, AIInterviewDefaults.JobSalaryMinCtcPaAttributeName));
+        model.SalaryMaxCtcPa = ParseNullableDecimal(await _genericAttributeService.GetAttributeAsync<string>(product, AIInterviewDefaults.JobSalaryMaxCtcPaAttributeName));
+        model.SalaryRange = AIInterviewJobDisplayService.BuildSalaryDisplayText(model.SalaryMinCtcPa, model.SalaryMaxCtcPa);
+
+        if (!string.IsNullOrWhiteSpace(model.SalaryRange))
+            return;
+
+        var legacySalaryText = await LoadLegacySalaryRangeAsync(product.Id);
+        model.SalaryRange = legacySalaryText;
+
+        if (TryParseLegacySalaryRange(legacySalaryText, out var minValue, out var maxValue))
+        {
+            model.SalaryMinCtcPa = minValue;
+            model.SalaryMaxCtcPa = maxValue;
+        }
+    }
+
+    protected virtual async Task SaveJobSalaryAttributesAsync(Product product, VendorJobModel model)
+    {
+        if (product == null || model == null || _genericAttributeService == null)
+            return;
+
+        model.SalaryRange = AIInterviewJobDisplayService.BuildSalaryDisplayText(model.SalaryMinCtcPa, model.SalaryMaxCtcPa);
+        var hasStructuredSalary = !string.IsNullOrWhiteSpace(model.SalaryRange);
+
+        await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobSalaryMinCtcPaAttributeName, model.SalaryMinCtcPa);
+        await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobSalaryMaxCtcPaAttributeName, model.SalaryMaxCtcPa);
+        await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobSalaryCurrencyCodeAttributeName, hasStructuredSalary ? "INR" : null);
+        await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobSalaryPeriodAttributeName, hasStructuredSalary ? "PA" : null);
+    }
+
+    protected virtual async Task ReplaceVendorJobSpecificationAttributesAsync(Product product, VendorJobModel model, int salaryRangeOptionId)
+    {
+        if (product == null || _specificationAttributeService == null)
+            return;
+
+        var mappings = await GetProductSpecificationMappingsAsync(product.Id);
+        foreach (var mapping in mappings.Where(entry => IsCompactEmployerMetadataAttribute(entry.Attribute?.Name ?? string.Empty)))
+            await _specificationAttributeService.DeleteProductSpecificationAttributeAsync(mapping.Mapping);
 
         await InsertProductSpecificationAttributeAsync(product.Id, model.ExperienceLevelOptionId ?? 0, displayOrder: 0);
         await InsertProductSpecificationAttributeAsync(product.Id, model.WorkModeOptionId ?? 0, displayOrder: 1);
         await InsertProductSpecificationAttributeAsync(product.Id, model.EmploymentTypeOptionId ?? 0, displayOrder: 2);
-
         await InsertProductSpecificationAttributeAsync(product.Id, model.JobLocationOptionId ?? 0, displayOrder: 3);
 
         if (!string.IsNullOrWhiteSpace(model.SalaryRange))
@@ -1797,16 +2230,154 @@ public class AIInterviewController : BasePluginController
             await InsertProductSpecificationAttributeAsync(product.Id, salaryRangeOptionId,
                 SpecificationAttributeType.CustomText, model.SalaryRange, 4);
         }
+    }
 
-        if (_jobInterviewExperienceService != null)
-            await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
-        if (_jobRequirementService != null)
-            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, 0m, 3);
-        var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
-        await _urlRecordService.SaveSlugAsync(product, seName, 0);
+    protected virtual async Task<IList<(ProductSpecificationAttribute Mapping, SpecificationAttributeOption Option, SpecificationAttribute Attribute)>> GetProductSpecificationMappingsAsync(int productId)
+    {
+        if (_specificationAttributeService == null || productId <= 0)
+        {
+            return new List<(ProductSpecificationAttribute Mapping, SpecificationAttributeOption Option, SpecificationAttribute Attribute)>();
+        }
 
-        _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Success"));
-        return RedirectToRoute(AIInterviewDefaults.VendorScoreboardRouteName);
+        var mappings = await _specificationAttributeService.GetProductSpecificationAttributesAsync(productId)
+            ?? new List<ProductSpecificationAttribute>();
+        if (!mappings.Any())
+        {
+            return new List<(ProductSpecificationAttribute Mapping, SpecificationAttributeOption Option, SpecificationAttribute Attribute)>();
+        }
+
+        var optionIds = mappings.Select(mapping => mapping.SpecificationAttributeOptionId).Distinct().ToArray();
+        var options = await _specificationAttributeService.GetSpecificationAttributeOptionsByIdsAsync(optionIds);
+        var optionLookup = options.ToDictionary(option => option.Id);
+        var attributes = await _specificationAttributeService.GetSpecificationAttributeByIdsAsync(options.Select(option => option.SpecificationAttributeId).Distinct().ToArray());
+        var attributeLookup = attributes.ToDictionary(attribute => attribute.Id);
+
+        return mappings
+            .Select(mapping =>
+            {
+                optionLookup.TryGetValue(mapping.SpecificationAttributeOptionId, out var option);
+                attributeLookup.TryGetValue(option?.SpecificationAttributeId ?? 0, out var attribute);
+                return (Mapping: mapping, Option: option, Attribute: attribute);
+            })
+            .Where(entry => entry.Attribute != null)
+            .Select(entry => (entry.Mapping, entry.Option, entry.Attribute))
+            .ToList();
+    }
+
+    protected virtual async Task<string> LoadLegacySalaryRangeAsync(int productId)
+    {
+        foreach (var mapping in await GetProductSpecificationMappingsAsync(productId))
+        {
+            if (!IsSpecificationAliasMatch(mapping.Attribute?.Name ?? string.Empty, GetSalaryRangeAttributeAliases()))
+                continue;
+
+            var value = mapping.Mapping.AttributeType == SpecificationAttributeType.CustomText
+                ? mapping.Mapping.CustomValue
+                : mapping.Option?.Name;
+            var sanitizedValue = AIInterviewJobDisplayService.SanitizeSalaryDisplay(value);
+            if (!string.IsNullOrWhiteSpace(sanitizedValue))
+                return sanitizedValue;
+        }
+
+        return string.Empty;
+    }
+
+    protected virtual bool TryParseLegacySalaryRange(string legacySalaryText, out decimal? minCtcPa, out decimal? maxCtcPa)
+    {
+        minCtcPa = null;
+        maxCtcPa = null;
+
+        if (string.IsNullOrWhiteSpace(legacySalaryText))
+            return false;
+
+        var normalized = legacySalaryText.Trim().ToLowerInvariant();
+        var matches = Regex.Matches(normalized, @"\d+(?:[.,]\d+)?\s*(?:lpa|lac|lakh|lakhs|k|cr|crore)?", RegexOptions.IgnoreCase)
+            .Select(match => ParseLegacySalaryToken(match.Value))
+            .Where(value => value.HasValue)
+            .Select(value => value.Value)
+            .ToList();
+
+        if (!matches.Any())
+            return false;
+
+        if (normalized.Contains("up to", StringComparison.Ordinal))
+        {
+            maxCtcPa = matches.Last();
+            return true;
+        }
+
+        if ((normalized.Contains('+') || normalized.Contains("above", StringComparison.Ordinal) || normalized.Contains("from", StringComparison.Ordinal)) && matches.Count == 1)
+        {
+            minCtcPa = matches[0];
+            return true;
+        }
+
+        if (matches.Count >= 2)
+        {
+            minCtcPa = matches[0];
+            maxCtcPa = matches[1];
+            if (maxCtcPa < minCtcPa)
+                (minCtcPa, maxCtcPa) = (maxCtcPa, minCtcPa);
+            return true;
+        }
+
+        minCtcPa = matches[0];
+        return true;
+    }
+
+    protected virtual decimal? ParseLegacySalaryToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return null;
+
+        var normalized = token.Trim().ToLowerInvariant();
+        var numberText = Regex.Match(normalized, @"\d+(?:[.,]\d+)?").Value.Replace(",", string.Empty, StringComparison.Ordinal);
+        if (!decimal.TryParse(numberText, NumberStyles.Number, CultureInfo.InvariantCulture, out var numericValue))
+            return null;
+
+        if (normalized.Contains("lpa", StringComparison.Ordinal) || normalized.Contains("lakh", StringComparison.Ordinal) || normalized.Contains("lac", StringComparison.Ordinal))
+            return numericValue * 100000m;
+
+        if (normalized.Contains("cr", StringComparison.Ordinal) || normalized.Contains("crore", StringComparison.Ordinal))
+            return numericValue * 10000000m;
+
+        if (normalized.Contains('k'))
+            return numericValue * 1000m;
+
+        return numericValue >= 1000m ? numericValue : null;
+    }
+
+    protected static decimal? ParseNullableDecimal(string value)
+    {
+        return decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+    }
+
+    protected static bool IsSpecificationAliasMatch(string attributeName, IEnumerable<string> aliases)
+    {
+        var normalizedAttributeName = AIInterviewJobDisplayService.NormalizeSpecificationAttributeName(attributeName);
+        return aliases.Any(alias => string.Equals(normalizedAttributeName, AIInterviewJobDisplayService.NormalizeSpecificationAttributeName(alias), StringComparison.OrdinalIgnoreCase));
+    }
+
+    protected static bool IsCompactEmployerMetadataAttribute(string attributeName)
+    {
+        return IsSpecificationAliasMatch(attributeName, GetExperienceLevelAttributeAliases()) ||
+            IsSpecificationAliasMatch(attributeName, GetWorkArrangementAttributeAliases()) ||
+            IsSpecificationAliasMatch(attributeName, GetEmploymentTypeAttributeAliases()) ||
+            IsSpecificationAliasMatch(attributeName, GetJobLocationAttributeAliases()) ||
+            IsSpecificationAliasMatch(attributeName, GetSalaryRangeAttributeAliases());
+    }
+
+    protected virtual async Task<bool> CanManageVendorJobAsync(Customer customer, Product product)
+    {
+        if (customer == null || product == null)
+            return false;
+
+        if (await _customerService.IsAdminAsync(customer))
+            return true;
+
+        return customer.VendorId > 0 && product.VendorId == customer.VendorId;
     }
 
     protected virtual void NormalizeVendorJobModel(VendorJobModel model)
@@ -1818,7 +2389,6 @@ public class AIInterviewController : BasePluginController
         model.Sku = model.Sku?.Trim();
         model.ShortDescription = model.ShortDescription?.Trim();
         model.FullDescription = model.FullDescription?.Trim();
-        model.SalaryRange = model.SalaryRange?.Trim();
         model.MinimumScore = 0m;
         model.QuestionCount = 3;
     }

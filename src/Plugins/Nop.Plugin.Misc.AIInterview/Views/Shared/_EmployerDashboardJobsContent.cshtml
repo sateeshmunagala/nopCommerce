@@ -1,0 +1,67 @@
+@using Nop.Services.Helpers
+@model EmployerDashboardJobsTabModel
+@inject IDateTimeHelper dateTimeHelper
+
+@{
+    async Task<string> FormatUtcDateAsync(DateTime utcDateTime)
+    {
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(utcDateTime, DateTimeKind.Utc);
+        return userDateTime.ToString("d");
+    }
+}
+
+<div class="section">
+    <div class="scoreboard-deck-header">
+        <div>
+            <strong class="scoreboard-deck-eyebrow">@T("Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Jobs")</strong>
+            <p class="scoreboard-deck-title">@T("Plugins.Misc.AIInterview.Employer.Jobs.Title")</p>
+        </div>
+        <div class="buttons scoreboard-deck-actions">
+            <a class="button-1 scoreboard-deck-action-primary" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobCreationRouteName)" title="@T("Plugins.Misc.AIInterview.Employer.Jobs.Create")">@T("Plugins.Misc.AIInterview.Employer.Jobs.Create")</a>
+        </div>
+    </div>
+
+    @if (Model.Jobs.Any())
+    {
+        <div class="table-wrapper">
+            <table class="data-table employer-table">
+                <thead>
+                    <tr>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.JobTitle")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.Status")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.Salary")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.CreatedOn")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.ApplicationCount")</th>
+                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.Actions")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var job in Model.Jobs)
+                    {
+                        <tr>
+                            <td>@job.JobTitle</td>
+                            <td>@(job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Published") : T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublished"))</td>
+                            <td>@(string.IsNullOrWhiteSpace(job.SalaryRange) ? "-" : job.SalaryRange)</td>
+                            <td>@(await FormatUtcDateAsync(job.CreatedOnUtc))</td>
+                            <td>@job.ApplicationCount</td>
+                            <td>
+                                <div class="buttons scoreboard-deck-row-actions">
+                                    <a class="button-2 scoreboard-deck-row-link" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobEditRouteName, new { productId = job.ProductId })" title="@T("Plugins.Misc.AIInterview.Employer.Jobs.Edit")">@T("Plugins.Misc.AIInterview.Employer.Jobs.Edit")</a>
+                                    <form asp-route="@AIInterviewDefaults.VendorJobPublishToggleRouteName" asp-route-productId="@job.ProductId" method="post" class="inline">
+                                        <button type="submit" class="button-2 scoreboard-deck-row-link" title="@(job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublish") : T("Plugins.Misc.AIInterview.Employer.Jobs.Publish"))">@(job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublish") : T("Plugins.Misc.AIInterview.Employer.Jobs.Publish"))</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="fieldset scoreboard-deck-empty-state">
+            <p>@T("Plugins.Misc.AIInterview.Employer.Jobs.Empty")</p>
+        </div>
+    }
+</div>

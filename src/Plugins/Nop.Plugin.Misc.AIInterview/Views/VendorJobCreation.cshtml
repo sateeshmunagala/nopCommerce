@@ -2,7 +2,13 @@
 @model VendorJobModel
 @{
     Layout = "_ColumnsTwo";
-    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.VendorJobCreation.Title").Text);
+    var pageTitle = Model.IsEditMode
+        ? T("Plugins.Misc.AIInterview.VendorJobCreation.EditTitle").Text
+        : T("Plugins.Misc.AIInterview.VendorJobCreation.Title").Text;
+    var submitText = Model.IsEditMode
+        ? T("Plugins.Misc.AIInterview.VendorJobCreation.SubmitEdit").Text
+        : T("Plugins.Misc.AIInterview.VendorJobCreation.Submit").Text;
+    NopHtml.AddTitleParts(pageTitle);
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
     NopHtml.AppendPageCssClassParts("html-account-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
@@ -11,16 +17,21 @@
 
 @section left
 {
-    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.VendorJobCreationNavigationTab })
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.EmployerDashboardNavigationTab })
 }
 
 <div class="page vendor-job-creation-page">
     <div class="page-title">
-        <h1>@T("Plugins.Misc.AIInterview.VendorJobCreation.Title")</h1>
+        <h1>@pageTitle</h1>
     </div>
     <div class="page-body">
         <div class="section">
-            <form asp-route="@AIInterviewDefaults.VendorJobCreationRouteName" method="post" class="vendor-job-form-shell">
+            <form asp-action="@(Model.IsEditMode ? "VendorJobEdit" : "VendorJobCreation")"
+                  asp-route-productId="@(Model.IsEditMode ? Model.Id : (int?)null)"
+                  method="post"
+                  class="vendor-job-form-shell">
+                <input asp-for="Id" type="hidden" />
+                <input asp-for="IsEditMode" type="hidden" />
                 <input asp-for="Sku" type="hidden" />
                 <div class="fieldset">
                     <div class="vendor-job-posting-shell">
@@ -36,9 +47,14 @@
                                     <span asp-validation-for="Name"></span>
                                 </div>
                                 <div class="vendor-job-form-field">
-                                    <label asp-for="SalaryRange" asp-postfix=":"></label>
-                                    <input asp-for="SalaryRange" />
-                                    <span asp-validation-for="SalaryRange"></span>
+                                    <label asp-for="SalaryMinCtcPa" asp-postfix=":"></label>
+                                    <input asp-for="SalaryMinCtcPa" type="number" min="0" step="0.01" />
+                                    <span asp-validation-for="SalaryMinCtcPa"></span>
+                                </div>
+                                <div class="vendor-job-form-field">
+                                    <label asp-for="SalaryMaxCtcPa" asp-postfix=":"></label>
+                                    <input asp-for="SalaryMaxCtcPa" type="number" min="0" step="0.01" />
+                                    <span asp-validation-for="SalaryMaxCtcPa"></span>
                                 </div>
                             </div>
                         </section>
@@ -153,7 +169,7 @@
                         </section>
 
                         <div class="vendor-job-form-actions">
-                            <button type="submit" class="button-1 vendor-job-submit" title="@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")">@T("Plugins.Misc.AIInterview.VendorJobCreation.Submit")</button>
+                            <button type="submit" class="button-1 vendor-job-submit" title="@submitText">@submitText</button>
                         </div>
                     </div>
                 </div>

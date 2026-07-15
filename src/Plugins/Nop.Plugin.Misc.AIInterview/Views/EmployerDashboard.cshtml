@@ -1,0 +1,56 @@
+@model EmployerDashboardPageModel
+
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.Employer.Dashboard.Title").Text);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-employer-dashboard-page");
+
+    var overviewUrl = Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardOverviewTabKey });
+    var jobsUrl = Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardJobsTabKey });
+    var applicationsUrl = Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey });
+    var invitesUrl = Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardInvitesTabKey });
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.EmployerDashboardNavigationTab })
+}
+
+<div class="page ai-employer-dashboard-page">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Employer.Dashboard.Title")</h1>
+    </div>
+    <div class="page-body">
+        <div class="my-activity-shell">
+            <nav class="my-activity-tabs" aria-label="@T("Plugins.Misc.AIInterview.Employer.Dashboard.NavigationLabel")">
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.EmployerDashboardOverviewTabKey ? "is-active" : null)"
+                   href="@overviewUrl"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.EmployerDashboardOverviewTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Overview")
+                </a>
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.EmployerDashboardJobsTabKey ? "is-active" : null)"
+                   href="@jobsUrl"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.EmployerDashboardJobsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Jobs")
+                </a>
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.EmployerDashboardApplicationsTabKey ? "is-active" : null)"
+                   href="@applicationsUrl"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.EmployerDashboardApplicationsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Applications")
+                </a>
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.EmployerDashboardInvitesTabKey ? "is-active" : null)"
+                   href="@invitesUrl"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.EmployerDashboardInvitesTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Invites")
+                </a>
+            </nav>
+
+            <section id="employer-dashboard-content" class="my-activity-content" aria-live="polite">
+                @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_EmployerDashboardTabContent.cshtml", Model)
+            </section>
+        </div>
+    </div>
+</div>

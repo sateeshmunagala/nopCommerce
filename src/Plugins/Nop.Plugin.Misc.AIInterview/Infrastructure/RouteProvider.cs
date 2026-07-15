@@ -86,6 +86,10 @@ public class RouteProvider : IRouteProvider
             pattern: "aiinterview/employer-applications",
             defaults: new { controller = "AIInterview", action = "EmployerApplications" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.EmployerDashboardRouteName,
+            pattern: "aiinterview/employer-dashboard",
+            defaults: new { controller = "AIInterview", action = "EmployerDashboard" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.EmployerDownloadResumeRouteName,
             pattern: "aiinterview/employer-applications/{applicationId:int}/resume",
             defaults: new { controller = "AIInterview", action = "EmployerDownloadResume" });
@@ -182,6 +186,14 @@ public class RouteProvider : IRouteProvider
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.VendorJobCreationRouteName,
             pattern: "aiinterview/vendor-job-creation",
             defaults: new { controller = "AIInterview", action = "VendorJobCreation" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.VendorJobEditRouteName,
+            pattern: "aiinterview/vendor-job-edit/{productId:int}",
+            defaults: new { controller = "AIInterview", action = "VendorJobEdit" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.VendorJobPublishToggleRouteName,
+            pattern: "aiinterview/vendor-job-publish/{productId:int}",
+            defaults: new { controller = "AIInterview", action = "ToggleVendorJobPublish" });
     }
 
     /// <summary>

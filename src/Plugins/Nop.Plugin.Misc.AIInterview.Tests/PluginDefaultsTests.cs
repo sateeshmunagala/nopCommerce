@@ -238,6 +238,10 @@ public class PluginDefaultsTests
             Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation"));
         Assert.That(typeof(VendorJobModel).GetProperty("SalaryRange")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
             Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange"));
+        Assert.That(typeof(VendorJobModel).GetProperty("SalaryMinCtcPa")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.SalaryMinCtcPa"));
+        Assert.That(typeof(VendorJobModel).GetProperty("SalaryMaxCtcPa")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.SalaryMaxCtcPa"));
     }
 
     [Test]
@@ -254,11 +258,26 @@ public class PluginDefaultsTests
                      "Plugins.Misc.AIInterview.VendorJobCreation.EmploymentType",
                      "Plugins.Misc.AIInterview.VendorJobCreation.JobLocation",
                      "Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryMinCtcPa",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryMaxCtcPa",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryMinCtcPa.Invalid",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryMaxCtcPa.Invalid",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange.Invalid",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SubmitEdit",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.UpdateSuccess",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.EditTitle",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Settings",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Select",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Title",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Overview",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Jobs",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Applications",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Invites",
+                     "Plugins.Misc.AIInterview.Employer.Jobs.Title",
+                     "Plugins.Misc.AIInterview.Employer.Jobs.Create",
                      "Plugins.Misc.AIInterview.Employer.Invite.Title",
                      "Plugins.Misc.AIInterview.Employer.Invite.CreateTitle",
                      "Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle",

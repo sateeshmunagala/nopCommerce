@@ -1,0 +1,95 @@
+@model EmployerDashboardInvitesTabModel
+
+<div class="credit-balance">
+    <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Balance"):</strong> @Model.CreditBalanceDisplay
+</div>
+
+<div class="section create-invite">
+    <div class="title">
+        <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle")</strong>
+    </div>
+    <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post" class="invite-create-form">
+        <div class="fieldset">
+            <div class="invite-fieldset">
+                <div class="form-fields invite-form-grid">
+                    <div class="inputs invite-field invite-field-wide">
+                        <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
+                        <input id="invite-email" type="email" name="email" required class="form-control" />
+                    </div>
+                    <div class="inputs invite-field">
+                        <label for="productId">@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
+                        <select id="productId" name="productId" required class="form-control">
+                            @foreach (var option in Model.AvailableProducts)
+                            {
+                                <option value="@option.Value">@option.Text</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="inputs invite-field">
+                        <label for="maxAttempts">@T("Plugins.Misc.AIInterview.Employer.Invite.MaxAttempts"):</label>
+                        <input id="maxAttempts" type="number" name="maxAttempts" value="1" required class="form-control" />
+                    </div>
+                    <div class="inputs invite-field">
+                        <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
+                        <input id="expiryDateUtc" type="datetime-local" name="expiryDateUtc" class="form-control" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="buttons invite-actions">
+            <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
+        </div>
+    </form>
+</div>
+
+<div class="section invite-list">
+    <div class="title">
+        <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle")</strong>
+    </div>
+    @if (Model.Invites.Any())
+    {
+        <div class="table-wrapper">
+            <div class="invite-table-wrapper">
+                <table class="data-table invite-table">
+                    <thead>
+                        <tr>
+                            <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Email")</th>
+                            <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Code")</th>
+                            <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Link")</th>
+                            <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Status")</th>
+                            <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Actions")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var invite in Model.Invites)
+                        {
+                            var inviteUrl = Url.RouteUrl(AIInterviewDefaults.MockStartRouteName,
+                                new { productId = invite.ProductId, sponsorToken = invite.InviteCode });
+                            var statusKey = Model.InviteStatuses.TryGetValue(invite.Id, out var inviteStatus) ? inviteStatus : string.Empty;
+                            var activeStatus = T("Plugins.Misc.AIInterview.Employer.Invite.Active").Text;
+                            var isActiveInvite = string.Equals(statusKey, activeStatus, StringComparison.OrdinalIgnoreCase);
+                            <tr>
+                                <td>@invite.Email</td>
+                                <td>@invite.InviteCode</td>
+                                <td><a href="@inviteUrl">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</a></td>
+                                <td>@(string.IsNullOrWhiteSpace(statusKey) ? T("Plugins.Misc.AIInterview.Employer.Invite.Active") : statusKey)</td>
+                                <td>
+                                    @if (isActiveInvite)
+                                    {
+                                        <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post" class="invite-deactivate-form">
+                                            <button type="submit" class="button-2 invite-deactivate-button">@T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate")</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else
+    {
+        <p>@T("Plugins.Misc.AIInterview.Employer.Invite.NoInvites")</p>
+    }
+</div>
