@@ -40,24 +40,24 @@
             <table class="data-table employer-table employer-dashboard-jobs-table">
                 <thead>
                     <tr>
-                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.JobTitle")</th>
-                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.Status")</th>
-                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.Salary")</th>
-                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.CreatedOn")</th>
-                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.ApplicationCount")</th>
-                        <th>@T("Plugins.Misc.AIInterview.Employer.Jobs.Actions")</th>
+                        <th class="col-job-title">@T("Plugins.Misc.AIInterview.Employer.Jobs.JobTitle")</th>
+                        <th class="col-job-status">@T("Plugins.Misc.AIInterview.Employer.Jobs.Status")</th>
+                        <th class="col-job-salary">@T("Plugins.Misc.AIInterview.Employer.Jobs.Salary")</th>
+                        <th class="col-job-posted">@T("Plugins.Misc.AIInterview.Employer.Jobs.CreatedOn")</th>
+                        <th class="col-job-count">@T("Plugins.Misc.AIInterview.Employer.Jobs.ApplicationCount")</th>
+                        <th class="col-job-actions">@T("Plugins.Misc.AIInterview.Employer.Jobs.Actions")</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var job in Model.Jobs)
                     {
                         <tr>
-                            <td>@job.JobTitle</td>
-                            <td>@(job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Published") : T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublished"))</td>
-                            <td>@(string.IsNullOrWhiteSpace(job.SalaryRange) ? "-" : job.SalaryRange)</td>
-                            <td>@(await FormatUtcDateAsync(job.CreatedOnUtc))</td>
-                            <td>@job.ApplicationCount</td>
-                            <td>
+                            <td class="col-job-title">@job.JobTitle</td>
+                            <td class="col-job-status">@(job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Published") : T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublished"))</td>
+                            <td class="col-job-salary">@(string.IsNullOrWhiteSpace(job.SalaryRange) ? "-" : job.SalaryRange)</td>
+                            <td class="col-job-posted">@(await FormatUtcDateAsync(job.CreatedOnUtc))</td>
+                            <td class="col-job-count">@job.ApplicationCount</td>
+                            <td class="col-job-actions">
                                 @{
                                     var editText = T("Plugins.Misc.AIInterview.Employer.Jobs.Edit").Text;
                                     var publishText = job.Published

@@ -867,6 +867,9 @@ public class EmployerTests
         Assert.That(viewText, Does.Not.Contain("Salary Range:"));
         Assert.That(viewText, Does.Contain("SalaryMinCtcPa"));
         Assert.That(viewText, Does.Contain("SalaryMaxCtcPa"));
+        Assert.That(viewText, Does.Contain("AvailableSalaryLpaOptions"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.VendorJobCreation.Section.Requirements"));
+        Assert.That(viewText, Does.Not.Contain("<h3 class=\"vendor-job-form-section-title\">Publishing</h3>"));
     }
 
     [Test]
@@ -1016,7 +1019,8 @@ public class EmployerTests
         Assert.That(applicationsPartial, Does.Contain("_MyActivityPager.cshtml"));
 
         Assert.That(invitesPartial, Does.Contain("name=\"maxAttempts\" value=\"1\""));
-        Assert.That(invitesPartial, Does.Not.Contain("id=\"expiryDateUtc\""));
+        Assert.That(invitesPartial, Does.Contain("id=\"expiryDateUtc\""));
+        Assert.That(invitesPartial, Does.Contain("type=\"date\" name=\"expiryDateUtc\""));
         Assert.That(invitesPartial, Does.Not.Contain("id=\"maxAttempts\" type=\"number\""));
         Assert.That(invitesPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Deactivate.Tooltip"));
         Assert.That(invitesPartial, Does.Contain("employer-dashboard-long-link"));
@@ -1032,7 +1036,10 @@ public class EmployerTests
         Assert.That(vendorJobCreation, Does.Contain("var pageTitle = Model.IsEditMode"));
         Assert.That(vendorJobCreation, Does.Contain("<h1>@pageTitle</h1>"));
         Assert.That(vendorJobCreation, Does.Contain("Plugins.Misc.AIInterview.VendorJobCreation.EditTitle"));
+        Assert.That(vendorJobCreation, Does.Contain("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs"));
+        Assert.That(vendorJobCreation, Does.Contain("Plugins.Misc.AIInterview.VendorJobCreation.ViewJob"));
         Assert.That(vendorJobCreation, Does.Contain("class=\"vendor-job-posting-shell\""));
+        Assert.That(vendorJobCreation, Does.Contain("class=\"vendor-job-page-tools\""));
         Assert.That(vendorJobCreation, Does.Not.Contain("class=\"vendor-job-posting-lead\""));
         Assert.That(vendorJobCreation, Does.Not.Contain("class=\"vendor-job-posting-sections\""));
         Assert.That(vendorJobCreation, Does.Not.Contain("Plugins.Misc.AIInterview.VendorScoreboard.Intro"));

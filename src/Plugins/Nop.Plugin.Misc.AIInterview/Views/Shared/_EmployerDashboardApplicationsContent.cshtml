@@ -52,69 +52,72 @@
 
 <div class="section">
     <div class="fieldset">
-        <form method="get" asp-route="@AIInterviewDefaults.EmployerDashboardRouteName" class="employer-filter-form">
-            <input type="hidden" name="tab" value="@AIInterviewDefaults.EmployerDashboardApplicationsTabKey" />
-            <div class="employer-filter-shell">
-                <div class="employer-filter-head">
-                    <strong>@T("Plugins.Misc.AIInterview.Employer.Applications.FilterTitle")</strong>
-                    <span>@T("Plugins.Misc.AIInterview.Employer.Applications.FilterSubtitle")</span>
-                </div>
-                <div class="employer-filter-grid">
-                    <div class="employer-field employer-field-wide">
-                        <label for="CandidateNameOrEmail">@T("Plugins.Misc.AIInterview.Employer.Applications.Candidate")</label>
-                        <input id="CandidateNameOrEmail" name="CandidateNameOrEmail" value="@Model.CandidateNameOrEmail" />
-                    </div>
-                    <div class="employer-field">
-                        <label for="Status">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</label>
-                        <select id="Status" name="Status">
-                            <option value="">@T("Plugins.Misc.AIInterview.Employer.Applications.All")</option>
-                            @foreach (var status in JobApplicationStatuses.All)
-                            {
-                                <option value="@status" selected="@(Model.Status == status)">@GetStatusLabel(status)</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="employer-field">
-                        <label for="InterviewSort">@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewSort")</label>
-                        <select id="InterviewSort" name="InterviewSort">
-                            <option value="TopScorersFirst" selected="@(Model.InterviewSort == "TopScorersFirst")">@T("Plugins.Misc.AIInterview.Employer.Applications.Sort.TopScorersFirst")</option>
-                            <option value="LowestScorersFirst" selected="@(Model.InterviewSort == "LowestScorersFirst")">@T("Plugins.Misc.AIInterview.Employer.Applications.Sort.LowestScorersFirst")</option>
-                            <option value="LatestApplied" selected="@(Model.InterviewSort == "LatestApplied")">@T("Plugins.Misc.AIInterview.Employer.Applications.Sort.LatestApplied")</option>
-                        </select>
-                    </div>
-                    <div class="employer-field">
-                        <label for="MinScore">@T("Plugins.Misc.AIInterview.Employer.Applications.MinScore")</label>
-                        <input id="MinScore" name="MinScore" type="number" min="0" max="100" value="@Model.MinScore" />
-                    </div>
-                    <div class="employer-field">
-                        <label for="MaxScore">@T("Plugins.Misc.AIInterview.Employer.Applications.MaxScore")</label>
-                        <input id="MaxScore" name="MaxScore" type="number" min="0" max="100" value="@Model.MaxScore" />
-                    </div>
-                    <div class="employer-field">
-                        <label for="StartDate">@appliedFromLabelText</label>
-                        <input id="StartDate" name="StartDate" type="date" value="@(Model.StartDate?.ToString("yyyy-MM-dd"))" />
-                    </div>
-                    <div class="employer-field">
-                        <label for="EndDate">@appliedToLabelText</label>
-                        <input id="EndDate" name="EndDate" type="date" value="@(Model.EndDate?.ToString("yyyy-MM-dd"))" />
-                    </div>
-                </div>
+        <details class="dashboard-collapsible-panel employer-filter-panel">
+            <summary class="dashboard-collapsible-summary">
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Applications.FilterTitle")</strong>
+            </summary>
+            <div class="dashboard-collapsible-body">
+                <form method="get" asp-route="@AIInterviewDefaults.EmployerDashboardRouteName" class="employer-filter-form">
+                    <input type="hidden" name="tab" value="@AIInterviewDefaults.EmployerDashboardApplicationsTabKey" />
+                    <div class="employer-filter-shell">
+                        <div class="employer-filter-grid">
+                            <div class="employer-field employer-field-wide">
+                                <label for="CandidateNameOrEmail">@T("Plugins.Misc.AIInterview.Employer.Applications.Candidate")</label>
+                                <input id="CandidateNameOrEmail" name="CandidateNameOrEmail" value="@Model.CandidateNameOrEmail" />
+                            </div>
+                            <div class="employer-field">
+                                <label for="Status">@T("Plugins.Misc.AIInterview.Employer.Applications.Status")</label>
+                                <select id="Status" name="Status">
+                                    <option value="">@T("Plugins.Misc.AIInterview.Employer.Applications.All")</option>
+                                    @foreach (var status in JobApplicationStatuses.All)
+                                    {
+                                        <option value="@status" selected="@(Model.Status == status)">@GetStatusLabel(status)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="employer-field">
+                                <label for="InterviewSort">@T("Plugins.Misc.AIInterview.Employer.Applications.InterviewSort")</label>
+                                <select id="InterviewSort" name="InterviewSort">
+                                    <option value="TopScorersFirst" selected="@(Model.InterviewSort == "TopScorersFirst")">@T("Plugins.Misc.AIInterview.Employer.Applications.Sort.TopScorersFirst")</option>
+                                    <option value="LowestScorersFirst" selected="@(Model.InterviewSort == "LowestScorersFirst")">@T("Plugins.Misc.AIInterview.Employer.Applications.Sort.LowestScorersFirst")</option>
+                                    <option value="LatestApplied" selected="@(Model.InterviewSort == "LatestApplied")">@T("Plugins.Misc.AIInterview.Employer.Applications.Sort.LatestApplied")</option>
+                                </select>
+                            </div>
+                            <div class="employer-field">
+                                <label for="MinScore">@T("Plugins.Misc.AIInterview.Employer.Applications.MinScore")</label>
+                                <input id="MinScore" name="MinScore" type="number" min="0" max="100" value="@Model.MinScore" />
+                            </div>
+                            <div class="employer-field">
+                                <label for="MaxScore">@T("Plugins.Misc.AIInterview.Employer.Applications.MaxScore")</label>
+                                <input id="MaxScore" name="MaxScore" type="number" min="0" max="100" value="@Model.MaxScore" />
+                            </div>
+                            <div class="employer-field">
+                                <label for="StartDate">@appliedFromLabelText</label>
+                                <input id="StartDate" name="StartDate" type="date" value="@(Model.StartDate?.ToString("yyyy-MM-dd"))" />
+                            </div>
+                            <div class="employer-field">
+                                <label for="EndDate">@appliedToLabelText</label>
+                                <input id="EndDate" name="EndDate" type="date" value="@(Model.EndDate?.ToString("yyyy-MM-dd"))" />
+                            </div>
+                        </div>
 
-                <div class="employer-filter-actions">
-                    <button type="submit" class="button-1" title="@T("Plugins.Misc.AIInterview.Employer.Applications.Filter")">@T("Plugins.Misc.AIInterview.Employer.Applications.Filter")</button>
-                    <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey })" title="@T("Plugins.Misc.AIInterview.Employer.Applications.Reset")">@T("Plugins.Misc.AIInterview.Employer.Applications.Reset")</a>
-                    <a class="button-2" href="@Url.RouteUrl("Plugin.Misc.AIInterview.ExportCsv", new {
-                        CandidateNameOrEmail = Model.CandidateNameOrEmail,
-                        Status = Model.Status,
-                        MinScore = Model.MinScore,
-                        MaxScore = Model.MaxScore,
-                        StartDate = Model.StartDate?.ToString("o"),
-                        EndDate = Model.EndDate?.ToString("o"),
-                        InterviewSort = Model.InterviewSort
-                    })" title="@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")">@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")</a>
-                </div>
+                        <div class="employer-filter-actions">
+                            <button type="submit" class="button-1" title="@T("Plugins.Misc.AIInterview.Employer.Applications.Filter")">@T("Plugins.Misc.AIInterview.Employer.Applications.Filter")</button>
+                            <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey })" title="@T("Plugins.Misc.AIInterview.Employer.Applications.Reset")">@T("Plugins.Misc.AIInterview.Employer.Applications.Reset")</a>
+                            <a class="button-2" href="@Url.RouteUrl("Plugin.Misc.AIInterview.ExportCsv", new {
+                                CandidateNameOrEmail = Model.CandidateNameOrEmail,
+                                Status = Model.Status,
+                                MinScore = Model.MinScore,
+                                MaxScore = Model.MaxScore,
+                                StartDate = Model.StartDate?.ToString("o"),
+                                EndDate = Model.EndDate?.ToString("o"),
+                                InterviewSort = Model.InterviewSort
+                            })" title="@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")">@T("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv")</a>
+                        </div>
+                    </div>
+                </form>
             </div>
-        </form>
+        </details>
 
         <div class="results-toolbar">
             <div class="filter-summary">

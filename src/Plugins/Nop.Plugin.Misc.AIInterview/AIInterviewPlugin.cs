@@ -595,8 +595,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.EmploymentType"] = "Employment type",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.JobLocation"] = "Job location",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryRange"] = "Salary range",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryMinCtcPa"] = "Min CTC (PA)",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryMaxCtcPa"] = "Max CTC (PA)",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryMinCtcPa"] = "Min CTC (LPA)",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryMaxCtcPa"] = "Max CTC (LPA)",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Settings"] = "Settings",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Select"] = "Select",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ApplyUntilUtc.Past"] = "Apply until date cannot be in the past.",
@@ -612,6 +612,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryMaxCtcPa.Invalid"] = "Maximum CTC must be zero or greater.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryRange.Invalid"] = "Maximum CTC must be greater than or equal to minimum CTC.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Section.RoleOverview"] = "Role Overview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Section.Requirements"] = "Requirements",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Section.JobContent"] = "Job Content",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Section.InterviewSettings"] = "Interview Settings",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Submit"] = "Create Job",
@@ -620,7 +621,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.UpdateSuccess"] = "The job was updated successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Unavailable"] = "Job creation is temporarily unavailable.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Title"] = "Create a Job",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.EditTitle"] = "Edit Job"
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.EditTitle"] = "Edit Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.BackToJobs"] = "Back to Jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ViewJob"] = "View Job"
         };
     }
 
@@ -803,6 +806,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     {
         return new Dictionary<string, string>
         {
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Action.ReviewQueue"] = "Review queue",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Action.ViewAnalysis"] = "View analysis",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Deactivate.Tooltip"] = "Deactivate invite",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Resume"] = "Resume",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.DownloadResume"] = "Download resume",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.NoResume"] = "No resume"

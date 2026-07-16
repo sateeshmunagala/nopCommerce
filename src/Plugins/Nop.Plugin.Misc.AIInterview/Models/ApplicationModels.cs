@@ -169,6 +169,8 @@ public record VendorJobModel : BaseNopModel
 
     public bool IsEditMode { get; set; }
 
+    public string PublicJobUrl { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Name")]
     public string Name { get; set; }
 
@@ -219,6 +221,8 @@ public record VendorJobModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc")]
     public DateTime? ApplyUntilUtc { get; set; }
+
+    public IList<SelectListItem> AvailableSalaryLpaOptions { get; set; } = new List<SelectListItem>();
 
     public IList<SelectListItem> AvailableExperienceLevels { get; set; } = new List<SelectListItem>();
 
@@ -272,6 +276,7 @@ public record EmployerDashboardInvitesTabModel : BaseNopModel
     public IList<SponsorInvite> Invites { get; set; } = new List<SponsorInvite>();
     public IDictionary<int, string> InviteStatuses { get; set; } = new Dictionary<int, string>();
     public IList<SelectListItem> AvailableProducts { get; set; } = new List<SelectListItem>();
+    public DateTime? ExpiryDateUtc { get; set; }
     public decimal CreditBalance { get; set; }
     public string CreditBalanceDisplay { get; set; }
 }

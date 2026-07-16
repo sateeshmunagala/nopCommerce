@@ -1,3 +1,4 @@
+using Nop.Core.Http;
 using Nop.Services.Events;
 using Nop.Services.Localization;
 using Nop.Web.Framework.Events;
@@ -54,6 +55,17 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                 var customer = await _workContext.GetCurrentCustomerAsync();
                 if (customer != null && customer.VendorId > 0)
                 {
+                    var legacyEmployerItems = navigationModel.CustomerNavigationItems
+                        .Where(item =>
+                            string.Equals(item.RouteName, NopRouteNames.Standard.CUSTOMER_VENDOR_INFO, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(item.RouteName, AIInterviewDefaults.VendorScoreboardRouteName, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(item.RouteName, AIInterviewDefaults.EmployerApplicationsRouteName, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(item.RouteName, AIInterviewDefaults.MockEmployerManageRouteName, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    foreach (var legacyEmployerItem in legacyEmployerItems)
+                        navigationModel.CustomerNavigationItems.Remove(legacyEmployerItem);
+
                     if (!navigationModel.CustomerNavigationItems.Any(item =>
                         string.Equals(item.RouteName, AIInterviewDefaults.EmployerDashboardRouteName, StringComparison.OrdinalIgnoreCase)))
                     {

@@ -28,27 +28,38 @@
     </div>
     <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post" class="invite-create-form">
         <input type="hidden" name="maxAttempts" value="1" />
-        <div class="fieldset">
-            <div class="invite-fieldset">
-                <div class="form-fields invite-form-grid">
-                    <div class="inputs invite-field invite-field-wide">
-                        <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
-                        <input id="invite-email" type="email" name="email" required class="form-control" />
-                    </div>
-                    <div class="inputs invite-field">
-                        <label for="productId">@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
-                        <select id="productId" name="productId" required class="form-control">
-                            @foreach (var option in Model.AvailableProducts)
-                            {
-                                <option value="@option.Value">@option.Text</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="inputs invite-field invite-field-action">
-                        <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
+        <div class="fieldset employer-invite-fieldset">
+            <details class="dashboard-collapsible-panel employer-invite-panel">
+                <summary class="dashboard-collapsible-summary">
+                    <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle")</strong>
+                </summary>
+                <div class="dashboard-collapsible-body">
+                    <div class="invite-fieldset">
+                        <div class="form-fields invite-form-grid">
+                            <div class="inputs invite-field invite-field-email">
+                                <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
+                                <input id="invite-email" type="email" name="email" required class="form-control" />
+                            </div>
+                            <div class="inputs invite-field invite-field-product">
+                                <label for="productId">@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
+                                <select id="productId" name="productId" required class="form-control">
+                                    @foreach (var option in Model.AvailableProducts)
+                                    {
+                                        <option value="@option.Value">@option.Text</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="inputs invite-field invite-field-expiry">
+                                <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
+                                <input id="expiryDateUtc" type="date" name="expiryDateUtc" value="@(Model.ExpiryDateUtc?.ToString("yyyy-MM-dd"))" class="form-control" />
+                            </div>
+                            <div class="inputs invite-field invite-field-action">
+                                <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </details>
         </div>
     </form>
 </div>

@@ -8,6 +8,7 @@
     var submitText = Model.IsEditMode
         ? T("Plugins.Misc.AIInterview.VendorJobCreation.SubmitEdit").Text
         : T("Plugins.Misc.AIInterview.VendorJobCreation.Submit").Text;
+    var backToJobsUrl = Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardJobsTabKey });
     NopHtml.AddTitleParts(pageTitle);
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
     NopHtml.AppendPageCssClassParts("html-account-page");
@@ -26,6 +27,13 @@
     </div>
     <div class="page-body">
         <div class="section">
+            <div class="vendor-job-page-tools">
+                <a class="button-2 vendor-job-page-link" href="@backToJobsUrl" title="@T("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs")">@T("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs")</a>
+                @if (Model.IsEditMode && !string.IsNullOrWhiteSpace(Model.PublicJobUrl))
+                {
+                    <a class="button-2 vendor-job-page-link" href="@Model.PublicJobUrl" title="@T("Plugins.Misc.AIInterview.VendorJobCreation.ViewJob")">@T("Plugins.Misc.AIInterview.VendorJobCreation.ViewJob")</a>
+                }
+            </div>
             <form asp-action="@(Model.IsEditMode ? "VendorJobEdit" : "VendorJobCreation")"
                   asp-route-productId="@(Model.IsEditMode ? Model.Id : (int?)null)"
                   method="post"
@@ -46,22 +54,22 @@
                                     <input asp-for="Name" />
                                     <span asp-validation-for="Name"></span>
                                 </div>
-                                <div class="vendor-job-form-field">
-                                    <label asp-for="SalaryMinCtcPa" asp-postfix=":"></label>
-                                    <input asp-for="SalaryMinCtcPa" type="number" min="0" step="0.01" />
-                                    <span asp-validation-for="SalaryMinCtcPa"></span>
-                                </div>
-                                <div class="vendor-job-form-field">
-                                    <label asp-for="SalaryMaxCtcPa" asp-postfix=":"></label>
-                                    <input asp-for="SalaryMaxCtcPa" type="number" min="0" step="0.01" />
-                                    <span asp-validation-for="SalaryMaxCtcPa"></span>
-                                </div>
                             </div>
                         </section>
 
                         <section class="vendor-job-form-section">
-                            <h3 class="vendor-job-form-section-title">Requirements</h3>
+                            <h3 class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.Requirements")</h3>
                             <div class="vendor-job-form-simple-grid">
+                                <div class="vendor-job-form-field">
+                                    <label asp-for="SalaryMinCtcPa" asp-postfix=":"></label>
+                                    <select asp-for="SalaryMinCtcPa" asp-items="Model.AvailableSalaryLpaOptions"></select>
+                                    <span asp-validation-for="SalaryMinCtcPa"></span>
+                                </div>
+                                <div class="vendor-job-form-field">
+                                    <label asp-for="SalaryMaxCtcPa" asp-postfix=":"></label>
+                                    <select asp-for="SalaryMaxCtcPa" asp-items="Model.AvailableSalaryLpaOptions"></select>
+                                    <span asp-validation-for="SalaryMaxCtcPa"></span>
+                                </div>
                                 @if (Model.AvailableExperienceLevels.Any())
                                 {
                                     <div class="vendor-job-form-field">
@@ -143,10 +151,6 @@
                                     <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired")</span>
                                 </label>
                             </div>
-                        </section>
-
-                        <section class="vendor-job-form-section">
-                            <h3 class="vendor-job-form-section-title">Publishing</h3>
                             <div class="vendor-job-form-simple-grid">
                                 <div class="vendor-job-form-field">
                                     <label asp-for="ApplyUntilUtc" asp-postfix=":"></label>

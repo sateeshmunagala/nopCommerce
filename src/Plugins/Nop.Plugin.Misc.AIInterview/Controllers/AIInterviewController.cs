@@ -40,7 +40,7 @@ public class AIInterviewController : BasePluginController
     private const int DefaultMyActivityPageSize = 5;
     private const int MaxMyActivityPageSize = 50;
     private const int DefaultEmployerDashboardTablePageSize = 10;
-    private const int DefaultEmployerApplicationsPageSize = 20;
+    private const int DefaultEmployerApplicationsPageSize = DefaultEmployerDashboardTablePageSize;
 
     private readonly IApplicationService _applicationService;
     private readonly IInterviewSessionService _interviewSessionService;
@@ -1445,10 +1445,14 @@ public class AIInterviewController : BasePluginController
 
     protected async Task PrepareVendorJobModelAsync(VendorJobModel model)
     {
-        if (model == null || _specificationAttributeService == null)
+        if (model == null)
             return;
 
         var selectText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Select");
+        model.AvailableSalaryLpaOptions = BuildSalaryLpaSelectList(selectText);
+
+        if (_specificationAttributeService == null)
+            return;
 
         IList<SelectListItem> BuildSelectList(IEnumerable<SpecificationAttributeOption> options, int? selectedId)
         {
@@ -1490,6 +1494,25 @@ public class AIInterviewController : BasePluginController
             model.AvailableJobLocations = BuildSelectList(
                 await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(jobLocationAttribute.Id),
                 model.JobLocationOptionId);
+    }
+
+    protected virtual IList<SelectListItem> BuildSalaryLpaSelectList(string selectText)
+    {
+        var items = new List<SelectListItem>
+        {
+            new() { Text = selectText, Value = string.Empty }
+        };
+
+        for (var lpa = 0m; lpa <= 100m; lpa += 0.5m)
+        {
+            items.Add(new SelectListItem
+            {
+                Text = $"{lpa:0.##} LPA",
+                Value = (lpa * 100000m).ToString("0", CultureInfo.InvariantCulture)
+            });
+        }
+
+        return items;
     }
 
     protected async Task InsertProductSpecificationAttributeAsync(int productId, int optionId, SpecificationAttributeType attributeType = SpecificationAttributeType.Option, string customValue = null, int displayOrder = 0)
@@ -2118,6 +2141,9 @@ public class AIInterviewController : BasePluginController
 
         if (!ModelState.IsValid)
         {
+            if (existingProduct != null)
+                model.PublicJobUrl = await BuildProductRedirectUrlAsync(existingProduct);
+
             await PrepareVendorJobModelAsync(model);
             return View("~/Plugins/Misc.AIInterview/Views/VendorJobCreation.cshtml", model);
         }
@@ -2245,6 +2271,7 @@ public class AIInterviewController : BasePluginController
         model.Sku = product.Sku;
         model.Published = product.Published;
         model.ApplyUntilUtc = product.AvailableEndDateTimeUtc?.Date;
+        model.PublicJobUrl = await BuildProductRedirectUrlAsync(product);
 
         if (_jobRequirementService != null)
         {
