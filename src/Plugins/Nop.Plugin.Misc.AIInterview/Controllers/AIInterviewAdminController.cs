@@ -352,6 +352,9 @@ public class AIInterviewAdminController : BasePluginController
     {
         searchModel ??= new MockPracticeSessionSearchModel();
         searchModel.SetGridPageSize();
+        if (searchModel.PageSize <= 0)
+            searchModel.SetGridPageSize(10, "10, 20, 50, 100");
+
         await PrepareMockPracticeSessionSearchModelAsync(searchModel);
 
         return View("~/Plugins/Misc.AIInterview/Views/Admin/MockPracticeSessions.cshtml", searchModel);

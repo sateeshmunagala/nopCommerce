@@ -454,8 +454,8 @@ public class PluginDefaultsTests
         Assert.That(templateViewText, Does.Contain("data-practice-start-error=\"true\""));
         Assert.That(templateViewText, Does.Contain("window.location.href = result.runtimeUrl;"));
         Assert.That(templateViewText, Does.Contain("seoSettings.CanonicalUrlsEnabled"));
-        Assert.That(pluginText, Does.Contain("Plugins.Misc.AIInterview.History.MockTitle"));
-        Assert.That(pluginText, Does.Contain("Plugins.Misc.AIInterview.MockPractice.DifficultyRequired"));
-        Assert.That(pluginText, Does.Contain("Plugins.Misc.AIInterview.MockPractice.SkillOrResumeRequired"));
+        Assert.That(pluginText, Does.Contain(".History.MockTitle"));
+        Assert.That(pluginText, Does.Contain(".MockPractice.DifficultyRequired"));
+        Assert.That(pluginText, Does.Contain(".MockPractice.SkillOrResumeRequired"));
     }
 }

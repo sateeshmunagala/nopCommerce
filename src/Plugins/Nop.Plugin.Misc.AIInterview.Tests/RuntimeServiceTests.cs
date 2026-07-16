@@ -1404,7 +1404,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task GenerateQuestionAsync_HttpFailure_LogsSafeAzureDetails()
+    public async Task GenerateQuestionAsync_AzureOpenAIHttpFailure_LogsSafeAzureDetails()
     {
         var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage((HttpStatusCode)429)
         {
@@ -1442,16 +1442,68 @@ public class RuntimeServiceTests
             "AI Interview Azure OpenAI HTTP failure",
             It.Is<string>(message =>
                 message.Contains("Mode=generate") &&
+                message.Contains("Operation=llm-question-generation") &&
+                message.Contains("FailureKind=azure-openai-http-failure") &&
                 message.Contains("HttpStatus=429") &&
+                message.Contains("EndpointHost=example.openai.azure.com") &&
+                message.Contains("Deployment=gpt-4o-mini") &&
+                message.Contains("ResponseLength=") &&
                 message.Contains("AzureErrorCode=rate_limit_exceeded") &&
                 message.Contains("AzureErrorMessage=Too many requests for this deployment.") &&
+                message.Contains("AzureResponseBody=") &&
                 !message.Contains("super-secret-key") &&
                 !message.Contains("api-key")),
             null), Times.Once);
     }
 
     [Test]
-    public async Task ScoreAnswerAsync_ContractFailure_LogsPreciseSafeReason()
+    public async Task GenerateQuestionAsync_AzureOpenAIHttpException_LogsSafeExceptionDiagnostics()
+    {
+        var handler = new TestHttpMessageHandler(_ => throw new HttpRequestException("DNS failure for Azure OpenAI endpoint"));
+        var httpFactory = CreateHttpClientFactory(handler);
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(x => x.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "super-secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-4o-mini",
+                Prompt = "prompt"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            httpFactory.Object,
+            null,
+            nopLogger.Object);
+
+        var response = await client.GenerateQuestionAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Backend Engineer",
+            Difficulty = "Medium",
+            Prompt = "prompt",
+            QuestionNumber = 1
+        });
+
+        Assert.That(response.Success, Is.False);
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Error,
+            "AI Interview Azure OpenAI exception",
+            It.Is<string>(message =>
+                message.Contains("Mode=generate") &&
+                message.Contains("Operation=llm-question-generation") &&
+                message.Contains("FailureKind=azure-openai-exception") &&
+                message.Contains("ExceptionType=HttpRequestException") &&
+                message.Contains("ExceptionMessage=DNS failure for Azure OpenAI endpoint") &&
+                message.Contains("ExceptionDetail=") &&
+                !message.Contains("super-secret-key") &&
+                !message.Contains("api-key")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task ScoreAnswerAsync_AzureOpenAIContractFailure_LogsPreciseSafeReason()
     {
         var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -1491,6 +1543,8 @@ public class RuntimeServiceTests
             "AI Interview score validation failure",
             It.Is<string>(message =>
                 message.Contains("Mode=score") &&
+                message.Contains("Operation=llm-scoring") &&
+                message.Contains("FailureKind=azure-openai-contract-failure") &&
                 message.Contains("missing required score") &&
                 !message.Contains("super-secret-key") &&
                 !message.Contains("It reduces coupling.")),
@@ -1498,7 +1552,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task ScoreAnswerAsync_PlainTextContractFailure_LogsSafeDiagnostics()
+    public async Task ScoreAnswerAsync_AzureOpenAIPlainTextContractFailure_LogsSafeDiagnostics()
     {
         var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -1537,8 +1591,11 @@ public class RuntimeServiceTests
             "AI Interview Azure OpenAI contract failure",
             It.Is<string>(message =>
                 message.Contains("Mode=score") &&
+                message.Contains("Operation=llm-scoring") &&
+                message.Contains("FailureKind=azure-openai-contract-failure") &&
                 message.Contains("Reason=invalid JSON") &&
                 message.Contains("Shape=plain text") &&
+                message.Contains("ResponseLength=") &&
                 message.Contains("Sample=Sorry, I cannot score this right now.") &&
                 !message.Contains("super-secret-key") &&
                 !message.Contains("My full candidate answer with confidential details.")),
@@ -1546,7 +1603,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task GenerateQuestionAsync_ContractFailure_LogsSafeReason()
+    public async Task GenerateQuestionAsync_AzureOpenAIContractFailure_LogsSafeReason()
     {
         var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -1584,8 +1641,63 @@ public class RuntimeServiceTests
             "AI Interview Azure OpenAI contract failure",
             It.Is<string>(message =>
                 message.Contains("Mode=generate") &&
+                message.Contains("Operation=llm-question-generation") &&
+                message.Contains("FailureKind=azure-openai-contract-failure") &&
                 message.Contains("Reason=empty response choices") &&
+                message.Contains("ResponseLength=") &&
+                message.Contains("AzureResponseBody={\"choices\":[]}") &&
                 !message.Contains("super-secret-key")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task AIInterviewClient_AnalyzeResumeAsync_HttpFailure_LogsSafeAzureDetails()
+    {
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("{\"error\":{\"code\":\"DeploymentNotFound\",\"message\":\"Deployment not found. api-key=secret-token\"}}", Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(handler);
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(x => x.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "super-secret-key",
+                AzureOpenAiDeploymentOrModel = "resume-model",
+                Prompt = "prompt"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            httpFactory.Object,
+            null,
+            nopLogger.Object);
+
+        var response = await client.AnalyzeResumeAsync(new AIResumeProfileRequest
+        {
+            JobTitle = "Backend Engineer",
+            JobContext = "Cloud APIs",
+            ResumeText = "Confidential resume text that must not be logged."
+        });
+
+        Assert.That(response.Success, Is.False);
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI HTTP failure",
+            It.Is<string>(message =>
+                message.Contains("Mode=resume-profile") &&
+                message.Contains("Operation=llm-resume-profile") &&
+                message.Contains("FailureKind=azure-openai-http-failure") &&
+                message.Contains("HttpStatus=400") &&
+                message.Contains("Deployment=resume-model") &&
+                message.Contains("AzureErrorCode=DeploymentNotFound") &&
+                message.Contains("AzureResponseBody=") &&
+                message.Contains("api-key=<redacted>") &&
+                !message.Contains("super-secret-key") &&
+                !message.Contains("secret-token") &&
+                !message.Contains("Confidential resume text")),
             null), Times.Once);
     }
 

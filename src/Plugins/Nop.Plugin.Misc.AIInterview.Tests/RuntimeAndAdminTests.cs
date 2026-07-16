@@ -56,6 +56,7 @@ public class RuntimeAndAdminTests
         _inviteService = new Mock<ISponsorInviteService>();
         _productService = new Mock<IProductService>();
         _runtimeController = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, null, null, _nopLogger.Object);
+        _customerService.Setup(x => x.IsRegisteredAsync(It.Is<Customer>(customer => customer != null && !string.IsNullOrWhiteSpace(customer.Email)), true)).ReturnsAsync(true);
 
         _notificationService = new Mock<INotificationService>();
         _settingService = new Mock<ISettingService>();
@@ -64,7 +65,6 @@ public class RuntimeAndAdminTests
         _interviewRuntimeService = new Mock<IInterviewRuntimeService>();
         _adminController = new MockAiInterviewAdminController(_creditService.Object, _inviteService.Object, _localizationService.Object, _notificationService.Object, _workContext.Object, _settingService.Object, _aiInterviewSettings, _mockAIInterviewSettings);
 
-        _productService = new Mock<IProductService>();
         _inviteServiceImplementation = new SponsorInviteService(null, _productService.Object, _customerService.Object, _localizationService.Object);
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))

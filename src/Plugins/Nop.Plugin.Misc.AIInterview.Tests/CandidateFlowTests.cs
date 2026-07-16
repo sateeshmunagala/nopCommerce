@@ -197,7 +197,7 @@ public class CandidateFlowTests
     [Test]
     public async Task Runtime_Start_Uses_ResolvedDifficulty()
     {
-        var customer = new Customer { Id = 1 };
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession>());
@@ -248,7 +248,7 @@ public class CandidateFlowTests
     [Test]
     public async Task Runtime_Start_Idempotency_Works()
     {
-        var customer = new Customer { Id = 1 };
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
 
         var activeSession = new InterviewSession
@@ -275,7 +275,7 @@ public class CandidateFlowTests
     [Test]
     public async Task Runtime_Start_ExpiredActiveSession_Creates_New_Session()
     {
-        var customer = new Customer { Id = 1 };
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
 
         var staleSession = new InterviewSession
@@ -1194,7 +1194,7 @@ public class CandidateFlowTests
     [Test]
     public async Task Report_PrefersCompletedDate_WhenPresent()
     {
-        var customer = new Customer { Id = 1 };
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
         var createdOnUtc = new DateTime(2026, 06, 07, 15, 09, 46, DateTimeKind.Utc);
         var completedOnUtc = new DateTime(2026, 07, 01, 13, 26, 15, DateTimeKind.Utc);
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
@@ -1579,8 +1579,10 @@ public class CandidateFlowTests
     {
         var reportText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_InterviewReportContent.cshtml"));
         var drawerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_CandidateReportDrawer.cshtml"));
-        var historyText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml"));
-        var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml"));
+        var historyText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml")) +
+            File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MockInterviewHistoryContent.cshtml"));
+        var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml")) +
+            File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MyApplicationsContent.cshtml"));
 
         Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Recording"));
         Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.OpenRecording"));
@@ -1825,7 +1827,8 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Not.Contain("Questions and answers appear here in order."));
         Assert.That(runtimeText, Does.Contain("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css"));
         Assert.That(runtimeText, Does.Contain("Plugins.Misc.AIInterview.Runtime.MockMode.Warning"));
-        var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml"));
+        var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml")) +
+            File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MyApplicationsContent.cshtml"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Relevancy"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Correctness"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Answer Score"));

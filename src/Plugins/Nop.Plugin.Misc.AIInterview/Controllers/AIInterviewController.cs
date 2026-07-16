@@ -1358,9 +1358,23 @@ public class AIInterviewController : BasePluginController
     {
         var returnUrl = Request?.Headers?.Referer.ToString();
         if (string.IsNullOrWhiteSpace(returnUrl))
-            returnUrl = Url.RouteUrl(AIInterviewDefaults.ApplyRouteName, new { productId = model?.ProductId, jobTitle = model?.JobTitle });
+            returnUrl = Url?.RouteUrl(AIInterviewDefaults.ApplyRouteName, new { productId = model?.ProductId, jobTitle = model?.JobTitle });
 
-        return Url.RouteUrl(NopRouteNames.General.LOGIN, new { returnUrl });
+        if (string.IsNullOrWhiteSpace(returnUrl))
+        {
+            var query = new Dictionary<string, string>();
+            if (model?.ProductId > 0)
+                query["productId"] = model.ProductId.ToString();
+            if (!string.IsNullOrWhiteSpace(model?.JobTitle))
+                query["jobTitle"] = model.JobTitle;
+
+            returnUrl = query.Count > 0
+                ? QueryHelpers.AddQueryString("/aiinterview/apply", query)
+                : "/aiinterview/apply";
+        }
+
+        return Url?.RouteUrl(NopRouteNames.General.LOGIN, new { returnUrl })
+            ?? QueryHelpers.AddQueryString("/login", "returnUrl", returnUrl);
     }
 
     protected async Task<SpecificationAttribute> GetSpecificationAttributeByNameAsync(params string[] names)
@@ -1599,14 +1613,15 @@ public class AIInterviewController : BasePluginController
             pageIndex: 0,
             pageSize: int.MaxValue,
             sortByScore: model.SortByScore);
+        var applicationItems = applications?.ToList() ?? new List<JobApplication>();
 
-        var customerIds = applications.Select(application => application.CustomerId).Distinct().ToList();
-        var customers = await _customerService.GetCustomersByIdsAsync(customerIds.ToArray());
+        var customerIds = applicationItems.Select(application => application.CustomerId).Distinct().ToList();
+        var customers = await _customerService.GetCustomersByIdsAsync(customerIds.ToArray()) ?? new List<Customer>();
 
-        model.Applications = await Task.WhenAll(applications.Select(async application =>
+        model.Applications = await Task.WhenAll(applicationItems.Select(async application =>
         {
             var appCustomer = customers.FirstOrDefault(entry => entry.Id == application.CustomerId);
-            var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
+            var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId) ?? new List<InterviewSession>();
             var appSessions = sessions.Where(session => SessionMatchesApplication(session, application)).ToList();
             var session = appSessions
                 .Where(entry => entry.CompletedOnUtc.HasValue)

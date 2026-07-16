@@ -218,12 +218,13 @@ public class ResumePlanningTests
         var resumeFileService = new Mock<IResumeFileService>();
         var resumeProfileService = new Mock<IResumeProfileService>();
 
-        var customer = new Customer { Id = 9 };
+        var customer = new Customer { Id = 9, Email = "candidate@example.com" };
         var product = new Product { Id = 15, Name = "Backend Engineer" };
         var resumeFile = CreateResumeFile("resume.pdf", "fake-binary");
 
         workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         workContext.Setup(context => context.GetWorkingLanguageAsync()).ReturnsAsync(new Nop.Core.Domain.Localization.Language { Id = 1 });
+        customerService.Setup(service => service.IsRegisteredAsync(customer, true)).ReturnsAsync(true);
         localizationService.Setup(service => service.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
         applicationService.Setup(service => service.GetJobApplicationsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<JobApplication>());
         applicationService.Setup(service => service.GetJobApplicationsByCustomerIdAndJobTitleAsync(customer.Id, "Backend Engineer")).ReturnsAsync(new List<JobApplication>());
@@ -294,6 +295,7 @@ public class ResumePlanningTests
         var form = new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>(), files);
 
         workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        customerService.Setup(service => service.IsRegisteredAsync(customer, true)).ReturnsAsync(true);
         localizationService.Setup(service => service.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
         sessionService.Setup(service => service.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
         productService.Setup(service => service.GetProductByIdAsync(44)).ReturnsAsync(product);
@@ -366,6 +368,7 @@ public class ResumePlanningTests
         var form = new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>(), files);
 
         workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        customerService.Setup(service => service.IsRegisteredAsync(customer, true)).ReturnsAsync(true);
         localizationService.Setup(service => service.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
         sessionService.Setup(service => service.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
         productService.Setup(service => service.GetProductByIdAsync(44)).ReturnsAsync(product);
@@ -418,6 +421,7 @@ public class ResumePlanningTests
         var form = new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>());
 
         workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        customerService.Setup(service => service.IsRegisteredAsync(customer, true)).ReturnsAsync(true);
         localizationService.Setup(service => service.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
         sessionService.Setup(service => service.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
         productService.Setup(service => service.GetProductByIdAsync(44)).ReturnsAsync(product);
@@ -488,6 +492,7 @@ public class ResumePlanningTests
         };
 
         workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        customerService.Setup(service => service.IsRegisteredAsync(customer, true)).ReturnsAsync(true);
         localizationService.Setup(service => service.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
         sessionService.Setup(service => service.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession> { reusableSession });
         productService.Setup(service => service.GetProductByIdAsync(44)).ReturnsAsync(product);

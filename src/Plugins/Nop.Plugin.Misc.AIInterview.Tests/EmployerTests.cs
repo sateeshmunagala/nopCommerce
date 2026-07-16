@@ -148,7 +148,7 @@ public class EmployerTests
         var applications = new PagedList<JobApplication>(new List<JobApplication> { new JobApplication { Id = 1, CustomerId = 789 } }, 0, 20);
 
         _applicationService.Setup(x => x.GetApplicationsAsync(
-            "John", "Pending", null, null, null, null, 0, 1, 0, 20, false))
+            "John", "Pending", null, null, null, null, 0, 1, 0, int.MaxValue, false))
             .ReturnsAsync(applications);
 
         _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>())).ReturnsAsync(new List<Customer> { new Customer { Id = 789, Email = "john@example.com" } });
@@ -876,7 +876,8 @@ public class EmployerTests
         var employerApplications = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "EmployerApplications.cshtml"));
         var vendorScoreboard = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorScoreboard.cshtml"));
         var employerManage = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "EmployerManage.cshtml"));
-        var historyView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml"));
+        var historyView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml")) +
+            File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MockInterviewHistoryContent.cshtml"));
 
         Assert.That(vendorJobCreation, Does.Contain("Layout = \"_ColumnsTwo\""));
         Assert.That(vendorJobCreation, Does.Contain("class=\"section\""));

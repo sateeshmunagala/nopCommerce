@@ -52,7 +52,7 @@ public class ApplyFlowTests
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
             .ReturnsAsync(new JobRequirementsModel());
 
-        _customer = new Customer { Id = 123 };
+        _customer = new Customer { Id = 123, Email = "candidate@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_customer);
         _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
         _customerService.Setup(x => x.IsRegisteredAsync(_customer, true)).ReturnsAsync(true);

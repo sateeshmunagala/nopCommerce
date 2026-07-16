@@ -248,7 +248,7 @@ public partial class InterviewAiClient : IAIInterviewClient
             var usageInfo = BuildAzureOpenAiUsageInfo(document.RootElement, mode, endpoint);
             if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
             {
-                var detail = $"Mode={mode}; Reason=empty response choices; Endpoint={BuildSanitizedEndpointValue(endpoint)}; Sample={BuildResponseSnippet(json)}.";
+                var detail = BuildAzureContractFailureLog(mode, endpoint, "empty response choices", json);
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty choices.", mode);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
                 return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
@@ -256,7 +256,7 @@ public partial class InterviewAiClient : IAIInterviewClient
 
             if (!choices[0].TryGetProperty("message", out var message) || !message.TryGetProperty("content", out var contentProperty))
             {
-                var detail = $"Mode={mode}; Reason=missing message content; Endpoint={BuildSanitizedEndpointValue(endpoint)}; Sample={BuildResponseSnippet(json)}.";
+                var detail = BuildAzureContractFailureLog(mode, endpoint, "missing message content", json);
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Missing message content.", mode);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
                 return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
@@ -265,7 +265,7 @@ public partial class InterviewAiClient : IAIInterviewClient
             var content = contentProperty.GetString();
             if (string.IsNullOrWhiteSpace(content))
             {
-                var detail = $"Mode={mode}; Reason=empty response content; Endpoint={BuildSanitizedEndpointValue(endpoint)}; Sample={BuildResponseSnippet(json)}.";
+                var detail = BuildAzureContractFailureLog(mode, endpoint, "empty response content", json);
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty content string.", mode);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
                 return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
@@ -282,14 +282,14 @@ public partial class InterviewAiClient : IAIInterviewClient
         }
         catch (System.Text.Json.JsonException ex)
         {
-            var detail = $"Mode={mode}; Reason=invalid JSON format; Exception={ex.GetType().Name}; Message={TruncateSafe(ex.Message, 220)}.";
+            var detail = BuildAzureExceptionLog(mode, "azure-openai-json-failure", "invalid JSON format", ex);
             _logger?.LogWarning(ex, "Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON format.", mode);
             await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI JSON failure", detail);
             return BuildUnavailableResponse(detail);
         }
         catch (Exception ex)
         {
-            var detail = $"Mode={mode}; Reason={ex.GetType().Name}; Message={TruncateSafe(ex.Message, 220)}.";
+            var detail = BuildAzureExceptionLog(mode, "azure-openai-exception", ex.GetType().Name, ex);
             _logger?.LogWarning(ex, "Azure OpenAI call exception.");
             await LogAiClientIssueAsync(NopLogLevel.Error, "AI Interview Azure OpenAI exception", detail);
             return BuildUnavailableResponse(detail);
@@ -366,9 +366,9 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
                 if (document.RootElement.TryGetProperty("error", out var errorElement))
                 {
                     if (errorElement.TryGetProperty("code", out var codeElement))
-                        errorCode = codeElement.GetString() ?? string.Empty;
+                        errorCode = SanitizeDiagnosticText(codeElement.GetString());
                     if (errorElement.TryGetProperty("message", out var messageElement))
-                        errorMessage = TruncateSafe(messageElement.GetString(), 180);
+                        errorMessage = SanitizeDiagnosticText(TruncateSafe(messageElement.GetString(), 180));
                 }
             }
             catch
@@ -378,18 +378,68 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
             responseSnippet = BuildResponseSnippet(responseBody);
         }
 
-        var details = new List<string> { $"Mode={mode}", $"HttpStatus={statusCode}", "Reason=http failure" };
+        var details = new List<string>
+        {
+            $"Mode={mode}",
+            $"Operation={BuildAzureOperationName(mode)}",
+            "FailureKind=azure-openai-http-failure",
+            $"HttpStatus={statusCode}",
+            "Reason=http failure"
+        };
         if (!string.IsNullOrWhiteSpace(reasonPhrase))
-            details.Add($"ReasonPhrase={TruncateSafe(reasonPhrase, 80)}");
+            details.Add($"ReasonPhrase={SanitizeDiagnosticText(TruncateSafe(reasonPhrase, 80))}");
+        details.Add($"EndpointHost={BuildSanitizedEndpointHost(endpoint)}");
         details.Add($"Endpoint={BuildSanitizedEndpointValue(endpoint)}");
+        details.Add($"Deployment={BuildSafeValue(ExtractAzureDeploymentName(endpoint))}");
+        details.Add($"ResponseLength={(responseBody ?? string.Empty).Length}");
         if (!string.IsNullOrWhiteSpace(errorCode))
             details.Add($"AzureErrorCode={errorCode}");
         if (!string.IsNullOrWhiteSpace(errorMessage))
             details.Add($"AzureErrorMessage={errorMessage}");
         if (!string.IsNullOrWhiteSpace(responseSnippet))
+        {
             details.Add($"ResponseSnippet={responseSnippet}");
+            details.Add($"AzureResponseBody={responseSnippet}");
+        }
 
         return string.Join("; ", details) + ".";
+    }
+
+    protected static string BuildAzureContractFailureLog(string mode, string endpoint, string reason, string responseBody)
+    {
+        var responseSnippet = BuildResponseSnippet(responseBody);
+        var details = new List<string>
+        {
+            $"Mode={mode}",
+            $"Operation={BuildAzureOperationName(mode)}",
+            "FailureKind=azure-openai-contract-failure",
+            $"Reason={BuildSafeValue(reason)}",
+            $"EndpointHost={BuildSanitizedEndpointHost(endpoint)}",
+            $"Endpoint={BuildSanitizedEndpointValue(endpoint)}",
+            $"Deployment={BuildSafeValue(ExtractAzureDeploymentName(endpoint))}",
+            $"ResponseLength={(responseBody ?? string.Empty).Length}"
+        };
+        if (!string.IsNullOrWhiteSpace(responseSnippet))
+        {
+            details.Add($"Sample={responseSnippet}");
+            details.Add($"AzureResponseBody={responseSnippet}");
+        }
+
+        return string.Join("; ", details) + ".";
+    }
+
+    protected static string BuildAzureExceptionLog(string mode, string failureKind, string reason, Exception exception)
+    {
+        return string.Join("; ", new[]
+        {
+            $"Mode={mode}",
+            $"Operation={BuildAzureOperationName(mode)}",
+            $"FailureKind={BuildSafeValue(failureKind)}",
+            $"Reason={BuildSafeValue(reason)}",
+            $"ExceptionType={BuildSafeValue(exception?.GetType().Name)}",
+            $"ExceptionMessage={SanitizeDiagnosticText(TruncateSafe(exception?.Message, 300))}",
+            $"ExceptionDetail={SanitizeDiagnosticText(TruncateSafe(exception?.ToString(), 500))}"
+        }) + ".";
     }
 
     protected virtual string BuildConfigurationIncompleteLog(string mode, bool endpointConfigured, bool apiKeyConfigured, bool deploymentConfigured)
@@ -405,6 +455,8 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
         return string.Join("; ", new[]
         {
             $"Mode={mode}",
+            $"Operation={BuildAzureOperationName(mode)}",
+            "FailureKind=azure-openai-configuration-incomplete",
             "Reason=configuration incomplete",
             $"MissingFields={(missingFields.Count > 0 ? string.Join(",", missingFields) : "<none>")}",
             $"MockModeEnabled={(_mockSettings?.UseMockResponses != false).ToString().ToLowerInvariant()}",
@@ -441,14 +493,52 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
 
     protected static string BuildSafeValue(string value)
     {
-        return string.IsNullOrWhiteSpace(value) ? "<empty>" : TruncateSafe(value.Trim(), 120);
+        return string.IsNullOrWhiteSpace(value) ? "<empty>" : SanitizeDiagnosticText(TruncateSafe(value.Trim(), 120));
     }
 
     protected static string BuildResponseSnippet(string responseBody)
     {
         return string.IsNullOrWhiteSpace(responseBody)
             ? string.Empty
-            : TruncateSafe(responseBody.Replace('\r', ' ').Replace('\n', ' ').Trim(), 220);
+            : SanitizeDiagnosticText(TruncateSafe(responseBody.Replace('\r', ' ').Replace('\n', ' ').Trim(), 500));
+    }
+
+    protected static string SanitizeDiagnosticText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var sanitized = value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        sanitized = Regex.Replace(sanitized, "(?i)(api[-_ ]?key|authorization|access[_-]?token|refresh[_-]?token|bearer|subscription[-_ ]?key)\\s*[:=]\\s*\\\"?[^\\\"\\s,;}]+", "$1=<redacted>");
+        sanitized = Regex.Replace(sanitized, "(?i)(sig|signature|code|client_secret)=([^&\\s]+)", "$1=<redacted>");
+        return sanitized;
+    }
+
+    protected static string BuildAzureOperationName(string mode)
+    {
+        return mode?.Trim().ToLowerInvariant() switch
+        {
+            "generate" => "llm-question-generation",
+            "score" => "llm-scoring",
+            "resume-profile" => "llm-resume-profile",
+            "question-plan" => "llm-question-plan",
+            _ => "llm-azure-openai"
+        };
+    }
+
+    protected static string ExtractAzureDeploymentName(string endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint) || !Uri.TryCreate(endpoint, UriKind.Absolute, out var uri))
+            return string.Empty;
+
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        for (var index = 0; index < segments.Length - 1; index++)
+        {
+            if (string.Equals(segments[index], "deployments", StringComparison.OrdinalIgnoreCase))
+                return Uri.UnescapeDataString(segments[index + 1]);
+        }
+
+        return string.Empty;
     }
 
     protected static string GetStructuredResponseFailureReason(string content, string mode)
@@ -786,12 +876,17 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
             using var document = JsonDocument.Parse(normalized);
             var diagnostics = string.Equals(mode, "score", StringComparison.OrdinalIgnoreCase)
                 ? AnalyzeScoreContract(document.RootElement)
-                : new ScoreContractDiagnostics(GetStructuredResponseFailureReason(content, mode), document.RootElement.ValueKind.ToString(),
+                : string.Equals(mode, "generate", StringComparison.OrdinalIgnoreCase)
+                    ? new ScoreContractDiagnostics(GetStructuredResponseFailureReason(content, mode), document.RootElement.ValueKind.ToString(),
                     document.RootElement.ValueKind == JsonValueKind.Object ? string.Join(",", document.RootElement.EnumerateObject().Select(property => property.Name)) : string.Empty,
                     TruncateSafe(document.RootElement.GetRawText(), 800),
-                    string.IsNullOrWhiteSpace(document.RootElement.TryGetProperty("question", out var questionElement) ? questionElement.GetString() : null) ? "question" : "<none>");
+                    string.IsNullOrWhiteSpace(document.RootElement.TryGetProperty("question", out var questionElement) ? questionElement.GetString() : null) ? "question" : "<none>")
+                    : new ScoreContractDiagnostics("invalid JSON or failed contract parsing", document.RootElement.ValueKind.ToString(),
+                    document.RootElement.ValueKind == JsonValueKind.Object ? string.Join(",", document.RootElement.EnumerateObject().Select(property => property.Name)) : string.Empty,
+                    TruncateSafe(document.RootElement.GetRawText(), 800),
+                    "<not-applicable>");
 
-            return $"Mode={mode}; Reason={diagnostics.Reason}; MissingFields={diagnostics.MissingFields}; Shape={diagnostics.Shape}; PropertyNames={diagnostics.PropertyNames}; Sample={diagnostics.Sample}.";
+            return $"Mode={mode}; Operation={BuildAzureOperationName(mode)}; FailureKind=azure-openai-contract-failure; Reason={diagnostics.Reason}; MissingFields={diagnostics.MissingFields}; Shape={diagnostics.Shape}; PropertyNames={diagnostics.PropertyNames}; ResponseLength={(content ?? string.Empty).Length}; Sample={BuildResponseSnippet(diagnostics.Sample)}.";
         }
         catch
         {
@@ -804,7 +899,7 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
             else
                 shape = "plain text";
 
-            return $"Mode={mode}; Reason={GetStructuredResponseFailureReason(content, mode)}; Shape={shape}; Sample={sample}.";
+            return $"Mode={mode}; Operation={BuildAzureOperationName(mode)}; FailureKind=azure-openai-contract-failure; Reason={GetStructuredResponseFailureReason(content, mode)}; Shape={shape}; ResponseLength={(content ?? string.Empty).Length}; Sample={BuildResponseSnippet(sample)}.";
         }
     }
 
@@ -829,7 +924,7 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
             : "invalid score contract";
 
         var sample = TruncateSafe(response?.RawJson, 800);
-        return $"Mode=score; Reason={reason}; MissingFields={(missingFields.Count > 0 ? string.Join(",", missingFields) : "<none>")}; Sample={sample}.";
+        return $"Mode=score; Operation={BuildAzureOperationName("score")}; FailureKind=azure-openai-contract-failure; Reason={reason}; MissingFields={(missingFields.Count > 0 ? string.Join(",", missingFields) : "<none>")}; ResponseLength={(response?.RawJson ?? string.Empty).Length}; Sample={BuildResponseSnippet(sample)}.";
     }
 
     protected static void UpsertScoreValue(JsonObject rubric, string propertyName, decimal? value)
