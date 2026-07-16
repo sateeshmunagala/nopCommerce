@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -1323,6 +1325,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         WriteIndented = false
     };
     private const string SpeechUnavailableMessage = "Voice mode is unavailable. Please type your answer below.";
+    private static readonly ConcurrentDictionary<string, DateTime> SpeechTokenFailureLogCache = new(StringComparer.Ordinal);
+    private static readonly TimeSpan SpeechTokenFailureLogDedupeWindow = TimeSpan.FromMinutes(15);
     private static readonly Regex SensitiveJsonValueRegex = new(
         "(\"(?<name>key|token|secret|signature|password|authorization)\"\\s*:\\s*\")(?<value>[^\"]*)(\")",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -1483,6 +1487,81 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         return SanitizeSpeechTokenLogValue(path, 300);
     }
 
+    protected static string BuildSpeechTokenFailureDedupeKey(
+        string failureKind,
+        InterviewSession session,
+        string token,
+        string region,
+        int? httpStatus = null,
+        string reasonPhrase = null,
+        string azureResponseBody = null,
+        Exception exception = null,
+        bool? speechKeyConfigured = null,
+        bool? speechRegionConfigured = null)
+    {
+        var sessionOrToken = session?.Id > 0
+            ? $"session:{session.Id}"
+            : $"token:{BuildMaskedTokenPrefix(token)}";
+        var parts = new List<string>
+        {
+            sessionOrToken,
+            $"kind:{NormalizeSpeechTokenDedupeValue(failureKind, 80)}",
+            $"region:{NormalizeSpeechTokenDedupeValue(region, 120)}"
+        };
+
+        if (httpStatus.HasValue)
+            parts.Add($"status:{httpStatus.Value}");
+        if (!string.IsNullOrWhiteSpace(reasonPhrase))
+            parts.Add($"reason:{NormalizeSpeechTokenDedupeValue(reasonPhrase, 120)}");
+        if (speechKeyConfigured.HasValue)
+            parts.Add($"keyConfigured:{speechKeyConfigured.Value.ToString().ToLowerInvariant()}");
+        if (speechRegionConfigured.HasValue)
+            parts.Add($"regionConfigured:{speechRegionConfigured.Value.ToString().ToLowerInvariant()}");
+        if (exception != null)
+        {
+            parts.Add($"exceptionType:{NormalizeSpeechTokenDedupeValue(exception.GetType().FullName ?? exception.GetType().Name, 200)}");
+            parts.Add($"exceptionMessage:{NormalizeSpeechTokenDedupeValue(exception.Message, 400)}");
+        }
+        if (!string.IsNullOrWhiteSpace(azureResponseBody))
+            parts.Add($"bodyHash:{BuildSpeechTokenFailureBodyFingerprint(azureResponseBody)}");
+
+        return string.Join("|", parts);
+    }
+
+    protected virtual bool ShouldLogSpeechTokenFailure(string dedupeKey, DateTime nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(dedupeKey))
+            return true;
+
+        PruneExpiredSpeechTokenFailureKeys(nowUtc);
+        var expiresUtc = nowUtc.Add(SpeechTokenFailureLogDedupeWindow);
+        while (true)
+        {
+            if (SpeechTokenFailureLogCache.TryGetValue(dedupeKey, out var existingExpiresUtc) &&
+                existingExpiresUtc > nowUtc)
+            {
+                _logger?.LogDebug("Suppressed duplicate AI Interview speech token failure log. DedupeKey={DedupeKey}. ExpiresUtc={ExpiresUtc:o}.",
+                    dedupeKey, existingExpiresUtc);
+                return false;
+            }
+
+            if (SpeechTokenFailureLogCache.TryAdd(dedupeKey, expiresUtc))
+                return true;
+
+            if (SpeechTokenFailureLogCache.TryUpdate(dedupeKey, expiresUtc, existingExpiresUtc))
+                return true;
+        }
+    }
+
+    protected virtual void PruneExpiredSpeechTokenFailureKeys(DateTime nowUtc)
+    {
+        foreach (var item in SpeechTokenFailureLogCache)
+        {
+            if (item.Value <= nowUtc)
+                SpeechTokenFailureLogCache.TryRemove(item.Key, out _);
+        }
+    }
+
     protected static string BuildSpeechTokenFailureLog(
         string failureKind,
         InterviewSession session,
@@ -1568,6 +1647,21 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             $"{match.Groups[1].Value}{match.Groups["quote"].Value}***{match.Groups["quote2"].Value}");
         sanitized = WhitespaceCollapseRegex.Replace(sanitized, " ").Trim();
         return sanitized;
+    }
+
+    private static string NormalizeSpeechTokenDedupeValue(string value, int maxLength)
+    {
+        return SanitizeSpeechTokenLogValue(value, maxLength).ToLowerInvariant();
+    }
+
+    private static string BuildSpeechTokenFailureBodyFingerprint(string responseBody)
+    {
+        var sanitized = SanitizeAzureResponseBody(responseBody);
+        if (string.IsNullOrWhiteSpace(sanitized))
+            return string.Empty;
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(sanitized));
+        return Convert.ToHexString(hash, 0, 8).ToLowerInvariant();
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string fallback)
@@ -2039,11 +2133,21 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 "configuration incomplete",
                 speechKeyConfigured: speechKeyConfigured,
                 speechRegionConfigured: speechRegionConfigured);
-            await LogRuntimeIssueAsync(
-                NopLogLevel.Warning,
-                "AI Interview speech token unavailable",
-                diagnosticMessage,
-                await ResolveLogCustomerAsync(session));
+            var dedupeKey = BuildSpeechTokenFailureDedupeKey(
+                "configuration-incomplete",
+                session,
+                token,
+                _settings?.AzureSpeechRegion,
+                speechKeyConfigured: speechKeyConfigured,
+                speechRegionConfigured: speechRegionConfigured);
+            if (ShouldLogSpeechTokenFailure(dedupeKey, now))
+            {
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Warning,
+                    "AI Interview speech token unavailable",
+                    diagnosticMessage,
+                    await ResolveLogCustomerAsync(session));
+            }
             return BuildSpeechTokenFailureResult("configuration-incomplete", diagnosticMessage);
         }
 
@@ -2070,11 +2174,22 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     azureResponseBody: responseBody);
                 _logger?.LogWarning("Azure Speech token request failed. Region: {Region}. Status: {StatusCode}.",
                     region, response.StatusCode);
-                await LogRuntimeIssueAsync(
-                    NopLogLevel.Warning,
-                    "AI Interview speech token failure",
-                    diagnosticMessage,
-                    await ResolveLogCustomerAsync(session));
+                var dedupeKey = BuildSpeechTokenFailureDedupeKey(
+                    "azure-http-failure",
+                    session,
+                    token,
+                    region,
+                    httpStatus: (int)response.StatusCode,
+                    reasonPhrase: response.ReasonPhrase,
+                    azureResponseBody: responseBody);
+                if (ShouldLogSpeechTokenFailure(dedupeKey, DateTime.UtcNow))
+                {
+                    await LogRuntimeIssueAsync(
+                        NopLogLevel.Warning,
+                        "AI Interview speech token failure",
+                        diagnosticMessage,
+                        await ResolveLogCustomerAsync(session));
+                }
                 return BuildSpeechTokenFailureResult("azure-http-failure", diagnosticMessage, azureStatusCode: (int)response.StatusCode, azureReasonPhrase: response.ReasonPhrase);
             }
 
@@ -2092,11 +2207,21 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     reasonPhrase: response.ReasonPhrase,
                     responseLength: responseBody?.Length ?? 0);
                 _logger?.LogWarning("Azure Speech token request returned an empty token. Region: {Region}.", region);
-                await LogRuntimeIssueAsync(
-                    NopLogLevel.Warning,
-                    "AI Interview speech token failure",
-                    diagnosticMessage,
-                    await ResolveLogCustomerAsync(session));
+                var dedupeKey = BuildSpeechTokenFailureDedupeKey(
+                    "empty-token-response",
+                    session,
+                    token,
+                    region,
+                    httpStatus: (int)response.StatusCode,
+                    reasonPhrase: response.ReasonPhrase);
+                if (ShouldLogSpeechTokenFailure(dedupeKey, DateTime.UtcNow))
+                {
+                    await LogRuntimeIssueAsync(
+                        NopLogLevel.Warning,
+                        "AI Interview speech token failure",
+                        diagnosticMessage,
+                        await ResolveLogCustomerAsync(session));
+                }
                 return BuildSpeechTokenFailureResult("empty-token-response", diagnosticMessage, azureStatusCode: (int)response.StatusCode, azureReasonPhrase: response.ReasonPhrase);
             }
 
@@ -2119,11 +2244,20 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 "azure-exception",
                 exception: ex);
             _logger?.LogWarning(ex, "Azure Speech token request exception. Region: {Region}.", region);
-            await LogRuntimeIssueAsync(
-                NopLogLevel.Error,
-                "AI Interview speech token exception",
-                diagnosticMessage,
-                await ResolveLogCustomerAsync(session));
+            var dedupeKey = BuildSpeechTokenFailureDedupeKey(
+                "azure-exception",
+                session,
+                token,
+                region,
+                exception: ex);
+            if (ShouldLogSpeechTokenFailure(dedupeKey, DateTime.UtcNow))
+            {
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Error,
+                    "AI Interview speech token exception",
+                    diagnosticMessage,
+                    await ResolveLogCustomerAsync(session));
+            }
             return BuildSpeechTokenFailureResult("azure-exception", diagnosticMessage);
         }
     }
