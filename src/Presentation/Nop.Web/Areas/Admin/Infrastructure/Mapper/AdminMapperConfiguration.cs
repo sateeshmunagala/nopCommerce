@@ -1394,7 +1394,8 @@ public partial class AdminMapperConfiguration : BaseMapperProfile
             .ForMember(model => model.GuestReturnRequestsAllowed_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.WithdrawalLinkDaysValid_OverrideForStore, options => options.Ignore())
             .ForMember(model => model.ReturnReasonsEnabled_OverrideForStore, options => options.Ignore())
-            .ForMember(model => model.ReturnActionsEnabled_OverrideForStore, options => options.Ignore());
+            .ForMember(model => model.ReturnActionsEnabled_OverrideForStore, options => options.Ignore())
+            .ForMember(model => model.DownloadableProductsReturnRequestsAllowed_OverrideForStore, options => options.Ignore());
         CreateMap<ReturnRequestSettingsModel, ReturnRequestSettings>()
             .ForMember(settings => settings.ReturnRequestsFileMaximumSize, options => options.Ignore());
 

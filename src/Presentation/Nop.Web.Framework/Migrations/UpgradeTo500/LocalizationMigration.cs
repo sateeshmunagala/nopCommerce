@@ -825,6 +825,10 @@ public class LocalizationMigration : MigrationBase
             //#8093
             ["Admin.Address.Fields.PhoneNumber.NotValid"] = "Phone number is not valid.",
             ["Admin.Customers.Customers.Fields.Phone.NotValid"] = "Phone number is not valid.",
+
+            //#8229
+            ["Admin.Configuration.Settings.Order.DownloadableProductsReturnRequestsAllowed"] = "Allow return requests for downloadable products",
+            ["Admin.Configuration.Settings.Order.DownloadableProductsReturnRequestsAllowed.Hint"] = "Check this option to allow return requests for downloadable products.",
         });
 
         #endregion
