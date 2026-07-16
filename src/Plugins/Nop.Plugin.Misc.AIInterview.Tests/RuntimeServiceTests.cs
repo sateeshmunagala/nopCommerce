@@ -1763,7 +1763,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task SpeechToken_ReturnNull_WhenConfigMissing()
+    public async Task SpeechToken_MissingConfig_LogsDetailedFlags()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -1773,16 +1773,45 @@ public class RuntimeServiceTests
         var localizationService = new Mock<ILocalizationService>();
         var workContext = new Mock<IWorkContext>();
         var eventPublisher = new Mock<IEventPublisher>();
+        var nopLogger = new Mock<NopLogger>();
 
-        sessionService.Setup(x => x.GetSessionByTokenAsync("token5")).ReturnsAsync(new InterviewSession { Id = 5, Token = "token5", IsActive = true });
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token5")).ReturnsAsync(new InterviewSession
+        {
+            Id = 5,
+            Token = "token5",
+            CustomerId = 7,
+            ProductId = 9,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(7)).ReturnsAsync(new Customer { Id = 7 });
 
-        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            workContext: workContext,
+            eventPublisher: eventPublisher,
+            nopLogger: nopLogger);
 
-        Assert.That(await service.GetSpeechTokenAsync("token5"), Is.Null);
+        var result = await service.GetSpeechTokenAsync("token5");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("configuration-incomplete"));
+        Assert.That(result.Message, Is.EqualTo("Voice mode is unavailable. Please type your answer below."));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview speech token unavailable",
+            It.Is<string>(message =>
+                message.Contains("Mode=speech-token") &&
+                message.Contains("Reason=configuration incomplete") &&
+                message.Contains("FailureKind=configuration-incomplete") &&
+                message.Contains("AzureSpeechKeyConfigured=false") &&
+                message.Contains("AzureSpeechRegionConfigured=false") &&
+                message.Contains("SpeechRegion=<empty>")),
+            It.IsAny<Customer>()), Times.Once);
     }
 
     [Test]
-    public async Task SpeechToken_ReturnsNull_ForInactiveCompletedOrExpiredSessions()
+    public async Task SpeechToken_ReturnsFailure_ForInactiveCompletedOrExpiredSessions()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -1808,14 +1837,14 @@ public class RuntimeServiceTests
         sessionService.Setup(x => x.GetSessionByTokenAsync("completed")).ReturnsAsync(completed);
         sessionService.Setup(x => x.GetSessionByTokenAsync("expired")).ReturnsAsync(expired);
 
-        Assert.That(await service.GetSpeechTokenAsync("inactive"), Is.Null);
-        Assert.That(await service.GetSpeechTokenAsync("completed"), Is.Null);
-        Assert.That(await service.GetSpeechTokenAsync("expired"), Is.Null);
+        Assert.That((await service.GetSpeechTokenAsync("inactive")).FailureKind, Is.EqualTo("invalid-session"));
+        Assert.That((await service.GetSpeechTokenAsync("completed")).FailureKind, Is.EqualTo("invalid-session"));
+        Assert.That((await service.GetSpeechTokenAsync("expired")).FailureKind, Is.EqualTo("invalid-session"));
         Assert.That(httpHandler.Requests, Is.Empty);
     }
 
     [Test]
-    public async Task SpeechToken_ReturnsNull_OnExpiryBoundary()
+    public async Task SpeechToken_ReturnsFailure_OnExpiryBoundary()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -1841,8 +1870,169 @@ public class RuntimeServiceTests
                 AzureSpeechRegion = "eastus"
             });
 
-        Assert.That(await service.GetSpeechTokenAsync("boundary"), Is.Null);
+        var result = await service.GetSpeechTokenAsync("boundary");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("invalid-session"));
         Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task SpeechToken_AzureHttpFailure_LogsOriginalAzureBodyWithoutKey()
+    {
+        var azureBody = """{"error":{"code":"401","message":"Access denied due to invalid subscription key or wrong API endpoint."},"token":"raw-secret-token"}""";
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = new StringContent(azureBody, Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-http")).ReturnsAsync(new InterviewSession
+        {
+            Id = 12,
+            Token = "token-http",
+            CustomerId = 21,
+            ProductId = 34,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(21)).ReturnsAsync(new Customer { Id = 21 });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key-secret",
+                AzureSpeechRegion = "eastus"
+            },
+            nopLogger: nopLogger);
+
+        var result = await service.GetSpeechTokenAsync("token-http");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("azure-http-failure"));
+        Assert.That(result.AzureStatusCode, Is.EqualTo(401));
+        Assert.That(result.AzureReasonPhrase, Is.EqualTo("Unauthorized"));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview speech token failure",
+            It.Is<string>(message =>
+                message.Contains("FailureKind=azure-http-failure") &&
+                message.Contains("HttpStatus=401") &&
+                message.Contains("ReasonPhrase=Unauthorized") &&
+                message.Contains("Access denied due to invalid subscription key or wrong API endpoint.") &&
+                !message.Contains("speech-key-secret") &&
+                !message.Contains("raw-secret-token")),
+            It.IsAny<Customer>()), Times.Once);
+    }
+
+    [Test]
+    public async Task SpeechToken_AzureException_LogsExceptionDetail()
+    {
+        var httpHandler = new TestHttpMessageHandler(_ => throw new HttpRequestException("DNS failure for speech endpoint"));
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-ex")).ReturnsAsync(new InterviewSession
+        {
+            Id = 18,
+            Token = "token-ex",
+            CustomerId = 44,
+            ProductId = 52,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(44)).ReturnsAsync(new Customer { Id = 44 });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key",
+                AzureSpeechRegion = "eastus"
+            },
+            nopLogger: nopLogger);
+
+        var result = await service.GetSpeechTokenAsync("token-ex");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("azure-exception"));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Error,
+            "AI Interview speech token exception",
+            It.Is<string>(message =>
+                message.Contains("FailureKind=azure-exception") &&
+                message.Contains("ExceptionType=System.Net.Http.HttpRequestException") &&
+                message.Contains("DNS failure for speech endpoint") &&
+                message.Contains("SessionId=18") &&
+                message.Contains("CustomerId=44") &&
+                message.Contains("ProductId=52")),
+            It.IsAny<Customer>()), Times.Once);
+    }
+
+    [Test]
+    public async Task SpeechToken_EmptySuccessfulResponse_LogsClearly()
+    {
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(string.Empty, Encoding.UTF8, "text/plain")
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-empty")).ReturnsAsync(new InterviewSession
+        {
+            Id = 22,
+            Token = "token-empty",
+            CustomerId = 55,
+            ProductId = 66,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(55)).ReturnsAsync(new Customer { Id = 55 });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key",
+                AzureSpeechRegion = "eastus"
+            },
+            nopLogger: nopLogger);
+
+        var result = await service.GetSpeechTokenAsync("token-empty");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("empty-token-response"));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview speech token failure",
+            It.Is<string>(message =>
+                message.Contains("FailureKind=empty-token-response") &&
+                message.Contains("Reason=empty token response") &&
+                message.Contains("HttpStatus=200") &&
+                message.Contains("ReasonPhrase=OK") &&
+                message.Contains("ResponseLength=0")),
+            It.IsAny<Customer>()), Times.Once);
     }
 
     [Test]
@@ -2497,6 +2687,7 @@ public class RuntimeServiceTests
         var result = await service.GetSpeechTokenAsync("token");
 
         Assert.That(result, Is.Not.Null);
+        Assert.That(result.Success, Is.True);
         Assert.That(result.Token, Is.EqualTo("speech-token"));
         Assert.That(result.Region, Is.EqualTo("eastus"));
         Assert.That(result.ExpiresInSeconds, Is.EqualTo(600));
@@ -2704,6 +2895,9 @@ public class RuntimeServiceTests
         var content = System.IO.File.ReadAllText(path);
         Assert.That(content.Contains("if (!currentText && interviewStarted && !isSpeakingOrSubmitting && hasActiveQuestion() && !isScreenShareBlockingInterview())"), Is.True, "Runtime view should contain repeating reminder scheduling logic");
         Assert.That(content.Contains("resetTimers();"), Is.True, "Runtime view should contain resetTimers logic in the timer interval");
+        Assert.That(content.Contains("let speechUnavailable = !config.speechAvailable;"), Is.True, "Runtime view should track first speech failure for the page.");
+        Assert.That(content.Contains("config.speechAvailable = false;"), Is.True, "Runtime view should disable speech after the first speech failure.");
+        Assert.That(content.Contains("Voice mode is unavailable. Please type your answer below."), Is.True, "Runtime view should keep the applicant-facing fallback message safe.");
     }
 
     [Test]

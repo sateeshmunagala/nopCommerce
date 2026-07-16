@@ -30,6 +30,7 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
 public class MockAiInterviewController : BasePluginController
 {
+    private const string VoiceUnavailableMessage = "Voice mode is unavailable. Please type your answer below.";
     private static readonly string[] PracticeDifficultyKeywords =
     [
         "practice difficulty",
@@ -160,6 +161,15 @@ public class MockAiInterviewController : BasePluginController
 
         var text = await GetLocalizedTextAsync(resourceKey, defaultValue);
         return Json(new { success = false, message = text, error = text });
+    }
+
+    protected IActionResult SafeSpeechUnavailable(string message = VoiceUnavailableMessage, int statusCode = 400)
+    {
+        if (HttpContext != null)
+            Response.StatusCode = statusCode;
+
+        var safeMessage = string.IsNullOrWhiteSpace(message) ? VoiceUnavailableMessage : message;
+        return Json(new { success = false, message = safeMessage, error = safeMessage });
     }
 
     protected virtual string MaskToken(string token)
@@ -1354,18 +1364,15 @@ public class MockAiInterviewController : BasePluginController
     public async Task<IActionResult> SpeechToken(string token)
     {
         if (_interviewRuntimeService == null)
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech token service is unavailable.");
+            return SafeSpeechUnavailable();
 
         var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
         if (tokenRenewal.Session != null && tokenRenewal.Renewed)
             token = tokenRenewal.Session.Token;
 
         var result = await _interviewRuntimeService.GetSpeechTokenAsync(token);
-        if (result == null)
-        {
-            await LogRuntimeIssueAsync("AI Interview speech token failure", $"Speech token retrieval failed for token {MaskToken(token)}.", await ResolveLogCustomerAsync(tokenRenewal.Session));
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech token service is unavailable.");
-        }
+        if (result == null || !result.Success)
+            return SafeSpeechUnavailable(result?.Message);
 
         if (tokenRenewal.Renewed)
         {

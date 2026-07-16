@@ -1325,14 +1325,59 @@ public class RuntimeAndAdminTests
     [Test]
     public async Task Runtime_SpeechToken_ExpiredOrInactive_ReturnsSafeJson()
     {
-        _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync("expired")).ReturnsAsync((SpeechTokenResponseModel)null);
-        _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync("inactive")).ReturnsAsync((SpeechTokenResponseModel)null);
+        _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync("expired")).ReturnsAsync(new SpeechTokenResponseModel
+        {
+            Success = false,
+            Message = "Voice mode is unavailable. Please type your answer below.",
+            FailureKind = "invalid-session",
+            DiagnosticMessage = "Mode=speech-token; FailureKind=invalid-session; AzureResponseBody={\"error\":\"do-not-leak\"}; StackTrace=hidden;"
+        });
+        _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync("inactive")).ReturnsAsync(new SpeechTokenResponseModel
+        {
+            Success = false,
+            Message = "Voice mode is unavailable. Please type your answer below.",
+            FailureKind = "invalid-session",
+            DiagnosticMessage = "Mode=speech-token; FailureKind=invalid-session; EndpointHost=secret.example;"
+        });
 
-        var expired = await _runtimeController.SpeechToken("expired");
-        var inactive = await _runtimeController.SpeechToken("inactive");
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            null,
+            null,
+            null,
+            _interviewRuntimeService.Object,
+            null,
+            _nopLogger.Object);
 
-        Assert.That(((JsonResult)expired).Value.GetType().GetProperty("error").GetValue(((JsonResult)expired).Value, null), Is.EqualTo("Speech token service is unavailable."));
-        Assert.That(((JsonResult)inactive).Value.GetType().GetProperty("error").GetValue(((JsonResult)inactive).Value, null), Is.EqualTo("Speech token service is unavailable."));
+        var expired = await controller.SpeechToken("expired");
+        var inactive = await controller.SpeechToken("inactive");
+
+        var expiredValue = ((JsonResult)expired).Value;
+        var expiredError = expiredValue.GetType().GetProperty("error").GetValue(expiredValue, null)?.ToString();
+        var expiredMessage = expiredValue.GetType().GetProperty("message").GetValue(expiredValue, null)?.ToString();
+        var serializedExpired = System.Text.Json.JsonSerializer.Serialize(expiredValue);
+
+        Assert.That(expiredError, Is.EqualTo("Voice mode is unavailable. Please type your answer below."));
+        Assert.That(expiredMessage, Is.EqualTo("Voice mode is unavailable. Please type your answer below."));
+        Assert.That(serializedExpired, Does.Not.Contain("do-not-leak"));
+        Assert.That(serializedExpired, Does.Not.Contain("secret.example"));
+        Assert.That(serializedExpired, Does.Not.Contain("StackTrace"));
+
+        Assert.That(((JsonResult)inactive).Value.GetType().GetProperty("error").GetValue(((JsonResult)inactive).Value, null), Is.EqualTo("Voice mode is unavailable. Please type your answer below."));
+        _nopLogger.Verify(x => x.InsertLogAsync(
+            It.IsAny<LogLevel>(),
+            "AI Interview speech token failure",
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Never);
     }
 
     [Test]

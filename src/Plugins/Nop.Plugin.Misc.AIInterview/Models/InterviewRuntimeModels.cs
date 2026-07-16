@@ -123,6 +123,12 @@ public record RecordingUploadResponseModel
 
 public record SpeechTokenResponseModel
 {
+    public bool Success { get; init; } = true;
+    public string Message { get; init; }
+    public string FailureKind { get; init; }
+    public int? AzureStatusCode { get; init; }
+    public string AzureReasonPhrase { get; init; }
+    public string DiagnosticMessage { get; init; }
     public string Token { get; init; }
     public string Region { get; init; }
     public int ExpiresInSeconds { get; init; }

@@ -1322,6 +1322,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = false
     };
+    private const string SpeechUnavailableMessage = "Voice mode is unavailable. Please type your answer below.";
+    private static readonly Regex SensitiveJsonValueRegex = new(
+        "(\"(?<name>key|token|secret|signature|password|authorization)\"\\s*:\\s*\")(?<value>[^\"]*)(\")",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex SensitiveKeyValueRegex = new(
+        "(\\b(?<name>key|token|secret|signature|password|authorization)\\b\\s*[=:]\\s*)(?<quote>[\"']?)(?<value>[^\"'\\s;,&]+)(?<quote2>[\"']?)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex WhitespaceCollapseRegex = new(@"\s+", RegexOptions.Compiled);
 
     private readonly IInterviewSessionService _sessionService;
     private readonly IInterviewTurnService _turnService;
@@ -1430,6 +1438,136 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     protected static string BuildSafeValue(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? "<empty>" : TruncateSafe(value.Trim(), 220);
+    }
+
+    protected static string BuildMaskedTokenPrefix(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return "<empty>";
+
+        var trimmed = token.Trim();
+        if (trimmed.Length <= 6)
+            return "*****";
+
+        return $"{trimmed[..6]}...";
+    }
+
+    protected static string SanitizeSpeechTokenLogValue(string value, int maxLength = 220)
+    {
+        var sanitized = SanitizeSensitiveSpeechValue(value);
+        return string.IsNullOrWhiteSpace(sanitized)
+            ? "<empty>"
+            : TruncateSafe(sanitized, maxLength);
+    }
+
+    protected static string SanitizeAzureResponseBody(string responseBody, int maxLength = 4000)
+    {
+        return string.IsNullOrWhiteSpace(responseBody)
+            ? string.Empty
+            : TruncateSafe(SanitizeSensitiveSpeechValue(responseBody), maxLength);
+    }
+
+    protected static string BuildSpeechEndpointHost(string endpoint)
+    {
+        return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
+            ? SanitizeSpeechTokenLogValue(uri.Host, 200)
+            : "<empty>";
+    }
+
+    protected static string BuildSpeechEndpointPath(string endpoint)
+    {
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri))
+            return "<empty>";
+
+        var path = string.IsNullOrWhiteSpace(uri.PathAndQuery) ? uri.AbsolutePath : uri.PathAndQuery;
+        return SanitizeSpeechTokenLogValue(path, 300);
+    }
+
+    protected static string BuildSpeechTokenFailureLog(
+        string failureKind,
+        InterviewSession session,
+        string token,
+        string region,
+        string endpoint,
+        string reason,
+        int? httpStatus = null,
+        string reasonPhrase = null,
+        string azureResponseBody = null,
+        Exception exception = null,
+        int? responseLength = null,
+        bool? speechKeyConfigured = null,
+        bool? speechRegionConfigured = null)
+    {
+        var details = new List<string>
+        {
+            "Mode=speech-token",
+            $"FailureKind={SanitizeSpeechTokenLogValue(failureKind, 80)}",
+            $"Reason={SanitizeSpeechTokenLogValue(reason, 200)}",
+            $"SessionId={session?.Id ?? 0}",
+            $"CustomerId={session?.CustomerId ?? 0}",
+            $"ProductId={session?.ProductId ?? 0}",
+            $"TokenPrefix={BuildMaskedTokenPrefix(token)}",
+            $"SpeechRegion={SanitizeSpeechTokenLogValue(region, 120)}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(endpoint))
+        {
+            details.Add($"EndpointHost={BuildSpeechEndpointHost(endpoint)}");
+            details.Add($"EndpointPath={BuildSpeechEndpointPath(endpoint)}");
+        }
+
+        if (speechKeyConfigured.HasValue)
+            details.Add($"AzureSpeechKeyConfigured={speechKeyConfigured.Value.ToString().ToLowerInvariant()}");
+        if (speechRegionConfigured.HasValue)
+            details.Add($"AzureSpeechRegionConfigured={speechRegionConfigured.Value.ToString().ToLowerInvariant()}");
+        if (httpStatus.HasValue)
+            details.Add($"HttpStatus={httpStatus.Value}");
+        if (!string.IsNullOrWhiteSpace(reasonPhrase))
+            details.Add($"ReasonPhrase={SanitizeSpeechTokenLogValue(reasonPhrase, 120)}");
+        if (responseLength.HasValue)
+            details.Add($"ResponseLength={responseLength.Value}");
+        if (!string.IsNullOrWhiteSpace(azureResponseBody))
+            details.Add($"AzureResponseBody={SanitizeAzureResponseBody(azureResponseBody)}");
+        if (exception != null)
+        {
+            details.Add($"ExceptionType={SanitizeSpeechTokenLogValue(exception.GetType().FullName ?? exception.GetType().Name, 200)}");
+            details.Add($"ExceptionMessage={SanitizeSpeechTokenLogValue(exception.Message, 400)}");
+            details.Add($"ExceptionDetail={SanitizeAzureResponseBody(exception.ToString())}");
+        }
+
+        return string.Join("; ", details);
+    }
+
+    protected virtual SpeechTokenResponseModel BuildSpeechTokenFailureResult(
+        string failureKind,
+        string diagnosticMessage,
+        string message = SpeechUnavailableMessage,
+        int? azureStatusCode = null,
+        string azureReasonPhrase = null)
+    {
+        return new SpeechTokenResponseModel
+        {
+            Success = false,
+            Message = string.IsNullOrWhiteSpace(message) ? SpeechUnavailableMessage : message,
+            FailureKind = failureKind,
+            AzureStatusCode = azureStatusCode,
+            AzureReasonPhrase = string.IsNullOrWhiteSpace(azureReasonPhrase) ? null : SanitizeSpeechTokenLogValue(azureReasonPhrase, 120),
+            DiagnosticMessage = string.IsNullOrWhiteSpace(diagnosticMessage) ? string.Empty : diagnosticMessage
+        };
+    }
+
+    private static string SanitizeSensitiveSpeechValue(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var sanitized = value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        sanitized = SensitiveJsonValueRegex.Replace(sanitized, match =>
+            $"{match.Groups[1].Value}***{match.Groups[3].Value}");
+        sanitized = SensitiveKeyValueRegex.Replace(sanitized, match =>
+            $"{match.Groups[1].Value}{match.Groups["quote"].Value}***{match.Groups["quote2"].Value}");
+        sanitized = WhitespaceCollapseRegex.Replace(sanitized, " ").Trim();
+        return sanitized;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string fallback)
@@ -1881,56 +2019,112 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
         var now = DateTime.UtcNow;
-        if (!IsSessionUsable(session, now) ||
-            string.IsNullOrWhiteSpace(_settings?.AzureSpeechKey) ||
-            string.IsNullOrWhiteSpace(_settings?.AzureSpeechRegion))
+        if (!IsSessionUsable(session, now))
         {
+            return BuildSpeechTokenFailureResult(
+                "invalid-session",
+                BuildSpeechTokenFailureLog("invalid-session", session, token, _settings?.AzureSpeechRegion, null, "session unavailable"));
+        }
+
+        var speechKeyConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureSpeechKey);
+        var speechRegionConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureSpeechRegion);
+        if (!speechKeyConfigured || !speechRegionConfigured)
+        {
+            var diagnosticMessage = BuildSpeechTokenFailureLog(
+                "configuration-incomplete",
+                session,
+                token,
+                _settings?.AzureSpeechRegion,
+                null,
+                "configuration incomplete",
+                speechKeyConfigured: speechKeyConfigured,
+                speechRegionConfigured: speechRegionConfigured);
             await LogRuntimeIssueAsync(
                 NopLogLevel.Warning,
                 "AI Interview speech token unavailable",
-                $"Mode=speech-token; Reason=configuration incomplete; SessionId={session?.Id ?? 0}; ProductId={session?.ProductId ?? 0}; CustomerId={session?.CustomerId ?? 0}; SpeechKeyConfigured={(!string.IsNullOrWhiteSpace(_settings?.AzureSpeechKey)).ToString().ToLowerInvariant()}; SpeechRegionConfigured={(!string.IsNullOrWhiteSpace(_settings?.AzureSpeechRegion)).ToString().ToLowerInvariant()}; SpeechRegion={BuildSafeValue(_settings?.AzureSpeechRegion)}.",
+                diagnosticMessage,
                 await ResolveLogCustomerAsync(session));
-            return null;
+            return BuildSpeechTokenFailureResult("configuration-incomplete", diagnosticMessage);
         }
+
+        var region = _settings.AzureSpeechRegion.Trim();
+        var endpoint = $"https://{region}.api.cognitive.microsoft.com/sts/v1.0/issuetoken";
 
         try
         {
             using var httpClient = CreateHttpClient();
             httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _settings.AzureSpeechKey.Trim());
-            var endpoint = $"https://{_settings.AzureSpeechRegion.Trim()}.api.cognitive.microsoft.com/sts/v1.0/issuetoken";
             var response = await httpClient.PostAsync(endpoint, new StringContent(string.Empty));
+            var responseBody = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
+                var diagnosticMessage = BuildSpeechTokenFailureLog(
+                    "azure-http-failure",
+                    session,
+                    token,
+                    region,
+                    endpoint,
+                    "azure-http-failure",
+                    httpStatus: (int)response.StatusCode,
+                    reasonPhrase: response.ReasonPhrase,
+                    azureResponseBody: responseBody);
                 _logger?.LogWarning("Azure Speech token request failed. Region: {Region}. Status: {StatusCode}.",
-                    _settings.AzureSpeechRegion.Trim(), response.StatusCode);
+                    region, response.StatusCode);
                 await LogRuntimeIssueAsync(
                     NopLogLevel.Warning,
                     "AI Interview speech token failure",
-                    $"Mode=speech-token; Reason=http failure; SessionId={session?.Id ?? 0}; ProductId={session?.ProductId ?? 0}; CustomerId={session?.CustomerId ?? 0}; Region={BuildSafeValue(_settings.AzureSpeechRegion)}; HttpStatus={(int)response.StatusCode}; ReasonPhrase={BuildSafeValue(response.ReasonPhrase)}.",
+                    diagnosticMessage,
                     await ResolveLogCustomerAsync(session));
-                return null;
+                return BuildSpeechTokenFailureResult("azure-http-failure", diagnosticMessage, azureStatusCode: (int)response.StatusCode, azureReasonPhrase: response.ReasonPhrase);
             }
 
-            var tokenValue = (await response.Content.ReadAsStringAsync())?.Trim();
+            var tokenValue = responseBody?.Trim();
             if (string.IsNullOrWhiteSpace(tokenValue))
-                return null;
+            {
+                var diagnosticMessage = BuildSpeechTokenFailureLog(
+                    "empty-token-response",
+                    session,
+                    token,
+                    region,
+                    endpoint,
+                    "empty token response",
+                    httpStatus: (int)response.StatusCode,
+                    reasonPhrase: response.ReasonPhrase,
+                    responseLength: responseBody?.Length ?? 0);
+                _logger?.LogWarning("Azure Speech token request returned an empty token. Region: {Region}.", region);
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Warning,
+                    "AI Interview speech token failure",
+                    diagnosticMessage,
+                    await ResolveLogCustomerAsync(session));
+                return BuildSpeechTokenFailureResult("empty-token-response", diagnosticMessage, azureStatusCode: (int)response.StatusCode, azureReasonPhrase: response.ReasonPhrase);
+            }
 
             return new SpeechTokenResponseModel
             {
+                Success = true,
                 Token = tokenValue,
-                Region = _settings.AzureSpeechRegion.Trim(),
+                Region = region,
                 ExpiresInSeconds = 600
             };
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Azure Speech token request exception. Region: {Region}.", _settings.AzureSpeechRegion.Trim());
+            var diagnosticMessage = BuildSpeechTokenFailureLog(
+                "azure-exception",
+                session,
+                token,
+                region,
+                endpoint,
+                "azure-exception",
+                exception: ex);
+            _logger?.LogWarning(ex, "Azure Speech token request exception. Region: {Region}.", region);
             await LogRuntimeIssueAsync(
                 NopLogLevel.Error,
                 "AI Interview speech token exception",
-                $"Mode=speech-token; Reason={ex.GetType().Name}; SessionId={session?.Id ?? 0}; ProductId={session?.ProductId ?? 0}; CustomerId={session?.CustomerId ?? 0}; Region={BuildSafeValue(_settings.AzureSpeechRegion)}; Message={TruncateSafe(ex.Message, 220)}.",
+                diagnosticMessage,
                 await ResolveLogCustomerAsync(session));
-            return null;
+            return BuildSpeechTokenFailureResult("azure-exception", diagnosticMessage);
         }
     }
 

@@ -256,6 +256,7 @@
         const turns = @Html.Raw(turns);
         const totalQuestions = Math.max(1, Number(config.questionCount || @Model.QuestionCount || 0));
         const debugRuntime = new URLSearchParams(window.location.search).get('debugRuntime') === '1';
+        const voiceUnavailableMessage = 'Voice mode is unavailable. Please type your answer below.';
         let sessionToken = config.token || '@Model.Token';
         let tokenExpiryUtc = config.tokenExpiryUtc ? new Date(config.tokenExpiryUtc) : null;
         const answerBox = document.getElementById('runtime-answer');
@@ -317,6 +318,7 @@
         let tokenRefreshPromise = null;
         let interviewStarted = false;
         let interviewUnavailable = false;
+        let speechUnavailable = !config.speechAvailable;
         let runtimeStoppedOrCompleted = false;
         let stopInProgress = false;
         let mediaPermissionDenied = false;
@@ -1795,7 +1797,19 @@
             });
         };
 
+        const disableSpeechForRuntime = async (message = voiceUnavailableMessage) => {
+            speechUnavailable = true;
+            config.speechAvailable = false;
+            await stopSpeechRecognition();
+            updateAuxiliaryControlsState();
+            updateStartButtonState();
+            updateSubmitAvailability();
+            logActivity(`Speech disabled for this page: ${message || voiceUnavailableMessage}`);
+        };
+
         const requestSpeechToken = async () => {
+            if (speechUnavailable || !config.speechAvailable)
+                return { success: false, message: voiceUnavailableMessage };
             if (!await ensureRuntimeTokenFresh())
                 return null;
 
@@ -1803,7 +1817,9 @@
             const speechToken = getValue(tokenResult, 'token', 'Token');
             const region = getValue(tokenResult, 'region', 'Region');
             if (!tokenResult || !isSuccess(tokenResult) || !speechToken) {
-                return { success: false, message: getRuntimeMessage(tokenResult, 'Speech token service is unavailable.') };
+                const message = getRuntimeMessage(tokenResult, voiceUnavailableMessage);
+                await disableSpeechForRuntime(message);
+                return { success: false, message: message };
             }
 
             return { success: true, token: speechToken, region: region };
@@ -1823,7 +1839,7 @@
             const tokenResult = await requestSpeechToken();
             if (!tokenResult || !tokenResult.success) {
                 logActivity('Speech token request failure.');
-                setStatus(getRuntimeMessage(tokenResult, 'Speech token service is unavailable.'), true);
+                setStatus(getRuntimeMessage(tokenResult, voiceUnavailableMessage), true);
                 return;
             }
             logActivity('Speech token request success.');
@@ -1899,7 +1915,7 @@
 
             const tokenResult = await requestSpeechToken();
             if (!tokenResult || !tokenResult.success) {
-                const failureReason = tokenResult?.message || 'Speech token service is unavailable.';
+                const failureReason = tokenResult?.message || voiceUnavailableMessage;
                 logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${failureReason}`);
                 setStatus(failureReason, true);
                 isSpeakingOrSubmitting = false;
