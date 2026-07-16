@@ -50,6 +50,7 @@
         </div>
 
         <div id="runtime-header-status" class="runtime-header-status runtime-status runtime-js-hidden" aria-live="polite"></div>
+        <div id="screen-share-interruption-warning" class="runtime-screen-share-interruption-warning runtime-js-hidden" aria-live="assertive">Resume screen share to continue.</div>
 
         <div class="runtime-progress"><span id="runtime-progress-bar"></span></div>
 
@@ -235,10 +236,32 @@
             <li>Please be in a quiet place with stable internet.</li>
             <li>Mobile phones and tablets are not allowed by policy, but they are not blocked technically.</li>
             <li>Camera and microphone access are required for this interview.</li>
-            <li>Screen sharing is required before the interview starts and must remain active while answering.</li>
+            <li>Entire screen sharing is required for this interview.</li>
+            <li>When your browser asks what to share, choose Entire screen or Your entire screen. Do not select a browser tab or a single window.</li>
+            <li>Use full screen and keep the interview tab visible.</li>
             <li>Do not use outside help, another person, unauthorized notes, or AI tools during the interview.</li>
             <li>Keep this interview tab open until the interview is completed.</li>
         </ul>
+        <div class="runtime-screen-share-guide" aria-label="Screen sharing selection guide">
+            <div class="runtime-screen-share-guide-title">Share picker guide</div>
+            <div class="runtime-screen-share-picker">
+                <div class="runtime-share-option is-selected">
+                    <span class="runtime-share-option-icon"><i class="fa-solid fa-display" aria-hidden="true"></i></span>
+                    <span>Entire screen</span>
+                    <strong>Select this</strong>
+                </div>
+                <div class="runtime-share-option is-rejected">
+                    <span class="runtime-share-option-icon"><i class="fa-regular fa-window-maximize" aria-hidden="true"></i></span>
+                    <span>Window</span>
+                    <strong>Do not select</strong>
+                </div>
+                <div class="runtime-share-option is-rejected">
+                    <span class="runtime-share-option-icon"><i class="fa-regular fa-file-lines" aria-hidden="true"></i></span>
+                    <span>Browser tab</span>
+                    <strong>Do not select</strong>
+                </div>
+            </div>
+        </div>
         <label class="runtime-guidelines-ack" for="guidelines-acknowledge">
             <input type="checkbox" id="guidelines-acknowledge" />
             <span>@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Acknowledge")</span>
@@ -279,6 +302,7 @@
         const cameraPlaceholder = document.getElementById('camera-placeholder');
         const recordingStatus = document.getElementById('recording-status');
         const screenShareStatus = document.getElementById('screen-share-status');
+        const screenShareInterruptionWarning = document.getElementById('screen-share-interruption-warning');
         const timerDetails = document.getElementById('runtime-timer-details');
         const cameraStatusDetails = document.getElementById('runtime-camera-status');
         const micStatusDetails = document.getElementById('runtime-mic-status');
@@ -330,7 +354,8 @@
         let completedRedirectTimer = null;
         let completedCountdown = null;
         let completedCleanupTimer = null;
-        const autoSubmitDelaySeconds = 10;
+        let completionRecordingCleanupPromise = null;
+        const autoSubmitDelaySeconds = 15;
         const completedRedirectDelaySeconds = 15;
         const completedMediaGraceDelaySeconds = 10;
 
@@ -550,6 +575,14 @@
             screenShareStatus.className = `runtime-screen-share-status ${state === 'active' ? 'is-active' : state === 'warning' ? 'is-warning' : ''} ${isVisible ? '' : 'runtime-js-hidden'}`.trim();
         };
 
+        const setScreenShareInterruptionWarning = (visible) => {
+            if (!screenShareInterruptionWarning)
+                return;
+
+            screenShareInterruptionWarning.textContent = 'Resume screen share to continue.';
+            screenShareInterruptionWarning.classList.toggle('runtime-js-hidden', !visible || runtimeStoppedOrCompleted);
+        };
+
         const updateStartButtonState = () => {
             if (!primaryActionButton)
                 return;
@@ -636,6 +669,7 @@
             screenShareActive = false;
             screenShareInterrupted = false;
             screenShareAudioAvailable = false;
+            setScreenShareInterruptionWarning(false);
             setScreenShareStatus(runtimeStoppedOrCompleted ? 'Screen sharing ended' : 'Screen sharing required');
             updateAuxiliaryControlsState();
         };
@@ -974,6 +1008,7 @@
             if (recordingEnabled && mediaRecorder)
                 await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording paused until screen sharing resumes.' });
             setScreenShareStatus('Screen sharing ended. Resume screen sharing to continue.', 'warning');
+            setScreenShareInterruptionWarning(true);
             updateStartButtonState();
             updateSubmitAvailability();
             updateAuxiliaryControlsState();
@@ -992,6 +1027,7 @@
             if (screenShareStream?.getTracks?.().some(track => track.readyState === 'live')) {
                 screenShareActive = true;
                 screenShareInterrupted = false;
+                setScreenShareInterruptionWarning(false);
                 updateScreenShareAudioNotice();
                 updateAuxiliaryControlsState();
                 return true;
@@ -1013,6 +1049,7 @@
                 });
                 screenShareActive = true;
                 screenShareInterrupted = false;
+                setScreenShareInterruptionWarning(false);
                 updateScreenShareAudioNotice(true);
                 const [screenTrack] = screenShareStream.getVideoTracks();
                 if (screenTrack) {
@@ -1178,14 +1215,68 @@
                 resetTimers();
         };
 
+        const finalizeRecordingBeforeCompletion = async () => {
+            if (completionRecordingCleanupPromise)
+                return completionRecordingCleanupPromise;
+
+            completionRecordingCleanupPromise = (async () => {
+                if (!config.recordingAvailable || !recordingEnabled)
+                    return false;
+
+                if (!mediaRecorder && preservedRecordingSegments.length === 0 && recordingChunks.length === 0)
+                    return false;
+
+                try {
+                    logActivity('Final recording upload before completion started.');
+                    await stopRecording(true);
+                    logActivity('Final recording upload before completion finished.');
+                    return true;
+                } catch (error) {
+                    const message = error?.message || 'Recording upload failed.';
+                    logActivity(`Final recording upload before completion failed: ${message}`);
+                    setRecordingStatus('Recording upload failed. Continuing to report.', true);
+                    return false;
+                }
+            })();
+
+            return completionRecordingCleanupPromise;
+        };
+
+        const startCompletedRedirectCountdown = (reportUrl) => {
+            if (!reportUrl)
+                return;
+
+            actionsPanel?.classList.remove('runtime-js-hidden');
+            reportButton.style.display = 'inline-flex';
+            reportButton.onclick = () => window.location.href = reportUrl;
+
+            let remaining = completedRedirectDelaySeconds;
+            setHeaderStatus(buildCompletedRedirectMessage(remaining), false);
+            completedCountdown = setInterval(() => {
+                remaining -= 1;
+                if (remaining < 0)
+                    return;
+
+                setHeaderStatus(buildCompletedRedirectMessage(remaining), false);
+                if (remaining <= 0)
+                    clearInterval(completedCountdown);
+            }, 1000);
+            completedRedirectTimer = setTimeout(() => {
+                clearInterval(completedCountdown);
+                setHeaderStatus('', false);
+                window.location.href = reportUrl;
+            }, completedRedirectDelaySeconds * 1000);
+        };
+
         const finalizeCompletedState = async (result) => {
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
             const completionText = 'Interview completed. Please wait, creating the report.';
 
             isSpeakingOrSubmitting = true;
-            await stopRecording(false);
+            await finalizeRecordingBeforeCompletion();
             recordingEnabled = false;
             stopScreenShare();
+            setScreenShareInterruptionWarning(false);
             if (recordingButton)
                 recordingButton.disabled = true;
             cameraStream?.getTracks().forEach(track => track.stop());
@@ -1235,30 +1326,16 @@
             updateAnswerInputState();
             submitButton.disabled = true;
             updateStartButtonState();
-            setHeaderStatus(buildCompletedRedirectMessage(completedRedirectDelaySeconds), false);
+            setHeaderStatus('Interview completed. Finalizing recording before report.', false);
             clearCompletedRedirectState();
             completedCleanupTimer = setTimeout(async () => {
                 await finalizeCompletedState(result);
+                startCompletedRedirectCountdown(reportUrl);
             }, completedMediaGraceDelaySeconds * 1000);
             if (reportUrl) {
                 actionsPanel?.classList.remove('runtime-js-hidden');
                 reportButton.style.display = 'inline-flex';
                 reportButton.onclick = () => window.location.href = reportUrl;
-                let remaining = completedRedirectDelaySeconds;
-                completedCountdown = setInterval(() => {
-                    remaining -= 1;
-                    if (remaining < 0)
-                        return;
-
-                    setHeaderStatus(buildCompletedRedirectMessage(remaining), false);
-                    if (remaining <= 0)
-                        clearInterval(completedCountdown);
-                }, 1000);
-                completedRedirectTimer = setTimeout(() => {
-                    clearInterval(completedCountdown);
-                    setHeaderStatus('', false);
-                    window.location.href = reportUrl;
-                }, completedRedirectDelaySeconds * 1000);
             } else {
                 actionsPanel?.classList.add('runtime-js-hidden');
                 reportButton.style.display = 'none';
@@ -2307,6 +2384,7 @@
                         if (recordingEnabled)
                             await syncRecording();
                         setScreenShareStatus('Screen sharing resumed', 'active');
+                        setScreenShareInterruptionWarning(false);
                         setStatus('Screen sharing resumed. You can continue the interview.', false);
                         if (hasActiveQuestion() && !answerNeedsEditAfterFailure)
                             resetTimers();
@@ -2514,6 +2592,7 @@
         updateStopButtonsState();
         setStatus('Click Start Interview to begin.', false);
         setScreenShareStatus('Screen sharing required');
+        setScreenShareInterruptionWarning(false);
         updateGuidelinesAcknowledgementState();
         updateStartButtonState();
         updateSubmitAvailability();
