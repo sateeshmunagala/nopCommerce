@@ -280,6 +280,8 @@
         const totalQuestions = Math.max(1, Number(config.questionCount || @Model.QuestionCount || 0));
         const debugRuntime = new URLSearchParams(window.location.search).get('debugRuntime') === '1';
         const voiceUnavailableMessage = 'Voice mode is unavailable. Please type your answer below.';
+        const voiceInputUnavailableMessage = 'Voice input is unavailable. Please continue by typing your answer.';
+        const voicePlaybackUnavailableMessage = 'Voice playback is unavailable. Please continue with the text question.';
         let sessionToken = config.token || '@Model.Token';
         let tokenExpiryUtc = config.tokenExpiryUtc ? new Date(config.tokenExpiryUtc) : null;
         const answerBox = document.getElementById('runtime-answer');
@@ -317,6 +319,7 @@
         const runtimeBackButton = document.getElementById('runtime-back');
         const guidelinesModal = document.getElementById('guidelines-modal');
         const guidelinesCheckbox = document.getElementById('guidelines-acknowledge');
+        const guidelinesAcknowledgeLabel = guidelinesCheckbox?.closest('.runtime-guidelines-ack');
         const guidelinesAgreeButton = document.getElementById('guidelines-agree');
         const runtimeLog = document.getElementById('runtime-log');
         const audioMeter = Array.from(document.querySelectorAll('#audio-meter span'));
@@ -868,6 +871,9 @@
         };
 
         const clearRecoveredMediaBlockingStatus = () => {
+            if (isRequiredMediaBlockingInterview())
+                return;
+
             const currentStatus = (statusBox?.textContent || '').trim();
             if (currentStatus.startsWith('Screen sharing is required')
                 || currentStatus.startsWith('Screen sharing ended')
@@ -876,6 +882,15 @@
                 || currentStatus.startsWith('Camera permission was denied')
                 || currentStatus.startsWith('Microphone permission was denied')) {
                 setStatus('', false);
+            }
+
+            const currentHeaderStatus = (headerStatusBox?.textContent || '').trim();
+            if (currentHeaderStatus.startsWith('Screen sharing is required')
+                || currentHeaderStatus.startsWith('Screen sharing ended')
+                || currentHeaderStatus.startsWith('Resume screen share')
+                || currentHeaderStatus.startsWith('Camera must remain on')
+                || currentHeaderStatus.startsWith('Microphone must remain on')) {
+                setHeaderStatus('', false);
             }
         };
 
@@ -1019,7 +1034,7 @@
                 icon: 'fa-solid fa-rotate-right',
                 label: 'Repeat question',
                 title: 'Repeat question',
-                disabled: !config.speechAvailable || !interviewStarted || !hasActiveQuestion()
+                disabled: !interviewStarted || !hasActiveQuestion()
             });
 
             if (cameraStatusDetails)
@@ -2046,9 +2061,18 @@
                     appendRecognitionDuration();
                     logActivity('Speech end detected.');
                 };
-                speechRecognizer.canceled = (_, eventArgs) => {
+                speechRecognizer.canceled = async (_, eventArgs) => {
                     appendRecognitionDuration();
-                    logActivity(`Speech recognition canceled. ${eventArgs?.errorDetails || ''}`.trim());
+                    const cancellationReason = eventArgs?.reason;
+                    const cancellationDetails = (eventArgs?.errorDetails || '').trim();
+                    const isSpeechError = cancellationReason === SpeechSDK.CancellationReason?.Error || !!cancellationDetails;
+                    logActivity(`Speech recognition canceled. reason=${cancellationReason || 'unknown'} details=${cancellationDetails || 'none'}`);
+                    if (isSpeechError) {
+                        await disableSpeechForRuntime(voiceInputUnavailableMessage);
+                        setHeaderStatus(voiceInputUnavailableMessage, true);
+                        return;
+                    }
+
                     setStatus('Speech recognition stopped.', false);
                 };
 
@@ -2095,6 +2119,12 @@
             try {
                 const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
                 const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
+                const handleSynthesisCanceled = async (_, eventArgs) => {
+                    const cancellationDetails = (eventArgs?.errorDetails || '').trim();
+                    logActivity(`Speech synthesis canceled. ${cancellationDetails || 'No additional details.'}`);
+                    await disableSpeechForRuntime(voicePlaybackUnavailableMessage);
+                    setHeaderStatus(voicePlaybackUnavailableMessage, true);
+                };
                 synthesizer.synthesisStarted = () => {
                     if (purpose === 'question')
                         setHeaderStatus('Playing interviewer audio.', false);
@@ -2103,6 +2133,8 @@
                     if (purpose === 'question')
                         setHeaderStatus('', false);
                 };
+                synthesizer.SynthesisCanceled = handleSynthesisCanceled;
+                synthesizer.synthesisCanceled = handleSynthesisCanceled;
                 await new Promise((resolve, reject) => {
                     synthesizer.speakTextAsync(text, () => {
                         synthesizer.close();
@@ -2127,11 +2159,10 @@
                     clientEventId: createClientEventId()
                 });
             } catch (error) {
-                const fallbackMessage = 'Voice playback is unavailable. Please continue with the text question.';
                 const reason = error?.message || 'Speech synthesis failed.';
                 logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${reason}`);
-                await disableSpeechForRuntime(fallbackMessage);
-                setHeaderStatus(fallbackMessage, true);
+                await disableSpeechForRuntime(voicePlaybackUnavailableMessage);
+                setHeaderStatus(voicePlaybackUnavailableMessage, true);
             } finally {
                 isSpeakingOrSubmitting = false;
                 if (shouldResumeRecognition && !speechUnavailable && isMicActive())
@@ -2593,6 +2624,21 @@
         runtimeTabs.forEach(tab => {
             tab.addEventListener('click', () => setActiveRuntimePanel(tab.dataset.runtimeTab));
         });
+        if (guidelinesAcknowledgeLabel) {
+            guidelinesAcknowledgeLabel.addEventListener('click', (event) => {
+                if (event.target === guidelinesCheckbox || event.target === guidelinesAgreeButton)
+                    return;
+
+                if (event.target instanceof HTMLElement && event.target.closest('button'))
+                    return;
+
+                if (event.target !== guidelinesCheckbox) {
+                    event.preventDefault();
+                    guidelinesCheckbox.checked = !guidelinesCheckbox.checked;
+                    guidelinesCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+        }
         if (guidelinesCheckbox) {
             guidelinesCheckbox.addEventListener('change', updateGuidelinesAcknowledgementState);
             guidelinesCheckbox.addEventListener('keydown', (event) => {
@@ -2632,8 +2678,13 @@
         }
         if (repeatQuestionButton) {
             repeatQuestionButton.addEventListener('click', async () => {
-                if (!config.speechAvailable || !hasActiveQuestion())
+                if (!hasActiveQuestion())
                     return;
+
+                if (!config.speechAvailable) {
+                    setHeaderStatus(voicePlaybackUnavailableMessage, true);
+                    return;
+                }
 
                 setHeaderStatus('Replaying question audio.', false);
                 await speakText(questionBox.textContent, 'repeat');

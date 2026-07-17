@@ -3067,6 +3067,8 @@ body.ai-job-preview-open .item-box {
 .runtime-modal-card {
     width: min(720px, 100%);
     pointer-events: auto;
+    position: relative;
+    z-index: 1;
 }
 
 .runtime-modal-head {
@@ -3180,11 +3182,20 @@ body.ai-job-preview-open .item-box {
     color: #111827;
     font-weight: 700;
     cursor: pointer;
+    pointer-events: auto;
 }
 
 .runtime-guidelines-ack input {
     margin-top: 4px;
     cursor: pointer;
+    pointer-events: auto;
+}
+
+.runtime-guidelines-ack span,
+.runtime-modal-actions,
+.runtime-modal-actions .button-1,
+.runtime-modal-actions .button-2 {
+    pointer-events: auto;
 }
 
 .runtime-modal-actions {

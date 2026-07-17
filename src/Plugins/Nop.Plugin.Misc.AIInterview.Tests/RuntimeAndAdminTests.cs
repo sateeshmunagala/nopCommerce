@@ -1064,6 +1064,8 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("primaryActionButton.disabled = !guidelinesAcknowledged;"));
         Assert.That(runtimeViewText, Does.Contain("setButtonLabel(primaryActionButton, 'Start Interview');"));
         Assert.That(runtimeViewText, Does.Contain("guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);"));
+        Assert.That(runtimeViewText, Does.Contain("guidelinesAcknowledgeLabel.addEventListener('click', (event) => {"));
+        Assert.That(runtimeViewText, Does.Contain("guidelinesCheckbox.addEventListener('keydown', (event) => {"));
         Assert.That(runtimeViewText, Does.Contain("navigator.mediaDevices?.getDisplayMedia"));
         Assert.That(runtimeViewText, Does.Contain("screenShareStream = await navigator.mediaDevices.getDisplayMedia({"));
         Assert.That(runtimeViewText, Does.Contain("audio: true,"));
@@ -1114,6 +1116,16 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("answerBox.addEventListener('input', () => {"));
         Assert.That(runtimeViewText, Does.Contain("const trimmedAnswer = (answerBox.value || '').trim();"));
         Assert.That(runtimeViewText, Does.Contain("updateAnswerInputState();"));
+        Assert.That(runtimeViewText, Does.Contain("const voiceInputUnavailableMessage = 'Voice input is unavailable. Please continue by typing your answer.';"));
+        Assert.That(runtimeViewText, Does.Contain("const voicePlaybackUnavailableMessage = 'Voice playback is unavailable. Please continue with the text question.';"));
+        Assert.That(runtimeViewText, Does.Contain("speechRecognizer.canceled = async (_, eventArgs) => {"));
+        Assert.That(runtimeViewText, Does.Contain("await disableSpeechForRuntime(voiceInputUnavailableMessage);"));
+        Assert.That(runtimeViewText, Does.Contain("synthesizer.SynthesisCanceled = handleSynthesisCanceled;"));
+        Assert.That(runtimeViewText, Does.Contain("synthesizer.synthesisCanceled = handleSynthesisCanceled;"));
+        Assert.That(runtimeViewText, Does.Contain("if (!config.speechAvailable) {"));
+        Assert.That(runtimeViewText, Does.Contain("setHeaderStatus(voicePlaybackUnavailableMessage, true);"));
+        Assert.That(runtimeViewText, Does.Contain("clearRecoveredMediaBlockingStatus();"));
+        Assert.That(runtimeViewText, Does.Contain("const currentHeaderStatus = (headerStatusBox?.textContent || '').trim();"));
         Assert.That(runtimeViewText, Does.Contain("Recording upload request start. blobBytes="));
         Assert.That(runtimeViewText, Does.Contain("Recording upload response success. url="));
         Assert.That(runtimeViewText, Does.Contain("Recording chunk captured. chunkCount="));
@@ -1173,6 +1185,10 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeCssText, Does.Contain(".runtime-video-caption[hidden] {"));
         Assert.That(runtimeCssText, Does.Contain("@media (min-width: 1025px)"));
         Assert.That(runtimeCssText, Does.Contain(".runtime-video {\r\n        min-height: min(450px, 53vh);").Or.Contain(".runtime-video {\n        min-height: min(450px, 53vh);"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-modal-card {\r\n    width: min(720px, 100%);\r\n    pointer-events: auto;\r\n    position: relative;\r\n    z-index: 1;").Or.Contain(".runtime-modal-card {\n    width: min(720px, 100%);\n    pointer-events: auto;\n    position: relative;\n    z-index: 1;"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-guidelines-ack {\r\n    display: flex;").Or.Contain(".runtime-guidelines-ack {\n    display: flex;"));
+        Assert.That(runtimeCssText, Does.Contain("pointer-events: auto;"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-modal-actions .button-1,"));
     }
 
     [Test]
