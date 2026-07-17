@@ -68,6 +68,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly IRepository<CreditPurchaseGrant> _creditPurchaseGrantRepository;
     private readonly AIInterviewSettings _aiInterviewSettings;
     private readonly MockAIInterviewSettings _mockAIInterviewSettings;
+    private readonly IJobProductAccessService _jobProductAccessService;
 
     public AIInterviewAdminController(ICreditService creditService,
         ISponsorInviteService inviteService,
@@ -91,7 +92,8 @@ public class AIInterviewAdminController : BasePluginController
         IJobRequirementService jobRequirementService = null,
         IInterviewTurnService interviewTurnService = null,
         IRepository<InterviewSession> sessionRepository = null,
-        IRepository<Product> productRepository = null)
+        IRepository<Product> productRepository = null,
+        IJobProductAccessService jobProductAccessService = null)
     {
         _creditService = creditService;
         _inviteService = inviteService;
@@ -116,6 +118,7 @@ public class AIInterviewAdminController : BasePluginController
         _creditPurchaseGrantRepository = creditPurchaseGrantRepository;
         _aiInterviewSettings = aiInterviewSettings;
         _mockAIInterviewSettings = mockAIInterviewSettings;
+        _jobProductAccessService = jobProductAccessService;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -1351,7 +1354,12 @@ public class AIInterviewAdminController : BasePluginController
         foreach (var product in products)
         {
             if (_jobRequirementService == null || await _jobRequirementService.IsJobProductAsync(product))
+            {
+                if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+                    continue;
+
                 jobProducts.Add(product);
+            }
         }
 
         return jobProducts

@@ -22,6 +22,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
     private readonly IProductAttributeService _productAttributeService;
     private readonly IJobInterviewExperienceService _jobInterviewExperienceService;
     private readonly IProductService _productService;
+    private readonly IJobProductAccessService _jobProductAccessService;
     private readonly IProductTemplateService _productTemplateService;
     private readonly IWorkContext _workContext;
     private readonly IApplicationService _applicationService;
@@ -38,6 +39,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         IProductAttributeService productAttributeService,
         IJobInterviewExperienceService jobInterviewExperienceService,
         IProductService productService,
+        IJobProductAccessService jobProductAccessService,
         IProductTemplateService productTemplateService,
         IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -53,6 +55,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         _productAttributeService = productAttributeService;
         _jobInterviewExperienceService = jobInterviewExperienceService;
         _productService = productService;
+        _jobProductAccessService = jobProductAccessService;
         _productTemplateService = productTemplateService;
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -70,6 +73,9 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         var productId = model.Id;
         var product = await _productService.GetProductByIdAsync(productId);
         if (product == null)
+            return Content("");
+
+        if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
             return Content("");
 
         var productTemplate = await _productTemplateService.GetProductTemplateByIdAsync(product.ProductTemplateId);

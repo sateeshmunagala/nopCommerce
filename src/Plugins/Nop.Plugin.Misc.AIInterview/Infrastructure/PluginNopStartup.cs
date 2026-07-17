@@ -32,6 +32,7 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<ISponsorInviteService, SponsorInviteService>();
         services.AddScoped<IJobInterviewExperienceService, JobInterviewExperienceService>();
         services.AddScoped<IJobRequirementService, JobRequirementService>();
+        services.AddScoped<IJobProductAccessService, JobProductAccessService>();
         services.AddScoped<IAIInterviewJobDisplayService, AIInterviewJobDisplayService>();
     }
 

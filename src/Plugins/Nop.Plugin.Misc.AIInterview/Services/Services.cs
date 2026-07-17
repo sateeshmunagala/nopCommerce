@@ -580,6 +580,7 @@ public class SponsorInviteService : ISponsorInviteService
     private readonly Nop.Core.Domain.Messages.EmailAccountSettings _emailAccountSettings;
     private readonly Nop.Core.IStoreContext _storeContext;
     private readonly IWebHelper _webHelper;
+    private readonly IJobProductAccessService _jobProductAccessService;
 
     public SponsorInviteService(IRepository<SponsorInvite> inviteRepository,
         Nop.Services.Catalog.IProductService productService,
@@ -590,7 +591,8 @@ public class SponsorInviteService : ISponsorInviteService
         Nop.Services.Messages.IEmailAccountService emailAccountService = null,
         Nop.Core.Domain.Messages.EmailAccountSettings emailAccountSettings = null,
         Nop.Core.IStoreContext storeContext = null,
-        IWebHelper webHelper = null)
+        IWebHelper webHelper = null,
+        IJobProductAccessService jobProductAccessService = null)
     {
         _inviteRepository = inviteRepository;
         _productService = productService;
@@ -602,6 +604,7 @@ public class SponsorInviteService : ISponsorInviteService
         _emailAccountSettings = emailAccountSettings;
         _storeContext = storeContext;
         _webHelper = webHelper;
+        _jobProductAccessService = jobProductAccessService;
     }
 
     public async Task InsertSponsorInviteAsync(SponsorInvite invite)
@@ -628,6 +631,9 @@ public class SponsorInviteService : ISponsorInviteService
         var product = await _productService.GetProductByIdAsync(productId);
         if (product == null)
             throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound"));
+
+        if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+            throw new NopException(await _localizationService.GetResourceAsync("Common.NotAvailable"));
 
         var sponsor = await _customerService.GetCustomerByIdAsync(sponsorId);
         if (sponsor == null)

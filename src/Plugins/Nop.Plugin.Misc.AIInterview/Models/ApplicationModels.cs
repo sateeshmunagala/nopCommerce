@@ -246,6 +246,7 @@ public record ApplySubmissionResult
     public string Message { get; init; }
     public bool RequiresLogin { get; init; }
     public string RedirectUrl { get; init; }
+    public int StatusCode { get; init; }
 }
 
 public record EmployerDashboardJobModel : BaseNopModel

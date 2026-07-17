@@ -43,6 +43,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
     private readonly ILocalizationService _localizationService;
     private readonly IPictureService _pictureService;
     private readonly IProductService _productService;
+    private readonly IJobProductAccessService _jobProductAccessService;
     private readonly ISpecificationAttributeService _specificationAttributeService;
     private readonly IShoppingCartService _shoppingCartService;
     private readonly IStoreContext _storeContext;
@@ -58,6 +59,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
         ILocalizationService localizationService,
         IPictureService pictureService,
         IProductService productService,
+        IJobProductAccessService jobProductAccessService,
         ISpecificationAttributeService specificationAttributeService,
         IShoppingCartService shoppingCartService,
         IStoreContext storeContext,
@@ -73,6 +75,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
         _localizationService = localizationService;
         _pictureService = pictureService;
         _productService = productService;
+        _jobProductAccessService = jobProductAccessService;
         _specificationAttributeService = specificationAttributeService;
         _shoppingCartService = shoppingCartService;
         _storeContext = storeContext;
@@ -87,7 +90,9 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             return null;
 
         var product = await _productService.GetProductByIdAsync(productOverviewModel.Id);
-        if (product == null || !await _jobRequirementService.IsJobProductAsync(product))
+        if (product == null ||
+            !await _jobRequirementService.IsJobProductAsync(product) ||
+            (_jobProductAccessService != null && !await _jobProductAccessService.CanAppearInListingsAsync(product, allowAdminPreview: true)))
             return null;
 
         var vendor = product.VendorId > 0 ? await _vendorService.GetVendorByIdAsync(product.VendorId) : null;

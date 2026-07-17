@@ -67,6 +67,7 @@ public class AIInterviewController : BasePluginController
     private readonly IDateTimeHelper _dateTimeHelper;
     private readonly IGenericAttributeService _genericAttributeService;
     private readonly IAIInterviewJobDisplayService _aiInterviewJobDisplayService;
+    private readonly IJobProductAccessService _jobProductAccessService;
     private readonly ISponsorInviteService _inviteService;
     private readonly ICreditService _creditService;
 
@@ -95,6 +96,7 @@ public class AIInterviewController : BasePluginController
         IDateTimeHelper dateTimeHelper = null,
         IGenericAttributeService genericAttributeService = null,
         IAIInterviewJobDisplayService aiInterviewJobDisplayService = null,
+        IJobProductAccessService jobProductAccessService = null,
         ISponsorInviteService inviteService = null,
         ICreditService creditService = null)
     {
@@ -123,6 +125,7 @@ public class AIInterviewController : BasePluginController
         _dateTimeHelper = dateTimeHelper;
         _genericAttributeService = genericAttributeService;
         _aiInterviewJobDisplayService = aiInterviewJobDisplayService;
+        _jobProductAccessService = jobProductAccessService;
         _inviteService = inviteService;
         _creditService = creditService;
     }
@@ -149,6 +152,7 @@ public class AIInterviewController : BasePluginController
         IDateTimeHelper dateTimeHelper = null,
         IGenericAttributeService genericAttributeService = null,
         IAIInterviewJobDisplayService aiInterviewJobDisplayService = null,
+        IJobProductAccessService jobProductAccessService = null,
         ISponsorInviteService inviteService = null,
         ICreditService creditService = null)
         : this(applicationService,
@@ -176,6 +180,7 @@ public class AIInterviewController : BasePluginController
             dateTimeHelper,
             genericAttributeService,
             aiInterviewJobDisplayService,
+            jobProductAccessService,
             inviteService,
             creditService)
     {
@@ -215,6 +220,12 @@ public class AIInterviewController : BasePluginController
             !string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase))
         {
             return NotFound(invalidJobText);
+        }
+
+        if (_jobProductAccessService != null &&
+            !await _jobProductAccessService.CanViewJobProductAsync(product, allowAdminPreview: true))
+        {
+            return NotFound(notFoundText);
         }
 
         try
@@ -770,10 +781,13 @@ public class AIInterviewController : BasePluginController
 
         var jobProducts = new List<Product>();
         foreach (var product in products
-                     .Where(product => product != null && !product.Deleted && product.Published)
+                     .Where(product => product != null)
                      .OrderByDescending(product => productSortOrder.GetValueOrDefault(product.Id)))
         {
             if (!await _jobRequirementService.IsJobProductAsync(product))
+                continue;
+
+            if (_jobProductAccessService != null && !await _jobProductAccessService.CanAppearInListingsAsync(product))
                 continue;
 
             jobProducts.Add(product);
@@ -1123,6 +1137,9 @@ public class AIInterviewController : BasePluginController
             var product = await _productService.GetProductByIdAsync(productId);
             if (product != null)
             {
+                if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+                    return NotFound();
+
                 var redirectUrl = await BuildProductRedirectUrlAsync(product, new Dictionary<string, string>
                 {
                     ["jobTitle"] = jobTitle
@@ -1144,6 +1161,9 @@ public class AIInterviewController : BasePluginController
             if (result.RequiresLogin && !string.IsNullOrWhiteSpace(result.RedirectUrl))
                 return Redirect(result.RedirectUrl);
 
+            if (result.StatusCode == 404)
+                return NotFound();
+
             await PopulateApplyModelAsync(model);
             return View("~/Plugins/Misc.AIInterview/Views/Apply.cshtml", model);
         }
@@ -1157,7 +1177,12 @@ public class AIInterviewController : BasePluginController
     {
         var result = await SubmitApplicationAsync(model);
         if (!result.Success)
+        {
+            if (result.StatusCode > 0)
+                Response.StatusCode = result.StatusCode;
+
             return Json(new { success = false, error = result.Message, redirect = result.RedirectUrl, requiresLogin = result.RequiresLogin });
+        }
 
         return Json(new { success = true, message = result.Message });
     }
@@ -1196,6 +1221,14 @@ public class AIInterviewController : BasePluginController
             ModelState.AddModelError(nameof(model.JobTitle), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.JobTitle.Required"));
 
         var product = model.ProductId > 0 ? await _productService.GetProductByIdAsync(model.ProductId) : null;
+        if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+            return new ApplySubmissionResult
+            {
+                Success = false,
+                Message = await _localizationService.GetResourceAsync("Common.NotAvailable"),
+                StatusCode = 404
+            };
+
         var allApplications = await _applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<JobApplication>();
         var ownedResumeDownloadIds = ResumeSelectionHelper.GetOwnedResumeDownloadIds(allApplications);
         var hasSelectedExistingResume = model.SelectedResumeDownloadId > 0;
@@ -1837,6 +1870,9 @@ public class AIInterviewController : BasePluginController
         foreach (var product in filteredProducts.OrderBy(product => product.Name))
         {
             if (_jobRequirementService != null && !await _jobRequirementService.IsJobProductAsync(product))
+                continue;
+
+            if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
                 continue;
 
             items.Add(new SelectListItem

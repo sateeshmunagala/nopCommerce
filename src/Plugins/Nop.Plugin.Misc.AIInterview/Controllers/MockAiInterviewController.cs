@@ -73,6 +73,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IProductTemplateService _productTemplateService;
     private readonly IProductAttributeParser _productAttributeParser;
     private readonly IProductAttributeService _productAttributeService;
+    private readonly IJobProductAccessService _jobProductAccessService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -96,7 +97,8 @@ public class MockAiInterviewController : BasePluginController
         IResumeProfileService resumeProfileService = null,
         IProductTemplateService productTemplateService = null,
         IProductAttributeParser productAttributeParser = null,
-        IProductAttributeService productAttributeService = null)
+        IProductAttributeService productAttributeService = null,
+        IJobProductAccessService jobProductAccessService = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -121,6 +123,7 @@ public class MockAiInterviewController : BasePluginController
         _productTemplateService = productTemplateService;
         _productAttributeParser = productAttributeParser;
         _productAttributeService = productAttributeService;
+        _jobProductAccessService = jobProductAccessService;
     }
 
     protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
@@ -779,6 +782,9 @@ public class MockAiInterviewController : BasePluginController
             var product = await _productService.GetProductByIdAsync(productId);
             if (product != null)
             {
+                if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+                    return NotFound();
+
                 var redirectUrl = await BuildProductRedirectUrlAsync(product, new Dictionary<string, string>
                 {
                     ["sponsorToken"] = sponsorToken
@@ -813,6 +819,9 @@ public class MockAiInterviewController : BasePluginController
         }
 
         var product = productId > 0 ? await _productService.GetProductByIdAsync(productId) : null;
+        if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+            return await LocalizedErrorAsync("Common.NotAvailable", "The requested job is not available.", 404);
+
         var isMockPracticeProduct = await IsMockPracticeProductAsync(product);
         MockPracticeSelectionResult mockPracticeSelection = null;
         string selectedProductAttributesJson = null;
@@ -1653,6 +1662,9 @@ public class MockAiInterviewController : BasePluginController
             if (customer?.VendorId > 0 && product.VendorId != customer.VendorId)
                 return Json(new { success = false, error = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound", "Product not found.") });
 
+            if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+                return Json(new { success = false, error = await GetLocalizedTextAsync("Common.NotAvailable", "The requested job is not available.") });
+
             var emails = email.Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
                               .Select(e => e.Trim())
                               .Where(e => !string.IsNullOrEmpty(e))
@@ -1782,6 +1794,9 @@ public class MockAiInterviewController : BasePluginController
         foreach (var product in filteredProducts.OrderBy(product => product.Name))
         {
             if (_jobRequirementService != null && !await _jobRequirementService.IsJobProductAsync(product))
+                continue;
+
+            if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
                 continue;
 
             items.Add(new SelectListItem

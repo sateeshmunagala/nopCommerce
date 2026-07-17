@@ -315,6 +315,14 @@ public interface IJobRequirementService
     Task SaveRequirementsAsync(int productId, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0, int questionCount = 3);
 }
 
+public interface IJobProductAccessService
+{
+    Task<bool> CanViewJobProductAsync(int productId, bool allowAdminPreview = false);
+    Task<bool> CanViewJobProductAsync(Product product, bool allowAdminPreview = false);
+    Task<bool> CanAcceptJobApplicationsAsync(Product product);
+    Task<bool> CanAppearInListingsAsync(Product product, bool allowAdminPreview = false);
+}
+
 public interface IAIInterviewJobDisplayService
 {
     Task<AIInterviewJobProductCardModel> PrepareJobProductCardModelAsync(ProductOverviewModel productOverviewModel);
