@@ -37,44 +37,44 @@
     @if (Model.Jobs.Any())
     {
         <div class="table-wrapper employer-dashboard-table-wrapper">
-            <table class="data-table employer-table employer-dashboard-jobs-table"
-                   style="min-width:1080px;table-layout:fixed;">
+            <table class="data-table employer-table employer-dashboard-jobs-table">
                 <thead>
                     <tr>
-                        <th class="col-job-title" style="width:36%;padding:7px 12px;line-height:1.1;vertical-align:middle;">@T("Plugins.Misc.AIInterview.Employer.Jobs.JobTitle")</th>
-                        <th class="col-job-status" style="width:15%;padding:7px 12px;line-height:1.1;vertical-align:middle;">@T("Plugins.Misc.AIInterview.Employer.Jobs.Status")</th>
-                        <th class="col-job-salary" style="width:21%;padding:7px 12px;line-height:1.1;vertical-align:middle;">@T("Plugins.Misc.AIInterview.Employer.Jobs.Salary")</th>
-                        <th class="col-job-posted" style="width:11%;padding:7px 12px;line-height:1.1;vertical-align:middle;white-space:nowrap;">@T("Plugins.Misc.AIInterview.Employer.Jobs.CreatedOn")</th>
-                        <th class="col-job-count" style="width:8%;padding:7px 12px;line-height:1.1;vertical-align:middle;white-space:nowrap;">@T("Plugins.Misc.AIInterview.Employer.Jobs.ApplicationCount")</th>
-                        <th class="col-job-actions" style="width:10%;padding:7px 12px;line-height:1.1;vertical-align:middle;white-space:nowrap;">@T("Plugins.Misc.AIInterview.Employer.Jobs.Actions")</th>
+                        <th class="col-job-title">@T("Plugins.Misc.AIInterview.Employer.Jobs.JobTitle")</th>
+                        <th class="col-job-status">@T("Plugins.Misc.AIInterview.Employer.Jobs.Status")</th>
+                        <th class="col-job-salary">@T("Plugins.Misc.AIInterview.Employer.Jobs.Salary")</th>
+                        <th class="col-job-posted">@T("Plugins.Misc.AIInterview.Employer.Jobs.CreatedOn")</th>
+                        <th class="col-job-count">@T("Plugins.Misc.AIInterview.Employer.Jobs.ApplicationCount")</th>
+                        <th class="col-job-actions">@T("Plugins.Misc.AIInterview.Employer.Jobs.Actions")</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var job in Model.Jobs)
                     {
                         <tr>
-                            <td class="col-job-title" title="@job.JobTitle" style="padding:7px 12px;line-height:1.1;vertical-align:middle;">
-                                <span class="job-table-text-truncate" style="display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.1;">@job.JobTitle</span>
+                            <td class="col-job-title" title="@job.JobTitle">
+                                <span class="job-table-text-truncate">@job.JobTitle</span>
                             </td>
-                            <td class="col-job-status" style="padding:7px 12px;line-height:1.1;vertical-align:middle;">@(job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Published") : T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublished"))</td>
-                            <td class="col-job-salary" title="@(string.IsNullOrWhiteSpace(job.SalaryRange) ? "-" : job.SalaryRange)" style="padding:7px 12px;line-height:1.1;vertical-align:middle;">
-                                <span class="job-table-text-truncate" style="display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.1;">@(string.IsNullOrWhiteSpace(job.SalaryRange) ? "-" : job.SalaryRange)</span>
+                            <td class="col-job-status">
+                                <span class="status-pill">@(job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Published") : T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublished"))</span>
                             </td>
-                            <td class="col-job-posted" style="padding:7px 12px;line-height:1.1;vertical-align:middle;white-space:nowrap;">@(await FormatUtcDateAsync(job.CreatedOnUtc))</td>
-                            <td class="col-job-count" style="padding:7px 12px;line-height:1.1;vertical-align:middle;white-space:nowrap;">@job.ApplicationCount</td>
-                            <td class="col-job-actions" style="padding:7px 12px;line-height:1.1;vertical-align:middle;white-space:nowrap;text-align:center;">
+                            <td class="col-job-salary" title="@(string.IsNullOrWhiteSpace(job.SalaryRange) ? "-" : job.SalaryRange)">
+                                <span class="job-table-text-truncate">@(string.IsNullOrWhiteSpace(job.SalaryRange) ? "-" : job.SalaryRange)</span>
+                            </td>
+                            <td class="col-job-posted">@(await FormatUtcDateAsync(job.CreatedOnUtc))</td>
+                            <td class="col-job-count">@job.ApplicationCount</td>
+                            <td class="col-job-actions">
                                 @{
                                     var editText = T("Plugins.Misc.AIInterview.Employer.Jobs.Edit").Text;
                                     var publishText = job.Published
                                         ? T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublish").Text
                                         : T("Plugins.Misc.AIInterview.Employer.Jobs.Publish").Text;
                                 }
-                                <div class="buttons scoreboard-deck-row-actions" style="display:inline-flex;align-items:center;gap:6px;margin:0;">
+                                <div class="buttons scoreboard-deck-row-actions">
                                     <a class="button-2 ai-icon-action employer-dashboard-action-icon"
                                        href="@Url.RouteUrl(AIInterviewDefaults.VendorJobEditRouteName, new { productId = job.ProductId })"
                                        title="@editText"
-                                       aria-label="@editText"
-                                       style="width:32px;min-width:32px;max-width:32px;height:32px;min-height:32px;max-height:32px;padding:0;">
+                                       aria-label="@editText">
                                         <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
                                         <span class="sr-only">@editText</span>
                                     </a>
@@ -82,8 +82,7 @@
                                         <button type="submit"
                                                 class="button-2 ai-icon-action employer-dashboard-action-icon"
                                                 title="@publishText"
-                                                aria-label="@publishText"
-                                                style="width:32px;min-width:32px;max-width:32px;height:32px;min-height:32px;max-height:32px;padding:0;">
+                                                aria-label="@publishText">
                                             <i class="fa-solid @(job.Published ? "fa-eye-slash" : "fa-eye")" aria-hidden="true"></i>
                                             <span class="sr-only">@publishText</span>
                                         </button>

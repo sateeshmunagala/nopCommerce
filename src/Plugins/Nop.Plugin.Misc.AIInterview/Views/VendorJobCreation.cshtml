@@ -14,6 +14,35 @@
     NopHtml.AppendPageCssClassParts("html-account-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-vendor-job-creation-page");
+
+    IEnumerable<IGrouping<string, Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>> BuildSalaryGroups()
+    {
+        static decimal ParseLpaText(string text)
+        {
+            var normalized = (text ?? string.Empty).Replace("LPA", string.Empty, StringComparison.OrdinalIgnoreCase).Trim();
+            return decimal.TryParse(normalized, out var value) ? value : -1m;
+        }
+
+        static string ResolveGroupLabel(decimal lpa)
+        {
+            if (lpa < 0m)
+                return "Select";
+            if (lpa <= 10m)
+                return "0-10 LPA";
+            if (lpa <= 25m)
+                return "10.5-25 LPA";
+            if (lpa <= 50m)
+                return "25.5-50 LPA";
+            if (lpa <= 75m)
+                return "50.5-75 LPA";
+
+            return "75.5-100 LPA";
+        }
+
+        return Model.AvailableSalaryLpaOptions.GroupBy(option => ResolveGroupLabel(ParseLpaText(option.Text)));
+    }
+
+    var salaryGroups = BuildSalaryGroups().ToList();
 }
 
 @section left
@@ -23,10 +52,10 @@
 
 <div class="page vendor-job-creation-page">
     <div class="page-title">
-        <h1>@pageTitle</h1>
-    </div>
-    <div class="page-body">
-        <div class="section">
+        <div class="vendor-job-page-header">
+            <div class="vendor-job-page-heading">
+                <h1>@pageTitle</h1>
+            </div>
             <div class="vendor-job-page-tools">
                 <a class="button-2 vendor-job-page-link" href="@backToJobsUrl" title="@T("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs")">@T("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs")</a>
                 @if (Model.IsEditMode && !string.IsNullOrWhiteSpace(Model.PublicJobUrl))
@@ -34,6 +63,10 @@
                     <a class="button-2 vendor-job-page-link" href="@Model.PublicJobUrl" title="@T("Plugins.Misc.AIInterview.VendorJobCreation.ViewJob")">@T("Plugins.Misc.AIInterview.VendorJobCreation.ViewJob")</a>
                 }
             </div>
+        </div>
+    </div>
+    <div class="page-body">
+        <div class="section vendor-job-page-section">
             <form asp-action="@(Model.IsEditMode ? "VendorJobEdit" : "VendorJobCreation")"
                   asp-route-productId="@(Model.IsEditMode ? Model.Id : (int?)null)"
                   method="post"
@@ -60,14 +93,56 @@
                         <section class="vendor-job-form-section">
                             <h3 class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.Requirements")</h3>
                             <div class="vendor-job-form-simple-grid">
-                                <div class="vendor-job-form-field">
+                                <div class="vendor-job-form-field vendor-job-form-field-salary">
                                     <label asp-for="SalaryMinCtcPa" asp-postfix=":"></label>
-                                    <select asp-for="SalaryMinCtcPa" asp-items="Model.AvailableSalaryLpaOptions"></select>
+                                    <select asp-for="SalaryMinCtcPa">
+                                        @foreach (var group in salaryGroups)
+                                        {
+                                            if (string.Equals(group.Key, "Select", StringComparison.Ordinal))
+                                            {
+                                                foreach (var option in group)
+                                                {
+                                                    <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <optgroup label="@group.Key">
+                                                    @foreach (var option in group)
+                                                    {
+                                                        <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                                                    }
+                                                </optgroup>
+                                            }
+                                        }
+                                    </select>
+                                    <span class="vendor-job-form-hint">0.5 LPA increments, grouped for faster scanning.</span>
                                     <span asp-validation-for="SalaryMinCtcPa"></span>
                                 </div>
-                                <div class="vendor-job-form-field">
+                                <div class="vendor-job-form-field vendor-job-form-field-salary">
                                     <label asp-for="SalaryMaxCtcPa" asp-postfix=":"></label>
-                                    <select asp-for="SalaryMaxCtcPa" asp-items="Model.AvailableSalaryLpaOptions"></select>
+                                    <select asp-for="SalaryMaxCtcPa">
+                                        @foreach (var group in salaryGroups)
+                                        {
+                                            if (string.Equals(group.Key, "Select", StringComparison.Ordinal))
+                                            {
+                                                foreach (var option in group)
+                                                {
+                                                    <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <optgroup label="@group.Key">
+                                                    @foreach (var option in group)
+                                                    {
+                                                        <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                                                    }
+                                                </optgroup>
+                                            }
+                                        }
+                                    </select>
+                                    <span class="vendor-job-form-hint">Use the closest band, then fine-tune within the range.</span>
                                     <span asp-validation-for="SalaryMaxCtcPa"></span>
                                 </div>
                                 @if (Model.AvailableExperienceLevels.Any())

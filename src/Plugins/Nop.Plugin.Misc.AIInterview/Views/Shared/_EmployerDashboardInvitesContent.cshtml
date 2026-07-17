@@ -29,9 +29,12 @@
     <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post" class="invite-create-form">
         <input type="hidden" name="maxAttempts" value="1" />
         <div class="fieldset employer-invite-fieldset">
-            <details class="dashboard-collapsible-panel employer-invite-panel">
+            <details class="dashboard-collapsible-panel employer-invite-panel" open>
                 <summary class="dashboard-collapsible-summary">
-                    <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle")</strong>
+                    <div class="dashboard-collapsible-copy">
+                        <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle")</strong>
+                        <span>Published jobs only. Each invite uses one credit.</span>
+                    </div>
                 </summary>
                 <div class="dashboard-collapsible-body">
                     <div class="invite-fieldset">
@@ -123,6 +126,8 @@
     }
     else
     {
-        <p>@T("Plugins.Misc.AIInterview.Employer.Invite.NoInvites")</p>
+        <div class="fieldset scoreboard-deck-empty-state employer-dashboard-empty-state">
+            <p>@T("Plugins.Misc.AIInterview.Employer.Invite.NoInvites")</p>
+        </div>
     }
 </div>
