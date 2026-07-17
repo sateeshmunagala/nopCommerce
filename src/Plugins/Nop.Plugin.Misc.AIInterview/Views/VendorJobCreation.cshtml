@@ -9,6 +9,10 @@
         ? T("Plugins.Misc.AIInterview.VendorJobCreation.SubmitEdit").Text
         : T("Plugins.Misc.AIInterview.VendorJobCreation.Submit").Text;
     var backToJobsUrl = Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardJobsTabKey });
+    var roleOverviewText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview").Text;
+    var requirementsText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.Requirements").Text;
+    var jobContentText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent").Text;
+    var interviewSettingsText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings").Text;
     NopHtml.AddTitleParts(pageTitle);
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
     NopHtml.AppendPageCssClassParts("html-account-page");
@@ -27,16 +31,14 @@
         {
             if (lpa < 0m)
                 return "Select";
-            if (lpa <= 10m)
-                return "0-10 LPA";
-            if (lpa <= 25m)
-                return "10.5-25 LPA";
-            if (lpa <= 50m)
-                return "25.5-50 LPA";
-            if (lpa <= 75m)
-                return "50.5-75 LPA";
+            if (lpa <= 15m)
+                return "Common range: 0-15 LPA";
+            if (lpa <= 30m)
+                return "Growth range: 15.5-30 LPA";
+            if (lpa <= 60m)
+                return "Senior range: 32-60 LPA";
 
-            return "75.5-100 LPA";
+            return "Leadership range: 65-100 LPA";
         }
 
         return Model.AvailableSalaryLpaOptions.GroupBy(option => ResolveGroupLabel(ParseLpaText(option.Text)));
@@ -51,13 +53,14 @@
 }
 
 <div class="page vendor-job-creation-page">
-    <div class="page-title">
-        <div class="vendor-job-page-header">
-            <div class="vendor-job-page-heading">
-                <h1>@pageTitle</h1>
-            </div>
-            <div class="vendor-job-page-tools">
-                <a class="button-2 vendor-job-page-link" href="@backToJobsUrl" title="@T("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs")">@T("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs")</a>
+        <div class="page-title">
+            <div class="vendor-job-page-header">
+                <div class="vendor-job-page-heading">
+                    <h1>@pageTitle</h1>
+                    <p class="vendor-job-page-subtitle">Keep job setup fast and consistent for repeated employer publishing.</p>
+                </div>
+                <div class="vendor-job-page-tools">
+                    <a class="button-2 vendor-job-page-link" href="@backToJobsUrl" title="@T("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs")">@T("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs")</a>
                 @if (Model.IsEditMode && !string.IsNullOrWhiteSpace(Model.PublicJobUrl))
                 {
                     <a class="button-2 vendor-job-page-link" href="@Model.PublicJobUrl" title="@T("Plugins.Misc.AIInterview.VendorJobCreation.ViewJob")">@T("Plugins.Misc.AIInterview.VendorJobCreation.ViewJob")</a>
@@ -79,7 +82,10 @@
                         <div asp-validation-summary="ModelOnly" class="message-error"></div>
 
                         <section class="vendor-job-form-section">
-                            <h3 class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview")</h3>
+                            <div class="vendor-job-form-section-heading">
+                                <h3 class="vendor-job-form-section-title">@roleOverviewText</h3>
+                                <p class="vendor-job-form-section-copy">Set the role name candidates will see across the dashboard and public listing.</p>
+                            </div>
                             <div class="vendor-job-form-simple-grid">
                                 <div class="vendor-job-form-field vendor-job-form-field-wide">
                                     <label asp-for="Name" asp-postfix=":"></label>
@@ -91,7 +97,10 @@
                         </section>
 
                         <section class="vendor-job-form-section">
-                            <h3 class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.Requirements")</h3>
+                            <div class="vendor-job-form-section-heading">
+                                <h3 class="vendor-job-form-section-title">@requirementsText</h3>
+                                <p class="vendor-job-form-section-copy">Choose the core hiring criteria, salary band, and location details for this opening.</p>
+                            </div>
                             <div class="vendor-job-form-simple-grid">
                                 <div class="vendor-job-form-field vendor-job-form-field-salary">
                                     <label asp-for="SalaryMinCtcPa" asp-postfix=":"></label>
@@ -116,7 +125,7 @@
                                             }
                                         }
                                     </select>
-                                    <span class="vendor-job-form-hint">0.5 LPA increments, grouped for faster scanning.</span>
+                                    <span class="vendor-job-form-hint">Half-LPA steps are kept in the most common ranges; higher bands are compressed for faster scanning.</span>
                                     <span asp-validation-for="SalaryMinCtcPa"></span>
                                 </div>
                                 <div class="vendor-job-form-field vendor-job-form-field-salary">
@@ -142,7 +151,7 @@
                                             }
                                         }
                                     </select>
-                                    <span class="vendor-job-form-hint">Use the closest band, then fine-tune within the range.</span>
+                                    <span class="vendor-job-form-hint">Choose the ceiling candidates should expect to see on the published role.</span>
                                     <span asp-validation-for="SalaryMaxCtcPa"></span>
                                 </div>
                                 @if (Model.AvailableExperienceLevels.Any())
@@ -188,7 +197,10 @@
                         </section>
 
                         <section class="vendor-job-form-section">
-                            <h3 class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent")</h3>
+                            <div class="vendor-job-form-section-heading">
+                                <h3 class="vendor-job-form-section-title">@jobContentText</h3>
+                                <p class="vendor-job-form-section-copy">Use the short description for scannability and the full description for responsibilities and expectations.</p>
+                            </div>
                             <div class="vendor-job-form-simple-grid">
                                 <div class="vendor-job-form-field vendor-job-form-field-wide">
                                     <label asp-for="ShortDescription" asp-postfix=":"></label>
@@ -205,7 +217,10 @@
                         </section>
 
                         <section class="vendor-job-form-section">
-                            <h3 class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings")</h3>
+                            <div class="vendor-job-form-section-heading">
+                                <h3 class="vendor-job-form-section-title">@interviewSettingsText</h3>
+                                <p class="vendor-job-form-section-copy">Keep the application gate, publish state, and interview requirements aligned before going live.</p>
+                            </div>
                             <div class="vendor-job-form-simple-grid vendor-job-form-interview-grid">
                                 <div class="vendor-job-form-field">
                                     <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.ResumeRequired)">

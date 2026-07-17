@@ -36,7 +36,7 @@
 
     @if (Model.Jobs.Any())
     {
-        <div class="table-wrapper employer-dashboard-table-wrapper">
+        <div class="table-wrapper employer-dashboard-table-wrapper employer-jobs-table-shell">
             <table class="data-table employer-table employer-dashboard-jobs-table">
                 <thead>
                     <tr>
@@ -51,12 +51,13 @@
                 <tbody>
                     @foreach (var job in Model.Jobs)
                     {
+                        var jobStatusText = (job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Published") : T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublished")).Text;
                         <tr>
                             <td class="col-job-title" title="@job.JobTitle">
                                 <span class="job-table-text-truncate">@job.JobTitle</span>
                             </td>
                             <td class="col-job-status">
-                                <span class="status-pill">@(job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Published") : T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublished"))</span>
+                                <span class="status-pill">@jobStatusText</span>
                             </td>
                             <td class="col-job-salary" title="@(string.IsNullOrWhiteSpace(job.SalaryRange) ? "-" : job.SalaryRange)">
                                 <span class="job-table-text-truncate">@(string.IsNullOrWhiteSpace(job.SalaryRange) ? "-" : job.SalaryRange)</span>
@@ -93,6 +94,55 @@
                     }
                 </tbody>
             </table>
+        </div>
+        <div class="responsive-data-list employer-mobile-list employer-jobs-mobile-list" aria-label="@T("Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Jobs")">
+            @foreach (var job in Model.Jobs)
+            {
+                var jobStatusText = (job.Published ? T("Plugins.Misc.AIInterview.Employer.Jobs.Published") : T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublished")).Text;
+                var editText = T("Plugins.Misc.AIInterview.Employer.Jobs.Edit").Text;
+                var publishText = job.Published
+                    ? T("Plugins.Misc.AIInterview.Employer.Jobs.Unpublish").Text
+                    : T("Plugins.Misc.AIInterview.Employer.Jobs.Publish").Text;
+                <article class="responsive-data-card responsive-data-card-spacious employer-dashboard-mobile-card">
+                    <div class="responsive-data-card-head">
+                        <div class="responsive-data-card-head-copy">
+                            <strong class="responsive-data-card-title">@job.JobTitle</strong>
+                            <div class="responsive-data-card-subtitle">@(string.IsNullOrWhiteSpace(job.SalaryRange) ? "-" : job.SalaryRange)</div>
+                        </div>
+                        <div class="responsive-data-card-chip-group">
+                            <span class="status-pill">@jobStatusText</span>
+                        </div>
+                    </div>
+                    <div class="responsive-data-card-grid">
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Jobs.CreatedOn")</span>
+                            <span class="responsive-data-card-value">@(await FormatUtcDateAsync(job.CreatedOnUtc))</span>
+                        </div>
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Jobs.ApplicationCount")</span>
+                            <span class="responsive-data-card-value">@job.ApplicationCount</span>
+                        </div>
+                    </div>
+                    <div class="responsive-data-card-actions employer-dashboard-mobile-actions">
+                        <a class="button-2 ai-icon-action employer-dashboard-action-icon"
+                           href="@Url.RouteUrl(AIInterviewDefaults.VendorJobEditRouteName, new { productId = job.ProductId })"
+                           title="@editText"
+                           aria-label="@editText">
+                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                            <span class="sr-only">@editText</span>
+                        </a>
+                        <form asp-route="@AIInterviewDefaults.VendorJobPublishToggleRouteName" asp-route-productId="@job.ProductId" method="post" class="inline">
+                            <button type="submit"
+                                    class="button-2 ai-icon-action employer-dashboard-action-icon"
+                                    title="@publishText"
+                                    aria-label="@publishText">
+                                <i class="fa-solid @(job.Published ? "fa-eye-slash" : "fa-eye")" aria-hidden="true"></i>
+                                <span class="sr-only">@publishText</span>
+                            </button>
+                        </form>
+                    </div>
+                </article>
+            }
         </div>
         @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityPager.cshtml", pagerModel)
     }

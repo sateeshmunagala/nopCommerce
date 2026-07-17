@@ -1540,16 +1540,16 @@ public class AIInterviewController : BasePluginController
 
         var salarySteps = new SortedSet<decimal>();
 
-        for (var lpa = 0m; lpa <= 20m; lpa += 0.5m)
+        for (var lpa = 0m; lpa <= 15m; lpa += 0.5m)
             salarySteps.Add(lpa);
 
-        for (var lpa = 20m; lpa <= 40m; lpa += 1m)
+        for (var lpa = 16m; lpa <= 30m; lpa += 1m)
             salarySteps.Add(lpa);
 
-        for (var lpa = 40m; lpa <= 60m; lpa += 2m)
+        for (var lpa = 32m; lpa <= 60m; lpa += 2m)
             salarySteps.Add(lpa);
 
-        for (var lpa = 60m; lpa <= 100m; lpa += 5m)
+        for (var lpa = 65m; lpa <= 100m; lpa += 5m)
             salarySteps.Add(lpa);
 
         foreach (var lpa in salarySteps)
