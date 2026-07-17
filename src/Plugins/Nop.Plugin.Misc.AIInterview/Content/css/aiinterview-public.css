@@ -3066,6 +3066,7 @@ body.ai-job-preview-open .item-box {
 
 .runtime-modal-card {
     width: min(720px, 100%);
+    pointer-events: auto;
 }
 
 .runtime-modal-head {
@@ -3178,10 +3179,12 @@ body.ai-job-preview-open .item-box {
     margin-top: 18px;
     color: #111827;
     font-weight: 700;
+    cursor: pointer;
 }
 
 .runtime-guidelines-ack input {
     margin-top: 4px;
+    cursor: pointer;
 }
 
 .runtime-modal-actions {
@@ -6609,6 +6612,15 @@ body.ai-job-preview-open .item-box {
     font-weight: 600;
 }
 
+.html-aiinterview-employer-dashboard-page .employer-filter-actions .button-1,
+.html-aiinterview-employer-dashboard-page .employer-filter-actions .button-2 {
+    min-height: 38px;
+    padding: 7px 14px;
+    font-size: 0.84rem;
+    letter-spacing: 0.02em;
+    box-shadow: none;
+}
+
 .html-aiinterview-employer-dashboard-page .invite-create-form .form-fields,
 .html-aiinterview-employer-dashboard-page .invite-create-form .inputs,
 .html-aiinterview-employer-dashboard-page .employer-filter-form,
@@ -6622,6 +6634,45 @@ body.ai-job-preview-open .item-box {
 .html-aiinterview-employer-dashboard-page .invite-field input,
 .html-aiinterview-employer-dashboard-page .invite-field select {
     min-height: 44px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-create-form {
+    gap: 10px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-summary {
+    padding: 14px 16px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-body {
+    padding: 14px 16px 16px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-layout {
+    gap: 12px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-row {
+    gap: 10px 14px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field {
+    gap: 4px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-action {
+    justify-self: start;
+    align-self: end;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-action .button-1 {
+    width: auto;
+    min-width: 148px;
+    min-height: 38px;
+    padding: 7px 16px;
+    font-size: 0.84rem;
+    letter-spacing: 0.02em;
+    box-shadow: none;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-mobile-card {
@@ -6742,6 +6793,17 @@ body.ai-job-preview-open .item-box {
 
     .html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions .invite-deactivate-form {
         display: inline-flex;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-summary,
+    .html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-body {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .invite-field-action .button-1 {
+        width: 100%;
+        min-width: 0;
     }
 
     .html-aiinterview-vendor-job-creation-page .vendor-job-page-link {

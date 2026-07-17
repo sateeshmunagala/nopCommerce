@@ -410,9 +410,73 @@
             recognitionActiveSinceMs = restartActiveTimer && speechRecognizer ? Date.now() : null;
         };
 
-        const getActiveTurn = () => {
+        const hasAnswerText = (value) => !!(value || '').trim();
+
+        const getNormalizedTurns = () => {
             const normalizedTurns = (turns || []).map((turn, index) => normalizeTurn(turn, index)).filter(Boolean);
-            return normalizedTurns.find(turn => !turn.answerText) || normalizedTurns[normalizedTurns.length - 1] || null;
+            const turnsBySequence = new Map();
+
+            normalizedTurns.forEach(turn => {
+                const sequenceNumber = Math.max(1, Number(turn.sequenceNumber || 0));
+                const existing = turnsBySequence.get(sequenceNumber);
+                if (!existing) {
+                    turnsBySequence.set(sequenceNumber, turn);
+                    return;
+                }
+
+                const existingAnswered = hasAnswerText(existing.answerText);
+                const candidateAnswered = hasAnswerText(turn.answerText);
+                if (candidateAnswered && !existingAnswered) {
+                    turnsBySequence.set(sequenceNumber, turn);
+                    return;
+                }
+
+                if (candidateAnswered === existingAnswered) {
+                    const existingAnsweredOn = existing.answeredOnUtc || existing.askedOnUtc || '';
+                    const candidateAnsweredOn = turn.answeredOnUtc || turn.askedOnUtc || '';
+                    if (candidateAnsweredOn >= existingAnsweredOn)
+                        turnsBySequence.set(sequenceNumber, turn);
+                }
+            });
+
+            return Array.from(turnsBySequence.values())
+                .sort((left, right) => {
+                    const sequenceDelta = (left.sequenceNumber || 0) - (right.sequenceNumber || 0);
+                    if (sequenceDelta !== 0)
+                        return sequenceDelta;
+                    return (left.turnId || 0) - (right.turnId || 0);
+                });
+        };
+
+        const getTurnState = () => {
+            const normalizedTurns = getNormalizedTurns();
+            const answeredTurns = normalizedTurns.filter(turn => hasAnswerText(turn.answerText));
+            const nextSequenceNumber = answeredTurns.length >= totalQuestions
+                ? totalQuestions
+                : Math.min(totalQuestions, answeredTurns.length + 1);
+            const activePendingTurn = normalizedTurns.find(turn =>
+                !hasAnswerText(turn.answerText) &&
+                turn.sequenceNumber === nextSequenceNumber) || null;
+
+            return {
+                normalizedTurns,
+                answeredTurns,
+                answeredCount: answeredTurns.length,
+                activePendingTurn,
+                currentQuestionNumber: activePendingTurn
+                    ? Math.min(totalQuestions, activePendingTurn.sequenceNumber || nextSequenceNumber)
+                    : (answeredTurns.length >= totalQuestions ? totalQuestions : 0)
+            };
+        };
+
+        const replaceTurns = (nextTurns) => {
+            const normalizedTurns = (nextTurns || []).map((turn, index) => normalizeTurn(turn, index)).filter(Boolean);
+            turns.splice(0, turns.length, ...normalizedTurns);
+        };
+
+        const getActiveTurn = () => {
+            const turnState = getTurnState();
+            return turnState.activePendingTurn || turnState.normalizedTurns[turnState.normalizedTurns.length - 1] || null;
         };
 
         const reportSpeechSynthesisUsage = async ({ turnId, sequenceNumber, purpose, speechSynthesisCharacters, clientEventId }) => {
@@ -803,6 +867,18 @@
             headerStatusBox.className = `runtime-header-status runtime-status ${message ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
         };
 
+        const clearRecoveredMediaBlockingStatus = () => {
+            const currentStatus = (statusBox?.textContent || '').trim();
+            if (currentStatus.startsWith('Screen sharing is required')
+                || currentStatus.startsWith('Screen sharing ended')
+                || currentStatus.startsWith('Camera must remain on')
+                || currentStatus.startsWith('Microphone must remain on')
+                || currentStatus.startsWith('Camera permission was denied')
+                || currentStatus.startsWith('Microphone permission was denied')) {
+                setStatus('', false);
+            }
+        };
+
         const buildCompletedRedirectMessage = (remainingSeconds) =>
             `Interview completed. Please wait, creating the report. Redirecting to report in ${remainingSeconds}s.`;
 
@@ -865,7 +941,10 @@
                 || normalized === 'AI service unavailable. Please try again later.';
         };
 
-        const currentQuestionText = () => (questionBox.textContent || '').trim();
+        const currentQuestionText = () => {
+            const activeQuestion = (getTurnState().activePendingTurn?.questionText || '').trim();
+            return activeQuestion || (questionBox.textContent || '').trim();
+        };
 
         const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());
 
@@ -1029,6 +1108,7 @@
                 screenShareInterrupted = false;
                 setScreenShareInterruptionWarning(false);
                 updateScreenShareAudioNotice();
+                clearRecoveredMediaBlockingStatus();
                 updateAuxiliaryControlsState();
                 return true;
             }
@@ -1051,6 +1131,7 @@
                 screenShareInterrupted = false;
                 setScreenShareInterruptionWarning(false);
                 updateScreenShareAudioNotice(true);
+                clearRecoveredMediaBlockingStatus();
                 const [screenTrack] = screenShareStream.getVideoTracks();
                 if (screenTrack) {
                     screenTrack.addEventListener('ended', async () => {
@@ -1458,7 +1539,8 @@
         const renderTranscript = () => {
             transcriptBody.replaceChildren();
             conversation.replaceChildren();
-            const normalizedTurns = (turns || []).map((turn, index) => normalizeTurn(turn, index));
+            const turnState = getTurnState();
+            const normalizedTurns = turnState.normalizedTurns;
             if (!normalizedTurns.length) {
                 if (hasActiveQuestion())
                     conversation.appendChild(buildChatMessage('bot', currentQuestionText(), { pending: interviewStarted }));
@@ -1474,11 +1556,8 @@
                 transcriptBody.appendChild(transcriptCard);
             });
 
-            const answered = normalizedTurns.filter(turn => turn?.answerText).length;
-            const asked = normalizedTurns.filter(turn => (turn?.questionText || '').trim()).length;
-            const activeQuestionNumber = asked > 0
-                ? Math.min(totalQuestions, asked)
-                : (interviewStarted && hasActiveQuestion() ? 1 : 0);
+            const answered = turnState.answeredCount;
+            const activeQuestionNumber = turnState.currentQuestionNumber || (interviewStarted && hasActiveQuestion() ? 1 : 0);
             const progress = Math.min(100, Math.max(0, (answered / totalQuestions) * 100));
             progressBar.style.width = `${progress}%`;
             if (questionCounter) {
@@ -1959,9 +2038,17 @@
                     appendRecognitionDuration();
                     logActivity('Speech recognition session stopped.');
                 };
-                speechRecognizer.canceled = () => {
+                speechRecognizer.speechStartDetected = () => {
+                    recognitionActiveSinceMs ??= Date.now();
+                    logActivity('Speech start detected.');
+                };
+                speechRecognizer.speechEndDetected = () => {
                     appendRecognitionDuration();
-                    logActivity('Speech recognition canceled.');
+                    logActivity('Speech end detected.');
+                };
+                speechRecognizer.canceled = (_, eventArgs) => {
+                    appendRecognitionDuration();
+                    logActivity(`Speech recognition canceled. ${eventArgs?.errorDetails || ''}`.trim());
                     setStatus('Speech recognition stopped.', false);
                 };
 
@@ -1989,13 +2076,18 @@
 
             isSpeakingOrSubmitting = true;
             clearAnswerTimers();
+            const shouldResumeRecognition = !!speechRecognizer && isMicActive();
+            if (shouldResumeRecognition)
+                await stopSpeechRecognition();
 
             const tokenResult = await requestSpeechToken();
             if (!tokenResult || !tokenResult.success) {
                 const failureReason = tokenResult?.message || voiceUnavailableMessage;
                 logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${failureReason}`);
-                setStatus(failureReason, true);
+                setHeaderStatus(failureReason, true);
                 isSpeakingOrSubmitting = false;
+                if (shouldResumeRecognition && !speechUnavailable && isMicActive())
+                    await startSpeechRecognition();
                 resetTimers();
                 return;
             }
@@ -2003,6 +2095,14 @@
             try {
                 const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
                 const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
+                synthesizer.synthesisStarted = () => {
+                    if (purpose === 'question')
+                        setHeaderStatus('Playing interviewer audio.', false);
+                };
+                synthesizer.synthesisCompleted = () => {
+                    if (purpose === 'question')
+                        setHeaderStatus('', false);
+                };
                 await new Promise((resolve, reject) => {
                     synthesizer.speakTextAsync(text, () => {
                         synthesizer.close();
@@ -2016,6 +2116,8 @@
                     logActivity('Question speech completed.');
                 else if (purpose === 'reminder')
                     logActivity('Reminder spoken.');
+                if (purpose === 'repeat')
+                    setHeaderStatus('Question replayed in voice.', false);
                 const activeTurn = getActiveTurn();
                 await reportSpeechSynthesisUsage({
                     turnId: activeTurn?.turnId,
@@ -2025,11 +2127,15 @@
                     clientEventId: createClientEventId()
                 });
             } catch (error) {
+                const fallbackMessage = 'Voice playback is unavailable. Please continue with the text question.';
                 const reason = error?.message || 'Speech synthesis failed.';
                 logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${reason}`);
-                setStatus(purpose === 'reminder' ? 'Reminder speech failed.' : 'Question speech failed.', true);
+                await disableSpeechForRuntime(fallbackMessage);
+                setHeaderStatus(fallbackMessage, true);
             } finally {
                 isSpeakingOrSubmitting = false;
+                if (shouldResumeRecognition && !speechUnavailable && isMicActive())
+                    await startSpeechRecognition();
                 resetTimers();
             }
         };
@@ -2064,6 +2170,7 @@
                 video.style.display = 'block';
                 cameraPlaceholder.style.display = 'none';
                 logActivity('Camera started.');
+                clearRecoveredMediaBlockingStatus();
                 updateAuxiliaryControlsState();
                 updateStartButtonState();
                 updateSubmitAvailability();
@@ -2133,6 +2240,7 @@
                 updateMeter();
                 logActivity('Mic started.');
                 await startSpeechRecognition();
+                clearRecoveredMediaBlockingStatus();
                 updateAuxiliaryControlsState();
                 updateStartButtonState();
                 updateSubmitAvailability();
@@ -2209,6 +2317,11 @@
                 pendingRecognitionClientEventId = createClientEventId();
 
             const body = new URLSearchParams({ token: sessionToken, answer: trimmedAnswer });
+            const activeTurn = getTurnState().activePendingTurn;
+            if (activeTurn?.turnId)
+                body.append('turnId', String(activeTurn.turnId));
+            if (activeTurn?.sequenceNumber)
+                body.append('sequenceNumber', String(activeTurn.sequenceNumber));
             if (speechRecognitionCharacters > 0)
                 body.append('speechRecognitionCharacters', String(speechRecognitionCharacters));
             if (speechRecognitionDurationMs > 0)
@@ -2232,34 +2345,12 @@
             logActivity('Submit response success: ' + getRuntimeMessage(result, 'Answer saved.'));
             answerNeedsEditAfterFailure = false;
 
-            const currentTurn = normalizeTurn(getValue(result, "turn", "Turn"), turns.length - 1) || normalizeTurn(turns[turns.length - 1], turns.length - 1);
-            if (currentTurn) {
-                const targetIndex = turns.findIndex((turn, index) => {
-                    const existing = normalizeTurn(turn, index);
-                    return existing?.turnId && currentTurn.turnId && existing.turnId === currentTurn.turnId;
-                });
-                if (targetIndex >= 0)
-                    turns[targetIndex] = currentTurn;
-                else if (turns.length > 0)
-                    turns[turns.length - 1] = currentTurn;
-                else
-                    turns.push(currentTurn);
-            }
-
             const isTerminated = getValue(result, "isTerminated", "IsTerminated");
             const resultQuestion = getValue(result, "question", "Question");
             const resultMessage = getRuntimeMessage(result, '');
-
-            if (!isTerminated && resultQuestion) {
-                turns.push(normalizeTurn({
-                    turnId: Date.now(),
-                    sequenceNumber: (currentTurn?.sequenceNumber || turns.length) + 1,
-                    questionText: resultQuestion,
-                    answerText: '',
-                    askedOnUtc: new Date().toISOString(),
-                    answeredOnUtc: null
-                }, turns.length));
-            }
+            const returnedTurns = getValue(result, 'turns', 'Turns');
+            if (Array.isArray(returnedTurns))
+                replaceTurns(returnedTurns);
 
             questionBox.textContent = isTerminated ? currentQuestionText() : resultQuestion;
             if (!isTerminated && resultQuestion) logActivity('Question shown: ' + resultQuestion);
@@ -2358,6 +2449,9 @@
             if (stopTopBtn) stopTopBtn.classList.remove('is-loading');
             logActivity('Stop response success: ' + getRuntimeMessage(result, 'Interview completed.'));
             setStatus(getRuntimeMessage(result, 'Interview completed.'), false);
+            const returnedTurns = getValue(result, 'turns', 'Turns');
+            if (Array.isArray(returnedTurns))
+                replaceTurns(returnedTurns);
             renderTranscript();
             await setCompletedState(result);
         };
@@ -2369,6 +2463,7 @@
                     const mediaReady = await ensureRequiredMediaReady();
                     if (mediaReady) {
                         setStatus('Camera and microphone are active. You can continue the interview.', false);
+                        clearRecoveredMediaBlockingStatus();
                         if (recordingEnabled)
                             await syncRecording();
                         if (hasActiveQuestion() && !answerNeedsEditAfterFailure)
@@ -2385,6 +2480,7 @@
                             await syncRecording();
                         setScreenShareStatus('Screen sharing resumed', 'active');
                         setScreenShareInterruptionWarning(false);
+                        clearRecoveredMediaBlockingStatus();
                         setStatus('Screen sharing resumed. You can continue the interview.', false);
                         if (hasActiveQuestion() && !answerNeedsEditAfterFailure)
                             resetTimers();
@@ -2444,6 +2540,7 @@
 
             const firstQuestion = getValue(beginResult, "question", "Question");
             const firstTurn = normalizeTurn(getValue(beginResult, "turn", "Turn"), turns.length);
+            const returnedTurns = getValue(beginResult, 'turns', 'Turns');
             if (!firstQuestion) {
                 stopScreenShare();
                 interviewStarted = false;
@@ -2452,7 +2549,9 @@
                 return;
             }
 
-            if (firstTurn) {
+            if (Array.isArray(returnedTurns)) {
+                replaceTurns(returnedTurns);
+            } else if (firstTurn) {
                 const existingTurnIndex = turns.findIndex((turn, index) => normalizeTurn(turn, index)?.turnId === firstTurn.turnId);
                 if (existingTurnIndex >= 0)
                     turns[existingTurnIndex] = firstTurn;
@@ -2494,8 +2593,17 @@
         runtimeTabs.forEach(tab => {
             tab.addEventListener('click', () => setActiveRuntimePanel(tab.dataset.runtimeTab));
         });
-        if (guidelinesCheckbox)
+        if (guidelinesCheckbox) {
             guidelinesCheckbox.addEventListener('change', updateGuidelinesAcknowledgementState);
+            guidelinesCheckbox.addEventListener('keydown', (event) => {
+                if (event.code !== 'Space' && event.key !== ' ')
+                    return;
+
+                event.preventDefault();
+                guidelinesCheckbox.checked = !guidelinesCheckbox.checked;
+                guidelinesCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        }
         if (guidelinesAgreeButton) {
             guidelinesAgreeButton.addEventListener('click', async () => {
                 if (!guidelinesCheckbox?.checked)
@@ -2527,7 +2635,8 @@
                 if (!config.speechAvailable || !hasActiveQuestion())
                     return;
 
-                await speakText(questionBox.textContent, 'question');
+                setHeaderStatus('Replaying question audio.', false);
+                await speakText(questionBox.textContent, 'repeat');
             });
         }
         if (recordingButton) {

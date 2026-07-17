@@ -1139,6 +1139,7 @@ public class MockAiInterviewController : BasePluginController
             message = "Interview started.",
             question = currentQuestion,
             turn = currentTurn,
+            turns = model.Turns,
             newToken = tokenRenewal.Renewed ? tokenRenewal.Session.Token : null,
             tokenExpiryUtc = tokenRenewal.Renewed ? tokenRenewal.Session.TokenExpiryUtc : null
         });
@@ -1249,6 +1250,7 @@ public class MockAiInterviewController : BasePluginController
                     reportUrl,
                     question = runtimeResponse?.Question,
                     turn = runtimeResponse?.Turn,
+                    turns = runtimeResponse?.Turns,
                     interrupted = runtimeResponse?.Interrupted == true,
                     message = runtimeResponse?.Message,
                     newToken = tokenRenewal.Session.Token,
@@ -1263,6 +1265,7 @@ public class MockAiInterviewController : BasePluginController
                 ReportUrl = reportUrl,
                 runtimeResponse.Question,
                 runtimeResponse.Turn,
+                runtimeResponse.Turns,
                 runtimeResponse.Interrupted,
                 runtimeResponse.Message
             });
@@ -1309,6 +1312,7 @@ public class MockAiInterviewController : BasePluginController
                     isTerminated = response?.IsTerminated == true,
                     message = response?.Message,
                     reportUrl,
+                    turns = response?.Turns,
                     newToken = tokenRenewal.Session.Token,
                     tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
                 });
@@ -1319,7 +1323,8 @@ public class MockAiInterviewController : BasePluginController
                 response.Success,
                 response.IsTerminated,
                 response.Message,
-                ReportUrl = reportUrl
+                ReportUrl = reportUrl,
+                response.Turns
             });
         }
 
@@ -1530,6 +1535,12 @@ public class MockAiInterviewController : BasePluginController
                 turns = new List<InterviewTurn>();
             }
         }
+        var normalizedQuestionCount = NormalizeRuntimeQuestionCount(session);
+        var normalizedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, normalizedQuestionCount).ToList();
+        var parsedQuestionScores = ParseQuestionScores(session.QuestionScores);
+        if (parsedQuestionScores.Count != normalizedTurns.Count(turn => turn.Score.HasValue))
+            parsedQuestionScores = normalizedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList();
+
         var model = new InterviewReportModel
         {
             SessionId = session.Id,
@@ -1542,11 +1553,11 @@ public class MockAiInterviewController : BasePluginController
             Score = session.Score,
             IsCompleted = session.CompletedOnUtc.HasValue,
             QuestionScores = session.QuestionScores,
-            ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
-            ReportData = session.ReportData,
+            ParsedQuestionScores = parsedQuestionScores,
+            ReportData = InterviewReportSummaryHelper.NormalizePersistedReportData(session.ReportData, normalizedTurns, session.Score),
             RecordingUrl = !string.IsNullOrWhiteSpace(session.RecordingUrl) ? Url?.Action("Recording", "AIInterview", new { sessionId = session.Id }) : null,
             RecordingShareUrl = await BuildRecordingShareUrlAsync(session),
-            Turns = turns.Select(turn => new InterviewTurnViewModel
+            Turns = normalizedTurns.Select(turn => new InterviewTurnViewModel
             {
                 TurnId = turn.Id,
                 SequenceNumber = turn.SequenceNumber,
@@ -1562,6 +1573,7 @@ public class MockAiInterviewController : BasePluginController
                 AnsweredOnUtc = turn.AnsweredOnUtc
             }).ToList(),
             CreatedOnUtc = session.CreatedOnUtc,
+            ReportDateUtc = session.CompletedOnUtc ?? session.StartedOnUtc ?? session.CreatedOnUtc,
             CompletedOnUtc = session.CompletedOnUtc
         };
 

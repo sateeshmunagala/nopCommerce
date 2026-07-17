@@ -1872,8 +1872,10 @@ public class CandidateFlowTests
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
         _productService.Setup(x => x.GetProductByIdAsync(99))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 99, ProductTemplateId = 7 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -1887,6 +1889,7 @@ public class CandidateFlowTests
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,
@@ -1960,8 +1963,10 @@ public class CandidateFlowTests
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
         _productService.Setup(x => x.GetProductByIdAsync(103))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 103, ProductTemplateId = 7 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -1975,6 +1980,7 @@ public class CandidateFlowTests
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,
@@ -2014,8 +2020,10 @@ public class CandidateFlowTests
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
         _productService.Setup(x => x.GetProductByIdAsync(100))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 100, ProductTemplateId = 7 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -2029,6 +2037,7 @@ public class CandidateFlowTests
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,
@@ -2091,8 +2100,10 @@ public class CandidateFlowTests
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
         _productService.Setup(x => x.GetProductByIdAsync(101))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 101, ProductTemplateId = 7 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -2106,6 +2117,7 @@ public class CandidateFlowTests
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,
@@ -2172,8 +2184,10 @@ public class CandidateFlowTests
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
         _productService.Setup(x => x.GetProductByIdAsync(102))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 102, ProductTemplateId = 7 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -2187,6 +2201,7 @@ public class CandidateFlowTests
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,
@@ -2251,8 +2266,10 @@ public class CandidateFlowTests
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
         _productService.Setup(x => x.GetProductByIdAsync(99))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 99, ProductTemplateId = 1 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(1))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -2266,6 +2283,7 @@ public class CandidateFlowTests
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,

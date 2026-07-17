@@ -234,6 +234,70 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Report_Filters_Duplicate_And_Pending_Turns_And_Uses_Real_Report_Date()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        var turnService = new Mock<IInterviewTurnService>();
+        var createdOnUtc = DateTime.UtcNow.AddDays(-1);
+        var session = new InterviewSession
+        {
+            Id = 76,
+            CustomerId = customer.Id,
+            ProductId = 50,
+            Token = "report-token",
+            Difficulty = "Medium",
+            QuestionCount = 5,
+            CreatedOnUtc = createdOnUtc,
+            ReportData = "Practice report",
+            QuestionScores = "[80,81,82,83,84,0]"
+        };
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.CanAccessReportAsync(customer.Id, 76)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(76)).ReturnsAsync(session);
+        _productService.Setup(x => x.GetProductByIdAsync(50)).ReturnsAsync(new Product { Id = 50, Name = "Practice Product" });
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(76)).ReturnsAsync(new List<InterviewTurn>
+        {
+            new() { Id = 1, InterviewSessionId = 76, SequenceNumber = 1, QuestionText = "Q1", AnswerText = "A1", Score = 80, AskedOnUtc = createdOnUtc, AnsweredOnUtc = createdOnUtc.AddMinutes(1) },
+            new() { Id = 2, InterviewSessionId = 76, SequenceNumber = 1, QuestionText = "Q1 duplicate", AskedOnUtc = createdOnUtc.AddMinutes(2) },
+            new() { Id = 3, InterviewSessionId = 76, SequenceNumber = 2, QuestionText = "Q2", AnswerText = "A2", Score = 81, AskedOnUtc = createdOnUtc.AddMinutes(3), AnsweredOnUtc = createdOnUtc.AddMinutes(4) },
+            new() { Id = 4, InterviewSessionId = 76, SequenceNumber = 3, QuestionText = "Q3", AnswerText = "A3", Score = 82, AskedOnUtc = createdOnUtc.AddMinutes(5), AnsweredOnUtc = createdOnUtc.AddMinutes(6) },
+            new() { Id = 5, InterviewSessionId = 76, SequenceNumber = 4, QuestionText = "Q4", AnswerText = "A4", Score = 83, AskedOnUtc = createdOnUtc.AddMinutes(7), AnsweredOnUtc = createdOnUtc.AddMinutes(8) },
+            new() { Id = 6, InterviewSessionId = 76, SequenceNumber = 5, QuestionText = "Q5", AnswerText = "A5", Score = 84, AskedOnUtc = createdOnUtc.AddMinutes(9), AnsweredOnUtc = createdOnUtc.AddMinutes(10) },
+            new() { Id = 7, InterviewSessionId = 76, SequenceNumber = 6, QuestionText = "Q6 pending", AskedOnUtc = createdOnUtc.AddMinutes(11) }
+        });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            null,
+            null,
+            turnService.Object,
+            _interviewRuntimeService.Object,
+            null,
+            _nopLogger.Object);
+
+        var result = await controller.Report(76);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = ((ViewResult)result).Model as InterviewReportModel;
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.ReportDateUtc, Is.EqualTo(createdOnUtc));
+        Assert.That(model.Turns.Count, Is.EqualTo(5));
+        Assert.That(model.Turns.All(turn => !string.IsNullOrWhiteSpace(turn.AnswerText)), Is.True);
+        Assert.That(model.Turns.Select(turn => turn.SequenceNumber), Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
+        Assert.That(model.ParsedQuestionScores.Count, Is.EqualTo(5));
+    }
+
+    [Test]
     public async Task Runtime_InvalidToken_ReturnsLocalizedError()
     {
         var result = await _runtimeController.SubmitAnswer(null, "Answer");
@@ -852,7 +916,7 @@ public class RuntimeAndAdminTests
         Assert.That(stopResult.Value.GetType().GetProperty("Completion"), Is.Null);
         Assert.That(stopResult.Value.GetType().GetProperty("Feedback"), Is.Null);
         Assert.That(stopResult.Value.GetType().GetProperty("Score"), Is.Null);
-        Assert.That(stopResult.Value.GetType().GetProperty("Turns"), Is.Null);
+        Assert.That(stopResult.Value.GetType().GetProperty("Turns"), Is.Not.Null);
     }
 
     [Test]

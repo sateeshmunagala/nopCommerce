@@ -77,6 +77,8 @@ public record SubmitInterviewAnswerRequest
 {
     public string Token { get; init; }
     public string Answer { get; init; }
+    public int? TurnId { get; init; }
+    public int? SequenceNumber { get; init; }
     public int SpeechRecognitionCharacters { get; init; }
     public long SpeechRecognitionDurationMs { get; init; }
     public string SpeechRecognitionClientEventId { get; init; }
@@ -94,6 +96,7 @@ public record SubmitInterviewAnswerResponse
     public decimal Score { get; init; }
     public string Feedback { get; init; }
     public string Message { get; init; }
+    public IList<InterviewTurnViewModel> Turns { get; init; } = new List<InterviewTurnViewModel>();
 }
 
 public record CompleteInterviewRequest

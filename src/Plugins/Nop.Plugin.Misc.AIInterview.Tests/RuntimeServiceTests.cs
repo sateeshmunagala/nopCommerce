@@ -102,7 +102,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task EnsureInterviewStartedAsync_Creates_Planned_Turns_Up_Front()
+    public async Task EnsureInterviewStartedAsync_Creates_Only_First_Active_Turn()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -165,20 +165,14 @@ public class RuntimeServiceTests
         Assert.That(model, Is.Not.Null);
         Assert.That(model.CurrentQuestion, Does.Contain("Hello Jane Doe, let's start with you"));
         Assert.That(model.CurrentQuestion, Does.Contain("one or two projects"));
-        Assert.That(insertedTurns.Count, Is.EqualTo(5));
+        Assert.That(insertedTurns.Count, Is.EqualTo(1));
         Assert.That(insertedTurns.All(turn => turn.InterviewSessionId == 1), Is.True);
-        Assert.That(insertedTurns.Select(turn => turn.SequenceNumber), Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
-        Assert.That(store.Count, Is.EqualTo(5));
-        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.Is<AIInterviewQuestionPlanRequest>(request =>
-            request.JobTitle == "Backend Engineer" &&
-            request.QuestionCount == 4 &&
-            request.TotalQuestionCount == 5 &&
-            request.Difficulty == "Medium" &&
-            request.ExistingQuestions.Any(question => question.Contains("introduce yourself")) &&
-            !request.ExistingCategories.Any(category => category == "Introduction & Project Experience"))), Times.Once);
+        Assert.That(insertedTurns.Select(turn => turn.SequenceNumber), Is.EqualTo(new[] { 1 }));
+        Assert.That(store.Count, Is.EqualTo(1));
         var firstRubric = JsonDocument.Parse(insertedTurns.Single(turn => turn.SequenceNumber == 1).RubricJson).RootElement;
         Assert.That(firstRubric.GetProperty("category").GetString(), Is.EqualTo("Introduction & Project Experience"));
         Assert.That(firstRubric.GetProperty("expectedSignals").EnumerateArray().Any(signal => signal.GetString() == "Relevant project ownership"), Is.True);
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Never);
         aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
     }
 
@@ -354,7 +348,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task EnsureInterviewStartedAsync_RealMode_Failure_DoesNotCreateTurn()
+    public async Task EnsureInterviewStartedAsync_RealMode_Failure_StillCreatesLocalIntroTurn()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -389,12 +383,12 @@ public class RuntimeServiceTests
 
         var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99 });
 
-        Assert.That(inserted, Is.False);
-        Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable. Please try again later."));
+        Assert.That(inserted, Is.True);
+        Assert.That(model.CurrentQuestion, Does.StartWith("Let's start with you."));
     }
 
     [Test]
-    public async Task EnsureInterviewStartedAsync_RealMode_BlankQuestion_DoesNotCreateTurn()
+    public async Task EnsureInterviewStartedAsync_RealMode_BlankQuestion_StillCreatesLocalIntroTurn()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -436,12 +430,12 @@ public class RuntimeServiceTests
 
         var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99 });
 
-        Assert.That(inserted, Is.False);
-        Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable. Please try again later."));
+        Assert.That(inserted, Is.True);
+        Assert.That(model.CurrentQuestion, Does.StartWith("Let's start with you."));
     }
 
     [Test]
-    public async Task EnsureInterviewStartedAsync_PartialPlanWithAnsweredTurns_FillsMissingSequencesDeterministically()
+    public async Task EnsureInterviewStartedAsync_PartialPlanWithAnsweredTurns_Replaces_StaleFuturePendingTurn()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -496,6 +490,13 @@ public class RuntimeServiceTests
                 store.Add(turn);
                 return turn;
             });
+        turnService.Setup(x => x.DeleteInterviewTurnsAsync(It.IsAny<IList<InterviewTurn>>()))
+            .Callback<IList<InterviewTurn>>(deletedTurns =>
+            {
+                foreach (var deletedTurn in deletedTurns)
+                    store.RemoveAll(existing => existing.Id == deletedTurn.Id);
+            })
+            .Returns(Task.CompletedTask);
         aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
             .Callback<AIInterviewQuestionPlanRequest>(request => capturedPlanRequest = request)
             .ReturnsAsync(new AIInterviewQuestionPlanResponse
@@ -511,15 +512,6 @@ public class RuntimeServiceTests
                         ResumeEvidence = "Ownership",
                         ExpectedSignals = new List<string> { "Ownership", "Clarity" },
                         Rubric = new AIInterviewQuestionRubric()
-                    },
-                    new()
-                    {
-                        SequenceNumber = 2,
-                        Category = "job_fit",
-                        Question = "Generated question 4",
-                        ResumeEvidence = "Role alignment",
-                        ExpectedSignals = new List<string> { "Alignment", "Ramp-up" },
-                        Rubric = new AIInterviewQuestionRubric()
                     }
                 }
             });
@@ -532,15 +524,14 @@ public class RuntimeServiceTests
 
         Assert.That(model, Is.Not.Null);
         Assert.That(model.CurrentQuestion, Is.EqualTo("Generated question 2"));
-        Assert.That(store.Select(turn => turn.SequenceNumber).OrderBy(sequence => sequence), Is.EqualTo(new[] { 1, 2, 3, 4 }));
+        Assert.That(store.Select(turn => turn.SequenceNumber).OrderBy(sequence => sequence), Is.EqualTo(new[] { 1, 2 }));
         Assert.That(store.Count(turn => turn.SequenceNumber == 2), Is.EqualTo(1));
-        Assert.That(store.Count(turn => turn.SequenceNumber == 4), Is.EqualTo(1));
         Assert.That(capturedPlanRequest, Is.Not.Null);
-        Assert.That(capturedPlanRequest.QuestionCount, Is.EqualTo(2));
+        Assert.That(capturedPlanRequest.QuestionCount, Is.EqualTo(1));
         Assert.That(capturedPlanRequest.TotalQuestionCount, Is.EqualTo(4));
-        Assert.That(capturedPlanRequest.ExistingQuestions, Is.EquivalentTo(new[] { "Existing question 1", "Existing question 3" }));
-        Assert.That(capturedPlanRequest.ExistingCategories, Is.EquivalentTo(new[] { "skill", "project_scenario" }));
-        turnService.Verify(x => x.DeleteInterviewTurnsAsync(It.IsAny<IList<InterviewTurn>>()), Times.Never);
+        Assert.That(capturedPlanRequest.ExistingQuestions, Is.EquivalentTo(new[] { "Existing question 1" }));
+        Assert.That(capturedPlanRequest.ExistingCategories, Is.EquivalentTo(new[] { "skill" }));
+        turnService.Verify(x => x.DeleteInterviewTurnsAsync(It.Is<IList<InterviewTurn>>(items => items.Count == 1 && items[0].Id == 2)), Times.Once);
         aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
     }
 
@@ -593,6 +584,8 @@ public class RuntimeServiceTests
         Assert.That(result.Success, Is.True);
         Assert.That(result.IsTerminated, Is.False);
         Assert.That(result.Question, Is.EqualTo("Q2"));
+        Assert.That(result.Turns.Count, Is.EqualTo(2));
+        Assert.That(result.Turns.Count(turnModel => string.IsNullOrWhiteSpace(turnModel.AnswerText)), Is.EqualTo(1));
         Assert.That(store.Any(x => x.SequenceNumber == 1 && x.AnswerText != null), Is.True);
         Assert.That(store.Any(x => x.SequenceNumber == 2), Is.True);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Score > 0)), Times.Once);

@@ -1942,11 +1942,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (session == null)
             return null;
 
-        var turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
-        if (!turns.Any() || turns.Count < GetMaxQuestions(session))
+        var ensuredTurns = await EnsureSingleActiveTurnAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer);
+        var turns = ensuredTurns.Turns.ToList();
+        if (!turns.Any())
         {
-            var planResult = await EnsureQuestionPlanAsync(session, turns, customer);
-            if (!planResult.Turns.Any())
+            if (!string.IsNullOrWhiteSpace(ensuredTurns.FailureReason))
             {
                 var unavailableModel = await BuildRuntimeModelAsync(session, turns, customer);
                 unavailableModel.CurrentQuestion = "AI service unavailable. Please try again later.";
@@ -1956,12 +1956,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 await LogRuntimeIssueAsync(
                     NopLogLevel.Warning,
                     "AI Interview question plan unavailable",
-                    $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=question plan generation failed; Detail={BuildSafeValue(planResult.FailureReason ?? "AI service unavailable.")}.",
+                    $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=question plan generation failed; Detail={BuildSafeValue(ensuredTurns.FailureReason ?? "AI service unavailable.")}.",
                     logCustomer);
                 return unavailableModel;
             }
+        }
 
-            turns = planResult.Turns.ToList();
+        if (!session.StartedOnUtc.HasValue && InterviewTurnNormalizationHelper.GetVisibleRuntimeTurns(turns, GetMaxQuestions(session)).Any())
+        {
+            session.StartedOnUtc = DateTime.UtcNow;
+            await _sessionService.UpdateInterviewSessionAsync(session);
         }
 
         return await BuildRuntimeModelAsync(session, turns, customer);
@@ -2004,7 +2008,23 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             .OrderBy(turn => turn.SequenceNumber)
             .ThenBy(turn => turn.Id)
             .ToList();
-        var currentTurn = turns.FirstOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText)) ?? turns.LastOrDefault();
+        var maxQuestions = GetMaxQuestions(session);
+        if (!turns.Any())
+        {
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Warning,
+                "AI Interview submit before begin",
+                $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=submit before begin.",
+                await ResolveLogCustomerAsync(session));
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = false,
+                Message = "Interview has not started. Click Start Interview to begin."
+            };
+        }
+
+        turns = (await EnsureSingleActiveTurnAsync(session, turns)).Turns.ToList();
+        var currentTurn = ResolveCurrentTurn(turns, request?.TurnId, request?.SequenceNumber, maxQuestions);
         if (currentTurn == null)
         {
             await LogRuntimeIssueAsync(
@@ -2044,9 +2064,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             QuestionNumber = currentTurn.SequenceNumber,
             ResumeProfileJson = resumeProfileJson,
             CurrentTurnRubricJson = currentTurn.RubricJson,
-            PreviousQuestions = turns.Select(turn => turn.QuestionText).ToList(),
-            PreviousScores = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList(),
-            PreviousTurns = BuildPreviousTurnContext(turns, currentTurn)
+            PreviousQuestions = InterviewTurnNormalizationHelper
+                .GetCanonicalTurns(turns, maxQuestions)
+                .Select(turn => turn.QuestionText)
+                .ToList(),
+            PreviousScores = InterviewTurnNormalizationHelper
+                .GetCompletedReportTurns(turns, maxQuestions)
+                .Where(turn => turn.Score.HasValue)
+                .Select(turn => turn.Score.Value)
+                .ToList(),
+            PreviousTurns = BuildPreviousTurnContext(InterviewTurnNormalizationHelper.GetCanonicalTurns(turns, maxQuestions), currentTurn)
         });
         await TrackOpenAiUsageAsync(
             session.Id,
@@ -2087,35 +2114,18 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         await TrackSpeechRecognitionUsageAsync(session, currentTurn, request);
 
         turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
-        var averageScore = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
+        var completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, maxQuestions).ToList();
+        var averageScore = completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
         session.Score = averageScore;
-        session.QuestionScores = JsonSerializer.Serialize(turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
+        session.QuestionScores = JsonSerializer.Serialize(completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
 
-        var maxQuestions = GetMaxQuestions(session);
-        var answeredCount = turns.Count(turn => !string.IsNullOrWhiteSpace(turn.AnswerText));
+        var answeredCount = completedTurns.Count;
         var shouldComplete = answeredCount >= maxQuestions;
         if (!shouldComplete)
         {
-            var nextTurn = turns
-                .OrderBy(turn => turn.SequenceNumber)
-                .ThenBy(turn => turn.Id)
-                .FirstOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText));
-
-            if (nextTurn == null && turns.Count < maxQuestions)
-            {
-                await LogRuntimeIssueAsync(
-                    NopLogLevel.Warning,
-                    "AI Interview question plan shorter than configured count",
-                    $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; ConfiguredQuestions={maxQuestions}; ExistingTurns={turns.Count}; Reason=missing planned turns.",
-                    await ResolveLogCustomerAsync(session));
-
-                var replenishedTurns = await EnsureQuestionPlanAsync(session, turns);
-                turns = replenishedTurns.Turns.ToList();
-                nextTurn = turns
-                    .OrderBy(turn => turn.SequenceNumber)
-                    .ThenBy(turn => turn.Id)
-                    .FirstOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText));
-            }
+            var replenishedTurns = await EnsureSingleActiveTurnAsync(session, turns);
+            turns = replenishedTurns.Turns.ToList();
+            var nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
 
             if (nextTurn == null)
             {
@@ -2143,15 +2153,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.NextQuestion"),
                 Interrupted = false,
                 Completion = string.Empty,
-                Turn = new InterviewTurnViewModel
-                {
-                    TurnId = currentTurn.Id,
-                    SequenceNumber = currentTurn.SequenceNumber,
-                    QuestionText = currentTurn.QuestionText,
-                    AnswerText = currentTurn.AnswerText,
-                    AskedOnUtc = currentTurn.AskedOnUtc,
-                    AnsweredOnUtc = currentTurn.AnsweredOnUtc
-                }
+                Turn = MapTurn(currentTurn),
+                Turns = MapTurns(InterviewTurnNormalizationHelper.GetVisibleRuntimeTurns(turns, maxQuestions))
             };
         }
 
@@ -2166,15 +2169,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             ReportUrl = completion.ReportUrl,
             Interrupted = false,
             Question = string.Empty,
-            Turn = new InterviewTurnViewModel
-            {
-                TurnId = currentTurn.Id,
-                SequenceNumber = currentTurn.SequenceNumber,
-                QuestionText = currentTurn.QuestionText,
-                AnswerText = currentTurn.AnswerText,
-                AskedOnUtc = currentTurn.AskedOnUtc,
-                AnsweredOnUtc = currentTurn.AnsweredOnUtc
-            }
+            Turn = MapTurn(currentTurn),
+            Turns = completion.Turns
         };
     }
 
@@ -2499,17 +2495,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
         var candidate = customer ?? await _customerService.GetCustomerByIdAsync(session.CustomerId);
         var questionCount = GetMaxQuestions(session);
-        var currentTurn = turns
-            .OrderBy(turn => turn.SequenceNumber)
-            .ThenBy(turn => turn.Id)
-            .FirstOrDefault(turn => string.IsNullOrWhiteSpace(turn.AnswerText))
-            ?? turns.OrderBy(turn => turn.SequenceNumber).ThenBy(turn => turn.Id).LastOrDefault();
+        var visibleTurns = InterviewTurnNormalizationHelper.GetVisibleRuntimeTurns(turns, questionCount).ToList();
+        var currentTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, questionCount)
+            ?? visibleTurns.LastOrDefault();
         var lastQuestion = currentTurn?.QuestionText ?? string.Empty;
-        var visibleTurns = turns
-            .Where(turn => !string.IsNullOrWhiteSpace(turn.AnswerText) || turn.Id == currentTurn?.Id)
-            .OrderBy(turn => turn.SequenceNumber)
-            .ThenBy(turn => turn.Id)
-            .ToList();
         var isPracticeInterview = string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase);
         var practiceSkill = isPracticeInterview ? ExtractPracticeSkill(session.SelectedProductAttributesJson, session.Difficulty) : string.Empty;
         var runtimeTopic = ResolveRuntimeTopic(session, product, practiceSkill);
@@ -2542,15 +2531,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             IsMockMode = _mockSettings?.UseMockResponses ?? true,
             ReportUrl = string.Empty,
             TokenExpiryUtc = session.TokenExpiryUtc,
-            Turns = visibleTurns.Select(turn => new InterviewTurnViewModel
-            {
-                TurnId = turn.Id,
-                SequenceNumber = turn.SequenceNumber,
-                QuestionText = turn.QuestionText,
-                AnswerText = turn.AnswerText,
-                AskedOnUtc = turn.AskedOnUtc,
-                AnsweredOnUtc = turn.AnsweredOnUtc
-            }).ToList(),
+            Turns = MapTurns(visibleTurns),
             ClientSettings = new RuntimeClientSettingsModel
             {
                 QuestionCount = questionCount,
@@ -2887,6 +2868,67 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             ?? turns.OrderByDescending(turn => turn.SequenceNumber).ThenByDescending(turn => turn.Id).FirstOrDefault();
     }
 
+    protected virtual InterviewTurn ResolveCurrentTurn(IList<InterviewTurn> turns, int? turnId, int? sequenceNumber, int maxQuestions)
+    {
+        if (turns == null || !turns.Any())
+            return null;
+
+        var nextSequenceNumber = InterviewTurnNormalizationHelper.GetNextSequenceNumber(turns, maxQuestions);
+        var pendingTurns = turns
+            .Where(turn => turn != null
+                && turn.SequenceNumber == nextSequenceNumber
+                && !InterviewTurnNormalizationHelper.HasAnswer(turn))
+            .OrderByDescending(turn => turn.Id)
+            .ToList();
+        if (!pendingTurns.Any())
+            return null;
+
+        if (turnId.GetValueOrDefault() > 0)
+        {
+            var matchedById = pendingTurns.FirstOrDefault(turn => turn.Id == turnId.Value);
+            if (matchedById != null)
+                return matchedById;
+        }
+
+        if (sequenceNumber.GetValueOrDefault() > 0)
+        {
+            var matchedBySequence = pendingTurns.FirstOrDefault(turn => turn.SequenceNumber == sequenceNumber.Value);
+            if (matchedBySequence != null)
+                return matchedBySequence;
+        }
+
+        return pendingTurns.FirstOrDefault();
+    }
+
+    protected static InterviewTurnViewModel MapTurn(InterviewTurn turn)
+    {
+        return turn == null
+            ? null
+            : new InterviewTurnViewModel
+            {
+                TurnId = turn.Id,
+                SequenceNumber = turn.SequenceNumber,
+                QuestionText = turn.QuestionText,
+                AnswerText = turn.AnswerText,
+                Score = turn.Score,
+                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
+                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
+                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
+                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
+                Feedback = turn.Feedback,
+                AskedOnUtc = turn.AskedOnUtc,
+                AnsweredOnUtc = turn.AnsweredOnUtc
+            };
+    }
+
+    protected static IList<InterviewTurnViewModel> MapTurns(IEnumerable<InterviewTurn> turns)
+    {
+        return (turns ?? Enumerable.Empty<InterviewTurn>())
+            .Select(MapTurn)
+            .Where(turn => turn != null)
+            .ToList();
+    }
+
     protected virtual async Task<CompleteInterviewResponse> CompleteInterviewInternalAsync(InterviewSession session, IList<InterviewTurn> turns, string reason, string aiCompletion = null)
     {
         _logger?.LogInformation("Stop called with session id {SessionId}", session.Id);
@@ -2901,11 +2943,12 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
+        var completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, GetMaxQuestions(session)).ToList();
         session.IsActive = false;
         session.CompletedOnUtc = DateTime.UtcNow;
-        session.Score = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
-        session.QuestionScores = JsonSerializer.Serialize(turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
-        session.ReportData = BuildReport(turns, session.Score, reason, aiCompletion);
+        session.Score = completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
+        session.QuestionScores = JsonSerializer.Serialize(completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
+        session.ReportData = BuildReport(completedTurns, session.Score, reason, aiCompletion);
         await _sessionService.UpdateInterviewSessionAsync(session);
 
         await PublishCompletionAsync(session);
@@ -2915,25 +2958,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Success = true,
             IsTerminated = true,
             Score = session.Score,
-            Feedback = turns.LastOrDefault()?.Feedback ?? reason ?? string.Empty,
+            Feedback = completedTurns.LastOrDefault()?.Feedback ?? reason ?? string.Empty,
             Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
             Completion = session.ReportData,
             ReportUrl = string.Empty,
-            Turns = turns.Select(turn => new InterviewTurnViewModel
-            {
-                TurnId = turn.Id,
-                SequenceNumber = turn.SequenceNumber,
-                QuestionText = turn.QuestionText,
-                AnswerText = turn.AnswerText,
-                Score = turn.Score,
-                TechnicalScore = ParseRubricScore(turn.RubricJson, "technicalScore"),
-                CommunicationScore = ParseRubricScore(turn.RubricJson, "communicationScore"),
-                ProfessionalismScore = ParseRubricScore(turn.RubricJson, "professionalismScore"),
-                PositiveAttitudeScore = ParseRubricScore(turn.RubricJson, "positiveAttitudeScore"),
-                Feedback = turn.Feedback,
-                AskedOnUtc = turn.AskedOnUtc,
-                AnsweredOnUtc = turn.AnsweredOnUtc
-            }).ToList()
+            Turns = MapTurns(completedTurns)
         };
 
         _logger?.LogInformation("Interview completed for session {SessionId}, customer {CustomerId}, product {ProductId}.",
@@ -3259,6 +3288,52 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             JsonValueKind.False => bool.FalseString,
             _ => property.GetRawText()
         };
+    }
+
+    protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> EnsureSingleActiveTurnAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null)
+    {
+        turns ??= new List<InterviewTurn>();
+        var maxQuestions = GetMaxQuestions(session);
+        var orderedTurns = turns
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+
+        var stalePendingTurns = InterviewTurnNormalizationHelper.GetStalePendingTurns(orderedTurns, maxQuestions)
+            .Where(turn => turn.Id > 0)
+            .ToList();
+        if (stalePendingTurns.Any())
+        {
+            await _turnService.DeleteInterviewTurnsAsync(stalePendingTurns);
+            var staleIds = stalePendingTurns.Select(turn => turn.Id).ToHashSet();
+            orderedTurns = orderedTurns.Where(turn => !staleIds.Contains(turn.Id)).ToList();
+        }
+
+        if (InterviewTurnNormalizationHelper.GetAnsweredCount(orderedTurns, maxQuestions) >= maxQuestions)
+            return (orderedTurns, null);
+
+        var activePendingTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(orderedTurns, maxQuestions);
+        if (activePendingTurn != null)
+            return (orderedTurns, null);
+
+        var nextSequenceNumber = InterviewTurnNormalizationHelper.GetNextSequenceNumber(orderedTurns, maxQuestions);
+        var generationContext = InterviewTurnNormalizationHelper.GetCompletedReportTurns(orderedTurns, maxQuestions).ToList();
+        var generatedPlan = await GenerateQuestionPlanTurnsAsync(session, customer, generationContext, new List<int> { nextSequenceNumber });
+        if (!generatedPlan.Turns.Any())
+            return (orderedTurns, generatedPlan.FailureReason);
+
+        var nextTurn = generatedPlan.Turns
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .FirstOrDefault(turn => turn.SequenceNumber == nextSequenceNumber);
+        if (nextTurn == null)
+            return (orderedTurns, generatedPlan.FailureReason ?? "Question generation did not return the next active turn.");
+
+        orderedTurns.Add(await _turnService.InsertInterviewTurnAsync(nextTurn));
+        return (orderedTurns
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList(), null);
     }
 
     protected static bool IsPracticeDifficultyValue(string value)
