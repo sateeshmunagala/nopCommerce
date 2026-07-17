@@ -5201,57 +5201,54 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table {
-    min-width: 760px;
+    min-width: 1080px;
     table-layout: fixed;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th,
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td {
-    padding: 10px 14px;
-    line-height: 1.35;
+    padding: 7px 12px;
+    line-height: 1.15;
     vertical-align: middle;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td {
-    padding-top: 10px;
-    padding-bottom: 10px;
+    padding-top: 7px;
+    padding-bottom: 7px;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-title {
-    width: 34%;
-    min-width: 220px;
-    white-space: normal;
-    overflow-wrap: anywhere;
+    width: 36%;
+    min-width: 300px;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-status {
-    width: 14%;
+    width: 15%;
+    min-width: 130px;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-salary {
-    width: 22%;
-    white-space: normal;
-    overflow-wrap: anywhere;
+    width: 21%;
+    min-width: 190px;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-posted {
-    width: 12%;
+    width: 11%;
+    min-width: 120px;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-count {
     width: 8%;
+    min-width: 110px;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions {
     width: 10%;
-    min-width: 84px;
+    min-width: 112px;
 }
 
-.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th.col-job-title,
-.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th.col-job-salary,
-.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td.col-job-title,
-.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td.col-job-salary {
-    white-space: normal;
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table tbody tr {
+    height: auto;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th.col-job-posted,
@@ -5261,6 +5258,23 @@ body.ai-job-preview-open .item-box {
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td.col-job-count,
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td.col-job-actions {
     white-space: nowrap;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th.col-job-count,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th.col-job-actions {
+    letter-spacing: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td.col-job-actions {
+    text-align: center;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .job-table-text-truncate {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 1.15;
 }
 
 .html-aiinterview-employer-dashboard-page .invite-table {
@@ -5454,8 +5468,14 @@ body.ai-job-preview-open .item-box {
     padding: 8px 16px;
 }
 
-.html-aiinterview-employer-dashboard-page .invite-form-grid {
-    grid-template-columns: minmax(240px, 1.45fr) minmax(220px, 1.2fr) minmax(180px, 0.9fr) auto;
+.html-aiinterview-employer-dashboard-page .invite-form-layout {
+    display: grid;
+    gap: 14px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px 16px;
     align-items: end;
 }
@@ -5529,12 +5549,8 @@ body.ai-job-preview-open .item-box {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .html-aiinterview-employer-dashboard-page .invite-form-grid {
+    .html-aiinterview-employer-dashboard-page .invite-form-row {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .html-aiinterview-employer-dashboard-page .invite-field-action {
-        grid-column: 1 / -1;
     }
 }
 
@@ -5701,7 +5717,7 @@ body.ai-job-preview-open .item-box {
 
     .html-aiinterview-employer-dashboard-page .employer-dashboard-metrics,
     .html-aiinterview-employer-dashboard-page .employer-filter-grid,
-    .html-aiinterview-employer-dashboard-page .invite-form-grid {
+    .html-aiinterview-employer-dashboard-page .invite-form-row {
         grid-template-columns: 1fr;
     }
 

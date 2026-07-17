@@ -131,27 +131,29 @@
 
                         <section class="vendor-job-form-section">
                             <h3 class="vendor-job-form-section-title">@T("Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings")</h3>
-                            <div class="vendor-job-form-checkbox-list">
-                                <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.ResumeRequired)">
-                                    <input type="hidden" name="@Html.NameFor(model => model.ResumeRequired)" value="false" />
-                                    <input type="checkbox"
-                                           id="@Html.IdFor(model => model.ResumeRequired)"
-                                           name="@Html.NameFor(model => model.ResumeRequired)"
-                                           value="true"
-                                           checked="@(Model.ResumeRequired ? "checked" : null)" />
-                                    <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.ResumeRequired")</span>
-                                </label>
-                                <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.InterviewRequired)">
-                                    <input type="hidden" name="@Html.NameFor(model => model.InterviewRequired)" value="false" />
-                                    <input type="checkbox"
-                                           id="@Html.IdFor(model => model.InterviewRequired)"
-                                           name="@Html.NameFor(model => model.InterviewRequired)"
-                                           value="true"
-                                           checked="@(Model.InterviewRequired ? "checked" : null)" />
-                                    <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired")</span>
-                                </label>
-                            </div>
-                            <div class="vendor-job-form-simple-grid">
+                            <div class="vendor-job-form-simple-grid vendor-job-form-interview-grid">
+                                <div class="vendor-job-form-field">
+                                    <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.ResumeRequired)">
+                                        <input type="hidden" name="@Html.NameFor(model => model.ResumeRequired)" value="false" />
+                                        <input type="checkbox"
+                                               id="@Html.IdFor(model => model.ResumeRequired)"
+                                               name="@Html.NameFor(model => model.ResumeRequired)"
+                                               value="true"
+                                               checked="@(Model.ResumeRequired ? "checked" : null)" />
+                                        <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.ResumeRequired")</span>
+                                    </label>
+                                </div>
+                                <div class="vendor-job-form-field">
+                                    <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.InterviewRequired)">
+                                        <input type="hidden" name="@Html.NameFor(model => model.InterviewRequired)" value="false" />
+                                        <input type="checkbox"
+                                               id="@Html.IdFor(model => model.InterviewRequired)"
+                                               name="@Html.NameFor(model => model.InterviewRequired)"
+                                               value="true"
+                                               checked="@(Model.InterviewRequired ? "checked" : null)" />
+                                        <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired")</span>
+                                    </label>
+                                </div>
                                 <div class="vendor-job-form-field">
                                     <label asp-for="ApplyUntilUtc" asp-postfix=":"></label>
                                     <input asp-for="ApplyUntilUtc" type="date" />
