@@ -1483,6 +1483,8 @@ public class AIInterviewController : BasePluginController
 
         var selectText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Select");
         model.AvailableSalaryLpaOptions = BuildSalaryLpaSelectList(selectText);
+        EnsureSalaryLpaOption(model.AvailableSalaryLpaOptions, model.SalaryMinCtcPa);
+        EnsureSalaryLpaOption(model.AvailableSalaryLpaOptions, model.SalaryMaxCtcPa);
 
         if (_specificationAttributeService == null)
             return;
@@ -1536,7 +1538,21 @@ public class AIInterviewController : BasePluginController
             new() { Text = selectText, Value = string.Empty }
         };
 
-        for (var lpa = 0m; lpa <= 100m; lpa += 0.5m)
+        var salarySteps = new SortedSet<decimal>();
+
+        for (var lpa = 0m; lpa <= 20m; lpa += 0.5m)
+            salarySteps.Add(lpa);
+
+        for (var lpa = 20m; lpa <= 40m; lpa += 1m)
+            salarySteps.Add(lpa);
+
+        for (var lpa = 40m; lpa <= 60m; lpa += 2m)
+            salarySteps.Add(lpa);
+
+        for (var lpa = 60m; lpa <= 100m; lpa += 5m)
+            salarySteps.Add(lpa);
+
+        foreach (var lpa in salarySteps)
         {
             items.Add(new SelectListItem
             {
@@ -1546,6 +1562,34 @@ public class AIInterviewController : BasePluginController
         }
 
         return items;
+    }
+
+    protected virtual void EnsureSalaryLpaOption(IList<SelectListItem> options, decimal? ctcPa)
+    {
+        if (options == null || !ctcPa.HasValue || ctcPa.Value < 0)
+            return;
+
+        if (options.Any(option => decimal.TryParse(option.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedValue) && parsedValue == ctcPa.Value))
+            return;
+
+        var lpa = ctcPa.Value / 100000m;
+        var newOption = new SelectListItem
+        {
+            Text = $"{lpa:0.##} LPA",
+            Value = ctcPa.Value.ToString("0", CultureInfo.InvariantCulture)
+        };
+
+        var insertIndex = options
+            .Select((option, index) => new
+            {
+                Index = index,
+                Value = decimal.TryParse(option.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedValue)
+                    ? parsedValue
+                    : decimal.MaxValue
+            })
+            .FirstOrDefault(entry => entry.Value > ctcPa.Value)?.Index ?? options.Count;
+
+        options.Insert(insertIndex, newOption);
     }
 
     protected async Task InsertProductSpecificationAttributeAsync(int productId, int optionId, SpecificationAttributeType attributeType = SpecificationAttributeType.Option, string customValue = null, int displayOrder = 0)

@@ -3,6 +3,12 @@
     min-width: 0;
 }
 
+body.html-aiinterview-view-page,
+body.html-aiinterview-employer-dashboard-page,
+body.html-aiinterview-vendor-job-creation-page {
+    overflow-x: clip;
+}
+
 .html-aiinterview-view-page .page-body,
 .aiinterview-public-page .page-body,
 .ai-interview-report-page .page-body,
@@ -27,6 +33,10 @@
 .html-aiinterview-view-page .block-account-navigation .list {
     min-width: 0;
     max-width: 100%;
+}
+
+.html-aiinterview-view-page .master-wrapper-content {
+    overflow-x: clip;
 }
 
 .aiinterview-shell,
@@ -5131,6 +5141,23 @@ body.ai-job-preview-open .item-box {
     gap: 12px 18px;
 }
 
+.html-aiinterview-employer-dashboard-page .my-activity-shell,
+.html-aiinterview-employer-dashboard-page .my-activity-content,
+.html-aiinterview-employer-dashboard-page .my-activity-panel,
+.html-aiinterview-employer-dashboard-page .fieldset,
+.html-aiinterview-employer-dashboard-page .table-wrapper,
+.html-aiinterview-employer-dashboard-page .section,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-shell,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table-section,
+.html-aiinterview-employer-dashboard-page .results-toolbar,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-header > div,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-metrics,
+.html-aiinterview-employer-dashboard-page .invite-list,
+.html-aiinterview-employer-dashboard-page .create-invite {
+    min-width: 0;
+    max-width: 100%;
+}
+
 .html-aiinterview-employer-dashboard-page .scoreboard-deck-title {
     margin: 0 0 6px;
     font-size: 1.45rem;
@@ -5175,6 +5202,7 @@ body.ai-job-preview-open .item-box {
 .html-aiinterview-employer-dashboard-page .scoreboard-deck-table-wrapper,
 .html-aiinterview-employer-dashboard-page .employer-table-wrapper,
 .html-aiinterview-employer-dashboard-page .invite-table-wrapper {
+    display: block;
     width: 100%;
     max-width: 100%;
     overflow-x: auto;
@@ -5191,17 +5219,23 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-dashboard-page .scoreboard-deck-table {
+    width: max-content;
+    max-width: none;
+    min-width: 100%;
     min-width: 920px;
     table-layout: auto;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-table {
-    min-width: 980px;
+    width: max-content;
+    max-width: none;
+    min-width: 100%;
+    min-width: 920px;
     table-layout: auto;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table {
-    min-width: 1080px;
+    min-width: 920px;
     table-layout: fixed;
 }
 
@@ -5278,7 +5312,10 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-dashboard-page .invite-table {
-    min-width: 840px;
+    width: max-content;
+    max-width: none;
+    min-width: 100%;
+    min-width: 720px;
     table-layout: auto;
 }
 
@@ -5319,36 +5356,38 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-dashboard-page .employer-table .col-message {
-    min-width: 220px;
-    max-width: 260px;
+    min-width: 200px;
+    max-width: 240px;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-table .col-status {
-    min-width: 340px;
+    min-width: 300px;
 }
 
 .html-aiinterview-employer-dashboard-page .scoreboard-deck-row-actions {
     display: inline-flex;
     flex-wrap: nowrap;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 8px;
+    margin: 0;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-action-icon,
 .html-aiinterview-employer-dashboard-page .invite-deactivate-button {
-    width: 32px !important;
-    min-width: 32px !important;
-    max-width: 32px !important;
-    height: 32px !important;
-    min-height: 32px !important;
-    max-height: 32px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
     padding: 0 !important;
-    border-radius: 4px;
+    border-radius: 8px;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-action-icon i,
 .html-aiinterview-employer-dashboard-page .invite-deactivate-button i {
-    font-size: 0.78rem !important;
+    font-size: 0.92rem !important;
 }
 
 .html-aiinterview-employer-dashboard-page .dashboard-collapsible-panel {
@@ -5426,9 +5465,9 @@ body.ai-job-preview-open .item-box {
 
 .html-aiinterview-employer-dashboard-page .status-form {
     display: grid;
-    grid-template-columns: minmax(120px, 138px) minmax(170px, 1fr) 32px;
+    grid-template-columns: minmax(120px, 138px) minmax(170px, 1fr) 38px;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
 }
 
@@ -5448,17 +5487,17 @@ body.ai-job-preview-open .item-box {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    min-width: 32px;
+    width: 38px;
+    min-width: 38px;
 }
 
 .html-aiinterview-employer-dashboard-page .status-form .employer-status-update {
-    width: 32px;
-    min-width: 32px;
-    max-width: 32px;
-    height: 32px;
-    min-height: 32px;
-    max-height: 32px;
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    max-height: 38px;
     padding: 0;
 }
 
@@ -5522,6 +5561,13 @@ body.ai-job-preview-open .item-box {
 .html-aiinterview-employer-dashboard-page .employer-dashboard-long-link {
     overflow-wrap: anywhere;
     word-break: break-word;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table td,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table td,
+.html-aiinterview-employer-dashboard-page .invite-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .html-aiinterview-employer-dashboard-page .my-activity-pager {
@@ -6240,6 +6286,11 @@ body.ai-job-preview-open .item-box {
 }
 
 @media (max-width: 1000px) {
+    .html-aiinterview-employer-dashboard-page .my-activity-tabs {
+        margin: 0;
+        padding: 0 0 1px;
+    }
+
     .html-aiinterview-employer-dashboard-page .employer-dashboard-metrics,
     .html-aiinterview-employer-dashboard-page .employer-filter-grid,
     .html-aiinterview-employer-dashboard-page .invite-form-row,
@@ -6253,6 +6304,14 @@ body.ai-job-preview-open .item-box {
 }
 
 @media (max-width: 760px) {
+    .html-aiinterview-employer-dashboard-page .employer-dashboard-table-wrapper,
+    .html-aiinterview-employer-dashboard-page .scoreboard-deck-table-wrapper,
+    .html-aiinterview-employer-dashboard-page .employer-table-wrapper,
+    .html-aiinterview-employer-dashboard-page .invite-table-wrapper {
+        border-radius: 10px;
+        box-shadow: inset 12px 0 12px -12px rgba(39, 50, 58, 0.08), inset -12px 0 12px -12px rgba(39, 50, 58, 0.08);
+    }
+
     .html-aiinterview-employer-dashboard-page .my-activity-tab {
         min-height: 44px;
         padding-bottom: 12px;
@@ -6289,6 +6348,18 @@ body.ai-job-preview-open .item-box {
     .html-aiinterview-employer-dashboard-page .invite-form-row,
     .html-aiinterview-vendor-job-creation-page .vendor-job-form-simple-grid {
         grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table {
+        min-width: 780px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-table {
+        min-width: 820px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .invite-table {
+        min-width: 620px;
     }
 
     .html-aiinterview-employer-dashboard-page .dashboard-collapsible-summary,
