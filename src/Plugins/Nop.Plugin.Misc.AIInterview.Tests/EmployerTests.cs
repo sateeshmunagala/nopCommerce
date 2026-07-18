@@ -1341,7 +1341,7 @@ public class EmployerTests
         Assert.That(cssText, Does.Not.Contain(".ai-job-card-preview-trigger"));
         Assert.That(cssText, Does.Contain(".vendor-job-posting-shell"));
         Assert.That(cssText, Does.Contain(".vendor-job-form-simple-grid"));
-        Assert.That(cssText, Does.Contain("background: #20252b;"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-save.is-saved {\r\n    border-color: transparent;\r\n    background: transparent;\r\n    color: #188f78;").Or.Contain(".ai-job-card-save.is-saved {\n    border-color: transparent;\n    background: transparent;\n    color: #188f78;"));
         Assert.That(cssText, Does.Contain(".ai-job-card-save[aria-pressed=\"true\"]"));
         Assert.That(cssText, Does.Contain(".invite-deactivate-button"));
         Assert.That(cssText, Does.Contain(".employer-status-form"));

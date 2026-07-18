@@ -1737,9 +1737,9 @@ body.aiinterview-report-drawer-open {
     width: 38px;
     height: 38px;
     padding: 0;
-    border: 1px solid #d8dee4;
+    border: 1px solid transparent;
     border-radius: 4px;
-    background: #ffffff;
+    background: transparent;
     color: #334155;
     cursor: pointer;
     transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
@@ -1753,25 +1753,25 @@ body.aiinterview-report-drawer-open {
 }
 
 .ai-job-card-save.is-saved {
-    border-color: #20252b;
-    background: #20252b;
-    color: #ffffff;
-    box-shadow: inset 0 0 0 1px #20252b;
+    border-color: transparent;
+    background: transparent;
+    color: #188f78;
+    box-shadow: none;
 }
 
 .ai-job-card-save[aria-pressed="true"] {
-    border-color: #20252b;
-    background: #20252b;
-    color: #ffffff;
+    border-color: transparent;
+    background: transparent;
+    color: #188f78;
 }
 
 .ai-job-card-save.is-saved:hover,
 .ai-job-card-save.is-saved:focus-visible,
 .ai-job-card-save[aria-pressed="true"]:hover,
 .ai-job-card-save[aria-pressed="true"]:focus-visible {
-    border-color: #111827;
-    background: #111827;
-    color: #ffffff;
+    border-color: transparent;
+    background: transparent;
+    color: #188f78;
 }
 
 .ai-job-card-save-icon-filled {
@@ -2325,9 +2325,9 @@ body.ai-job-preview-open .item-box {
     display: grid;
     grid-template-columns: minmax(0, 2.25fr) minmax(360px, 1fr);
     gap: 14px;
-    height: auto;
+    height: 100%;
     min-height: 0;
-    align-items: start;
+    align-items: stretch;
     padding-top: 12px;
     overflow: hidden;
 }
@@ -2703,7 +2703,8 @@ body.ai-job-preview-open .item-box {
 }
 
 #runtime-panel-conversation {
-    grid-template-rows: auto auto 420px auto auto;
+    gap: 8px;
+    grid-template-rows: auto auto auto auto auto;
 }
 
 #runtime-panel-details {
@@ -2743,12 +2744,12 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-conversation {
-    height: 420px;
+    height: clamp(330px, 52vh, 500px);
+    min-height: 330px;
     padding: 6px;
     border: 1px solid #dfe6ee;
     border-radius: 1px;
     background: linear-gradient(180deg, #fafcfd 0%, #f4f7fa 100%);
-    min-height: 0;
 }
 
 .runtime-chat-placeholder {
@@ -2872,6 +2873,10 @@ body.ai-job-preview-open .item-box {
     flex-wrap: wrap;
     color: #6b7280;
     font-size: 13px;
+}
+
+.runtime-answer {
+    margin-top: 0;
 }
 
 .runtime-answer textarea {
@@ -3002,10 +3007,6 @@ body.ai-job-preview-open .item-box {
     background: #ecfdf8;
     color: #0f766e;
     outline: none;
-}
-
-.runtime-answer-hidden {
-    display: none;
 }
 
 .runtime-shell .button-1:disabled,
@@ -3326,6 +3327,15 @@ body.ai-job-preview-open .item-box {
 
     .runtime-sidebar {
         min-height: 58vh;
+    }
+
+    .runtime-conversation {
+        height: 320px;
+        min-height: 320px;
+    }
+
+    .runtime-answer {
+        margin-top: 0;
     }
 
     .runtime-video-caption {

@@ -158,7 +158,7 @@
                             </div>
                         </div>
 
-                        <div class="runtime-answer runtime-answer-hidden runtime-js-hidden">
+                        <div class="runtime-answer">
                             <label class="sr-only" for="runtime-answer">Your answer</label>
                             <div class="runtime-answer-composer">
                                 <textarea id="runtime-answer" placeholder="@T("Plugins.Misc.AIInterview.Runtime.AnswerPlaceholder")" disabled></textarea>
@@ -285,7 +285,6 @@
         let sessionToken = config.token || '@Model.Token';
         let tokenExpiryUtc = config.tokenExpiryUtc ? new Date(config.tokenExpiryUtc) : null;
         const answerBox = document.getElementById('runtime-answer');
-        const answerPanel = answerBox?.closest('.runtime-answer');
         const questionBox = document.getElementById('runtime-question');
         const messageBox = document.getElementById('runtime-message');
         const statusBox = document.getElementById('runtime-status');
@@ -982,8 +981,6 @@
                 && hasActiveQuestion();
             const canEditAnswer = showAnswerInput;
 
-            answerPanel?.classList.toggle('runtime-answer-hidden', !showAnswerInput);
-            answerPanel?.classList.toggle('runtime-js-hidden', !showAnswerInput);
             answerBox.disabled = !canEditAnswer;
         };
 

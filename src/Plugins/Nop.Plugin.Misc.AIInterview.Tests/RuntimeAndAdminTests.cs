@@ -952,10 +952,10 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("id=\"runtime-video-caption-text\""));
         Assert.That(runtimeViewText, Does.Contain("<textarea id=\"runtime-answer\""));
         Assert.That(runtimeViewText, Does.Contain("id=\"submit-answer\" class=\"button-1 runtime-composer-send runtime-js-hidden\" disabled"));
-        Assert.That(runtimeViewText, Does.Contain("const answerPanel = answerBox?.closest('.runtime-answer');"));
+        Assert.That(runtimeViewText, Does.Contain("<div class=\"runtime-answer\">"));
         Assert.That(runtimeViewText, Does.Contain("const updateAnswerInputState = () =>"));
-        Assert.That(runtimeViewText, Does.Contain("answerPanel?.classList.toggle('runtime-answer-hidden', !showAnswerInput);"));
-        Assert.That(runtimeViewText, Does.Contain("answerPanel?.classList.toggle('runtime-js-hidden', !showAnswerInput);"));
+        Assert.That(runtimeViewText, Does.Not.Contain("runtime-answer-hidden"));
+        Assert.That(runtimeViewText, Does.Not.Contain("answerPanel?.classList.toggle"));
         Assert.That(runtimeViewText, Does.Contain("answerBox.disabled = !canEditAnswer;"));
         Assert.That(runtimeViewText, Does.Contain("const setRuntimeCaption = (speaker, text) =>"));
         Assert.That(runtimeViewText, Does.Contain("const syncAnswerCaption = () =>"));
