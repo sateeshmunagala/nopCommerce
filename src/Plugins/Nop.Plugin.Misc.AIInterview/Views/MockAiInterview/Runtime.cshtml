@@ -358,9 +358,11 @@
         let completedCountdown = null;
         let completedCleanupTimer = null;
         let completionRecordingCleanupPromise = null;
+        let finalCompletionSpoken = false;
         const autoSubmitDelaySeconds = 15;
         const completedRedirectDelaySeconds = 15;
         const completedMediaGraceDelaySeconds = 10;
+        const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';
 
         let countdownTimer = null;
         let countdownValue = autoSubmitDelaySeconds;
@@ -411,6 +413,15 @@
             recognitionTurnDurationMs = 0;
             pendingRecognitionClientEventId = null;
             recognitionActiveSinceMs = restartActiveTimer && speechRecognizer ? Date.now() : null;
+        };
+
+        const getFinalCompletionSpeechText = (result) => {
+            const completion = (getValue(result, 'completion', 'Completion') || '').trim();
+            const looksReportOrScoreOriented = /[\r\n]|overall score|question-level|strengths|improvement areas|completion note|ai completion|report|score\s*:|\b\d{1,3}\s*\/\s*100\b/i.test(completion);
+
+            return completion && completion.length <= 180 && !looksReportOrScoreOriented
+                ? completion
+                : defaultFinalCompletionMessage;
         };
 
         const hasAnswerText = (value) => !!(value || '').trim();
@@ -1999,6 +2010,8 @@
         const startSpeechRecognition = async () => {
             if (!config.speechAvailable)
                 return;
+            if (runtimeStoppedOrCompleted)
+                return;
             if (speechRecognizer)
                 return;
 
@@ -2090,6 +2103,11 @@
             if (!config.speechAvailable || !text || isPlaceholderSpeechText(text))
                 return;
 
+            const shouldStopRecognitionForPlayback = !!speechRecognizer && isMicActive();
+            const shouldResumeRecognition = purpose !== 'completion' && shouldStopRecognitionForPlayback;
+            if (shouldStopRecognitionForPlayback)
+                await stopSpeechRecognition();
+
             if (!(await ensureSpeechSdk()))
                 return;
 
@@ -2097,12 +2115,11 @@
                 logActivity('Speaking question.');
             else if (purpose === 'reminder')
                 logActivity('Speaking reminder.');
+            else if (purpose === 'completion')
+                logActivity('Speaking final completion message.');
 
             isSpeakingOrSubmitting = true;
             clearAnswerTimers();
-            const shouldResumeRecognition = !!speechRecognizer && isMicActive();
-            if (shouldResumeRecognition)
-                await stopSpeechRecognition();
 
             const tokenResult = await requestSpeechToken();
             if (!tokenResult || !tokenResult.success) {
@@ -2148,6 +2165,8 @@
                     logActivity('Question speech completed.');
                 else if (purpose === 'reminder')
                     logActivity('Reminder spoken.');
+                else if (purpose === 'completion')
+                    logActivity('Final completion message spoken.');
                 if (purpose === 'repeat')
                     setHeaderStatus('Question replayed in voice.', false);
                 const activeTurn = getActiveTurn();
@@ -2165,7 +2184,7 @@
                 setHeaderStatus(voicePlaybackUnavailableMessage, true);
             } finally {
                 isSpeakingOrSubmitting = false;
-                if (shouldResumeRecognition && !speechUnavailable && isMicActive())
+                if (shouldResumeRecognition && !runtimeStoppedOrCompleted && !speechUnavailable && isMicActive())
                     await startSpeechRecognition();
                 resetTimers();
             }
@@ -2402,6 +2421,11 @@
             resetSubmitButtonText();
 
             if (isTerminated) {
+                if (!finalCompletionSpoken) {
+                    finalCompletionSpoken = true;
+                    speakText(getFinalCompletionSpeechText(result), 'completion')
+                        .catch(() => logActivity('Final completion speech failed.'));
+                }
                 await setCompletedState(result);
                 return;
             }

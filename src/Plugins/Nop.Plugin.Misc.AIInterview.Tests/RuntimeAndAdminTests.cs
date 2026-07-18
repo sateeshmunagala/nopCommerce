@@ -1163,6 +1163,26 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void RuntimeView_Speaks_Final_Completion_Message_Once()
+    {
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+
+        Assert.That(runtimeViewText, Does.Contain("let finalCompletionSpoken = false;"));
+        Assert.That(runtimeViewText, Does.Contain("const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';"));
+        Assert.That(runtimeViewText, Does.Contain("const getFinalCompletionSpeechText = (result) =>"));
+        Assert.That(runtimeViewText, Does.Contain("getValue(result, 'completion', 'Completion')"));
+        Assert.That(runtimeViewText, Does.Contain("const shouldResumeRecognition = purpose !== 'completion' && shouldStopRecognitionForPlayback;"));
+        Assert.That(runtimeViewText, Does.Contain("if (shouldResumeRecognition && !runtimeStoppedOrCompleted && !speechUnavailable && isMicActive())"));
+        Assert.That(runtimeViewText, Does.Contain("if (!finalCompletionSpoken)"));
+        Assert.That(runtimeViewText, Does.Contain("finalCompletionSpoken = true;"));
+        Assert.That(runtimeViewText, Does.Contain("speakText(getFinalCompletionSpeechText(result), 'completion')"));
+        Assert.That(runtimeViewText, Does.Contain(".catch(() => logActivity('Final completion speech failed.'));"));
+        Assert.That(
+            runtimeViewText.IndexOf("speakText(getFinalCompletionSpeechText(result), 'completion')", StringComparison.Ordinal),
+            Is.LessThan(runtimeViewText.IndexOf("await setCompletedState(result);", StringComparison.Ordinal)));
+    }
+
+    [Test]
     public void RuntimeView_Uses_Contextual_Title_And_Separates_Candidate_Details()
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));

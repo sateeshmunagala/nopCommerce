@@ -2599,13 +2599,13 @@ body.ai-job-preview-open .item-box {
     color: #188f78;
 }
 
-.runtime-control-icons .runtime-icon-button.is-active {
+.runtime-shell .runtime-icon-button.is-active {
     border-color: #35d6b4;
     background: #d8f8f1;
     color: #188f78;
 }
 
-.runtime-control-icons .runtime-icon-button.is-active i {
+.runtime-shell .runtime-icon-button.is-active i {
     color: #188f78;
 }
 
