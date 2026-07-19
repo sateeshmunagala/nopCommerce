@@ -1777,6 +1777,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Use full screen and keep the interview tab visible."));
         Assert.That(runtimeText, Does.Contain("Do not select a browser tab or a single window."));
         Assert.That(runtimeText, Does.Contain("runtime-screen-share-guide"));
+        Assert.That(runtimeText, Does.Contain("Also share system audio"));
         Assert.That(runtimeText, Does.Contain("Screen sharing active"));
         Assert.That(runtimeText, Does.Contain("Screen sharing ended. Resume screen sharing to continue."));
         Assert.That(runtimeText, Does.Contain("Screen sharing resumed"));

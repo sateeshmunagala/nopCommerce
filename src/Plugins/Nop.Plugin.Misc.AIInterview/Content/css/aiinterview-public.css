@@ -3151,6 +3151,49 @@ body.ai-job-preview-open .item-box {
     font-size: 12px;
 }
 
+.runtime-share-system-audio {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #166534;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.runtime-share-system-audio-toggle {
+    position: relative;
+    flex: 0 0 auto;
+    width: 34px;
+    height: 18px;
+    border: 1px solid #8b948f;
+    border-radius: 999px;
+    background: #eef2ef;
+    box-sizing: border-box;
+}
+
+.runtime-share-system-audio-toggle::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #737b76;
+    transition: left 0.18s ease, background-color 0.18s ease;
+}
+
+.runtime-share-system-audio-toggle.is-on {
+    border-color: #188f78;
+    background: #d8f8f1;
+}
+
+.runtime-share-system-audio-toggle.is-on::after {
+    left: 18px;
+    background: #188f78;
+}
+
 .runtime-share-option.is-selected {
     border-color: #22c55e;
     background: #f0fdf4;

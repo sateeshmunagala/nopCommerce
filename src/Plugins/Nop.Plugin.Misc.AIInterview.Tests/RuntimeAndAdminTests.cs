@@ -1059,6 +1059,8 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("Use full screen and keep the interview tab visible."));
         Assert.That(runtimeViewText, Does.Contain("runtime-screen-share-guide"));
         Assert.That(runtimeViewText, Does.Contain("Share picker guide"));
+        Assert.That(runtimeViewText, Does.Contain("runtime-share-system-audio"));
+        Assert.That(runtimeViewText, Does.Contain("Also share system audio"));
         Assert.That(runtimeViewText, Does.Contain("Select this"));
         Assert.That(runtimeViewText, Does.Contain("let guidelinesAcknowledged = false;"));
         Assert.That(runtimeViewText, Does.Contain("primaryActionButton.disabled = !guidelinesAcknowledged;"));
