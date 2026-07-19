@@ -1,0 +1,51 @@
+@model ProductAppointmentBookingModel
+
+@{
+    NopHtml.AddCssFileParts(@"~/Plugins/Misc.AppointmentBooking/Content/appointment-booking.css", null);
+    NopHtml.AddScriptParts(ResourceLocation.Footer, @"~/Plugins/Misc.AppointmentBooking/Content/appointment-booking.js");
+}
+
+<section class="appointment-booking" data-product-id="@Model.Id">
+    <div class="appointment-booking__summary">
+        <h2>Book appointment</h2>
+        <h3>@Model.ProductName</h3>
+        @if (!string.IsNullOrWhiteSpace(Model.ShortDescription))
+        {
+            <div class="appointment-booking__description">
+                @Html.Raw(Model.ShortDescription)
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Price))
+        {
+            <div class="appointment-booking__price">@Model.Price</div>
+        }
+    </div>
+    <div class="appointment-booking__calendar">
+        <div class="appointment-booking__header">
+            <span>Choose a time</span>
+            @if (Model.DefaultDurationMinutes > 0)
+            {
+                <small>@Model.DefaultDurationMinutes minutes</small>
+            }
+        </div>
+        @if (Model.HasBookingUrl)
+        {
+            <p>This service is booked through the calendar below.</p>
+            @if (Model.AllowCalendarIframe)
+            {
+                <div class="appointment-booking__frame">
+                    <iframe src="@Model.BookingUrl" title="@Model.ProductName booking calendar" loading="lazy"></iframe>
+                </div>
+            }
+            <a class="button-1 appointment-booking__link" href="@Model.BookingUrl" target="_blank" rel="noopener noreferrer">
+                Open booking calendar
+            </a>
+        }
+        else
+        {
+            <p class="appointment-booking__placeholder">
+                A booking calendar has not been configured for this service yet.
+            </p>
+        }
+    </div>
+</section>

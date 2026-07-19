@@ -16,7 +16,6 @@ public partial class BaseNameCompatibility : INameCompatibility
 {
     public Dictionary<Type, string> TableNames => new()
     {
-        { typeof(Nop.Core.Domain.Booking.BookingIntegrationToken), "Booking_IntegrationToken" },
         { typeof(ProductAttributeMapping), "Product_ProductAttribute_Mapping" },
         { typeof(ProductProductTagMapping), "Product_ProductTag_Mapping" },
         { typeof(ProductReviewReviewTypeMapping), "ProductReview_ReviewType_Mapping" },

@@ -1,0 +1,11 @@
+{
+  "Group": "Misc",
+  "FriendlyName": "Appointment Booking",
+  "SystemName": "Misc.AppointmentBooking",
+  "Version": "1.00",
+  "SupportedVersions": [ "5.00" ],
+  "Author": "Your team",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.Misc.AppointmentBooking.dll",
+  "Description": "Adds generic appointment booking surfaces for products, hosts, and calendar-based services."
+}
