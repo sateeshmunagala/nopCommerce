@@ -1,0 +1,52 @@
+@model IList<ServiceAdminModel>
+
+@{
+    Layout = "_AdminLayout";
+    ViewBag.PageTitle = "Appointment services";
+    NopHtml.SetActiveMenuItemSystemName(AppointmentBookingDefaults.ServicesAdminMenuSystemName);
+}
+
+<div class="content-header clearfix">
+    <h1 class="float-left">Appointment services</h1>
+    <div class="float-right">
+        <a class="btn btn-primary" href="@Url.Action("EditService", "AppointmentBooking", new { area = "Admin" })">
+            <i class="fas fa-plus-square"></i>
+            Add new
+        </a>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="card card-default">
+            <div class="card-body">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Vendor</th>
+                            <th>Duration</th>
+                            <th>Active</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var service in Model)
+                        {
+                            <tr>
+                                <td>@service.Name</td>
+                                <td>@service.VendorId</td>
+                                <td>@service.DurationMinutes minutes</td>
+                                <td>@service.IsActive</td>
+                                <td class="text-right">
+                                    <a class="btn btn-default" href="@Url.Action("EditService", "AppointmentBooking", new { area = "Admin", id = service.Id })">Edit</a>
+                                    <a class="btn btn-default" href="@Url.Action("Availability", "AppointmentBooking", new { area = "Admin", serviceId = service.Id })">Availability</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>

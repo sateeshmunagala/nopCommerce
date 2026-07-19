@@ -43,6 +43,31 @@ public record ProductAppointmentBookingModel : BaseNopEntityModel
     public string CalendarProvider { get; set; }
 
     /// <summary>
+    /// Gets or sets the mapped service identifier
+    /// </summary>
+    public int ServiceId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the service name
+    /// </summary>
+    public string ServiceName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the service description
+    /// </summary>
+    public string ServiceDescription { get; set; }
+
+    /// <summary>
+    /// Gets or sets available slots
+    /// </summary>
+    public IList<AvailableSlotModel> AvailableSlots { get; set; } = new List<AvailableSlotModel>();
+
+    /// <summary>
+    /// Gets or sets intake questions
+    /// </summary>
+    public IList<ServiceQuestionModel> Questions { get; set; } = new List<ServiceQuestionModel>();
+
+    /// <summary>
     /// Gets a value indicating whether a booking URL exists
     /// </summary>
     public bool HasBookingUrl => !string.IsNullOrWhiteSpace(BookingUrl);

@@ -21,23 +21,36 @@ public class RouteProvider : BaseRouteProvider, IRouteProvider
             pattern: "Admin/AppointmentBooking/Configure",
             defaults: new { controller = "AppointmentBooking", action = "Configure", area = AreaNames.ADMIN });
 
+        endpointRouteBuilder.MapControllerRoute(name: "Nop.Plugin.Misc.AppointmentBooking.Services",
+            pattern: "Admin/AppointmentBooking/Services",
+            defaults: new { controller = "AppointmentBooking", action = "Services", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(name: "Nop.Plugin.Misc.AppointmentBooking.EditService",
+            pattern: "Admin/AppointmentBooking/Service/Edit/{id?}",
+            defaults: new { controller = "AppointmentBooking", action = "EditService", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(name: "Nop.Plugin.Misc.AppointmentBooking.Availability",
+            pattern: "Admin/AppointmentBooking/Service/{serviceId}/Availability",
+            defaults: new { controller = "AppointmentBooking", action = "Availability", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(name: "Nop.Plugin.Misc.AppointmentBooking.Bookings",
+            pattern: "Admin/AppointmentBooking/Bookings",
+            defaults: new { controller = "AppointmentBooking", action = "Bookings", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(name: "Nop.Plugin.Misc.AppointmentBooking.BookingDetails",
+            pattern: "Admin/AppointmentBooking/Booking/{id}",
+            defaults: new { controller = "AppointmentBooking", action = "BookingDetails", area = AreaNames.ADMIN });
+
         var lang = GetLanguageRoutePattern();
 
         endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.ProductBookingRouteName,
             pattern: $"{lang}/appointment-booking/product/{{productId}}",
             defaults: new { controller = "AppointmentBooking", action = "ProductBooking" });
 
-        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.CalendarConnectRouteName,
-            pattern: $"{lang}/appointment-booking/calendar/connect",
-            defaults: new { controller = "CalendarConnection", action = "Connect" });
+        endpointRouteBuilder.MapControllerRoute(name: "Nop.Plugin.Misc.AppointmentBooking.HoldSlot",
+            pattern: $"{lang}/appointment-booking/product/{{productId}}/hold",
+            defaults: new { controller = "AppointmentBooking", action = "HoldSlot" });
 
-        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.CalendarCallbackRouteName,
-            pattern: $"{lang}/appointment-booking/calendar/callback",
-            defaults: new { controller = "CalendarConnection", action = "Callback" });
-
-        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.CalendarDisconnectRouteName,
-            pattern: $"{lang}/appointment-booking/calendar/disconnect",
-            defaults: new { controller = "CalendarConnection", action = "Disconnect" });
     }
 
     /// <summary>

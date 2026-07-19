@@ -21,17 +21,12 @@ public static class AppointmentBookingDefaults
     public static string ProductBookingRouteName => "Nop.Plugin.Misc.AppointmentBooking.ProductBooking";
 
     /// <summary>
-    /// Gets the calendar connect route name
+    /// Gets the services administration menu system name
     /// </summary>
-    public static string CalendarConnectRouteName => "Nop.Plugin.Misc.AppointmentBooking.CalendarConnect";
+    public static string ServicesAdminMenuSystemName => "Nop.Plugin.Misc.AppointmentBooking.ServicesAdminMenu";
 
     /// <summary>
-    /// Gets the calendar callback route name
+    /// Gets the bookings administration menu system name
     /// </summary>
-    public static string CalendarCallbackRouteName => "Nop.Plugin.Misc.AppointmentBooking.CalendarCallback";
-
-    /// <summary>
-    /// Gets the calendar disconnect route name
-    /// </summary>
-    public static string CalendarDisconnectRouteName => "Nop.Plugin.Misc.AppointmentBooking.CalendarDisconnect";
+    public static string BookingsAdminMenuSystemName => "Nop.Plugin.Misc.AppointmentBooking.BookingsAdminMenu";
 }

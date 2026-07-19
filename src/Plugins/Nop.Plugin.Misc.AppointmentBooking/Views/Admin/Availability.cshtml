@@ -1,0 +1,103 @@
+@{
+    Layout = "_AdminLayout";
+    var service = (BookableService)ViewBag.Service;
+    var rules = (IList<AvailabilityRule>)ViewBag.Rules;
+    var exceptions = (IList<AvailabilityException>)ViewBag.Exceptions;
+    var questions = (IList<ServiceQuestion>)ViewBag.Questions;
+    ViewBag.PageTitle = "Appointment availability";
+    NopHtml.SetActiveMenuItemSystemName(AppointmentBookingDefaults.ServicesAdminMenuSystemName);
+}
+
+<div class="content-header clearfix">
+    <h1 class="float-left">Availability - @service.Name</h1>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="card card-default">
+            <div class="card-header">Weekly rules</div>
+            <div class="card-body">
+                <form asp-controller="AppointmentBooking" asp-action="AddAvailabilityRule" asp-area="Admin" method="post" class="form-inline mb-3">
+                    <input type="hidden" name="ServiceId" value="@service.Id" />
+                    <input type="hidden" name="VendorId" value="@service.VendorId" />
+                    <input name="DayOfWeek" class="form-control mr-2" placeholder="Day 0-6" />
+                    <input name="StartTime" class="form-control mr-2" placeholder="09:00" />
+                    <input name="EndTime" class="form-control mr-2" placeholder="17:00" />
+                    <input name="TimeZoneId" class="form-control mr-2" value="UTC" />
+                    <label class="mr-2"><input type="checkbox" name="IsActive" value="true" checked /> Active</label>
+                    <button class="btn btn-primary" type="submit">Add rule</button>
+                </form>
+                <table class="table table-bordered">
+                    <tbody>
+                        @foreach (var rule in rules)
+                        {
+                            <tr>
+                                <td>@rule.DayOfWeek</td>
+                                <td>@rule.StartTimeUtc.ToString("HH:mm") - @rule.EndTimeUtc.ToString("HH:mm")</td>
+                                <td>@rule.TimeZoneId</td>
+                                <td>@rule.IsActive</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card card-default">
+            <div class="card-header">Exceptions</div>
+            <div class="card-body">
+                <form asp-controller="AppointmentBooking" asp-action="AddAvailabilityException" asp-area="Admin" method="post" class="form-inline mb-3">
+                    <input type="hidden" name="ServiceId" value="@service.Id" />
+                    <input type="hidden" name="VendorId" value="@service.VendorId" />
+                    <input name="ExceptionDateUtc" class="form-control mr-2" placeholder="2026-08-01" />
+                    <input name="StartTime" class="form-control mr-2" placeholder="09:00" />
+                    <input name="EndTime" class="form-control mr-2" placeholder="17:00" />
+                    <label class="mr-2"><input type="checkbox" name="IsAvailable" value="true" /> Available</label>
+                    <input name="Reason" class="form-control mr-2" placeholder="Reason" />
+                    <button class="btn btn-primary" type="submit">Add exception</button>
+                </form>
+                <table class="table table-bordered">
+                    <tbody>
+                        @foreach (var exception in exceptions)
+                        {
+                            <tr>
+                                <td>@exception.ExceptionDateUtc.ToString("yyyy-MM-dd")</td>
+                                <td>@exception.StartTimeUtc.ToString("HH:mm") - @exception.EndTimeUtc.ToString("HH:mm")</td>
+                                <td>@exception.IsAvailable</td>
+                                <td>@exception.Reason</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card card-default">
+            <div class="card-header">Intake questions</div>
+            <div class="card-body">
+                <form asp-controller="AppointmentBooking" asp-action="AddServiceQuestion" asp-area="Admin" method="post" class="form-inline mb-3">
+                    <input type="hidden" name="ServiceId" value="@service.Id" />
+                    <input name="QuestionText" class="form-control mr-2" placeholder="Question" />
+                    <input name="QuestionType" class="form-control mr-2" value="Text" />
+                    <label class="mr-2"><input type="checkbox" name="IsRequired" value="true" /> Required</label>
+                    <input name="DisplayOrder" class="form-control mr-2" placeholder="Order" />
+                    <input name="OptionsJson" class="form-control mr-2" placeholder="Options JSON" />
+                    <button class="btn btn-primary" type="submit">Add question</button>
+                </form>
+                <table class="table table-bordered">
+                    <tbody>
+                        @foreach (var question in questions)
+                        {
+                            <tr>
+                                <td>@question.DisplayOrder</td>
+                                <td>@question.QuestionText</td>
+                                <td>@question.QuestionType</td>
+                                <td>@question.IsRequired</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,4 +1,6 @@
 using Nop.Plugin.Misc.AppointmentBooking.Models;
+using Nop.Plugin.Misc.AppointmentBooking.Domains;
+using Nop.Core.Domain.Orders;
 
 namespace Nop.Plugin.Misc.AppointmentBooking.Services;
 
@@ -21,4 +23,48 @@ public interface IAppointmentBookingService
     /// <param name="customerId">Customer identifier</param>
     /// <returns>A task that represents the asynchronous operation</returns>
     Task<ProductAppointmentBookingModel> PrepareProductBookingModelAsync(int productId, int customerId);
+
+    Task<IList<BookableService>> GetAllServicesAsync();
+
+    Task<BookableService> GetServiceByIdAsync(int serviceId);
+
+    Task<BookableService> SaveServiceAsync(BookableService service);
+
+    Task<ServiceProductMapping> MapServiceToProductAsync(int serviceId, int productId, int vendorId);
+
+    Task<BookableService> GetServiceByProductAsync(int productId);
+
+    Task<ServiceProductMapping> GetActiveProductMappingAsync(int productId);
+
+    Task<IList<AvailabilityRule>> GetAvailabilityRulesAsync(int serviceId);
+
+    Task<AvailabilityRule> SaveAvailabilityRuleAsync(AvailabilityRule rule);
+
+    Task<IList<AvailabilityException>> GetAvailabilityExceptionsAsync(int serviceId);
+
+    Task<AvailabilityException> SaveAvailabilityExceptionAsync(AvailabilityException availabilityException);
+
+    Task<IList<ServiceQuestion>> GetServiceQuestionsAsync(int serviceId);
+
+    Task<ServiceQuestion> SaveServiceQuestionAsync(ServiceQuestion question);
+
+    Task<IList<AvailableSlotModel>> GenerateAvailableSlotsAsync(int serviceId, DateTime fromUtc, DateTime toUtc);
+
+    Task<TimeSlotHold> CreateTimeSlotHoldAsync(int serviceId, int productId, int customerId, DateTime startUtc);
+
+    Task<int> ReleaseExpiredHoldsAsync();
+
+    Task<TimeSlotHold> GetActiveHoldForCustomerProductAsync(int customerId, int productId);
+
+    Task<Booking> ConvertHoldToBookingAsync(TimeSlotHold hold, Order order, OrderItem orderItem, string status = BookingStatus.PendingPayment);
+
+    Task ConfirmBookingsForOrderAsync(Order order);
+
+    Task CancelBookingAsync(int bookingId, string reason);
+
+    Task SaveBookingAnswersAsync(int bookingId, IDictionary<int, string> answers);
+
+    Task<IList<Booking>> GetAllBookingsAsync();
+
+    Task<Booking> GetBookingByIdAsync(int bookingId);
 }

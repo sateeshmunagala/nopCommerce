@@ -20,8 +20,12 @@
     <None Remove="Content\appointment-booking.css" />
     <None Remove="Content\appointment-booking.js" />
     <None Remove="plugin.json" />
+    <None Remove="Views\Admin\Availability.cshtml" />
+    <None Remove="Views\Admin\BookingDetails.cshtml" />
+    <None Remove="Views\Admin\Bookings.cshtml" />
+    <None Remove="Views\Admin\EditService.cshtml" />
+    <None Remove="Views\Admin\Services.cshtml" />
     <None Remove="Views\AppointmentBooking\ProductBooking.cshtml" />
-    <None Remove="Views\CalendarConnection\VendorConnection.cshtml" />
     <None Remove="Views\Configure.cshtml" />
     <None Remove="Views\_ViewImports.cshtml" />
   </ItemGroup>
@@ -36,10 +40,22 @@
     <Content Include="plugin.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Views\AppointmentBooking\ProductBooking.cshtml">
+    <Content Include="Views\Admin\Availability.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Views\CalendarConnection\VendorConnection.cshtml">
+    <Content Include="Views\Admin\BookingDetails.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\Bookings.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\EditService.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\Services.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\AppointmentBooking\ProductBooking.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Configure.cshtml">

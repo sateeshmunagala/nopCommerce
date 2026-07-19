@@ -56,6 +56,42 @@
     margin-top: 8px;
 }
 
+.appointment-booking__slots {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0 16px;
+}
+
+.appointment-booking__slot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.appointment-booking__slot input {
+    margin: 0;
+}
+
+.appointment-booking__questions {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.appointment-booking__question {
+    display: grid;
+    gap: 6px;
+}
+
+.appointment-booking__question input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
 .appointment-booking__placeholder {
     margin: 0;
     color: #666;

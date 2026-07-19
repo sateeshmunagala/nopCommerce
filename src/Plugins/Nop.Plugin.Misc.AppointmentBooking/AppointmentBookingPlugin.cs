@@ -60,8 +60,7 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     {
         return Task.FromResult<IList<string>>(new List<string>
         {
-            PublicWidgetZones.ProductDetailsOverviewBottom,
-            PublicWidgetZones.VendorInfoBottom
+            PublicWidgetZones.ProductDetailsOverviewBottom
         });
     }
 
@@ -76,9 +75,6 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         if (widgetZone.Equals(PublicWidgetZones.ProductDetailsOverviewBottom))
             return typeof(ProductAppointmentBookingViewComponent);
-
-        if (widgetZone.Equals(PublicWidgetZones.VendorInfoBottom))
-            return typeof(VendorCalendarConnectionViewComponent);
 
         return null;
     }
@@ -117,8 +113,8 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AppointmentBooking.CalendarProvider"] = "Calendar provider",
             ["Plugins.Misc.AppointmentBooking.CalendarProvider.Hint"] = "Enter a generic calendar provider label shown to vendors.",
             ["Plugins.Misc.AppointmentBooking.Configuration.Saved"] = "Appointment booking settings have been saved.",
-            ["Plugins.Misc.AppointmentBooking.Calendar.ConnectPlaceholder"] = "Calendar connection will be completed in the next phase.",
-            ["Plugins.Misc.AppointmentBooking.Calendar.DisconnectPlaceholder"] = "Calendar disconnection will be completed in the next phase."
+            ["Plugins.Misc.AppointmentBooking.Services"] = "Appointment services",
+            ["Plugins.Misc.AppointmentBooking.Bookings"] = "Appointment bookings"
         });
 
         await base.InstallAsync();

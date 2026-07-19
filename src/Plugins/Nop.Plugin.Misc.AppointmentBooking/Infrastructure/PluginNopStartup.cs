@@ -19,7 +19,6 @@ public class PluginNopStartup : INopStartup
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IAppointmentBookingService, AppointmentBookingService>();
-        services.AddScoped<ICalendarIntegrationService, CalendarIntegrationService>();
     }
 
     /// <summary>

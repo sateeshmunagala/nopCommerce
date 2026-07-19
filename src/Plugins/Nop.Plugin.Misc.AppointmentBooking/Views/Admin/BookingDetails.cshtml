@@ -1,0 +1,44 @@
+@model BookingAdminModel
+
+@{
+    Layout = "_AdminLayout";
+    ViewBag.PageTitle = "Appointment booking details";
+    NopHtml.SetActiveMenuItemSystemName(AppointmentBookingDefaults.BookingsAdminMenuSystemName);
+}
+
+<div class="content-header clearfix">
+    <h1 class="float-left">Appointment booking #@Model.Id</h1>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="card card-default">
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Status</dt>
+                    <dd class="col-sm-9">@Model.Status</dd>
+                    <dt class="col-sm-3">Service</dt>
+                    <dd class="col-sm-9">@Model.ServiceId</dd>
+                    <dt class="col-sm-3">Product</dt>
+                    <dd class="col-sm-9">@Model.ProductId</dd>
+                    <dt class="col-sm-3">Customer</dt>
+                    <dd class="col-sm-9">@Model.CustomerId</dd>
+                    <dt class="col-sm-3">Order</dt>
+                    <dd class="col-sm-9">@Model.OrderId</dd>
+                    <dt class="col-sm-3">Order item</dt>
+                    <dd class="col-sm-9">@Model.OrderItemId</dd>
+                    <dt class="col-sm-3">Start</dt>
+                    <dd class="col-sm-9">@Model.StartUtc.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+                    <dt class="col-sm-3">End</dt>
+                    <dd class="col-sm-9">@Model.EndUtc.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+                    <dt class="col-sm-3">Attendee</dt>
+                    <dd class="col-sm-9">@Model.AttendeeName @Model.AttendeeEmail @Model.AttendeePhone</dd>
+                    <dt class="col-sm-3">Notes</dt>
+                    <dd class="col-sm-9">@Model.AttendeeNotes</dd>
+                    <dt class="col-sm-3">Cancellation</dt>
+                    <dd class="col-sm-9">@Model.CancellationReason</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</section>

@@ -7,8 +7,6 @@ Future plugin-owned schema:
 - AppointmentBooking_AvailabilityException
 - AppointmentBooking_Booking
 - AppointmentBooking_BookingParticipant
-- AppointmentBooking_CalendarIntegration
-- AppointmentBooking_CalendarEvent
 - AppointmentBooking_ServiceQuestion
 - AppointmentBooking_BookingAnswer
 - AppointmentBooking_NotificationLog
