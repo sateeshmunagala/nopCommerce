@@ -9,8 +9,7 @@
 }
 
 .appointment-booking__summary h2,
-.appointment-booking__summary h3,
-.vendor-calendar-connection h2 {
+.appointment-booking__summary h3 {
     margin: 0 0 10px;
 }
 
@@ -35,20 +34,6 @@
 .appointment-booking__header small {
     color: #666;
     font-weight: 400;
-}
-
-.appointment-booking__frame {
-    overflow: hidden;
-    margin: 14px 0;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-}
-
-.appointment-booking__frame iframe {
-    display: block;
-    width: 100%;
-    min-height: 520px;
-    border: 0;
 }
 
 .appointment-booking__link {
@@ -95,24 +80,6 @@
 .appointment-booking__placeholder {
     margin: 0;
     color: #666;
-}
-
-.vendor-calendar-connection {
-    margin: 24px 0;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    background: #fff;
-}
-
-.vendor-calendar-connection__body p {
-    margin: 0 0 14px;
-}
-
-.vendor-calendar-connection__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
 }
 
 @media (min-width: 768px) {

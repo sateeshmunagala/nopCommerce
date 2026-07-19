@@ -11,15 +11,12 @@ public record ConfigurationModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.Enabled")]
     public bool Enabled { get; set; }
 
-    [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.DefaultBookingUrl")]
-    public string DefaultBookingUrl { get; set; }
-
     [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.DefaultDurationMinutes")]
     public int DefaultDurationMinutes { get; set; }
 
-    [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.AllowCalendarIframe")]
-    public bool AllowCalendarIframe { get; set; }
+    [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.DefaultMinAdvanceBookingHours")]
+    public int DefaultMinAdvanceBookingHours { get; set; }
 
-    [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.CalendarProvider")]
-    public string CalendarProvider { get; set; }
+    [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.DefaultMaxAdvanceBookingDays")]
+    public int DefaultMaxAdvanceBookingDays { get; set; }
 }

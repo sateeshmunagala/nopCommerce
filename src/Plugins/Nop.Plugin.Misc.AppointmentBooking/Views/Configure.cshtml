@@ -21,15 +21,6 @@
                     <nop-nested-setting asp-for="Enabled">
                         <div class="form-group row">
                             <div class="col-md-3">
-                                <nop-label asp-for="DefaultBookingUrl" />
-                            </div>
-                            <div class="col-md-9">
-                                <nop-editor asp-for="DefaultBookingUrl" />
-                                <span asp-validation-for="DefaultBookingUrl"></span>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <div class="col-md-3">
                                 <nop-label asp-for="DefaultDurationMinutes" />
                             </div>
                             <div class="col-md-9">
@@ -39,20 +30,20 @@
                         </div>
                         <div class="form-group row">
                             <div class="col-md-3">
-                                <nop-label asp-for="AllowCalendarIframe" />
+                                <nop-label asp-for="DefaultMinAdvanceBookingHours" />
                             </div>
                             <div class="col-md-9">
-                                <nop-editor asp-for="AllowCalendarIframe" />
-                                <span asp-validation-for="AllowCalendarIframe"></span>
+                                <nop-editor asp-for="DefaultMinAdvanceBookingHours" />
+                                <span asp-validation-for="DefaultMinAdvanceBookingHours"></span>
                             </div>
                         </div>
                         <div class="form-group row">
                             <div class="col-md-3">
-                                <nop-label asp-for="CalendarProvider" />
+                                <nop-label asp-for="DefaultMaxAdvanceBookingDays" />
                             </div>
                             <div class="col-md-9">
-                                <nop-editor asp-for="CalendarProvider" />
-                                <span asp-validation-for="CalendarProvider"></span>
+                                <nop-editor asp-for="DefaultMaxAdvanceBookingDays" />
+                                <span asp-validation-for="DefaultMaxAdvanceBookingDays"></span>
                             </div>
                         </div>
                     </nop-nested-setting>

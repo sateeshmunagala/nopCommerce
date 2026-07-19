@@ -1,0 +1,73 @@
+@model IList<ServiceListItemModel>
+
+@{
+    Layout = "_ColumnsTwo";
+
+    NopHtml.AddTitleParts("Services");
+    NopHtml.AddTitleParts(T("PageTitle.Account").Text);
+    NopHtml.AddCssFileParts(@"~/Plugins/Misc.AppointmentBooking/Content/vendor-services.css", null);
+    NopHtml.AddScriptParts(ResourceLocation.Footer, @"~/Plugins/Misc.AppointmentBooking/Content/vendor-services.js");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-appointment-services-page");
+}
+
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = AppointmentBookingDefaults.AccountServicesTabId })
+}
+
+<div class="page account-page appointment-services-page">
+    <div class="appointment-account-header">
+        <div>
+            <h1>Services</h1>
+            <span class="service-chip">1:1 Call</span>
+        </div>
+        <a class="button-1 appointment-primary-action" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountCreateServiceRouteName)">+ Add New</a>
+    </div>
+
+    <div class="page-body">
+        @if (!Model.Any())
+        {
+            <div class="no-data">No services yet.</div>
+        }
+        else
+        {
+            <div class="vendor-service-grid">
+                @foreach (var service in Model)
+                {
+                    <article class="vendor-service-card">
+                        <div class="vendor-service-card-head">
+                            <span class="service-chip">1:1 Call</span>
+                            <span class="service-status @(service.IsPublic ? "public" : "private")">@(service.IsPublic ? "Public" : "Hidden")</span>
+                        </div>
+                        <h2>@service.Title</h2>
+                        @if (!string.IsNullOrWhiteSpace(service.Description))
+                        {
+                            <p>@service.Description</p>
+                        }
+                        <dl class="service-facts">
+                            <div>
+                                <dt>Duration</dt>
+                                <dd>@service.DurationMinutes min</dd>
+                            </div>
+                            <div>
+                                <dt>Price</dt>
+                                <dd>@(string.IsNullOrEmpty(service.Price) ? "Not set" : service.Price)</dd>
+                            </div>
+                        </dl>
+                        <div class="vendor-service-actions">
+                            <a class="button-2" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountEditServiceRouteName, new { id = service.Id })">Edit</a>
+                            <button type="button" class="button-2 appointment-placeholder">Analytics</button>
+                            <button type="button" class="icon-button appointment-placeholder" aria-label="Share">Share</button>
+                            <button type="button" class="icon-button appointment-placeholder" aria-label="More">...</button>
+                        </div>
+                        <div class="vendor-service-links">
+                            <a href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServiceAvailabilityRouteName, new { id = service.Id })">Availability</a>
+                            <a href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServiceQuestionsRouteName, new { id = service.Id })">Questions</a>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</div>

@@ -142,10 +142,7 @@ public class AppointmentBookingService : IAppointmentBookingService
             ProductName = product.Name,
             ShortDescription = product.ShortDescription,
             Price = product.Price > decimal.Zero ? await _priceFormatter.FormatPriceAsync(product.Price) : string.Empty,
-            BookingUrl = string.Empty,
             DefaultDurationMinutes = service.DurationMinutes,
-            AllowCalendarIframe = false,
-            CalendarProvider = string.Empty,
             ServiceId = service.Id,
             ServiceName = service.Name,
             ServiceDescription = service.Description,
@@ -165,6 +162,18 @@ public class AppointmentBookingService : IAppointmentBookingService
     public async Task<IList<BookableService>> GetAllServicesAsync()
     {
         return await _bookableServiceRepository.Table.OrderBy(service => service.DisplayOrder).ThenBy(service => service.Name).ToListAsync();
+    }
+
+    public async Task<IList<BookableService>> GetServicesByVendorAsync(int vendorId)
+    {
+        if (vendorId <= 0)
+            return new List<BookableService>();
+
+        return await _bookableServiceRepository.Table
+            .Where(service => service.VendorId == vendorId)
+            .OrderBy(service => service.DisplayOrder)
+            .ThenBy(service => service.Name)
+            .ToListAsync();
     }
 
     public async Task<BookableService> GetServiceByIdAsync(int serviceId)
@@ -197,12 +206,12 @@ public class AppointmentBookingService : IAppointmentBookingService
 
         var now = DateTime.UtcNow;
         var activeMappings = await _serviceProductMappingRepository.Table
-            .Where(mapping => mapping.ProductId == productId && mapping.IsActive)
+            .Where(mapping => (mapping.ProductId == productId || mapping.ServiceId == serviceId) && mapping.IsActive)
             .ToListAsync();
 
         foreach (var mapping in activeMappings)
         {
-            if (mapping.ServiceId == serviceId)
+            if (mapping.ServiceId == serviceId && mapping.ProductId == productId)
             {
                 mapping.VendorId = vendorId;
                 mapping.UpdatedOnUtc = now;
@@ -229,6 +238,23 @@ public class AppointmentBookingService : IAppointmentBookingService
         return serviceMapping;
     }
 
+    public async Task ClearServiceProductMappingsAsync(int serviceId, int vendorId)
+    {
+        if (serviceId <= 0 || vendorId <= 0)
+            return;
+
+        var activeMappings = await _serviceProductMappingRepository.Table
+            .Where(mapping => mapping.ServiceId == serviceId && mapping.VendorId == vendorId && mapping.IsActive)
+            .ToListAsync();
+
+        foreach (var mapping in activeMappings)
+        {
+            mapping.IsActive = false;
+            mapping.UpdatedOnUtc = DateTime.UtcNow;
+            await _serviceProductMappingRepository.UpdateAsync(mapping);
+        }
+    }
+
     public async Task<BookableService> GetServiceByProductAsync(int productId)
     {
         var mapping = await GetActiveProductMappingAsync(productId);
@@ -242,6 +268,15 @@ public class AppointmentBookingService : IAppointmentBookingService
 
         return await _serviceProductMappingRepository.Table
             .FirstOrDefaultAsync(mapping => mapping.ProductId == productId && mapping.IsActive);
+    }
+
+    public async Task<ServiceProductMapping> GetActiveProductMappingByServiceAsync(int serviceId)
+    {
+        if (serviceId <= 0)
+            return null;
+
+        return await _serviceProductMappingRepository.Table
+            .FirstOrDefaultAsync(mapping => mapping.ServiceId == serviceId && mapping.IsActive);
     }
 
     public async Task<IList<AvailabilityRule>> GetAvailabilityRulesAsync(int serviceId)
@@ -497,6 +532,17 @@ public class AppointmentBookingService : IAppointmentBookingService
     public async Task<IList<Booking>> GetAllBookingsAsync()
     {
         return await _bookingRepository.Table.OrderByDescending(booking => booking.StartUtc).ToListAsync();
+    }
+
+    public async Task<IList<Booking>> GetBookingsByVendorAsync(int vendorId)
+    {
+        if (vendorId <= 0)
+            return new List<Booking>();
+
+        return await _bookingRepository.Table
+            .Where(booking => booking.VendorId == vendorId)
+            .OrderByDescending(booking => booking.StartUtc)
+            .ToListAsync();
     }
 
     public async Task<Booking> GetBookingByIdAsync(int bookingId)

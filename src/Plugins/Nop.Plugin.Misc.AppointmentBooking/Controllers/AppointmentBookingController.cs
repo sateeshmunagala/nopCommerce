@@ -122,10 +122,9 @@ public class AppointmentBookingController : BasePublicController
         var model = new ConfigurationModel
         {
             Enabled = _appointmentBookingSettings.Enabled,
-            DefaultBookingUrl = _appointmentBookingSettings.DefaultBookingUrl,
             DefaultDurationMinutes = _appointmentBookingSettings.DefaultDurationMinutes,
-            AllowCalendarIframe = _appointmentBookingSettings.AllowCalendarIframe,
-            CalendarProvider = _appointmentBookingSettings.CalendarProvider
+            DefaultMinAdvanceBookingHours = _appointmentBookingSettings.DefaultMinAdvanceBookingHours,
+            DefaultMaxAdvanceBookingDays = _appointmentBookingSettings.DefaultMaxAdvanceBookingDays
         };
 
         return View("~/Plugins/Misc.AppointmentBooking/Views/Configure.cshtml", model);
@@ -143,10 +142,9 @@ public class AppointmentBookingController : BasePublicController
             return Configure();
 
         _appointmentBookingSettings.Enabled = model.Enabled;
-        _appointmentBookingSettings.DefaultBookingUrl = model.DefaultBookingUrl?.Trim() ?? string.Empty;
         _appointmentBookingSettings.DefaultDurationMinutes = model.DefaultDurationMinutes;
-        _appointmentBookingSettings.AllowCalendarIframe = model.AllowCalendarIframe;
-        _appointmentBookingSettings.CalendarProvider = model.CalendarProvider?.Trim() ?? string.Empty;
+        _appointmentBookingSettings.DefaultMinAdvanceBookingHours = model.DefaultMinAdvanceBookingHours;
+        _appointmentBookingSettings.DefaultMaxAdvanceBookingDays = model.DefaultMaxAdvanceBookingDays;
 
         await _settingService.SaveSettingAsync(_appointmentBookingSettings);
 
@@ -212,7 +210,8 @@ public class AppointmentBookingController : BasePublicController
         var service = id > 0 ? await _appointmentBookingService.GetServiceByIdAsync(id) : new BookableService
         {
             DurationMinutes = _appointmentBookingSettings.DefaultDurationMinutes > 0 ? _appointmentBookingSettings.DefaultDurationMinutes : 30,
-            MaxAdvanceBookingDays = 14,
+            MinAdvanceBookingHours = _appointmentBookingSettings.DefaultMinAdvanceBookingHours,
+            MaxAdvanceBookingDays = _appointmentBookingSettings.DefaultMaxAdvanceBookingDays > 0 ? _appointmentBookingSettings.DefaultMaxAdvanceBookingDays : 14,
             IsActive = true
         };
 

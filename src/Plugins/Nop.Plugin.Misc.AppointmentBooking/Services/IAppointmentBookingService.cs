@@ -26,15 +26,21 @@ public interface IAppointmentBookingService
 
     Task<IList<BookableService>> GetAllServicesAsync();
 
+    Task<IList<BookableService>> GetServicesByVendorAsync(int vendorId);
+
     Task<BookableService> GetServiceByIdAsync(int serviceId);
 
     Task<BookableService> SaveServiceAsync(BookableService service);
 
     Task<ServiceProductMapping> MapServiceToProductAsync(int serviceId, int productId, int vendorId);
 
+    Task ClearServiceProductMappingsAsync(int serviceId, int vendorId);
+
     Task<BookableService> GetServiceByProductAsync(int productId);
 
     Task<ServiceProductMapping> GetActiveProductMappingAsync(int productId);
+
+    Task<ServiceProductMapping> GetActiveProductMappingByServiceAsync(int serviceId);
 
     Task<IList<AvailabilityRule>> GetAvailabilityRulesAsync(int serviceId);
 
@@ -65,6 +71,8 @@ public interface IAppointmentBookingService
     Task SaveBookingAnswersAsync(int bookingId, IDictionary<int, string> answers);
 
     Task<IList<Booking>> GetAllBookingsAsync();
+
+    Task<IList<Booking>> GetBookingsByVendorAsync(int vendorId);
 
     Task<Booking> GetBookingByIdAsync(int bookingId);
 }

@@ -13,22 +13,17 @@ public class AppointmentBookingSettings : ISettings
     public bool Enabled { get; set; }
 
     /// <summary>
-    /// Gets or sets the default booking URL
-    /// </summary>
-    public string DefaultBookingUrl { get; set; }
-
-    /// <summary>
     /// Gets or sets the default booking duration in minutes
     /// </summary>
     public int DefaultDurationMinutes { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether a calendar URL can be embedded in an iframe
+    /// Gets or sets the default minimum advance booking window in hours
     /// </summary>
-    public bool AllowCalendarIframe { get; set; }
+    public int DefaultMinAdvanceBookingHours { get; set; }
 
     /// <summary>
-    /// Gets or sets the calendar provider label
+    /// Gets or sets the default maximum advance booking window in days
     /// </summary>
-    public string CalendarProvider { get; set; }
+    public int DefaultMaxAdvanceBookingDays { get; set; }
 }

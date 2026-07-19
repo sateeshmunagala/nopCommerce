@@ -23,24 +23,9 @@ public record ProductAppointmentBookingModel : BaseNopEntityModel
     public string Price { get; set; }
 
     /// <summary>
-    /// Gets or sets the booking URL
-    /// </summary>
-    public string BookingUrl { get; set; }
-
-    /// <summary>
     /// Gets or sets the default booking duration in minutes
     /// </summary>
     public int DefaultDurationMinutes { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the booking URL can be rendered in an iframe
-    /// </summary>
-    public bool AllowCalendarIframe { get; set; }
-
-    /// <summary>
-    /// Gets or sets the calendar provider label
-    /// </summary>
-    public string CalendarProvider { get; set; }
 
     /// <summary>
     /// Gets or sets the mapped service identifier
@@ -67,8 +52,4 @@ public record ProductAppointmentBookingModel : BaseNopEntityModel
     /// </summary>
     public IList<ServiceQuestionModel> Questions { get; set; } = new List<ServiceQuestionModel>();
 
-    /// <summary>
-    /// Gets a value indicating whether a booking URL exists
-    /// </summary>
-    public bool HasBookingUrl => !string.IsNullOrWhiteSpace(BookingUrl);
 }

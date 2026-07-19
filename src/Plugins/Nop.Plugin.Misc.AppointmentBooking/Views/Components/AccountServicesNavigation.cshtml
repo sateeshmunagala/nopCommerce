@@ -1,0 +1,5 @@
+@model Nop.Web.Models.Customer.CustomerNavigationModel
+
+<li class="customer-appointment-services @(Model.SelectedTab == AppointmentBookingDefaults.AccountServicesTabId || Model.SelectedTab == AppointmentBookingDefaults.AccountBookingsTabId ? "active" : "inactive")">
+    <a href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServicesRouteName)">Services</a>
+</li>

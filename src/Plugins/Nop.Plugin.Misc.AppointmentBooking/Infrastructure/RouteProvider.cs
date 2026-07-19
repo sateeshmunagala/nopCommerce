@@ -51,6 +51,30 @@ public class RouteProvider : BaseRouteProvider, IRouteProvider
             pattern: $"{lang}/appointment-booking/product/{{productId}}/hold",
             defaults: new { controller = "AppointmentBooking", action = "HoldSlot" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountServicesRouteName,
+            pattern: $"{lang}/appointment-booking/account/services",
+            defaults: new { controller = "VendorAppointmentBooking", action = "Services" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountCreateServiceRouteName,
+            pattern: $"{lang}/appointment-booking/account/services/create",
+            defaults: new { controller = "VendorAppointmentBooking", action = "CreateService" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountEditServiceRouteName,
+            pattern: $"{lang}/appointment-booking/account/services/edit/{{id}}",
+            defaults: new { controller = "VendorAppointmentBooking", action = "EditService" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountServiceAvailabilityRouteName,
+            pattern: $"{lang}/appointment-booking/account/services/{{id}}/availability",
+            defaults: new { controller = "VendorAppointmentBooking", action = "Availability" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountServiceQuestionsRouteName,
+            pattern: $"{lang}/appointment-booking/account/services/{{id}}/questions",
+            defaults: new { controller = "VendorAppointmentBooking", action = "Questions" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountBookingsRouteName,
+            pattern: $"{lang}/appointment-booking/account/bookings",
+            defaults: new { controller = "VendorAppointmentBooking", action = "Bookings" });
+
     }
 
     /// <summary>

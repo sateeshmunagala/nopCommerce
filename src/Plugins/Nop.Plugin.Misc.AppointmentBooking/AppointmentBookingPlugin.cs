@@ -60,7 +60,8 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     {
         return Task.FromResult<IList<string>>(new List<string>
         {
-            PublicWidgetZones.ProductDetailsOverviewBottom
+            PublicWidgetZones.ProductDetailsOverviewBottom,
+            PublicWidgetZones.AccountNavigationAfter
         });
     }
 
@@ -76,6 +77,9 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (widgetZone.Equals(PublicWidgetZones.ProductDetailsOverviewBottom))
             return typeof(ProductAppointmentBookingViewComponent);
 
+        if (widgetZone.Equals(PublicWidgetZones.AccountNavigationAfter))
+            return typeof(AccountServicesNavigationViewComponent);
+
         return null;
     }
 
@@ -88,10 +92,9 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _settingService.SaveSettingAsync(new AppointmentBookingSettings
         {
             Enabled = true,
-            DefaultBookingUrl = string.Empty,
             DefaultDurationMinutes = 30,
-            AllowCalendarIframe = false,
-            CalendarProvider = "Calendar"
+            DefaultMinAdvanceBookingHours = 1,
+            DefaultMaxAdvanceBookingDays = 14
         });
 
         if (!_widgetSettings.ActiveWidgetSystemNames.Contains(AppointmentBookingDefaults.SystemName))
@@ -104,17 +107,23 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         {
             ["Plugins.Misc.AppointmentBooking.Enabled"] = "Enabled",
             ["Plugins.Misc.AppointmentBooking.Enabled.Hint"] = "Check to enable appointment booking surfaces.",
-            ["Plugins.Misc.AppointmentBooking.DefaultBookingUrl"] = "Default booking URL",
-            ["Plugins.Misc.AppointmentBooking.DefaultBookingUrl.Hint"] = "Enter the default public booking calendar URL.",
             ["Plugins.Misc.AppointmentBooking.DefaultDurationMinutes"] = "Default duration",
             ["Plugins.Misc.AppointmentBooking.DefaultDurationMinutes.Hint"] = "Enter the default appointment duration in minutes.",
-            ["Plugins.Misc.AppointmentBooking.AllowCalendarIframe"] = "Allow calendar iframe",
-            ["Plugins.Misc.AppointmentBooking.AllowCalendarIframe.Hint"] = "Check to embed the configured booking URL in an iframe.",
-            ["Plugins.Misc.AppointmentBooking.CalendarProvider"] = "Calendar provider",
-            ["Plugins.Misc.AppointmentBooking.CalendarProvider.Hint"] = "Enter a generic calendar provider label shown to vendors.",
+            ["Plugins.Misc.AppointmentBooking.DefaultMinAdvanceBookingHours"] = "Minimum advance booking hours",
+            ["Plugins.Misc.AppointmentBooking.DefaultMinAdvanceBookingHours.Hint"] = "Enter the default minimum time before a customer can book a slot.",
+            ["Plugins.Misc.AppointmentBooking.DefaultMaxAdvanceBookingDays"] = "Maximum advance booking days",
+            ["Plugins.Misc.AppointmentBooking.DefaultMaxAdvanceBookingDays.Hint"] = "Enter the default number of days ahead that customers can book.",
             ["Plugins.Misc.AppointmentBooking.Configuration.Saved"] = "Appointment booking settings have been saved.",
+            ["Plugins.Misc.AppointmentBooking.Appointments"] = "Appointments",
             ["Plugins.Misc.AppointmentBooking.Services"] = "Appointment services",
-            ["Plugins.Misc.AppointmentBooking.Bookings"] = "Appointment bookings"
+            ["Plugins.Misc.AppointmentBooking.Bookings"] = "Appointment bookings",
+            ["Plugins.Misc.AppointmentBooking.Account.Service.Title"] = "Title",
+            ["Plugins.Misc.AppointmentBooking.Account.Service.ShortDescription"] = "Short description",
+            ["Plugins.Misc.AppointmentBooking.Account.Service.Price"] = "Price",
+            ["Plugins.Misc.AppointmentBooking.Account.Service.DurationMinutes"] = "Duration",
+            ["Plugins.Misc.AppointmentBooking.Account.Service.Description"] = "Service description",
+            ["Plugins.Misc.AppointmentBooking.Account.Service.MappedProduct"] = "Mapped product",
+            ["Plugins.Misc.AppointmentBooking.Account.Service.IsPublic"] = "Visible"
         });
 
         await base.InstallAsync();

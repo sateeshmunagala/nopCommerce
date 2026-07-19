@@ -47,25 +47,36 @@ public class EventConsumer : IConsumer<AdminMenuCreatedEvent>,
         if (plugin == null || !_pluginManager.IsPluginActive(plugin))
             return;
 
-        var baseMenuItem = eventMessage.RootMenuItem.GetItemBySystemName("Sales");
-        baseMenuItem.InsertAfter("Current shopping carts and wishlists", new AdminMenuItem
-        {
-            Visible = true,
-            SystemName = AppointmentBookingDefaults.BookingsAdminMenuSystemName,
-            Title = await _localizationService.GetResourceAsync("Plugins.Misc.AppointmentBooking.Bookings"),
-            Url = eventMessage.GetMenuItemUrl("AppointmentBooking", "Bookings"),
-            IconClass = "far fa-calendar-check",
-            PermissionNames = new List<string> { StandardPermission.Configuration.MANAGE_PLUGINS }
-        });
+        if (eventMessage.RootMenuItem.ContainsSystemName(AppointmentBookingDefaults.AppointmentsAdminMenuSystemName))
+            return;
 
-        baseMenuItem.InsertAfter("Current shopping carts and wishlists", new AdminMenuItem
+        eventMessage.RootMenuItem.ChildNodes.Add(new AdminMenuItem
         {
             Visible = true,
-            SystemName = AppointmentBookingDefaults.ServicesAdminMenuSystemName,
-            Title = await _localizationService.GetResourceAsync("Plugins.Misc.AppointmentBooking.Services"),
-            Url = eventMessage.GetMenuItemUrl("AppointmentBooking", "Services"),
+            SystemName = AppointmentBookingDefaults.AppointmentsAdminMenuSystemName,
+            Title = await _localizationService.GetResourceAsync("Plugins.Misc.AppointmentBooking.Appointments"),
             IconClass = "far fa-calendar-alt",
-            PermissionNames = new List<string> { StandardPermission.Configuration.MANAGE_PLUGINS }
+            ChildNodes = new List<AdminMenuItem>
+            {
+                new()
+                {
+                    Visible = true,
+                    SystemName = AppointmentBookingDefaults.ServicesAdminMenuSystemName,
+                    Title = await _localizationService.GetResourceAsync("Plugins.Misc.AppointmentBooking.Services"),
+                    Url = eventMessage.GetMenuItemUrl("AppointmentBooking", "Services"),
+                    IconClass = "far fa-calendar-alt",
+                    PermissionNames = new List<string> { StandardPermission.Configuration.MANAGE_PLUGINS }
+                },
+                new()
+                {
+                    Visible = true,
+                    SystemName = AppointmentBookingDefaults.BookingsAdminMenuSystemName,
+                    Title = await _localizationService.GetResourceAsync("Plugins.Misc.AppointmentBooking.Bookings"),
+                    Url = eventMessage.GetMenuItemUrl("AppointmentBooking", "Bookings"),
+                    IconClass = "far fa-calendar-check",
+                    PermissionNames = new List<string> { StandardPermission.Configuration.MANAGE_PLUGINS }
+                }
+            }
         });
     }
 
