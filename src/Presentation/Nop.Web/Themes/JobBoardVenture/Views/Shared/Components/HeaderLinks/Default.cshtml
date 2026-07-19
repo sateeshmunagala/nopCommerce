@@ -3,6 +3,10 @@
 @using Nop.Services.Helpers
 @inject IWebHelper webHelper
 
+@{
+    var savedJobsUrl = Url.RouteUrl("Plugin.Misc.AIInterview.MyActivity", new { tab = "saved-jobs" }) ?? "/my-activity?tab=saved-jobs";
+}
+
 <div class="header-links">
     <div class="jb-mobile-account">
         <button class="jb-account-toggle" type="button" aria-expanded="false" aria-controls="jb-mobile-account-popup" aria-label="@T("Account.MyAccount")">
@@ -65,7 +69,7 @@
         @if (Model.WishlistEnabled)
         {
             <li>
-                <a href="@Url.RouteUrl(NopRouteNames.General.WISHLIST)" class="ico-wishlist">
+                <a href="@savedJobsUrl" class="ico-wishlist">
                     <span class="wishlist-label">@T("Wishlist")</span>
                     <span class="wishlist-qty">@T("Wishlist.HeaderQuantity", Model.WishlistItems)</span>
                 </a>

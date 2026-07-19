@@ -30,6 +30,7 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
 public class MockAiInterviewController : BasePluginController
 {
+    private const string VoiceUnavailableMessage = "Voice mode is unavailable. Please type your answer below.";
     private static readonly string[] PracticeDifficultyKeywords =
     [
         "practice difficulty",
@@ -45,7 +46,7 @@ public class MockAiInterviewController : BasePluginController
         "interview skill"
     ];
 
-    private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, int ValueId, string Value);
+    private sealed record SelectedProductAttributeValueSnapshot(int AttributeId, string AttributeName, string TextPrompt, int ValueId, string Value);
     private sealed record SelectedProductAttributesSnapshot(IList<SelectedProductAttributeValueSnapshot> Attributes);
     private sealed record MockPracticeSelectionResult(string SelectedProductAttributesJson, string Difficulty, bool HasPracticeSkill, IList<string> Errors);
 
@@ -72,6 +73,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IProductTemplateService _productTemplateService;
     private readonly IProductAttributeParser _productAttributeParser;
     private readonly IProductAttributeService _productAttributeService;
+    private readonly IJobProductAccessService _jobProductAccessService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -95,7 +97,8 @@ public class MockAiInterviewController : BasePluginController
         IResumeProfileService resumeProfileService = null,
         IProductTemplateService productTemplateService = null,
         IProductAttributeParser productAttributeParser = null,
-        IProductAttributeService productAttributeService = null)
+        IProductAttributeService productAttributeService = null,
+        IJobProductAccessService jobProductAccessService = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -120,6 +123,7 @@ public class MockAiInterviewController : BasePluginController
         _productTemplateService = productTemplateService;
         _productAttributeParser = productAttributeParser;
         _productAttributeService = productAttributeService;
+        _jobProductAccessService = jobProductAccessService;
     }
 
     protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
@@ -160,6 +164,15 @@ public class MockAiInterviewController : BasePluginController
 
         var text = await GetLocalizedTextAsync(resourceKey, defaultValue);
         return Json(new { success = false, message = text, error = text });
+    }
+
+    protected IActionResult SafeSpeechUnavailable(string message = VoiceUnavailableMessage, int statusCode = 400)
+    {
+        if (HttpContext != null)
+            Response.StatusCode = statusCode;
+
+        var safeMessage = string.IsNullOrWhiteSpace(message) ? VoiceUnavailableMessage : message;
+        return Json(new { success = false, message = safeMessage, error = safeMessage });
     }
 
     protected virtual string MaskToken(string token)
@@ -228,6 +241,27 @@ public class MockAiInterviewController : BasePluginController
             return $"{Request.Scheme}://{Request.Host}{Request.PathBase}{relativeUrl}";
 
         return relativeUrl;
+    }
+
+    protected virtual async Task<string> BuildStartLoginRedirectUrlAsync(int productId, string sponsorToken = null)
+    {
+        var returnUrl = Request?.Headers?.Referer.ToString();
+        if (string.IsNullOrWhiteSpace(returnUrl) && productId > 0)
+        {
+            var product = await _productService.GetProductByIdAsync(productId);
+            if (product != null)
+            {
+                returnUrl = await BuildProductRedirectUrlAsync(product, new Dictionary<string, string>
+                {
+                    ["sponsorToken"] = sponsorToken
+                });
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(returnUrl))
+            returnUrl = Url?.RouteUrl(AIInterviewDefaults.IndexRouteName);
+
+        return Url?.RouteUrl(global::Nop.Core.Http.NopRouteNames.General.LOGIN, new { returnUrl });
     }
 
     protected virtual async Task<string> BuildRecordingShareUrlAsync(InterviewSession session)
@@ -410,6 +444,7 @@ public class MockAiInterviewController : BasePluginController
             snapshots.Add(new SelectedProductAttributeValueSnapshot(
                 attribute.Id,
                 attribute.Name,
+                mapping.TextPrompt,
                 value.Id,
                 value.Name));
             snapshotLabelsByValueId[value.Id] =
@@ -430,7 +465,8 @@ public class MockAiInterviewController : BasePluginController
             snapshotLabelsByValueId.TryGetValue(snapshot.ValueId, out var attributeLabels);
             attributeLabels ??=
             [
-                snapshot.AttributeName
+                snapshot.AttributeName,
+                snapshot.TextPrompt
             ];
 
             if (string.IsNullOrWhiteSpace(difficulty) &&
@@ -746,6 +782,9 @@ public class MockAiInterviewController : BasePluginController
             var product = await _productService.GetProductByIdAsync(productId);
             if (product != null)
             {
+                if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+                    return NotFound();
+
                 var redirectUrl = await BuildProductRedirectUrlAsync(product, new Dictionary<string, string>
                 {
                     ["sponsorToken"] = sponsorToken
@@ -763,10 +802,26 @@ public class MockAiInterviewController : BasePluginController
     public async Task<IActionResult> StartPost(Microsoft.AspNetCore.Http.IFormCollection form, int productId = 0, string difficulty = AIInterviewDefaults.DefaultInterviewDifficulty, string sponsorToken = null)
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
-        if (customer == null)
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request.", 401);
+        var isRegisteredCustomer = customer != null &&
+            await _customerService.IsRegisteredAsync(customer) &&
+            !string.IsNullOrWhiteSpace(customer.Email);
+        if (!isRegisteredCustomer)
+        {
+            var redirectUrl = await BuildStartLoginRedirectUrlAsync(productId, sponsorToken);
+            return Json(new
+            {
+                success = false,
+                message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request."),
+                error = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request."),
+                requiresLogin = true,
+                redirect = redirectUrl
+            });
+        }
 
         var product = productId > 0 ? await _productService.GetProductByIdAsync(productId) : null;
+        if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+            return await LocalizedErrorAsync("Common.NotAvailable", "The requested job is not available.", 404);
+
         var isMockPracticeProduct = await IsMockPracticeProductAsync(product);
         MockPracticeSelectionResult mockPracticeSelection = null;
         string selectedProductAttributesJson = null;
@@ -992,20 +1047,29 @@ public class MockAiInterviewController : BasePluginController
                 return RedirectToAction(nameof(Runtime), new { token = renewed.Session.Token });
         }
 
-        var model = _interviewRuntimeService == null
-            ? new Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel
+        Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel model;
+        if (_interviewRuntimeService == null)
+        {
+            var productName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview";
+            model = new Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel
             {
+                IsPracticeInterview = string.Equals(session.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase),
                 SessionId = session.Id,
                 ProductId = session.ProductId,
                 QuestionCount = NormalizeRuntimeQuestionCount(session),
                 SessionKey = session.SessionKey,
                 Token = session.Token,
                 Difficulty = session.Difficulty,
-                ProductName = (await _productService.GetProductByIdAsync(session.ProductId))?.Name ?? "Interview",
+                ProductName = productName,
+                RuntimeTopic = productName,
                 CurrentQuestion = string.Empty,
                 IsMockMode = true
-            }
-            : await _interviewRuntimeService.GetRuntimeModelAsync(token);
+            };
+        }
+        else
+        {
+            model = await _interviewRuntimeService.GetRuntimeModelAsync(token);
+        }
 
         ApplyRuntimeClientSettings(model, session);
 
@@ -1026,6 +1090,7 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.RefreshTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockRefreshTokenRouteName);
         model.ClientSettings.StopInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
         model.ClientSettings.SpeechTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechTokenRouteName);
+        model.ClientSettings.SpeechUsageUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechUsageRouteName);
         model.ClientSettings.AcknowledgeGuidelinesUrl = Url?.RouteUrl(AIInterviewDefaults.MockAcknowledgeGuidelinesRouteName);
         model.ClientSettings.ProductName = model.ProductName;
         model.ClientSettings.Token = session?.Token;
@@ -1074,6 +1139,7 @@ public class MockAiInterviewController : BasePluginController
             message = "Interview started.",
             question = currentQuestion,
             turn = currentTurn,
+            turns = model.Turns,
             newToken = tokenRenewal.Renewed ? tokenRenewal.Session.Token : null,
             tokenExpiryUtc = tokenRenewal.Renewed ? tokenRenewal.Session.TokenExpiryUtc : null
         });
@@ -1145,19 +1211,30 @@ public class MockAiInterviewController : BasePluginController
         return Json(new { success = true, message = "Guidelines acknowledgement logged." });
     }
 
-    [HttpPost]
-    public async Task<IActionResult> SubmitAnswer(string token, string answer)
+    [NonAction]
+    public Task<IActionResult> SubmitAnswer(string token, string answer)
     {
+        return SubmitAnswer(new SubmitInterviewAnswerRequest
+        {
+            Token = token,
+            Answer = answer
+        });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SubmitAnswer(SubmitInterviewAnswerRequest request)
+    {
+        var token = request?.Token;
         _logger?.LogInformation("SubmitAnswer called with session token {Token}", MaskToken(token));
 
         var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
         if (tokenRenewal.Session != null && tokenRenewal.Renewed)
-            token = tokenRenewal.Session.Token;
+            request = request with { Token = tokenRenewal.Session.Token };
 
         if (_interviewRuntimeService != null)
         {
-            var runtimeResponse = await _interviewRuntimeService.SubmitAnswerAsync(token, answer);
-            var sessionInfo = await _interviewSessionService.GetSessionByTokenAsync(token);
+            var runtimeResponse = await _interviewRuntimeService.SubmitAnswerAsync(request);
+            var sessionInfo = await _interviewSessionService.GetSessionByTokenAsync(request?.Token);
             var reportUrl = runtimeResponse?.IsTerminated == true ? GetMockReportUrl(sessionInfo?.Id ?? 0) : runtimeResponse?.ReportUrl;
             if (runtimeResponse != null && !runtimeResponse.Success)
             {
@@ -1173,6 +1250,7 @@ public class MockAiInterviewController : BasePluginController
                     reportUrl,
                     question = runtimeResponse?.Question,
                     turn = runtimeResponse?.Turn,
+                    turns = runtimeResponse?.Turns,
                     interrupted = runtimeResponse?.Interrupted == true,
                     message = runtimeResponse?.Message,
                     newToken = tokenRenewal.Session.Token,
@@ -1187,19 +1265,20 @@ public class MockAiInterviewController : BasePluginController
                 ReportUrl = reportUrl,
                 runtimeResponse.Question,
                 runtimeResponse.Turn,
+                runtimeResponse.Turns,
                 runtimeResponse.Interrupted,
                 runtimeResponse.Message
             });
         }
 
-        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
+        var session = await _interviewSessionService.GetSessionByTokenAsync(request?.Token);
         if (!IsSessionUsable(session))
         {
-            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"SubmitAnswer rejected invalid session for token {MaskToken(token)}.", await ResolveLogCustomerAsync(session));
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"SubmitAnswer rejected invalid session for token {MaskToken(request?.Token)}.", await ResolveLogCustomerAsync(session));
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
-        if (string.IsNullOrEmpty(answer))
+        if (string.IsNullOrEmpty(request?.Answer))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer", "Answer cannot be empty.");
 
         // Mock answer processing
@@ -1233,6 +1312,7 @@ public class MockAiInterviewController : BasePluginController
                     isTerminated = response?.IsTerminated == true,
                     message = response?.Message,
                     reportUrl,
+                    turns = response?.Turns,
                     newToken = tokenRenewal.Session.Token,
                     tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
                 });
@@ -1243,7 +1323,8 @@ public class MockAiInterviewController : BasePluginController
                 response.Success,
                 response.IsTerminated,
                 response.Message,
-                ReportUrl = reportUrl
+                ReportUrl = reportUrl,
+                response.Turns
             });
         }
 
@@ -1297,18 +1378,15 @@ public class MockAiInterviewController : BasePluginController
     public async Task<IActionResult> SpeechToken(string token)
     {
         if (_interviewRuntimeService == null)
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech token service is unavailable.");
+            return SafeSpeechUnavailable();
 
         var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
         if (tokenRenewal.Session != null && tokenRenewal.Renewed)
             token = tokenRenewal.Session.Token;
 
         var result = await _interviewRuntimeService.GetSpeechTokenAsync(token);
-        if (result == null)
-        {
-            await LogRuntimeIssueAsync("AI Interview speech token failure", $"Speech token retrieval failed for token {MaskToken(token)}.", await ResolveLogCustomerAsync(tokenRenewal.Session));
-            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech token service is unavailable.");
-        }
+        if (result == null || !result.Success)
+            return SafeSpeechUnavailable(result?.Message);
 
         if (tokenRenewal.Renewed)
         {
@@ -1324,6 +1402,37 @@ public class MockAiInterviewController : BasePluginController
         }
 
         return Json(new { success = true, token = result.Token, region = result.Region, expiresInSeconds = result.ExpiresInSeconds });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SpeechUsage(SpeechSynthesisUsageRequest request)
+    {
+        if (_interviewRuntimeService == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Speech usage service is unavailable.");
+
+        if (request == null || string.IsNullOrWhiteSpace(request.Token))
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(request?.Token);
+        if (tokenRenewal.Session == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+
+        if (tokenRenewal.Renewed)
+            request = request with { Token = tokenRenewal.Session.Token };
+
+        await _interviewRuntimeService.TrackSpeechSynthesisUsageAsync(request);
+
+        if (tokenRenewal.Renewed)
+        {
+            return Json(new
+            {
+                success = true,
+                newToken = tokenRenewal.Session.Token,
+                tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+            });
+        }
+
+        return Json(new { success = true });
     }
 
     [HttpPost]
@@ -1364,6 +1473,7 @@ public class MockAiInterviewController : BasePluginController
         if (customer == null)
             return Challenge();
 
+        var fallbackInterviewTitle = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Common.Interview");
         var sessions = ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
             .Where(session => string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -1375,7 +1485,7 @@ public class MockAiInterviewController : BasePluginController
             return new InterviewHistoryItemModel
             {
                 SessionId = session.Id,
-                JobTitle = product?.Name ?? "Interview",
+                JobTitle = product?.Name ?? fallbackInterviewTitle,
                 CreatedOnUtc = session.CreatedOnUtc,
                 CompletedOnUtc = session.CompletedOnUtc,
                 Status = session.CompletedOnUtc.HasValue
@@ -1425,6 +1535,12 @@ public class MockAiInterviewController : BasePluginController
                 turns = new List<InterviewTurn>();
             }
         }
+        var normalizedQuestionCount = NormalizeRuntimeQuestionCount(session);
+        var normalizedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, normalizedQuestionCount).ToList();
+        var parsedQuestionScores = ParseQuestionScores(session.QuestionScores);
+        if (parsedQuestionScores.Count != normalizedTurns.Count(turn => turn.Score.HasValue))
+            parsedQuestionScores = normalizedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList();
+
         var model = new InterviewReportModel
         {
             SessionId = session.Id,
@@ -1437,11 +1553,11 @@ public class MockAiInterviewController : BasePluginController
             Score = session.Score,
             IsCompleted = session.CompletedOnUtc.HasValue,
             QuestionScores = session.QuestionScores,
-            ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
-            ReportData = session.ReportData,
+            ParsedQuestionScores = parsedQuestionScores,
+            ReportData = InterviewReportSummaryHelper.NormalizePersistedReportData(session.ReportData, normalizedTurns, session.Score),
             RecordingUrl = !string.IsNullOrWhiteSpace(session.RecordingUrl) ? Url?.Action("Recording", "AIInterview", new { sessionId = session.Id }) : null,
             RecordingShareUrl = await BuildRecordingShareUrlAsync(session),
-            Turns = turns.Select(turn => new InterviewTurnViewModel
+            Turns = normalizedTurns.Select(turn => new InterviewTurnViewModel
             {
                 TurnId = turn.Id,
                 SequenceNumber = turn.SequenceNumber,
@@ -1457,6 +1573,7 @@ public class MockAiInterviewController : BasePluginController
                 AnsweredOnUtc = turn.AnsweredOnUtc
             }).ToList(),
             CreatedOnUtc = session.CreatedOnUtc,
+            ReportDateUtc = session.CompletedOnUtc ?? session.StartedOnUtc ?? session.CreatedOnUtc,
             CompletedOnUtc = session.CompletedOnUtc
         };
 
@@ -1542,6 +1659,8 @@ public class MockAiInterviewController : BasePluginController
         if (maxAttempts <= 0)
             return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidAttempts") });
 
+        expiryDateUtc = NormalizeInviteExpiryDateUtc(expiryDateUtc);
+
         if (expiryDateUtc.HasValue && expiryDateUtc.Value <= DateTime.UtcNow)
             return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidExpiry") });
 
@@ -1554,6 +1673,9 @@ public class MockAiInterviewController : BasePluginController
 
             if (customer?.VendorId > 0 && product.VendorId != customer.VendorId)
                 return Json(new { success = false, error = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound", "Product not found.") });
+
+            if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+                return Json(new { success = false, error = await GetLocalizedTextAsync("Common.NotAvailable", "The requested job is not available.") });
 
             var emails = email.Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
                               .Select(e => e.Trim())
@@ -1633,6 +1755,14 @@ public class MockAiInterviewController : BasePluginController
         return Json(new { success = true, message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Deactivated") });
     }
 
+    protected virtual DateTime? NormalizeInviteExpiryDateUtc(DateTime? expiryDateUtc)
+    {
+        if (!expiryDateUtc.HasValue)
+            return null;
+
+        return DateTime.SpecifyKind(expiryDateUtc.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+    }
+
     protected virtual async Task<string> GetInviteStatusTextAsync(SponsorInvite invite)
     {
         if (invite == null)
@@ -1676,6 +1806,9 @@ public class MockAiInterviewController : BasePluginController
         foreach (var product in filteredProducts.OrderBy(product => product.Name))
         {
             if (_jobRequirementService != null && !await _jobRequirementService.IsJobProductAsync(product))
+                continue;
+
+            if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
                 continue;
 
             items.Add(new SelectListItem

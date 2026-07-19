@@ -12,6 +12,9 @@ public record InterviewRuntimeModel : BaseNopModel
     public string ProductName { get; set; }
     public string Difficulty { get; set; }
     public string CandidateName { get; set; }
+    public bool IsPracticeInterview { get; set; }
+    public string PracticeSkill { get; set; }
+    public string RuntimeTopic { get; set; }
     public string CurrentQuestion { get; set; }
     public string ReportUrl { get; set; }
     public DateTime? TokenExpiryUtc { get; set; }
@@ -47,6 +50,7 @@ public record RuntimeClientSettingsModel
     public string StopInterviewUrl { get; set; }
     public string TranscriptUrl { get; set; }
     public string SpeechTokenUrl { get; set; }
+    public string SpeechUsageUrl { get; set; }
     public string RecordingUploadUrl { get; set; }
     public string BeginInterviewUrl { get; set; }
     public string AcknowledgeGuidelinesUrl { get; set; }
@@ -73,6 +77,11 @@ public record SubmitInterviewAnswerRequest
 {
     public string Token { get; init; }
     public string Answer { get; init; }
+    public int? TurnId { get; init; }
+    public int? SequenceNumber { get; init; }
+    public int SpeechRecognitionCharacters { get; init; }
+    public long SpeechRecognitionDurationMs { get; init; }
+    public string SpeechRecognitionClientEventId { get; init; }
 }
 
 public record SubmitInterviewAnswerResponse
@@ -87,6 +96,7 @@ public record SubmitInterviewAnswerResponse
     public decimal Score { get; init; }
     public string Feedback { get; init; }
     public string Message { get; init; }
+    public IList<InterviewTurnViewModel> Turns { get; init; } = new List<InterviewTurnViewModel>();
 }
 
 public record CompleteInterviewRequest
@@ -116,9 +126,25 @@ public record RecordingUploadResponseModel
 
 public record SpeechTokenResponseModel
 {
+    public bool Success { get; init; } = true;
+    public string Message { get; init; }
+    public string FailureKind { get; init; }
+    public int? AzureStatusCode { get; init; }
+    public string AzureReasonPhrase { get; init; }
+    public string DiagnosticMessage { get; init; }
     public string Token { get; init; }
     public string Region { get; init; }
     public int ExpiresInSeconds { get; init; }
+}
+
+public record SpeechSynthesisUsageRequest
+{
+    public string Token { get; init; }
+    public int? TurnId { get; init; }
+    public int? SequenceNumber { get; init; }
+    public string Purpose { get; init; }
+    public int SpeechSynthesisCharacters { get; init; }
+    public string ClientEventId { get; init; }
 }
 
 public record InterviewReportModel : BaseNopModel

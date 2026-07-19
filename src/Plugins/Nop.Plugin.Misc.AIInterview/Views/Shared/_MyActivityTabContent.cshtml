@@ -1,0 +1,29 @@
+@model MyActivityPageModel
+
+<div class="my-activity-panel"
+     data-my-activity-tab-panel="true"
+     data-active-tab="@Model.ActiveTab"
+     data-request-url="@(Context.Request.Path + Context.Request.QueryString)">
+    @switch (Model.ActiveTab)
+    {
+        case var value when string.Equals(value, AIInterviewDefaults.MyActivitySavedJobsTabKey, StringComparison.Ordinal):
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivitySavedJobsContent.cshtml", Model.SavedJobs)
+            break;
+        case var value when string.Equals(value, AIInterviewDefaults.MyActivityMockInterviewsTabKey, StringComparison.Ordinal):
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MockInterviewHistoryContent.cshtml", Model.MockInterviews.Items)
+            @if (Model.MockInterviews.TotalPages > 1)
+            {
+                @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityPager.cshtml", new MyActivityPagerModel
+                {
+                    Page = Model.MockInterviews.Page,
+                    PageSize = Model.MockInterviews.PageSize,
+                    TotalCount = Model.MockInterviews.TotalCount,
+                    TotalPages = Model.MockInterviews.TotalPages
+                })
+            }
+            break;
+        default:
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyApplicationsContent.cshtml", Model.AppliedJobs)
+            break;
+    }
+</div>

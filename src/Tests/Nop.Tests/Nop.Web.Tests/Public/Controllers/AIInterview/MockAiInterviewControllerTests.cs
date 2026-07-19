@@ -5,10 +5,12 @@ using Nop.Core.Domain.Customers;
 using Nop.Plugin.Misc.AIInterview;
 using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Domain;
+using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Services.Localization;
 using Nop.Services.Customers;
 using Nop.Core;
+using Nop.Core.Domain.Catalog;
 using NUnit.Framework;
 
 namespace Nop.Tests.Nop.Web.Tests.Public.Controllers.AIInterview;
@@ -43,8 +45,9 @@ public class MockAiInterviewControllerTests
         _applicationService = new Mock<IApplicationService>();
         _eventPublisher = new Mock<global::Nop.Core.Events.IEventPublisher>();
 
-        _customer = new Customer { Id = 123 };
+        _customer = new Customer { Id = 123, Email = "candidate@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_customer);
+        _customerService.Setup(x => x.IsRegisteredAsync(_customer)).ReturnsAsync(true);
 
         _controller = new MockAiInterviewController(
             _interviewSessionService.Object,
@@ -127,5 +130,32 @@ public class MockAiInterviewControllerTests
         var sessionKeyProp = jsonResult.Value.GetType().GetProperty("sessionKey");
         Assert.That(sessionKeyProp.GetValue(jsonResult.Value), Is.EqualTo("existing"));
         _interviewSessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task History_Returns_Standalone_View_With_Mock_Practice_Sessions_Only()
+    {
+        // Arrange
+        _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(_customer.Id))
+            .ReturnsAsync(new List<InterviewSession>
+            {
+                new() { Id = 1, ProductId = 10, InterviewType = AIInterviewDefaults.InterviewTypeMockPractice, CreatedOnUtc = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new() { Id = 2, ProductId = 20, InterviewType = AIInterviewDefaults.InterviewTypeJob, CreatedOnUtc = new DateTime(2026, 7, 2, 0, 0, 0, DateTimeKind.Utc) }
+            });
+        _productService.Setup(x => x.GetProductByIdAsync(10))
+            .ReturnsAsync(new Product { Id = 10, Name = "Mock practice role" });
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Common.Interview"))
+            .ReturnsAsync("Interview");
+
+        // Act
+        var result = await _controller.History();
+
+        // Assert
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var viewResult = (ViewResult)result;
+        Assert.That(viewResult.ViewName, Is.EqualTo("~/Plugins/Misc.AIInterview/Views/MockAiInterview/History.cshtml"));
+        var model = (IList<InterviewHistoryItemModel>)viewResult.Model;
+        Assert.That(model.Count, Is.EqualTo(1));
+        Assert.That(model[0].JobTitle, Is.EqualTo("Mock practice role"));
     }
 }

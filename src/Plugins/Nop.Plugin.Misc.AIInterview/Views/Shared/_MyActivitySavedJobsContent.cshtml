@@ -1,0 +1,28 @@
+@model SavedJobsListModel
+
+@if (Model.Products.Any())
+{
+    <div class="my-activity-saved-jobs-list">
+        @foreach (var product in Model.Products)
+        {
+            @await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = product })
+        }
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityPager.cshtml", new MyActivityPagerModel
+        {
+            Page = Model.Page,
+            PageSize = Model.PageSize,
+            TotalCount = Model.TotalCount,
+            TotalPages = Model.TotalPages
+        })
+    }
+}
+else
+{
+    <div class="my-activity-empty-state">
+        <p>@T("Plugins.Misc.AIInterview.MyActivity.SavedJobs.Empty")</p>
+    </div>
+}

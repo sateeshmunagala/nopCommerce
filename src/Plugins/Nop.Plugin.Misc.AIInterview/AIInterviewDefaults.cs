@@ -57,15 +57,20 @@ public static class AIInterviewDefaults
     /// </summary>
     public static string MyApplicationsRouteName => "Plugin.Misc.AIInterview.MyApplications";
 
+    public static string MyActivityRouteName => "Plugin.Misc.AIInterview.MyActivity";
+
     /// <summary>
     /// Gets the employer applications route name
     /// </summary>
     public static string EmployerApplicationsRouteName => "Plugin.Misc.AIInterview.EmployerApplications";
     public static string EmployerDownloadResumeRouteName => "Plugin.Misc.AIInterview.EmployerDownloadResume";
+    public static string EmployerDashboardRouteName => "Plugin.Misc.AIInterview.EmployerDashboard";
 
     public static string VendorScoreboardRouteName => "Plugin.Misc.AIInterview.VendorScoreboard";
 
     public static string VendorJobCreationRouteName => "Plugin.Misc.AIInterview.VendorJobCreation";
+    public static string VendorJobEditRouteName => "Plugin.Misc.AIInterview.VendorJobEdit";
+    public static string VendorJobPublishToggleRouteName => "Plugin.Misc.AIInterview.VendorJobPublishToggle";
 
     public static string ApplyInlineRouteName => "Plugin.Misc.AIInterview.ApplyInline";
 
@@ -89,6 +94,10 @@ public static class AIInterviewDefaults
     public static string JobInterviewRequiredAttributeName => "AIInterview.Job.InterviewRequired";
     public static string JobMinimumScoreAttributeName => "AIInterview.Job.MinimumScore";
     public static string JobQuestionCountAttributeName => "AIInterview.Job.QuestionCount";
+    public static string JobSalaryMinCtcPaAttributeName => "AIInterview.Job.SalaryMinCtcPa";
+    public static string JobSalaryMaxCtcPaAttributeName => "AIInterview.Job.SalaryMaxCtcPa";
+    public static string JobSalaryCurrencyCodeAttributeName => "AIInterview.Job.SalaryCurrencyCode";
+    public static string JobSalaryPeriodAttributeName => "AIInterview.Job.SalaryPeriod";
 
     public static string DefaultCreditProductSkuMappingsJson => "{\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}";
     public static string DefaultCreditPurchasePageUrl => "/pricing";
@@ -125,6 +134,7 @@ public static class AIInterviewDefaults
     public static string MockStopRouteName => "Plugin.Misc.AIInterview.Mock.Stop";
     public static string MockRefreshTokenRouteName => "Plugin.Misc.AIInterview.Mock.RefreshToken";
     public static string MockSpeechTokenRouteName => "Plugin.Misc.AIInterview.Mock.SpeechToken";
+    public static string MockSpeechUsageRouteName => "Plugin.Misc.AIInterview.Mock.SpeechUsage";
     public static string MockRecordingUploadRouteName => "Plugin.Misc.AIInterview.Mock.RecordingUpload";
     public static string MockAcknowledgeGuidelinesRouteName => "Plugin.Misc.AIInterview.Mock.AcknowledgeGuidelines";
     public static string MockHistoryRouteName => "Plugin.Misc.AIInterview.Mock.History";
@@ -141,10 +151,20 @@ public static class AIInterviewDefaults
     /// </summary>
     public static string LocalizationPrefix => "Plugins.Misc.AIInterview";
 
+    public static string MyActivityAppliedJobsTabKey => "applied-jobs";
+    public static string MyActivitySavedJobsTabKey => "saved-jobs";
+    public static string MyActivityMockInterviewsTabKey => "mock-interviews";
+    public static string EmployerDashboardOverviewTabKey => "overview";
+    public static string EmployerDashboardJobsTabKey => "jobs";
+    public static string EmployerDashboardApplicationsTabKey => "applications";
+    public static string EmployerDashboardInvitesTabKey => "invites";
+
+    public const int MyActivityNavigationTab = 160;
     public const int MyApplicationsNavigationTab = 160;
     public const int MockHistoryNavigationTab = 165;
-    public const int VendorScoreboardNavigationTab = 170;
-    public const int VendorJobCreationNavigationTab = 180;
-    public const int EmployerApplicationsNavigationTab = 190;
-    public const int SponsorInvitesNavigationTab = 200;
+    public const int EmployerDashboardNavigationTab = 170;
+    public const int VendorScoreboardNavigationTab = EmployerDashboardNavigationTab;
+    public const int VendorJobCreationNavigationTab = EmployerDashboardNavigationTab;
+    public const int EmployerApplicationsNavigationTab = EmployerDashboardNavigationTab;
+    public const int SponsorInvitesNavigationTab = EmployerDashboardNavigationTab;
 }

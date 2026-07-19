@@ -69,6 +69,38 @@ public class ServiceTests
     }
 
     [Test]
+    public async Task SendApplicationSubmittedNotificationAsync_DoesNotSend_WhenCustomerEmailMissing()
+    {
+        var application = new JobApplication { CustomerId = 77, JobTitle = "Platform Engineer" };
+        var store = new Nop.Core.Domain.Stores.Store { Id = 11 };
+        var template = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.ApplicationSubmitted", EmailAccountId = 0, IsActive = true };
+
+        _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
+        _messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync("AIInterview.ApplicationSubmitted", 11))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { template });
+        _customerRepository.Setup(x => x.GetByIdAsync(77))
+            .ReturnsAsync(new Customer { Id = 77, Email = " " });
+
+        await _applicationService.SendApplicationSubmittedNotificationAsync(application, 1);
+
+        _workflowMessageService.Verify(x => x.SendNotificationAsync(
+            It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>(),
+            It.IsAny<Nop.Core.Domain.Messages.EmailAccount>(),
+            It.IsAny<int>(),
+            It.IsAny<IList<Nop.Services.Messages.Token>>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<bool>()), Times.Never);
+    }
+
+    [Test]
     public async Task SponsorInviteService_CreateInviteAsync_QueuesNotificationEmail()
     {
         var inviteRepository = new Mock<IRepository<SponsorInvite>>();

@@ -10768,3 +10768,12 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     padding-top: 10px !important;
     border-top: 1px dashed #cfcfcf !important;
 }
+
+/* Remove the extra top gap on single-column storefront pages. */
+.master-wrapper-content > .breadcrumb {
+    margin-bottom: 0;
+}
+
+section.center-1 .page-body {
+    padding-top: 0;
+}

@@ -17,6 +17,7 @@ public class SchemaMigration : Migration
         this.CreateTableIfNotExists<CreditLedgerEntry>();
         this.CreateTableIfNotExists<SponsorInvite>();
         this.CreateTableIfNotExists<CreditPurchaseGrant>();
+        this.CreateTableIfNotExists<AzureUsageMetric>();
 
         if (!Schema.Table(nameof(CreditPurchaseGrant)).Index("IX_AIInterview_CreditPurchaseGrant_OrderItemId").Exists())
         {
@@ -33,6 +34,41 @@ public class SchemaMigration : Migration
                 .OnColumn(nameof(InterviewTurn.InterviewSessionId)).Ascending()
                 .OnColumn(nameof(InterviewTurn.SequenceNumber)).Ascending();
         }
+
+        if (!Schema.Table(nameof(AzureUsageMetric)).Index("IX_AIInterview_AzureUsageMetric_InterviewSessionId").Exists())
+        {
+            Create.Index("IX_AIInterview_AzureUsageMetric_InterviewSessionId")
+                .OnTable(nameof(AzureUsageMetric))
+                .OnColumn(nameof(AzureUsageMetric.InterviewSessionId)).Ascending();
+        }
+
+        if (!Schema.Table(nameof(AzureUsageMetric)).Index("IX_AIInterview_AzureUsageMetric_InterviewTurnId").Exists())
+        {
+            Create.Index("IX_AIInterview_AzureUsageMetric_InterviewTurnId")
+                .OnTable(nameof(AzureUsageMetric))
+                .OnColumn(nameof(AzureUsageMetric.InterviewTurnId)).Ascending();
+        }
+
+        if (!Schema.Table(nameof(AzureUsageMetric)).Index("IX_AIInterview_AzureUsageMetric_UsageKind").Exists())
+        {
+            Create.Index("IX_AIInterview_AzureUsageMetric_UsageKind")
+                .OnTable(nameof(AzureUsageMetric))
+                .OnColumn(nameof(AzureUsageMetric.UsageKind)).Ascending();
+        }
+
+        if (!Schema.Table(nameof(AzureUsageMetric)).Index("IX_AIInterview_AzureUsageMetric_CreatedOnUtc").Exists())
+        {
+            Create.Index("IX_AIInterview_AzureUsageMetric_CreatedOnUtc")
+                .OnTable(nameof(AzureUsageMetric))
+                .OnColumn(nameof(AzureUsageMetric.CreatedOnUtc)).Ascending();
+        }
+
+        if (!Schema.Table(nameof(AzureUsageMetric)).Index("IX_AIInterview_AzureUsageMetric_ClientEventId").Exists())
+        {
+            Create.Index("IX_AIInterview_AzureUsageMetric_ClientEventId")
+                .OnTable(nameof(AzureUsageMetric))
+                .OnColumn(nameof(AzureUsageMetric.ClientEventId)).Ascending();
+        }
     }
 
     public override void Down()
@@ -44,5 +80,6 @@ public class SchemaMigration : Migration
         this.DeleteTableIfExists<CreditLedgerEntry>();
         this.DeleteTableIfExists<SponsorInvite>();
         this.DeleteTableIfExists<CreditPurchaseGrant>();
+        this.DeleteTableIfExists<AzureUsageMetric>();
     }
 }

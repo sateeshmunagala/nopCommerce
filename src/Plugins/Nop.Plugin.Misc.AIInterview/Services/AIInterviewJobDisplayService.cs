@@ -4,6 +4,7 @@ using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Vendors;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Services.Catalog;
+using Nop.Services.Common;
 using Nop.Services.Html;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
@@ -36,11 +37,13 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
 
     private readonly IApplicationService _applicationService;
     private readonly IDateTimeHelper _dateTimeHelper;
+    private readonly IGenericAttributeService _genericAttributeService;
     private readonly IHtmlFormatter _htmlFormatter;
     private readonly IJobRequirementService _jobRequirementService;
     private readonly ILocalizationService _localizationService;
     private readonly IPictureService _pictureService;
     private readonly IProductService _productService;
+    private readonly IJobProductAccessService _jobProductAccessService;
     private readonly ISpecificationAttributeService _specificationAttributeService;
     private readonly IShoppingCartService _shoppingCartService;
     private readonly IStoreContext _storeContext;
@@ -50,11 +53,13 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
 
     public AIInterviewJobDisplayService(IApplicationService applicationService,
         IDateTimeHelper dateTimeHelper,
+        IGenericAttributeService genericAttributeService,
         IHtmlFormatter htmlFormatter,
         IJobRequirementService jobRequirementService,
         ILocalizationService localizationService,
         IPictureService pictureService,
         IProductService productService,
+        IJobProductAccessService jobProductAccessService,
         ISpecificationAttributeService specificationAttributeService,
         IShoppingCartService shoppingCartService,
         IStoreContext storeContext,
@@ -64,11 +69,13 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
     {
         _applicationService = applicationService;
         _dateTimeHelper = dateTimeHelper;
+        _genericAttributeService = genericAttributeService;
         _htmlFormatter = htmlFormatter;
         _jobRequirementService = jobRequirementService;
         _localizationService = localizationService;
         _pictureService = pictureService;
         _productService = productService;
+        _jobProductAccessService = jobProductAccessService;
         _specificationAttributeService = specificationAttributeService;
         _shoppingCartService = shoppingCartService;
         _storeContext = storeContext;
@@ -83,7 +90,9 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             return null;
 
         var product = await _productService.GetProductByIdAsync(productOverviewModel.Id);
-        if (product == null || !await _jobRequirementService.IsJobProductAsync(product))
+        if (product == null ||
+            !await _jobRequirementService.IsJobProductAsync(product) ||
+            (_jobProductAccessService != null && !await _jobProductAccessService.CanAppearInListingsAsync(product, allowAdminPreview: true)))
             return null;
 
         var vendor = product.VendorId > 0 ? await _vendorService.GetVendorByIdAsync(product.VendorId) : null;
@@ -139,16 +148,22 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
 
     public async Task<AIInterviewJobSpecificationSnapshotModel> GetSpecificationSnapshotAsync(int productId, ProductSpecificationModel preparedSpecificationModel = null)
     {
+        var product = productId > 0 ? await _productService.GetProductByIdAsync(productId) : null;
         var entries = preparedSpecificationModel?.Groups?.Any() == true
             ? BuildEntriesFromPreparedModel(preparedSpecificationModel)
             : await BuildEntriesFromDatabaseAsync(productId);
+        var salaryDisplay = product == null
+            ? string.Empty
+            : await GetStructuredSalaryDisplayAsync(product);
+        if (string.IsNullOrWhiteSpace(salaryDisplay))
+            salaryDisplay = SanitizeSalaryDisplay(ResolveValue(entries, SalaryRangeAliases));
 
         return new AIInterviewJobSpecificationSnapshotModel
         {
             WorkArrangement = ResolveValue(entries, WorkArrangementAliases),
             EmploymentType = ResolveValue(entries, EmploymentTypeAliases),
             JobLocation = ResolveValue(entries, JobLocationAliases),
-            SalaryRange = ResolveValue(entries, SalaryRangeAliases),
+            SalaryRange = salaryDisplay,
             ExperienceLevel = ResolveValue(entries, ExperienceLevelAliases)
         };
     }
@@ -218,6 +233,57 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             .ToList();
 
         return matchedValues.Any() ? string.Join(", ", matchedValues) : string.Empty;
+    }
+
+    protected virtual async Task<string> GetStructuredSalaryDisplayAsync(Product product)
+    {
+        if (product == null || _genericAttributeService == null)
+            return string.Empty;
+
+        var minValue = await _genericAttributeService.GetAttributeAsync<string>(product, AIInterviewDefaults.JobSalaryMinCtcPaAttributeName);
+        var maxValue = await _genericAttributeService.GetAttributeAsync<string>(product, AIInterviewDefaults.JobSalaryMaxCtcPaAttributeName);
+
+        return BuildSalaryDisplayText(ParseNullableDecimal(minValue), ParseNullableDecimal(maxValue));
+    }
+
+    protected static decimal? ParseNullableDecimal(string value)
+    {
+        return decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+    }
+
+    public static string BuildSalaryDisplayText(decimal? minCtcPa, decimal? maxCtcPa)
+    {
+        if (minCtcPa.HasValue && maxCtcPa.HasValue)
+            return $"INR {FormatSalaryLpa(minCtcPa.Value)} - INR {FormatSalaryLpa(maxCtcPa.Value)}";
+
+        if (minCtcPa.HasValue)
+            return $"INR {FormatSalaryLpa(minCtcPa.Value)}+";
+
+        if (maxCtcPa.HasValue)
+            return $"Up to INR {FormatSalaryLpa(maxCtcPa.Value)}";
+
+        return string.Empty;
+    }
+
+    public static string SanitizeSalaryDisplay(string value)
+    {
+        var sanitizedValue = NormalizeSalaryText(value);
+        return string.Equals(sanitizedValue, "Value", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : sanitizedValue;
+    }
+
+    protected static string FormatSalaryLpa(decimal ctcPa)
+    {
+        var lpaValue = ctcPa / 100000m;
+        return $"{lpaValue:0.##} LPA";
+    }
+
+    protected static string NormalizeSalaryText(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
     }
 
     protected virtual bool IsAliasMatch(string value, IEnumerable<string> aliases)

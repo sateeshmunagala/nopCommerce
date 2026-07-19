@@ -36,6 +36,7 @@ public class RuntimeServiceTests
         Mock<ILocalizationService> localizationService,
         Mock<IApplicationService> applicationService = null,
         Mock<IResumeProfileService> resumeProfileService = null,
+        Mock<IAzureUsageService> azureUsageService = null,
         Mock<IHttpClientFactory> httpClientFactory = null,
         AIInterviewSettings settings = null,
         MockAIInterviewSettings mockSettings = null,
@@ -52,6 +53,7 @@ public class RuntimeServiceTests
             customerService.Object,
             applicationService?.Object ?? new Mock<IApplicationService>().Object,
             resumeProfileService?.Object ?? new Mock<IResumeProfileService>().Object,
+            azureUsageService?.Object ?? new Mock<IAzureUsageService>().Object,
             localizationService.Object,
             settings ?? new AIInterviewSettings { Prompt = "Be concise" },
             mockSettings ?? new MockAIInterviewSettings { UseMockResponses = true },
@@ -100,7 +102,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task EnsureInterviewStartedAsync_Creates_Planned_Turns_Up_Front()
+    public async Task EnsureInterviewStartedAsync_Creates_Only_First_Active_Turn()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -124,14 +126,14 @@ public class RuntimeServiceTests
         var store = new List<InterviewTurn>();
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(1)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
         aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
-            .ReturnsAsync(new AIInterviewQuestionPlanResponse
+            .ReturnsAsync((AIInterviewQuestionPlanRequest request) => new AIInterviewQuestionPlanResponse
             {
                 Success = true,
-                Questions = Enumerable.Range(1, 5).Select(index => new AIInterviewQuestionPlanItem
+                Questions = Enumerable.Range(1, request.QuestionCount).Select(index => new AIInterviewQuestionPlanItem
                 {
                     SequenceNumber = index,
                     Category = index <= 2 ? "skill" : index <= 4 ? "project_scenario" : "job_fit",
-                    Question = $"Planned question {index}",
+                    Question = $"Planned technical question {index}",
                     ResumeEvidence = index <= 2 ? "C#" : "Payments platform",
                     ExpectedSignals = new List<string> { "Signal A", "Signal B" },
                     Rubric = new AIInterviewQuestionRubric
@@ -161,16 +163,48 @@ public class RuntimeServiceTests
         var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99, FirstName = "Jane", LastName = "Doe" });
 
         Assert.That(model, Is.Not.Null);
-        Assert.That(model.CurrentQuestion, Is.EqualTo("Planned question 1"));
-        Assert.That(insertedTurns.Count, Is.EqualTo(5));
+        Assert.That(model.CurrentQuestion, Does.Contain("Hello Jane Doe, let's start with you"));
+        Assert.That(model.CurrentQuestion, Does.Contain("one or two projects"));
+        Assert.That(insertedTurns.Count, Is.EqualTo(1));
         Assert.That(insertedTurns.All(turn => turn.InterviewSessionId == 1), Is.True);
-        Assert.That(insertedTurns.Select(turn => turn.SequenceNumber), Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
-        Assert.That(store.Count, Is.EqualTo(5));
-        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.Is<AIInterviewQuestionPlanRequest>(request =>
-            request.JobTitle == "Backend Engineer" &&
-            request.QuestionCount == 5 &&
-            request.Difficulty == "Medium")), Times.Once);
+        Assert.That(insertedTurns.Select(turn => turn.SequenceNumber), Is.EqualTo(new[] { 1 }));
+        Assert.That(store.Count, Is.EqualTo(1));
+        var firstRubric = JsonDocument.Parse(insertedTurns.Single(turn => turn.SequenceNumber == 1).RubricJson).RootElement;
+        Assert.That(firstRubric.GetProperty("category").GetString(), Is.EqualTo("Introduction & Project Experience"));
+        Assert.That(firstRubric.GetProperty("expectedSignals").EnumerateArray().Any(signal => signal.GetString() == "Relevant project ownership"), Is.True);
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Never);
         aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task EnsureInterviewStartedAsync_QuestionCountOne_Creates_Only_Intro_Turn()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var session = new InterviewSession { Id = 11, ProductId = 10, CustomerId = 99, Token = "token", Difficulty = "Medium", QuestionCount = 1 };
+        var store = new List<InterviewTurn>();
+
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(11)).ReturnsAsync(() => store.OrderBy(x => x.SequenceNumber).ToList());
+        productService.Setup(x => x.GetProductByIdAsync(10)).ReturnsAsync(new Product { Id = 10, Name = "Backend Engineer" });
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn turn) =>
+            {
+                store.Add(turn);
+                return turn;
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99 });
+
+        Assert.That(model.CurrentQuestion, Does.StartWith("Let's start with you."));
+        Assert.That(store.Count, Is.EqualTo(1));
+        Assert.That(store.Single().SequenceNumber, Is.EqualTo(1));
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Never);
     }
 
     [Test]
@@ -314,7 +348,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task EnsureInterviewStartedAsync_RealMode_Failure_DoesNotCreateTurn()
+    public async Task EnsureInterviewStartedAsync_RealMode_Failure_StillCreatesLocalIntroTurn()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -349,12 +383,12 @@ public class RuntimeServiceTests
 
         var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99 });
 
-        Assert.That(inserted, Is.False);
-        Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable. Please try again later."));
+        Assert.That(inserted, Is.True);
+        Assert.That(model.CurrentQuestion, Does.StartWith("Let's start with you."));
     }
 
     [Test]
-    public async Task EnsureInterviewStartedAsync_RealMode_BlankQuestion_DoesNotCreateTurn()
+    public async Task EnsureInterviewStartedAsync_RealMode_BlankQuestion_StillCreatesLocalIntroTurn()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -396,12 +430,12 @@ public class RuntimeServiceTests
 
         var model = await service.EnsureInterviewStartedAsync(session, new Customer { Id = 99 });
 
-        Assert.That(inserted, Is.False);
-        Assert.That(model.CurrentQuestion, Is.EqualTo("AI service unavailable. Please try again later."));
+        Assert.That(inserted, Is.True);
+        Assert.That(model.CurrentQuestion, Does.StartWith("Let's start with you."));
     }
 
     [Test]
-    public async Task EnsureInterviewStartedAsync_PartialPlanWithAnsweredTurns_FillsMissingSequencesDeterministically()
+    public async Task EnsureInterviewStartedAsync_PartialPlanWithAnsweredTurns_Replaces_StaleFuturePendingTurn()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -456,6 +490,13 @@ public class RuntimeServiceTests
                 store.Add(turn);
                 return turn;
             });
+        turnService.Setup(x => x.DeleteInterviewTurnsAsync(It.IsAny<IList<InterviewTurn>>()))
+            .Callback<IList<InterviewTurn>>(deletedTurns =>
+            {
+                foreach (var deletedTurn in deletedTurns)
+                    store.RemoveAll(existing => existing.Id == deletedTurn.Id);
+            })
+            .Returns(Task.CompletedTask);
         aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
             .Callback<AIInterviewQuestionPlanRequest>(request => capturedPlanRequest = request)
             .ReturnsAsync(new AIInterviewQuestionPlanResponse
@@ -471,15 +512,6 @@ public class RuntimeServiceTests
                         ResumeEvidence = "Ownership",
                         ExpectedSignals = new List<string> { "Ownership", "Clarity" },
                         Rubric = new AIInterviewQuestionRubric()
-                    },
-                    new()
-                    {
-                        SequenceNumber = 2,
-                        Category = "job_fit",
-                        Question = "Generated question 4",
-                        ResumeEvidence = "Role alignment",
-                        ExpectedSignals = new List<string> { "Alignment", "Ramp-up" },
-                        Rubric = new AIInterviewQuestionRubric()
                     }
                 }
             });
@@ -492,15 +524,14 @@ public class RuntimeServiceTests
 
         Assert.That(model, Is.Not.Null);
         Assert.That(model.CurrentQuestion, Is.EqualTo("Generated question 2"));
-        Assert.That(store.Select(turn => turn.SequenceNumber).OrderBy(sequence => sequence), Is.EqualTo(new[] { 1, 2, 3, 4 }));
+        Assert.That(store.Select(turn => turn.SequenceNumber).OrderBy(sequence => sequence), Is.EqualTo(new[] { 1, 2 }));
         Assert.That(store.Count(turn => turn.SequenceNumber == 2), Is.EqualTo(1));
-        Assert.That(store.Count(turn => turn.SequenceNumber == 4), Is.EqualTo(1));
         Assert.That(capturedPlanRequest, Is.Not.Null);
-        Assert.That(capturedPlanRequest.QuestionCount, Is.EqualTo(2));
+        Assert.That(capturedPlanRequest.QuestionCount, Is.EqualTo(1));
         Assert.That(capturedPlanRequest.TotalQuestionCount, Is.EqualTo(4));
-        Assert.That(capturedPlanRequest.ExistingQuestions, Is.EquivalentTo(new[] { "Existing question 1", "Existing question 3" }));
-        Assert.That(capturedPlanRequest.ExistingCategories, Is.EquivalentTo(new[] { "skill", "project_scenario" }));
-        turnService.Verify(x => x.DeleteInterviewTurnsAsync(It.IsAny<IList<InterviewTurn>>()), Times.Never);
+        Assert.That(capturedPlanRequest.ExistingQuestions, Is.EquivalentTo(new[] { "Existing question 1" }));
+        Assert.That(capturedPlanRequest.ExistingCategories, Is.EquivalentTo(new[] { "skill" }));
+        turnService.Verify(x => x.DeleteInterviewTurnsAsync(It.Is<IList<InterviewTurn>>(items => items.Count == 1 && items[0].Id == 2)), Times.Once);
         aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
     }
 
@@ -553,6 +584,8 @@ public class RuntimeServiceTests
         Assert.That(result.Success, Is.True);
         Assert.That(result.IsTerminated, Is.False);
         Assert.That(result.Question, Is.EqualTo("Q2"));
+        Assert.That(result.Turns.Count, Is.EqualTo(2));
+        Assert.That(result.Turns.Count(turnModel => string.IsNullOrWhiteSpace(turnModel.AnswerText)), Is.EqualTo(1));
         Assert.That(store.Any(x => x.SequenceNumber == 1 && x.AnswerText != null), Is.True);
         Assert.That(store.Any(x => x.SequenceNumber == 2), Is.True);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Score > 0)), Times.Once);
@@ -785,6 +818,96 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task SubmitAnswerAsync_Scores_Local_Intro_Turn_Through_Existing_Path()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var session = new InterviewSession
+        {
+            Id = 223,
+            ProductId = 20,
+            CustomerId = 5,
+            SessionKey = "key223",
+            Token = "token223",
+            Difficulty = "Medium",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            QuestionCount = 1
+        };
+        var store = new List<InterviewTurn>();
+        InterviewTurn updatedTurn = null;
+        AIInterviewClientRequest scoreRequest = null;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token223")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(223)).ReturnsAsync(() => store.OrderBy(turn => turn.SequenceNumber).ToList());
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn turn) =>
+            {
+                turn.Id = 1;
+                store.Add(turn);
+                return turn;
+            });
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback<InterviewTurn>(turn =>
+            {
+                updatedTurn = turn;
+                store.RemoveAll(existing => existing.Id == turn.Id);
+                store.Add(turn);
+            })
+            .Returns(Task.CompletedTask);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        productService.Setup(x => x.GetProductByIdAsync(20)).ReturnsAsync(new Product { Id = 20, Name = "Platform Engineer" });
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
+            .Callback<AIInterviewClientRequest>(request => scoreRequest = request)
+            .ReturnsAsync(new AIInterviewClientResponse
+            {
+                Success = true,
+                TechnicalScore = 91,
+                CommunicationScore = 88,
+                ProfessionalismScore = 90,
+                PositiveAttitudeScore = 87,
+                Score = 89,
+                Feedback = "Strong introduction with clear project ownership.",
+                RawJson = "{\"score\":89,\"feedback\":\"Strong introduction with clear project ownership.\",\"complete\":true}",
+                RubricJson = "{\"technicalScore\":91,\"communicationScore\":88,\"professionalismScore\":90,\"positiveAttitudeScore\":87,\"score\":89,\"feedback\":\"Strong introduction with clear project ownership.\"}"
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
+
+        await service.EnsureInterviewStartedAsync(session, new Customer { Id = 5, FirstName = "Jane", LastName = "Doe" });
+        var result = await service.SubmitAnswerAsync("token223", "I am a platform engineer with seven years of experience. I led our payments modernization project on .NET and Azure, owned the API redesign, handled rollback and observability gaps during cutover, and improved transaction success rates by reducing failures after launch.");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(updatedTurn, Is.Not.Null);
+        Assert.That(updatedTurn.SequenceNumber, Is.EqualTo(1));
+        Assert.That(updatedTurn.AnswerText, Does.Contain("payments modernization project"));
+        Assert.That(updatedTurn.Score, Is.EqualTo(89));
+        Assert.That(updatedTurn.Feedback, Is.EqualTo("Strong introduction with clear project ownership."));
+        Assert.That(scoreRequest, Is.Not.Null);
+        Assert.That(scoreRequest.QuestionNumber, Is.EqualTo(1));
+        Assert.That(scoreRequest.CurrentTurnRubricJson, Does.Contain("Introduction & Project Experience"));
+        using (var rubricDocument = JsonDocument.Parse(updatedTurn.RubricJson))
+        {
+            Assert.That(rubricDocument.RootElement.GetProperty("technicalScore").GetDecimal(), Is.EqualTo(91));
+            Assert.That(rubricDocument.RootElement.GetProperty("score").GetDecimal(), Is.EqualTo(89));
+            Assert.That(rubricDocument.RootElement.GetProperty("feedback").GetString(), Is.EqualTo("Strong introduction with clear project ownership."));
+            Assert.That(rubricDocument.RootElement.GetProperty("plan").GetProperty("category").GetString(), Is.EqualTo("Introduction & Project Experience"));
+            Assert.That(rubricDocument.RootElement.GetProperty("scoring").GetProperty("communicationScore").GetDecimal(), Is.EqualTo(88));
+        }
+
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Never);
+        aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+    }
+
+    [Test]
     public async Task SubmitAnswerAsync_PreservesQuestionPlanMetadataAfterScoring()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -943,6 +1066,143 @@ public class RuntimeServiceTests
         Assert.That(result.Question, Is.EqualTo("Q3"));
         aiClient.Verify(x => x.GenerateQuestionAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
         aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SubmitAnswerAsync_WithStaleFuturePendingTurn_Returns_TrueNextSequence_And_AlignedScores()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession
+        {
+            Id = 225,
+            ProductId = 44,
+            CustomerId = 5,
+            SessionKey = "key225",
+            Token = "token225",
+            Difficulty = "Medium",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            QuestionCount = 5
+        };
+        var answeredTurn = new InterviewTurn
+        {
+            Id = 1,
+            InterviewSessionId = 225,
+            SequenceNumber = 1,
+            QuestionText = "Q1",
+            AnswerText = "A1",
+            Score = 71,
+            Feedback = "Add metrics",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-8),
+            AnsweredOnUtc = DateTime.UtcNow.AddMinutes(-7),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-8)
+        };
+        var currentTurn = new InterviewTurn
+        {
+            Id = 2,
+            InterviewSessionId = 225,
+            SequenceNumber = 2,
+            QuestionText = "Q2",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-4),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-4)
+        };
+        var staleFutureTurn = new InterviewTurn
+        {
+            Id = 5,
+            InterviewSessionId = 225,
+            SequenceNumber = 5,
+            QuestionText = "Stale pending question",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-1),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1)
+        };
+        var store = new List<InterviewTurn> { answeredTurn, currentTurn, staleFutureTurn };
+        InterviewSession updatedSession = null;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token225")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(225)).ReturnsAsync(() => store.OrderBy(turn => turn.SequenceNumber).ToList());
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback<InterviewTurn>(updatedTurn =>
+            {
+                store.RemoveAll(existing => existing.Id == updatedTurn.Id);
+                store.Add(updatedTurn);
+            })
+            .Returns(Task.CompletedTask);
+        turnService.Setup(x => x.DeleteInterviewTurnsAsync(It.IsAny<IList<InterviewTurn>>()))
+            .Callback<IList<InterviewTurn>>(deletedTurns =>
+            {
+                foreach (var deletedTurn in deletedTurns)
+                    store.RemoveAll(existing => existing.Id == deletedTurn.Id);
+            })
+            .Returns(Task.CompletedTask);
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn insertedTurn) =>
+            {
+                insertedTurn.Id = 6;
+                store.Add(insertedTurn);
+                return insertedTurn;
+            });
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(updated => updatedSession = updated)
+            .Returns(Task.CompletedTask);
+        productService.Setup(x => x.GetProductByIdAsync(44)).ReturnsAsync(new Product { Id = 44, Name = "Platform Engineer" });
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse
+            {
+                Score = 86,
+                TechnicalScore = 88,
+                CommunicationScore = 84,
+                ProfessionalismScore = 86,
+                PositiveAttitudeScore = 86,
+                Feedback = "Strong follow-up",
+                RawJson = "{}",
+                RubricJson = "{\"technicalScore\":88,\"communicationScore\":84,\"professionalismScore\":86,\"positiveAttitudeScore\":86,\"score\":86}"
+            });
+        aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
+            .ReturnsAsync(new AIInterviewQuestionPlanResponse
+            {
+                Success = true,
+                Questions = new List<AIInterviewQuestionPlanItem>
+                {
+                    new()
+                    {
+                        SequenceNumber = 1,
+                        Category = "job_fit",
+                        Question = "Q3",
+                        ResumeEvidence = "Alignment",
+                        ExpectedSignals = new List<string> { "Alignment" },
+                        Rubric = new AIInterviewQuestionRubric()
+                    }
+                }
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var result = await service.SubmitAnswerAsync(new SubmitInterviewAnswerRequest
+        {
+            Token = "token225",
+            TurnId = 2,
+            SequenceNumber = 2,
+            Answer = "A2 with impact and tradeoffs."
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Question, Is.EqualTo("Q3"));
+        Assert.That(result.Turns.Select(turn => turn.SequenceNumber), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(result.Turns.Count(turn => string.IsNullOrWhiteSpace(turn.AnswerText)), Is.EqualTo(1));
+        Assert.That(result.Turns.Count(turn => turn.SequenceNumber == 1), Is.EqualTo(1));
+        Assert.That(result.Turns.Count(turn => turn.SequenceNumber == 2), Is.EqualTo(1));
+        Assert.That(result.Turns.Any(turn => turn.SequenceNumber == 5), Is.False);
+        Assert.That(updatedSession, Is.Not.Null);
+        var parsedScores = JsonSerializer.Deserialize<List<decimal>>(updatedSession.QuestionScores);
+        Assert.That(parsedScores, Is.Not.Null);
+        Assert.That(parsedScores.Count, Is.EqualTo(2));
     }
 
     [Test]
@@ -1274,7 +1534,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task GenerateQuestionAsync_HttpFailure_LogsSafeAzureDetails()
+    public async Task GenerateQuestionAsync_AzureOpenAIHttpFailure_LogsSafeAzureDetails()
     {
         var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage((HttpStatusCode)429)
         {
@@ -1312,16 +1572,68 @@ public class RuntimeServiceTests
             "AI Interview Azure OpenAI HTTP failure",
             It.Is<string>(message =>
                 message.Contains("Mode=generate") &&
+                message.Contains("Operation=llm-question-generation") &&
+                message.Contains("FailureKind=azure-openai-http-failure") &&
                 message.Contains("HttpStatus=429") &&
+                message.Contains("EndpointHost=example.openai.azure.com") &&
+                message.Contains("Deployment=gpt-4o-mini") &&
+                message.Contains("ResponseLength=") &&
                 message.Contains("AzureErrorCode=rate_limit_exceeded") &&
                 message.Contains("AzureErrorMessage=Too many requests for this deployment.") &&
+                message.Contains("AzureResponseBody=") &&
                 !message.Contains("super-secret-key") &&
                 !message.Contains("api-key")),
             null), Times.Once);
     }
 
     [Test]
-    public async Task ScoreAnswerAsync_ContractFailure_LogsPreciseSafeReason()
+    public async Task GenerateQuestionAsync_AzureOpenAIHttpException_LogsSafeExceptionDiagnostics()
+    {
+        var handler = new TestHttpMessageHandler(_ => throw new HttpRequestException("DNS failure for Azure OpenAI endpoint"));
+        var httpFactory = CreateHttpClientFactory(handler);
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(x => x.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "super-secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-4o-mini",
+                Prompt = "prompt"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            httpFactory.Object,
+            null,
+            nopLogger.Object);
+
+        var response = await client.GenerateQuestionAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Backend Engineer",
+            Difficulty = "Medium",
+            Prompt = "prompt",
+            QuestionNumber = 1
+        });
+
+        Assert.That(response.Success, Is.False);
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Error,
+            "AI Interview Azure OpenAI exception",
+            It.Is<string>(message =>
+                message.Contains("Mode=generate") &&
+                message.Contains("Operation=llm-question-generation") &&
+                message.Contains("FailureKind=azure-openai-exception") &&
+                message.Contains("ExceptionType=HttpRequestException") &&
+                message.Contains("ExceptionMessage=DNS failure for Azure OpenAI endpoint") &&
+                message.Contains("ExceptionDetail=") &&
+                !message.Contains("super-secret-key") &&
+                !message.Contains("api-key")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task ScoreAnswerAsync_AzureOpenAIContractFailure_LogsPreciseSafeReason()
     {
         var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -1361,6 +1673,8 @@ public class RuntimeServiceTests
             "AI Interview score validation failure",
             It.Is<string>(message =>
                 message.Contains("Mode=score") &&
+                message.Contains("Operation=llm-scoring") &&
+                message.Contains("FailureKind=azure-openai-contract-failure") &&
                 message.Contains("missing required score") &&
                 !message.Contains("super-secret-key") &&
                 !message.Contains("It reduces coupling.")),
@@ -1368,7 +1682,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task ScoreAnswerAsync_PlainTextContractFailure_LogsSafeDiagnostics()
+    public async Task ScoreAnswerAsync_AzureOpenAIPlainTextContractFailure_LogsSafeDiagnostics()
     {
         var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -1407,8 +1721,11 @@ public class RuntimeServiceTests
             "AI Interview Azure OpenAI contract failure",
             It.Is<string>(message =>
                 message.Contains("Mode=score") &&
+                message.Contains("Operation=llm-scoring") &&
+                message.Contains("FailureKind=azure-openai-contract-failure") &&
                 message.Contains("Reason=invalid JSON") &&
                 message.Contains("Shape=plain text") &&
+                message.Contains("ResponseLength=") &&
                 message.Contains("Sample=Sorry, I cannot score this right now.") &&
                 !message.Contains("super-secret-key") &&
                 !message.Contains("My full candidate answer with confidential details.")),
@@ -1416,7 +1733,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task GenerateQuestionAsync_ContractFailure_LogsSafeReason()
+    public async Task GenerateQuestionAsync_AzureOpenAIContractFailure_LogsSafeReason()
     {
         var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -1454,8 +1771,63 @@ public class RuntimeServiceTests
             "AI Interview Azure OpenAI contract failure",
             It.Is<string>(message =>
                 message.Contains("Mode=generate") &&
+                message.Contains("Operation=llm-question-generation") &&
+                message.Contains("FailureKind=azure-openai-contract-failure") &&
                 message.Contains("Reason=empty response choices") &&
+                message.Contains("ResponseLength=") &&
+                message.Contains("AzureResponseBody={\"choices\":[]}") &&
                 !message.Contains("super-secret-key")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task AIInterviewClient_AnalyzeResumeAsync_HttpFailure_LogsSafeAzureDetails()
+    {
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("{\"error\":{\"code\":\"DeploymentNotFound\",\"message\":\"Deployment not found. api-key=secret-token\"}}", Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(handler);
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(x => x.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "super-secret-key",
+                AzureOpenAiDeploymentOrModel = "resume-model",
+                Prompt = "prompt"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            httpFactory.Object,
+            null,
+            nopLogger.Object);
+
+        var response = await client.AnalyzeResumeAsync(new AIResumeProfileRequest
+        {
+            JobTitle = "Backend Engineer",
+            JobContext = "Cloud APIs",
+            ResumeText = "Confidential resume text that must not be logged."
+        });
+
+        Assert.That(response.Success, Is.False);
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI HTTP failure",
+            It.Is<string>(message =>
+                message.Contains("Mode=resume-profile") &&
+                message.Contains("Operation=llm-resume-profile") &&
+                message.Contains("FailureKind=azure-openai-http-failure") &&
+                message.Contains("HttpStatus=400") &&
+                message.Contains("Deployment=resume-model") &&
+                message.Contains("AzureErrorCode=DeploymentNotFound") &&
+                message.Contains("AzureResponseBody=") &&
+                message.Contains("api-key=<redacted>") &&
+                !message.Contains("super-secret-key") &&
+                !message.Contains("secret-token") &&
+                !message.Contains("Confidential resume text")),
             null), Times.Once);
     }
 
@@ -1633,7 +2005,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task SpeechToken_ReturnNull_WhenConfigMissing()
+    public async Task SpeechToken_MissingConfig_LogsDetailedFlags()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -1643,16 +2015,45 @@ public class RuntimeServiceTests
         var localizationService = new Mock<ILocalizationService>();
         var workContext = new Mock<IWorkContext>();
         var eventPublisher = new Mock<IEventPublisher>();
+        var nopLogger = new Mock<NopLogger>();
 
-        sessionService.Setup(x => x.GetSessionByTokenAsync("token5")).ReturnsAsync(new InterviewSession { Id = 5, Token = "token5", IsActive = true });
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token5")).ReturnsAsync(new InterviewSession
+        {
+            Id = 5,
+            Token = "token5",
+            CustomerId = 7,
+            ProductId = 9,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(7)).ReturnsAsync(new Customer { Id = 7 });
 
-        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            workContext: workContext,
+            eventPublisher: eventPublisher,
+            nopLogger: nopLogger);
 
-        Assert.That(await service.GetSpeechTokenAsync("token5"), Is.Null);
+        var result = await service.GetSpeechTokenAsync("token5");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("configuration-incomplete"));
+        Assert.That(result.Message, Is.EqualTo("Voice mode is unavailable. Please type your answer below."));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview speech token unavailable",
+            It.Is<string>(message =>
+                message.Contains("Mode=speech-token") &&
+                message.Contains("Reason=configuration incomplete") &&
+                message.Contains("FailureKind=configuration-incomplete") &&
+                message.Contains("AzureSpeechKeyConfigured=false") &&
+                message.Contains("AzureSpeechRegionConfigured=false") &&
+                message.Contains("SpeechRegion=<empty>")),
+            It.IsAny<Customer>()), Times.Once);
     }
 
     [Test]
-    public async Task SpeechToken_ReturnsNull_ForInactiveCompletedOrExpiredSessions()
+    public async Task SpeechToken_ReturnsFailure_ForInactiveCompletedOrExpiredSessions()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -1678,14 +2079,14 @@ public class RuntimeServiceTests
         sessionService.Setup(x => x.GetSessionByTokenAsync("completed")).ReturnsAsync(completed);
         sessionService.Setup(x => x.GetSessionByTokenAsync("expired")).ReturnsAsync(expired);
 
-        Assert.That(await service.GetSpeechTokenAsync("inactive"), Is.Null);
-        Assert.That(await service.GetSpeechTokenAsync("completed"), Is.Null);
-        Assert.That(await service.GetSpeechTokenAsync("expired"), Is.Null);
+        Assert.That((await service.GetSpeechTokenAsync("inactive")).FailureKind, Is.EqualTo("invalid-session"));
+        Assert.That((await service.GetSpeechTokenAsync("completed")).FailureKind, Is.EqualTo("invalid-session"));
+        Assert.That((await service.GetSpeechTokenAsync("expired")).FailureKind, Is.EqualTo("invalid-session"));
         Assert.That(httpHandler.Requests, Is.Empty);
     }
 
     [Test]
-    public async Task SpeechToken_ReturnsNull_OnExpiryBoundary()
+    public async Task SpeechToken_ReturnsFailure_OnExpiryBoundary()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -1711,8 +2112,427 @@ public class RuntimeServiceTests
                 AzureSpeechRegion = "eastus"
             });
 
-        Assert.That(await service.GetSpeechTokenAsync("boundary"), Is.Null);
+        var result = await service.GetSpeechTokenAsync("boundary");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("invalid-session"));
         Assert.That(httpHandler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task SpeechToken_AzureHttpFailure_LogsOriginalAzureBodyWithoutKey()
+    {
+        var azureBody = """{"error":{"code":"401","message":"Access denied due to invalid subscription key or wrong API endpoint."},"token":"raw-secret-token"}""";
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = new StringContent(azureBody, Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-http")).ReturnsAsync(new InterviewSession
+        {
+            Id = 12,
+            Token = "token-http",
+            CustomerId = 21,
+            ProductId = 34,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(21)).ReturnsAsync(new Customer { Id = 21 });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key-secret",
+                AzureSpeechRegion = "eastus"
+            },
+            nopLogger: nopLogger);
+
+        var result = await service.GetSpeechTokenAsync("token-http");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("azure-http-failure"));
+        Assert.That(result.AzureStatusCode, Is.EqualTo(401));
+        Assert.That(result.AzureReasonPhrase, Is.EqualTo("Unauthorized"));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview speech token failure",
+            It.Is<string>(message =>
+                message.Contains("FailureKind=azure-http-failure") &&
+                message.Contains("HttpStatus=401") &&
+                message.Contains("ReasonPhrase=Unauthorized") &&
+                message.Contains("Access denied due to invalid subscription key or wrong API endpoint.") &&
+                !message.Contains("speech-key-secret") &&
+                !message.Contains("raw-secret-token")),
+            It.IsAny<Customer>()), Times.Once);
+    }
+
+    [Test]
+    public async Task SpeechToken_DuplicateAzureHttpFailure_LogsOnce()
+    {
+        var azureBody = """{"error":{"code":"401","message":"Access denied due to invalid subscription key or wrong API endpoint."}}""";
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = new StringContent(azureBody, Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-http-dedupe")).ReturnsAsync(new InterviewSession
+        {
+            Id = 112,
+            Token = "token-http-dedupe",
+            CustomerId = 121,
+            ProductId = 134,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(121)).ReturnsAsync(new Customer { Id = 121 });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key-secret",
+                AzureSpeechRegion = "eastus"
+            },
+            nopLogger: nopLogger);
+
+        var first = await service.GetSpeechTokenAsync("token-http-dedupe");
+        var second = await service.GetSpeechTokenAsync("token-http-dedupe");
+
+        Assert.That(first.Success, Is.False);
+        Assert.That(second.Success, Is.False);
+        Assert.That(first.FailureKind, Is.EqualTo("azure-http-failure"));
+        Assert.That(second.FailureKind, Is.EqualTo("azure-http-failure"));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview speech token failure",
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Once);
+    }
+
+    [Test]
+    public async Task SpeechToken_DifferentAzureHttpStatus_BypassesDedupe()
+    {
+        var callCount = 0;
+        var httpHandler = new TestHttpMessageHandler(_ =>
+        {
+            callCount++;
+            return callCount == 1
+                ? new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Content = new StringContent("""{"error":{"code":"401","message":"Invalid key."}}""", Encoding.UTF8, "application/json")
+                }
+                : new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+                {
+                    ReasonPhrase = "TooManyRequests",
+                    Content = new StringContent("""{"error":{"code":"429","message":"Quota exceeded."}}""", Encoding.UTF8, "application/json")
+                };
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-http-status")).ReturnsAsync(new InterviewSession
+        {
+            Id = 113,
+            Token = "token-http-status",
+            CustomerId = 122,
+            ProductId = 135,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(122)).ReturnsAsync(new Customer { Id = 122 });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key-secret",
+                AzureSpeechRegion = "eastus"
+            },
+            nopLogger: nopLogger);
+
+        var first = await service.GetSpeechTokenAsync("token-http-status");
+        var second = await service.GetSpeechTokenAsync("token-http-status");
+
+        Assert.That(first.AzureStatusCode, Is.EqualTo(401));
+        Assert.That(second.AzureStatusCode, Is.EqualTo(429));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview speech token failure",
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Exactly(2));
+    }
+
+    [Test]
+    public async Task SpeechToken_DifferentSession_BypassesDedupe()
+    {
+        var azureBody = """{"error":{"code":"401","message":"Access denied due to invalid subscription key or wrong API endpoint."}}""";
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = new StringContent(azureBody, Encoding.UTF8, "application/json")
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-http-session-a")).ReturnsAsync(new InterviewSession
+        {
+            Id = 114,
+            Token = "token-http-session-a",
+            CustomerId = 123,
+            ProductId = 136,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-http-session-b")).ReturnsAsync(new InterviewSession
+        {
+            Id = 115,
+            Token = "token-http-session-b",
+            CustomerId = 124,
+            ProductId = 136,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(It.IsAny<int>())).ReturnsAsync((int id) => new Customer { Id = id });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key-secret",
+                AzureSpeechRegion = "eastus"
+            },
+            nopLogger: nopLogger);
+
+        await service.GetSpeechTokenAsync("token-http-session-a");
+        await service.GetSpeechTokenAsync("token-http-session-b");
+
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview speech token failure",
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Exactly(2));
+    }
+
+    [Test]
+    public async Task SpeechToken_ConfigurationFailure_Dedupes()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-config-dedupe")).ReturnsAsync(new InterviewSession
+        {
+            Id = 116,
+            Token = "token-config-dedupe",
+            CustomerId = 125,
+            ProductId = 137,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(125)).ReturnsAsync(new Customer { Id = 125 });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            settings: new AIInterviewSettings(),
+            nopLogger: nopLogger);
+
+        var first = await service.GetSpeechTokenAsync("token-config-dedupe");
+        var second = await service.GetSpeechTokenAsync("token-config-dedupe");
+
+        Assert.That(first.FailureKind, Is.EqualTo("configuration-incomplete"));
+        Assert.That(second.FailureKind, Is.EqualTo("configuration-incomplete"));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview speech token unavailable",
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Once);
+    }
+
+    [Test]
+    public async Task SpeechToken_ExceptionFailure_DedupesByExceptionSignature()
+    {
+        var callCount = 0;
+        var httpHandler = new TestHttpMessageHandler(_ =>
+        {
+            callCount++;
+            throw new HttpRequestException(callCount <= 2
+                ? "DNS failure for speech endpoint"
+                : "TLS failure for speech endpoint");
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-ex-dedupe")).ReturnsAsync(new InterviewSession
+        {
+            Id = 117,
+            Token = "token-ex-dedupe",
+            CustomerId = 126,
+            ProductId = 138,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(126)).ReturnsAsync(new Customer { Id = 126 });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key",
+                AzureSpeechRegion = "eastus"
+            },
+            nopLogger: nopLogger);
+
+        var first = await service.GetSpeechTokenAsync("token-ex-dedupe");
+        var second = await service.GetSpeechTokenAsync("token-ex-dedupe");
+        var third = await service.GetSpeechTokenAsync("token-ex-dedupe");
+
+        Assert.That(first.FailureKind, Is.EqualTo("azure-exception"));
+        Assert.That(second.FailureKind, Is.EqualTo("azure-exception"));
+        Assert.That(third.FailureKind, Is.EqualTo("azure-exception"));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Error,
+            "AI Interview speech token exception",
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Exactly(2));
+    }
+
+    [Test]
+    public async Task SpeechToken_AzureException_LogsExceptionDetail()
+    {
+        var httpHandler = new TestHttpMessageHandler(_ => throw new HttpRequestException("DNS failure for speech endpoint"));
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-ex")).ReturnsAsync(new InterviewSession
+        {
+            Id = 18,
+            Token = "token-ex",
+            CustomerId = 44,
+            ProductId = 52,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(44)).ReturnsAsync(new Customer { Id = 44 });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key",
+                AzureSpeechRegion = "eastus"
+            },
+            nopLogger: nopLogger);
+
+        var result = await service.GetSpeechTokenAsync("token-ex");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("azure-exception"));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Error,
+            "AI Interview speech token exception",
+            It.Is<string>(message =>
+                message.Contains("FailureKind=azure-exception") &&
+                message.Contains("ExceptionType=System.Net.Http.HttpRequestException") &&
+                message.Contains("DNS failure for speech endpoint") &&
+                message.Contains("SessionId=18") &&
+                message.Contains("CustomerId=44") &&
+                message.Contains("ProductId=52")),
+            It.IsAny<Customer>()), Times.Once);
+    }
+
+    [Test]
+    public async Task SpeechToken_EmptySuccessfulResponse_LogsClearly()
+    {
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(string.Empty, Encoding.UTF8, "text/plain")
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var nopLogger = new Mock<NopLogger>();
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token-empty")).ReturnsAsync(new InterviewSession
+        {
+            Id = 22,
+            Token = "token-empty",
+            CustomerId = 55,
+            ProductId = 66,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        customerService.Setup(x => x.GetCustomerByIdAsync(55)).ReturnsAsync(new Customer { Id = 55 });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService,
+            httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureSpeechKey = "speech-key",
+                AzureSpeechRegion = "eastus"
+            },
+            nopLogger: nopLogger);
+
+        var result = await service.GetSpeechTokenAsync("token-empty");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("empty-token-response"));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview speech token failure",
+            It.Is<string>(message =>
+                message.Contains("FailureKind=empty-token-response") &&
+                message.Contains("Reason=empty token response") &&
+                message.Contains("HttpStatus=200") &&
+                message.Contains("ReasonPhrase=OK") &&
+                message.Contains("ResponseLength=0")),
+            It.IsAny<Customer>()), Times.Once);
     }
 
     [Test]
@@ -2367,6 +3187,7 @@ public class RuntimeServiceTests
         var result = await service.GetSpeechTokenAsync("token");
 
         Assert.That(result, Is.Not.Null);
+        Assert.That(result.Success, Is.True);
         Assert.That(result.Token, Is.EqualTo("speech-token"));
         Assert.That(result.Region, Is.EqualTo("eastus"));
         Assert.That(result.ExpiresInSeconds, Is.EqualTo(600));
@@ -2574,6 +3395,9 @@ public class RuntimeServiceTests
         var content = System.IO.File.ReadAllText(path);
         Assert.That(content.Contains("if (!currentText && interviewStarted && !isSpeakingOrSubmitting && hasActiveQuestion() && !isScreenShareBlockingInterview())"), Is.True, "Runtime view should contain repeating reminder scheduling logic");
         Assert.That(content.Contains("resetTimers();"), Is.True, "Runtime view should contain resetTimers logic in the timer interval");
+        Assert.That(content.Contains("let speechUnavailable = !config.speechAvailable;"), Is.True, "Runtime view should track first speech failure for the page.");
+        Assert.That(content.Contains("config.speechAvailable = false;"), Is.True, "Runtime view should disable speech after the first speech failure.");
+        Assert.That(content.Contains("Voice mode is unavailable. Please type your answer below."), Is.True, "Runtime view should keep the applicant-facing fallback message safe.");
     }
 
     [Test]

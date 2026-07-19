@@ -1,0 +1,192 @@
+@model IList<Nop.Plugin.Misc.AIInterview.Models.InterviewHistoryItemModel>
+@using Nop.Services.Helpers
+@inject IDateTimeHelper dateTimeHelper
+@{
+    async Task<string> FormatUtcDateAsync(DateTime utcDateTime)
+    {
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(utcDateTime, DateTimeKind.Utc);
+        return userDateTime.ToString("yyyy-MM-dd");
+    }
+
+    var practiceText = T("Plugins.Misc.AIInterview.History.MockPracticeLabel").Text;
+    var mockHistoryTitleText = T("Plugins.Misc.AIInterview.History.MockTitle").Text;
+    var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
+    var shareText = T("Plugins.Misc.AIInterview.Report.Share").Text;
+    var openSharePageText = T("Plugins.Misc.AIInterview.Report.OpenSharePage").Text;
+    var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
+    var practiceReportTitleFormat = T("Plugins.Misc.AIInterview.History.PracticeReportTitle").Text;
+    var practiceRecordingTitleFormat = T("Plugins.Misc.AIInterview.History.PracticeRecordingTitle").Text;
+    var openPracticeReportFormat = T("Plugins.Misc.AIInterview.History.OpenPracticeReport").Text;
+    var openPracticeRecordingFormat = T("Plugins.Misc.AIInterview.History.OpenPracticeRecording").Text;
+}
+
+<div class="applications-card">
+    @if (Model.Any())
+    {
+        <div class="applications-table-wrap applications-table-scroller">
+            <table class="applications-table">
+                <thead>
+                    <tr>
+                        <th class="col-job">@practiceText</th>
+                        <th class="col-score">@T("Plugins.Misc.AIInterview.History.Score")</th>
+                        <th class="col-status">@T("Plugins.Misc.AIInterview.History.Status")</th>
+                        <th class="col-completed">@T("Plugins.Misc.AIInterview.History.Date")</th>
+                        <th class="col-report">@T("Plugins.Misc.AIInterview.Report.Title")</th>
+                        <th class="col-recording">@T("Plugins.Misc.AIInterview.Report.Recording")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var session in Model)
+                    {
+                        var reportTitle = string.Format(practiceReportTitleFormat, session.JobTitle);
+                        var recordingTitle = string.Format(practiceRecordingTitleFormat, session.JobTitle);
+                        var reportActionLabel = string.Format(openPracticeReportFormat, session.JobTitle);
+                        var openRecordingLabel = string.Format(openPracticeRecordingFormat, session.JobTitle);
+                        var copyShareLabel = $"{copyShareLinkText} - {session.JobTitle}";
+                        var shareActionLabel = $"{shareText} - {session.JobTitle}";
+                        <tr>
+                            <td class="col-job">
+                                <div><strong>@session.JobTitle</strong></div>
+                                <div class="applications-footnote">@(await FormatUtcDateAsync(session.CreatedOnUtc))</div>
+                            </td>
+                            <td class="col-score"><span class="score-chip">@session.Score</span></td>
+                            <td class="col-status"><span class="status-pill">@session.Status</span></td>
+                            <td class="col-completed">@(await FormatUtcDateAsync(session.CreatedOnUtc))</td>
+                            <td class="col-report">
+                                @if (!string.IsNullOrWhiteSpace(session.InterviewReportUrl))
+                                {
+                                    <a href="@session.InterviewReportUrl"
+                                       class="js-open-report-drawer ai-view-report-link ai-icon-action"
+                                       data-report-panel-url="@session.InterviewReportPanelUrl"
+                                       data-report-title="@reportTitle"
+                                       aria-label="@reportActionLabel"
+                                       title="@reportActionLabel"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="sr-only">@viewReportText</span></a>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td class="col-recording">
+                                @if (!string.IsNullOrWhiteSpace(session.RecordingUrl))
+                                {
+                                    <div class="candidate-recording-actions">
+                                        <a href="@session.RecordingUrl"
+                                           target="_blank"
+                                           rel="noopener"
+                                           class="button-1 ai-report-action ai-report-action-primary ai-icon-action"
+                                           aria-label="@openRecordingLabel"
+                                           title="@openRecordingLabel"><i class="fa-solid fa-circle-play" aria-hidden="true"></i><span class="sr-only">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</span></a>
+                                        @if (!string.IsNullOrWhiteSpace(session.RecordingShareUrl))
+                                        {
+                                            <button type="button"
+                                                    class="button-2 ai-copy-share-link ai-icon-action"
+                                                    data-share-url="@session.RecordingShareUrl"
+                                                    aria-label="@copyShareLabel"
+                                                    title="@copyShareLabel"><i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i><i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i><i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i><span class="sr-only">@copyShareLinkText</span></button>
+                                            <button type="button"
+                                                    class="button-2 ai-native-share-link aiinterview-hidden ai-icon-action"
+                                                    data-share-url="@session.RecordingShareUrl"
+                                                    data-share-title="@recordingTitle"
+                                                    aria-label="@shareActionLabel"
+                                                    title="@shareActionLabel"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span class="sr-only">@shareText</span></button>
+                                            <noscript>
+                                                <a href="@session.RecordingShareUrl" target="_blank" rel="noopener">@openSharePageText</a>
+                                            </noscript>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="responsive-data-list history-mobile-list" aria-label="@mockHistoryTitleText">
+            @foreach (var session in Model)
+            {
+                var reportTitle = string.Format(practiceReportTitleFormat, session.JobTitle);
+                var recordingTitle = string.Format(practiceRecordingTitleFormat, session.JobTitle);
+                var reportActionLabel = string.Format(openPracticeReportFormat, session.JobTitle);
+                var openRecordingLabel = string.Format(openPracticeRecordingFormat, session.JobTitle);
+                var copyShareLabel = $"{copyShareLinkText} - {session.JobTitle}";
+                var shareActionLabel = $"{shareText} - {session.JobTitle}";
+                <article class="responsive-data-card">
+                    <div class="responsive-data-card-head">
+                        <div class="responsive-data-card-head-copy">
+                            <strong class="responsive-data-card-title">@session.JobTitle</strong>
+                            <div class="applications-footnote">@(await FormatUtcDateAsync(session.CreatedOnUtc))</div>
+                        </div>
+                        <div class="responsive-data-card-chip-group">
+                            <span class="score-chip">@session.Score</span>
+                            <span class="status-pill">@session.Status</span>
+                        </div>
+                    </div>
+                    <div class="responsive-data-card-grid">
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Date")</span>
+                            <span class="responsive-data-card-value">@(await FormatUtcDateAsync(session.CreatedOnUtc))</span>
+                        </div>
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Score")</span>
+                            <span class="responsive-data-card-value">@session.Score</span>
+                        </div>
+                    </div>
+                    <div class="responsive-data-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(session.InterviewReportUrl))
+                        {
+                            <a href="@session.InterviewReportUrl"
+                               class="js-open-report-drawer ai-view-report-link"
+                               data-report-panel-url="@session.InterviewReportPanelUrl"
+                               data-report-title="@reportTitle"
+                               aria-label="@reportActionLabel"
+                               title="@reportActionLabel">
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                                <span>@viewReportText</span>
+                            </a>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(session.RecordingUrl))
+                        {
+                            <div class="candidate-recording-actions">
+                                <a href="@session.RecordingUrl"
+                                   target="_blank"
+                                   rel="noopener"
+                                   class="button-1 ai-report-action ai-report-action-primary ai-icon-action"
+                                   aria-label="@openRecordingLabel"
+                                   title="@openRecordingLabel"><i class="fa-solid fa-circle-play" aria-hidden="true"></i><span class="sr-only">@T("Plugins.Misc.AIInterview.Report.OpenRecording")</span></a>
+                                @if (!string.IsNullOrWhiteSpace(session.RecordingShareUrl))
+                                {
+                                    <button type="button"
+                                            class="button-2 ai-copy-share-link ai-icon-action"
+                                            data-share-url="@session.RecordingShareUrl"
+                                            aria-label="@copyShareLabel"
+                                            title="@copyShareLabel"><i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i><i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i><i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i><span class="sr-only">@copyShareLinkText</span></button>
+                                    <button type="button"
+                                            class="button-2 ai-native-share-link aiinterview-hidden ai-icon-action"
+                                            data-share-url="@session.RecordingShareUrl"
+                                            data-share-title="@recordingTitle"
+                                            aria-label="@shareActionLabel"
+                                            title="@shareActionLabel"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span class="sr-only">@shareText</span></button>
+                                    <noscript>
+                                        <a href="@session.RecordingShareUrl" target="_blank" rel="noopener">@openSharePageText</a>
+                                    </noscript>
+                                }
+                            </div>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+    else
+    {
+        <p>@T("Plugins.Misc.AIInterview.History.NoSessions")</p>
+    }
+</div>
+
+@await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_CandidateReportDrawer.cshtml")

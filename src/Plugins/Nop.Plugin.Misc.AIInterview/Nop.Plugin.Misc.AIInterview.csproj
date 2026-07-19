@@ -30,7 +30,9 @@
     <None Remove="Views\Apply.cshtml" />
     <None Remove="Views\Configure.cshtml" />
     <None Remove="Views\Index.cshtml" />
+    <None Remove="Views\MyActivity.cshtml" />
     <None Remove="Views\MyApplications.cshtml" />
+    <None Remove="Views\EmployerDashboard.cshtml" />
     <None Remove="Views\ProductTemplate.JobDetails.cshtml" />
     <None Remove="Views\ProductTemplate.MockPractice.cshtml" />
     <None Remove="Views\EmployerApplications.cshtml" />
@@ -48,6 +50,16 @@
     <None Remove="Views\Shared\_AIInterviewJobDetailsContent.cshtml" />
     <None Remove="Views\Shared\_AIInterviewJobDetailsDrawer.cshtml" />
     <None Remove="Views\Shared\_InterviewReportContent.cshtml" />
+    <None Remove="Views\Shared\_EmployerDashboardApplicationsContent.cshtml" />
+    <None Remove="Views\Shared\_EmployerDashboardInvitesContent.cshtml" />
+    <None Remove="Views\Shared\_EmployerDashboardJobsContent.cshtml" />
+    <None Remove="Views\Shared\_EmployerDashboardOverviewContent.cshtml" />
+    <None Remove="Views\Shared\_EmployerDashboardTabContent.cshtml" />
+    <None Remove="Views\Shared\_MyActivityPager.cshtml" />
+    <None Remove="Views\Shared\_MyActivitySavedJobsContent.cshtml" />
+    <None Remove="Views\Shared\_MyActivityTabContent.cshtml" />
+    <None Remove="Views\Shared\_MyApplicationsContent.cshtml" />
+    <None Remove="Views\Shared\_MockInterviewHistoryContent.cshtml" />
     <None Remove="Views\Shared\Components\AIInterviewJobProductCard\Default.cshtml" />
     <None Remove="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml" />
     <None Remove="Views\MockAiInterview\Start.cshtml" />
@@ -81,7 +93,13 @@
     <Content Include="Views\Index.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Views\MyActivity.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Views\MyApplications.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\EmployerDashboard.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\ProductTemplate.JobDetails.cshtml">
@@ -135,6 +153,36 @@
     <Content Include="Views\Shared\_InterviewReportContent.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Views\Shared\_EmployerDashboardApplicationsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_EmployerDashboardInvitesContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_EmployerDashboardJobsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_EmployerDashboardOverviewContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_EmployerDashboardTabContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivityPager.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivitySavedJobsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivityTabContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyApplicationsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MockInterviewHistoryContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Views\Shared\Components\AIInterviewJobProductCard\Default.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -173,6 +221,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Content\css\aiinterview-admin.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Views\Admin\MockPracticeSessions.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -66,6 +66,30 @@ public record AiServiceSettingsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRegion")]
     public string AzureSpeechRegion { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.TrackAzureOpenAiUsage")]
+    public bool TrackAzureOpenAiUsage { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.TrackAzureSpeechUsage")]
+    public bool TrackAzureSpeechUsage { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.CalculateAzureCostPerInterview")]
+    public bool CalculateAzureCostPerInterview { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiPromptTokenPricePerThousand")]
+    public decimal AzureOpenAiPromptTokenPricePerThousand { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiCompletionTokenPricePerThousand")]
+    public decimal AzureOpenAiCompletionTokenPricePerThousand { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRecognitionPricePerHour")]
+    public decimal AzureSpeechRecognitionPricePerHour { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechSynthesisPricePerThousandCharacters")]
+    public decimal AzureSpeechSynthesisPricePerThousandCharacters { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureUsageCurrencyCode")]
+    public string AzureUsageCurrencyCode { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl")]
     public string AzureBlobStorageContainerUrl { get; set; }
 

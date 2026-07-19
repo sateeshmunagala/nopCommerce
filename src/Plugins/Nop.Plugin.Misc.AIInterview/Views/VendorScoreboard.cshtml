@@ -47,7 +47,7 @@
 
 @section left
 {
-    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.VendorScoreboardNavigationTab })
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.EmployerDashboardNavigationTab })
 }
 
 <div class="page vendor-scoreboard-page scoreboard-deck-page">
@@ -64,8 +64,8 @@
                 </div>
                 <div class="buttons scoreboard-deck-actions">
                     <a class="button-1 scoreboard-deck-action-primary" href="@Url.RouteUrl(AIInterviewDefaults.VendorJobCreationRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.CreateJobAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.CreateJobAction")</a>
-                    <a class="button-2 scoreboard-deck-action-secondary" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewApplicationsAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewApplicationsAction")</a>
-                    <a class="button-2 scoreboard-deck-action-secondary" href="@Url.RouteUrl(AIInterviewDefaults.MockEmployerManageRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ManageInvitesAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ManageInvitesAction")</a>
+                    <a class="button-2 scoreboard-deck-action-secondary" href="@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey })" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewApplicationsAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewApplicationsAction")</a>
+                    <a class="button-2 scoreboard-deck-action-secondary" href="@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardInvitesTabKey })" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ManageInvitesAction")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ManageInvitesAction")</a>
                 </div>
             </div>
 
@@ -168,7 +168,7 @@
                                             }
                                             else
                                             {
-                                                <a class="button-2 scoreboard-deck-row-link" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")</a>
+                                                <a class="button-2 scoreboard-deck-row-link" href="@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey })" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")</a>
                                             }
                                         </div>
                                     </td>
@@ -229,7 +229,7 @@
                                 }
                                 else
                                 {
-                                    <a class="button-2 scoreboard-deck-row-link" href="@Url.RouteUrl(AIInterviewDefaults.EmployerApplicationsRouteName)" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")</a>
+                                    <a class="button-2 scoreboard-deck-row-link" href="@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey })" title="@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")">@T("Plugins.Misc.AIInterview.VendorScoreboard.ReviewQueue")</a>
                                 }
                             </div>
                         </article>

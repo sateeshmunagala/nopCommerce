@@ -1,4 +1,4 @@
-using Nop.Core.Domain.Catalog;
+﻿using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Cms;
 using Nop.Services.Catalog;
 using Nop.Services.Cms;
@@ -117,11 +117,23 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (enabledSetting == null)
             settings.Enabled = true;
 
+        if (await _settingService.GetSettingAsync("aiinterviewsettings.trackazureopenaiusage") == null)
+            settings.TrackAzureOpenAiUsage = true;
+
+        if (await _settingService.GetSettingAsync("aiinterviewsettings.trackazurespeechusage") == null)
+            settings.TrackAzureSpeechUsage = true;
+
+        if (await _settingService.GetSettingAsync("aiinterviewsettings.calculateazurecostperinterview") == null)
+            settings.CalculateAzureCostPerInterview = true;
+
         if (string.IsNullOrWhiteSpace(settings.CreditProductSkuMappingsJson))
             settings.CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson;
 
         if (string.IsNullOrWhiteSpace(settings.CreditPurchasePageUrl))
             settings.CreditPurchasePageUrl = AIInterviewDefaults.DefaultCreditPurchasePageUrl;
+
+        if (string.IsNullOrWhiteSpace(settings.AzureUsageCurrencyCode))
+            settings.AzureUsageCurrencyCode = "USD";
 
         await _settingService.SaveSettingAsync(settings);
         await EnsureJobProductTemplateAsync();
@@ -404,6 +416,18 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.Attempt"] = "Attempt",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.ApplicationsCountLabel"] = "application(s)",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.Applied"] = "Applied",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Title"] = "My Activity",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.NavigationLabel"] = "My Activity",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.AppliedJobs"] = "Applied Jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.SavedJobs"] = "Saved Jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.MockInterviews"] = "Mock Interviews",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Loading"] = "Loading activity...",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SavedJobs.Empty"] = "Saved jobs will appear here when you bookmark roles.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.MockPracticeLabel"] = "Mock Practice",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.PracticeReportTitle"] = "Practice report - {0}",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.PracticeRecordingTitle"] = "Practice recording - {0}",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.OpenPracticeReport"] = "Open practice report - {0}",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.OpenPracticeRecording"] = "Open practice recording - {0}",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.HistoryFootnote"] = "Customer-side history includes overall results and per-question AI evaluation details.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.ApplyPanel.Description"] = "Apply for this role and start the mock interview directly from this page. Interview difficulty is handled automatically.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.SignInPrompt"] = "Sign in to apply and start the interview for this role.",
@@ -451,6 +475,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Title"] = "Employer Interview Invites",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.CreateTitle"] = "Create Employer Invite",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.ActiveTitle"] = "Active Employer Invites",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.ExpiryDate"] = "Expiry Date",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Deactivate.Tooltip"] = "Deactivate invite",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.BulkSuccess"] = "Successfully created {0} invites. {1} emails were invalid.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Pending"] = "Pending",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorScoreboard.TotalJobs"] = "Total jobs",
@@ -529,6 +555,28 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.Skills"] = "Skills",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.SkillsFallback"] = "Skills will be evaluated during the AI interview.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.JobDetails"] = "Job details",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Title"] = "Employer Dashboard",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.NavigationLabel"] = "Employer dashboard",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Tab.Overview"] = "Overview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Tab.Jobs"] = "Jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Tab.Applications"] = "Applications",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Tab.Invites"] = "Invites",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Action.ReviewQueue"] = "Review queue",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Action.ViewAnalysis"] = "View analysis",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Title"] = "Jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.JobTitle"] = "Job title",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Status"] = "Status",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Salary"] = "Salary",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.CreatedOn"] = "Posted on",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.ApplicationCount"] = "Applications",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Actions"] = "Actions",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Create"] = "Create Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Edit"] = "Edit",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Publish"] = "Publish",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Unpublish"] = "Unpublish",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Published"] = "Published",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Unpublished"] = "Unpublished",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Jobs.Empty"] = "No jobs found yet.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Name"] = "Job title",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Name.Required"] = "Job title is required.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ShortDescription"] = "Job Title",
@@ -547,6 +595,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.EmploymentType"] = "Employment type",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.JobLocation"] = "Job location",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryRange"] = "Salary range",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryMinCtcPa"] = "Min CTC (LPA)",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryMaxCtcPa"] = "Max CTC (LPA)",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Settings"] = "Settings",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Select"] = "Select",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ApplyUntilUtc.Past"] = "Apply until date cannot be in the past.",
@@ -558,13 +608,22 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.JobLocation.Invalid"] = "Select a valid job location.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.JobLocation.Unsupported"] = "Job location metadata is not configured. Configure the related specification attribute before creating the job.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryRange.Unsupported"] = "Salary range metadata is not configured. Configure the related specification attribute before creating the job.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryMinCtcPa.Invalid"] = "Minimum CTC must be zero or greater.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryMaxCtcPa.Invalid"] = "Maximum CTC must be zero or greater.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SalaryRange.Invalid"] = "Maximum CTC must be greater than or equal to minimum CTC.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Section.RoleOverview"] = "Role Overview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Section.Requirements"] = "Requirements",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Section.JobContent"] = "Job Content",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Section.InterviewSettings"] = "Interview Settings",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Submit"] = "Create Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.SubmitEdit"] = "Update Job",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Success"] = "The job was created successfully.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.UpdateSuccess"] = "The job was updated successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Unavailable"] = "Job creation is temporarily unavailable.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Title"] = "Create a Job"
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Title"] = "Create a Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.EditTitle"] = "Edit Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.BackToJobs"] = "Back to Jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ViewJob"] = "View Job"
         };
     }
 
@@ -605,6 +664,14 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel"] = "Azure OpenAI Deployment / Model",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechKey"] = "Azure Speech Key",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRegion"] = "Azure Speech Region",
+            ["Plugins.Misc.AIInterview.Admin.AiService.TrackAzureOpenAiUsage"] = "Track Azure OpenAI Usage",
+            ["Plugins.Misc.AIInterview.Admin.AiService.TrackAzureSpeechUsage"] = "Track Azure Speech Usage",
+            ["Plugins.Misc.AIInterview.Admin.AiService.CalculateAzureCostPerInterview"] = "Calculate Azure Cost Per Interview",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiPromptTokenPricePerThousand"] = "Azure OpenAI Prompt Token Price Per Thousand",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiCompletionTokenPricePerThousand"] = "Azure OpenAI Completion Token Price Per Thousand",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRecognitionPricePerHour"] = "Azure Speech Recognition Price Per Hour",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechSynthesisPricePerThousandCharacters"] = "Azure Speech Synthesis Price Per Thousand Characters",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureUsageCurrencyCode"] = "Azure Usage Currency Code",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl"] = "Azure Blob Storage Container URL",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
@@ -739,6 +806,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     {
         return new Dictionary<string, string>
         {
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Action.ReviewQueue"] = "Review queue",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Action.ViewAnalysis"] = "View analysis",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Deactivate.Tooltip"] = "Deactivate invite",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Resume"] = "Resume",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.DownloadResume"] = "Download resume",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.NoResume"] = "No resume"
@@ -753,6 +823,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             Enabled = true,
             ApiKey = string.Empty,
             MinimumScore = 0,
+            TrackAzureOpenAiUsage = true,
+            TrackAzureSpeechUsage = true,
+            CalculateAzureCostPerInterview = true,
+            AzureUsageCurrencyCode = "USD",
             CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson,
             CreditPurchasePageUrl = AIInterviewDefaults.DefaultCreditPurchasePageUrl
         };
@@ -811,6 +885,18 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.Title"] = "Your Interview History",
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.MockTitle"] = "Mock Practice History",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Title"] = "My Activity",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.NavigationLabel"] = "My Activity",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.AppliedJobs"] = "Applied Jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.SavedJobs"] = "Saved Jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.MockInterviews"] = "Mock Interviews",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Loading"] = "Loading activity...",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SavedJobs.Empty"] = "Saved jobs will appear here when you bookmark roles.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.MockPracticeLabel"] = "Mock Practice",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.PracticeReportTitle"] = "Practice report - {0}",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.PracticeRecordingTitle"] = "Practice recording - {0}",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.OpenPracticeReport"] = "Open practice report - {0}",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.OpenPracticeRecording"] = "Open practice recording - {0}",
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.Date"] = "Date",
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.Status"] = "Status",
             [$"{AIInterviewDefaults.LocalizationPrefix}.History.Score"] = "Score",
@@ -932,7 +1018,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Email"] = "Email",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.ProductId"] = "Product ID",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.MaxAttempts"] = "Max Attempts",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.ExpiryDate"] = "Expiry Date (UTC)",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.ExpiryDate"] = "Expiry Date",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Create"] = "Create Invite",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.ExistingInvites"] = "Existing Invites",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.ActiveTitle"] = "Active Employer Invites",
@@ -946,6 +1032,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Active"] = "Active",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Inactive"] = "Inactive",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Deactivate"] = "Deactivate",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Deactivate.Tooltip"] = "Deactivate invite",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.NoInvites"] = "No invites found.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Success"] = "Invite created successfully.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Error"] = "Error creating invite.",
@@ -1004,6 +1091,18 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.Interview"] = "Interview",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Index.Welcome"] = "Welcome to AI Interview.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.Title"] = "My Applications",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Title"] = "My Activity",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.NavigationLabel"] = "My Activity",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.AppliedJobs"] = "Applied Jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.SavedJobs"] = "Saved Jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.MockInterviews"] = "Mock Interviews",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Loading"] = "Loading activity...",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SavedJobs.Empty"] = "Saved jobs will appear here when you bookmark roles.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.MockPracticeLabel"] = "Mock Practice",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.PracticeReportTitle"] = "Practice report - {0}",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.PracticeRecordingTitle"] = "Practice recording - {0}",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.OpenPracticeReport"] = "Open practice report - {0}",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.History.OpenPracticeRecording"] = "Open practice recording - {0}",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.JobTitle"] = "Job Title",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.AppliedDate"] = "Applied Date",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.AttemptCount"] = "Attempt Count",

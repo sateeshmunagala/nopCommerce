@@ -17,6 +17,7 @@
 
     //add JobBoardVenture custom JS file
     NopHtml.AppendScriptParts(ResourceLocation.Footer, $"~/Themes/{themeName}/Content/js/jobboard-venture.js");
+    NopHtml.AppendScriptParts(ResourceLocation.Footer, "~/lib_npm/htmx.org/dist/htmx.min.js");
 
     //add Google Fonts
     // Added via external link for now, per Phase 1 instructions

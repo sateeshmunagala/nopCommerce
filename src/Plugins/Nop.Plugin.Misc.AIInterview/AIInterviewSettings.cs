@@ -31,6 +31,22 @@ public class AIInterviewSettings : ISettings
 
     public string AzureBlobStorageSasToken { get; set; }
 
+    public bool TrackAzureOpenAiUsage { get; set; }
+
+    public bool TrackAzureSpeechUsage { get; set; }
+
+    public bool CalculateAzureCostPerInterview { get; set; }
+
+    public decimal AzureOpenAiPromptTokenPricePerThousand { get; set; }
+
+    public decimal AzureOpenAiCompletionTokenPricePerThousand { get; set; }
+
+    public decimal AzureSpeechRecognitionPricePerHour { get; set; }
+
+    public decimal AzureSpeechSynthesisPricePerThousandCharacters { get; set; }
+
+    public string AzureUsageCurrencyCode { get; set; }
+
     /// <summary>
     /// Gets or sets the minimum score required in an interview to apply
     /// </summary>

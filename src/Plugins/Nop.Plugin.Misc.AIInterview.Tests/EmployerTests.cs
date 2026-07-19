@@ -10,6 +10,7 @@ using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Core.Domain.Catalog;
 using Nop.Services.Catalog;
+using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
@@ -38,6 +39,7 @@ public class EmployerTests
     private Mock<IProductTemplateService> _productTemplateService;
     private Mock<IUrlRecordService> _urlRecordService;
     private Mock<ISpecificationAttributeService> _specificationAttributeService;
+    private Mock<IGenericAttributeService> _genericAttributeService;
     private Mock<IShoppingCartService> _shoppingCartService;
     private Mock<IStoreContext> _storeContext;
     private AIInterviewController _controller;
@@ -67,6 +69,7 @@ public class EmployerTests
         _productTemplateService = new Mock<IProductTemplateService>();
         _urlRecordService = new Mock<IUrlRecordService>();
         _specificationAttributeService = new Mock<ISpecificationAttributeService>();
+        _genericAttributeService = new Mock<IGenericAttributeService>();
         _shoppingCartService = new Mock<IShoppingCartService>();
         _storeContext = new Mock<IStoreContext>();
 
@@ -85,6 +88,12 @@ public class EmployerTests
         _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(new Nop.Core.Domain.Stores.Store { Id = 1 });
         _shoppingCartService.Setup(x => x.GetShoppingCartAsync(It.IsAny<Customer>(), ShoppingCartType.Wishlist, 1, It.IsAny<int?>(), null, null, 0))
             .ReturnsAsync(new List<ShoppingCartItem>());
+        _genericAttributeService.Setup(x => x.SaveAttributeAsync(It.IsAny<Nop.Core.BaseEntity>(), It.IsAny<string>(), It.IsAny<decimal?>(), It.IsAny<int>()))
+            .Returns(Task.CompletedTask);
+        _genericAttributeService.Setup(x => x.SaveAttributeAsync(It.IsAny<Nop.Core.BaseEntity>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()))
+            .Returns(Task.CompletedTask);
+        _genericAttributeService.Setup(x => x.GetAttributeAsync<string>(It.IsAny<Nop.Core.BaseEntity>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string>()))
+            .ReturnsAsync(string.Empty);
 
         _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<JobApplication>());
         _interviewSessionService.Setup(x => x.GetSessionsByCustomerIdAsync(It.IsAny<int>())).ReturnsAsync(new List<InterviewSession>());
@@ -108,7 +117,8 @@ public class EmployerTests
             null,
             null,
             _shoppingCartService.Object,
-            _storeContext.Object);
+            _storeContext.Object,
+            genericAttributeService: _genericAttributeService.Object);
 
         _mockAiController = new MockAiInterviewController(
             _interviewSessionService.Object,
@@ -138,7 +148,7 @@ public class EmployerTests
         var applications = new PagedList<JobApplication>(new List<JobApplication> { new JobApplication { Id = 1, CustomerId = 789 } }, 0, 20);
 
         _applicationService.Setup(x => x.GetApplicationsAsync(
-            "John", "Pending", null, null, null, null, 0, 1, 0, 20, false))
+            "John", "Pending", null, null, null, null, 0, 1, 0, int.MaxValue, false))
             .ReturnsAsync(applications);
 
         _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>())).ReturnsAsync(new List<Customer> { new Customer { Id = 789, Email = "john@example.com" } });
@@ -242,7 +252,10 @@ public class EmployerTests
         var result = await _controller.UpdateStatus(model);
 
         _applicationService.Verify(x => x.UpdateJobApplicationAsync(It.Is<JobApplication>(a => a.Status == "Shortlisted" && a.StatusComment == "Great candidate")), Times.Once);
-        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        var redirectResult = (RedirectToRouteResult)result;
+        Assert.That(redirectResult.RouteName, Is.EqualTo(AIInterviewDefaults.EmployerDashboardRouteName));
+        Assert.That(redirectResult.RouteValues?["tab"], Is.EqualTo(AIInterviewDefaults.EmployerDashboardApplicationsTabKey));
     }
 
     [Test]
@@ -365,6 +378,25 @@ public class EmployerTests
     }
 
     [Test]
+    public async Task CreateInvite_DateOnlyExpiry_Normalizes_To_EndOfDayUtc()
+    {
+        _productService.Setup(x => x.GetProductByIdAsync(10))
+            .ReturnsAsync(new Product { Id = 10, VendorId = _employer.VendorId, Name = "AI Developer" });
+
+        var selectedDate = DateTime.UtcNow.Date.AddDays(3);
+
+        await _mockAiController.CreateInvite("invited@test.com", 10, 1, selectedDate);
+
+        _inviteService.Verify(x => x.CreateInviteAsync(
+            123,
+            "invited@test.com",
+            10,
+            1,
+            It.Is<DateTime?>(value => value == selectedDate.Date.AddDays(1).AddTicks(-1))),
+            Times.Once);
+    }
+
+    [Test]
     public async Task CreateInvite_InvalidEmail_ReturnsFailure()
     {
         _productService.Setup(x => x.GetProductByIdAsync(10))
@@ -469,7 +501,8 @@ public class EmployerTests
         });
 
         Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
-        Assert.That(((RedirectToRouteResult)result).RouteName, Is.EqualTo(AIInterviewDefaults.VendorScoreboardRouteName));
+        Assert.That(((RedirectToRouteResult)result).RouteName, Is.EqualTo(AIInterviewDefaults.EmployerDashboardRouteName));
+        Assert.That(((RedirectToRouteResult)result).RouteValues?["tab"], Is.EqualTo(AIInterviewDefaults.EmployerDashboardJobsTabKey));
         _productService.Verify(x => x.InsertProductAsync(It.Is<Nop.Core.Domain.Catalog.Product>(product =>
             product.Name == "Platform Engineer" &&
             product.VendorId == _employer.VendorId &&
@@ -524,7 +557,8 @@ public class EmployerTests
         });
 
         Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
-        Assert.That(((RedirectToRouteResult)result).RouteName, Is.EqualTo(AIInterviewDefaults.VendorScoreboardRouteName));
+        Assert.That(((RedirectToRouteResult)result).RouteName, Is.EqualTo(AIInterviewDefaults.EmployerDashboardRouteName));
+        Assert.That(((RedirectToRouteResult)result).RouteValues?["tab"], Is.EqualTo(AIInterviewDefaults.EmployerDashboardJobsTabKey));
         _productService.Verify(x => x.InsertProductAsync(It.Is<Nop.Core.Domain.Catalog.Product>(product =>
             product.Name == "Platform Engineer" &&
             product.VendorId == _employer.VendorId &&
@@ -725,10 +759,83 @@ public class EmployerTests
         {
             Name = "Platform Engineer",
             JobLocationOptionId = 3,
-            SalaryRange = "80k-90k"
+            SalaryMinCtcPa = 800000m
         });
 
         Assert.That(result, Is.TypeOf<ViewResult>());
+        _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
+    }
+
+    [Test]
+    public async Task VendorJobCreation_Saves_Structured_Salary_Attributes_And_Display_Text()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes();
+        _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Product>(), string.Empty, "Platform Engineer", true))
+            .ReturnsAsync("platform-engineer");
+
+        await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            SalaryMinCtcPa = 600000m,
+            SalaryMaxCtcPa = 1200000m
+        });
+
+        _genericAttributeService.Verify(x => x.SaveAttributeAsync(It.IsAny<Nop.Core.BaseEntity>(), AIInterviewDefaults.JobSalaryMinCtcPaAttributeName, (decimal?)600000m, It.IsAny<int>()), Times.Once);
+        _genericAttributeService.Verify(x => x.SaveAttributeAsync(It.IsAny<Nop.Core.BaseEntity>(), AIInterviewDefaults.JobSalaryMaxCtcPaAttributeName, (decimal?)1200000m, It.IsAny<int>()), Times.Once);
+        _genericAttributeService.Verify(x => x.SaveAttributeAsync(It.IsAny<Nop.Core.BaseEntity>(), AIInterviewDefaults.JobSalaryCurrencyCodeAttributeName, "INR", It.IsAny<int>()), Times.Once);
+        _genericAttributeService.Verify(x => x.SaveAttributeAsync(It.IsAny<Nop.Core.BaseEntity>(), AIInterviewDefaults.JobSalaryPeriodAttributeName, "PA", It.IsAny<int>()), Times.Once);
+        _specificationAttributeService.Verify(x => x.InsertProductSpecificationAttributeAsync(It.Is<ProductSpecificationAttribute>(attribute =>
+            attribute.AttributeType == SpecificationAttributeType.CustomText &&
+            attribute.CustomValue == "INR 6 LPA - INR 12 LPA")), Times.Once);
+    }
+
+    [Test]
+    public async Task VendorJobCreation_Rejects_Salary_When_Max_Is_Lower_Than_Min()
+    {
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        SetupVendorSpecificationAttributes();
+
+        var result = await _controller.VendorJobCreation(new VendorJobModel
+        {
+            Name = "Platform Engineer",
+            SalaryMinCtcPa = 1200000m,
+            SalaryMaxCtcPa = 600000m
+        });
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
+    }
+
+    [Test]
+    public async Task VendorJobEdit_Updates_Existing_Product_And_Does_Not_Insert_New_Product()
+    {
+        var existingProduct = new Product
+        {
+            Id = 44,
+            VendorId = _employer.VendorId,
+            Name = "Original Role",
+            ProductTemplateId = 7,
+            Published = false
+        };
+        SetupVendorSpecificationAttributes();
+        _productTemplateService.Setup(x => x.GetAllProductTemplatesAsync())
+            .ReturnsAsync(new List<ProductTemplate> { new() { Id = 7, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath } });
+        _productService.Setup(x => x.GetProductByIdAsync(44)).ReturnsAsync(existingProduct);
+        _urlRecordService.Setup(x => x.ValidateSeNameAsync(It.IsAny<Product>(), string.Empty, "Updated Role", true))
+            .ReturnsAsync("updated-role");
+
+        var result = await _controller.VendorJobEdit(44, new VendorJobModel
+        {
+            Name = "Updated Role",
+            Published = true
+        });
+
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        Assert.That(((RedirectToRouteResult)result).RouteName, Is.EqualTo(AIInterviewDefaults.EmployerDashboardRouteName));
+        _productService.Verify(x => x.UpdateProductAsync(It.Is<Product>(product => product.Id == 44 && product.Name == "Updated Role" && product.Published)), Times.Once);
         _productService.Verify(x => x.InsertProductAsync(It.IsAny<Product>()), Times.Never);
     }
 
@@ -758,6 +865,11 @@ public class EmployerTests
         Assert.That(viewText, Does.Not.Contain("Employment Type:"));
         Assert.That(viewText, Does.Not.Contain("Job Location:"));
         Assert.That(viewText, Does.Not.Contain("Salary Range:"));
+        Assert.That(viewText, Does.Contain("SalaryMinCtcPa"));
+        Assert.That(viewText, Does.Contain("SalaryMaxCtcPa"));
+        Assert.That(viewText, Does.Contain("AvailableSalaryLpaOptions"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.VendorJobCreation.Section.Requirements"));
+        Assert.That(viewText, Does.Not.Contain("<h3 class=\"vendor-job-form-section-title\">Publishing</h3>"));
     }
 
     [Test]
@@ -767,7 +879,8 @@ public class EmployerTests
         var employerApplications = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "EmployerApplications.cshtml"));
         var vendorScoreboard = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorScoreboard.cshtml"));
         var employerManage = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "EmployerManage.cshtml"));
-        var historyView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml"));
+        var historyView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml")) +
+            File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MockInterviewHistoryContent.cshtml"));
 
         Assert.That(vendorJobCreation, Does.Contain("Layout = \"_ColumnsTwo\""));
         Assert.That(vendorJobCreation, Does.Contain("class=\"section\""));
@@ -882,14 +995,51 @@ public class EmployerTests
     }
 
     [Test]
+    public void EmployerDashboard_Partials_Use_Pagers_Compact_Actions_And_DateOnly_Invites()
+    {
+        var overviewPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardOverviewContent.cshtml"));
+        var jobsPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardJobsContent.cshtml"));
+        var applicationsPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardApplicationsContent.cshtml"));
+        var invitesPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardInvitesContent.cshtml"));
+
+        Assert.That(overviewPartial, Does.Not.Contain("ReviewApplicationsAction"));
+        Assert.That(overviewPartial, Does.Not.Contain("ManageInvitesAction"));
+        Assert.That(overviewPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Dashboard.Action.ReviewQueue"));
+        Assert.That(overviewPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Dashboard.Action.ViewAnalysis"));
+        Assert.That(overviewPartial, Does.Contain("fa-solid fa-list-check"));
+        Assert.That(overviewPartial, Does.Contain("fa-solid fa-chart-column"));
+        Assert.That(overviewPartial, Does.Contain("_MyActivityPager.cshtml"));
+
+        Assert.That(jobsPartial, Does.Contain("fa-solid fa-pen-to-square"));
+        Assert.That(jobsPartial, Does.Contain("fa-eye-slash"));
+        Assert.That(jobsPartial, Does.Contain("employer-dashboard-table-wrapper"));
+        Assert.That(jobsPartial, Does.Contain("_MyActivityPager.cshtml"));
+
+        Assert.That(applicationsPartial, Does.Contain("employer-dashboard-table-wrapper employer-table-wrapper"));
+        Assert.That(applicationsPartial, Does.Contain("_MyActivityPager.cshtml"));
+
+        Assert.That(invitesPartial, Does.Contain("name=\"maxAttempts\" value=\"1\""));
+        Assert.That(invitesPartial, Does.Contain("id=\"expiryDateUtc\""));
+        Assert.That(invitesPartial, Does.Contain("type=\"date\" name=\"expiryDateUtc\""));
+        Assert.That(invitesPartial, Does.Not.Contain("id=\"maxAttempts\" type=\"number\""));
+        Assert.That(invitesPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Deactivate.Tooltip"));
+        Assert.That(invitesPartial, Does.Contain("employer-dashboard-long-link"));
+        Assert.That(invitesPartial, Does.Contain("_MyActivityPager.cshtml"));
+    }
+
+    [Test]
     public void VendorJobCreation_And_Theme_Cta_Source_Guards_Remain_In_Place()
     {
         var vendorJobCreation = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorJobCreation.cshtml"));
         var themeCssText = File.ReadAllText(Path.Combine(TestFilePathHelper.GetPluginRootPath(), "..", "..", "Presentation", "Nop.Web", "Themes", "JobBoardVenture", "Content", "css", "jobboard-venture.css"));
 
-        Assert.That(vendorJobCreation, Does.Contain("<h1>@T(\"Plugins.Misc.AIInterview.VendorJobCreation.Title\")</h1>"));
-        Assert.That(vendorJobCreation, Does.Not.Contain("<h2>@T(\"Plugins.Misc.AIInterview.VendorJobCreation.Title\")</h2>"));
+        Assert.That(vendorJobCreation, Does.Contain("var pageTitle = Model.IsEditMode"));
+        Assert.That(vendorJobCreation, Does.Contain("<h1>@pageTitle</h1>"));
+        Assert.That(vendorJobCreation, Does.Contain("Plugins.Misc.AIInterview.VendorJobCreation.EditTitle"));
+        Assert.That(vendorJobCreation, Does.Contain("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs"));
+        Assert.That(vendorJobCreation, Does.Contain("Plugins.Misc.AIInterview.VendorJobCreation.ViewJob"));
         Assert.That(vendorJobCreation, Does.Contain("class=\"vendor-job-posting-shell\""));
+        Assert.That(vendorJobCreation, Does.Contain("class=\"vendor-job-page-tools\""));
         Assert.That(vendorJobCreation, Does.Not.Contain("class=\"vendor-job-posting-lead\""));
         Assert.That(vendorJobCreation, Does.Not.Contain("class=\"vendor-job-posting-sections\""));
         Assert.That(vendorJobCreation, Does.Not.Contain("Plugins.Misc.AIInterview.VendorScoreboard.Intro"));
@@ -1191,7 +1341,7 @@ public class EmployerTests
         Assert.That(cssText, Does.Not.Contain(".ai-job-card-preview-trigger"));
         Assert.That(cssText, Does.Contain(".vendor-job-posting-shell"));
         Assert.That(cssText, Does.Contain(".vendor-job-form-simple-grid"));
-        Assert.That(cssText, Does.Contain("background: #20252b;"));
+        Assert.That(cssText, Does.Contain(".ai-job-card-save.is-saved {\r\n    border-color: transparent;\r\n    background: transparent;\r\n    color: #188f78;").Or.Contain(".ai-job-card-save.is-saved {\n    border-color: transparent;\n    background: transparent;\n    color: #188f78;"));
         Assert.That(cssText, Does.Contain(".ai-job-card-save[aria-pressed=\"true\"]"));
         Assert.That(cssText, Does.Contain(".invite-deactivate-button"));
         Assert.That(cssText, Does.Contain(".employer-status-form"));

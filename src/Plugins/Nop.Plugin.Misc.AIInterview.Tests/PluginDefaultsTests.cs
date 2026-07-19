@@ -238,6 +238,10 @@ public class PluginDefaultsTests
             Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation"));
         Assert.That(typeof(VendorJobModel).GetProperty("SalaryRange")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
             Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange"));
+        Assert.That(typeof(VendorJobModel).GetProperty("SalaryMinCtcPa")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.SalaryMinCtcPa"));
+        Assert.That(typeof(VendorJobModel).GetProperty("SalaryMaxCtcPa")?.GetCustomAttribute<NopResourceDisplayNameAttribute>()?.ResourceKey,
+            Is.EqualTo("Plugins.Misc.AIInterview.VendorJobCreation.SalaryMaxCtcPa"));
     }
 
     [Test]
@@ -254,14 +258,36 @@ public class PluginDefaultsTests
                      "Plugins.Misc.AIInterview.VendorJobCreation.EmploymentType",
                      "Plugins.Misc.AIInterview.VendorJobCreation.JobLocation",
                      "Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryMinCtcPa",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryMaxCtcPa",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryMinCtcPa.Invalid",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryMaxCtcPa.Invalid",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange.Invalid",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.SubmitEdit",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.UpdateSuccess",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.EditTitle",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Settings",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Select",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.Section.Requirements",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent",
                      "Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs",
+                     "Plugins.Misc.AIInterview.VendorJobCreation.ViewJob",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Title",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Overview",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Jobs",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Applications",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Invites",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Action.ReviewQueue",
+                     "Plugins.Misc.AIInterview.Employer.Dashboard.Action.ViewAnalysis",
+                     "Plugins.Misc.AIInterview.Employer.Jobs.Title",
+                     "Plugins.Misc.AIInterview.Employer.Jobs.Create",
                      "Plugins.Misc.AIInterview.Employer.Invite.Title",
                      "Plugins.Misc.AIInterview.Employer.Invite.CreateTitle",
                      "Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle",
+                     "Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate",
+                     "Plugins.Misc.AIInterview.Employer.Invite.Deactivate.Tooltip",
                      "Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CompanySponsored",
                      "Plugins.Misc.AIInterview.Employer.Applications.ChargeMode.CandidatePaid",
                      "Plugins.Misc.AIInterview.Employer.Applications.PageSize",
@@ -431,8 +457,8 @@ public class PluginDefaultsTests
         Assert.That(templateViewText, Does.Contain("data-practice-start-error=\"true\""));
         Assert.That(templateViewText, Does.Contain("window.location.href = result.runtimeUrl;"));
         Assert.That(templateViewText, Does.Contain("seoSettings.CanonicalUrlsEnabled"));
-        Assert.That(pluginText, Does.Contain("Plugins.Misc.AIInterview.History.MockTitle"));
-        Assert.That(pluginText, Does.Contain("Plugins.Misc.AIInterview.MockPractice.DifficultyRequired"));
-        Assert.That(pluginText, Does.Contain("Plugins.Misc.AIInterview.MockPractice.SkillOrResumeRequired"));
+        Assert.That(pluginText, Does.Contain(".History.MockTitle"));
+        Assert.That(pluginText, Does.Contain(".MockPractice.DifficultyRequired"));
+        Assert.That(pluginText, Does.Contain(".MockPractice.SkillOrResumeRequired"));
     }
 }

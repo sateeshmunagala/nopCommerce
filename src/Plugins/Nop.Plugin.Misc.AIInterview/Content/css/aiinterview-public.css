@@ -3,6 +3,12 @@
     min-width: 0;
 }
 
+body.html-aiinterview-view-page,
+body.html-aiinterview-employer-dashboard-page,
+body.html-aiinterview-vendor-job-creation-page {
+    overflow-x: clip;
+}
+
 .html-aiinterview-view-page .page-body,
 .aiinterview-public-page .page-body,
 .ai-interview-report-page .page-body,
@@ -27,6 +33,10 @@
 .html-aiinterview-view-page .block-account-navigation .list {
     min-width: 0;
     max-width: 100%;
+}
+
+.html-aiinterview-view-page .master-wrapper-content {
+    overflow-x: clip;
 }
 
 .aiinterview-shell,
@@ -442,6 +452,18 @@
 .vendor-job-form-checkbox-list {
     display: grid;
     gap: 10px;
+}
+
+.vendor-job-page-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.vendor-job-page-link {
+    min-height: 40px;
+    padding: 8px 16px;
 }
 
 .vendor-job-form-checkbox {
@@ -1715,9 +1737,9 @@ body.aiinterview-report-drawer-open {
     width: 38px;
     height: 38px;
     padding: 0;
-    border: 1px solid #d8dee4;
+    border: 1px solid transparent;
     border-radius: 4px;
-    background: #ffffff;
+    background: transparent;
     color: #334155;
     cursor: pointer;
     transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
@@ -1731,25 +1753,25 @@ body.aiinterview-report-drawer-open {
 }
 
 .ai-job-card-save.is-saved {
-    border-color: #20252b;
-    background: #20252b;
-    color: #ffffff;
-    box-shadow: inset 0 0 0 1px #20252b;
+    border-color: transparent;
+    background: transparent;
+    color: #188f78;
+    box-shadow: none;
 }
 
 .ai-job-card-save[aria-pressed="true"] {
-    border-color: #20252b;
-    background: #20252b;
-    color: #ffffff;
+    border-color: transparent;
+    background: transparent;
+    color: #188f78;
 }
 
 .ai-job-card-save.is-saved:hover,
 .ai-job-card-save.is-saved:focus-visible,
 .ai-job-card-save[aria-pressed="true"]:hover,
 .ai-job-card-save[aria-pressed="true"]:focus-visible {
-    border-color: #111827;
-    background: #111827;
-    color: #ffffff;
+    border-color: transparent;
+    background: transparent;
+    color: #188f78;
 }
 
 .ai-job-card-save-icon-filled {
@@ -2092,36 +2114,43 @@ body.ai-job-preview-open .item-box {
 
 .runtime-shell {
     min-height: 100vh;
-    padding: 12px;
+    padding: 14px;
     box-sizing: border-box;
     background:
-        radial-gradient(circle at top left, rgba(255, 255, 255, 0.55), transparent 36%),
-        linear-gradient(180deg, #e5e7eb 0%, #d1d5db 100%);
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.92), transparent 32%),
+        linear-gradient(180deg, #edf1f5 0%, #dfe5eb 100%);
     overflow-x: hidden;
 }
 
 .runtime-js-hidden {
-    display: none;
+    display: none !important;
+}
+
+[hidden] {
+    display: none !important;
 }
 
 .runtime-page {
-    height: calc(100vh - 24px);
-    max-width: 1440px;
+    min-height: calc(100vh - 28px);
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 16px;
-    border: 1px solid #cfd4dc;
-    border-radius: 8px;
-    background: #f8fafc;
+    padding: 18px;
+    border: 1px solid #d5dce4;
+    border-radius: 1px;
+    background: rgba(248, 250, 252, 0.94);
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr);
-    gap: 14px;
+    gap: 0;
     box-sizing: border-box;
     overflow: hidden;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
 }
 
 .runtime-topbar-main,
 .runtime-title-block,
-.runtime-sidebar-head {
+.runtime-sidebar-head,
+.runtime-title-line,
+.runtime-title-meta {
     min-width: 0;
 }
 
@@ -2129,44 +2158,44 @@ body.ai-job-preview-open .item-box {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
     flex-wrap: wrap;
-    padding-bottom: 14px;
-    border-bottom: 1px solid #d7dde6;
+    padding: 0 0 0 2px;
+    border-bottom: 1px solid #dde4eb;
 }
 
 .runtime-topbar-main {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
 }
 
 .runtime-title-block {
     display: grid;
-    gap: 3px;
+    gap: 0;
 }
 
 .runtime-title-line {
     display: flex;
-    align-items: baseline;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.runtime-title-meta {
+    display: flex;
+    align-items: center;
     gap: 10px;
     flex-wrap: wrap;
 }
 
-.runtime-eyebrow {
-    margin: 0;
-    color: #6b7280;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-}
-
-.runtime-topbar h1 {
+.runtime-topbar h3 {
     margin: 0;
     color: #111827;
-    font-size: 21px;
-    line-height: 1.25;
+    font-size: 1.3rem;
+    font-weight: 600;
+    line-height: 1.15;
     overflow-wrap: anywhere;
 }
 
@@ -2181,44 +2210,81 @@ body.ai-job-preview-open .item-box {
 
 .runtime-meta {
     justify-content: flex-end;
+    align-self: flex-end;
+    padding-bottom: 4px;
     color: #4b5563;
     font-weight: 700;
+}
+
+.runtime-candidate-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: min(34vw, 320px);
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid #d6dee8;
+    border-radius: 1px;
+    background: #f8fbfd;
+    color: #30404e;
+    font-size: 0.83rem;
+    font-weight: 400;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .runtime-timer-chip {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 42px;
+    min-height: 34px;
     padding: 0 14px;
-    border: 1px solid #d0d7e2;
-    border-radius: 6px;
+    border: 1px solid #d6dee8;
+    border-radius: 1px;
     background: #ffffff;
     color: #111827;
+    line-height: 1;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .runtime-stop-button {
     min-width: 148px;
+    min-height: 34px !important;
+    margin: 0;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    line-height: 1.1;
 }
 
 .runtime-question-counter {
     display: inline-flex;
     align-items: center;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: #374151;
-    font-size: 14px;
-    font-weight: 700;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid #dfe7ef;
+    border-radius: 1px;
+    background: #f8fbfd;
+    color: #30404e;
+    font-size: 0.8rem;
+    font-weight: 400;
     line-height: 1.2;
+}
+
+.runtime-question-counter:empty {
+    display: none !important;
+}
+
+.runtime-question-counter[hidden],
+.runtime-video-caption[hidden] {
+    display: none !important;
 }
 
 .runtime-header-status {
     min-height: 0;
     padding: 10px 12px;
     border: 1px solid #bbf7d0;
-    border-radius: 6px;
+    border-radius: 1px;
     background: #f0fdf4;
     color: #166534;
 }
@@ -2227,28 +2293,43 @@ body.ai-job-preview-open .item-box {
     color: #166534;
 }
 
+.runtime-screen-share-interruption-warning {
+    min-height: 42px;
+    padding: 11px 14px;
+    border: 1px solid #fca5a5;
+    border-radius: 1px;
+    background: #fef2f2;
+    color: #b42318;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.4;
+}
+
 .runtime-progress {
-    height: 6px;
-    border-radius: 999px;
-    background: #d1d5db;
+    height: 2px;
+    border-radius: 1px;
+    background: #d7dde5;
     overflow: hidden;
+    margin: 0;
 }
 
 .runtime-progress > span {
     display: block;
     width: 0;
     height: 100%;
-    background: #0f766e;
+    background: linear-gradient(90deg, #35d6b4 0%, #188f78 100%);
     transition: width 0.2s ease;
 }
 
 .runtime-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.95fr);
-    gap: 16px;
+    grid-template-columns: minmax(0, 2.25fr) minmax(360px, 1fr);
+    gap: 14px;
     height: 100%;
     min-height: 0;
     align-items: stretch;
+    padding-top: 12px;
+    overflow: hidden;
 }
 
 .runtime-stage,
@@ -2257,17 +2338,23 @@ body.ai-job-preview-open .item-box {
     gap: 12px;
     min-width: 0;
     min-height: 0;
-    padding: 16px;
-    border: 1px solid #d8dee8;
-    border-radius: 8px;
-    background: #ffffff;
+    padding: 14px;
+    border: 1px solid #dbe2ea;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.88);
     box-sizing: border-box;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
+}
+
+.runtime-sidebar {
+    grid-template-rows: auto minmax(0, 1fr);
 }
 
 .runtime-stage {
-    grid-template-rows: minmax(0, 1fr) auto;
-    height: 100%;
-    align-content: stretch;
+    grid-template-rows: auto auto auto auto;
+    height: auto;
+    align-content: start;
+    gap: 14px;
 }
 
 .runtime-video {
@@ -2275,14 +2362,19 @@ body.ai-job-preview-open .item-box {
     display: grid;
     place-items: center;
     min-height: 0;
-    height: 100%;
-    border: 1px solid #bfc7d2;
-    border-radius: 8px;
-    background: linear-gradient(180deg, #747f8c 0%, #59626c 100%);
+    height: auto;
+    min-height: min(560px, 64vh);
+    max-height: 64vh;
+    border: 1px solid #c6d1db;
+    border-radius: 1px;
+    background:
+        radial-gradient(circle at top center, rgba(255, 255, 255, 0.12), transparent 30%),
+        linear-gradient(180deg, #93a1b0 0%, #5f6c78 52%, #404b56 100%);
     color: #e5e7eb;
     font-size: 18px;
     font-weight: 600;
     overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .runtime-video video {
@@ -2303,7 +2395,7 @@ body.ai-job-preview-open .item-box {
     overflow-y: auto;
     padding: 8px;
     border: 1px solid #ddd;
-    border-radius: 6px;
+    border-radius: 1px;
     background: rgba(255, 255, 255, 0.92);
     color: #333;
     font-size: 11px;
@@ -2315,7 +2407,8 @@ body.ai-job-preview-open .item-box {
     gap: 10px;
     justify-items: center;
     text-align: center;
-    color: #e5e7eb;
+    color: #edf2f7;
+    z-index: 1;
 }
 
 .runtime-camera-placeholder i {
@@ -2330,80 +2423,163 @@ body.ai-job-preview-open .item-box {
 
 .runtime-avatar {
     position: absolute;
-    top: 16px;
-    right: 16px;
-    width: 130px;
-    min-height: 96px;
-    padding: 12px;
-    border: 1px solid #c7d0da;
-    border-radius: 8px;
-    background: rgba(248, 250, 252, 0.95);
+    top: 18px;
+    right: 18px;
+    width: 188px;
+    min-height: 146px;
+    padding: 14px;
+    border: 1px solid rgba(223, 232, 238, 0.95);
+    border-radius: 1px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(243, 247, 250, 0.95) 100%);
     display: grid;
-    place-items: center;
+    align-content: space-between;
     box-sizing: border-box;
+    z-index: 2;
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+}
+
+.runtime-avatar-status {
+    display: inline-flex;
+    align-items: center;
+    justify-self: end;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 1px;
+    background: #eefaf7;
+    color: #0f766e;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.runtime-avatar-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 1px;
+    background: #35d6b4;
+    box-shadow: 0 0 0 6px rgba(53, 214, 180, 0.14);
 }
 
 .runtime-avatar-label {
     display: grid;
     justify-items: center;
-    gap: 8px;
+    gap: 10px;
     color: #0f172a;
     font-size: 13px;
     font-weight: 700;
+    text-align: center;
 }
 
 .runtime-avatar-label i {
     display: grid;
     place-items: center;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: #d8f8f1;
-    color: #0f766e;
-    font-size: 18px;
+    width: 56px;
+    height: 56px;
+    border-radius: 1px;
+    background: linear-gradient(145deg, #ebfffb 0%, #d3f7ef 100%);
+    color: #188f78;
+    font-size: 22px;
+}
+
+.runtime-avatar-label small {
+    color: #6b7280;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.runtime-video-caption {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    display: grid;
+    gap: 6px;
+    width: min(72%, 860px);
+    max-width: calc(100% - 44px);
+    padding: 14px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #ffffff;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.22);
+    z-index: 2;
+    transform: translateX(-50%);
+}
+
+.runtime-video-caption-speaker {
+    color: #9ae6d8;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.runtime-video-caption-text {
+    font-size: 1rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 .runtime-controls {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    flex-wrap: nowrap;
-    width: fit-content;
-    max-width: 100%;
-    margin: 0 auto;
-    padding: 12px 14px;
-    border: 1px solid #d8dee8;
-    border-radius: 8px;
-    background: #f1f5f9;
-    gap: 12px;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #dbe3ec;
+    border-radius: 1px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(242, 246, 249, 0.94) 100%);
     box-sizing: border-box;
+    margin-top: 0;
+}
+
+.runtime-control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.runtime-control-group-left {
+    justify-content: flex-start;
+}
+
+.runtime-control-group-center {
+    justify-content: center;
+}
+
+.runtime-control-group-right {
+    justify-content: flex-end;
 }
 
 .runtime-control-icons {
     display: flex;
-    flex: 0 1 auto;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 8px;
     min-width: 0;
-    justify-content: center;
-    overflow-x: visible;
-    overflow-y: visible;
 }
 
 .runtime-controls #start-or-next {
     flex: 0 0 auto;
     white-space: nowrap;
+    min-width: 180px;
+    min-height: 36px;
+    padding-top: 8px;
+    padding-bottom: 8px;
 }
 
 .runtime-icon-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 40px;
-    width: 40px;
-    height: 40px;
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
     padding: 0;
-    flex: 0 0 40px;
+    flex: 0 0 36px;
 }
 
 .runtime-icon-button i {
@@ -2411,32 +2587,33 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-control-icons .runtime-icon-button {
-    border-color: #cbd5e1;
+    border-color: #cfdae5;
     background: #ffffff;
     color: #334155;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .runtime-control-icons .runtime-icon-button:hover:not(:disabled) {
-    border-color: #24b99a;
-    background: #ecfdf8;
-    color: #0f766e;
+    border-color: #35d6b4;
+    background: #eefaf7;
+    color: #188f78;
 }
 
-.runtime-control-icons .runtime-icon-button.is-active {
-    border-color: #24b99a;
+.runtime-shell .runtime-icon-button.is-active {
+    border-color: #35d6b4;
     background: #d8f8f1;
-    color: #ffffff;
+    color: #188f78;
 }
 
-.runtime-control-icons .runtime-icon-button.is-active i {
-    color: #0f766e;
+.runtime-shell .runtime-icon-button.is-active i {
+    color: #188f78;
 }
 
 .runtime-screen-share-status,
 .runtime-mock-warning {
-    padding: 8px 10px;
+    padding: 10px 12px;
     border: 1px solid #fecaca;
-    border-radius: 6px;
+    border-radius: 1px;
     background: #fff7ed;
     text-align: left;
     font-size: 13px;
@@ -2462,30 +2639,84 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-sidebar-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
+    display: block;
 }
 
-.runtime-sidebar h3 {
-    margin: 0;
-    color: #111827;
-    font-size: 18px;
+.runtime-sidebar-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
 }
 
-.runtime-sidebar-head p {
-    margin: 4px 0 0;
-    color: #6b7280;
-    line-height: 1.5;
+.runtime-tab {
+    appearance: none;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid #d6dee7;
+    border-radius: 1px;
+    background: #f4f7fa;
+    color: #5b6570;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.92rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.runtime-tab:hover,
+.runtime-tab:focus-visible {
+    border-color: #35d6b4;
+    background: #ffffff;
+    color: #1f2937;
+}
+
+.runtime-tab.is-active {
+    border-color: #35d6b4;
+    background: #ffffff;
+    color: #188f78;
+    box-shadow: 0 10px 24px rgba(53, 214, 180, 0.12);
+}
+
+.runtime-sidebar-panels,
+.runtime-sidebar-panel {
+    min-height: 0;
+}
+
+.runtime-sidebar-panels {
+    display: grid;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.runtime-sidebar-panel {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.runtime-sidebar-panel[hidden] {
+    display: none !important;
+}
+
+#runtime-panel-conversation {
+    gap: 8px;
+    grid-template-rows: auto auto auto auto auto;
+}
+
+#runtime-panel-details {
+    overflow-y: auto;
 }
 
 .runtime-question,
 .runtime-message {
     min-height: 22px;
-    padding: 10px 12px;
-    border: 1px solid #dbe3ec;
-    border-radius: 6px;
+    padding: 11px 13px;
+    border: 1px solid #e0e8f0;
+    border-radius: 1px;
     background: #f8fafc;
     color: #334155;
     line-height: 1.5;
@@ -2503,7 +2734,7 @@ body.ai-job-preview-open .item-box {
     gap: 12px;
     align-content: start;
     min-height: 0;
-    padding-right: 4px;
+    padding-right: 6px;
     overflow-y: auto;
 }
 
@@ -2513,11 +2744,12 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-conversation {
-    padding: 4px;
-    border: 1px solid #d8dee8;
-    border-radius: 8px;
-    background: #f8fafc;
-    min-height: 0;
+    height: clamp(330px, 52vh, 500px);
+    min-height: 330px;
+    padding: 6px;
+    border: 1px solid #dfe6ee;
+    border-radius: 1px;
+    background: linear-gradient(180deg, #fafcfd 0%, #f4f7fa 100%);
 }
 
 .runtime-chat-placeholder {
@@ -2526,8 +2758,8 @@ body.ai-job-preview-open .item-box {
     gap: 12px;
     align-items: start;
     padding: 16px;
-    border: 1px dashed #cbd5e1;
-    border-radius: 8px;
+    border: 1px dashed #cfd9e4;
+    border-radius: 1px;
     background: #ffffff;
 }
 
@@ -2536,7 +2768,7 @@ body.ai-job-preview-open .item-box {
     place-items: center;
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: 1px;
     background: #d8f8f1;
     color: #0f766e;
 }
@@ -2571,28 +2803,29 @@ body.ai-job-preview-open .item-box {
     place-items: center;
     width: 36px;
     height: 36px;
-    border-radius: 50%;
-    background: #e2e8f0;
+    border-radius: 1px;
+    background: #edf2f7;
     color: #0f172a;
 }
 
 .runtime-chat-message.is-user .runtime-chat-avatar {
     background: #d8f8f1;
-    color: #0f766e;
+    color: #188f78;
 }
 
 .runtime-chat-bubble {
-    padding: 12px 14px;
-    border: 1px solid #d5dde8;
-    border-radius: 8px;
+    padding: 13px 14px;
+    border: 1px solid #d8e1ea;
+    border-radius: 1px;
     background: #ffffff;
     color: #0f172a;
     overflow-wrap: anywhere;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
 }
 
 .runtime-chat-message.is-user .runtime-chat-bubble {
-    border-color: #9fe7d8;
-    background: #ecfdf8;
+    border-color: #b6eadf;
+    background: #eefaf7;
 }
 
 .runtime-chat-label {
@@ -2618,7 +2851,7 @@ body.ai-job-preview-open .item-box {
 .turn-card {
     padding: 12px 14px;
     border: 1px solid #ddd;
-    border-radius: 8px;
+    border-radius: 1px;
     background: #fff;
 }
 
@@ -2642,16 +2875,73 @@ body.ai-job-preview-open .item-box {
     font-size: 13px;
 }
 
+.runtime-answer {
+    margin-top: 0;
+}
+
 .runtime-answer textarea {
     width: 100%;
     min-height: 96px;
-    max-height: 160px;
-    padding: 12px 14px;
-    border: 1px solid #d0d7e2;
-    border-radius: 6px;
+    max-height: 168px;
+    padding: 14px 58px 14px 14px;
+    border: 1px solid #d4dde7;
+    border-radius: 1px;
     background: #ffffff;
     resize: vertical;
     box-sizing: border-box;
+    line-height: 1.55;
+}
+
+.runtime-answer-composer {
+    position: relative;
+}
+
+.runtime-composer-send {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    min-width: 42px !important;
+    width: 42px;
+    height: 42px;
+    padding: 0 !important;
+    border-radius: 1px !important;
+}
+
+.runtime-composer-send i {
+    font-size: 14px;
+}
+
+.runtime-detail-list {
+    display: grid;
+    gap: 10px;
+}
+
+.runtime-detail-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border: 1px solid #e0e7ef;
+    border-radius: 1px;
+    background: #fbfdff;
+}
+
+.runtime-detail-label {
+    color: #6b7280;
+    font-size: 0.8rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.runtime-detail-value {
+    color: #111827;
+    font-weight: 400;
+    text-align: center;
+    overflow-wrap: anywhere;
+    max-width: 70%;
 }
 
 .runtime-shell .button-1,
@@ -2662,7 +2952,7 @@ body.ai-job-preview-open .item-box {
     min-height: 42px;
     min-width: 118px;
     padding: 10px 18px;
-    border-radius: 4px;
+    border-radius: 1px;
     cursor: pointer;
     font-weight: 700;
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
@@ -2670,21 +2960,21 @@ body.ai-job-preview-open .item-box {
 
 .runtime-shell .button-1,
 .runtime-modal .button-1 {
-    border: 1px solid #0f766e;
-    background: #0f766e;
+    border: 1px solid var(--jb-accent, #35d6b4);
+    background: var(--jb-accent, #35d6b4);
     color: #fff;
 }
 
 .runtime-shell .button-1:hover:not(:disabled),
 .runtime-modal .button-1:hover:not(:disabled) {
-    border-color: #115e59;
-    background: #115e59;
+    border-color: #24b99a;
+    background: #24b99a;
 }
 
 .runtime-shell .button-2,
 .runtime-transcript .button-2,
 .runtime-modal .button-2 {
-    border: 1px solid #d0d7e2;
+    border: 1px solid #d1dae4;
     background: #f8fafc;
     color: #374151;
 }
@@ -2697,18 +2987,18 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-icon-button.button-2 {
-    min-width: 40px;
-    min-height: 40px;
-    width: 40px;
-    height: 40px;
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
     padding: 0;
-    border-radius: 6px;
+    border-radius: 1px;
 }
 
 .runtime-back-button {
-    border-color: transparent;
-    background: transparent;
-    color: #0f766e;
+    border-color: #d8e4e0;
+    background: rgba(255, 255, 255, 0.84);
+    color: #188f78;
 }
 
 .runtime-back-button:hover:not(:disabled),
@@ -2717,10 +3007,6 @@ body.ai-job-preview-open .item-box {
     background: #ecfdf8;
     color: #0f766e;
     outline: none;
-}
-
-.runtime-answer-hidden {
-    display: none;
 }
 
 .runtime-shell .button-1:disabled,
@@ -2775,12 +3061,15 @@ body.ai-job-preview-open .item-box {
     overflow: auto;
     padding: 20px;
     border: 1px solid #ddd;
-    border-radius: 8px;
+    border-radius: 1px;
     background: #fff;
 }
 
 .runtime-modal-card {
     width: min(720px, 100%);
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
 }
 
 .runtime-modal-head {
@@ -2810,6 +3099,125 @@ body.ai-job-preview-open .item-box {
     color: #111827;
 }
 
+.runtime-screen-share-guide {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 14px;
+    border: 1px solid #dbeafe;
+    border-radius: 1px;
+    background: #f8fbff;
+}
+
+.runtime-screen-share-guide-title {
+    color: #1f2937;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.runtime-screen-share-picker {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.runtime-share-option {
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    min-width: 0;
+    padding: 12px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 1px;
+    background: #ffffff;
+    color: #374151;
+    text-align: center;
+}
+
+.runtime-share-option-icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 34px;
+    border: 1px solid #d1d5db;
+    border-radius: 1px;
+    background: #f9fafb;
+}
+
+.runtime-share-option strong {
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.runtime-share-system-audio {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #166534;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.runtime-share-system-audio-toggle {
+    position: relative;
+    flex: 0 0 auto;
+    width: 34px;
+    height: 18px;
+    border: 1px solid #8b948f;
+    border-radius: 999px;
+    background: #eef2ef;
+    box-sizing: border-box;
+}
+
+.runtime-share-system-audio-toggle::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #737b76;
+    transition: left 0.18s ease, background-color 0.18s ease;
+}
+
+.runtime-share-system-audio-toggle.is-on {
+    border-color: #188f78;
+    background: #d8f8f1;
+}
+
+.runtime-share-system-audio-toggle.is-on::after {
+    left: 18px;
+    background: #188f78;
+}
+
+.runtime-share-option.is-selected {
+    border-color: #22c55e;
+    background: #f0fdf4;
+    color: #166534;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.18);
+}
+
+.runtime-share-option.is-selected .runtime-share-option-icon {
+    border-color: #86efac;
+    background: #dcfce7;
+}
+
+.runtime-share-option.is-selected strong {
+    color: #166534;
+}
+
+.runtime-share-option.is-rejected {
+    opacity: 0.72;
+}
+
+.runtime-share-option.is-rejected strong {
+    color: #b42318;
+}
+
 .runtime-guidelines-ack {
     display: flex;
     align-items: flex-start;
@@ -2817,10 +3225,21 @@ body.ai-job-preview-open .item-box {
     margin-top: 18px;
     color: #111827;
     font-weight: 700;
+    cursor: pointer;
+    pointer-events: auto;
 }
 
 .runtime-guidelines-ack input {
     margin-top: 4px;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.runtime-guidelines-ack span,
+.runtime-modal-actions,
+.runtime-modal-actions .button-1,
+.runtime-modal-actions .button-2 {
+    pointer-events: auto;
 }
 
 .runtime-modal-actions {
@@ -2843,13 +3262,14 @@ body.ai-job-preview-open .item-box {
     display: flex;
     align-items: end;
     gap: 4px;
-    height: 34px;
+    height: 24px;
+    justify-content: center;
 }
 
 .runtime-meter span {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
     background: #cbd5e1;
     transition: height 0.15s ease, background 0.15s ease;
 }
@@ -2857,11 +3277,30 @@ body.ai-job-preview-open .item-box {
 @media (max-width: 1024px) {
     .runtime-layout {
         grid-template-columns: 1fr;
+        height: auto;
+        overflow: visible;
     }
 
     .runtime-stage,
     .runtime-sidebar {
         height: auto;
+    }
+
+    .runtime-video {
+        min-height: min(460px, 58vh);
+        max-height: 58vh;
+    }
+}
+
+@media (min-width: 1025px) {
+    .runtime-page {
+        height: calc(100vh - 28px);
+        min-height: 0;
+    }
+
+    .runtime-video {
+        min-height: min(450px, 53vh);
+        max-height: 53vh;
     }
 }
 
@@ -2882,11 +3321,12 @@ body.ai-job-preview-open .item-box {
 
     .runtime-topbar-main,
     .runtime-meta,
-    .runtime-controls {
+    .runtime-controls,
+    .runtime-title-meta {
         width: 100%;
     }
 
-    .runtime-topbar h1 {
+    .runtime-topbar h3 {
         font-size: 18px;
     }
 
@@ -2895,26 +3335,28 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video {
-        min-height: 220px;
+        min-height: 260px;
         height: auto;
     }
 
     .runtime-avatar {
-        width: 108px;
-        min-height: 82px;
+        top: 14px;
+        right: 14px;
+        width: 136px;
+        min-height: 112px;
+        padding: 12px;
     }
 
     .runtime-controls {
-        justify-content: flex-start;
-        width: 100%;
-        overflow-x: auto;
-        overflow-y: hidden;
-        scrollbar-width: thin;
+        grid-template-columns: 1fr;
     }
 
-    .runtime-control-icons {
-        flex: 0 0 auto;
+    .runtime-control-group,
+    .runtime-control-group-left,
+    .runtime-control-group-center,
+    .runtime-control-group-right {
         justify-content: flex-start;
+        flex-wrap: wrap;
     }
 
     .runtime-shell .button-1,
@@ -2928,6 +3370,22 @@ body.ai-job-preview-open .item-box {
 
     .runtime-sidebar {
         min-height: 58vh;
+    }
+
+    .runtime-conversation {
+        height: 320px;
+        min-height: 320px;
+    }
+
+    .runtime-answer {
+        margin-top: 0;
+    }
+
+    .runtime-video-caption {
+        right: 14px;
+        bottom: 14px;
+        left: 14px;
+        max-width: none;
     }
 }
 
@@ -4522,4 +4980,1916 @@ body.ai-job-preview-open .item-box {
 .applications-toolbar-links {
     display: flex;
     align-items: center;
+}
+
+.my-activity-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.html-aiinterview-my-activity-page .applications-card,
+.html-aiinterview-my-activity-page .my-activity-empty-state,
+.html-aiinterview-my-activity-page .responsive-data-card,
+.html-aiinterview-my-activity-page .responsive-data-card-item,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-product-card,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-card-logo,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-card-save {
+    border-radius: 1px;
+}
+
+.my-activity-tabs {
+    display: flex;
+    gap: 28px;
+    padding: 0 0 1px;
+    border-bottom: 1px solid #d6dee6;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.my-activity-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 8px 0 12px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #23374a;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.18s ease;
+}
+
+.my-activity-tab::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    background: var(--jb-accent-dark, #24b99a);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.18s ease;
+}
+
+.my-activity-tab:hover,
+.my-activity-tab:focus-visible {
+    color: var(--jb-accent-dark, #24b99a);
+    text-decoration: none;
+}
+
+.my-activity-tab:hover::after,
+.my-activity-tab:focus-visible::after,
+.my-activity-tab.is-active::after {
+    transform: scaleX(1);
+}
+
+.my-activity-tab:focus-visible {
+    outline: 2px solid rgba(53, 214, 180, 0.5);
+    outline-offset: 4px;
+}
+
+.my-activity-tab.is-active {
+    color: var(--jb-accent-dark, #24b99a);
+}
+
+.my-activity-loading {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    color: #4a5c6d;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.my-activity-loading::before {
+    content: "";
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(15, 108, 189, 0.18);
+    border-top-color: #0f6cbd;
+    border-radius: 50%;
+    animation: my-activity-spin 0.7s linear infinite;
+}
+
+.my-activity-shell.is-loading .my-activity-loading,
+#my-activity-loading.htmx-request {
+    display: inline-flex;
+}
+
+.my-activity-content {
+    min-height: 120px;
+}
+
+.my-activity-saved-jobs-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+}
+
+.my-activity-saved-jobs-list .ai-job-product-card {
+    width: 100%;
+    max-width: 100%;
+    padding: 16px 18px;
+    gap: 16px;
+}
+
+.my-activity-saved-jobs-list .ai-job-card-summary {
+    -webkit-line-clamp: 3;
+}
+
+.my-activity-saved-jobs-list .ai-job-card-meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.my-activity-saved-jobs-list .ai-job-card-actions {
+    padding-top: 10px;
+}
+
+.my-activity-saved-jobs-list .ai-job-card-view-job {
+    margin-left: 0;
+}
+
+.my-activity-empty-state {
+    padding: 24px;
+    border: 1px solid #d6dee6;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #4a5c6d;
+}
+
+.my-activity-empty-state p {
+    margin: 0;
+}
+
+.my-activity-pager {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 16px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.my-activity-pager-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.my-activity-pager-link,
+.my-activity-pager-current {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid #d6dee6;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #23374a;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.92rem;
+    line-height: 1;
+    text-decoration: none;
+    text-transform: uppercase;
+    box-sizing: border-box;
+}
+
+.my-activity-pager-link:hover,
+.my-activity-pager-link:focus-visible {
+    border-color: var(--jb-accent, #35d6b4);
+    background: #eefaf7;
+    color: var(--jb-accent-dark, #24b99a);
+}
+
+.my-activity-pager-link:focus-visible {
+    outline: 2px solid rgba(53, 214, 180, 0.35);
+    outline-offset: 2px;
+}
+
+.my-activity-pager-current {
+    border-color: var(--jb-accent-dark, #24b99a);
+    background: #eefaf7;
+    color: var(--jb-accent-dark, #24b99a);
+}
+
+.my-activity-pager-summary {
+    color: #4a5c6d;
+    font-size: 0.92rem;
+    line-height: 1.4;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-shell,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table-section,
+.html-aiinterview-employer-dashboard-page .section.create-invite,
+.html-aiinterview-employer-dashboard-page .section.invite-list {
+    display: grid;
+    gap: 14px;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-header {
+    align-items: center;
+    padding: 16px 18px;
+    gap: 12px 18px;
+}
+
+.html-aiinterview-employer-dashboard-page .my-activity-shell,
+.html-aiinterview-employer-dashboard-page .my-activity-content,
+.html-aiinterview-employer-dashboard-page .my-activity-panel,
+.html-aiinterview-employer-dashboard-page .fieldset,
+.html-aiinterview-employer-dashboard-page .table-wrapper,
+.html-aiinterview-employer-dashboard-page .section,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-shell,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table-section,
+.html-aiinterview-employer-dashboard-page .results-toolbar,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-header > div,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-metrics,
+.html-aiinterview-employer-dashboard-page .invite-list,
+.html-aiinterview-employer-dashboard-page .create-invite {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-title {
+    margin: 0 0 6px;
+    font-size: 1.45rem;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-copy {
+    max-width: 680px;
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-metric,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-overview-card,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-empty-state {
+    padding: 14px;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-metric-label,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-overview-label {
+    margin-bottom: 8px;
+    font-size: 0.76rem;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-metric-value,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-overview-value {
+    font-size: 1.5rem;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-metric-detail,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-cell-secondary {
+    margin-top: 6px;
+    font-size: 0.88rem;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-table-wrapper,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table-wrapper,
+.html-aiinterview-employer-dashboard-page .employer-table-wrapper,
+.html-aiinterview-employer-dashboard-page .invite-table-wrapper {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table-wrapper,
+.html-aiinterview-employer-dashboard-page .employer-table-wrapper,
+.html-aiinterview-employer-dashboard-page .invite-table-wrapper {
+    border: 1px solid #d8dee4;
+    border-radius: 6px;
+    background: #ffffff;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table {
+    width: max-content;
+    max-width: none;
+    min-width: 100%;
+    min-width: 920px;
+    table-layout: auto;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table {
+    width: max-content;
+    max-width: none;
+    min-width: 100%;
+    min-width: 920px;
+    table-layout: auto;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table {
+    min-width: 920px;
+    table-layout: fixed;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td {
+    padding: 7px 12px;
+    line-height: 1.15;
+    vertical-align: middle;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td {
+    padding-top: 7px;
+    padding-bottom: 7px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-title {
+    width: 36%;
+    min-width: 300px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-status {
+    width: 15%;
+    min-width: 130px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-salary {
+    width: 21%;
+    min-width: 190px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-posted {
+    width: 11%;
+    min-width: 120px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-count {
+    width: 8%;
+    min-width: 110px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions {
+    width: 10%;
+    min-width: 112px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table tbody tr {
+    height: auto;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th.col-job-posted,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th.col-job-count,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th.col-job-actions,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td.col-job-posted,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td.col-job-count,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td.col-job-actions {
+    white-space: nowrap;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th.col-job-count,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table th.col-job-actions {
+    letter-spacing: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table td.col-job-actions {
+    text-align: center;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .job-table-text-truncate {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 1.15;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-table {
+    width: max-content;
+    max-width: none;
+    min-width: 100%;
+    min-width: 720px;
+    table-layout: auto;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table th,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table td,
+.html-aiinterview-employer-dashboard-page .employer-table th,
+.html-aiinterview-employer-dashboard-page .employer-table td,
+.html-aiinterview-employer-dashboard-page .invite-table th,
+.html-aiinterview-employer-dashboard-page .invite-table td {
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table th,
+.html-aiinterview-employer-dashboard-page .employer-table th,
+.html-aiinterview-employer-dashboard-page .invite-table th,
+.html-aiinterview-employer-dashboard-page .employer-table .col-charge,
+.html-aiinterview-employer-dashboard-page .employer-table .col-score,
+.html-aiinterview-employer-dashboard-page .employer-table .col-attempts,
+.html-aiinterview-employer-dashboard-page .employer-table .col-report,
+.html-aiinterview-employer-dashboard-page .employer-table .col-resume,
+.html-aiinterview-employer-dashboard-page .employer-table .col-applied,
+.html-aiinterview-employer-dashboard-page .invite-table th:last-child,
+.html-aiinterview-employer-dashboard-page .invite-table td:last-child {
+    white-space: nowrap;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-candidate {
+    min-width: 160px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-email {
+    min-width: 200px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-phone {
+    min-width: 140px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-message {
+    min-width: 200px;
+    max-width: 240px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-status {
+    min-width: 300px;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-row-actions {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-action-icon,
+.html-aiinterview-employer-dashboard-page .invite-deactivate-button {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    padding: 0 !important;
+    border-radius: 8px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-action-icon i,
+.html-aiinterview-employer-dashboard-page .invite-deactivate-button i {
+    font-size: 0.92rem !important;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-panel {
+    border: 1px solid #d8dee4;
+    border-radius: 6px;
+    background: #ffffff;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-summary {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-summary::-webkit-details-marker {
+    display: none;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-summary strong {
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-summary::after {
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid #4a5c6d;
+    border-bottom: 2px solid #4a5c6d;
+    content: "";
+    flex: 0 0 auto;
+    transform: rotate(45deg);
+    transition: transform 0.2s ease;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-panel[open] .dashboard-collapsible-summary {
+    border-bottom: 1px solid #e5ecef;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-panel[open] .dashboard-collapsible-summary::after {
+    transform: rotate(-135deg);
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-summary:focus-visible {
+    outline: 2px solid rgba(53, 214, 180, 0.28);
+    outline-offset: 2px;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-body {
+    padding: 16px 18px 18px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-filter-shell {
+    gap: 14px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-filter-grid {
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 14px 16px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-filter-head {
+    display: none;
+}
+
+.html-aiinterview-employer-dashboard-page .status-form {
+    display: grid;
+    grid-template-columns: minmax(120px, 138px) minmax(170px, 1fr) 38px;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-status-field {
+    display: grid;
+    min-width: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .status-form .employer-status-select,
+.html-aiinterview-employer-dashboard-page .status-form .employer-status-comment {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-status-field-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    min-width: 38px;
+}
+
+.html-aiinterview-employer-dashboard-page .status-form .employer-status-update {
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    max-height: 38px;
+    padding: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-filter-actions .button-1,
+.html-aiinterview-employer-dashboard-page .employer-filter-actions .button-2 {
+    min-height: 40px;
+    padding: 8px 16px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-layout {
+    display: grid;
+    gap: 14px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+    align-items: end;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field {
+    gap: 6px;
+    min-width: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-email,
+.html-aiinterview-employer-dashboard-page .invite-field-product,
+.html-aiinterview-employer-dashboard-page .invite-field-expiry {
+    grid-column: auto;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field input,
+.html-aiinterview-employer-dashboard-page .invite-field select {
+    width: 100%;
+    min-width: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-action {
+    align-self: end;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-action .button-1 {
+    width: 100%;
+    min-height: 40px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-credit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #f5fbf9;
+    border-color: #d7ebe6;
+    white-space: nowrap;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-code,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-long-link {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table td,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table td,
+.html-aiinterview-employer-dashboard-page .invite-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.html-aiinterview-employer-dashboard-page .my-activity-pager {
+    margin-top: 12px;
+}
+
+@keyframes my-activity-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 1000px) {
+    .my-activity-tabs {
+        margin: 0 -8px;
+        padding: 0 8px 1px;
+    }
+
+    .my-activity-saved-jobs-list .ai-job-card-meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-dashboard-metrics,
+    .html-aiinterview-employer-dashboard-page .employer-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .html-aiinterview-employer-dashboard-page .invite-form-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .html-aiinterview-my-activity-page .applications-table-wrap {
+        display: none;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list,
+    .html-aiinterview-my-activity-page .history-mobile-list {
+        display: grid;
+        gap: 12px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card {
+        gap: 12px;
+        padding: 14px;
+        border-radius: 1px;
+        border-color: #d9e6e2;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-head,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-head {
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-head-copy,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-head-copy {
+        gap: 2px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-title,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-title {
+        font-size: 0.96rem;
+        line-height: 1.1;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .applications-footnote,
+    .html-aiinterview-my-activity-page .history-mobile-list .applications-footnote {
+        font-size: 0.84rem;
+        line-height: 1.35;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-chip-group,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-chip-group {
+        gap: 6px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .score-chip,
+    .html-aiinterview-my-activity-page .history-mobile-list .score-chip {
+        min-width: 36px;
+        min-height: 36px;
+        padding: 4px 8px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .status-pill,
+    .html-aiinterview-my-activity-page .history-mobile-list .status-pill {
+        min-height: 36px;
+        padding: 4px 10px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-grid,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-item,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-item {
+        gap: 4px;
+        padding: 10px 12px;
+        border: 1px solid #e5eeeb;
+        border-radius: 1px;
+        background: linear-gradient(180deg, #fbfdfd 0%, #f4fbf9 100%);
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-label,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-label {
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-value,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-value {
+        font-size: 0.92rem;
+        line-height: 1.35;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .candidate-recording-actions,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .candidate-recording-actions {
+        display: flex !important;
+        grid-template-columns: none !important;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link,
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .button-1,
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .button-2,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .ai-view-report-link,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .button-1,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .button-2 {
+        flex: 0 0 40px !important;
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        padding: 0 !important;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .ai-view-report-link {
+        gap: 0;
+        justify-content: center;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link span,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .ai-view-report-link span {
+        display: none;
+    }
+
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .ai-view-report-link i,
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .candidate-recording-actions .button-1 i,
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-actions .candidate-recording-actions .button-2 i,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .ai-view-report-link i,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .candidate-recording-actions .button-1 i,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-actions .candidate-recording-actions .button-2 i {
+        font-size: 0.82rem !important;
+    }
+
+    .my-activity-saved-jobs-list .ai-job-product-card {
+        padding: 14px;
+    }
+
+    .my-activity-saved-jobs-list .ai-job-card-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .my-activity-pager {
+        align-items: stretch;
+    }
+
+    .my-activity-pager-links {
+        width: 100%;
+    }
+
+    .my-activity-pager-summary {
+        width: 100%;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-dashboard-metrics,
+    .html-aiinterview-employer-dashboard-page .employer-filter-grid,
+    .html-aiinterview-employer-dashboard-page .invite-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-employer-dashboard-page .dashboard-collapsible-summary,
+    .html-aiinterview-employer-dashboard-page .dashboard-collapsible-body {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .invite-field-wide,
+    .html-aiinterview-employer-dashboard-page .invite-field-action {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-grid,
+    .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Final hard override for My Activity card corners across desktop and mobile. */
+.html-aiinterview-my-activity-page .applications-card,
+.html-aiinterview-my-activity-page .my-activity-empty-state,
+.html-aiinterview-my-activity-page .responsive-data-card,
+.html-aiinterview-my-activity-page .responsive-data-card-item,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-product-card,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-card-logo,
+.html-aiinterview-my-activity-page .my-activity-saved-jobs-list .ai-job-card-save {
+    border-radius: 1px !important;
+}
+
+/* Employer dashboard and vendor job polish overrides */
+.html-aiinterview-view-page .page,
+.html-aiinterview-view-page .page-body,
+.html-aiinterview-view-page .section,
+.html-aiinterview-employer-dashboard-page .my-activity-shell,
+.html-aiinterview-employer-dashboard-page .my-activity-content,
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-section,
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-shell,
+.html-aiinterview-vendor-job-creation-page .vendor-job-posting-shell {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.html-aiinterview-view-page.html-account-page .master-column-wrapper {
+    display: grid;
+    grid-template-columns: minmax(248px, 280px) minmax(0, 1fr);
+    gap: clamp(20px, 3vw, 32px);
+    align-items: start;
+}
+
+.html-aiinterview-view-page.html-account-page .side-2,
+.html-aiinterview-view-page.html-account-page .center-2 {
+    float: none;
+    width: auto;
+    margin: 0;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.html-aiinterview-view-page .jb-account-nav-shell,
+.html-aiinterview-view-page .jb-account-nav,
+.html-aiinterview-view-page .block-account-navigation .listbox,
+.html-aiinterview-view-page .block-account-navigation .list,
+.html-aiinterview-view-page .block-account-navigation li,
+.html-aiinterview-view-page .block-account-navigation a {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.html-aiinterview-view-page .jb-account-nav {
+    position: sticky;
+    top: 20px;
+    width: 100%;
+}
+
+.html-aiinterview-view-page .block-account-navigation .list {
+    display: grid;
+    gap: 8px;
+}
+
+.html-aiinterview-view-page .block-account-navigation li {
+    margin: 0;
+}
+
+.html-aiinterview-view-page .block-account-navigation a {
+    display: block;
+    padding: 12px 14px;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.html-aiinterview-employer-dashboard-page .page-body,
+.html-aiinterview-vendor-job-creation-page .page-body {
+    overflow-x: clip;
+}
+
+.html-aiinterview-employer-dashboard-page .my-activity-shell {
+    display: grid;
+    gap: 22px;
+}
+
+.html-aiinterview-employer-dashboard-page .my-activity-content {
+    display: grid;
+    gap: 18px;
+}
+
+.html-aiinterview-employer-dashboard-page .my-activity-tabs {
+    gap: 12px;
+    padding: 0;
+    margin: 0;
+    border-bottom: 1px solid #d7e0e7;
+}
+
+.html-aiinterview-employer-dashboard-page .my-activity-tab {
+    min-height: 48px;
+    padding: 10px 4px 14px;
+    color: #314353;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-header,
+.html-aiinterview-employer-dashboard-page .employer-filter-panel,
+.html-aiinterview-employer-dashboard-page .employer-invite-panel,
+.html-aiinterview-employer-dashboard-page .results-toolbar,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-empty-state,
+.html-aiinterview-employer-dashboard-page .employer-credit-chip,
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-section,
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-actions {
+    border-color: #d7e1e8;
+    border-radius: 8px;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-header {
+    padding: 18px 20px;
+    background: linear-gradient(180deg, #fff 0%, #fbfcfd 100%);
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-eyebrow {
+    letter-spacing: 0.08em;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-table-wrapper,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table-wrapper,
+.html-aiinterview-employer-dashboard-page .employer-table-wrapper,
+.html-aiinterview-employer-dashboard-page .invite-table-wrapper {
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: 1px solid #d8e2e8;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #fff 0%, #fcfdfd 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table,
+.html-aiinterview-employer-dashboard-page .employer-table,
+.html-aiinterview-employer-dashboard-page .invite-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table {
+    min-width: 900px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table {
+    min-width: 960px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table {
+    min-width: 1020px;
+    table-layout: fixed;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-table {
+    min-width: 780px;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table th,
+.html-aiinterview-employer-dashboard-page .employer-table th,
+.html-aiinterview-employer-dashboard-page .invite-table th {
+    padding: 14px 16px;
+    border-bottom: 1px solid #1f2c36;
+    background: #27323a;
+    color: #fff;
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    vertical-align: middle;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table td,
+.html-aiinterview-employer-dashboard-page .employer-table td,
+.html-aiinterview-employer-dashboard-page .invite-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #e3eaee;
+    background: transparent;
+    color: #27323a;
+    vertical-align: middle;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table tbody tr,
+.html-aiinterview-employer-dashboard-page .employer-table tbody tr,
+.html-aiinterview-employer-dashboard-page .invite-table tbody tr {
+    transition: background-color 0.18s ease;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table tbody tr:hover td,
+.html-aiinterview-employer-dashboard-page .employer-table tbody tr:hover td,
+.html-aiinterview-employer-dashboard-page .invite-table tbody tr:hover td {
+    background: #f7fafb;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table tbody tr:last-child td,
+.html-aiinterview-employer-dashboard-page .employer-table tbody tr:last-child td,
+.html-aiinterview-employer-dashboard-page .invite-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-title {
+    width: 34%;
+    min-width: 280px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-status {
+    width: 16%;
+    min-width: 140px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-salary {
+    width: 20%;
+    min-width: 190px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-posted {
+    width: 12%;
+    min-width: 120px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-count {
+    width: 8%;
+    min-width: 96px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions {
+    width: 10%;
+    min-width: 124px;
+    text-align: center;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-row-actions {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-row-actions form {
+    margin: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-action-icon,
+.html-aiinterview-employer-dashboard-page .invite-deactivate-button,
+.html-aiinterview-employer-dashboard-page .ai-resume-download-link,
+.html-aiinterview-employer-dashboard-page .ai-view-report-link.ai-icon-action,
+.html-aiinterview-employer-dashboard-page .status-form .employer-status-update {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    font-size: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-action-icon i,
+.html-aiinterview-employer-dashboard-page .invite-deactivate-button i,
+.html-aiinterview-employer-dashboard-page .ai-resume-download-link i,
+.html-aiinterview-employer-dashboard-page .ai-view-report-link.ai-icon-action i,
+.html-aiinterview-employer-dashboard-page .status-form .employer-status-update i {
+    font-size: 0.92rem !important;
+}
+
+.html-aiinterview-employer-dashboard-page .status-form {
+    grid-template-columns: minmax(132px, 152px) minmax(190px, 1fr) 38px;
+    gap: 10px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-status-field-action {
+    width: 38px;
+    min-width: 38px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-email,
+.html-aiinterview-employer-dashboard-page .invite-table td:first-child {
+    max-width: 220px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-message {
+    min-width: 240px;
+    max-width: 320px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-status {
+    min-width: 360px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-table td,
+.html-aiinterview-employer-dashboard-page .employer-table td,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table td {
+    overflow-wrap: anywhere;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-code {
+    display: inline-block;
+    max-width: 100%;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.8rem;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-long-link {
+    display: inline-block;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-summary {
+    padding: 18px 20px;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-copy span {
+    color: #6a7782;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    text-transform: none;
+    font-family: inherit;
+    font-weight: 500;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-body {
+    padding: 18px 20px 20px;
+}
+
+.html-aiinterview-employer-dashboard-page .results-toolbar {
+    margin: 0;
+    padding: 14px 18px;
+    border: 1px solid #d8e2e8;
+    border-radius: 8px;
+    background: #f8fbfb;
+}
+
+.html-aiinterview-employer-dashboard-page .filter-summary {
+    font-size: 0.94rem;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-filter-actions {
+    gap: 12px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-filter-actions .button-2:last-child {
+    margin-left: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-layout {
+    gap: 18px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-row {
+    gap: 16px 18px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field label,
+.html-aiinterview-employer-dashboard-page .employer-field label {
+    letter-spacing: 0.03em;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-action {
+    justify-self: start;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-action .button-1 {
+    min-width: 180px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-empty-state {
+    display: grid;
+    place-items: center;
+    min-height: 180px;
+    text-align: center;
+    background: linear-gradient(180deg, #fff 0%, #fbfcfd 100%);
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-empty-state p {
+    max-width: 460px;
+    margin: 0;
+    color: #55626d;
+    line-height: 1.6;
+}
+
+.html-aiinterview-vendor-job-creation-page .page-title {
+    margin-bottom: 18px;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px 20px;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-heading {
+    min-width: 0;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-heading h1 {
+    margin: 0;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-section {
+    display: grid;
+    gap: 18px;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-tools {
+    justify-content: flex-start;
+    margin: 0;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-link {
+    min-height: 42px;
+    padding: 10px 16px;
+    border-radius: 8px;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-posting-shell {
+    gap: 18px;
+    max-width: 100%;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-section {
+    gap: 18px;
+    padding: 22px;
+    background: linear-gradient(180deg, #fff 0%, #fbfcfd 100%);
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-section-title {
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-simple-grid {
+    gap: 18px 20px;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-field > label,
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-field-label {
+    letter-spacing: 0.03em;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-field-salary select {
+    font-variant-numeric: tabular-nums;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-hint {
+    font-size: 0.88rem;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-toggle {
+    min-height: 54px;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-toggle:has(input[type="checkbox"]:checked) {
+    border-color: #95d9ca;
+    background: #f4fcfa;
+    color: #15574d;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-actions {
+    justify-content: space-between;
+    padding: 18px 22px;
+    background: linear-gradient(180deg, #fff 0%, #fbfcfd 100%);
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-submit {
+    min-width: 190px;
+}
+
+@media (max-width: 1100px) {
+    .html-aiinterview-view-page.html-account-page .master-column-wrapper {
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-view-page .jb-account-nav {
+        position: static;
+    }
+}
+
+@media (max-width: 1000px) {
+    .html-aiinterview-employer-dashboard-page .my-activity-tabs {
+        margin: 0;
+        padding: 0 0 1px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-dashboard-metrics,
+    .html-aiinterview-employer-dashboard-page .employer-filter-grid,
+    .html-aiinterview-employer-dashboard-page .invite-form-row,
+    .html-aiinterview-vendor-job-creation-page .vendor-job-form-simple-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .html-aiinterview-employer-dashboard-page .status-form {
+        grid-template-columns: minmax(132px, 160px) minmax(160px, 1fr) 38px;
+    }
+}
+
+@media (max-width: 760px) {
+    .html-aiinterview-employer-dashboard-page .employer-dashboard-table-wrapper,
+    .html-aiinterview-employer-dashboard-page .scoreboard-deck-table-wrapper,
+    .html-aiinterview-employer-dashboard-page .employer-table-wrapper,
+    .html-aiinterview-employer-dashboard-page .invite-table-wrapper {
+        border-radius: 10px;
+        box-shadow: inset 12px 0 12px -12px rgba(39, 50, 58, 0.08), inset -12px 0 12px -12px rgba(39, 50, 58, 0.08);
+    }
+
+    .html-aiinterview-employer-dashboard-page .my-activity-tab {
+        min-height: 44px;
+        padding-bottom: 12px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .results-toolbar,
+    .html-aiinterview-employer-dashboard-page .scoreboard-deck-header,
+    .html-aiinterview-vendor-job-creation-page .vendor-job-form-section,
+    .html-aiinterview-vendor-job-creation-page .vendor-job-form-actions {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .status-form,
+    .html-aiinterview-vendor-job-creation-page .vendor-job-form-simple-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-status-field-action,
+    .html-aiinterview-employer-dashboard-page .invite-field-action {
+        justify-self: start;
+    }
+
+    .html-aiinterview-employer-dashboard-page .invite-field-action .button-1,
+    .html-aiinterview-vendor-job-creation-page .vendor-job-submit {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .html-aiinterview-employer-dashboard-page .employer-dashboard-metrics,
+    .html-aiinterview-employer-dashboard-page .employer-filter-grid,
+    .html-aiinterview-employer-dashboard-page .invite-form-row,
+    .html-aiinterview-vendor-job-creation-page .vendor-job-form-simple-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table {
+        min-width: 780px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-table {
+        min-width: 820px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .invite-table {
+        min-width: 620px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .dashboard-collapsible-summary,
+    .html-aiinterview-employer-dashboard-page .dashboard-collapsible-body {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
+
+/* Employer dashboard and vendor job follow-up overrides */
+.html-aiinterview-employer-dashboard-page .page,
+.html-aiinterview-employer-dashboard-page .page-title,
+.html-aiinterview-employer-dashboard-page .page-body,
+.html-aiinterview-employer-dashboard-page .my-activity-shell,
+.html-aiinterview-employer-dashboard-page .my-activity-content,
+.html-aiinterview-employer-dashboard-page .my-activity-panel,
+.html-aiinterview-employer-dashboard-page #employer-dashboard-content,
+.html-aiinterview-employer-dashboard-page .section,
+.html-aiinterview-employer-dashboard-page .fieldset,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-shell,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table-section,
+.html-aiinterview-employer-dashboard-page .table-wrapper,
+.html-aiinterview-vendor-job-creation-page .page,
+.html-aiinterview-vendor-job-creation-page .page-title,
+.html-aiinterview-vendor-job-creation-page .page-body,
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-section,
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-shell,
+.html-aiinterview-vendor-job-creation-page .vendor-job-posting-shell {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.html-aiinterview-employer-dashboard-page .my-activity-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-gutter: stable;
+}
+
+.html-aiinterview-employer-dashboard-page .my-activity-tab {
+    flex: 0 0 auto;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-filter-panel,
+.html-aiinterview-employer-dashboard-page .employer-invite-panel {
+    overflow: hidden;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-jobs-table-shell,
+.html-aiinterview-employer-dashboard-page .employer-applications-table-shell,
+.html-aiinterview-employer-dashboard-page .employer-invites-table-shell,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-table-wrapper,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table-wrapper,
+.html-aiinterview-employer-dashboard-page .employer-table-wrapper,
+.html-aiinterview-employer-dashboard-page .invite-table-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    box-shadow: inset 14px 0 16px -16px rgba(31, 44, 54, 0.22), inset -14px 0 16px -16px rgba(31, 44, 54, 0.22);
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table,
+.html-aiinterview-employer-dashboard-page .employer-table,
+.html-aiinterview-employer-dashboard-page .invite-table {
+    width: 100%;
+    max-width: none;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table {
+    min-width: 760px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table {
+    min-width: 900px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table {
+    min-width: 840px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-table {
+    min-width: 680px;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table th,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-table td,
+.html-aiinterview-employer-dashboard-page .employer-table th,
+.html-aiinterview-employer-dashboard-page .employer-table td,
+.html-aiinterview-employer-dashboard-page .invite-table th,
+.html-aiinterview-employer-dashboard-page .invite-table td {
+    box-sizing: border-box;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-title {
+    width: 33%;
+    min-width: 220px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-status {
+    width: 16%;
+    min-width: 120px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-salary {
+    width: 19%;
+    min-width: 150px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-posted {
+    width: 13%;
+    min-width: 110px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-count {
+    width: 9%;
+    min-width: 80px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions {
+    width: 10%;
+    min-width: 108px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-candidate {
+    min-width: 150px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-email {
+    min-width: 190px;
+    max-width: 210px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-phone {
+    min-width: 120px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-message {
+    min-width: 180px;
+    max-width: 220px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table .col-status {
+    min-width: 280px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table-text {
+    display: block;
+    min-width: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table-text-strong {
+    font-weight: 600;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-table-text-break,
+.html-aiinterview-employer-dashboard-page .employer-table-text-wrap,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-code,
+.html-aiinterview-employer-dashboard-page .employer-dashboard-long-link,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-cell-primary,
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-cell-secondary {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-long-link {
+    max-width: 100%;
+    white-space: normal;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-row-actions,
+.html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.html-aiinterview-employer-dashboard-page .scoreboard-deck-row-actions form,
+.html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions form {
+    margin: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-action-icon,
+.html-aiinterview-employer-dashboard-page .invite-deactivate-button,
+.html-aiinterview-employer-dashboard-page .ai-resume-download-link,
+.html-aiinterview-employer-dashboard-page .ai-view-report-link.ai-icon-action,
+.html-aiinterview-employer-dashboard-page .status-form .employer-status-update,
+.html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions .button-2,
+.html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions .ai-icon-action {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    font-size: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-action-icon i,
+.html-aiinterview-employer-dashboard-page .invite-deactivate-button i,
+.html-aiinterview-employer-dashboard-page .ai-resume-download-link i,
+.html-aiinterview-employer-dashboard-page .ai-view-report-link.ai-icon-action i,
+.html-aiinterview-employer-dashboard-page .status-form .employer-status-update i {
+    font-size: 0.96rem !important;
+}
+
+.html-aiinterview-employer-dashboard-page .status-form {
+    grid-template-columns: minmax(120px, 144px) minmax(150px, 1fr) 40px;
+    gap: 8px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-status-field-action {
+    width: 40px;
+    min-width: 40px;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-summary {
+    gap: 14px;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-copy {
+    width: 100%;
+}
+
+.html-aiinterview-employer-dashboard-page .dashboard-collapsible-copy span {
+    max-width: 46rem;
+}
+
+.html-aiinterview-employer-dashboard-page .results-toolbar {
+    align-items: center;
+}
+
+.html-aiinterview-employer-dashboard-page .filter-summary {
+    font-weight: 600;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-filter-actions .button-1,
+.html-aiinterview-employer-dashboard-page .employer-filter-actions .button-2 {
+    min-height: 38px;
+    padding: 7px 14px;
+    font-size: 0.84rem;
+    letter-spacing: 0.02em;
+    box-shadow: none;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-create-form .form-fields,
+.html-aiinterview-employer-dashboard-page .invite-create-form .inputs,
+.html-aiinterview-employer-dashboard-page .employer-filter-form,
+.html-aiinterview-employer-dashboard-page .employer-filter-shell,
+.html-aiinterview-employer-dashboard-page .employer-filter-grid,
+.html-aiinterview-employer-dashboard-page .invite-form-layout,
+.html-aiinterview-employer-dashboard-page .invite-form-row {
+    min-width: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field input,
+.html-aiinterview-employer-dashboard-page .invite-field select {
+    min-height: 44px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-create-form {
+    gap: 10px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-summary {
+    padding: 14px 16px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-body {
+    padding: 14px 16px 16px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-layout {
+    gap: 12px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-row {
+    gap: 10px 14px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field {
+    gap: 4px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-action {
+    justify-self: start;
+    align-self: end;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-action .button-1 {
+    width: auto;
+    min-width: 148px;
+    min-height: 38px;
+    padding: 7px 16px;
+    font-size: 0.84rem;
+    letter-spacing: 0.02em;
+    box-shadow: none;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-mobile-card {
+    border-radius: 14px;
+    border-color: #d9e6e2;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-mobile-card .responsive-data-card-grid {
+    gap: 10px 12px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-mobile-card .responsive-data-card-item {
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid #e3ece9;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #fbfdfd 0%, #f3fbf9 100%);
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-mobile-card .responsive-data-card-actions {
+    padding-top: 12px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-mobile-status-section {
+    display: grid;
+    gap: 10px;
+}
+
+.html-aiinterview-employer-dashboard-page .score-badge-muted {
+    background: #eef2f4;
+    color: #52606d;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-jobs-mobile-list,
+.html-aiinterview-employer-dashboard-page .employer-applications-mobile-list,
+.html-aiinterview-employer-dashboard-page .employer-invites-mobile-list {
+    display: none;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-heading {
+    display: grid;
+    gap: 6px;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-subtitle {
+    max-width: 44rem;
+    margin: 0;
+    color: #5c6873;
+    line-height: 1.55;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    min-width: 0;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-page-link {
+    white-space: nowrap;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-section-heading {
+    display: grid;
+    gap: 6px;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-section-copy {
+    margin: 0;
+    color: #5c6873;
+    line-height: 1.55;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-field-salary,
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-interview-grid .vendor-job-form-field {
+    align-content: start;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-field-salary select {
+    min-width: 0;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-toggle {
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+}
+
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-toggle span {
+    display: grid;
+    gap: 2px;
+}
+
+@media (max-width: 760px) {
+    .html-aiinterview-employer-dashboard-page .employer-jobs-table-shell,
+    .html-aiinterview-employer-dashboard-page .employer-applications-table-shell,
+    .html-aiinterview-employer-dashboard-page .employer-invites-table-shell {
+        display: none;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-jobs-mobile-list,
+    .html-aiinterview-employer-dashboard-page .employer-applications-mobile-list,
+    .html-aiinterview-employer-dashboard-page .employer-invites-mobile-list {
+        display: grid;
+    }
+
+    .html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions {
+        flex-direction: row;
+    }
+
+    .html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions .button-2,
+    .html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions .ai-icon-action,
+    .html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions .invite-deactivate-form,
+    .html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions .invite-deactivate-button {
+        width: auto;
+    }
+
+    .html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions .invite-deactivate-form {
+        display: inline-flex;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-summary,
+    .html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-body {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .html-aiinterview-employer-dashboard-page .invite-field-action .button-1 {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .html-aiinterview-vendor-job-creation-page .vendor-job-page-link {
+        white-space: normal;
+    }
+}
+
+@media (max-width: 640px) {
+    .html-aiinterview-employer-dashboard-page .my-activity-tabs {
+        flex-wrap: nowrap;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-dashboard-mobile-card .responsive-data-card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-vendor-job-creation-page .vendor-job-page-tools {
+        width: 100%;
+    }
+
+    .html-aiinterview-vendor-job-creation-page .vendor-job-page-link {
+        flex: 1 1 100%;
+        justify-content: center;
+    }
 }

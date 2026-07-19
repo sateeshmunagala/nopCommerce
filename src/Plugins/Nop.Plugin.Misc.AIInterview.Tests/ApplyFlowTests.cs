@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Moq;
 using Nop.Core;
@@ -51,9 +52,10 @@ public class ApplyFlowTests
         _jobRequirementService.Setup(x => x.GetRequirementsAsync(It.IsAny<int>()))
             .ReturnsAsync(new JobRequirementsModel());
 
-        _customer = new Customer { Id = 123 };
+        _customer = new Customer { Id = 123, Email = "candidate@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(_customer);
         _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
+        _customerService.Setup(x => x.IsRegisteredAsync(_customer, true)).ReturnsAsync(true);
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
@@ -79,6 +81,19 @@ public class ApplyFlowTests
 
         var tempData = new Mock<ITempDataDictionary>();
         _controller.TempData = tempData.Object;
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper.Setup(x => x.RouteUrl(It.IsAny<UrlRouteContext>()))
+            .Returns((UrlRouteContext context) =>
+            {
+                if (string.Equals(context.RouteName, Nop.Core.Http.NopRouteNames.General.LOGIN, StringComparison.Ordinal))
+                    return "/login";
+
+                if (string.Equals(context.RouteName, AIInterviewDefaults.ApplyRouteName, StringComparison.Ordinal))
+                    return "/aiinterview/apply";
+
+                return "/mock";
+            });
+        _controller.Url = urlHelper.Object;
     }
 
     [Test]
@@ -219,6 +234,43 @@ public class ApplyFlowTests
         var json = (JsonResult)result;
         var success = (bool)json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
         Assert.That(success, Is.True);
+    }
+
+    [Test]
+    public async Task ApplyInline_Post_GuestCustomer_ReturnsLoginRedirect_And_DoesNotCreateApplication()
+    {
+        var guest = new Customer { Id = 456, Email = null };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(guest);
+        _customerService.Setup(x => x.IsRegisteredAsync(guest, true)).ReturnsAsync(false);
+
+        var result = await _controller.ApplyInline(new ApplyModel { JobTitle = "Dev", ProductId = 1 });
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var json = (JsonResult)result;
+        var success = (bool)json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
+        var redirect = (string)json.Value.GetType().GetProperty("redirect").GetValue(json.Value, null);
+        var requiresLogin = (bool)json.Value.GetType().GetProperty("requiresLogin").GetValue(json.Value, null);
+
+        Assert.That(success, Is.False);
+        Assert.That(requiresLogin, Is.True);
+        Assert.That(redirect, Is.EqualTo("/login"));
+        _applicationService.Verify(x => x.InsertJobApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+        _applicationService.Verify(x => x.SendApplicationSubmittedNotificationAsync(It.IsAny<JobApplication>(), It.IsAny<int>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Apply_Post_GuestCustomer_RedirectsToLogin_And_DoesNotCreateApplication()
+    {
+        var guest = new Customer { Id = 456, Email = "" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(guest);
+        _customerService.Setup(x => x.IsRegisteredAsync(guest, true)).ReturnsAsync(false);
+
+        var result = await _controller.Apply(new ApplyModel { JobTitle = "Dev", ProductId = 1 });
+
+        Assert.That(result, Is.TypeOf<RedirectResult>());
+        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/login"));
+        _applicationService.Verify(x => x.InsertJobApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+        _applicationService.Verify(x => x.SendApplicationSubmittedNotificationAsync(It.IsAny<JobApplication>(), It.IsAny<int>()), Times.Never);
     }
 
     [Test]

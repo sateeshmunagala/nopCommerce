@@ -27,6 +27,14 @@ public class InterviewSession : BaseEntity
     public string QuestionScores { get; set; }
     public decimal Score { get; set; }
     public int QuestionCount { get; set; }
+    public int TotalPromptTokens { get; set; }
+    public int TotalCompletionTokens { get; set; }
+    public decimal TotalOpenAiCostUsd { get; set; }
+    public int TotalSpeechRecognitionCharacters { get; set; }
+    public int TotalSpeechSynthesisCharacters { get; set; }
+    public long TotalSpeechDurationMs { get; set; }
+    public decimal TotalSpeechCostUsd { get; set; }
+    public decimal TotalAzureCostUsd { get; set; }
     public int SponsorInviteId { get; set; }
     public DateTime CreatedOnUtc { get; set; }
     public DateTime? StartedOnUtc { get; set; }

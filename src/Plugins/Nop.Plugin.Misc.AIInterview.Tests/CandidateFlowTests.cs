@@ -113,6 +113,8 @@ public class CandidateFlowTests
             null,
             _jobInterviewExperienceService.Object);
 
+        _customerService.Setup(x => x.IsRegisteredAsync(It.IsAny<Customer>(), true)).ReturnsAsync(true);
+
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key);
     }
@@ -195,7 +197,7 @@ public class CandidateFlowTests
     [Test]
     public async Task Runtime_Start_Uses_ResolvedDifficulty()
     {
-        var customer = new Customer { Id = 1 };
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession>());
@@ -246,7 +248,7 @@ public class CandidateFlowTests
     [Test]
     public async Task Runtime_Start_Idempotency_Works()
     {
-        var customer = new Customer { Id = 1 };
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
 
         var activeSession = new InterviewSession
@@ -271,9 +273,9 @@ public class CandidateFlowTests
     }
 
     [Test]
-    public async Task Runtime_Start_ExpiredActiveSession_IsHealed_And_Reused()
+    public async Task Runtime_Start_ExpiredActiveSession_Creates_New_Session()
     {
-        var customer = new Customer { Id = 1 };
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
 
         var staleSession = new InterviewSession
@@ -290,8 +292,20 @@ public class CandidateFlowTests
 
         _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id))
             .ReturnsAsync(new List<InterviewSession> { staleSession });
-        _sessionService.Setup(x => x.GetSessionByTokenAsync(staleSession.Token))
-            .ReturnsAsync(staleSession);
+        _productService.Setup(x => x.GetProductByIdAsync(1))
+            .ReturnsAsync(new Product { Id = 1, Name = "Backend Engineer" });
+        _applicationService.Setup(x => x.GetJobApplicationsByCustomerIdAsync(customer.Id))
+            .ReturnsAsync(new List<JobApplication>());
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()))
+            .ReturnsAsync(true);
+        InterviewSession insertedSession = null;
+        _sessionService.Setup(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(session =>
+            {
+                insertedSession = session;
+                session.Id = 8;
+            })
+            .Returns(Task.CompletedTask);
         var urlHelperMock = new Mock<Microsoft.AspNetCore.Mvc.IUrlHelper>();
         urlHelperMock.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
             .Returns("/mockaiinterview/runtime?token=generated");
@@ -299,20 +313,16 @@ public class CandidateFlowTests
 
         var result = await _runtimeController.StartPost(new FormCollection(new Dictionary<string, StringValues>()), 1);
         var json = (JsonResult)result;
-        var runtimeUrl = json.Value.GetType().GetProperty("runtimeUrl").GetValue(json.Value, null) as string;
-        var token = json.Value.GetType().GetProperty("token").GetValue(json.Value, null) as string;
+        var runtimeUrl = json.Value.GetType().GetProperty("runtimeUrl")?.GetValue(json.Value, null) as string;
+        var token = json.Value.GetType().GetProperty("token")?.GetValue(json.Value, null) as string;
 
         Assert.That(staleSession.IsActive, Is.True);
         Assert.That(staleSession.CompletedOnUtc, Is.Null);
-        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
-            s.Id == staleSession.Id &&
-            s.IsActive &&
-            !s.CompletedOnUtc.HasValue &&
-            s.Token != "expired-token" &&
-            s.TokenExpiryUtc > DateTime.UtcNow)), Times.Once);
-
-        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        Assert.That(insertedSession, Is.Not.Null);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>()), Times.Once);
+        Assert.That(token, Is.EqualTo(insertedSession.Token));
         Assert.That(token, Is.Not.EqualTo("expired-token"));
         Assert.That(runtimeUrl, Is.EqualTo("/mockaiinterview/runtime?token=generated"));
     }
@@ -715,8 +725,8 @@ public class CandidateFlowTests
         productAttributeParser.Setup(x => x.ParseProductAttributeValuesAsync("<attributes />", 0))
             .ReturnsAsync(new List<ProductAttributeValue>
             {
-                new() { Id = 501, Name = "Medium", ProductAttributeMappingId = 101 },
-                new() { Id = 502, Name = "Python", ProductAttributeMappingId = 102 }
+                new() { Id = 501, Name = "Low", ProductAttributeMappingId = 101 },
+                new() { Id = 502, Name = "JAVA", ProductAttributeMappingId = 102 }
             });
         productAttributeService.Setup(x => x.GetProductAttributeMappingByIdAsync(101))
             .ReturnsAsync(new ProductAttributeMapping { Id = 101, ProductAttributeId = 111, TextPrompt = "Difficulty" });
@@ -752,13 +762,16 @@ public class CandidateFlowTests
             productAttributeParser.Object,
             productAttributeService.Object);
 
-        var result = await controller.StartPost(new FormCollection(new Dictionary<string, StringValues>()), product.Id, "Medium");
+        var result = await controller.StartPost(new FormCollection(new Dictionary<string, StringValues>()), product.Id, "Low");
 
         Assert.That(result, Is.InstanceOf<JsonResult>());
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session =>
             session.ProductId == product.Id &&
             session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice &&
-            session.Difficulty == "Medium" &&
+            session.Difficulty == "Low" &&
+            session.SelectedProductAttributesJson.Contains("\"attributeName\":\"Practice Focus\"") &&
+            session.SelectedProductAttributesJson.Contains("\"textPrompt\":\"Skill\"") &&
+            session.SelectedProductAttributesJson.Contains("\"value\":\"JAVA\"") &&
             !string.IsNullOrWhiteSpace(session.SelectedProductAttributesJson))), Times.Once);
     }
 
@@ -1181,7 +1194,7 @@ public class CandidateFlowTests
     [Test]
     public async Task Report_PrefersCompletedDate_WhenPresent()
     {
-        var customer = new Customer { Id = 1 };
+        var customer = new Customer { Id = 1, Email = "test@example.com" };
         var createdOnUtc = new DateTime(2026, 06, 07, 15, 09, 46, DateTimeKind.Utc);
         var completedOnUtc = new DateTime(2026, 07, 01, 13, 26, 15, DateTimeKind.Utc);
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
@@ -1566,8 +1579,10 @@ public class CandidateFlowTests
     {
         var reportText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_InterviewReportContent.cshtml"));
         var drawerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_CandidateReportDrawer.cshtml"));
-        var historyText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml"));
-        var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml"));
+        var historyText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "History.cshtml")) +
+            File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MockInterviewHistoryContent.cshtml"));
+        var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml")) +
+            File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MyApplicationsContent.cshtml"));
 
         Assert.That(reportText, Does.Contain("Plugins.Misc.AIInterview.Report.Recording"));
         Assert.That(historyText, Does.Contain("Plugins.Misc.AIInterview.Report.OpenRecording"));
@@ -1748,12 +1763,21 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("|| !hasActiveQuestion()"));
         Assert.That(runtimeText, Does.Contain("|| isScreenShareBlockingInterview()"));
         Assert.That(runtimeText, Does.Contain("interviewUnavailable = true;"));
-        Assert.That(runtimeText, Does.Contain("const autoSubmitDelaySeconds = 10;"));
+        Assert.That(runtimeText, Does.Contain("const autoSubmitDelaySeconds = 15;"));
         Assert.That(runtimeText, Does.Contain("const clearAnswerTimers = () =>"));
         Assert.That(runtimeText, Does.Contain("const clearTokenRefreshTimer = () =>"));
         Assert.That(runtimeText, Does.Contain("const clearAllRuntimeTimers = () =>"));
         Assert.That(runtimeText, Does.Contain("id=\"screen-share-status\""));
+        Assert.That(runtimeText, Does.Contain("id=\"screen-share-interruption-warning\""));
+        Assert.That(runtimeText, Does.Contain("Resume screen share to continue."));
+        Assert.That(runtimeText, Does.Contain("setScreenShareInterruptionWarning(true);"));
+        Assert.That(runtimeText, Does.Contain("setScreenShareInterruptionWarning(false);"));
         Assert.That(runtimeText, Does.Not.Contain("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional"));
+        Assert.That(runtimeText, Does.Contain("Entire screen sharing is required for this interview."));
+        Assert.That(runtimeText, Does.Contain("Use full screen and keep the interview tab visible."));
+        Assert.That(runtimeText, Does.Contain("Do not select a browser tab or a single window."));
+        Assert.That(runtimeText, Does.Contain("runtime-screen-share-guide"));
+        Assert.That(runtimeText, Does.Contain("Also share system audio"));
         Assert.That(runtimeText, Does.Contain("Screen sharing active"));
         Assert.That(runtimeText, Does.Contain("Screen sharing ended. Resume screen sharing to continue."));
         Assert.That(runtimeText, Does.Contain("Screen sharing resumed"));
@@ -1792,9 +1816,15 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Not.Contain("startButton.textContent = 'Next Question';"));
         Assert.That(runtimeText, Does.Contain("const normalizeTurn = (turn, index = 0) =>"));
         Assert.That(runtimeText, Does.Contain("getValue(turn, 'questionText', 'QuestionText')"));
-        Assert.That(runtimeText, Does.Contain("messageBox.textContent = isTerminated ? 'Interview completed. Redirecting to report...' : 'Please answer the next question.';"));
+        Assert.That(runtimeText, Does.Contain("messageBox.textContent = isTerminated ? '' : 'Please answer the next question.';"));
+        Assert.That(runtimeText, Does.Contain("setHeaderStatus('Interview completed. Finalizing recording before report.', false);"));
+        Assert.That(runtimeText, Does.Contain("const finalizeRecordingBeforeCompletion = async () =>"));
+        Assert.That(runtimeText, Does.Contain("await finalizeRecordingBeforeCompletion();"));
+        Assert.That(runtimeText, Does.Contain("const startCompletedRedirectCountdown = (reportUrl) =>"));
+        Assert.That(runtimeText, Does.Contain("startCompletedRedirectCountdown(reportUrl);"));
         Assert.That(runtimeText, Does.Not.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
-        Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)\r\n                    await stopRecording(true);").Or.Contain("if (mediaRecorder && recordingEnabled)\n                    await stopRecording(true);"));
+        Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)"));
+        Assert.That(runtimeText, Does.Contain("await stopRecording(true);"));
         Assert.That(runtimeText, Does.Not.Contain("setRecordingStatus('Recording ready.', false);"));
         Assert.That(runtimeText, Does.Not.Contain("setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);"));
         Assert.That(runtimeText, Does.Contain("Recording paused until screen sharing resumes."));
@@ -1810,7 +1840,8 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Not.Contain("Questions and answers appear here in order."));
         Assert.That(runtimeText, Does.Contain("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css"));
         Assert.That(runtimeText, Does.Contain("Plugins.Misc.AIInterview.Runtime.MockMode.Warning"));
-        var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml"));
+        var myApplicationsText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyApplications.cshtml")) +
+            File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MyApplicationsContent.cshtml"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Relevancy"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Correctness"));
         Assert.That(myApplicationsText, Does.Not.Contain("Q1 Answer Score"));
@@ -1842,8 +1873,10 @@ public class CandidateFlowTests
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
         _productService.Setup(x => x.GetProductByIdAsync(99))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 99, ProductTemplateId = 7 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -1853,9 +1886,11 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,
@@ -1920,16 +1955,19 @@ public class CandidateFlowTests
         Assert.That(component.ViewBag.ProductId, Is.EqualTo(99));
         Assert.That(component.ViewBag.SponsorToken, Is.EqualTo("abc"));
         Assert.That(component.ViewBag.CreditPurchasePageUrl, Is.EqualTo("/buy-credits"));
+        Assert.That(component.ViewBag.IsAuthenticated, Is.True);
     }
 
     [Test]
-    public async Task WidgetView_DoesNotShowSponsorCredits_WhenInviteInactive()
+    public async Task WidgetView_GuestCustomerRecord_IsNotAuthenticated_And_DoesNotCreateWallet()
     {
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
-        _productService.Setup(x => x.GetProductByIdAsync(100))
-            .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 100, ProductTemplateId = 7 });
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
+        _productService.Setup(x => x.GetProductByIdAsync(103))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 103, ProductTemplateId = 7 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -1939,9 +1977,68 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
+            productTemplateService.Object,
+            _applicationService.Object,
+            _sessionService.Object,
+            new AIInterviewSettings { CreditPurchasePageUrl = "/buy-credits" },
+            _jobRequirementService.Object,
+            _inviteService.Object,
+            _downloadService.Object);
+
+        component.ViewComponentContext = new Microsoft.AspNetCore.Mvc.ViewComponents.ViewComponentContext
+        {
+            ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var guest = new Customer { Id = 88, Email = null };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(guest);
+        _customerService.Setup(x => x.IsRegisteredAsync(guest, true)).ReturnsAsync(false);
+
+        var productDetailsModel = new Nop.Web.Models.Catalog.ProductDetailsModel { Id = 103 };
+        productDetailsModel.ProductAttributes.Add(new Nop.Web.Models.Catalog.ProductDetailsModel.ProductAttributeModel
+        {
+            Id = 14,
+            Name = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            TextPrompt = AIInterviewDefaults.InterviewDifficultyAttributeName,
+            AttributeControlType = Nop.Core.Domain.Catalog.AttributeControlType.RadioList
+        });
+
+        var result = await component.InvokeAsync("productdetails_before_collateral", productDetailsModel);
+
+        Assert.That(result, Is.TypeOf<Microsoft.AspNetCore.Mvc.ViewComponents.ViewViewComponentResult>());
+        Assert.That(component.ViewBag.IsAuthenticated, Is.False);
+        _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Test]
+    public async Task WidgetView_DoesNotShowSponsorCredits_WhenInviteInactive()
+    {
+        var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+        var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
+        _productService.Setup(x => x.GetProductByIdAsync(100))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 100, ProductTemplateId = 7 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
+            .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
+            {
+                Id = 7,
+                ViewPath = AIInterviewDefaults.JobProductTemplateViewPath
+            });
+        var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
+            _creditService.Object,
+            _workContext.Object,
+            _customerService.Object,
+            productAttributeService.Object,
+            jobInterviewExperienceService.Object,
+            _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,
@@ -2004,8 +2101,10 @@ public class CandidateFlowTests
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
         _productService.Setup(x => x.GetProductByIdAsync(101))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 101, ProductTemplateId = 7 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -2015,9 +2114,11 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,
@@ -2084,8 +2185,10 @@ public class CandidateFlowTests
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
         _productService.Setup(x => x.GetProductByIdAsync(102))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 102, ProductTemplateId = 7 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(7))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -2095,9 +2198,11 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,
@@ -2162,8 +2267,10 @@ public class CandidateFlowTests
         var productTemplateService = new Mock<IProductTemplateService>();
         var productAttributeService = new Mock<IProductAttributeService>();
         var jobInterviewExperienceService = new Mock<IJobInterviewExperienceService>();
+        var jobProductAccessService = new Mock<IJobProductAccessService>();
         _productService.Setup(x => x.GetProductByIdAsync(99))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.Product { Id = 99, ProductTemplateId = 1 });
+        jobProductAccessService.Setup(x => x.CanAcceptJobApplicationsAsync(It.IsAny<Product>())).ReturnsAsync(true);
         productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(1))
             .ReturnsAsync(new Nop.Core.Domain.Catalog.ProductTemplate
             {
@@ -2173,9 +2280,11 @@ public class CandidateFlowTests
         var component = new Nop.Plugin.Misc.AIInterview.Components.AIInterviewProductDetailsViewComponent(
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             productAttributeService.Object,
             jobInterviewExperienceService.Object,
             _productService.Object,
+            jobProductAccessService.Object,
             productTemplateService.Object,
             _applicationService.Object,
             _sessionService.Object,

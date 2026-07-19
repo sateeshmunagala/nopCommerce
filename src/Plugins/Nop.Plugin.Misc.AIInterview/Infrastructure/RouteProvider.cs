@@ -74,6 +74,10 @@ public class RouteProvider : IRouteProvider
             pattern: "aiinterview/apply-inline",
             defaults: new { controller = "AIInterview", action = "ApplyInline" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MyActivityRouteName,
+            pattern: "my-activity",
+            defaults: new { controller = "AIInterview", action = "MyActivity" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MyApplicationsRouteName,
             pattern: "aiinterview/my-applications",
             defaults: new { controller = "AIInterview", action = "MyApplications" });
@@ -81,6 +85,10 @@ public class RouteProvider : IRouteProvider
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.EmployerApplicationsRouteName,
             pattern: "aiinterview/employer-applications",
             defaults: new { controller = "AIInterview", action = "EmployerApplications" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.EmployerDashboardRouteName,
+            pattern: "aiinterview/employer-dashboard",
+            defaults: new { controller = "AIInterview", action = "EmployerDashboard" });
 
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.EmployerDownloadResumeRouteName,
             pattern: "aiinterview/employer-applications/{applicationId:int}/resume",
@@ -139,6 +147,10 @@ public class RouteProvider : IRouteProvider
             pattern: "mockaiinterview/speech-token",
             defaults: new { controller = "MockAiInterview", action = "SpeechToken" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockSpeechUsageRouteName,
+            pattern: "mockaiinterview/speech-usage",
+            defaults: new { controller = "MockAiInterview", action = "SpeechUsage" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockRecordingUploadRouteName,
             pattern: "mockaiinterview/upload-recording",
             defaults: new { controller = "MockAiInterview", action = "UploadRecording" });
@@ -174,6 +186,14 @@ public class RouteProvider : IRouteProvider
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.VendorJobCreationRouteName,
             pattern: "aiinterview/vendor-job-creation",
             defaults: new { controller = "AIInterview", action = "VendorJobCreation" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.VendorJobEditRouteName,
+            pattern: "aiinterview/vendor-job-edit/{productId:int}",
+            defaults: new { controller = "AIInterview", action = "VendorJobEdit" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.VendorJobPublishToggleRouteName,
+            pattern: "aiinterview/vendor-job-publish/{productId:int}",
+            defaults: new { controller = "AIInterview", action = "ToggleVendorJobPublish" });
     }
 
     /// <summary>

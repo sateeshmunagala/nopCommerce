@@ -43,16 +43,16 @@ public partial class InterviewAiClient
             1400);
 
         if (!result.Success)
-            return new AIResumeProfileResponse { Success = false, ErrorMessage = result.ErrorMessage };
+            return new AIResumeProfileResponse { Success = false, ErrorMessage = result.ErrorMessage, UsageInfo = result.UsageInfo };
 
         var parsed = ParseResumeProfileResponse(result.Content);
         if (parsed != null)
-            return parsed with { RawJson = TruncateSafe(result.Content, 4000) };
+            return parsed with { RawJson = TruncateSafe(result.Content, 4000), UsageInfo = result.UsageInfo };
 
-        var contractReason = $"Mode=resume-profile; Reason=invalid JSON or failed contract parsing; Sample={TruncateSafe(result.Content, 800)}.";
+        var contractReason = BuildStructuredResponseFailureLog(result.Content, "resume-profile");
         _logger?.LogWarning("Azure OpenAI resume profile call failed contract validation.");
         await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview resume profile contract failure", contractReason);
-        return new AIResumeProfileResponse { Success = false, ErrorMessage = "Resume profiling is unavailable." };
+        return new AIResumeProfileResponse { Success = false, ErrorMessage = "Resume profiling is unavailable.", UsageInfo = result.UsageInfo };
     }
 
     public async Task<AIInterviewQuestionPlanResponse> GenerateQuestionPlanAsync(AIInterviewQuestionPlanRequest request)
@@ -71,25 +71,27 @@ public partial class InterviewAiClient
             return new AIInterviewQuestionPlanResponse
             {
                 Success = false,
-                ErrorMessage = result.ErrorMessage
+                ErrorMessage = result.ErrorMessage,
+                UsageInfo = result.UsageInfo
             };
         }
 
         var parsed = ParseQuestionPlanResponse(result.Content, request.QuestionCount);
         if (parsed != null)
-            return parsed with { RawJson = TruncateSafe(result.Content, 4000) };
+            return parsed with { RawJson = TruncateSafe(result.Content, 4000), UsageInfo = result.UsageInfo };
 
-        var contractReason = $"Mode=question-plan; Reason=invalid JSON or failed contract parsing; Sample={TruncateSafe(result.Content, 800)}.";
+        var contractReason = BuildStructuredResponseFailureLog(result.Content, "question-plan");
         _logger?.LogWarning("Azure OpenAI question plan call failed contract validation.");
         await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview question plan contract failure", contractReason);
         return new AIInterviewQuestionPlanResponse
         {
             Success = false,
-            ErrorMessage = "Question plan generation is unavailable."
+            ErrorMessage = "Question plan generation is unavailable.",
+            UsageInfo = result.UsageInfo
         };
     }
 
-    private async Task<(bool Success, string Content, string ErrorMessage)> CallAzureContentAsync(string mode, string systemPrompt, string prompt, int maxTokens)
+    private async Task<AzureContentCallResult> CallAzureContentAsync(string mode, string systemPrompt, string prompt, int maxTokens)
     {
         var endpointConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiEndpointUrl);
         var apiKeyConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiApiKey);
@@ -98,7 +100,7 @@ public partial class InterviewAiClient
         {
             var detail = BuildConfigurationIncompleteLog(mode, endpointConfigured, apiKeyConfigured, deploymentConfigured);
             await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI unavailable", detail);
-            return (false, string.Empty, $"AI service unavailable. {detail}");
+            return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", null);
         }
 
         try
@@ -132,26 +134,46 @@ public partial class InterviewAiClient
             {
                 var detail = BuildAzureHttpFailureLog(mode, endpoint, (int)response.StatusCode, response.ReasonPhrase, json);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", detail);
-                return (false, string.Empty, $"AI service unavailable. {detail}");
+                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", null);
             }
 
             using var document = JsonDocument.Parse(json);
+            var usageInfo = BuildAzureOpenAiUsageInfo(document.RootElement, mode, endpoint);
             if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
-                return (false, string.Empty, "AI service unavailable. Empty response choices.");
+            {
+                var detail = BuildAzureContractFailureLog(mode, endpoint, "empty response choices", json);
+                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
+                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", usageInfo);
+            }
 
             if (!choices[0].TryGetProperty("message", out var message) || !message.TryGetProperty("content", out var contentProperty))
-                return (false, string.Empty, "AI service unavailable. Missing response content.");
+            {
+                var detail = BuildAzureContractFailureLog(mode, endpoint, "missing message content", json);
+                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
+                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", usageInfo);
+            }
 
             var content = contentProperty.GetString();
-            return string.IsNullOrWhiteSpace(content)
-                ? (false, string.Empty, "AI service unavailable. Empty response content.")
-                : (true, content, string.Empty);
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                var detail = BuildAzureContractFailureLog(mode, endpoint, "empty response content", json);
+                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
+                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", usageInfo);
+            }
+
+            return new AzureContentCallResult(true, content, string.Empty, usageInfo);
+        }
+        catch (JsonException ex)
+        {
+            var detail = BuildAzureExceptionLog(mode, "azure-openai-json-failure", "invalid JSON format", ex);
+            await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI JSON failure", detail);
+            return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", null);
         }
         catch (Exception ex)
         {
-            var detail = $"Mode={mode}; Reason={ex.GetType().Name}; Message={TruncateSafe(ex.Message, 220)}.";
+            var detail = BuildAzureExceptionLog(mode, "azure-openai-exception", ex.GetType().Name, ex);
             await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI exception", detail);
-            return (false, string.Empty, $"AI service unavailable. {detail}");
+            return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", null);
         }
     }
 
@@ -199,6 +221,10 @@ public partial class InterviewAiClient
         builder.AppendLine($"Global prompt: {request.Prompt}");
         builder.AppendLine("Resume profile JSON:");
         builder.AppendLine(TruncateSafe(request.ResumeProfileJson, 4000));
+        builder.AppendLine("Sequence 1 is reserved by the runtime for the candidate introduction and project-experience question.");
+        builder.AppendLine("Generate exactly the requested remaining questions for this call; do not duplicate the introduction/project-experience question.");
+        builder.AppendLine("Use remaining sequence numbers only. If sequence 1 already exists, begin generated questions at sequence 2 and continue from there.");
+        builder.AppendLine("Remaining questions should build on resume and job context, cover role-relevant technical depth, feel natural and conversational, and ask one clear question at a time.");
         builder.AppendLine("Allowed categories: skill, project_scenario, job_fit, behavioral");
         if (request.ExistingQuestions?.Any() == true)
         {
@@ -215,7 +241,7 @@ public partial class InterviewAiClient
 {
   "questions": [
     {
-      "sequenceNumber": 1,
+      "sequenceNumber": 2,
       "category": "skill",
       "question": "string",
       "resumeEvidence": "string",
@@ -428,15 +454,25 @@ public partial class InterviewAiClient
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         var existingCategories = (request.ExistingCategories ?? new List<string>())
-            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Where(category => !string.IsNullOrWhiteSpace(category) &&
+                !string.Equals(category, "Introduction & Project Experience", StringComparison.OrdinalIgnoreCase))
             .Select(NormalizePlanCategory)
             .ToList();
-        var categories = BuildRemainingQuestionCategories(totalQuestionCount, questionCount, existingCategories, profile.Projects.Any());
+        var shouldIncludeIntroQuestion = ShouldIncludeMockIntroductionQuestion(request, totalQuestionCount, existingQuestions);
+        var generatedQuestionCount = shouldIncludeIntroQuestion ? questionCount - 1 : questionCount;
+        var categories = BuildRemainingQuestionCategories(totalQuestionCount, generatedQuestionCount, existingCategories, profile.Projects.Any());
         var primarySkills = profile.PrimarySkills.Any() ? profile.PrimarySkills : profile.Skills.Any() ? profile.Skills : new List<string> { request.JobTitle, "problem solving" };
         var seenQuestions = new HashSet<string>(existingQuestions, StringComparer.OrdinalIgnoreCase);
         var questions = new List<AIInterviewQuestionPlanItem>();
 
-        for (var index = 0; index < questionCount; index++)
+        if (shouldIncludeIntroQuestion)
+        {
+            var introQuestion = BuildMockIntroductionQuestionPlanItem();
+            questions.Add(introQuestion);
+            seenQuestions.Add(introQuestion.Question);
+        }
+
+        for (var index = 0; index < generatedQuestionCount; index++)
         {
             var category = categories[index];
             var skill = primarySkills[index % primarySkills.Count];
@@ -456,7 +492,7 @@ public partial class InterviewAiClient
 
             questions.Add(new AIInterviewQuestionPlanItem
             {
-                SequenceNumber = index + 1,
+                SequenceNumber = questions.Count + 1,
                 Category = category,
                 Question = questionText,
                 ResumeEvidence = category == "project_scenario" && project != null
@@ -484,6 +520,43 @@ public partial class InterviewAiClient
             Success = true,
             Questions = questions,
             RawJson = JsonSerializer.Serialize(new { questions }, ResumePlanSerializerOptions)
+        };
+    }
+
+    private static bool ShouldIncludeMockIntroductionQuestion(AIInterviewQuestionPlanRequest request, int totalQuestionCount, IList<string> existingQuestions)
+    {
+        if (request == null || request.QuestionCount <= 0 || request.QuestionCount != totalQuestionCount)
+            return false;
+
+        return existingQuestions?.Any(question => question.Contains("let's start with you", StringComparison.OrdinalIgnoreCase) ||
+            question.Contains("introduce yourself", StringComparison.OrdinalIgnoreCase)) != true;
+    }
+
+    private static AIInterviewQuestionPlanItem BuildMockIntroductionQuestionPlanItem()
+    {
+        return new AIInterviewQuestionPlanItem
+        {
+            SequenceNumber = 1,
+            Category = "Introduction & Project Experience",
+            Question = "Let's start with you. Please introduce yourself and walk me through one or two projects you are most proud of. I'd like to understand your role, the technologies you used, the main challenges you handled, and the impact of the work.",
+            ResumeEvidence = string.Empty,
+            ExpectedSignals = new List<string>
+            {
+                "Clear self-introduction",
+                "Relevant project ownership",
+                "Technologies used",
+                "Implementation details and tradeoffs",
+                "Challenges solved",
+                "Measurable impact or outcome",
+                "Communication clarity"
+            },
+            Rubric = new AIInterviewQuestionRubric
+            {
+                Technical = "Evaluate evidence of real project experience, architecture or implementation details, tools, tradeoffs, debugging or challenges, and impact.",
+                Communication = "Evaluate clarity, structure, confidence, and ability to explain experience naturally.",
+                Professionalism = "Evaluate ownership, honesty, relevance to the role, maturity, and responsibility.",
+                PositiveAttitude = "Evaluate curiosity, learning mindset, constructive framing, and motivation."
+            }
         };
     }
 

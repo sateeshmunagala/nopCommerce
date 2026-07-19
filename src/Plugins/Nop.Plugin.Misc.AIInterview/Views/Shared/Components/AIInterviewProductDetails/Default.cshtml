@@ -1,4 +1,5 @@
 @model Nop.Web.Models.Catalog.ProductDetailsModel
+@using Nop.Web.Framework.Mvc.Routing
 @{
     bool hasCredits = ViewBag.HasCredits != null && (bool)ViewBag.HasCredits;
     bool hasSponsorCredits = ViewBag.HasSponsorCredits != null && (bool)ViewBag.HasSponsorCredits;
@@ -31,6 +32,7 @@
      data-feedback-id="@feedbackId"
      data-start-url="@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)"
      data-apply-url="@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)"
+     data-login-url="@Url.RouteUrl(NopRouteNames.General.LOGIN)"
      data-sponsor-token="@sponsorToken"
      data-request-error="Unable to reach the interview service. Please check your network and try again.">
     <div class="job-ai-grid">
@@ -52,27 +54,20 @@
             </div>
         }
 
-        @if (!isAuthenticated)
+        @if (alreadyApplied)
         {
-            <div class="job-ai-card">
-                <p class="job-ai-lead">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
-                <a class="button-1" href="@Url.RouteUrl("Login")">@T("Account.Login")</a>
+            <div class="job-inline-message is-visible is-info">
+                @T("Plugins.Misc.AIInterview.Apply.AlreadyApplied")
             </div>
         }
-        else
-        {
-            @if (alreadyApplied)
-            {
-                <div class="job-inline-message is-visible is-info">
-                    @T("Plugins.Misc.AIInterview.Apply.AlreadyApplied")
-                </div>
-            }
 
-            <div class="job-ai-card">
-                <h3>@T("Plugins.Misc.AIInterview.Apply.Title")</h3>
-                <div id="@applyPanelId">
-                    <input type="hidden" name="ProductId" value="@productId" />
-                    <input type="hidden" name="JobTitle" value="@Model.Name" />
+        <div class="job-ai-card">
+            <h3>@T("Plugins.Misc.AIInterview.Apply.Title")</h3>
+            <div id="@applyPanelId">
+                <input type="hidden" name="ProductId" value="@productId" />
+                <input type="hidden" name="JobTitle" value="@Model.Name" />
+                @if (isAuthenticated)
+                {
                     @if (resumeRequired)
                     {
                         <p class="job-ai-note job-ai-note-required">@T("Plugins.Misc.AIInterview.Apply.ResumeRequired")</p>
@@ -91,24 +86,28 @@
                         </select>
                     }
                     <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
-                    <div class="job-ai-actions">
-                        <button type="button"
-                                class="job-ai-action job-ai-action-primary apply-btn"
-                                id="@applyButtonId"
-                                data-job-ai-action="apply"
-                                title="@T("Plugins.Misc.AIInterview.Index.ApplyNow")"
-                                @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
-                        <button type="button"
-                                class="job-ai-action job-ai-action-secondary start-interview-btn"
-                                id="@startButtonId"
-                                data-job-ai-action="start"
-                                title="@T("Plugins.Misc.AIInterview.Index.StartInterview")"
-                                data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
-                    </div>
+                }
+                else
+                {
+                    <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
+                }
+                <div class="job-ai-actions">
+                    <button type="button"
+                            class="job-ai-action job-ai-action-primary apply-btn"
+                            id="@applyButtonId"
+                            data-job-ai-action="apply"
+                            title="@T("Plugins.Misc.AIInterview.Index.ApplyNow")"
+                            @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                    <button type="button"
+                            class="job-ai-action job-ai-action-secondary start-interview-btn"
+                            id="@startButtonId"
+                            data-job-ai-action="start"
+                            title="@T("Plugins.Misc.AIInterview.Index.StartInterview")"
+                            data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
                 </div>
             </div>
+        </div>
 
-            <div id="@feedbackId" class="job-inline-message" role="status" aria-live="polite"></div>
-        }
+        <div id="@feedbackId" class="job-inline-message" role="status" aria-live="polite"></div>
     </div>
 </div>

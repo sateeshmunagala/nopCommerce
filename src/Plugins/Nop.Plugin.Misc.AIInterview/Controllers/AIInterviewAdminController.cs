@@ -68,6 +68,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly IRepository<CreditPurchaseGrant> _creditPurchaseGrantRepository;
     private readonly AIInterviewSettings _aiInterviewSettings;
     private readonly MockAIInterviewSettings _mockAIInterviewSettings;
+    private readonly IJobProductAccessService _jobProductAccessService;
 
     public AIInterviewAdminController(ICreditService creditService,
         ISponsorInviteService inviteService,
@@ -91,7 +92,8 @@ public class AIInterviewAdminController : BasePluginController
         IJobRequirementService jobRequirementService = null,
         IInterviewTurnService interviewTurnService = null,
         IRepository<InterviewSession> sessionRepository = null,
-        IRepository<Product> productRepository = null)
+        IRepository<Product> productRepository = null,
+        IJobProductAccessService jobProductAccessService = null)
     {
         _creditService = creditService;
         _inviteService = inviteService;
@@ -116,6 +118,7 @@ public class AIInterviewAdminController : BasePluginController
         _creditPurchaseGrantRepository = creditPurchaseGrantRepository;
         _aiInterviewSettings = aiInterviewSettings;
         _mockAIInterviewSettings = mockAIInterviewSettings;
+        _jobProductAccessService = jobProductAccessService;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -197,6 +200,14 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.AzureOpenAiDeploymentOrModel = settingsModel.AzureOpenAiDeploymentOrModel;
             currentAiInterviewSettings.AzureSpeechKey = PreserveSecretIfBlank(settingsModel.AzureSpeechKey, currentAiInterviewSettings.AzureSpeechKey);
             currentAiInterviewSettings.AzureSpeechRegion = settingsModel.AzureSpeechRegion;
+            currentAiInterviewSettings.TrackAzureOpenAiUsage = settingsModel.TrackAzureOpenAiUsage;
+            currentAiInterviewSettings.TrackAzureSpeechUsage = settingsModel.TrackAzureSpeechUsage;
+            currentAiInterviewSettings.CalculateAzureCostPerInterview = settingsModel.CalculateAzureCostPerInterview;
+            currentAiInterviewSettings.AzureOpenAiPromptTokenPricePerThousand = settingsModel.AzureOpenAiPromptTokenPricePerThousand;
+            currentAiInterviewSettings.AzureOpenAiCompletionTokenPricePerThousand = settingsModel.AzureOpenAiCompletionTokenPricePerThousand;
+            currentAiInterviewSettings.AzureSpeechRecognitionPricePerHour = settingsModel.AzureSpeechRecognitionPricePerHour;
+            currentAiInterviewSettings.AzureSpeechSynthesisPricePerThousandCharacters = settingsModel.AzureSpeechSynthesisPricePerThousandCharacters;
+            currentAiInterviewSettings.AzureUsageCurrencyCode = settingsModel.AzureUsageCurrencyCode;
             currentAiInterviewSettings.AzureBlobStorageContainerUrl = settingsModel.AzureBlobStorageContainerUrl;
             currentAiInterviewSettings.AzureBlobStorageSasToken = PreserveSecretIfBlank(settingsModel.AzureBlobStorageSasToken, currentAiInterviewSettings.AzureBlobStorageSasToken);
             await _settingService.SaveSettingAsync(currentAiInterviewSettings);
@@ -344,6 +355,9 @@ public class AIInterviewAdminController : BasePluginController
     {
         searchModel ??= new MockPracticeSessionSearchModel();
         searchModel.SetGridPageSize();
+        if (searchModel.PageSize <= 0)
+            searchModel.SetGridPageSize(10, "10, 20, 50, 100");
+
         await PrepareMockPracticeSessionSearchModelAsync(searchModel);
 
         return View("~/Plugins/Misc.AIInterview/Views/Admin/MockPracticeSessions.cshtml", searchModel);
@@ -1025,6 +1039,7 @@ public class AIInterviewAdminController : BasePluginController
     protected virtual async Task<ApplicantCreditActivityListModel> PrepareApplicantCreditActivityListModelAsync(ApplicantCreditActivitySearchModel searchModel)
     {
         ArgumentNullException.ThrowIfNull(searchModel);
+        var hasKeyword = !string.IsNullOrWhiteSpace(searchModel.SearchKeyword);
 
         var walletBalancesQuery = _walletRepository.Table
             .GroupBy(wallet => wallet.CustomerId)
@@ -1060,17 +1075,26 @@ public class AIInterviewAdminController : BasePluginController
             .Union(ledgerAggregatesQuery.Where(ledger => ledger.LedgerCount > 0).Select(ledger => ledger.CustomerId))
             .Union(grantAggregatesQuery.Where(grant => grant.GrantCount > 0).Select(grant => grant.CustomerId));
 
+        var customerBaseQuery = _customerRepository.Table.Where(customer =>
+            !customer.Deleted &&
+            customer.VendorId <= 0);
+
+        if (!hasKeyword)
+        {
+            customerBaseQuery =
+                from customer in customerBaseQuery
+                join eligibleCustomerId in eligibleCustomerIds on customer.Id equals eligibleCustomerId
+                select customer;
+        }
+
         var activityQuery =
-            from customer in _customerRepository.Table
-            join eligibleCustomerId in eligibleCustomerIds on customer.Id equals eligibleCustomerId
+            from customer in customerBaseQuery
             join wallet in walletBalancesQuery on customer.Id equals wallet.CustomerId into walletJoin
             from wallet in walletJoin.DefaultIfEmpty()
             join ledger in ledgerAggregatesQuery on customer.Id equals ledger.CustomerId into ledgerJoin
             from ledger in ledgerJoin.DefaultIfEmpty()
             join grant in grantAggregatesQuery on customer.Id equals grant.CustomerId into grantJoin
             from grant in grantJoin.DefaultIfEmpty()
-            where !customer.Deleted
-                  && customer.VendorId <= 0
             select new
             {
                 CustomerId = customer.Id,
@@ -1085,7 +1109,7 @@ public class AIInterviewAdminController : BasePluginController
                     : (ledger != null ? ledger.LastLedgerActivityUtc : (grant != null ? grant.LastGrantActivityUtc : null))
             };
 
-        if (!string.IsNullOrWhiteSpace(searchModel.SearchKeyword))
+        if (hasKeyword)
         {
             var keyword = searchModel.SearchKeyword.Trim();
             activityQuery = activityQuery.Where(item =>
@@ -1297,6 +1321,14 @@ public class AIInterviewAdminController : BasePluginController
             AzureOpenAiDeploymentOrModel = aiInterviewSettings.AzureOpenAiDeploymentOrModel,
             AzureSpeechKey = aiInterviewSettings.AzureSpeechKey,
             AzureSpeechRegion = aiInterviewSettings.AzureSpeechRegion,
+            TrackAzureOpenAiUsage = aiInterviewSettings.TrackAzureOpenAiUsage,
+            TrackAzureSpeechUsage = aiInterviewSettings.TrackAzureSpeechUsage,
+            CalculateAzureCostPerInterview = aiInterviewSettings.CalculateAzureCostPerInterview,
+            AzureOpenAiPromptTokenPricePerThousand = aiInterviewSettings.AzureOpenAiPromptTokenPricePerThousand,
+            AzureOpenAiCompletionTokenPricePerThousand = aiInterviewSettings.AzureOpenAiCompletionTokenPricePerThousand,
+            AzureSpeechRecognitionPricePerHour = aiInterviewSettings.AzureSpeechRecognitionPricePerHour,
+            AzureSpeechSynthesisPricePerThousandCharacters = aiInterviewSettings.AzureSpeechSynthesisPricePerThousandCharacters,
+            AzureUsageCurrencyCode = aiInterviewSettings.AzureUsageCurrencyCode,
             AzureBlobStorageContainerUrl = aiInterviewSettings.AzureBlobStorageContainerUrl,
             AzureBlobStorageSasToken = aiInterviewSettings.AzureBlobStorageSasToken
         };
@@ -1322,7 +1354,12 @@ public class AIInterviewAdminController : BasePluginController
         foreach (var product in products)
         {
             if (_jobRequirementService == null || await _jobRequirementService.IsJobProductAsync(product))
+            {
+                if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+                    continue;
+
                 jobProducts.Add(product);
+            }
         }
 
         return jobProducts

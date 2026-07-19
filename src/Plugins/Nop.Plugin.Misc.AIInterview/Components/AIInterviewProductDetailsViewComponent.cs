@@ -18,9 +18,11 @@ namespace Nop.Plugin.Misc.AIInterview.Components;
 public class AIInterviewProductDetailsViewComponent : NopViewComponent
 {
     private readonly ICreditService _creditService;
+    private readonly ICustomerService _customerService;
     private readonly IProductAttributeService _productAttributeService;
     private readonly IJobInterviewExperienceService _jobInterviewExperienceService;
     private readonly IProductService _productService;
+    private readonly IJobProductAccessService _jobProductAccessService;
     private readonly IProductTemplateService _productTemplateService;
     private readonly IWorkContext _workContext;
     private readonly IApplicationService _applicationService;
@@ -33,9 +35,11 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
 
     public AIInterviewProductDetailsViewComponent(ICreditService creditService,
         IWorkContext workContext,
+        ICustomerService customerService,
         IProductAttributeService productAttributeService,
         IJobInterviewExperienceService jobInterviewExperienceService,
         IProductService productService,
+        IJobProductAccessService jobProductAccessService,
         IProductTemplateService productTemplateService,
         IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -47,9 +51,11 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
     {
         _creditService = creditService;
         _workContext = workContext;
+        _customerService = customerService;
         _productAttributeService = productAttributeService;
         _jobInterviewExperienceService = jobInterviewExperienceService;
         _productService = productService;
+        _jobProductAccessService = jobProductAccessService;
         _productTemplateService = productTemplateService;
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -69,6 +75,9 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         if (product == null)
             return Content("");
 
+        if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+            return Content("");
+
         var productTemplate = await _productTemplateService.GetProductTemplateByIdAsync(product.ProductTemplateId);
         if (productTemplate == null ||
             !string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase))
@@ -84,9 +93,12 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         ViewBag.InterviewRequired = jobRequirements.InterviewRequired;
 
         var customer = await _workContext.GetCurrentCustomerAsync();
+        var isAuthenticated = customer != null &&
+            await _customerService.IsRegisteredAsync(customer) &&
+            !string.IsNullOrWhiteSpace(customer.Email);
         var hasCredits = false;
         var alreadyApplied = false;
-        if (customer != null)
+        if (isAuthenticated)
         {
             var wallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
             hasCredits = wallet.Balance >= 1;
@@ -103,7 +115,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         ViewBag.HasCredits = hasCredits;
         ViewBag.AlreadyApplied = alreadyApplied;
         ViewBag.ProductId = productId;
-        ViewBag.IsAuthenticated = customer != null;
+        ViewBag.IsAuthenticated = isAuthenticated;
         ViewBag.CreditPurchasePageUrl = NormalizeCreditPurchasePageUrl(_aiInterviewSettings?.CreditPurchasePageUrl);
         ViewBag.ProductFormId = string.IsNullOrWhiteSpace(formDomId) ? "product-details-form" : formDomId;
         ViewBag.JobAiContextId = string.IsNullOrWhiteSpace(contextId) ? $"job-{productId}" : contextId;
@@ -112,7 +124,7 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         ViewBag.SponsorToken = sponsorToken;
 
         bool hasSponsorCredits = false;
-        if (customer != null && !string.IsNullOrEmpty(sponsorToken) && _sponsorInviteService != null)
+        if (isAuthenticated && !string.IsNullOrEmpty(sponsorToken) && _sponsorInviteService != null)
         {
             var invite = await _sponsorInviteService.GetSponsorInviteByCodeAsync(sponsorToken);
             if (invite != null &&
