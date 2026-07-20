@@ -543,21 +543,42 @@ public class AppointmentBookingService : IAppointmentBookingService
 
         await _timeSlotHoldRepository.InsertAsync(hold);
 
-        await _bookingRepository.InsertAsync(new Booking
+        var pendingBooking = await _bookingRepository.Table
+            .Where(booking => booking.ServiceId == hold.ServiceId &&
+                booking.ProductId == hold.ProductId &&
+                booking.CustomerId == hold.CustomerId &&
+                booking.StartUtc == hold.StartUtc &&
+                booking.EndUtc == hold.EndUtc &&
+                booking.Status == BookingStatus.PendingCheckout)
+            .OrderByDescending(booking => booking.CreatedOnUtc)
+            .FirstOrDefaultAsync();
+
+        if (pendingBooking == null)
         {
-            ServiceId = hold.ServiceId,
-            ProductId = hold.ProductId,
-            VendorId = hold.VendorId,
-            CustomerId = hold.CustomerId,
-            OrderId = null,
-            OrderItemId = null,
-            StartUtc = hold.StartUtc,
-            EndUtc = hold.EndUtc,
-            CustomerTimeZoneId = "UTC",
-            Status = BookingStatus.PendingCheckout,
-            CreatedOnUtc = DateTime.UtcNow,
-            UpdatedOnUtc = DateTime.UtcNow
-        });
+            pendingBooking = new Booking
+            {
+                ServiceId = hold.ServiceId,
+                ProductId = hold.ProductId,
+                VendorId = hold.VendorId,
+                CustomerId = hold.CustomerId,
+                OrderId = null,
+                OrderItemId = null,
+                StartUtc = hold.StartUtc,
+                EndUtc = hold.EndUtc,
+                CustomerTimeZoneId = "UTC",
+                Status = BookingStatus.PendingCheckout,
+                CreatedOnUtc = DateTime.UtcNow,
+                UpdatedOnUtc = DateTime.UtcNow
+            };
+
+            await _bookingRepository.InsertAsync(pendingBooking);
+        }
+        else
+        {
+            pendingBooking.VendorId = hold.VendorId;
+            pendingBooking.UpdatedOnUtc = DateTime.UtcNow;
+            await _bookingRepository.UpdateAsync(pendingBooking);
+        }
 
         return hold;
     }

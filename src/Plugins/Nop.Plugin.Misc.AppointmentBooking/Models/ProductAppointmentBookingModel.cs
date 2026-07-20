@@ -43,6 +43,21 @@ public record ProductAppointmentBookingModel : BaseNopEntityModel
     public string ServiceDescription { get; set; }
 
     /// <summary>
+    /// Gets or sets the vendor name
+    /// </summary>
+    public string VendorName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the vendor image URL
+    /// </summary>
+    public string VendorImageUrl { get; set; }
+
+    /// <summary>
+    /// Gets or sets the vendor image alternate text
+    /// </summary>
+    public string VendorImageAlt { get; set; }
+
+    /// <summary>
     /// Gets or sets available slots
     /// </summary>
     public IList<AvailableSlotModel> AvailableSlots { get; set; } = new List<AvailableSlotModel>();

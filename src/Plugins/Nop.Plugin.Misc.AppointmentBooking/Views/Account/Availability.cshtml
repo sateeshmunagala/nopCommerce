@@ -110,9 +110,27 @@
             </div>
             <form asp-route="@AppointmentBookingDefaults.AccountAvailabilityBlockDatesRouteName" method="post">
                 <input asp-for="VendorId" type="hidden" />
+                <input asp-for="UnavailableDateValues" type="hidden" data-unavailable-date-values />
                 <div class="inputs">
-                    <label asp-for="UnavailableDateValues">Dates</label>
-                    <textarea asp-for="UnavailableDateValues" placeholder="YYYY-MM-DD, YYYY-MM-DD"></textarea>
+                    <label>Dates</label>
+                    <div class="appointment-date-picker" data-unavailable-date-picker>
+                        @{
+                            var today = DateTime.Today;
+                            var monthStart = new DateTime(today.Year, today.Month, 1);
+                            var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
+                        }
+                        @for (var day = 0; day < daysInMonth; day++)
+                        {
+                            var date = monthStart.AddDays(day);
+                            <button type="button"
+                                    class="appointment-date-pill"
+                                    data-unavailable-date="@date.ToString("yyyy-MM-dd")"
+                                    aria-pressed="false">
+                                <span>@date.ToString("ddd")</span>
+                                <strong>@date.Day</strong>
+                            </button>
+                        }
+                    </div>
                 </div>
                 <div class="inputs">
                     <label asp-for="Reason" asp-postfix=":"></label>

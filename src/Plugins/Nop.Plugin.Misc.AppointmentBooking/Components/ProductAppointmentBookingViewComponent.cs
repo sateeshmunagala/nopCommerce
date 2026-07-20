@@ -53,6 +53,12 @@ public class ProductAppointmentBookingViewComponent : NopViewComponent
         if (model == null)
             return Content(string.Empty);
 
+        model.VendorName = productDetailsModel.VendorModel?.Name;
+        model.VendorImageUrl = productDetailsModel.DefaultPictureModel?.ImageUrl;
+        model.VendorImageAlt = !string.IsNullOrWhiteSpace(productDetailsModel.VendorModel?.Name)
+            ? productDetailsModel.VendorModel.Name
+            : productDetailsModel.DefaultPictureModel?.AlternateText;
+
         return await ViewAsync("~/Plugins/Misc.AppointmentBooking/Views/AppointmentBooking/ProductBooking.cshtml", model);
     }
 

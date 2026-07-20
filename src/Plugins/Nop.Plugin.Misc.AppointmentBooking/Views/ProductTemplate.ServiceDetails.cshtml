@@ -87,7 +87,6 @@
 
 <div class="page product-details-page appointment-service-details-page">
     <div class="page-body">
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsTop, additionalData = Model })
         <form asp-route="Product" asp-route-sename="@Model.SeName" method="post" id="product-details-form">
             <article class="appointment-service-shell" data-productid="@Model.Id">
                 <section class="appointment-service-profile" aria-labelledby="appointment-service-title">
@@ -140,16 +139,5 @@
                 </aside>
             </article>
         </form>
-
-        @await Component.InvokeAsync(typeof(ProductsAlsoPurchasedViewComponent), new { productId = Model.Id })
-        @await Component.InvokeAsync(typeof(RelatedProductsViewComponent), new { productId = Model.Id })
-        @await Component.InvokeAsync(typeof(CompatibleWithFilterLevelValuesViewComponent), new { productId = Model.Id })
-
-        @if (Model.ProductReviewOverview.AllowCustomerReviews)
-        {
-            @await Html.PartialAsync("_ProductReviews", Model.ProductReviews)
-        }
-
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsBottom, additionalData = Model })
     </div>
 </div>

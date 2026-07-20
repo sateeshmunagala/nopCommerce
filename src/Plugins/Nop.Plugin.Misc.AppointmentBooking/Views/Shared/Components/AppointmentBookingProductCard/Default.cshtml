@@ -4,14 +4,18 @@
 
 @{
     NopHtml.AddCssFileParts(@"~/Plugins/Misc.AppointmentBooking/Content/appointment-booking.css", null);
+    var hasImage = !string.IsNullOrWhiteSpace(Model.Picture?.ImageUrl);
 }
 
 <article class="product-item appointment-product-card" data-productid="@Model.Id">
-    <div class="picture">
-        <a href="@(await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName }))" title="@Model.Picture?.Title">
-            <img alt="@Model.Picture?.AlternateText" src="@Model.Picture?.ImageUrl" title="@Model.Picture?.Title" />
-        </a>
-    </div>
+    @if (hasImage)
+    {
+        <div class="picture">
+            <a href="@(await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName }))" title="@Model.Picture?.Title">
+                <img alt="@Model.Picture?.AlternateText" src="@Model.Picture.ImageUrl" title="@Model.Picture?.Title" />
+            </a>
+        </div>
+    }
     <div class="details">
         <h2 class="product-title">
             <a href="@(await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName }))">@Model.ProductName</a>

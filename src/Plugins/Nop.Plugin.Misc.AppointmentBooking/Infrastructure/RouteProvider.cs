@@ -57,11 +57,11 @@ public class RouteProvider : BaseRouteProvider, IRouteProvider
 
         endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountAvailabilitySaveScheduleRouteName,
             pattern: $"{lang}/appointment-booking/account/availability/save-schedule",
-            defaults: new { controller = "VendorAppointmentBooking", action = "SaveSchedule" });
+            defaults: new { controller = "VendorAppointmentBooking", action = "SaveAvailabilitySchedule" });
 
         endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountAvailabilityBlockDatesRouteName,
             pattern: $"{lang}/appointment-booking/account/availability/block-dates",
-            defaults: new { controller = "VendorAppointmentBooking", action = "BlockDates" });
+            defaults: new { controller = "VendorAppointmentBooking", action = "BlockUnavailableDates" });
 
         endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountAvailabilityDeleteBlockedDateRouteName,
             pattern: $"{lang}/appointment-booking/account/availability/delete-blocked-date",

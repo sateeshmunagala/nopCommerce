@@ -351,7 +351,7 @@ public class VendorAppointmentBookingController : BasePublicController
     }
 
     [HttpPost]
-    public async Task<IActionResult> SaveSchedule(AvailabilityModel model)
+    public async Task<IActionResult> SaveAvailabilitySchedule(AvailabilityModel model)
     {
         var vendorId = await GetCurrentVendorIdAsync();
         if (vendorId <= 0)
@@ -417,7 +417,7 @@ public class VendorAppointmentBookingController : BasePublicController
     }
 
     [HttpPost]
-    public async Task<IActionResult> BlockDates(AvailabilityModel model)
+    public async Task<IActionResult> BlockUnavailableDates(AvailabilityModel model)
     {
         var vendorId = await GetCurrentVendorIdAsync();
         if (vendorId <= 0)

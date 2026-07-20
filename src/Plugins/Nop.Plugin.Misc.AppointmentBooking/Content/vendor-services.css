@@ -295,6 +295,47 @@
   font-size: 22px;
 }
 
+.appointment-date-picker {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.appointment-date-pill {
+  min-width: 0;
+  min-height: 58px;
+  padding: 8px 4px;
+  border: 1px solid #d7dde5;
+  border-radius: 8px;
+  background: #fff;
+  color: #394452;
+  cursor: pointer;
+  text-align: center;
+}
+
+.appointment-date-pill span,
+.appointment-date-pill strong {
+  display: block;
+}
+
+.appointment-date-pill span {
+  margin-bottom: 3px;
+  font-size: 11px;
+  color: #586270;
+}
+
+.appointment-date-pill strong {
+  font-size: 16px;
+}
+
+.appointment-date-pill.selected {
+  border-color: #24b99a;
+  background: #e5f2ee;
+  color: #17623a;
+  box-shadow: inset 0 0 0 1px #24b99a;
+}
+
 .appointment-editor-panel textarea,
 .appointment-split textarea {
   min-height: 110px;
@@ -364,5 +405,9 @@
 
   .appointment-schedule-separator {
     text-align: left;
+  }
+
+  .appointment-date-picker {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
