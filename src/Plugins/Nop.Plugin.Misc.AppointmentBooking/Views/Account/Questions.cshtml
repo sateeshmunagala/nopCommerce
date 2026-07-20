@@ -1,0 +1,96 @@
+@model Nop.Plugin.Misc.AppointmentBooking.Models.Account.ServiceQuestionModel
+
+@{
+    Layout = "_ColumnsTwo";
+
+    NopHtml.AddTitleParts("Questions");
+    NopHtml.AddTitleParts(T("PageTitle.Account").Text);
+    NopHtml.AddCssFileParts(@"~/Plugins/Misc.AppointmentBooking/Content/vendor-services.css", null);
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-appointment-questions-page");
+}
+
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = AppointmentBookingDefaults.AccountServicesTabId })
+}
+
+<div class="page account-page appointment-questions-page">
+    <div class="appointment-account-header">
+        <div>
+            <a class="appointment-back-link" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountEditServiceRouteName, new { id = Model.ServiceId })">&larr;</a>
+            <h1>Questions</h1>
+            <span>@Model.ServiceName</span>
+        </div>
+    </div>
+
+    <div class="page-body appointment-split">
+        <section class="fieldset">
+            <h2 class="title">Add question</h2>
+            <form asp-action="AddQuestion" method="post">
+                <input asp-for="ServiceId" type="hidden" />
+                <div class="form-fields">
+                    <div class="inputs">
+                        <label asp-for="QuestionText" asp-postfix=":"></label>
+                        <input asp-for="QuestionText" />
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="QuestionType" asp-postfix=":"></label>
+                        <select asp-for="QuestionType">
+                            <option value="Text">Text</option>
+                            <option value="Textarea">Textarea</option>
+                            <option value="Select">Select</option>
+                        </select>
+                    </div>
+                    <div class="inputs checkbox-row">
+                        <label asp-for="IsRequired" asp-postfix=":"></label>
+                        <input asp-for="IsRequired" />
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="DisplayOrder" asp-postfix=":"></label>
+                        <input asp-for="DisplayOrder" />
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="OptionsJson" asp-postfix=":"></label>
+                        <textarea asp-for="OptionsJson"></textarea>
+                    </div>
+                </div>
+                <div class="buttons">
+                    <button type="submit" class="button-1">Add question</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="fieldset">
+            <h2 class="title">Current questions</h2>
+            @if (!Model.Questions.Any())
+            {
+                <div class="no-data">No questions yet.</div>
+            }
+            else
+            {
+                <div class="appointment-table-wrap">
+                    <table class="appointment-table">
+                        <thead>
+                            <tr>
+                                <th>Question</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var question in Model.Questions)
+                            {
+                                <tr>
+                                    <td>@question.QuestionText</td>
+                                    <td>@question.QuestionType</td>
+                                    <td>@(question.IsRequired ? "Yes" : "No")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    </div>
+</div>

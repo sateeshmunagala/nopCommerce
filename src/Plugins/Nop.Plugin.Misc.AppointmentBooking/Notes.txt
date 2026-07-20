@@ -1,0 +1,13 @@
+Phase 1 keeps appointment booking persistence to plugin settings and locale resources only.
+
+Future plugin-owned schema:
+- AppointmentBooking_Service
+- AppointmentBooking_ServiceProductMapping
+- AppointmentBooking_AvailabilityRule
+- AppointmentBooking_AvailabilityException
+- AppointmentBooking_Booking
+- AppointmentBooking_BookingParticipant
+- AppointmentBooking_ServiceQuestion
+- AppointmentBooking_BookingAnswer
+- AppointmentBooking_NotificationLog
+- AppointmentBooking_TimeSlotHold

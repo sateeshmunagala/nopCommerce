@@ -1,0 +1,110 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <SolutionDir Condition="'$(SolutionDir)' == '' Or '$(SolutionDir)' == '*Undefined*'">..\..\</SolutionDir>
+    <TargetFramework>net10.0</TargetFramework>
+    <Copyright>Copyright © Nop Solutions, Ltd</Copyright>
+    <Company>Nop Solutions, Ltd</Company>
+    <Authors>Nop Solutions, Ltd</Authors>
+    <PackageLicenseUrl></PackageLicenseUrl>
+    <PackageProjectUrl>https://www.nopcommerce.com/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/nopSolutions/nopCommerce</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <OutputPath>$(SolutionDir)\Presentation\Nop.Web\Plugins\Misc.AppointmentBooking</OutputPath>
+    <OutDir>$(OutputPath)</OutDir>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Content\appointment-booking.css" />
+    <None Remove="Content\appointment-booking.js" />
+    <None Remove="Content\vendor-services.css" />
+    <None Remove="Content\vendor-services.js" />
+    <None Remove="plugin.json" />
+    <None Remove="Views\Admin\Availability.cshtml" />
+    <None Remove="Views\Admin\BookingDetails.cshtml" />
+    <None Remove="Views\Admin\Bookings.cshtml" />
+    <None Remove="Views\Admin\EditService.cshtml" />
+    <None Remove="Views\Admin\Services.cshtml" />
+    <None Remove="Views\Account\Availability.cshtml" />
+    <None Remove="Views\Account\Bookings.cshtml" />
+    <None Remove="Views\Account\EditService.cshtml" />
+    <None Remove="Views\Account\Questions.cshtml" />
+    <None Remove="Views\Account\Services.cshtml" />
+    <None Remove="Views\AppointmentBooking\ProductBooking.cshtml" />
+    <None Remove="Views\Components\AccountServicesNavigation.cshtml" />
+    <None Remove="Views\Configure.cshtml" />
+    <None Remove="Views\_ViewImports.cshtml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Content\appointment-booking.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\appointment-booking.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\vendor-services.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\vendor-services.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="plugin.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\Availability.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\BookingDetails.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\Bookings.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\EditService.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\Services.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Account\Availability.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Account\Bookings.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Account\EditService.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Account\Questions.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Account\Services.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\AppointmentBooking\ProductBooking.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Components\AccountServicesNavigation.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Configure.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\_ViewImports.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(SolutionDir)\Presentation\Nop.Web\Nop.Web.csproj" />
+    <ClearPluginAssemblies Include="$(SolutionDir)\Build\ClearPluginAssemblies.proj" />
+  </ItemGroup>
+
+  <Target Name="NopTarget" AfterTargets="Build">
+    <MSBuild Projects="@(ClearPluginAssemblies)" Properties="PluginPath=$(OutDir)" Targets="NopClear" />
+  </Target>
+
+</Project>

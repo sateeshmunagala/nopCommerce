@@ -1,0 +1,63 @@
+@model IList<VendorBookingModel>
+
+@{
+    Layout = "_ColumnsTwo";
+
+    NopHtml.AddTitleParts("Bookings");
+    NopHtml.AddTitleParts(T("PageTitle.Account").Text);
+    NopHtml.AddCssFileParts(@"~/Plugins/Misc.AppointmentBooking/Content/vendor-services.css", null);
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-appointment-bookings-page");
+}
+
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = AppointmentBookingDefaults.AccountBookingsTabId })
+}
+
+<div class="page account-page appointment-bookings-page">
+    <div class="appointment-account-header">
+        <div>
+            <h1>Bookings</h1>
+            <span class="service-chip">1:1 Call</span>
+        </div>
+        <a class="button-2" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServicesRouteName)">Services</a>
+    </div>
+
+    <div class="page-body">
+        @if (!Model.Any())
+        {
+            <div class="no-data">No bookings yet.</div>
+        }
+        else
+        {
+            <div class="appointment-table-wrap">
+                <table class="appointment-table">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Status</th>
+                            <th>Order</th>
+                            <th>Customer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var booking in Model)
+                        {
+                            <tr>
+                                <td>@booking.ServiceName</td>
+                                <td>@booking.StartUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@booking.EndUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@booking.Status</td>
+                                <td>#@booking.OrderId</td>
+                                <td>#@booking.CustomerId</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

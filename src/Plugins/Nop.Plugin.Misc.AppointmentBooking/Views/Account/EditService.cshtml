@@ -1,0 +1,95 @@
+@model EditServiceModel
+
+@{
+    Layout = "_ColumnsTwo";
+
+    var routeName = Model.Id > 0 ? AppointmentBookingDefaults.AccountEditServiceRouteName : AppointmentBookingDefaults.AccountCreateServiceRouteName;
+    NopHtml.AddTitleParts(Model.Id > 0 ? "Edit service" : "Create service");
+    NopHtml.AddTitleParts(T("PageTitle.Account").Text);
+    NopHtml.AddCssFileParts(@"~/Plugins/Misc.AppointmentBooking/Content/vendor-services.css", null);
+    NopHtml.AddScriptParts(ResourceLocation.Footer, @"~/Plugins/Misc.AppointmentBooking/Content/vendor-services.js");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-appointment-edit-service-page");
+}
+
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = AppointmentBookingDefaults.AccountServicesTabId })
+}
+
+<div class="page account-page appointment-edit-service-page">
+    <form asp-route="@routeName" asp-route-id="@Model.Id" method="post">
+        <input asp-for="Id" type="hidden" />
+        <div class="appointment-editor-header">
+            <a class="appointment-back-link" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServicesRouteName)" aria-label="Back">&larr;</a>
+            <div>
+                <h1>@(Model.Id > 0 ? "Edit service" : "Create service")</h1>
+                <span class="service-chip">1:1 Call</span>
+            </div>
+            <div class="visibility-control">
+                <label asp-for="IsPublic"></label>
+                <input asp-for="IsPublic" />
+            </div>
+        </div>
+
+        <div class="appointment-editor-icons" aria-hidden="true">
+            <span>Layout</span>
+            <span>Color</span>
+            <span>Link</span>
+        </div>
+
+        <nav class="appointment-tabs" aria-label="Service sections">
+            <button type="button" class="active">Basic Details</button>
+            <button type="button">Design</button>
+            <button type="button">Advanced</button>
+        </nav>
+
+        <div class="page-body">
+            <div asp-validation-summary="ModelOnly" class="message-error"></div>
+            <section class="fieldset appointment-editor-panel">
+                <div class="form-fields">
+                    <div class="inputs">
+                        <label asp-for="Title" asp-postfix=":"></label>
+                        <input asp-for="Title" />
+                        <nop-required />
+                        <span asp-validation-for="Title"></span>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="ShortDescription" asp-postfix=":"></label>
+                        <textarea asp-for="ShortDescription"></textarea>
+                        <span asp-validation-for="ShortDescription"></span>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="Price" asp-postfix=":"></label>
+                        <input asp-for="Price" />
+                        <span asp-validation-for="Price"></span>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="DurationMinutes" asp-postfix=":"></label>
+                        <input asp-for="DurationMinutes" />
+                        <nop-required />
+                        <span asp-validation-for="DurationMinutes"></span>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="ServiceDescription" asp-postfix=":"></label>
+                        <textarea asp-for="ServiceDescription"></textarea>
+                        <span asp-validation-for="ServiceDescription"></span>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="MappedProductId" asp-postfix=":"></label>
+                        <select asp-for="MappedProductId" asp-items="Model.AvailableProducts"></select>
+                        <span asp-validation-for="MappedProductId"></span>
+                    </div>
+                </div>
+            </section>
+            <section class="buttons">
+                <button type="submit" class="button-1 save-service-button">Save</button>
+                @if (Model.Id > 0)
+                {
+                    <a class="button-2" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServiceAvailabilityRouteName, new { id = Model.Id })">Availability</a>
+                    <a class="button-2" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServiceQuestionsRouteName, new { id = Model.Id })">Questions</a>
+                }
+            </section>
+        </div>
+    </form>
+</div>

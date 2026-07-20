@@ -1,0 +1,49 @@
+@model IList<BookingAdminModel>
+
+@{
+    Layout = "_AdminLayout";
+    ViewBag.PageTitle = "Appointment bookings";
+    NopHtml.SetActiveMenuItemSystemName(AppointmentBookingDefaults.BookingsAdminMenuSystemName);
+}
+
+<div class="content-header clearfix">
+    <h1 class="float-left">Appointment bookings</h1>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="card card-default">
+            <div class="card-body">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Service</th>
+                            <th>Product</th>
+                            <th>Customer</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var booking in Model)
+                        {
+                            <tr>
+                                <td>@booking.StartUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@booking.EndUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@booking.ServiceId</td>
+                                <td>@booking.ProductId</td>
+                                <td>@booking.CustomerId</td>
+                                <td>@booking.Status</td>
+                                <td class="text-right">
+                                    <a class="btn btn-default" href="@Url.Action("BookingDetails", "AppointmentBooking", new { area = "Admin", id = booking.Id })">View</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>

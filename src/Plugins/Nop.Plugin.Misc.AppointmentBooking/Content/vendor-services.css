@@ -1,0 +1,249 @@
+.appointment-account-header,
+.appointment-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 22px;
+}
+
+.appointment-account-header h1,
+.appointment-editor-header h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.appointment-primary-action {
+  white-space: nowrap;
+}
+
+.service-chip,
+.service-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 10px;
+  border: 1px solid #d7dde5;
+  border-radius: 999px;
+  color: #394452;
+  font-size: 13px;
+  line-height: 18px;
+  background: #f8fafc;
+}
+
+.service-status.public {
+  border-color: #a9d5bd;
+  color: #17623a;
+  background: #eefbf3;
+}
+
+.service-status.private {
+  border-color: #d9c7a5;
+  color: #76521a;
+  background: #fff8ea;
+}
+
+.vendor-service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.vendor-service-card {
+  border: 1px solid #dfe4ea;
+  border-radius: 8px;
+  padding: 18px;
+  background: #fff;
+}
+
+.vendor-service-card-head,
+.vendor-service-actions,
+.vendor-service-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vendor-service-card-head {
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.vendor-service-card h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.vendor-service-card p {
+  margin: 0 0 16px;
+  color: #586270;
+}
+
+.service-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+.service-facts div {
+  border: 1px solid #edf0f3;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.service-facts dt {
+  margin: 0 0 4px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.service-facts dd {
+  margin: 0;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.vendor-service-actions {
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.vendor-service-links {
+  justify-content: flex-start;
+}
+
+.vendor-service-links a {
+  color: #2b5b8a;
+}
+
+.icon-button {
+  min-width: 36px;
+  min-height: 36px;
+  border: 1px solid #d7dde5;
+  border-radius: 6px;
+  background: #fff;
+  color: #394452;
+  cursor: pointer;
+}
+
+.appointment-back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #d7dde5;
+  border-radius: 6px;
+  color: #1f2937;
+  text-decoration: none;
+  background: #fff;
+}
+
+.visibility-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.appointment-editor-icons,
+.appointment-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.appointment-editor-icons span {
+  border: 1px solid #d7dde5;
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #394452;
+  background: #fff;
+}
+
+.appointment-tabs {
+  border-bottom: 1px solid #dfe4ea;
+}
+
+.appointment-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 10px 12px;
+  color: #586270;
+  background: transparent;
+  cursor: pointer;
+}
+
+.appointment-tabs button.active {
+  border-bottom-color: #1f6fb2;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.appointment-editor-panel textarea,
+.appointment-split textarea {
+  min-height: 110px;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkbox-row label {
+  width: auto;
+}
+
+.appointment-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.appointment-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.appointment-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 520px;
+}
+
+.appointment-table th,
+.appointment-table td {
+  border-bottom: 1px solid #e5e9ef;
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.appointment-table th {
+  color: #394452;
+  font-weight: 600;
+  background: #f8fafc;
+}
+
+@media (max-width: 640px) {
+  .appointment-account-header,
+  .appointment-editor-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .appointment-primary-action {
+    width: 100%;
+    text-align: center;
+  }
+
+  .service-facts {
+    grid-template-columns: 1fr;
+  }
+}

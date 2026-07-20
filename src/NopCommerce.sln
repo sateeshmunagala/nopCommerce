@@ -95,6 +95,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nop.Plugin.Payments.Razorpa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nop.Plugin.Misc.SinglePageCheckout", "Plugins\Nop.Plugin.Misc.SinglePageCheckout\Nop.Plugin.Misc.SinglePageCheckout.csproj", "{6578BD94-B66E-09AB-CB99-342548AC0B9F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nop.Plugin.Misc.AppointmentBooking", "Plugins\Nop.Plugin.Misc.AppointmentBooking\Nop.Plugin.Misc.AppointmentBooking.csproj", "{9E6506CB-1801-2C87-68AC-3D12669578BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -755,6 +757,22 @@ Global
 		{6578BD94-B66E-09AB-CB99-342548AC0B9F}.Release|x64.Build.0 = Release|Any CPU
 		{6578BD94-B66E-09AB-CB99-342548AC0B9F}.Release|x86.ActiveCfg = Release|Any CPU
 		{6578BD94-B66E-09AB-CB99-342548AC0B9F}.Release|x86.Build.0 = Release|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Debug|x64.Build.0 = Debug|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Debug|x86.Build.0 = Debug|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Release|x64.ActiveCfg = Release|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Release|x64.Build.0 = Release|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Release|x86.ActiveCfg = Release|Any CPU
+		{9E6506CB-1801-2C87-68AC-3D12669578BF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -802,6 +820,7 @@ Global
 		{A38EE424-F4BF-4CA5-9E3F-F44217E967FC} = {7881B112-7843-4542-B1F7-F99553FB9BB7}
 		{2F89F58F-92A2-F032-1059-5B9FFD892235} = {7881B112-7843-4542-B1F7-F99553FB9BB7}
 		{6578BD94-B66E-09AB-CB99-342548AC0B9F} = {7881B112-7843-4542-B1F7-F99553FB9BB7}
+		{9E6506CB-1801-2C87-68AC-3D12669578BF} = {7881B112-7843-4542-B1F7-F99553FB9BB7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {EE72A8B2-332A-4175-9319-6726D36E9D25}

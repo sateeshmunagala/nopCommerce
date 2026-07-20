@@ -1,0 +1,145 @@
+@model AvailabilityModel
+
+@{
+    Layout = "_ColumnsTwo";
+
+    NopHtml.AddTitleParts("Availability");
+    NopHtml.AddTitleParts(T("PageTitle.Account").Text);
+    NopHtml.AddCssFileParts(@"~/Plugins/Misc.AppointmentBooking/Content/vendor-services.css", null);
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-appointment-availability-page");
+}
+
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = AppointmentBookingDefaults.AccountServicesTabId })
+}
+
+<div class="page account-page appointment-availability-page">
+    <div class="appointment-account-header">
+        <div>
+            <a class="appointment-back-link" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountEditServiceRouteName, new { id = Model.ServiceId })">&larr;</a>
+            <h1>Availability</h1>
+            <span>@Model.ServiceName</span>
+        </div>
+    </div>
+
+    <div class="page-body appointment-split">
+        <section class="fieldset">
+            <h2 class="title">Weekly hours</h2>
+            <form asp-action="AddAvailabilityRule" method="post">
+                <input asp-for="ServiceId" type="hidden" />
+                <div class="form-fields">
+                    <div class="inputs">
+                        <label asp-for="DayOfWeek" asp-postfix=":"></label>
+                        <select asp-for="DayOfWeek">
+                            @for (var day = 0; day < 7; day++)
+                            {
+                                <option value="@day">@Enum.GetName(typeof(DayOfWeek), day)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="StartTime" asp-postfix=":"></label>
+                        <input asp-for="StartTime" type="time" />
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="EndTime" asp-postfix=":"></label>
+                        <input asp-for="EndTime" type="time" />
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="TimeZoneId" asp-postfix=":"></label>
+                        <input asp-for="TimeZoneId" />
+                    </div>
+                    <div class="inputs checkbox-row">
+                        <label asp-for="IsActive" asp-postfix=":"></label>
+                        <input asp-for="IsActive" />
+                    </div>
+                </div>
+                <div class="buttons">
+                    <button type="submit" class="button-1">Add rule</button>
+                </div>
+            </form>
+
+            <div class="appointment-table-wrap">
+                <table class="appointment-table">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var rule in Model.Rules)
+                        {
+                            <tr>
+                                <td>@Enum.GetName(typeof(DayOfWeek), rule.DayOfWeek)</td>
+                                <td>@rule.StartTimeUtc.ToString("HH:mm")</td>
+                                <td>@rule.EndTimeUtc.ToString("HH:mm")</td>
+                                <td>@(rule.IsActive ? "Active" : "Inactive")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="fieldset">
+            <h2 class="title">Exceptions</h2>
+            <form asp-action="AddAvailabilityException" method="post">
+                <input asp-for="ServiceId" type="hidden" />
+                <div class="form-fields">
+                    <div class="inputs">
+                        <label asp-for="ExceptionDateUtc" asp-postfix=":"></label>
+                        <input asp-for="ExceptionDateUtc" type="date" />
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="StartTime" asp-postfix=":"></label>
+                        <input asp-for="StartTime" type="time" />
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="EndTime" asp-postfix=":"></label>
+                        <input asp-for="EndTime" type="time" />
+                    </div>
+                    <div class="inputs checkbox-row">
+                        <label asp-for="IsAvailable" asp-postfix=":"></label>
+                        <input asp-for="IsAvailable" />
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="Reason" asp-postfix=":"></label>
+                        <input asp-for="Reason" />
+                    </div>
+                </div>
+                <div class="buttons">
+                    <button type="submit" class="button-1">Add exception</button>
+                </div>
+            </form>
+
+            <div class="appointment-table-wrap">
+                <table class="appointment-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Available</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Exceptions)
+                        {
+                            <tr>
+                                <td>@item.ExceptionDateUtc.ToString("yyyy-MM-dd")</td>
+                                <td>@item.StartTimeUtc.ToString("HH:mm")</td>
+                                <td>@item.EndTimeUtc.ToString("HH:mm")</td>
+                                <td>@(item.IsAvailable ? "Yes" : "No")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
