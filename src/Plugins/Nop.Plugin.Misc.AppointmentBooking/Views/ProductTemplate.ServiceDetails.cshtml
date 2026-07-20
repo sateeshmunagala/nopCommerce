@@ -3,10 +3,18 @@
 @using Nop.Core.Domain.Catalog
 @using Nop.Core.Domain.Seo
 @using Nop.Plugin.Misc.AppointmentBooking.Components
+@using Nop.Plugin.Misc.AppointmentBooking.Services
 @using Nop.Services.Helpers
+@using Nop.Services.Html
+@using Nop.Services.Media
+@using Nop.Services.Vendors
 @using Nop.Web.Components
 @using Nop.Web.Framework.Infrastructure
 
+@inject IAppointmentBookingService appointmentBookingService
+@inject IHtmlFormatter htmlFormatter
+@inject IPictureService pictureService
+@inject IVendorService vendorService
 @inject IWebHelper webHelper
 @inject SeoSettings seoSettings
 
@@ -16,16 +24,58 @@
     NopHtml.AddTitleParts(!string.IsNullOrEmpty(Model.MetaTitle) ? Model.MetaTitle : Model.Name);
     NopHtml.AddMetaDescriptionParts(Model.MetaDescription);
     NopHtml.AddMetaKeywordParts(Model.MetaKeywords);
+    NopHtml.AppendPageCssClassParts("html-product-details-page");
     NopHtml.AppendPageCssClassParts("html-appointment-service-details-page");
+    NopHtml.AddCssFileParts("~/Plugins/Misc.AppointmentBooking/Content/appointment-booking.css", null);
 
     if (seoSettings.CanonicalUrlsEnabled)
     {
-        var productUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol())?.ToLowerInvariant();
-        if (!string.IsNullOrWhiteSpace(productUrl))
-            NopHtml.AddCanonicalUrlParts(productUrl, seoSettings.QueryStringInCanonicalUrlsEnabled);
+        var productUrl = (await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol())).ToLowerInvariant();
+        NopHtml.AddCanonicalUrlParts(productUrl, seoSettings.QueryStringInCanonicalUrlsEnabled);
+    }
+
+    if (seoSettings.OpenGraphMetaTags)
+    {
+        NopHtml.AddHeadCustomParts("<meta property=\"og:type\" content=\"product\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"og:title\" content=\"" + Html.Encode(Model.Name) + "\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"og:description\" content=\"" + Html.Encode(htmlFormatter.StripTags(Model.MetaDescription)) + "\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"og:image\" content=\"" + Model.DefaultPictureModel.ImageUrl + "\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"og:image:url\" content=\"" + Model.DefaultPictureModel.ImageUrl + "\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"og:url\" content=\"" + webHelper.GetThisPageUrl(false) + "\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"og:site_name\" content=\"" + Html.Encode(Model.CurrentStoreName) + "\" />");
+    }
+
+    if (seoSettings.TwitterMetaTags)
+    {
+        NopHtml.AddHeadCustomParts("<meta property=\"twitter:card\" content=\"summary\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"twitter:site\" content=\"" + Html.Encode(Model.CurrentStoreName) + "\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"twitter:title\" content=\"" + Html.Encode(Model.Name) + "\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"twitter:description\" content=\"" + Html.Encode(htmlFormatter.StripTags(Model.MetaDescription)) + "\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"twitter:image\" content=\"" + Model.DefaultPictureModel.ImageUrl + "\" />");
+        NopHtml.AddHeadCustomParts("<meta property=\"twitter:url\" content=\"" + webHelper.GetThisPageUrl(false) + "\" />");
     }
 
     NopHtml.AddJsonLdParts(Model.JsonLd);
+
+    var service = await appointmentBookingService.GetServiceByProductAsync(Model.Id);
+    var vendor = Model.VendorModel?.Id > 0 ? await vendorService.GetVendorByIdAsync(Model.VendorModel.Id) : null;
+    var vendorName = !string.IsNullOrWhiteSpace(vendor?.Name) ? vendor.Name : Model.VendorModel?.Name;
+    var imageUrl = Model.DefaultPictureModel?.ImageUrl;
+    var imageAlt = !string.IsNullOrWhiteSpace(Model.DefaultPictureModel?.AlternateText) ? Model.DefaultPictureModel.AlternateText : Model.Name;
+
+    if (vendor?.PictureId > 0)
+    {
+        var vendorPicture = await pictureService.GetPictureByIdAsync(vendor.PictureId);
+        if (vendorPicture != null)
+        {
+            var vendorImage = await pictureService.GetPictureUrlAsync(vendorPicture, 120, true);
+            if (!string.IsNullOrWhiteSpace(vendorImage.Url))
+            {
+                imageUrl = vendorImage.Url;
+                imageAlt = !string.IsNullOrWhiteSpace(vendorName) ? vendorName : Model.Name;
+            }
+        }
+    }
 }
 
 @section Breadcrumb
@@ -39,34 +89,65 @@
     <div class="page-body">
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsTop, additionalData = Model })
         <form asp-route="Product" asp-route-sename="@Model.SeName" method="post" id="product-details-form">
-            <div class="product-essential">
-                @await Html.PartialAsync("_ProductDetailsPictures", Model)
-                <div class="overview">
-                    @await Html.PartialAsync("_Discontinued", Model)
-                    <h1>@Model.Name</h1>
+            <article class="appointment-service-shell" data-productid="@Model.Id">
+                <section class="appointment-service-profile" aria-labelledby="appointment-service-title">
+                    @if (!string.IsNullOrWhiteSpace(vendorName) || !string.IsNullOrWhiteSpace(imageUrl))
+                    {
+                        <div class="appointment-service-vendor">
+                            @if (!string.IsNullOrWhiteSpace(imageUrl))
+                            {
+                                <img class="appointment-service-vendor__photo" src="@imageUrl" alt="@imageAlt" />
+                            }
+                            @if (!string.IsNullOrWhiteSpace(vendorName))
+                            {
+                                <span class="appointment-service-vendor__name">@vendorName</span>
+                            }
+                        </div>
+                    }
+
+                    <h1 id="appointment-service-title">@Model.Name</h1>
+
+                    <div class="appointment-service-facts">
+                        @if (!string.IsNullOrWhiteSpace(Model.ProductPrice?.Price))
+                        {
+                            <div>
+                                <span>Price</span>
+                                <strong>@Model.ProductPrice.Price</strong>
+                            </div>
+                        }
+                        <div>
+                            <span>Duration</span>
+                            <strong>@(service?.DurationMinutes > 0 ? $"{service.DurationMinutes} minutes" : "Duration unavailable")</strong>
+                        </div>
+                    </div>
+
                     @if (!string.IsNullOrWhiteSpace(Model.ShortDescription))
                     {
-                        <div class="short-description">@Html.Raw(Model.ShortDescription)</div>
+                        <div class="appointment-service-description appointment-service-description--short">@Html.Raw(Model.ShortDescription)</div>
                     }
-                    @await Html.PartialAsync("_ProductReviewOverview", Model.ProductReviewOverview)
-                    @await Html.PartialAsync("_ProductPrice", Model.ProductPrice)
-                </div>
-            </div>
-            @await Component.InvokeAsync(typeof(ProductAppointmentBookingViewComponent), new
-            {
-                widgetZone = PublicWidgetZones.ProductDetailsOverviewBottom,
-                additionalData = Model
-            })
+                    @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
+                    {
+                        <div class="appointment-service-description">@Html.Raw(Model.FullDescription)</div>
+                    }
+                </section>
+
+                <aside class="appointment-service-booking" aria-label="Appointment booking">
+                    @await Component.InvokeAsync(typeof(ProductAppointmentBookingViewComponent), new
+                    {
+                        widgetZone = PublicWidgetZones.ProductDetailsOverviewBottom,
+                        additionalData = Model
+                    })
+                </aside>
+            </article>
         </form>
 
         @await Component.InvokeAsync(typeof(ProductsAlsoPurchasedViewComponent), new { productId = Model.Id })
         @await Component.InvokeAsync(typeof(RelatedProductsViewComponent), new { productId = Model.Id })
+        @await Component.InvokeAsync(typeof(CompatibleWithFilterLevelValuesViewComponent), new { productId = Model.Id })
 
         @if (Model.ProductReviewOverview.AllowCustomerReviews)
         {
-            <div id="product-reviews">
-                @await Html.PartialAsync("_ProductReviews", Model.ProductReviews)
-            </div>
+            @await Html.PartialAsync("_ProductReviews", Model.ProductReviews)
         }
 
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsBottom, additionalData = Model })

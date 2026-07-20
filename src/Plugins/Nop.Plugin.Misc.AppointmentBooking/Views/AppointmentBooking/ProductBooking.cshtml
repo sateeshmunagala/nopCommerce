@@ -3,50 +3,79 @@
 @{
     NopHtml.AddCssFileParts(@"~/Plugins/Misc.AppointmentBooking/Content/appointment-booking.css", null);
     NopHtml.AddScriptParts(ResourceLocation.Footer, @"~/Plugins/Misc.AppointmentBooking/Content/appointment-booking.js");
+
+    var slotGroups = Model.AvailableSlots
+        .GroupBy(slot => slot.DateKey)
+        .Select(group => new
+        {
+            DateKey = group.Key,
+            DateText = group.First().DateText,
+            DayText = group.First().DayText,
+            Slots = group.OrderBy(slot => slot.StartUtc).ToList()
+        })
+        .OrderBy(group => group.Slots.First().StartUtc)
+        .ToList();
+    var activeDateKey = slotGroups.FirstOrDefault()?.DateKey;
 }
 
 <section class="appointment-booking" data-product-id="@Model.Id">
-    <div class="appointment-booking__summary">
-        <h2>Book appointment</h2>
-        <h3>@(!string.IsNullOrWhiteSpace(Model.ServiceName) ? Model.ServiceName : Model.ProductName)</h3>
-        @if (!string.IsNullOrWhiteSpace(Model.ServiceDescription))
-        {
-            <div class="appointment-booking__description">@Html.Raw(Model.ServiceDescription)</div>
-        }
-        else if (!string.IsNullOrWhiteSpace(Model.ShortDescription))
-        {
-            <div class="appointment-booking__description">@Html.Raw(Model.ShortDescription)</div>
-        }
-        @if (!string.IsNullOrWhiteSpace(Model.Price))
-        {
-            <div class="appointment-booking__price">@Model.Price</div>
-        }
-    </div>
     <div class="appointment-booking__calendar">
         <div class="appointment-booking__header">
-            <span>Choose a time</span>
-            @if (Model.DefaultDurationMinutes > 0)
-            {
-                <small>@Model.DefaultDurationMinutes minutes</small>
-            }
+            <h2>When should we meet?</h2>
         </div>
-        @if (Model.AvailableSlots.Any())
+        @if (slotGroups.Any())
         {
             <form asp-controller="AppointmentBooking" asp-action="HoldSlot" asp-route-productId="@Model.Id" method="post">
                 <input type="hidden" name="serviceId" value="@Model.ServiceId" />
-                <div class="appointment-booking__slots">
-                    @foreach (var slot in Model.AvailableSlots)
-                    {
-                        <label class="appointment-booking__slot" data-date-key="@slot.DateKey">
-                            <input type="radio" name="startUtc" value="@slot.StartUtc.ToString("O")" required />
-                            <span class="appointment-booking__slot-date">
-                                <strong>@slot.DayText</strong>
-                                @slot.DateText
-                            </span>
-                            <span class="appointment-booking__slot-time">@slot.TimeText</span>
-                        </label>
-                    }
+
+                <div class="appointment-booking__selector">
+                    <div class="appointment-booking__label">Date</div>
+                    <div class="appointment-booking__date-strip" role="tablist" aria-label="Available dates">
+                        @foreach (var group in slotGroups)
+                        {
+                            var isActive = string.Equals(group.DateKey, activeDateKey, StringComparison.Ordinal);
+                            <button type="button"
+                                    class="appointment-booking__date-card @(isActive ? "active" : null)"
+                                    data-appointment-date="@group.DateKey"
+                                    role="tab"
+                                    aria-selected="@isActive.ToString().ToLowerInvariant()"
+                                    aria-controls="appointment-times-@group.DateKey">
+                                <span>@group.DayText</span>
+                                <strong>@group.DateText</strong>
+                            </button>
+                        }
+                    </div>
                 </div>
+
+                <div class="appointment-booking__selector">
+                    <div class="appointment-booking__label">Time</div>
+                    <div class="appointment-booking__time-groups">
+                        @foreach (var group in slotGroups)
+                        {
+                            var isActive = string.Equals(group.DateKey, activeDateKey, StringComparison.Ordinal);
+                            <div class="appointment-booking__time-group @(isActive ? "active" : null)"
+                                 id="appointment-times-@group.DateKey"
+                                 data-appointment-time-group="@group.DateKey"
+                                 role="tabpanel">
+                                <div class="appointment-booking__time-strip">
+                                    @foreach (var slot in group.Slots)
+                                    {
+                                        <label class="appointment-booking__time-slot">
+                                            <input type="radio" name="startUtc" value="@slot.StartUtc.ToString("O")" required />
+                                            <span>@slot.TimeText</span>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="appointment-booking__timezone">
+                    <span>Timezone</span>
+                    <strong data-appointment-timezone>Local time</strong>
+                </div>
+
                 @if (Model.Questions.Any())
                 {
                     <div class="appointment-booking__questions">
@@ -59,7 +88,7 @@
                         }
                     </div>
                 }
-                <button type="submit" class="button-1 appointment-booking__link">Continue to checkout</button>
+                <button type="submit" class="button-1 appointment-booking__link">Continue</button>
             </form>
         }
         else

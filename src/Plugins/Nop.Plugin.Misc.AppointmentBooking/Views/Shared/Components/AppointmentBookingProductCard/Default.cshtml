@@ -2,6 +2,10 @@
 
 @using Nop.Core.Domain.Catalog
 
+@{
+    NopHtml.AddCssFileParts(@"~/Plugins/Misc.AppointmentBooking/Content/appointment-booking.css", null);
+}
+
 <article class="product-item appointment-product-card" data-productid="@Model.Id">
     <div class="picture">
         <a href="@(await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName }))" title="@Model.Picture?.Title">
@@ -24,7 +28,7 @@
                 </div>
             }
             <div class="buttons">
-                <a class="button-2 product-box-add-to-cart-button" href="@(await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName }))">Book now</a>
+                <a class="appointment-product-card__action" href="@(await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = Model.SeName }))">View</a>
             </div>
         </div>
     </div>

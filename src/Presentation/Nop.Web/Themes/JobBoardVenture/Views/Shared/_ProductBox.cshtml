@@ -22,6 +22,19 @@
         aiInterviewCardMarkup = aiInterviewCardWriter.ToString();
     }
 
+    var appointmentBookingCardMarkup = string.Empty;
+    if (string.IsNullOrWhiteSpace(aiInterviewCardMarkup))
+    {
+        var appointmentBookingProductCardComponent = viewComponentSelector.SelectComponent("AppointmentBookingProductCard");
+        if (appointmentBookingProductCardComponent != null)
+        {
+            var appointmentBookingCard = await Component.InvokeAsync("AppointmentBookingProductCard", new { productOverview = Model });
+            var appointmentBookingCardWriter = new StringWriter();
+            appointmentBookingCard.WriteTo(appointmentBookingCardWriter, HtmlEncoder.Default);
+            appointmentBookingCardMarkup = appointmentBookingCardWriter.ToString();
+        }
+    }
+
     //prepare "Add to cart" AJAX link
     var addtocartlink = "";
     var shoppingCartTypeId = (int)ShoppingCartType.ShoppingCart;
@@ -41,6 +54,10 @@
 @if (!string.IsNullOrWhiteSpace(aiInterviewCardMarkup))
 {
     @Html.Raw(aiInterviewCardMarkup)
+}
+else if (!string.IsNullOrWhiteSpace(appointmentBookingCardMarkup))
+{
+    @Html.Raw(appointmentBookingCardMarkup)
 }
 else
 {
