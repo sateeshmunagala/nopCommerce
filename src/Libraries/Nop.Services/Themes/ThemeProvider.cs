@@ -60,7 +60,7 @@ public partial class ThemeProvider : IThemeProvider
         var themeDescriptor = JsonConvert.DeserializeObject<ThemeDescriptor>(text);
 
         //some validation
-        if (_themeDescriptors.ContainsKey(themeDescriptor.SystemName))
+        if (_themeDescriptors?.ContainsKey(themeDescriptor.SystemName) == true)
             throw new Exception($"A theme with '{themeDescriptor.SystemName}' system name is already defined");
 
         return themeDescriptor;
@@ -73,9 +73,11 @@ public partial class ThemeProvider : IThemeProvider
     /// A task that represents the asynchronous operation
     /// The task result contains the list of the theme descriptor
     /// </returns>
-    public virtual Task<IList<ThemeDescriptor>> GetThemesAsync()
+    public virtual async Task<IList<ThemeDescriptor>> GetThemesAsync()
     {
-        return Task.FromResult<IList<ThemeDescriptor>>(_themeDescriptors.Values.ToList());
+        await InitializeAsync();
+
+        return _themeDescriptors.Values.ToList();
     }
 
     /// <summary>
@@ -86,14 +88,15 @@ public partial class ThemeProvider : IThemeProvider
     /// A task that represents the asynchronous operation
     /// The task result contains theme descriptor
     /// </returns>
-    public virtual Task<ThemeDescriptor> GetThemeBySystemNameAsync(string systemName)
+    public virtual async Task<ThemeDescriptor> GetThemeBySystemNameAsync(string systemName)
     {
         if (string.IsNullOrEmpty(systemName))
-            return Task.FromResult<ThemeDescriptor>(null);
+            return null;
 
+        await InitializeAsync();
         _themeDescriptors.TryGetValue(systemName, out var descriptor);
 
-        return Task.FromResult(descriptor);
+        return descriptor;
     }
 
     /// <summary>
@@ -104,12 +107,14 @@ public partial class ThemeProvider : IThemeProvider
     /// A task that represents the asynchronous operation
     /// The task result contains true if the theme exists; otherwise false
     /// </returns>
-    public virtual Task<bool> ThemeExistsAsync(string systemName)
+    public virtual async Task<bool> ThemeExistsAsync(string systemName)
     {
         if (string.IsNullOrEmpty(systemName))
-            return Task.FromResult(false);
+            return false;
 
-        return Task.FromResult(_themeDescriptors.ContainsKey(systemName));
+        await InitializeAsync();
+
+        return _themeDescriptors.ContainsKey(systemName);
     }
 
     #endregion

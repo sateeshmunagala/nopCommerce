@@ -1,0 +1,74 @@
+@model Nop.Web.Models.Catalog.ProductDetailsModel
+
+@using Nop.Core.Domain.Catalog
+@using Nop.Core.Domain.Seo
+@using Nop.Plugin.Misc.AppointmentBooking.Components
+@using Nop.Services.Helpers
+@using Nop.Web.Components
+@using Nop.Web.Framework.Infrastructure
+
+@inject IWebHelper webHelper
+@inject SeoSettings seoSettings
+
+@{
+    Layout = "_ColumnsOne";
+
+    NopHtml.AddTitleParts(!string.IsNullOrEmpty(Model.MetaTitle) ? Model.MetaTitle : Model.Name);
+    NopHtml.AddMetaDescriptionParts(Model.MetaDescription);
+    NopHtml.AddMetaKeywordParts(Model.MetaKeywords);
+    NopHtml.AppendPageCssClassParts("html-appointment-service-details-page");
+
+    if (seoSettings.CanonicalUrlsEnabled)
+    {
+        var productUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol())?.ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(productUrl))
+            NopHtml.AddCanonicalUrlParts(productUrl, seoSettings.QueryStringInCanonicalUrlsEnabled);
+    }
+
+    NopHtml.AddJsonLdParts(Model.JsonLd);
+}
+
+@section Breadcrumb
+{
+    @await Html.PartialAsync("_ProductBreadcrumb", Model.Breadcrumb)
+}
+
+@await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsAfterBreadcrumb, additionalData = Model })
+
+<div class="page product-details-page appointment-service-details-page">
+    <div class="page-body">
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsTop, additionalData = Model })
+        <form asp-route="Product" asp-route-sename="@Model.SeName" method="post" id="product-details-form">
+            <div class="product-essential">
+                @await Html.PartialAsync("_ProductDetailsPictures", Model)
+                <div class="overview">
+                    @await Html.PartialAsync("_Discontinued", Model)
+                    <h1>@Model.Name</h1>
+                    @if (!string.IsNullOrWhiteSpace(Model.ShortDescription))
+                    {
+                        <div class="short-description">@Html.Raw(Model.ShortDescription)</div>
+                    }
+                    @await Html.PartialAsync("_ProductReviewOverview", Model.ProductReviewOverview)
+                    @await Html.PartialAsync("_ProductPrice", Model.ProductPrice)
+                </div>
+            </div>
+            @await Component.InvokeAsync(typeof(ProductAppointmentBookingViewComponent), new
+            {
+                widgetZone = PublicWidgetZones.ProductDetailsOverviewBottom,
+                additionalData = Model
+            })
+        </form>
+
+        @await Component.InvokeAsync(typeof(ProductsAlsoPurchasedViewComponent), new { productId = Model.Id })
+        @await Component.InvokeAsync(typeof(RelatedProductsViewComponent), new { productId = Model.Id })
+
+        @if (Model.ProductReviewOverview.AllowCustomerReviews)
+        {
+            <div id="product-reviews">
+                @await Html.PartialAsync("_ProductReviews", Model.ProductReviews)
+            </div>
+        }
+
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsBottom, additionalData = Model })
+    </div>
+</div>

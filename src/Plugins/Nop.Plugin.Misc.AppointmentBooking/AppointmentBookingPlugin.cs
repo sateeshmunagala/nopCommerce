@@ -1,5 +1,7 @@
+using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Cms;
 using Nop.Plugin.Misc.AppointmentBooking.Components;
+using Nop.Services.Catalog;
 using Nop.Services.Cms;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
@@ -19,6 +21,7 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
     private readonly ILocalizationService _localizationService;
     private readonly INopUrlHelper _nopUrlHelper;
+    private readonly IProductTemplateService _productTemplateService;
     private readonly ISettingService _settingService;
     private readonly WidgetSettings _widgetSettings;
 
@@ -28,11 +31,13 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
     public AppointmentBookingPlugin(ILocalizationService localizationService,
         INopUrlHelper nopUrlHelper,
+        IProductTemplateService productTemplateService,
         ISettingService settingService,
         WidgetSettings widgetSettings)
     {
         _localizationService = localizationService;
         _nopUrlHelper = nopUrlHelper;
+        _productTemplateService = productTemplateService;
         _settingService = settingService;
         _widgetSettings = widgetSettings;
     }
@@ -40,6 +45,56 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     #endregion
 
     #region Methods
+
+    protected virtual async Task EnsureServiceProductTemplateAsync()
+    {
+        var templates = await _productTemplateService.GetAllProductTemplatesAsync();
+        var template = templates.FirstOrDefault(item =>
+            string.Equals(item.ViewPath, AppointmentBookingDefaults.ServiceProductTemplateViewPath, StringComparison.OrdinalIgnoreCase)) ??
+            templates.FirstOrDefault(item =>
+                string.Equals(item.Name, AppointmentBookingDefaults.ServiceProductTemplateName, StringComparison.OrdinalIgnoreCase));
+
+        if (template == null)
+        {
+            await _productTemplateService.InsertProductTemplateAsync(new ProductTemplate
+            {
+                Name = AppointmentBookingDefaults.ServiceProductTemplateName,
+                ViewPath = AppointmentBookingDefaults.ServiceProductTemplateViewPath,
+                DisplayOrder = 22,
+                IgnoredProductTypes = ((int)ProductType.GroupedProduct).ToString()
+            });
+            return;
+        }
+
+        var changed = false;
+        if (!string.Equals(template.Name, AppointmentBookingDefaults.ServiceProductTemplateName, StringComparison.Ordinal))
+        {
+            template.Name = AppointmentBookingDefaults.ServiceProductTemplateName;
+            changed = true;
+        }
+
+        if (!string.Equals(template.ViewPath, AppointmentBookingDefaults.ServiceProductTemplateViewPath, StringComparison.Ordinal))
+        {
+            template.ViewPath = AppointmentBookingDefaults.ServiceProductTemplateViewPath;
+            changed = true;
+        }
+
+        if (template.DisplayOrder != 22)
+        {
+            template.DisplayOrder = 22;
+            changed = true;
+        }
+
+        var ignoredProductTypes = ((int)ProductType.GroupedProduct).ToString();
+        if (!string.Equals(template.IgnoredProductTypes, ignoredProductTypes, StringComparison.Ordinal))
+        {
+            template.IgnoredProductTypes = ignoredProductTypes;
+            changed = true;
+        }
+
+        if (changed)
+            await _productTemplateService.UpdateProductTemplateAsync(template);
+    }
 
     /// <summary>
     /// Gets a configuration page URL
@@ -103,6 +158,8 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             await _settingService.SaveSettingAsync(_widgetSettings);
         }
 
+        await EnsureServiceProductTemplateAsync();
+
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
         {
             ["Plugins.Misc.AppointmentBooking.Enabled"] = "Enabled",
@@ -127,6 +184,19 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         });
 
         await base.InstallAsync();
+    }
+
+    /// <summary>
+    /// Update plugin
+    /// </summary>
+    /// <param name="currentVersion">Current version of the plugin</param>
+    /// <param name="targetVersion">Target version of the plugin</param>
+    /// <returns>A task that represents the asynchronous operation</returns>
+    public override async Task UpdateAsync(string currentVersion, string targetVersion)
+    {
+        await EnsureServiceProductTemplateAsync();
+
+        await base.UpdateAsync(currentVersion, targetVersion);
     }
 
     /// <summary>

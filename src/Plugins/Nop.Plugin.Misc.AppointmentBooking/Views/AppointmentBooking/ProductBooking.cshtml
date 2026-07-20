@@ -37,9 +37,13 @@
                 <div class="appointment-booking__slots">
                     @foreach (var slot in Model.AvailableSlots)
                     {
-                        <label class="appointment-booking__slot">
+                        <label class="appointment-booking__slot" data-date-key="@slot.DateKey">
                             <input type="radio" name="startUtc" value="@slot.StartUtc.ToString("O")" required />
-                            <span>@slot.DisplayText</span>
+                            <span class="appointment-booking__slot-date">
+                                <strong>@slot.DayText</strong>
+                                @slot.DateText
+                            </span>
+                            <span class="appointment-booking__slot-time">@slot.TimeText</span>
                         </label>
                     }
                 </div>

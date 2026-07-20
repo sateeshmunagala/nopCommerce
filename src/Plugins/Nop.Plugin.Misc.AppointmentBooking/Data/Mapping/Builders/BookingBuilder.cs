@@ -18,7 +18,7 @@ public class BookingBuilder : NopEntityBuilder<Booking>
         table.WithColumn(nameof(Booking.ProductId)).AsInt32().ForeignKey<Product>(onDelete: Rule.None);
         table.WithColumn(nameof(Booking.VendorId)).AsInt32().ForeignKey<Vendor>(onDelete: Rule.None);
         table.WithColumn(nameof(Booking.CustomerId)).AsInt32().ForeignKey<Customer>(onDelete: Rule.None);
-        table.WithColumn(nameof(Booking.OrderId)).AsInt32().ForeignKey<Order>(onDelete: Rule.None);
-        table.WithColumn(nameof(Booking.OrderItemId)).AsInt32().ForeignKey<OrderItem>(onDelete: Rule.None);
+        table.WithColumn(nameof(Booking.OrderId)).AsInt32().Nullable().ForeignKey<Order>(onDelete: Rule.None);
+        table.WithColumn(nameof(Booking.OrderItemId)).AsInt32().Nullable().ForeignKey<OrderItem>(onDelete: Rule.None);
     }
 }

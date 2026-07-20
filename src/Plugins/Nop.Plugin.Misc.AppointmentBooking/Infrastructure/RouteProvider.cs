@@ -48,8 +48,24 @@ public class RouteProvider : BaseRouteProvider, IRouteProvider
             defaults: new { controller = "AppointmentBooking", action = "ProductBooking" });
 
         endpointRouteBuilder.MapControllerRoute(name: "Nop.Plugin.Misc.AppointmentBooking.HoldSlot",
-            pattern: $"{lang}/appointment-booking/product/{{productId}}/hold",
+            pattern: $"{lang}/appointment-booking/product/{{productId:int}}/hold",
             defaults: new { controller = "AppointmentBooking", action = "HoldSlot" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountAvailabilityRouteName,
+            pattern: $"{lang}/appointment-booking/account/availability",
+            defaults: new { controller = "VendorAppointmentBooking", action = "AccountAvailability" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountAvailabilitySaveScheduleRouteName,
+            pattern: $"{lang}/appointment-booking/account/availability/save-schedule",
+            defaults: new { controller = "VendorAppointmentBooking", action = "SaveSchedule" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountAvailabilityBlockDatesRouteName,
+            pattern: $"{lang}/appointment-booking/account/availability/block-dates",
+            defaults: new { controller = "VendorAppointmentBooking", action = "BlockDates" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountAvailabilityDeleteBlockedDateRouteName,
+            pattern: $"{lang}/appointment-booking/account/availability/delete-blocked-date",
+            defaults: new { controller = "VendorAppointmentBooking", action = "DeleteBlockedDate" });
 
         endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountServicesRouteName,
             pattern: $"{lang}/appointment-booking/account/services",

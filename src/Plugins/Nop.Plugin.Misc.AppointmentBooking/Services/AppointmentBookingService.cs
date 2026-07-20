@@ -1,8 +1,12 @@
+using System.Globalization;
+using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Orders;
 using Nop.Data;
 using Nop.Plugin.Misc.AppointmentBooking.Domains;
 using Nop.Plugin.Misc.AppointmentBooking.Models;
 using Nop.Services.Catalog;
+using Nop.Services.Helpers;
+using Nop.Services.Seo;
 
 namespace Nop.Plugin.Misc.AppointmentBooking.Services;
 
@@ -19,11 +23,14 @@ public class AppointmentBookingService : IAppointmentBookingService
     private readonly IRepository<BookingAnswer> _bookingAnswerRepository;
     private readonly IRepository<Booking> _bookingRepository;
     private readonly IRepository<BookableService> _bookableServiceRepository;
+    private readonly IDateTimeHelper _dateTimeHelper;
     private readonly IPriceFormatter _priceFormatter;
     private readonly IProductService _productService;
+    private readonly IProductTemplateService _productTemplateService;
     private readonly IRepository<ServiceProductMapping> _serviceProductMappingRepository;
     private readonly IRepository<ServiceQuestion> _serviceQuestionRepository;
     private readonly IRepository<TimeSlotHold> _timeSlotHoldRepository;
+    private readonly IUrlRecordService _urlRecordService;
 
     #endregion
 
@@ -35,11 +42,14 @@ public class AppointmentBookingService : IAppointmentBookingService
         IRepository<BookingAnswer> bookingAnswerRepository,
         IRepository<Booking> bookingRepository,
         IRepository<BookableService> bookableServiceRepository,
+        IDateTimeHelper dateTimeHelper,
         IPriceFormatter priceFormatter,
         IProductService productService,
+        IProductTemplateService productTemplateService,
         IRepository<ServiceProductMapping> serviceProductMappingRepository,
         IRepository<ServiceQuestion> serviceQuestionRepository,
-        IRepository<TimeSlotHold> timeSlotHoldRepository)
+        IRepository<TimeSlotHold> timeSlotHoldRepository,
+        IUrlRecordService urlRecordService)
     {
         _appointmentBookingSettings = appointmentBookingSettings;
         _availabilityExceptionRepository = availabilityExceptionRepository;
@@ -47,11 +57,14 @@ public class AppointmentBookingService : IAppointmentBookingService
         _bookingAnswerRepository = bookingAnswerRepository;
         _bookingRepository = bookingRepository;
         _bookableServiceRepository = bookableServiceRepository;
+        _dateTimeHelper = dateTimeHelper;
         _priceFormatter = priceFormatter;
         _productService = productService;
+        _productTemplateService = productTemplateService;
         _serviceProductMappingRepository = serviceProductMappingRepository;
         _serviceQuestionRepository = serviceQuestionRepository;
         _timeSlotHoldRepository = timeSlotHoldRepository;
+        _urlRecordService = urlRecordService;
     }
 
     #endregion
@@ -66,6 +79,76 @@ public class AppointmentBookingService : IAppointmentBookingService
     protected virtual DateTime ComposeTime(DateTime dateUtc, DateTime timeUtc)
     {
         return dateUtc.Date.Add(timeUtc.TimeOfDay);
+    }
+
+    protected virtual async Task<int> GetServiceProductTemplateIdAsync()
+    {
+        var templates = await _productTemplateService.GetAllProductTemplatesAsync();
+        return templates.FirstOrDefault(template =>
+            string.Equals(template.ViewPath, AppointmentBookingDefaults.ServiceProductTemplateViewPath, StringComparison.OrdinalIgnoreCase))?.Id ??
+            templates.FirstOrDefault(template =>
+                string.Equals(template.Name, AppointmentBookingDefaults.ServiceProductTemplateName, StringComparison.OrdinalIgnoreCase))?.Id ??
+            0;
+    }
+
+    protected virtual async Task<Product> EnsureServiceProductAsync(BookableService service)
+    {
+        if (service == null || service.Id <= 0)
+            return null;
+
+        var mapping = await GetActiveProductMappingByServiceAsync(service.Id);
+        var product = mapping?.ProductId > 0 ? await _productService.GetProductByIdAsync(mapping.ProductId) : null;
+        var now = DateTime.UtcNow;
+        var productTemplateId = await GetServiceProductTemplateIdAsync();
+
+        if (product == null)
+        {
+            product = new Product
+            {
+                ProductType = ProductType.SimpleProduct,
+                VisibleIndividually = true,
+                Name = service.Name,
+                ShortDescription = string.Empty,
+                FullDescription = service.Description,
+                ProductTemplateId = productTemplateId,
+                VendorId = service.VendorId,
+                Published = service.IsActive,
+                DisableBuyButton = false,
+                DisableWishlistButton = true,
+                IsShipEnabled = false,
+                ManageInventoryMethod = ManageInventoryMethod.DontManageStock,
+                StockQuantity = 10000,
+                OrderMinimumQuantity = 1,
+                OrderMaximumQuantity = 1,
+                CreatedOnUtc = now,
+                UpdatedOnUtc = now
+            };
+
+            await _productService.InsertProductAsync(product);
+        }
+        else
+        {
+            product.Name = service.Name;
+            product.FullDescription = service.Description;
+            product.ProductTemplateId = productTemplateId > 0 ? productTemplateId : product.ProductTemplateId;
+            product.VendorId = service.VendorId;
+            product.Published = service.IsActive;
+            product.VisibleIndividually = true;
+            product.DisableBuyButton = false;
+            product.DisableWishlistButton = true;
+            product.IsShipEnabled = false;
+            product.OrderMinimumQuantity = product.OrderMinimumQuantity <= 0 ? 1 : product.OrderMinimumQuantity;
+            product.OrderMaximumQuantity = product.OrderMaximumQuantity <= 0 ? 1 : product.OrderMaximumQuantity;
+            product.UpdatedOnUtc = now;
+
+            await _productService.UpdateProductAsync(product);
+        }
+
+        var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
+        await _urlRecordService.SaveSlugAsync(product, seName, 0);
+        await MapServiceToProductAsync(service.Id, product.Id, service.VendorId);
+
+        return product;
     }
 
     protected virtual async Task<bool> IsSlotAvailableAsync(BookableService service, DateTime startUtc, DateTime endUtc)
@@ -132,7 +215,8 @@ public class AppointmentBookingService : IAppointmentBookingService
             return null;
 
         var fromUtc = DateTime.UtcNow.AddHours(service.MinAdvanceBookingHours);
-        var toUtc = DateTime.UtcNow.AddDays(service.MaxAdvanceBookingDays > 0 ? service.MaxAdvanceBookingDays : 14);
+        var maxAdvanceBookingDays = Math.Max(service.MaxAdvanceBookingDays, 30);
+        var toUtc = DateTime.UtcNow.AddDays(maxAdvanceBookingDays);
         var slots = await GenerateAvailableSlotsAsync(service.Id, fromUtc, toUtc);
         var questions = await GetServiceQuestionsAsync(service.Id);
 
@@ -195,6 +279,8 @@ public class AppointmentBookingService : IAppointmentBookingService
         }
         else
             await _bookableServiceRepository.UpdateAsync(service);
+
+        await EnsureServiceProductAsync(service);
 
         return service;
     }
@@ -306,6 +392,19 @@ public class AppointmentBookingService : IAppointmentBookingService
         return rule;
     }
 
+    public async Task DeleteAvailabilityRulesAsync(int serviceId)
+    {
+        if (serviceId <= 0)
+            return;
+
+        var rules = await _availabilityRuleRepository.Table
+            .Where(rule => rule.ServiceId == serviceId)
+            .ToListAsync();
+
+        foreach (var rule in rules)
+            await _availabilityRuleRepository.DeleteAsync(rule);
+    }
+
     public async Task<IList<AvailabilityException>> GetAvailabilityExceptionsAsync(int serviceId)
     {
         return await _availabilityExceptionRepository.Table
@@ -331,6 +430,16 @@ public class AppointmentBookingService : IAppointmentBookingService
             await _availabilityExceptionRepository.UpdateAsync(availabilityException);
 
         return availabilityException;
+    }
+
+    public async Task DeleteAvailabilityExceptionAsync(int exceptionId)
+    {
+        if (exceptionId <= 0)
+            return;
+
+        var availabilityException = await _availabilityExceptionRepository.GetByIdAsync(exceptionId);
+        if (availabilityException != null)
+            await _availabilityExceptionRepository.DeleteAsync(availabilityException);
     }
 
     public async Task<IList<ServiceQuestion>> GetServiceQuestionsAsync(int serviceId)
@@ -389,17 +498,22 @@ public class AppointmentBookingService : IAppointmentBookingService
                     if (!await IsSlotAvailableAsync(service, slotStartUtc, slotEndUtc))
                         continue;
 
+                    var userStart = await _dateTimeHelper.ConvertToUserTimeAsync(slotStartUtc, DateTimeKind.Utc);
                     slots.Add(new AvailableSlotModel
                     {
                         StartUtc = slotStartUtc,
                         EndUtc = slotEndUtc,
-                        DisplayText = $"{slotStartUtc:yyyy-MM-dd HH:mm} UTC"
+                        DisplayText = userStart.ToString("ddd, MMM d h:mm tt", CultureInfo.CurrentCulture),
+                        DateKey = userStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        DateText = userStart.ToString("MMM d", CultureInfo.CurrentCulture),
+                        DayText = userStart.ToString("ddd", CultureInfo.CurrentCulture),
+                        TimeText = userStart.ToString("h:mm tt", CultureInfo.CurrentCulture)
                     });
                 }
             }
         }
 
-        return slots.OrderBy(slot => slot.StartUtc).Take(50).ToList();
+        return slots.OrderBy(slot => slot.StartUtc).Take(300).ToList();
     }
 
     public async Task<TimeSlotHold> CreateTimeSlotHoldAsync(int serviceId, int productId, int customerId, DateTime startUtc)
@@ -407,6 +521,8 @@ public class AppointmentBookingService : IAppointmentBookingService
         var service = await GetServiceByIdAsync(serviceId);
         if (service == null || !service.IsActive)
             return null;
+
+        await ReleaseExpiredHoldsAsync();
 
         var endUtc = startUtc.AddMinutes(service.DurationMinutes);
         if (!await IsSlotAvailableAsync(service, startUtc, endUtc))
@@ -426,6 +542,23 @@ public class AppointmentBookingService : IAppointmentBookingService
         };
 
         await _timeSlotHoldRepository.InsertAsync(hold);
+
+        await _bookingRepository.InsertAsync(new Booking
+        {
+            ServiceId = hold.ServiceId,
+            ProductId = hold.ProductId,
+            VendorId = hold.VendorId,
+            CustomerId = hold.CustomerId,
+            OrderId = null,
+            OrderItemId = null,
+            StartUtc = hold.StartUtc,
+            EndUtc = hold.EndUtc,
+            CustomerTimeZoneId = "UTC",
+            Status = BookingStatus.PendingCheckout,
+            CreatedOnUtc = DateTime.UtcNow,
+            UpdatedOnUtc = DateTime.UtcNow
+        });
+
         return hold;
     }
 
@@ -436,7 +569,26 @@ public class AppointmentBookingService : IAppointmentBookingService
             .ToListAsync();
 
         foreach (var hold in expiredHolds)
+        {
+            var pendingBookings = await _bookingRepository.Table
+                .Where(booking => booking.ServiceId == hold.ServiceId &&
+                    booking.ProductId == hold.ProductId &&
+                    booking.CustomerId == hold.CustomerId &&
+                    booking.StartUtc == hold.StartUtc &&
+                    booking.EndUtc == hold.EndUtc &&
+                    booking.Status == BookingStatus.PendingCheckout)
+                .ToListAsync();
+
+            foreach (var booking in pendingBookings)
+            {
+                booking.Status = BookingStatus.Cancelled;
+                booking.CancellationReason = "Checkout hold expired.";
+                booking.UpdatedOnUtc = DateTime.UtcNow;
+                await _bookingRepository.UpdateAsync(booking);
+            }
+
             await _timeSlotHoldRepository.DeleteAsync(hold);
+        }
 
         return expiredHolds.Count;
     }
@@ -460,23 +612,39 @@ public class AppointmentBookingService : IAppointmentBookingService
         if (existingBooking != null)
             return existingBooking;
 
-        var booking = new Booking
-        {
-            ServiceId = hold.ServiceId,
-            ProductId = hold.ProductId,
-            VendorId = hold.VendorId,
-            CustomerId = hold.CustomerId,
-            OrderId = order.Id,
-            OrderItemId = orderItem.Id,
-            StartUtc = hold.StartUtc,
-            EndUtc = hold.EndUtc,
-            CustomerTimeZoneId = "UTC",
-            Status = status,
-            CreatedOnUtc = DateTime.UtcNow,
-            UpdatedOnUtc = DateTime.UtcNow
-        };
+        var booking = await _bookingRepository.Table
+            .Where(item => item.ServiceId == hold.ServiceId &&
+                item.ProductId == hold.ProductId &&
+                item.CustomerId == hold.CustomerId &&
+                item.StartUtc == hold.StartUtc &&
+                item.EndUtc == hold.EndUtc &&
+                item.Status == BookingStatus.PendingCheckout)
+            .OrderByDescending(item => item.CreatedOnUtc)
+            .FirstOrDefaultAsync();
 
-        await _bookingRepository.InsertAsync(booking);
+        if (booking == null)
+        {
+            booking = new Booking
+            {
+                ServiceId = hold.ServiceId,
+                ProductId = hold.ProductId,
+                VendorId = hold.VendorId,
+                CustomerId = hold.CustomerId,
+                StartUtc = hold.StartUtc,
+                EndUtc = hold.EndUtc,
+                CustomerTimeZoneId = "UTC",
+                CreatedOnUtc = DateTime.UtcNow
+            };
+
+            await _bookingRepository.InsertAsync(booking);
+        }
+
+        booking.OrderId = order.Id;
+        booking.OrderItemId = orderItem.Id;
+        booking.Status = status;
+        booking.UpdatedOnUtc = DateTime.UtcNow;
+
+        await _bookingRepository.UpdateAsync(booking);
         await _timeSlotHoldRepository.DeleteAsync(hold);
 
         return booking;

@@ -58,28 +58,6 @@ public class VendorAppointmentBookingController : BasePublicController
         return service?.VendorId == vendorId ? service : null;
     }
 
-    protected virtual async Task<IList<SelectListItem>> PrepareVendorProductsAsync(int vendorId, int selectedProductId = 0)
-    {
-        var products = await _productService.SearchProductsAsync(vendorId: vendorId, showHidden: true);
-        var items = products
-            .Select(product => new SelectListItem
-            {
-                Text = product.Name,
-                Value = product.Id.ToString(),
-                Selected = product.Id == selectedProductId
-            })
-            .ToList();
-
-        items.Insert(0, new SelectListItem
-        {
-            Text = "Select product",
-            Value = "0",
-            Selected = selectedProductId == 0
-        });
-
-        return items;
-    }
-
     protected virtual async Task<EditServiceModel> PrepareEditServiceModelAsync(BookableService service, int vendorId)
     {
         var mapping = service.Id > 0 ? await _appointmentBookingService.GetActiveProductMappingByServiceAsync(service.Id) : null;
@@ -94,8 +72,7 @@ public class VendorAppointmentBookingController : BasePublicController
             DurationMinutes = service.DurationMinutes > 0 ? service.DurationMinutes : (_appointmentBookingSettings.DefaultDurationMinutes > 0 ? _appointmentBookingSettings.DefaultDurationMinutes : 30),
             ServiceDescription = service.Description,
             MappedProductId = mapping?.ProductId ?? 0,
-            IsPublic = service.Id == 0 || service.IsActive,
-            AvailableProducts = await PrepareVendorProductsAsync(vendorId, mapping?.ProductId ?? 0)
+            IsPublic = service.Id == 0 || service.IsActive
         };
     }
 
@@ -199,10 +176,6 @@ public class VendorAppointmentBookingController : BasePublicController
         if (service == null)
             return InvokeHttp404();
 
-        var mappedProduct = model.MappedProductId > 0 ? await _productService.GetProductByIdAsync(model.MappedProductId) : null;
-        if (model.MappedProductId > 0 && mappedProduct?.VendorId != vendorId)
-            ModelState.AddModelError(nameof(model.MappedProductId), "Select one of your products.");
-
         if (!ModelState.IsValid)
         {
             var invalidModel = await PrepareEditServiceModelAsync(service, vendorId);
@@ -213,21 +186,19 @@ public class VendorAppointmentBookingController : BasePublicController
             invalidModel.ServiceDescription = model.ServiceDescription;
             invalidModel.MappedProductId = model.MappedProductId;
             invalidModel.IsPublic = model.IsPublic;
-            invalidModel.AvailableProducts = await PrepareVendorProductsAsync(vendorId, model.MappedProductId);
             return View("~/Plugins/Misc.AppointmentBooking/Views/Account/EditService.cshtml", invalidModel);
         }
 
         service = await _appointmentBookingService.SaveServiceAsync(ApplyServiceModel(model, service, vendorId));
 
+        var mapping = await _appointmentBookingService.GetActiveProductMappingByServiceAsync(service.Id);
+        var mappedProduct = mapping?.ProductId > 0 ? await _productService.GetProductByIdAsync(mapping.ProductId) : null;
         if (mappedProduct != null)
         {
             mappedProduct.ShortDescription = model.ShortDescription?.Trim();
             mappedProduct.Price = model.Price;
             await _productService.UpdateProductAsync(mappedProduct);
-            await _appointmentBookingService.MapServiceToProductAsync(service.Id, mappedProduct.Id, vendorId);
         }
-        else
-            await _appointmentBookingService.ClearServiceProductMappingsAsync(service.Id, vendorId);
 
         _notificationService.SuccessNotification("Service saved.");
         return RedirectToRoute(AppointmentBookingDefaults.AccountEditServiceRouteName, new { id = service.Id });
@@ -257,6 +228,21 @@ public class VendorAppointmentBookingController : BasePublicController
         return View("~/Plugins/Misc.AppointmentBooking/Views/Account/Availability.cshtml", model);
     }
 
+    public async Task<IActionResult> AccountAvailability(int serviceId = 0)
+    {
+        var vendorId = await GetCurrentVendorIdAsync();
+        if (vendorId <= 0)
+            return Challenge();
+
+        if (serviceId <= 0)
+            serviceId = (await _appointmentBookingService.GetServicesByVendorAsync(vendorId)).FirstOrDefault()?.Id ?? 0;
+
+        if (serviceId <= 0)
+            return RedirectToRoute(AppointmentBookingDefaults.AccountServicesRouteName);
+
+        return await Availability(serviceId);
+    }
+
     [HttpPost]
     public async Task<IActionResult> AddAvailabilityRule(AvailabilityModel model)
     {
@@ -284,6 +270,33 @@ public class VendorAppointmentBookingController : BasePublicController
     }
 
     [HttpPost]
+    public async Task<IActionResult> SaveSchedule(AvailabilityModel model)
+    {
+        var vendorId = await GetCurrentVendorIdAsync();
+        if (vendorId <= 0)
+            return Challenge();
+
+        var service = await GetVendorServiceAsync(model.ServiceId, vendorId);
+        if (service == null)
+            return InvokeHttp404();
+
+        await _appointmentBookingService.DeleteAvailabilityRulesAsync(service.Id);
+        await _appointmentBookingService.SaveAvailabilityRuleAsync(new AvailabilityRule
+        {
+            ServiceId = service.Id,
+            VendorId = vendorId,
+            DayOfWeek = model.DayOfWeek,
+            StartTimeUtc = ParseTimeForDate(DateTime.UtcNow, model.StartTime),
+            EndTimeUtc = ParseTimeForDate(DateTime.UtcNow, model.EndTime),
+            TimeZoneId = string.IsNullOrWhiteSpace(model.TimeZoneId) ? "UTC" : model.TimeZoneId.Trim(),
+            IsActive = model.IsActive
+        });
+
+        _notificationService.SuccessNotification("Availability schedule saved.");
+        return RedirectToRoute(AppointmentBookingDefaults.AccountServiceAvailabilityRouteName, new { id = service.Id });
+    }
+
+    [HttpPost]
     public async Task<IActionResult> AddAvailabilityException(AvailabilityModel model)
     {
         var vendorId = await GetCurrentVendorIdAsync();
@@ -306,6 +319,51 @@ public class VendorAppointmentBookingController : BasePublicController
         });
 
         _notificationService.SuccessNotification("Availability exception saved.");
+        return RedirectToRoute(AppointmentBookingDefaults.AccountServiceAvailabilityRouteName, new { id = service.Id });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> BlockDates(AvailabilityModel model)
+    {
+        var vendorId = await GetCurrentVendorIdAsync();
+        if (vendorId <= 0)
+            return Challenge();
+
+        var service = await GetVendorServiceAsync(model.ServiceId, vendorId);
+        if (service == null)
+            return InvokeHttp404();
+
+        await _appointmentBookingService.SaveAvailabilityExceptionAsync(new AvailabilityException
+        {
+            ServiceId = service.Id,
+            VendorId = vendorId,
+            ExceptionDateUtc = model.ExceptionDateUtc.Date,
+            StartTimeUtc = ParseTimeForDate(model.ExceptionDateUtc, model.StartTime),
+            EndTimeUtc = ParseTimeForDate(model.ExceptionDateUtc, model.EndTime),
+            IsAvailable = false,
+            Reason = model.Reason?.Trim()
+        });
+
+        _notificationService.SuccessNotification("Unavailable date saved.");
+        return RedirectToRoute(AppointmentBookingDefaults.AccountServiceAvailabilityRouteName, new { id = service.Id });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> DeleteBlockedDate(int serviceId, int exceptionId)
+    {
+        var vendorId = await GetCurrentVendorIdAsync();
+        if (vendorId <= 0)
+            return Challenge();
+
+        var service = await GetVendorServiceAsync(serviceId, vendorId);
+        if (service == null)
+            return InvokeHttp404();
+
+        var exceptions = await _appointmentBookingService.GetAvailabilityExceptionsAsync(service.Id);
+        if (exceptions.Any(exception => exception.Id == exceptionId))
+            await _appointmentBookingService.DeleteAvailabilityExceptionAsync(exceptionId);
+
+        _notificationService.SuccessNotification("Unavailable date deleted.");
         return RedirectToRoute(AppointmentBookingDefaults.AccountServiceAvailabilityRouteName, new { id = service.Id });
     }
 

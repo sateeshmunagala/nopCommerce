@@ -46,9 +46,13 @@ public interface IAppointmentBookingService
 
     Task<AvailabilityRule> SaveAvailabilityRuleAsync(AvailabilityRule rule);
 
+    Task DeleteAvailabilityRulesAsync(int serviceId);
+
     Task<IList<AvailabilityException>> GetAvailabilityExceptionsAsync(int serviceId);
 
     Task<AvailabilityException> SaveAvailabilityExceptionAsync(AvailabilityException availabilityException);
+
+    Task DeleteAvailabilityExceptionAsync(int exceptionId);
 
     Task<IList<ServiceQuestion>> GetServiceQuestionsAsync(int serviceId);
 

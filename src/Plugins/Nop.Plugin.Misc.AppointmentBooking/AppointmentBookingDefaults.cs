@@ -21,6 +21,16 @@ public static class AppointmentBookingDefaults
     public static string ProductBookingRouteName => "Nop.Plugin.Misc.AppointmentBooking.ProductBooking";
 
     /// <summary>
+    /// Gets the service product template name
+    /// </summary>
+    public static string ServiceProductTemplateName => "Appointment Booking Service Details";
+
+    /// <summary>
+    /// Gets the service product template view path
+    /// </summary>
+    public static string ServiceProductTemplateViewPath => "~/Plugins/Misc.AppointmentBooking/Views/ProductTemplate.ServiceDetails.cshtml";
+
+    /// <summary>
     /// Gets the vendor account services route name
     /// </summary>
     public static string AccountServicesRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Services";
@@ -39,6 +49,26 @@ public static class AppointmentBookingDefaults
     /// Gets the vendor account service availability route name
     /// </summary>
     public static string AccountServiceAvailabilityRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Service.Availability";
+
+    /// <summary>
+    /// Gets the vendor account availability route name
+    /// </summary>
+    public static string AccountAvailabilityRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Availability";
+
+    /// <summary>
+    /// Gets the vendor account schedule save route name
+    /// </summary>
+    public static string AccountAvailabilitySaveScheduleRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Availability.SaveSchedule";
+
+    /// <summary>
+    /// Gets the vendor account unavailable dates route name
+    /// </summary>
+    public static string AccountAvailabilityBlockDatesRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Availability.BlockDates";
+
+    /// <summary>
+    /// Gets the vendor account unavailable date delete route name
+    /// </summary>
+    public static string AccountAvailabilityDeleteBlockedDateRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Availability.DeleteBlockedDate";
 
     /// <summary>
     /// Gets the vendor account service questions route name

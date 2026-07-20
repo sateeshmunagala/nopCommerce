@@ -12,4 +12,12 @@ public record AvailableSlotModel : BaseNopModel
     public DateTime EndUtc { get; set; }
 
     public string DisplayText { get; set; }
+
+    public string DateKey { get; set; }
+
+    public string DateText { get; set; }
+
+    public string DayText { get; set; }
+
+    public string TimeText { get; set; }
 }

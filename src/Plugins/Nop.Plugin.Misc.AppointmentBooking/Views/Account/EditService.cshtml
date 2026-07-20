@@ -75,11 +75,6 @@
                         <textarea asp-for="ServiceDescription"></textarea>
                         <span asp-validation-for="ServiceDescription"></span>
                     </div>
-                    <div class="inputs">
-                        <label asp-for="MappedProductId" asp-postfix=":"></label>
-                        <select asp-for="MappedProductId" asp-items="Model.AvailableProducts"></select>
-                        <span asp-validation-for="MappedProductId"></span>
-                    </div>
                 </div>
             </section>
             <section class="buttons">

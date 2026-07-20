@@ -15,9 +15,9 @@ public class Booking : BaseEntity
 
     public int CustomerId { get; set; }
 
-    public int OrderId { get; set; }
+    public int? OrderId { get; set; }
 
-    public int OrderItemId { get; set; }
+    public int? OrderItemId { get; set; }
 
     public DateTime StartUtc { get; set; }
 
