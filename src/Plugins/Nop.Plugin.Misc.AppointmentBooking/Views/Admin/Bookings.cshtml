@@ -20,8 +20,9 @@
                             <th>Start</th>
                             <th>End</th>
                             <th>Service</th>
-                            <th>Product</th>
+                            <th>Vendor</th>
                             <th>Customer</th>
+                            <th>Order</th>
                             <th>Status</th>
                             <th></th>
                         </tr>
@@ -30,11 +31,12 @@
                         @foreach (var booking in Model)
                         {
                             <tr>
-                                <td>@booking.StartUtc.ToString("yyyy-MM-dd HH:mm")</td>
-                                <td>@booking.EndUtc.ToString("yyyy-MM-dd HH:mm")</td>
-                                <td>@booking.ServiceId</td>
-                                <td>@booking.ProductId</td>
-                                <td>@booking.CustomerId</td>
+                                <td>@booking.StartText</td>
+                                <td>@booking.EndText</td>
+                                <td>@booking.ServiceName</td>
+                                <td>@booking.VendorName</td>
+                                <td>@booking.CustomerDisplayName</td>
+                                <td>@booking.OrderDisplayText</td>
                                 <td>@booking.Status</td>
                                 <td class="text-right">
                                     <a class="btn btn-default" href="@Url.Action("BookingDetails", "AppointmentBooking", new { area = "Admin", id = booking.Id })">View</a>

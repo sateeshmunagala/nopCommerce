@@ -184,6 +184,117 @@
   font-weight: 600;
 }
 
+.appointment-calendar-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #dfe4ea;
+}
+
+.appointment-calendar-tabs a {
+  display: inline-flex;
+  padding: 10px 12px;
+  color: #394452;
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+}
+
+.appointment-calendar-tabs a:hover {
+  border-bottom-color: #1f6fb2;
+}
+
+.appointment-calendar-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.appointment-calendar-panel {
+  background: #fff;
+}
+
+.appointment-muted {
+  color: #586270;
+}
+
+.appointment-section-title {
+  margin: 18px 0 10px;
+  font-size: 18px;
+}
+
+.appointment-schedule-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+
+.appointment-schedule-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(120px, 150px) auto minmax(120px, 150px);
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #e5e9ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.appointment-schedule-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.appointment-schedule-row select {
+  width: 100%;
+}
+
+.appointment-schedule-separator {
+  color: #586270;
+  text-align: center;
+}
+
+.appointment-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+}
+
+.appointment-modal.open {
+  display: block;
+}
+
+.appointment-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.appointment-modal__panel {
+  position: relative;
+  width: min(560px, calc(100% - 32px));
+  margin: 10vh auto 0;
+  padding: 20px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+}
+
+.appointment-modal__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.appointment-modal__header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
 .appointment-editor-panel textarea,
 .appointment-split textarea {
   min-height: 110px;
@@ -245,5 +356,13 @@
 
   .service-facts {
     grid-template-columns: 1fr;
+  }
+
+  .appointment-schedule-row {
+    grid-template-columns: 1fr;
+  }
+
+  .appointment-schedule-separator {
+    text-align: left;
   }
 }

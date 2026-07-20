@@ -66,7 +66,7 @@
                     </div>
                     <div class="inputs">
                         <label asp-for="DurationMinutes" asp-postfix=":"></label>
-                        <input asp-for="DurationMinutes" />
+                        <select asp-for="DurationMinutes" asp-items="Model.AvailableDurations"></select>
                         <nop-required />
                         <span asp-validation-for="DurationMinutes"></span>
                     </div>
@@ -81,7 +81,7 @@
                 <button type="submit" class="button-1 save-service-button">Save</button>
                 @if (Model.Id > 0)
                 {
-                    <a class="button-2" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServiceAvailabilityRouteName, new { id = Model.Id })">Availability</a>
+                    <a class="button-2" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountAvailabilityRouteName)">Calendar</a>
                     <a class="button-2" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServiceQuestionsRouteName, new { id = Model.Id })">Questions</a>
                 }
             </section>

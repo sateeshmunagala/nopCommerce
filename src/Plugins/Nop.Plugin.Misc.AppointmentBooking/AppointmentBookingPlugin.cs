@@ -1,12 +1,15 @@
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Cms;
 using Nop.Plugin.Misc.AppointmentBooking.Components;
+using Nop.Plugin.Misc.AppointmentBooking.Domains;
+using Nop.Plugin.Misc.AppointmentBooking.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Cms;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
 using Nop.Services.Plugins;
+using Nop.Services.Vendors;
 using Nop.Web.Framework.Infrastructure;
 using Nop.Web.Framework.Mvc.Routing;
 
@@ -21,8 +24,11 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
     private readonly ILocalizationService _localizationService;
     private readonly INopUrlHelper _nopUrlHelper;
+    private readonly IAppointmentBookingService _appointmentBookingService;
+    private readonly IProductService _productService;
     private readonly IProductTemplateService _productTemplateService;
     private readonly ISettingService _settingService;
+    private readonly IVendorService _vendorService;
     private readonly WidgetSettings _widgetSettings;
 
     #endregion
@@ -31,14 +37,20 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
     public AppointmentBookingPlugin(ILocalizationService localizationService,
         INopUrlHelper nopUrlHelper,
+        IAppointmentBookingService appointmentBookingService,
+        IProductService productService,
         IProductTemplateService productTemplateService,
         ISettingService settingService,
+        IVendorService vendorService,
         WidgetSettings widgetSettings)
     {
         _localizationService = localizationService;
         _nopUrlHelper = nopUrlHelper;
+        _appointmentBookingService = appointmentBookingService;
+        _productService = productService;
         _productTemplateService = productTemplateService;
         _settingService = settingService;
+        _vendorService = vendorService;
         _widgetSettings = widgetSettings;
     }
 
@@ -94,6 +106,63 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         if (changed)
             await _productTemplateService.UpdateProductTemplateAsync(template);
+    }
+
+    protected virtual async Task EnsureSampleServicesAsync()
+    {
+        var vendor = (await _vendorService.GetAllVendorsAsync(showHidden: true)).FirstOrDefault();
+        if (vendor == null)
+            return;
+
+        var existingServices = await _appointmentBookingService.GetServicesByVendorAsync(vendor.Id);
+        if (existingServices.Any(service =>
+            string.Equals(service.Name, "Intro Consultation", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(service.Name, "Strategy Session", StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        var samples = new[]
+        {
+            new { Name = "Intro Consultation", Description = "A focused introductory appointment.", Duration = 30, Price = 49m },
+            new { Name = "Strategy Session", Description = "A longer appointment for planning and advice.", Duration = 60, Price = 99m }
+        };
+
+        foreach (var sample in samples)
+        {
+            var service = await _appointmentBookingService.SaveServiceAsync(new BookableService
+            {
+                Name = sample.Name,
+                Description = sample.Description,
+                VendorId = vendor.Id,
+                DurationMinutes = sample.Duration,
+                MinAdvanceBookingHours = 1,
+                MaxAdvanceBookingDays = 30,
+                IsActive = true,
+                DisplayOrder = 100
+            });
+
+            var mapping = await _appointmentBookingService.GetActiveProductMappingByServiceAsync(service.Id);
+            var product = mapping?.ProductId > 0 ? await _productService.GetProductByIdAsync(mapping.ProductId) : null;
+            if (product != null)
+            {
+                product.ShortDescription = sample.Description;
+                product.Price = sample.Price;
+                await _productService.UpdateProductAsync(product);
+            }
+
+            foreach (var day in new[] { 1, 2, 3, 4, 5 })
+            {
+                await _appointmentBookingService.SaveAvailabilityRuleAsync(new AvailabilityRule
+                {
+                    ServiceId = service.Id,
+                    VendorId = vendor.Id,
+                    DayOfWeek = day,
+                    StartTimeUtc = DateTime.UtcNow.Date.AddHours(9),
+                    EndTimeUtc = DateTime.UtcNow.Date.AddHours(17),
+                    TimeZoneId = "UTC",
+                    IsActive = true
+                });
+            }
+        }
     }
 
     /// <summary>
@@ -159,6 +228,7 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         }
 
         await EnsureServiceProductTemplateAsync();
+        await EnsureSampleServicesAsync();
 
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
         {
@@ -195,6 +265,7 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     public override async Task UpdateAsync(string currentVersion, string targetVersion)
     {
         await EnsureServiceProductTemplateAsync();
+        await EnsureSampleServicesAsync();
 
         await base.UpdateAsync(currentVersion, targetVersion);
     }

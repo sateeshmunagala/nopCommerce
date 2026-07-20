@@ -21,14 +21,11 @@ public record EditServiceModel : BaseNopEntityModel
     [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.Account.Service.DurationMinutes")]
     public int DurationMinutes { get; set; }
 
+    public IList<SelectListItem> AvailableDurations { get; set; } = new List<SelectListItem>();
+
     [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.Account.Service.Description")]
     public string ServiceDescription { get; set; }
 
-    [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.Account.Service.MappedProduct")]
-    public int MappedProductId { get; set; }
-
     [NopResourceDisplayName("Plugins.Misc.AppointmentBooking.Account.Service.IsPublic")]
     public bool IsPublic { get; set; }
-
-    public IList<SelectListItem> AvailableProducts { get; set; } = new List<SelectListItem>();
 }

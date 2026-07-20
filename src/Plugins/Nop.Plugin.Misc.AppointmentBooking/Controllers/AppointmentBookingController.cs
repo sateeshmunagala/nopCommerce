@@ -8,15 +8,19 @@ using Nop.Plugin.Misc.AppointmentBooking.Models.Admin;
 using Nop.Plugin.Misc.AppointmentBooking.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Configuration;
+using Nop.Services.Customers;
+using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Orders;
 using Nop.Services.Security;
+using Nop.Services.Vendors;
 using Nop.Web.Controllers;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Mvc;
 using Nop.Web.Framework.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Nop.Plugin.Misc.AppointmentBooking.Controllers;
 
@@ -29,12 +33,15 @@ public class AppointmentBookingController : BasePublicController
 
     private readonly AppointmentBookingSettings _appointmentBookingSettings;
     private readonly IAppointmentBookingService _appointmentBookingService;
+    private readonly ICustomerService _customerService;
+    private readonly IDateTimeHelper _dateTimeHelper;
     private readonly ILocalizationService _localizationService;
     private readonly INotificationService _notificationService;
     private readonly IProductService _productService;
     private readonly ISettingService _settingService;
     private readonly IShoppingCartService _shoppingCartService;
     private readonly IStoreContext _storeContext;
+    private readonly IVendorService _vendorService;
     private readonly IWorkContext _workContext;
 
     #endregion
@@ -43,22 +50,28 @@ public class AppointmentBookingController : BasePublicController
 
     public AppointmentBookingController(AppointmentBookingSettings appointmentBookingSettings,
         IAppointmentBookingService appointmentBookingService,
+        ICustomerService customerService,
+        IDateTimeHelper dateTimeHelper,
         ILocalizationService localizationService,
         INotificationService notificationService,
         IProductService productService,
         ISettingService settingService,
         IShoppingCartService shoppingCartService,
         IStoreContext storeContext,
+        IVendorService vendorService,
         IWorkContext workContext)
     {
         _appointmentBookingSettings = appointmentBookingSettings;
         _appointmentBookingService = appointmentBookingService;
+        _customerService = customerService;
+        _dateTimeHelper = dateTimeHelper;
         _localizationService = localizationService;
         _notificationService = notificationService;
         _productService = productService;
         _settingService = settingService;
         _shoppingCartService = shoppingCartService;
         _storeContext = storeContext;
+        _vendorService = vendorService;
         _workContext = workContext;
     }
 
@@ -73,7 +86,64 @@ public class AppointmentBookingController : BasePublicController
             : dateUtc.Date;
     }
 
-    protected virtual ServiceAdminModel ToServiceModel(BookableService service, int mappedProductId = 0)
+    protected virtual IList<SelectListItem> PrepareDurationOptions(int selectedDuration)
+    {
+        int[] durations = [15, 30, 45, 60, 90, 120];
+
+        return durations.Select(duration => new SelectListItem
+        {
+            Text = $"{duration} minutes",
+            Value = duration.ToString(),
+            Selected = duration == selectedDuration
+        }).ToList();
+    }
+
+    protected virtual async Task<IList<SelectListItem>> PrepareVendorOptionsAsync(int selectedVendorId)
+    {
+        var vendors = await _vendorService.GetAllVendorsAsync(showHidden: true);
+        var items = vendors.Select(vendor => new SelectListItem
+        {
+            Text = vendor.Name,
+            Value = vendor.Id.ToString(),
+            Selected = vendor.Id == selectedVendorId
+        }).ToList();
+
+        items.Insert(0, new SelectListItem
+        {
+            Text = "Select vendor",
+            Value = "0",
+            Selected = selectedVendorId == 0
+        });
+
+        return items;
+    }
+
+    protected virtual async Task<string> GetVendorNameAsync(int vendorId)
+    {
+        var vendor = vendorId > 0 ? await _vendorService.GetVendorByIdAsync(vendorId) : null;
+        return vendor == null ? $"Vendor #{vendorId}" : vendor.Name;
+    }
+
+    protected virtual async Task<string> GetCustomerDisplayNameAsync(int customerId)
+    {
+        var customer = await _customerService.GetCustomerByIdAsync(customerId);
+        if (customer == null)
+            return $"Customer #{customerId}";
+
+        var fullName = await _customerService.GetCustomerFullNameAsync(customer);
+        if (!string.IsNullOrWhiteSpace(fullName) && !string.IsNullOrWhiteSpace(customer.Email))
+            return $"{fullName} ({customer.Email})";
+
+        return !string.IsNullOrWhiteSpace(customer.Email) ? customer.Email : $"Customer #{customer.Id}";
+    }
+
+    protected virtual async Task<string> FormatDateTimeAsync(DateTime dateTimeUtc)
+    {
+        var userTime = await _dateTimeHelper.ConvertToUserTimeAsync(dateTimeUtc, DateTimeKind.Utc);
+        return userTime.ToString("yyyy-MM-dd HH:mm");
+    }
+
+    protected virtual async Task<ServiceAdminModel> ToServiceModelAsync(BookableService service)
     {
         return new ServiceAdminModel
         {
@@ -81,14 +151,16 @@ public class AppointmentBookingController : BasePublicController
             Name = service.Name,
             Description = service.Description,
             VendorId = service.VendorId,
+            VendorName = await GetVendorNameAsync(service.VendorId),
+            AvailableVendors = await PrepareVendorOptionsAsync(service.VendorId),
             DurationMinutes = service.DurationMinutes,
+            AvailableDurations = PrepareDurationOptions(service.DurationMinutes),
             BufferBeforeMinutes = service.BufferBeforeMinutes,
             BufferAfterMinutes = service.BufferAfterMinutes,
             MinAdvanceBookingHours = service.MinAdvanceBookingHours,
             MaxAdvanceBookingDays = service.MaxAdvanceBookingDays,
             IsActive = service.IsActive,
-            DisplayOrder = service.DisplayOrder,
-            MappedProductId = mappedProductId
+            DisplayOrder = service.DisplayOrder
         };
     }
 
@@ -199,7 +271,11 @@ public class AppointmentBookingController : BasePublicController
     public async Task<IActionResult> Services()
     {
         var services = await _appointmentBookingService.GetAllServicesAsync();
-        return View("~/Plugins/Misc.AppointmentBooking/Views/Admin/Services.cshtml", services.Select(service => ToServiceModel(service)).ToList());
+        var model = new List<ServiceAdminModel>();
+        foreach (var service in services)
+            model.Add(await ToServiceModelAsync(service));
+
+        return View("~/Plugins/Misc.AppointmentBooking/Views/Admin/Services.cshtml", model);
     }
 
     [Area(AreaNames.ADMIN)]
@@ -218,7 +294,7 @@ public class AppointmentBookingController : BasePublicController
         if (service == null)
             return RedirectToAction("Services");
 
-        return View("~/Plugins/Misc.AppointmentBooking/Views/Admin/EditService.cshtml", ToServiceModel(service));
+        return View("~/Plugins/Misc.AppointmentBooking/Views/Admin/EditService.cshtml", await ToServiceModelAsync(service));
     }
 
     [HttpPost, ActionName("EditService")]
@@ -233,8 +309,6 @@ public class AppointmentBookingController : BasePublicController
             return RedirectToAction("Services");
 
         service = await _appointmentBookingService.SaveServiceAsync(ToServiceEntity(model, service));
-        if (model.MappedProductId > 0)
-            await _appointmentBookingService.MapServiceToProductAsync(service.Id, model.MappedProductId, service.VendorId);
 
         _notificationService.SuccessNotification("Appointment service saved.");
         return RedirectToAction("EditService", new { id = service.Id });
@@ -322,24 +396,40 @@ public class AppointmentBookingController : BasePublicController
     public async Task<IActionResult> Bookings()
     {
         var bookings = await _appointmentBookingService.GetAllBookingsAsync();
-        var model = bookings.Select(booking => new BookingAdminModel
+        var services = (await _appointmentBookingService.GetAllServicesAsync()).ToDictionary(service => service.Id, service => service.Name);
+        var products = (await _productService.GetProductsByIdsAsync(bookings.Select(booking => booking.ProductId).Distinct().ToArray()))
+            .ToDictionary(product => product.Id, product => product.Name);
+        var model = new List<BookingAdminModel>();
+
+        foreach (var booking in bookings)
         {
-            Id = booking.Id,
-            ServiceId = booking.ServiceId,
-            ProductId = booking.ProductId,
-            VendorId = booking.VendorId,
-            CustomerId = booking.CustomerId,
-            OrderId = booking.OrderId,
-            OrderItemId = booking.OrderItemId,
-            StartUtc = booking.StartUtc,
-            EndUtc = booking.EndUtc,
-            Status = booking.Status,
-            AttendeeName = booking.AttendeeName,
-            AttendeeEmail = booking.AttendeeEmail,
-            AttendeePhone = booking.AttendeePhone,
-            AttendeeNotes = booking.AttendeeNotes,
-            CancellationReason = booking.CancellationReason
-        }).ToList();
+            model.Add(new BookingAdminModel
+            {
+                Id = booking.Id,
+                ServiceId = booking.ServiceId,
+                ServiceName = services.TryGetValue(booking.ServiceId, out var serviceName) ? serviceName : $"Service #{booking.ServiceId}",
+                ProductId = booking.ProductId,
+                ProductName = products.TryGetValue(booking.ProductId, out var productName) ? productName : $"Product #{booking.ProductId}",
+                VendorId = booking.VendorId,
+                VendorName = await GetVendorNameAsync(booking.VendorId),
+                CustomerId = booking.CustomerId,
+                CustomerDisplayName = await GetCustomerDisplayNameAsync(booking.CustomerId),
+                OrderId = booking.OrderId,
+                OrderDisplayText = booking.OrderId.HasValue ? $"#{booking.OrderId.Value}" : "Not checked out",
+                OrderItemId = booking.OrderItemId,
+                OrderItemDisplayText = booking.OrderItemId.HasValue ? $"#{booking.OrderItemId.Value}" : "Not checked out",
+                StartUtc = booking.StartUtc,
+                StartText = await FormatDateTimeAsync(booking.StartUtc),
+                EndUtc = booking.EndUtc,
+                EndText = await FormatDateTimeAsync(booking.EndUtc),
+                Status = booking.Status,
+                AttendeeName = booking.AttendeeName,
+                AttendeeEmail = booking.AttendeeEmail,
+                AttendeePhone = booking.AttendeePhone,
+                AttendeeNotes = booking.AttendeeNotes,
+                CancellationReason = booking.CancellationReason
+            });
+        }
 
         return View("~/Plugins/Misc.AppointmentBooking/Views/Admin/Bookings.cshtml", model);
     }
@@ -353,17 +443,28 @@ public class AppointmentBookingController : BasePublicController
         if (booking == null)
             return RedirectToAction("Bookings");
 
+        var service = await _appointmentBookingService.GetServiceByIdAsync(booking.ServiceId);
+        var product = await _productService.GetProductByIdAsync(booking.ProductId);
+
         return View("~/Plugins/Misc.AppointmentBooking/Views/Admin/BookingDetails.cshtml", new BookingAdminModel
         {
             Id = booking.Id,
             ServiceId = booking.ServiceId,
+            ServiceName = service?.Name ?? $"Service #{booking.ServiceId}",
             ProductId = booking.ProductId,
+            ProductName = product?.Name ?? $"Product #{booking.ProductId}",
             VendorId = booking.VendorId,
+            VendorName = await GetVendorNameAsync(booking.VendorId),
             CustomerId = booking.CustomerId,
+            CustomerDisplayName = await GetCustomerDisplayNameAsync(booking.CustomerId),
             OrderId = booking.OrderId,
+            OrderDisplayText = booking.OrderId.HasValue ? $"#{booking.OrderId.Value}" : "Not checked out",
             OrderItemId = booking.OrderItemId,
+            OrderItemDisplayText = booking.OrderItemId.HasValue ? $"#{booking.OrderItemId.Value}" : "Not checked out",
             StartUtc = booking.StartUtc,
+            StartText = await FormatDateTimeAsync(booking.StartUtc),
             EndUtc = booking.EndUtc,
+            EndText = await FormatDateTimeAsync(booking.EndUtc),
             Status = booking.Status,
             AttendeeName = booking.AttendeeName,
             AttendeeEmail = booking.AttendeeEmail,

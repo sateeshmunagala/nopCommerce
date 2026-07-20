@@ -1,4 +1,5 @@
 using Nop.Web.Framework.Models;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Nop.Plugin.Misc.AppointmentBooking.Models.Admin;
 
@@ -13,7 +14,13 @@ public record ServiceAdminModel : BaseNopEntityModel
 
     public int VendorId { get; set; }
 
+    public string VendorName { get; set; }
+
+    public IList<SelectListItem> AvailableVendors { get; set; } = new List<SelectListItem>();
+
     public int DurationMinutes { get; set; }
+
+    public IList<SelectListItem> AvailableDurations { get; set; } = new List<SelectListItem>();
 
     public int BufferBeforeMinutes { get; set; }
 
@@ -27,5 +34,4 @@ public record ServiceAdminModel : BaseNopEntityModel
 
     public int DisplayOrder { get; set; }
 
-    public int MappedProductId { get; set; }
 }

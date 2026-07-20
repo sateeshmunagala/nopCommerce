@@ -28,6 +28,6 @@ public class AccountServicesNavigationViewComponent : NopViewComponent
         if (await _workContext.GetCurrentVendorAsync() == null)
             return Content(string.Empty);
 
-        return await ViewAsync("~/Plugins/Misc.AppointmentBooking/Views/Components/AccountServicesNavigation.cshtml", model);
+        return await ViewAsync("~/Plugins/Misc.AppointmentBooking/Views/Components/AccountServicesNavigation/Default.cshtml", model);
     }
 }

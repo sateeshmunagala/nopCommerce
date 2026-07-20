@@ -48,11 +48,11 @@
                         {
                             <tr>
                                 <td>@booking.ServiceName</td>
-                                <td>@booking.StartUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
-                                <td>@booking.EndUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@booking.StartText</td>
+                                <td>@booking.EndText</td>
                                 <td>@booking.Status</td>
-                                <td>#@booking.OrderId</td>
-                                <td>#@booking.CustomerId</td>
+                                <td>@booking.OrderDisplayText</td>
+                                <td>@booking.CustomerDisplayName</td>
                             </tr>
                         }
                     </tbody>

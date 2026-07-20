@@ -9,15 +9,19 @@ public record VendorBookingModel
 
     public string ServiceName { get; set; }
 
-    public int ProductId { get; set; }
-
-    public int CustomerId { get; set; }
+    public string CustomerDisplayName { get; set; }
 
     public int? OrderId { get; set; }
 
+    public string OrderDisplayText { get; set; }
+
     public DateTime StartUtc { get; set; }
 
+    public string StartText { get; set; }
+
     public DateTime EndUtc { get; set; }
+
+    public string EndText { get; set; }
 
     public string Status { get; set; }
 

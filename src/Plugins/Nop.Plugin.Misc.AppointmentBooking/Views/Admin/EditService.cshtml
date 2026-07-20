@@ -31,15 +31,11 @@
                     </div>
                     <div class="form-group row">
                         <div class="col-md-3"><label asp-for="VendorId"></label></div>
-                        <div class="col-md-9"><input asp-for="VendorId" class="form-control" /></div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="col-md-3"><label asp-for="MappedProductId"></label></div>
-                        <div class="col-md-9"><input asp-for="MappedProductId" class="form-control" /></div>
+                        <div class="col-md-9"><select asp-for="VendorId" asp-items="Model.AvailableVendors" class="form-control"></select></div>
                     </div>
                     <div class="form-group row">
                         <div class="col-md-3"><label asp-for="DurationMinutes"></label></div>
-                        <div class="col-md-9"><input asp-for="DurationMinutes" class="form-control" /></div>
+                        <div class="col-md-9"><select asp-for="DurationMinutes" asp-items="Model.AvailableDurations" class="form-control"></select></div>
                     </div>
                     <div class="form-group row">
                         <div class="col-md-3"><label asp-for="BufferBeforeMinutes"></label></div>

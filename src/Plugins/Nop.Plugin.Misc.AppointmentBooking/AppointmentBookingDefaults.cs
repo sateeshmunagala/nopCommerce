@@ -91,6 +91,11 @@ public static class AppointmentBookingDefaults
     public static int AccountBookingsTabId => 171;
 
     /// <summary>
+    /// Gets the vendor account availability tab id
+    /// </summary>
+    public static int AccountAvailabilityTabId => 172;
+
+    /// <summary>
     /// Gets the appointments administration menu system name
     /// </summary>
     public static string AppointmentsAdminMenuSystemName => "Nop.Plugin.Misc.AppointmentBooking.AppointmentsAdminMenu";

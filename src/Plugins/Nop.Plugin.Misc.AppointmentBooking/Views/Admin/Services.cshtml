@@ -35,12 +35,11 @@
                         {
                             <tr>
                                 <td>@service.Name</td>
-                                <td>@service.VendorId</td>
+                                <td>@service.VendorName</td>
                                 <td>@service.DurationMinutes minutes</td>
                                 <td>@service.IsActive</td>
                                 <td class="text-right">
                                     <a class="btn btn-default" href="@Url.Action("EditService", "AppointmentBooking", new { area = "Admin", id = service.Id })">Edit</a>
-                                    <a class="btn btn-default" href="@Url.Action("Availability", "AppointmentBooking", new { area = "Admin", serviceId = service.Id })">Availability</a>
                                 </td>
                             </tr>
                         }
