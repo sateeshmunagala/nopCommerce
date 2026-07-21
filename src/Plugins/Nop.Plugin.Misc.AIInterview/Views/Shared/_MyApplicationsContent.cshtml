@@ -14,7 +14,7 @@
         return userDateTime.ToString("g");
     }
 
-    string FormatInterviewScore(decimal? score) => score.HasValue ? $"{Math.Round(score.Value):N0}/100" : "--";
+    string FormatInterviewScore(decimal? score) => score.HasValue ? $"{Math.Round(score.Value):N0}/100" : "-";
 
     var isMyActivity = ViewData["IsMyActivity"] is bool isMyActivityValue && isMyActivityValue;
     var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;

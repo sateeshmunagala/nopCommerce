@@ -11,7 +11,7 @@
         return userDateTime.ToString("g");
     }
 
-    string FormatInterviewScore(decimal? score) => score.HasValue ? $"{Math.Round(score.Value):N0}/100" : "--";
+    string FormatInterviewScore(decimal? score) => score.HasValue ? $"{Math.Round(score.Value):N0}/100" : "-";
 
     var introText = T("Plugins.Misc.AIInterview.VendorScoreboard.Intro").Text;
     var eyebrowText = T("Plugins.Misc.AIInterview.VendorScoreboard.Eyebrow").Text;

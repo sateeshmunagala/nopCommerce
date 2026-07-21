@@ -12,7 +12,7 @@
         return userDateTime.ToString("g");
     }
 
-    string FormatInterviewScore(decimal? score) => score.HasValue ? $"{Math.Round(score.Value):N0}/100" : "--";
+    string FormatInterviewScore(decimal? score) => score.HasValue ? $"{Math.Round(score.Value):N0}/100" : "-";
 
     var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
     var appliedFromLabelText = T("Plugins.Misc.AIInterview.Employer.Applications.AppliedFromUtc").Text.Replace(" (UTC)", string.Empty);
