@@ -72,30 +72,46 @@
         </section>
 
         <section class="fieldset appointment-calendar-panel" id="calendar-schedule">
-            <h2 class="title">Schedule</h2>
             <form asp-route="@AppointmentBookingDefaults.AccountAvailabilitySaveScheduleRouteName" method="post">
                 <input asp-for="VendorId" type="hidden" />
-                <div class="inputs">
-                    <label asp-for="TimeZoneId" asp-postfix=":"></label>
-                    <select asp-for="TimeZoneId" asp-items="Model.AvailableTimeZones"></select>
+                <div class="appointment-schedule-header">
+                    <div>
+                        <h2 class="title">Default</h2>
+                        <div class="inputs appointment-timezone-input">
+                            <label asp-for="TimeZoneId" asp-postfix=":"></label>
+                            <select asp-for="TimeZoneId" asp-items="Model.AvailableTimeZones"></select>
+                        </div>
+                    </div>
+                    <button type="submit" class="button-1 appointment-schedule-save">Save</button>
                 </div>
+                <div asp-validation-summary="ModelOnly" class="message-error appointment-schedule-validation"></div>
+                <div class="message-error appointment-schedule-client-validation" data-schedule-client-validation hidden></div>
                 <div class="appointment-schedule-list">
                     @for (var i = 0; i < Model.Schedule.Count; i++)
                     {
-                        <div class="appointment-schedule-row">
+                        var dayName = Enum.GetName(typeof(DayOfWeek), Model.Schedule[i].DayOfWeek);
+                        <div class="appointment-schedule-row @(Model.Schedule[i].Enabled ? "enabled" : "disabled")" data-schedule-day-row data-schedule-day-index="@i">
                             <input asp-for="Schedule[i].DayOfWeek" type="hidden" />
-                            <label class="appointment-schedule-day">
-                                <input asp-for="Schedule[i].Enabled" />
+                            <label class="appointment-schedule-day" for="Schedule_@(i)__Enabled">
+                                <input asp-for="Schedule[i].Enabled" data-schedule-day-toggle />
                                 <span>@Enum.GetName(typeof(DayOfWeek), Model.Schedule[i].DayOfWeek)</span>
                             </label>
-                            <select asp-for="Schedule[i].StartTime" asp-items="Model.TimeOptions"></select>
-                            <span class="appointment-schedule-separator">to</span>
-                            <select asp-for="Schedule[i].EndTime" asp-items="Model.TimeOptions"></select>
+                            <span class="appointment-schedule-unavailable">Unavailable</span>
+                            <div class="appointment-schedule-intervals" data-schedule-intervals>
+                                @for (var j = 0; j < Model.Schedule[i].Intervals.Count; j++)
+                                {
+                                    <div class="appointment-schedule-interval" data-schedule-interval>
+                                        <select asp-for="Schedule[i].Intervals[j].StartTime" asp-items="Model.TimeOptions" data-schedule-start disabled="@(!Model.Schedule[i].Enabled ? "disabled" : null)"></select>
+                                        <span class="appointment-schedule-separator">-</span>
+                                        <select asp-for="Schedule[i].Intervals[j].EndTime" asp-items="Model.TimeOptions" data-schedule-end disabled="@(!Model.Schedule[i].Enabled ? "disabled" : null)"></select>
+                                        <button type="button" class="appointment-schedule-apply" data-schedule-apply-all>Apply To All</button>
+                                        <button type="button" class="icon-button appointment-schedule-remove" data-schedule-remove-interval aria-label="Remove @dayName time slot" title="Remove time slot">x</button>
+                                    </div>
+                                }
+                            </div>
+                            <button type="button" class="icon-button appointment-schedule-add" data-schedule-add-interval aria-label="Add @dayName time slot" title="Add time slot">+</button>
                         </div>
                     }
-                </div>
-                <div class="buttons">
-                    <button type="submit" class="button-1">Save schedule</button>
                 </div>
             </form>
         </section>

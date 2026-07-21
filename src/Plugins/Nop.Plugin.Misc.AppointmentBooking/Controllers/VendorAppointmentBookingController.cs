@@ -90,10 +90,87 @@ public class VendorAppointmentBookingController : BasePublicController
         for (var time = TimeSpan.Zero; time < TimeSpan.FromDays(1); time = time.Add(TimeSpan.FromMinutes(15)))
         {
             var value = time.ToString(@"hh\:mm");
-            options.Add(new SelectListItem { Text = value, Value = value });
+            var text = DateTime.Today.Add(time).ToString("h:mm tt", CultureInfo.CurrentCulture);
+            options.Add(new SelectListItem { Text = text, Value = value });
         }
 
         return options;
+    }
+
+    protected virtual IList<int> PrepareWeekDays()
+    {
+        return [(int)DayOfWeek.Monday, (int)DayOfWeek.Tuesday, (int)DayOfWeek.Wednesday, (int)DayOfWeek.Thursday, (int)DayOfWeek.Friday, (int)DayOfWeek.Saturday, (int)DayOfWeek.Sunday];
+    }
+
+    protected virtual IList<SelectListItem> PrepareTimeZoneOptions(string selectedTimeZoneId)
+    {
+        return _dateTimeHelper.GetSystemTimeZones()
+            .Select(timeZone => new SelectListItem
+            {
+                Text = timeZone.DisplayName,
+                Value = timeZone.Id,
+                Selected = timeZone.Id == selectedTimeZoneId
+            })
+            .ToList();
+    }
+
+    protected virtual IList<ScheduleDayModel> PrepareScheduleFromRules(IList<AvailabilityRule> rules)
+    {
+        var activeRulesByDay = rules
+            .Where(rule => rule.IsActive)
+            .GroupBy(rule => rule.DayOfWeek)
+            .ToDictionary(group => group.Key, group => group.OrderBy(rule => rule.StartTimeUtc).ToList());
+
+        return PrepareWeekDays().Select(day =>
+        {
+            var dayRules = activeRulesByDay.TryGetValue(day, out var activeRules)
+                ? activeRules
+                : new List<AvailabilityRule>();
+
+            return new ScheduleDayModel
+            {
+                DayOfWeek = day,
+                Enabled = dayRules.Any(),
+                Intervals = dayRules.Any()
+                    ? dayRules.Select(rule => new ScheduleIntervalModel
+                    {
+                        StartTime = rule.StartTimeUtc.ToString("HH:mm"),
+                        EndTime = rule.EndTimeUtc.ToString("HH:mm")
+                    }).ToList()
+                    : new List<ScheduleIntervalModel>
+                    {
+                        new()
+                        {
+                            StartTime = "09:00",
+                            EndTime = "17:00"
+                        }
+                    }
+            };
+        }).ToList();
+    }
+
+    protected virtual IList<ScheduleDayModel> NormalizePostedSchedule(IList<ScheduleDayModel> schedule)
+    {
+        var postedByDay = (schedule ?? new List<ScheduleDayModel>())
+            .GroupBy(day => day.DayOfWeek)
+            .ToDictionary(group => group.Key, group => group.First());
+
+        return PrepareWeekDays().Select(day =>
+        {
+            var postedDay = postedByDay.TryGetValue(day, out var value) ? value : new ScheduleDayModel { DayOfWeek = day };
+            postedDay.DayOfWeek = day;
+            postedDay.Intervals ??= new List<ScheduleIntervalModel>();
+            if (!postedDay.Intervals.Any())
+            {
+                postedDay.Intervals.Add(new ScheduleIntervalModel
+                {
+                    StartTime = "09:00",
+                    EndTime = "17:00"
+                });
+            }
+
+            return postedDay;
+        }).ToList();
     }
 
     protected virtual async Task<string> FormatDateTimeAsync(DateTime dateTimeUtc)
@@ -157,7 +234,7 @@ public class VendorAppointmentBookingController : BasePublicController
         return !string.IsNullOrWhiteSpace(customer.Email) ? customer.Email : $"Customer #{customer.Id}";
     }
 
-    protected virtual async Task<AvailabilityModel> PrepareAvailabilityModelAsync(int vendorId)
+    protected virtual async Task<AvailabilityModel> PrepareAvailabilityModelAsync(int vendorId, AvailabilityModel postedModel = null)
     {
         var services = (await _appointmentBookingService.GetServicesByVendorAsync(vendorId))
             .Where(service => service.IsActive)
@@ -174,23 +251,17 @@ public class VendorAppointmentBookingController : BasePublicController
         selectedTimeZoneId = string.IsNullOrWhiteSpace(selectedTimeZoneId)
             ? (await _dateTimeHelper.GetCurrentTimeZoneAsync()).Id
             : selectedTimeZoneId.Trim();
+        selectedTimeZoneId = string.IsNullOrWhiteSpace(postedModel?.TimeZoneId)
+            ? selectedTimeZoneId
+            : postedModel.TimeZoneId.Trim();
 
         foreach (var service in services)
             exceptions.AddRange((await _appointmentBookingService.GetAvailabilityExceptionsAsync(service.Id))
                 .Where(exception => !exception.IsAvailable));
 
-        var schedule = new List<ScheduleDayModel>();
-        for (var day = 0; day < 7; day++)
-        {
-            var rule = rules.FirstOrDefault(item => item.DayOfWeek == day && item.IsActive);
-            schedule.Add(new ScheduleDayModel
-            {
-                DayOfWeek = day,
-                Enabled = rule != null,
-                StartTime = rule?.StartTimeUtc.ToString("HH:mm") ?? "09:00",
-                EndTime = rule?.EndTimeUtc.ToString("HH:mm") ?? "17:00"
-            });
-        }
+        var schedule = postedModel?.Schedule?.Any() == true
+            ? NormalizePostedSchedule(postedModel.Schedule)
+            : PrepareScheduleFromRules(rules);
 
         var blockedDates = exceptions
             .GroupBy(exception => exception.ExceptionDateUtc.Date)
@@ -213,14 +284,7 @@ public class VendorAppointmentBookingController : BasePublicController
             Exceptions = exceptions,
             Schedule = schedule,
             TimeOptions = PrepareTimeOptions(),
-            AvailableTimeZones = _dateTimeHelper.GetSystemTimeZones()
-                .Select(timeZone => new SelectListItem
-                {
-                    Text = timeZone.DisplayName,
-                    Value = timeZone.Id,
-                    Selected = timeZone.Id == selectedTimeZoneId
-                })
-                .ToList(),
+            AvailableTimeZones = PrepareTimeZoneOptions(selectedTimeZoneId),
             BlockedDates = blockedDates,
             StartTime = "09:00",
             EndTime = "17:00",
@@ -435,6 +499,82 @@ public class VendorAppointmentBookingController : BasePublicController
         return View("~/Plugins/Misc.AppointmentBooking/Views/Account/Availability.cshtml", await PrepareAvailabilityModelAsync(vendorId));
     }
 
+    protected virtual bool TryParseScheduleTime(string value, out TimeSpan time)
+    {
+        return TimeSpan.TryParseExact(value, @"hh\:mm", CultureInfo.InvariantCulture, out time) ||
+            TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out time);
+    }
+
+    protected virtual IList<string> ValidateSchedule(AvailabilityModel model)
+    {
+        var errors = new List<string>();
+        var enabledDays = (model.Schedule ?? new List<ScheduleDayModel>()).Where(day => day.Enabled).ToList();
+        if (!enabledDays.Any())
+        {
+            errors.Add("Select at least one available day.");
+            return errors;
+        }
+
+        foreach (var day in enabledDays)
+        {
+            var dayName = Enum.GetName(typeof(DayOfWeek), day.DayOfWeek) ?? "day";
+            var intervals = day.Intervals ?? new List<ScheduleIntervalModel>();
+            if (!intervals.Any())
+            {
+                errors.Add($"Add at least one time slot for {dayName}.");
+                continue;
+            }
+
+            var parsedIntervals = new List<(TimeSpan Start, TimeSpan End)>();
+            foreach (var interval in intervals)
+            {
+                var hasStartTime = !string.IsNullOrWhiteSpace(interval.StartTime);
+                var hasEndTime = !string.IsNullOrWhiteSpace(interval.EndTime);
+
+                if (!hasStartTime)
+                    errors.Add($"Select a start time for {dayName}.");
+
+                if (!hasEndTime)
+                    errors.Add($"Select an end time for {dayName}.");
+
+                if (!hasStartTime || !hasEndTime)
+                    continue;
+
+                if (!TryParseScheduleTime(interval.StartTime, out var startTime))
+                {
+                    errors.Add($"Select a start time for {dayName}.");
+                    continue;
+                }
+
+                if (!TryParseScheduleTime(interval.EndTime, out var endTime))
+                {
+                    errors.Add($"Select an end time for {dayName}.");
+                    continue;
+                }
+
+                if (startTime >= endTime)
+                {
+                    errors.Add($"Start time must be earlier than end time for {dayName}.");
+                    continue;
+                }
+
+                parsedIntervals.Add((startTime, endTime));
+            }
+
+            var orderedIntervals = parsedIntervals.OrderBy(interval => interval.Start).ToList();
+            for (var i = 1; i < orderedIntervals.Count; i++)
+            {
+                if (orderedIntervals[i].Start < orderedIntervals[i - 1].End)
+                {
+                    errors.Add($"Time slots cannot overlap for {dayName}.");
+                    break;
+                }
+            }
+        }
+
+        return errors.Distinct().ToList();
+    }
+
     [HttpPost]
     public async Task<IActionResult> AddAvailabilityRule(AvailabilityModel model)
     {
@@ -474,14 +614,20 @@ public class VendorAppointmentBookingController : BasePublicController
 
         if (!services.Any())
         {
-            _notificationService.ErrorNotification("Create an active service before saving a schedule.");
-            return RedirectToRoute(AppointmentBookingDefaults.AccountAvailabilityRouteName);
+            ModelState.AddModelError(string.Empty, "Create an active service before saving a schedule.");
         }
 
         var selectedTimeZoneId = model.TimeZoneId?.Trim();
         selectedTimeZoneId = _dateTimeHelper.GetSystemTimeZones().Any(timeZone => timeZone.Id == selectedTimeZoneId)
             ? selectedTimeZoneId
             : "UTC";
+        model.TimeZoneId = selectedTimeZoneId;
+
+        foreach (var error in ValidateSchedule(model))
+            ModelState.AddModelError(string.Empty, error);
+
+        if (!ModelState.IsValid)
+            return View("~/Plugins/Misc.AppointmentBooking/Views/Account/Availability.cshtml", await PrepareAvailabilityModelAsync(vendorId, model));
 
         foreach (var service in services)
         {
@@ -489,16 +635,28 @@ public class VendorAppointmentBookingController : BasePublicController
 
             foreach (var day in model.Schedule.Where(day => day.Enabled))
             {
-                await _appointmentBookingService.SaveAvailabilityRuleAsync(new AvailabilityRule
+                var intervals = (day.Intervals ?? new List<ScheduleIntervalModel>())
+                    .Select(interval => new
+                    {
+                        StartTime = interval.StartTime?.Trim(),
+                        EndTime = interval.EndTime?.Trim()
+                    })
+                    .Distinct()
+                    .ToList();
+
+                foreach (var interval in intervals)
                 {
-                    ServiceId = service.Id,
-                    VendorId = vendorId,
-                    DayOfWeek = day.DayOfWeek,
-                    StartTimeUtc = ParseTimeForDate(DateTime.UtcNow, day.StartTime),
-                    EndTimeUtc = ParseTimeForDate(DateTime.UtcNow, day.EndTime),
-                    TimeZoneId = selectedTimeZoneId,
-                    IsActive = true
-                });
+                    await _appointmentBookingService.SaveAvailabilityRuleAsync(new AvailabilityRule
+                    {
+                        ServiceId = service.Id,
+                        VendorId = vendorId,
+                        DayOfWeek = day.DayOfWeek,
+                        StartTimeUtc = ParseTimeForDate(DateTime.UtcNow, interval.StartTime),
+                        EndTimeUtc = ParseTimeForDate(DateTime.UtcNow, interval.EndTime),
+                        TimeZoneId = selectedTimeZoneId,
+                        IsActive = true
+                    });
+                }
             }
         }
 

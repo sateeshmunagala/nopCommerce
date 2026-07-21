@@ -53,6 +53,11 @@ public record ScheduleDayModel
 
     public bool Enabled { get; set; }
 
+    public IList<ScheduleIntervalModel> Intervals { get; set; } = new List<ScheduleIntervalModel>();
+}
+
+public record ScheduleIntervalModel
+{
     public string StartTime { get; set; }
 
     public string EndTime { get; set; }

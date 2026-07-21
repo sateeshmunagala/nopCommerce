@@ -151,6 +151,184 @@
     return Promise.resolve();
   };
 
+  const updateScheduleIntervalNames = row => {
+    const dayIndex = row.getAttribute("data-schedule-day-index");
+    row.querySelectorAll("[data-schedule-interval]").forEach((interval, intervalIndex) => {
+      const start = interval.querySelector("[data-schedule-start]");
+      const end = interval.querySelector("[data-schedule-end]");
+      if (start) {
+        start.name = `Schedule[${dayIndex}].Intervals[${intervalIndex}].StartTime`;
+        start.id = `Schedule_${dayIndex}__Intervals_${intervalIndex}__StartTime`;
+      }
+
+      if (end) {
+        end.name = `Schedule[${dayIndex}].Intervals[${intervalIndex}].EndTime`;
+        end.id = `Schedule_${dayIndex}__Intervals_${intervalIndex}__EndTime`;
+      }
+
+      const remove = interval.querySelector("[data-schedule-remove-interval]");
+      if (remove) {
+        remove.hidden = intervalIndex === 0;
+      }
+    });
+  };
+
+  const updateScheduleApplyButtons = root => {
+    const scheduleRoot = root.closest(".appointment-schedule-list") || document;
+    scheduleRoot.querySelectorAll("[data-schedule-apply-all]").forEach(button => {
+      button.hidden = true;
+    });
+
+    const firstEnabledRow = Array.from(scheduleRoot.querySelectorAll("[data-schedule-day-row]"))
+      .find(row => row.querySelector("[data-schedule-day-toggle]")?.checked);
+    firstEnabledRow?.querySelector("[data-schedule-apply-all]")?.removeAttribute("hidden");
+  };
+
+  const setScheduleRowState = row => {
+    const enabled = row.querySelector("[data-schedule-day-toggle]")?.checked;
+    row.classList.toggle("enabled", enabled);
+    row.classList.toggle("disabled", !enabled);
+    row.querySelectorAll("[data-schedule-start], [data-schedule-end]").forEach(select => {
+      select.disabled = !enabled;
+    });
+    row.querySelectorAll("[data-schedule-add-interval], [data-schedule-remove-interval], [data-schedule-apply-all]").forEach(button => {
+      button.disabled = !enabled;
+    });
+    updateScheduleIntervalNames(row);
+    updateScheduleApplyButtons(row);
+  };
+
+  const initializeScheduleRows = root => {
+    root.querySelectorAll("[data-schedule-day-row]").forEach(row => {
+      setScheduleRowState(row);
+    });
+  };
+
+  const addScheduleInterval = row => {
+    const intervals = row.querySelector("[data-schedule-intervals]");
+    const firstInterval = intervals?.querySelector("[data-schedule-interval]");
+    if (!intervals || !firstInterval) {
+      return;
+    }
+
+    const nextInterval = firstInterval.cloneNode(true);
+    nextInterval.querySelector("[data-schedule-apply-all]")?.setAttribute("hidden", "");
+    nextInterval.querySelector("[data-schedule-remove-interval]")?.removeAttribute("hidden");
+    nextInterval.querySelectorAll("select").forEach(select => {
+      select.disabled = false;
+    });
+    intervals.appendChild(nextInterval);
+    updateScheduleIntervalNames(row);
+  };
+
+  const removeScheduleInterval = button => {
+    const row = button.closest("[data-schedule-day-row]");
+    const intervals = row?.querySelectorAll("[data-schedule-interval]");
+    if (!row || !intervals || intervals.length <= 1) {
+      return;
+    }
+
+    button.closest("[data-schedule-interval]")?.remove();
+    updateScheduleIntervalNames(row);
+    updateScheduleApplyButtons(row);
+  };
+
+  const applyScheduleIntervalToAll = button => {
+    const sourceInterval = button.closest("[data-schedule-interval]");
+    const sourceRow = button.closest("[data-schedule-day-row]");
+    const sourceStart = sourceInterval?.querySelector("[data-schedule-start]")?.value;
+    const sourceEnd = sourceInterval?.querySelector("[data-schedule-end]")?.value;
+    const scheduleRoot = sourceRow?.closest(".appointment-schedule-list");
+    if (!sourceStart || !sourceEnd || !scheduleRoot) {
+      return;
+    }
+
+    scheduleRoot.querySelectorAll("[data-schedule-day-row]").forEach(row => {
+      if (!row.querySelector("[data-schedule-day-toggle]")?.checked) {
+        return;
+      }
+
+      const firstInterval = row.querySelector("[data-schedule-interval]");
+      const start = firstInterval?.querySelector("[data-schedule-start]");
+      const end = firstInterval?.querySelector("[data-schedule-end]");
+      if (start) {
+        start.value = sourceStart;
+      }
+
+      if (end) {
+        end.value = sourceEnd;
+      }
+    });
+  };
+
+  const getScheduleTime = value => {
+    if (!value || !value.includes(":")) {
+      return null;
+    }
+
+    const parts = value.split(":").map(part => Number.parseInt(part, 10));
+    return Number.isNaN(parts[0]) || Number.isNaN(parts[1]) ? null : (parts[0] * 60) + parts[1];
+  };
+
+  const validateScheduleForm = form => {
+    const validation = form.querySelector("[data-schedule-client-validation]");
+    const errors = [];
+    const enabledRows = Array.from(form.querySelectorAll("[data-schedule-day-row]"))
+      .filter(row => row.querySelector("[data-schedule-day-toggle]")?.checked);
+
+    if (!enabledRows.length) {
+      errors.push("Select at least one available day.");
+    }
+
+    enabledRows.forEach(row => {
+      const dayName = row.querySelector(".appointment-schedule-day span")?.textContent || "day";
+      const intervals = Array.from(row.querySelectorAll("[data-schedule-interval]"));
+      if (!intervals.length) {
+        errors.push(`Add at least one time slot for ${dayName}.`);
+        return;
+      }
+
+      const parsedIntervals = [];
+      intervals.forEach(interval => {
+        const start = getScheduleTime(interval.querySelector("[data-schedule-start]")?.value);
+        const end = getScheduleTime(interval.querySelector("[data-schedule-end]")?.value);
+        if (start === null) {
+          errors.push(`Select a start time for ${dayName}.`);
+        }
+
+        if (end === null) {
+          errors.push(`Select an end time for ${dayName}.`);
+        }
+
+        if (start === null || end === null) {
+          return;
+        }
+
+        if (start >= end) {
+          errors.push(`Start time must be earlier than end time for ${dayName}.`);
+          return;
+        }
+
+        parsedIntervals.push({ start, end });
+      });
+
+      parsedIntervals.sort((first, second) => first.start - second.start);
+      for (let i = 1; i < parsedIntervals.length; i += 1) {
+        if (parsedIntervals[i].start < parsedIntervals[i - 1].end) {
+          errors.push(`Time slots cannot overlap for ${dayName}.`);
+          break;
+        }
+      }
+    });
+
+    if (validation) {
+      validation.hidden = !errors.length;
+      validation.innerHTML = errors.length ? errors.map(error => `<div>${error}</div>`).join("") : "";
+    }
+
+    return !errors.length;
+  };
+
   document.addEventListener("click", event => {
     const bookingTab = event.target.closest("[data-appointment-booking-tab]");
     if (bookingTab) {
@@ -212,6 +390,24 @@
       return;
     }
 
+    const addIntervalButton = event.target.closest("[data-schedule-add-interval]");
+    if (addIntervalButton) {
+      addScheduleInterval(addIntervalButton.closest("[data-schedule-day-row]"));
+      return;
+    }
+
+    const removeIntervalButton = event.target.closest("[data-schedule-remove-interval]");
+    if (removeIntervalButton) {
+      removeScheduleInterval(removeIntervalButton);
+      return;
+    }
+
+    const applyAllButton = event.target.closest("[data-schedule-apply-all]");
+    if (applyAllButton) {
+      applyScheduleIntervalToAll(applyAllButton);
+      return;
+    }
+
     const target = event.target.closest(".appointment-placeholder");
     if (!target) {
       return;
@@ -221,9 +417,34 @@
     window.alert("This action is a placeholder.");
   });
 
+  document.addEventListener("change", event => {
+    const scheduleToggle = event.target.closest("[data-schedule-day-toggle]");
+    if (scheduleToggle) {
+      setScheduleRowState(scheduleToggle.closest("[data-schedule-day-row]"));
+    }
+  });
+
+  document.addEventListener("submit", event => {
+    if (!event.target.querySelector("[data-schedule-client-validation]")) {
+      return;
+    }
+
+    event.target.querySelectorAll("[data-schedule-day-row]").forEach(row => {
+      setScheduleRowState(row);
+    });
+
+    if (!validateScheduleForm(event.target)) {
+      event.preventDefault();
+    }
+  });
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initializeUnavailableCalendars(document));
+    document.addEventListener("DOMContentLoaded", () => {
+      initializeUnavailableCalendars(document);
+      initializeScheduleRows(document);
+    });
   } else {
     initializeUnavailableCalendars(document);
+    initializeScheduleRows(document);
   }
 })();
