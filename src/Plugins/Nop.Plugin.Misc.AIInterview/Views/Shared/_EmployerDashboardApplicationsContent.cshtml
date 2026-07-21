@@ -12,6 +12,8 @@
         return userDateTime.ToString("g");
     }
 
+    string FormatInterviewScore(decimal? score) => score.HasValue ? $"{Math.Round(score.Value):N0}/100" : "--";
+
     var viewReportText = T("Plugins.Misc.AIInterview.Report.ViewReport").Text;
     var appliedFromLabelText = T("Plugins.Misc.AIInterview.Employer.Applications.AppliedFromUtc").Text.Replace(" (UTC)", string.Empty);
     var appliedToLabelText = T("Plugins.Misc.AIInterview.Employer.Applications.AppliedToUtc").Text.Replace(" (UTC)", string.Empty);
@@ -161,11 +163,11 @@
                                     <td class="col-score">
                                         @if (app.InterviewScore.HasValue)
                                         {
-                                            <span class="score-badge">@Math.Round(app.InterviewScore.Value)</span>
+                                            <span class="score-badge">@FormatInterviewScore(app.InterviewScore)</span>
                                         }
                                         else
                                         {
-                                            <span>-</span>
+                                            <span>--</span>
                                         }
                                     </td>
                                     <td class="col-attempts">@app.AttemptCount</td>
@@ -246,11 +248,11 @@
                             <div class="responsive-data-card-chip-group">
                                 @if (app.InterviewScore.HasValue)
                                 {
-                                    <span class="score-badge">@Math.Round(app.InterviewScore.Value)</span>
+                                    <span class="score-badge">@FormatInterviewScore(app.InterviewScore)</span>
                                 }
                                 else
                                 {
-                                    <span class="score-badge score-badge-muted">-</span>
+                                    <span class="score-badge score-badge-muted">--</span>
                                 }
                                 <span class="status-pill">@app.Status</span>
                             </div>

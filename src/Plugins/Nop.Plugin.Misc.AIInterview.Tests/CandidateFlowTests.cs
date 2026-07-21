@@ -1817,11 +1817,12 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("const normalizeTurn = (turn, index = 0) =>"));
         Assert.That(runtimeText, Does.Contain("getValue(turn, 'questionText', 'QuestionText')"));
         Assert.That(runtimeText, Does.Contain("messageBox.textContent = isTerminated ? '' : 'Please answer the next question.';"));
-        Assert.That(runtimeText, Does.Contain("setHeaderStatus('Interview completed. Finalizing recording before report.', false);"));
+        Assert.That(runtimeText, Does.Contain("setHeaderStatus(reportUrl ? 'Finalizing report. Preparing recording...' : 'Finalizing report...', false);"));
         Assert.That(runtimeText, Does.Contain("const finalizeRecordingBeforeCompletion = async () =>"));
-        Assert.That(runtimeText, Does.Contain("await finalizeRecordingBeforeCompletion();"));
+        Assert.That(runtimeText, Does.Contain("finalRecordingUploadTimeoutMs"));
+        Assert.That(runtimeText, Does.Contain("finalizeRecordingBeforeCompletion()"));
         Assert.That(runtimeText, Does.Contain("const startCompletedRedirectCountdown = (reportUrl) =>"));
-        Assert.That(runtimeText, Does.Contain("startCompletedRedirectCountdown(reportUrl);"));
+        Assert.That(runtimeText, Does.Contain(".finally(() => startCompletedRedirectCountdown(reportUrl));"));
         Assert.That(runtimeText, Does.Not.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
         Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)"));
         Assert.That(runtimeText, Does.Contain("await stopRecording(true);"));

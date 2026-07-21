@@ -236,9 +236,7 @@ public class VendorAppointmentBookingController : BasePublicController
 
     protected virtual async Task<AvailabilityModel> PrepareAvailabilityModelAsync(int vendorId, AvailabilityModel postedModel = null)
     {
-        var services = (await _appointmentBookingService.GetServicesByVendorAsync(vendorId))
-            .Where(service => service.IsActive)
-            .ToList();
+        var services = await _appointmentBookingService.GetServicesByVendorAsync(vendorId);
         var firstService = services.FirstOrDefault();
         var rules = firstService == null
             ? new List<AvailabilityRule>()

@@ -11,10 +11,12 @@
         return userDateTime.ToString("g");
     }
 
+    string FormatInterviewScore(decimal? score) => score.HasValue ? $"{Math.Round(score.Value):N0}/100" : "--";
+
     var introText = T("Plugins.Misc.AIInterview.VendorScoreboard.Intro").Text;
     var eyebrowText = T("Plugins.Misc.AIInterview.VendorScoreboard.Eyebrow").Text;
     var totalSubmissionsText = string.Format(T("Plugins.Misc.AIInterview.VendorScoreboard.TotalSubmissions").Text, Model.TotalApplications);
-    var highestScoreText = string.Format(T("Plugins.Misc.AIInterview.VendorScoreboard.HighestRecordedScore").Text, Model.HighestScore?.ToString("N2") ?? "-");
+    var highestScoreText = string.Format(T("Plugins.Misc.AIInterview.VendorScoreboard.HighestRecordedScore").Text, FormatInterviewScore(Model.HighestScore));
     var shortlistedText = string.Format(T("Plugins.Misc.AIInterview.VendorScoreboard.ShortlistedDetail").Text, Model.ShortlistedApplications);
     var reviewQueueText = T("Plugins.Misc.AIInterview.Employer.Dashboard.Action.ReviewQueue").Text;
     var viewAnalysisText = T("Plugins.Misc.AIInterview.Employer.Dashboard.Action.ViewAnalysis").Text;
@@ -135,7 +137,7 @@
                             <td>
                                 @if (application.InterviewScore.HasValue)
                                 {
-                                    <span class="scoreboard-deck-score">@application.InterviewScore.Value.ToString("N2")</span>
+                                    <span class="scoreboard-deck-score">@FormatInterviewScore(application.InterviewScore)</span>
                                 }
                                 else
                                 {

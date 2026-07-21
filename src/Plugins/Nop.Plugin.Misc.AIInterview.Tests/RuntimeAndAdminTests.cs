@@ -956,7 +956,8 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const updateAnswerInputState = () =>"));
         Assert.That(runtimeViewText, Does.Not.Contain("runtime-answer-hidden"));
         Assert.That(runtimeViewText, Does.Not.Contain("answerPanel?.classList.toggle"));
-        Assert.That(runtimeViewText, Does.Contain("answerBox.disabled = !canEditAnswer;"));
+        Assert.That(runtimeViewText, Does.Contain("answerBox.disabled = !canAcceptTypedAnswer();"));
+        Assert.That(runtimeViewText, Does.Contain("const canUseSpeechRecognition = () => canAcceptTypedAnswer()"));
         Assert.That(runtimeViewText, Does.Contain("const setRuntimeCaption = (speaker, text) =>"));
         Assert.That(runtimeViewText, Does.Contain("const syncAnswerCaption = () =>"));
         Assert.That(runtimeViewText, Does.Contain("videoCaptionSpeaker.textContent = `${speaker}:`;"));
@@ -1028,9 +1029,10 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const finalizeRecordingBeforeCompletion = async () =>"));
         Assert.That(runtimeViewText, Does.Contain("if (completionRecordingCleanupPromise)"));
         Assert.That(runtimeViewText, Does.Contain("Final recording upload before completion started."));
-        Assert.That(runtimeViewText, Does.Contain("await finalizeRecordingBeforeCompletion();"));
+        Assert.That(runtimeViewText, Does.Contain("finalRecordingUploadTimeoutMs"));
+        Assert.That(runtimeViewText, Does.Contain("finalizeRecordingBeforeCompletion()"));
         Assert.That(runtimeViewText, Does.Contain("const startCompletedRedirectCountdown = (reportUrl) =>"));
-        Assert.That(runtimeViewText, Does.Contain("startCompletedRedirectCountdown(reportUrl);"));
+        Assert.That(runtimeViewText, Does.Contain(".finally(() => startCompletedRedirectCountdown(reportUrl));"));
         Assert.That(runtimeViewText, Does.Not.Contain("clearAllRuntimeTimers();\r\n            let originalText = ''").And.Not.Contain("clearAllRuntimeTimers();\n            let originalText = ''"));
         Assert.That(runtimeViewText, Does.Contain("clearAnswerTimers();"));
         Assert.That(runtimeViewText, Does.Contain("if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)\r\n                    resetTimers();").Or.Contain("if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)\n                    resetTimers();"));

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -25,6 +26,7 @@ using Nop.Services.Localization;
 using NopLogger = Nop.Services.Logging.ILogger;
 using Nop.Core.Events;
 using Nop.Services.Events;
+using Nop.Services.Logging;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
@@ -1445,6 +1447,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     private readonly IWorkContext _workContext;
     private readonly IEventPublisher _eventPublisher;
     private readonly NopLogger _nopLogger;
+    private readonly ICustomerActivityService _customerActivityService;
     private readonly ILogger<InterviewRuntimeService> _logger;
 
     public InterviewRuntimeService(
@@ -1463,7 +1466,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         IWorkContext workContext,
         IEventPublisher eventPublisher = null,
         NopLogger nopLogger = null,
-        ILogger<InterviewRuntimeService> logger = null)
+        ILogger<InterviewRuntimeService> logger = null,
+        ICustomerActivityService customerActivityService = null)
     {
         _sessionService = sessionService;
         _turnService = turnService;
@@ -1481,6 +1485,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         _eventPublisher = eventPublisher;
         _nopLogger = nopLogger;
         _logger = logger;
+        _customerActivityService = customerActivityService;
     }
 
     protected virtual Task LogRuntimeIssueAsync(NopLogLevel level, string shortMessage, string fullMessage = "", Customer customer = null)
@@ -1501,6 +1506,52 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
 
         return _workContext == null ? null : await _workContext.GetCurrentCustomerAsync();
+    }
+
+    protected virtual async Task LogRuntimeActivityAsync(InterviewSession session, string systemKeyword, string comment, Customer customer = null, BaseEntity entity = null)
+    {
+        if (_customerActivityService == null || session == null || string.IsNullOrWhiteSpace(systemKeyword))
+            return;
+
+        var logCustomer = await ResolveLogCustomerAsync(session, customer);
+        if (logCustomer == null)
+            return;
+
+        try
+        {
+            await _customerActivityService.InsertActivityAsync(logCustomer, systemKeyword, comment, entity ?? session);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "AI Interview activity logging failed for keyword {SystemKeyword}, session {SessionId}.", systemKeyword, session.Id);
+        }
+    }
+
+    protected static string BuildRuntimeActivityComment(InterviewSession session, InterviewTurn turn = null, string message = null, long? elapsedMilliseconds = null, int? statusCode = null, string failureKind = null)
+    {
+        var details = new List<string>
+        {
+            $"SessionId={session?.Id ?? 0}",
+            $"CustomerId={session?.CustomerId ?? 0}",
+            $"ProductId={session?.ProductId ?? 0}"
+        };
+
+        if (turn != null)
+        {
+            details.Add($"TurnId={turn.Id}");
+            details.Add($"SequenceNumber={turn.SequenceNumber}");
+        }
+
+        if (elapsedMilliseconds.HasValue)
+            details.Add($"ElapsedMs={Math.Max(0, elapsedMilliseconds.Value)}");
+        if (statusCode.HasValue)
+            details.Add($"StatusCode={statusCode.Value}");
+        if (!string.IsNullOrWhiteSpace(failureKind))
+            details.Add($"FailureKind={BuildSafeValue(failureKind)}");
+        if (!string.IsNullOrWhiteSpace(message))
+            details.Add($"Message={BuildSafeValue(message)}");
+
+        return string.Join("; ", details);
     }
 
 
@@ -1966,6 +2017,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             session.StartedOnUtc = DateTime.UtcNow;
             await _sessionService.UpdateInterviewSessionAsync(session);
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.InterviewStarted",
+                BuildRuntimeActivityComment(session, message: "Interview started."),
+                customer);
         }
 
         return await BuildRuntimeModelAsync(session, turns, customer);
@@ -1982,6 +2038,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     public async Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(SubmitInterviewAnswerRequest request)
     {
+        var submitStopwatch = Stopwatch.StartNew();
         var token = request?.Token;
         var answer = request?.Answer;
         var session = await _sessionService.GetSessionByTokenAsync(token);
@@ -1997,6 +2054,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         if (string.IsNullOrWhiteSpace(answer))
         {
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.AnswerSubmitFailed",
+                BuildRuntimeActivityComment(session, message: "Answer cannot be empty.", elapsedMilliseconds: submitStopwatch.ElapsedMilliseconds));
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
@@ -2016,6 +2077,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 "AI Interview submit before begin",
                 $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=submit before begin.",
                 await ResolveLogCustomerAsync(session));
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.AnswerSubmitFailed",
+                BuildRuntimeActivityComment(session, message: "Submit before begin.", elapsedMilliseconds: submitStopwatch.ElapsedMilliseconds));
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
@@ -2032,6 +2097,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 "AI Interview submit before begin",
                 $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=submit before begin.",
                 await ResolveLogCustomerAsync(session));
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.AnswerSubmitFailed",
+                BuildRuntimeActivityComment(session, message: "Active turn missing.", elapsedMilliseconds: submitStopwatch.ElapsedMilliseconds));
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
@@ -2042,6 +2111,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var answerValidationMessage = await ValidateAnswerAsync(currentTurn.QuestionText, answer);
         if (!string.IsNullOrWhiteSpace(answerValidationMessage))
         {
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.AnswerSubmitFailed",
+                BuildRuntimeActivityComment(session, currentTurn, answerValidationMessage, submitStopwatch.ElapsedMilliseconds));
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
@@ -2097,6 +2170,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 "AI Interview scoring failure",
                 $"Mode=score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason={evaluation?.ErrorMessage ?? "missing required score"}.",
                 await ResolveLogCustomerAsync(session));
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.AnswerSubmitFailed",
+                BuildRuntimeActivityComment(session, currentTurn, evaluation?.ErrorMessage ?? "Scoring failed.", submitStopwatch.ElapsedMilliseconds));
             return new SubmitInterviewAnswerResponse
             {
                 Success = false,
@@ -2112,6 +2189,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         currentTurn.AnsweredOnUtc = DateTime.UtcNow;
         await _turnService.UpdateInterviewTurnAsync(currentTurn);
         await TrackSpeechRecognitionUsageAsync(session, currentTurn, request);
+        await LogRuntimeActivityAsync(
+            session,
+            "AIInterview.Runtime.AnswerSubmitted",
+            BuildRuntimeActivityComment(session, currentTurn, "Answer submitted.", submitStopwatch.ElapsedMilliseconds),
+            entity: currentTurn);
 
         turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
         var completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, maxQuestions).ToList();
@@ -2134,6 +2216,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     "AI Interview next planned question unavailable",
                     $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; ConfiguredQuestions={maxQuestions}; ExistingTurns={turns.Count}; AnsweredTurns={answeredCount}; Reason=next planned turn missing.",
                     await ResolveLogCustomerAsync(session));
+                await LogRuntimeActivityAsync(
+                    session,
+                    "AIInterview.Runtime.AnswerSubmitFailed",
+                    BuildRuntimeActivityComment(session, currentTurn, "Next planned question missing.", submitStopwatch.ElapsedMilliseconds),
+                    entity: currentTurn);
                 return new SubmitInterviewAnswerResponse
                 {
                     Success = false,
@@ -2206,6 +2293,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var now = DateTime.UtcNow;
         if (!IsSessionUsable(session, now))
         {
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.SpeechUnavailable",
+                BuildRuntimeActivityComment(session, message: "Speech token requested for invalid session.", failureKind: "invalid-session"));
             return BuildSpeechTokenFailureResult(
                 "invalid-session",
                 BuildSpeechTokenFailureLog("invalid-session", session, token, _settings?.AzureSpeechRegion, null, "session unavailable"));
@@ -2239,6 +2330,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     diagnosticMessage,
                     await ResolveLogCustomerAsync(session));
             }
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.SpeechUnavailable",
+                BuildRuntimeActivityComment(session, message: "Speech configuration incomplete.", failureKind: "configuration-incomplete"));
             return BuildSpeechTokenFailureResult("configuration-incomplete", diagnosticMessage);
         }
 
@@ -2281,6 +2376,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                         diagnosticMessage,
                         await ResolveLogCustomerAsync(session));
                 }
+                await LogRuntimeActivityAsync(
+                    session,
+                    "AIInterview.Runtime.SpeechUnavailable",
+                    BuildRuntimeActivityComment(session, message: "Azure Speech token request failed.", statusCode: (int)response.StatusCode, failureKind: "azure-http-failure"));
                 return BuildSpeechTokenFailureResult("azure-http-failure", diagnosticMessage, azureStatusCode: (int)response.StatusCode, azureReasonPhrase: response.ReasonPhrase);
             }
 
@@ -2313,6 +2412,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                         diagnosticMessage,
                         await ResolveLogCustomerAsync(session));
                 }
+                await LogRuntimeActivityAsync(
+                    session,
+                    "AIInterview.Runtime.SpeechUnavailable",
+                    BuildRuntimeActivityComment(session, message: "Azure Speech token response was empty.", statusCode: (int)response.StatusCode, failureKind: "empty-token-response"));
                 return BuildSpeechTokenFailureResult("empty-token-response", diagnosticMessage, azureStatusCode: (int)response.StatusCode, azureReasonPhrase: response.ReasonPhrase);
             }
 
@@ -2349,6 +2452,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     diagnosticMessage,
                     await ResolveLogCustomerAsync(session));
             }
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.SpeechUnavailable",
+                BuildRuntimeActivityComment(session, message: ex.Message, failureKind: "azure-exception"));
             return BuildSpeechTokenFailureResult("azure-exception", diagnosticMessage);
         }
     }
@@ -2931,10 +3038,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     protected virtual async Task<CompleteInterviewResponse> CompleteInterviewInternalAsync(InterviewSession session, IList<InterviewTurn> turns, string reason, string aiCompletion = null)
     {
+        var completionStopwatch = Stopwatch.StartNew();
         _logger?.LogInformation("Stop called with session id {SessionId}", session.Id);
 
         if (session.CompletedOnUtc.HasValue || !session.IsActive)
         {
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.CompletionFinalizationFailed",
+                BuildRuntimeActivityComment(session, message: "Session already completed or inactive.", elapsedMilliseconds: completionStopwatch.ElapsedMilliseconds));
             return new CompleteInterviewResponse
             {
                 Success = false,
@@ -2952,6 +3064,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         await _sessionService.UpdateInterviewSessionAsync(session);
 
         await PublishCompletionAsync(session);
+        await LogRuntimeActivityAsync(
+            session,
+            "AIInterview.Runtime.InterviewCompleted",
+            BuildRuntimeActivityComment(session, message: "Interview completed.", elapsedMilliseconds: completionStopwatch.ElapsedMilliseconds));
 
         var completion = new CompleteInterviewResponse
         {
@@ -3103,6 +3219,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var detail = BuildRecordingUploadLog(session, recording, blobName, "Success", azureStatus: azureStatus, normalizedContentType: normalizedContentType);
         _logger?.LogInformation("AI Interview recording upload success. {Detail}", detail);
         await LogRuntimeIssueAsync(NopLogLevel.Information, "AI Interview recording upload success", detail, await ResolveLogCustomerAsync(session));
+        await LogRuntimeActivityAsync(
+            session,
+            "AIInterview.Runtime.RecordingUploaded",
+            BuildRuntimeActivityComment(session, message: $"Recording uploaded. Bytes={recording?.Length ?? 0}.", statusCode: azureStatus));
     }
 
     protected virtual async Task LogRecordingUploadFailureAsync(InterviewSession session, IFormFile recording, string blobName, string message, string reason, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null)
@@ -3110,6 +3230,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var detail = BuildRecordingUploadLog(session, recording, blobName, "Failure", message, reason, azureStatus, azureErrorBody, normalizedContentType);
         _logger?.LogWarning("AI Interview recording upload failure. {Detail}", detail);
         await LogRuntimeIssueAsync(NopLogLevel.Warning, "AI Interview recording upload failure", detail, await ResolveLogCustomerAsync(session));
+        await LogRuntimeActivityAsync(
+            session,
+            "AIInterview.Runtime.RecordingUploadFailed",
+            BuildRuntimeActivityComment(session, message: message ?? reason ?? "Recording upload failed.", statusCode: azureStatus, failureKind: reason));
     }
 
     protected static string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null)

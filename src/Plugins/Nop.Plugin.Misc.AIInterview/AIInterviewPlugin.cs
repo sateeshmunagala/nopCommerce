@@ -1,5 +1,7 @@
 ﻿using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Cms;
+using Nop.Core.Domain.Logging;
+using Nop.Data;
 using Nop.Services.Catalog;
 using Nop.Services.Cms;
 using Nop.Services.Common;
@@ -25,6 +27,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     private readonly IMessageTemplateService _messageTemplateService;
     private readonly IProductTemplateService _productTemplateService;
     private readonly ICategoryTemplateService _categoryTemplateService;
+    private readonly IRepository<ActivityLogType> _activityLogTypeRepository;
     private readonly WidgetSettings _widgetSettings;
 
     #endregion
@@ -37,7 +40,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         IMessageTemplateService messageTemplateService,
         IProductTemplateService productTemplateService = null,
         ICategoryTemplateService categoryTemplateService = null,
-        WidgetSettings widgetSettings = null)
+        WidgetSettings widgetSettings = null,
+        IRepository<ActivityLogType> activityLogTypeRepository = null)
     {
         _localizationService = localizationService;
         _settingService = settingService;
@@ -45,6 +49,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         _messageTemplateService = messageTemplateService;
         _productTemplateService = productTemplateService;
         _categoryTemplateService = categoryTemplateService;
+        _activityLogTypeRepository = activityLogTypeRepository;
         _widgetSettings = widgetSettings;
     }
 
@@ -92,6 +97,74 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     public override string GetConfigurationPageUrl()
     {
         return $"{_webHelper.GetStoreLocation()}Admin/AIInterview/Configure";
+    }
+
+    protected static IReadOnlyDictionary<string, string> RuntimeActivityLogTypes { get; } = new Dictionary<string, string>
+    {
+        ["AIInterview.Runtime.GuidelinesAcknowledged"] = "AI Interview runtime guidelines acknowledged",
+        ["AIInterview.Runtime.InterviewStarted"] = "AI Interview runtime interview started",
+        ["AIInterview.Runtime.AnswerSubmitted"] = "AI Interview runtime answer submitted",
+        ["AIInterview.Runtime.InterviewCompleted"] = "AI Interview runtime interview completed",
+        ["AIInterview.Runtime.RecordingUploaded"] = "AI Interview runtime recording uploaded",
+        ["AIInterview.Runtime.SpeechUnavailable"] = "AI Interview runtime speech unavailable",
+        ["AIInterview.Runtime.AnswerSubmitFailed"] = "AI Interview runtime answer submit failed",
+        ["AIInterview.Runtime.NetworkRequestFailed"] = "AI Interview runtime network request failed",
+        ["AIInterview.Runtime.RecordingUploadFailed"] = "AI Interview runtime recording upload failed",
+        ["AIInterview.Runtime.CompletionFinalizationFailed"] = "AI Interview runtime completion finalization failed"
+    };
+
+    protected virtual async Task EnsureRuntimeActivityLogTypesAsync()
+    {
+        if (_activityLogTypeRepository == null)
+            return;
+
+        var systemKeywords = RuntimeActivityLogTypes.Keys.ToArray();
+        var existingTypes = await _activityLogTypeRepository.GetAllAsync(query => query
+            .Where(type => systemKeywords.Contains(type.SystemKeyword)));
+        var existingByKeyword = existingTypes.ToDictionary(type => type.SystemKeyword, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (systemKeyword, name) in RuntimeActivityLogTypes)
+        {
+            if (existingByKeyword.TryGetValue(systemKeyword, out var existingType))
+            {
+                var changed = false;
+                if (!existingType.Enabled)
+                {
+                    existingType.Enabled = true;
+                    changed = true;
+                }
+
+                if (!string.Equals(existingType.Name, name, StringComparison.Ordinal))
+                {
+                    existingType.Name = name;
+                    changed = true;
+                }
+
+                if (changed)
+                    await _activityLogTypeRepository.UpdateAsync(existingType);
+
+                continue;
+            }
+
+            await _activityLogTypeRepository.InsertAsync(new ActivityLogType
+            {
+                SystemKeyword = systemKeyword,
+                Name = name,
+                Enabled = true
+            });
+        }
+    }
+
+    protected virtual async Task DeleteRuntimeActivityLogTypesAsync()
+    {
+        if (_activityLogTypeRepository == null)
+            return;
+
+        var systemKeywords = RuntimeActivityLogTypes.Keys.ToArray();
+        var existingTypes = await _activityLogTypeRepository.GetAllAsync(query => query
+            .Where(type => systemKeywords.Contains(type.SystemKeyword)));
+        if (existingTypes.Any())
+            await _activityLogTypeRepository.DeleteAsync(existingTypes);
     }
 
     /// <summary>
@@ -144,6 +217,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
+        await EnsureRuntimeActivityLogTypesAsync();
 
         await base.UpdateAsync(currentVersion, targetVersion);
     }
@@ -1191,6 +1265,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         });
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
+        await EnsureRuntimeActivityLogTypesAsync();
 
         await base.InstallAsync();
     }
@@ -1213,6 +1288,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         //locales
         await _localizationService.DeleteLocaleResourcesAsync(AIInterviewDefaults.LocalizationPrefix);
+        await DeleteRuntimeActivityLogTypesAsync();
 
         await base.UninstallAsync();
     }

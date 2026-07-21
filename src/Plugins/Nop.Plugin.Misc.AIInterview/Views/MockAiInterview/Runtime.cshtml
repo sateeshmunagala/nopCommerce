@@ -244,8 +244,14 @@
         </ul>
         <div class="runtime-screen-share-guide" aria-label="Screen sharing selection guide">
             <div class="runtime-screen-share-guide-title">Share picker guide</div>
+            <ol class="runtime-screen-share-guide-steps">
+                <li>When your browser opens the sharing window, choose <strong>Entire screen</strong> or <strong>Your entire screen</strong>.</li>
+                <li>Select the screen thumbnail.</li>
+                <li>Click <strong>Share</strong>.</li>
+            </ol>
+            <p class="runtime-screen-share-guide-note">Do not choose <strong>Window</strong> or <strong>Browser tab</strong>.</p>
             <div class="runtime-screen-share-picker">
-                <div class="runtime-share-option is-selected">
+                <div class="runtime-share-option is-selected" aria-current="true">
                     <span class="runtime-share-option-icon"><i class="fa-solid fa-display" aria-hidden="true"></i></span>
                     <span>Entire screen</span>
                     <span class="runtime-share-system-audio" aria-hidden="true">
@@ -364,7 +370,8 @@
         let finalCompletionSpoken = false;
         const autoSubmitDelaySeconds = 15;
         const completedRedirectDelaySeconds = 15;
-        const completedMediaGraceDelaySeconds = 10;
+        const finalRecordingUploadTimeoutMs = 10000;
+        const slowSubmitStatusDelayMs = 5000;
         const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';
 
         let countdownTimer = null;
@@ -977,15 +984,20 @@
 
         const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());
 
-        const updateAnswerInputState = () => {
-            const showAnswerInput = interviewStarted
-                && !runtimeStoppedOrCompleted
-                && !stopInProgress
-                && !interviewUnavailable
-                && hasActiveQuestion();
-            const canEditAnswer = showAnswerInput;
+        const canAcceptTypedAnswer = () => interviewStarted
+            && !runtimeStoppedOrCompleted
+            && !stopInProgress
+            && !interviewUnavailable
+            && hasActiveQuestion();
 
-            answerBox.disabled = !canEditAnswer;
+        const canUseSpeechRecognition = () => canAcceptTypedAnswer()
+            && config.speechAvailable
+            && !speechUnavailable
+            && isMicActive()
+            && !answerBox.disabled;
+
+        const updateAnswerInputState = () => {
+            answerBox.disabled = !canAcceptTypedAnswer();
         };
 
         function isCameraActive() {
@@ -1229,6 +1241,15 @@
 
         const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+        const withTimeout = (promise, timeoutMs, timeoutMessage) => {
+            let timeoutHandle = null;
+            const timeoutPromise = new Promise((_, reject) => {
+                timeoutHandle = setTimeout(() => reject(new Error(timeoutMessage || 'Operation timed out.')), timeoutMs);
+            });
+
+            return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutHandle));
+        };
+
         const updateRuntimeUrlToken = (newToken) => {
             if (!newToken || !window.history?.replaceState)
                 return;
@@ -1378,29 +1399,48 @@
 
         const finalizeCompletedState = async (result) => {
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
-            const completionText = 'Interview completed. Please wait, creating the report.';
+            const completionText = reportUrl
+                ? 'Interview completed. View Report is available.'
+                : 'Interview completed. Finalizing report.';
 
             isSpeakingOrSubmitting = true;
-            await finalizeRecordingBeforeCompletion();
+            setHeaderStatus('Finalizing report. Preparing recording...', false);
+            try {
+                const recordingUploaded = await withTimeout(
+                    finalizeRecordingBeforeCompletion(),
+                    finalRecordingUploadTimeoutMs,
+                    'Recording upload timed out.');
+
+                if (!recordingUploaded && config.recordingAvailable && recordingEnabled)
+                    logActivity('Final recording cleanup completed without an uploaded recording.');
+            } catch (error) {
+                const message = error?.message || 'Completion finalization failed.';
+                logActivity(`Completion finalization failed: ${message}`);
+                setRecordingStatus('Recording upload failed or timed out. Continuing to report.', true);
+            }
             recordingEnabled = false;
-            stopScreenShare();
-            setScreenShareInterruptionWarning(false);
-            if (recordingButton)
-                recordingButton.disabled = true;
-            cameraStream?.getTracks().forEach(track => track.stop());
-            micStream?.getTracks().forEach(track => track.stop());
-            cameraStream = null;
-            micStream = null;
-            audioContext?.close?.();
-            audioContext = null;
-            analyser = null;
-            meterFrame && cancelAnimationFrame(meterFrame);
-            meterFrame = null;
-            video.srcObject = null;
-            video.style.display = 'none';
-            cameraPlaceholder.style.display = '';
-            audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
-            await stopSpeechRecognition();
+            try {
+                stopScreenShare();
+                setScreenShareInterruptionWarning(false);
+                if (recordingButton)
+                    recordingButton.disabled = true;
+                cameraStream?.getTracks().forEach(track => track.stop());
+                micStream?.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                micStream = null;
+                audioContext?.close?.();
+                audioContext = null;
+                analyser = null;
+                meterFrame && cancelAnimationFrame(meterFrame);
+                meterFrame = null;
+                video.srcObject = null;
+                video.style.display = 'none';
+                cameraPlaceholder.style.display = '';
+                audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
+                await stopSpeechRecognition();
+            } catch (error) {
+                logActivity(`Completion media cleanup failed: ${error?.message || 'unknown'}`);
+            }
             questionBox.textContent = completionText;
             messageBox.textContent = completionText;
             messageBox.classList.add('runtime-js-hidden');
@@ -1434,12 +1474,8 @@
             updateAnswerInputState();
             submitButton.disabled = true;
             updateStartButtonState();
-            setHeaderStatus('Interview completed. Finalizing recording before report.', false);
+            setHeaderStatus(reportUrl ? 'Finalizing report. Preparing recording...' : 'Finalizing report...', false);
             clearCompletedRedirectState();
-            completedCleanupTimer = setTimeout(async () => {
-                await finalizeCompletedState(result);
-                startCompletedRedirectCountdown(reportUrl);
-            }, completedMediaGraceDelaySeconds * 1000);
             if (reportUrl) {
                 actionsPanel?.classList.remove('runtime-js-hidden');
                 reportButton.style.display = 'inline-flex';
@@ -1450,6 +1486,14 @@
             }
             clearTokenRefreshTimer();
             updateAuxiliaryControlsState();
+            completedCleanupTimer = setTimeout(() => {
+                finalizeCompletedState(result)
+                    .catch(error => {
+                        logActivity(`Completion finalization exception: ${error?.message || 'unknown'}`);
+                        setRecordingStatus('Recording finalization failed. Continuing to report.', true);
+                    })
+                    .finally(() => startCompletedRedirectCountdown(reportUrl));
+            }, 0);
         };
 
         const normalizeTurn = (turn, index = 0) => {
@@ -1763,7 +1807,7 @@
 
         const uploadRecording = async (blob) => {
             if (!config.recordingUploadUrl || !blob || recordingUploadInFlight)
-                return;
+                return false;
 
             recordingUploadInFlight = true;
             logActivity(`Recording upload request start. blobBytes=${blob.size || 0}`);
@@ -1777,10 +1821,16 @@
                 if (isSuccess(result) && recordingUrl) {
                     logActivity(`Recording upload response success. url=${recordingUrl}`);
                     logActivity('Recording uploaded.');
+                    return true;
                 } else {
                     logActivity(`Recording upload response failure. message=${getRuntimeMessage(result, 'Recording upload failed.')}`);
                     setRecordingStatus(getRuntimeMessage(result, 'Recording upload failed.'), true);
+                    return false;
                 }
+            } catch (error) {
+                logActivity(`Recording upload request exception. message=${error?.message || 'unknown'}`);
+                setRecordingStatus('Recording upload failed.', true);
+                return false;
             } finally {
                 recordingUploadInFlight = false;
             }
@@ -1792,9 +1842,9 @@
                     const preservedBlob = preservedRecordingSegments.length === 1
                         ? preservedRecordingSegments[0]
                         : new Blob(preservedRecordingSegments, { type: recordingMimeType || 'video/webm' });
-                    await uploadRecording(preservedBlob);
+                    const uploaded = await uploadRecording(preservedBlob);
                     clearPreservedRecordingSegments();
-                    return true;
+                    return uploaded;
                 }
 
                 return false;
@@ -1825,8 +1875,7 @@
                             if (segments.length > 0) {
                                 const finalBlob = segments.length === 1 ? segments[0] : new Blob(segments, { type: mimeType });
                                 logActivity(`Recording final blob ready. segments=${segments.length}; totalBytes=${finalBlob.size || 0}`);
-                                await uploadRecording(finalBlob);
-                                uploaded = true;
+                                uploaded = await uploadRecording(finalBlob);
                             }
 
                             clearPreservedRecordingSegments();
@@ -1984,9 +2033,12 @@
             speechUnavailable = true;
             config.speechAvailable = false;
             await stopSpeechRecognition();
+            updateAnswerInputState();
             updateAuxiliaryControlsState();
             updateStartButtonState();
             updateSubmitAvailability();
+            if (canAcceptTypedAnswer())
+                setHeaderStatus(message || voiceUnavailableMessage, true);
             logActivity(`Speech disabled for this page: ${message || voiceUnavailableMessage}`);
         };
 
@@ -2009,7 +2061,8 @@
         };
 
         const startSpeechRecognition = async () => {
-            if (!config.speechAvailable)
+            updateAnswerInputState();
+            if (!canUseSpeechRecognition())
                 return;
             if (runtimeStoppedOrCompleted)
                 return;
@@ -2037,6 +2090,9 @@
                 recognitionActiveSinceMs ??= Date.now();
 
                 speechRecognizer.recognizing = (_, e) => {
+                    if (!canUseSpeechRecognition())
+                        return;
+
                     const interimText = (e.result?.text || '').trim();
                     if (interimText) {
                         const committedText = (answerBox.value || '').trim();
@@ -2047,6 +2103,11 @@
                 };
 
                 speechRecognizer.recognized = (_, e) => {
+                    if (!canUseSpeechRecognition()) {
+                        logActivity('Speech recognized result ignored because answer input is not accepting voice.');
+                        return;
+                    }
+
                     const recognizedText = (e.result?.text || '').trim();
                     if (e.result?.reason === SpeechSDK.ResultReason.RecognizedSpeech && recognizedText) {
                         answerBox.value = `${answerBox.value ? `${answerBox.value.trim()} ` : ''}${e.result.text}`.trim();
@@ -2098,6 +2159,12 @@
                 await stopSpeechRecognition();
                 setStatus('Speech recognition could not be started.', true);
             }
+        };
+
+        const resumeSpeechRecognitionForActiveQuestion = async () => {
+            updateAnswerInputState();
+            if (canUseSpeechRecognition())
+                await startSpeechRecognition();
         };
 
         const speakText = async (text, purpose = 'question') => {
@@ -2290,7 +2357,7 @@
                 };
                 updateMeter();
                 logActivity('Mic started.');
-                await startSpeechRecognition();
+                await resumeSpeechRecognitionForActiveQuestion();
                 clearRecoveredMediaBlockingStatus();
                 updateAuxiliaryControlsState();
                 updateStartButtonState();
@@ -2353,10 +2420,17 @@
                 return;
             }
 
+            const submitStartedAt = performance.now();
+            let slowSubmitTimer = null;
             logActivity('Submitting answer...');
             isSpeakingOrSubmitting = true;
             isSubmittingAnswer = true;
             clearAnswerTimers();
+            setHeaderStatus(auto ? 'Auto submitting answer...' : 'Submitting answer...', false);
+            slowSubmitTimer = setTimeout(() => {
+                setHeaderStatus('Still submitting your answer. Please keep this page open.', false);
+                logActivity('Answer submission is still pending.');
+            }, slowSubmitStatusDelayMs);
             submitBtn.disabled = true;
             submitBtn.classList.add('is-loading');
             const originalText = submitBtn.textContent;
@@ -2380,6 +2454,9 @@
             if (pendingRecognitionClientEventId)
                 body.append('speechRecognitionClientEventId', pendingRecognitionClientEventId);
             const result = await postForm(config.submitAnswerUrl, body);
+            const submitElapsedMs = Math.round(performance.now() - submitStartedAt);
+            clearTimeout(slowSubmitTimer);
+            logActivity(`Answer submission finished. elapsedMs=${submitElapsedMs}`);
 
             submitBtn.classList.remove('is-loading');
             isSpeakingOrSubmitting = false;
@@ -2391,9 +2468,11 @@
                 answerNeedsEditAfterFailure = true;
                 updateSubmitAvailability();
                 resetSubmitButtonText();
+                setHeaderStatus('', false);
                 return;
             }
             logActivity('Submit response success: ' + getRuntimeMessage(result, 'Answer saved.'));
+            setHeaderStatus('', false);
             answerNeedsEditAfterFailure = false;
 
             const isTerminated = getValue(result, "isTerminated", "IsTerminated");
@@ -2435,8 +2514,10 @@
             updateSubmitAvailability();
             if (config.speechAvailable && !isPlaceholderSpeechText(resultQuestion)) {
                 await speakText(resultQuestion, 'question');
+                await resumeSpeechRecognitionForActiveQuestion();
                 resetRecognitionTracking(!!speechRecognizer);
             } else {
+                await resumeSpeechRecognitionForActiveQuestion();
                 resetRecognitionTracking(!!speechRecognizer);
                 resetTimers();
             }
@@ -2637,8 +2718,10 @@
             updateAuxiliaryControlsState();
             if (config.speechAvailable && hasActiveQuestion()) {
                 await speakText(questionBox.textContent, 'question');
+                await resumeSpeechRecognitionForActiveQuestion();
                 resetRecognitionTracking(!!speechRecognizer);
             } else {
+                await resumeSpeechRecognitionForActiveQuestion();
                 resetRecognitionTracking(!!speechRecognizer);
                 resetTimers();
             }

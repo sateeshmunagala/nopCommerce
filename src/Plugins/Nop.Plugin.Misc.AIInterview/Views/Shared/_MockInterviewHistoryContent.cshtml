@@ -8,6 +8,8 @@
         return userDateTime.ToString("yyyy-MM-dd");
     }
 
+    string FormatInterviewScore(decimal score) => $"{Math.Round(score):N0}/100";
+
     var practiceText = T("Plugins.Misc.AIInterview.History.MockPracticeLabel").Text;
     var mockHistoryTitleText = T("Plugins.Misc.AIInterview.History.MockTitle").Text;
     var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
@@ -49,7 +51,7 @@
                                 <div><strong>@session.JobTitle</strong></div>
                                 <div class="applications-footnote">@(await FormatUtcDateAsync(session.CreatedOnUtc))</div>
                             </td>
-                            <td class="col-score"><span class="score-chip">@session.Score</span></td>
+                            <td class="col-score"><span class="score-chip">@FormatInterviewScore(session.Score)</span></td>
                             <td class="col-status"><span class="status-pill">@session.Status</span></td>
                             <td class="col-completed">@(await FormatUtcDateAsync(session.CreatedOnUtc))</td>
                             <td class="col-report">
@@ -123,7 +125,7 @@
                             <div class="applications-footnote">@(await FormatUtcDateAsync(session.CreatedOnUtc))</div>
                         </div>
                         <div class="responsive-data-card-chip-group">
-                            <span class="score-chip">@session.Score</span>
+                            <span class="score-chip">@FormatInterviewScore(session.Score)</span>
                             <span class="status-pill">@session.Status</span>
                         </div>
                     </div>
@@ -134,7 +136,7 @@
                         </div>
                         <div class="responsive-data-card-item">
                             <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Score")</span>
-                            <span class="responsive-data-card-value">@session.Score</span>
+                            <span class="responsive-data-card-value">@FormatInterviewScore(session.Score)</span>
                         </div>
                     </div>
                     <div class="responsive-data-card-actions">

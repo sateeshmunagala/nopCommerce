@@ -19,6 +19,7 @@ using NopLogger = Nop.Services.Logging.ILogger;
 using Nop.Web.Framework.Controllers;
 using Microsoft.Extensions.Logging;
 using NopLogLevel = Nop.Core.Domain.Logging.LogLevel;
+using Nop.Services.Logging;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core.Domain.Catalog;
@@ -74,6 +75,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IProductAttributeParser _productAttributeParser;
     private readonly IProductAttributeService _productAttributeService;
     private readonly IJobProductAccessService _jobProductAccessService;
+    private readonly ICustomerActivityService _customerActivityService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -98,7 +100,8 @@ public class MockAiInterviewController : BasePluginController
         IProductTemplateService productTemplateService = null,
         IProductAttributeParser productAttributeParser = null,
         IProductAttributeService productAttributeService = null,
-        IJobProductAccessService jobProductAccessService = null)
+        IJobProductAccessService jobProductAccessService = null,
+        ICustomerActivityService customerActivityService = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -124,6 +127,7 @@ public class MockAiInterviewController : BasePluginController
         _productAttributeParser = productAttributeParser;
         _productAttributeService = productAttributeService;
         _jobProductAccessService = jobProductAccessService;
+        _customerActivityService = customerActivityService;
     }
 
     protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
@@ -147,6 +151,46 @@ public class MockAiInterviewController : BasePluginController
             return;
 
         await _nopLogger.InsertLogAsync(NopLogLevel.Warning, shortMessage, fullMessage, customer ?? (_workContext == null ? null : await _workContext.GetCurrentCustomerAsync()));
+    }
+
+    protected virtual async Task LogRuntimeActivityAsync(InterviewSession session, string systemKeyword, string comment, Customer customer = null)
+    {
+        if (_customerActivityService == null || session == null || string.IsNullOrWhiteSpace(systemKeyword))
+            return;
+
+        var activityCustomer = await ResolveLogCustomerAsync(session, customer);
+        if (activityCustomer == null)
+            return;
+
+        try
+        {
+            await _customerActivityService.InsertActivityAsync(activityCustomer, systemKeyword, comment, session);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "AI Interview activity logging failed for keyword {SystemKeyword}, session {SessionId}.", systemKeyword, session.Id);
+        }
+    }
+
+    protected static string BuildRuntimeActivityComment(InterviewSession session, string message, string acknowledgedTimestamp = null, string screenSize = null, string viewportSize = null)
+    {
+        var details = new List<string>
+        {
+            $"SessionId={session?.Id ?? 0}",
+            $"CustomerId={session?.CustomerId ?? 0}",
+            $"ProductId={session?.ProductId ?? 0}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(message))
+            details.Add($"Message={message.Trim()}");
+        if (!string.IsNullOrWhiteSpace(acknowledgedTimestamp))
+            details.Add($"AcknowledgedTimestamp={acknowledgedTimestamp.Trim()}");
+        if (!string.IsNullOrWhiteSpace(screenSize))
+            details.Add($"ScreenSize={screenSize.Trim()}");
+        if (!string.IsNullOrWhiteSpace(viewportSize))
+            details.Add($"ViewportSize={viewportSize.Trim()}");
+
+        return string.Join("; ", details);
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -1193,6 +1237,11 @@ public class MockAiInterviewController : BasePluginController
             await _nopLogger.InsertLogAsync(NopLogLevel.Information, "AI Interview runtime guidelines acknowledged", fullMessage, logCustomer);
         _logger?.LogInformation("AIInterview runtime guidelines acknowledged for session {SessionId}, customer {CustomerId}, product {ProductId}, token {Token}.",
             session?.Id ?? 0, session?.CustomerId ?? 0, session?.ProductId ?? 0, maskedToken);
+        await LogRuntimeActivityAsync(
+            session,
+            "AIInterview.Runtime.GuidelinesAcknowledged",
+            BuildRuntimeActivityComment(session, "Guidelines acknowledged.", acknowledgedTimestamp, screenSize, viewportSize),
+            logCustomer);
 
         if (session == null)
             return Json(new { success = false, message = "Guidelines acknowledgement logged without an active session." });

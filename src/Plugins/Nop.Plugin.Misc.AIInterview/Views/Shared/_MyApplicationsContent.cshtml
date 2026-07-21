@@ -14,6 +14,8 @@
         return userDateTime.ToString("g");
     }
 
+    string FormatInterviewScore(decimal? score) => score.HasValue ? $"{Math.Round(score.Value):N0}/100" : "--";
+
     var isMyActivity = ViewData["IsMyActivity"] is bool isMyActivityValue && isMyActivityValue;
     var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
     var shareText = T("Plugins.Misc.AIInterview.Report.Share").Text;
@@ -140,11 +142,11 @@
                             <td class="col-score">
                                 @if (app.InterviewScore.HasValue)
                                 {
-                                    <span class="score-chip">@Math.Round(app.InterviewScore.Value)</span>
+                                    <span class="score-chip">@FormatInterviewScore(app.InterviewScore)</span>
                                 }
                                 else
                                 {
-                                    <span>-</span>
+                                    <span>--</span>
                                 }
                             </td>
                             <td class="col-status"><span class="status-pill">@app.Status</span></td>
@@ -222,11 +224,11 @@
                         <div class="responsive-data-card-chip-group">
                             @if (app.InterviewScore.HasValue)
                             {
-                                <span class="score-chip">@Math.Round(app.InterviewScore.Value)</span>
+                                <span class="score-chip">@FormatInterviewScore(app.InterviewScore)</span>
                             }
                             else
                             {
-                                <span class="score-chip score-chip-muted">-</span>
+                                <span class="score-chip score-chip-muted">--</span>
                             }
                             <span class="status-pill">@app.Status</span>
                         </div>
@@ -234,7 +236,7 @@
                     <div class="responsive-data-card-grid">
                         <div class="responsive-data-card-item">
                             <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.MyApplications.Score")</span>
-                            <span class="responsive-data-card-value">@(app.InterviewScore.HasValue ? Math.Round(app.InterviewScore.Value).ToString() : "-")</span>
+                            <span class="responsive-data-card-value">@FormatInterviewScore(app.InterviewScore)</span>
                         </div>
                         <div class="responsive-data-card-item">
                             <span class="responsive-data-card-label">@completedLabelText</span>
