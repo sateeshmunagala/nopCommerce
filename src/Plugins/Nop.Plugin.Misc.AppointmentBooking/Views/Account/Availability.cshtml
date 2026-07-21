@@ -77,7 +77,7 @@
                 <input asp-for="VendorId" type="hidden" />
                 <div class="inputs">
                     <label asp-for="TimeZoneId" asp-postfix=":"></label>
-                    <input asp-for="TimeZoneId" />
+                    <select asp-for="TimeZoneId" asp-items="Model.AvailableTimeZones"></select>
                 </div>
                 <div class="appointment-schedule-list">
                     @for (var i = 0; i < Model.Schedule.Count; i++)
@@ -114,22 +114,8 @@
                 <div class="inputs">
                     <label>Dates</label>
                     <div class="appointment-date-picker" data-unavailable-date-picker>
-                        @{
-                            var today = DateTime.Today;
-                            var monthStart = new DateTime(today.Year, today.Month, 1);
-                            var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
-                        }
-                        @for (var day = 0; day < daysInMonth; day++)
-                        {
-                            var date = monthStart.AddDays(day);
-                            <button type="button"
-                                    class="appointment-date-pill"
-                                    data-unavailable-date="@date.ToString("yyyy-MM-dd")"
-                                    aria-pressed="false">
-                                <span>@date.ToString("ddd")</span>
-                                <strong>@date.Day</strong>
-                            </button>
-                        }
+                        <div class="appointment-calendar-picker" data-unavailable-calendar></div>
+                        <div class="appointment-selected-dates" data-unavailable-selected-dates aria-live="polite"></div>
                     </div>
                 </div>
                 <div class="inputs">

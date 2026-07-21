@@ -57,13 +57,40 @@
                         </dl>
                         <div class="vendor-service-actions">
                             <a class="button-2" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountEditServiceRouteName, new { id = service.Id })">Edit</a>
-                            <button type="button" class="button-2 appointment-placeholder">Analytics</button>
-                            <button type="button" class="icon-button appointment-placeholder" aria-label="Share">Share</button>
-                            <button type="button" class="icon-button appointment-placeholder" aria-label="More">...</button>
-                        </div>
-                        <div class="vendor-service-links">
-                            <a href="@Url.RouteUrl(AppointmentBookingDefaults.AccountAvailabilityRouteName)">Calendar</a>
-                            <a href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServiceQuestionsRouteName, new { id = service.Id })">Questions</a>
+                            <button type="button"
+                                    class="icon-button service-icon-button"
+                                    data-service-copy-url="@service.ProductUrl"
+                                    data-tooltip="Copy URL"
+                                    aria-label="Copy service URL"
+                                    title="Copy URL"
+                                    disabled="@(string.IsNullOrWhiteSpace(service.ProductUrl) ? "disabled" : null)">
+                                <svg class="service-copy-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                    <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <svg class="service-copied-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                    <path d="M20 6 9 17l-5-5"></path>
+                                </svg>
+                            </button>
+                            <form asp-route="@AppointmentBookingDefaults.AccountDeleteServiceRouteName"
+                                  asp-route-id="@service.Id"
+                                  method="post"
+                                  class="service-delete-form">
+                                @Html.AntiForgeryToken()
+                                <button type="submit"
+                                        class="icon-button service-icon-button service-delete-button"
+                                        data-tooltip="Delete service"
+                                        aria-label="Delete service"
+                                        title="Delete service">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                        <path d="M3 6h18"></path>
+                                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                                        <path d="M10 11v6"></path>
+                                        <path d="M14 11v6"></path>
+                                    </svg>
+                                </button>
+                            </form>
                         </div>
                     </article>
                 }

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core;
+using Nop.Core.Domain.Catalog;
+using System.Globalization;
 using Nop.Plugin.Misc.AppointmentBooking.Domains;
 using Nop.Plugin.Misc.AppointmentBooking.Models.Account;
 using Nop.Plugin.Misc.AppointmentBooking.Services;
@@ -10,6 +12,7 @@ using Nop.Services.Helpers;
 using Nop.Services.Messages;
 using Nop.Web.Controllers;
 using Nop.Web.Framework.Mvc.Filters;
+using Nop.Web.Framework.Mvc.Routing;
 
 namespace Nop.Plugin.Misc.AppointmentBooking.Controllers;
 
@@ -24,6 +27,7 @@ public class VendorAppointmentBookingController : BasePublicController
     private readonly ICustomerService _customerService;
     private readonly IDateTimeHelper _dateTimeHelper;
     private readonly INotificationService _notificationService;
+    private readonly INopUrlHelper _nopUrlHelper;
     private readonly IPriceFormatter _priceFormatter;
     private readonly IProductService _productService;
     private readonly IWorkContext _workContext;
@@ -33,6 +37,7 @@ public class VendorAppointmentBookingController : BasePublicController
         ICustomerService customerService,
         IDateTimeHelper dateTimeHelper,
         INotificationService notificationService,
+        INopUrlHelper nopUrlHelper,
         IPriceFormatter priceFormatter,
         IProductService productService,
         IWorkContext workContext)
@@ -42,6 +47,7 @@ public class VendorAppointmentBookingController : BasePublicController
         _customerService = customerService;
         _dateTimeHelper = dateTimeHelper;
         _notificationService = notificationService;
+        _nopUrlHelper = nopUrlHelper;
         _priceFormatter = priceFormatter;
         _productService = productService;
         _workContext = workContext;
@@ -96,6 +102,48 @@ public class VendorAppointmentBookingController : BasePublicController
         return userTime.ToString("yyyy-MM-dd HH:mm");
     }
 
+    protected virtual string FormatTimeZoneOffset(DateTime dateTimeUtc)
+    {
+        var offset = TimeZoneInfo.Local.GetUtcOffset(dateTimeUtc);
+        var sign = offset < TimeSpan.Zero ? "-" : "+";
+        offset = offset.Duration();
+
+        return $"GMT{sign}{offset.Hours}:{offset.Minutes:D2}";
+    }
+
+    protected virtual async Task<string> FormatBookingDateHeaderAsync(DateTime startUtc)
+    {
+        var userStart = await _dateTimeHelper.ConvertToUserTimeAsync(startUtc, DateTimeKind.Utc);
+        return userStart.ToString("ddd, dd MMM yyyy");
+    }
+
+    protected virtual async Task<string> FormatBookingTimeRangeAsync(DateTime startUtc, DateTime endUtc)
+    {
+        var userStart = await _dateTimeHelper.ConvertToUserTimeAsync(startUtc, DateTimeKind.Utc);
+        var userEnd = await _dateTimeHelper.ConvertToUserTimeAsync(endUtc, DateTimeKind.Utc);
+        return $"{userStart:hh:mm} - {userEnd:hh:mm tt} ({FormatTimeZoneOffset(startUtc)})";
+    }
+
+    protected virtual bool IsCompletedBooking(Booking booking)
+    {
+        return string.Equals(booking.Status, BookingStatus.Completed, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(booking.Status, BookingStatus.Cancelled, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(booking.Status, BookingStatus.NoShow, StringComparison.OrdinalIgnoreCase) ||
+            booking.EndUtc < DateTime.UtcNow;
+    }
+
+    protected virtual string GetBookingStatusCssClass(string status)
+    {
+        return status?.ToLowerInvariant() switch
+        {
+            "cancelled" => "cancelled",
+            "completed" => "completed",
+            "confirmed" => "confirmed",
+            "noshow" => "cancelled",
+            _ => "pending"
+        };
+    }
+
     protected virtual async Task<string> PrepareCustomerDisplayNameAsync(int customerId)
     {
         var customer = await _customerService.GetCustomerByIdAsync(customerId);
@@ -119,6 +167,13 @@ public class VendorAppointmentBookingController : BasePublicController
             ? new List<AvailabilityRule>()
             : (await _appointmentBookingService.GetAvailabilityRulesAsync(firstService.Id)).ToList();
         var exceptions = new List<AvailabilityException>();
+        var selectedTimeZoneId = rules
+            .Where(rule => rule.IsActive)
+            .Select(rule => rule.TimeZoneId)
+            .FirstOrDefault(timeZoneId => !string.IsNullOrWhiteSpace(timeZoneId));
+        selectedTimeZoneId = string.IsNullOrWhiteSpace(selectedTimeZoneId)
+            ? (await _dateTimeHelper.GetCurrentTimeZoneAsync()).Id
+            : selectedTimeZoneId.Trim();
 
         foreach (var service in services)
             exceptions.AddRange((await _appointmentBookingService.GetAvailabilityExceptionsAsync(service.Id))
@@ -158,9 +213,18 @@ public class VendorAppointmentBookingController : BasePublicController
             Exceptions = exceptions,
             Schedule = schedule,
             TimeOptions = PrepareTimeOptions(),
+            AvailableTimeZones = _dateTimeHelper.GetSystemTimeZones()
+                .Select(timeZone => new SelectListItem
+                {
+                    Text = timeZone.DisplayName,
+                    Value = timeZone.Id,
+                    Selected = timeZone.Id == selectedTimeZoneId
+                })
+                .ToList(),
             BlockedDates = blockedDates,
             StartTime = "09:00",
             EndTime = "17:00",
+            TimeZoneId = selectedTimeZoneId,
             IsActive = true
         };
     }
@@ -202,7 +266,9 @@ public class VendorAppointmentBookingController : BasePublicController
         if (vendorId <= 0)
             return Challenge();
 
-        var services = await _appointmentBookingService.GetServicesByVendorAsync(vendorId);
+        var services = (await _appointmentBookingService.GetServicesByVendorAsync(vendorId))
+            .Where(service => service.IsActive)
+            .ToList();
         var model = new List<ServiceListItemModel>();
 
         foreach (var service in services)
@@ -217,6 +283,7 @@ public class VendorAppointmentBookingController : BasePublicController
                 Description = service.Description,
                 DurationMinutes = service.DurationMinutes,
                 Price = product != null && product.Price > decimal.Zero ? await _priceFormatter.FormatPriceAsync(product.Price) : string.Empty,
+                ProductUrl = product != null ? await _nopUrlHelper.RouteGenericUrlAsync(product) : string.Empty,
                 IsPublic = service.IsActive
             });
         }
@@ -266,6 +333,34 @@ public class VendorAppointmentBookingController : BasePublicController
         return await SaveServiceAsync(model, model.Id);
     }
 
+    [HttpPost]
+    public async Task<IActionResult> DeleteService(int id)
+    {
+        var vendorId = await GetCurrentVendorIdAsync();
+        if (vendorId <= 0)
+            return Challenge();
+
+        var service = await GetVendorServiceAsync(id, vendorId);
+        if (service == null)
+            return InvokeHttp404();
+
+        service.IsActive = false;
+        await _appointmentBookingService.SaveServiceAsync(service);
+
+        var mapping = await _appointmentBookingService.GetActiveProductMappingByServiceAsync(service.Id);
+        var mappedProduct = mapping?.ProductId > 0 ? await _productService.GetProductByIdAsync(mapping.ProductId) : null;
+        if (mappedProduct != null)
+        {
+            mappedProduct.Published = false;
+            mappedProduct.VisibleIndividually = false;
+            mappedProduct.DisableBuyButton = true;
+            await _productService.UpdateProductAsync(mappedProduct);
+        }
+
+        _notificationService.SuccessNotification("Service deleted.");
+        return RedirectToRoute(AppointmentBookingDefaults.AccountServicesRouteName);
+    }
+
     protected virtual async Task<IActionResult> SaveServiceAsync(EditServiceModel model, int serviceId)
     {
         var vendorId = await GetCurrentVendorIdAsync();
@@ -295,7 +390,23 @@ public class VendorAppointmentBookingController : BasePublicController
             return View("~/Plugins/Misc.AppointmentBooking/Views/Account/EditService.cshtml", invalidModel);
         }
 
-        service = await _appointmentBookingService.SaveServiceAsync(ApplyServiceModel(model, service, vendorId));
+        try
+        {
+            service = await _appointmentBookingService.SaveServiceAsync(ApplyServiceModel(model, service, vendorId));
+        }
+        catch (InvalidOperationException exception)
+        {
+            _notificationService.ErrorNotification(exception.Message);
+            var invalidModel = await PrepareEditServiceModelAsync(service, vendorId);
+            invalidModel.Title = model.Title;
+            invalidModel.ShortDescription = model.ShortDescription;
+            invalidModel.Price = model.Price;
+            invalidModel.DurationMinutes = model.DurationMinutes;
+            invalidModel.AvailableDurations = PrepareDurationOptions(model.DurationMinutes);
+            invalidModel.ServiceDescription = model.ServiceDescription;
+            invalidModel.IsPublic = model.IsPublic;
+            return View("~/Plugins/Misc.AppointmentBooking/Views/Account/EditService.cshtml", invalidModel);
+        }
 
         var mapping = await _appointmentBookingService.GetActiveProductMappingByServiceAsync(service.Id);
         var mappedProduct = mapping?.ProductId > 0 ? await _productService.GetProductByIdAsync(mapping.ProductId) : null;
@@ -367,6 +478,11 @@ public class VendorAppointmentBookingController : BasePublicController
             return RedirectToRoute(AppointmentBookingDefaults.AccountAvailabilityRouteName);
         }
 
+        var selectedTimeZoneId = model.TimeZoneId?.Trim();
+        selectedTimeZoneId = _dateTimeHelper.GetSystemTimeZones().Any(timeZone => timeZone.Id == selectedTimeZoneId)
+            ? selectedTimeZoneId
+            : "UTC";
+
         foreach (var service in services)
         {
             await _appointmentBookingService.DeleteAvailabilityRulesAsync(service.Id);
@@ -380,7 +496,7 @@ public class VendorAppointmentBookingController : BasePublicController
                     DayOfWeek = day.DayOfWeek,
                     StartTimeUtc = ParseTimeForDate(DateTime.UtcNow, day.StartTime),
                     EndTimeUtc = ParseTimeForDate(DateTime.UtcNow, day.EndTime),
-                    TimeZoneId = string.IsNullOrWhiteSpace(model.TimeZoneId) ? "UTC" : model.TimeZoneId.Trim(),
+                    TimeZoneId = selectedTimeZoneId,
                     IsActive = true
                 });
             }
@@ -428,32 +544,56 @@ public class VendorAppointmentBookingController : BasePublicController
             .ToList();
         var dateValues = (model.UnavailableDateValues ?? string.Empty)
             .Split([',', ';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(value => DateTime.TryParse(value, out var parsedDate) ? parsedDate.Date : (DateTime?)null)
+            .Select(value => DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate) ? parsedDate.Date : (DateTime?)null)
             .Where(date => date.HasValue)
             .Select(date => date.Value)
             .Distinct()
             .ToList();
 
-        if (!services.Any() || !dateValues.Any())
+        if (!dateValues.Any())
         {
-            _notificationService.ErrorNotification("Select at least one date and make sure you have an active service.");
+            _notificationService.ErrorNotification("Select at least one unavailable date.");
+            return RedirectToRoute(AppointmentBookingDefaults.AccountAvailabilityRouteName);
+        }
+
+        if (!services.Any())
+        {
+            _notificationService.ErrorNotification("Create an active service before blocking unavailable dates.");
             return RedirectToRoute(AppointmentBookingDefaults.AccountAvailabilityRouteName);
         }
 
         foreach (var service in services)
         {
+            var existingUnavailableExceptions = (await _appointmentBookingService.GetAvailabilityExceptionsAsync(service.Id))
+                .Where(exception => !exception.IsAvailable)
+                .GroupBy(exception => exception.ExceptionDateUtc.Date)
+                .ToDictionary(group => group.Key, group => group.OrderByDescending(exception => exception.UpdatedOnUtc).First());
+
             foreach (var date in dateValues)
             {
-                await _appointmentBookingService.SaveAvailabilityExceptionAsync(new AvailabilityException
+                var availabilityException = existingUnavailableExceptions.TryGetValue(date, out var existingException)
+                    ? existingException
+                    : new AvailabilityException
+                    {
+                        ServiceId = service.Id,
+                        VendorId = vendorId,
+                        ExceptionDateUtc = date,
+                        IsAvailable = false
+                    };
+
+                availabilityException.VendorId = vendorId;
+                availabilityException.StartTimeUtc = date;
+                availabilityException.EndTimeUtc = date.AddDays(1).AddSeconds(-1);
+                availabilityException.IsAvailable = false;
+                availabilityException.Reason = model.Reason?.Trim();
+
+                await _appointmentBookingService.SaveAvailabilityExceptionAsync(availabilityException);
+
+                foreach (var duplicateException in (await _appointmentBookingService.GetAvailabilityExceptionsAsync(service.Id))
+                    .Where(exception => !exception.IsAvailable && exception.ExceptionDateUtc.Date == date && exception.Id != availabilityException.Id))
                 {
-                    ServiceId = service.Id,
-                    VendorId = vendorId,
-                    ExceptionDateUtc = date,
-                    StartTimeUtc = date,
-                    EndTimeUtc = date.AddDays(1),
-                    IsAvailable = false,
-                    Reason = model.Reason?.Trim()
-                });
+                    await _appointmentBookingService.DeleteAvailabilityExceptionAsync(duplicateException.Id);
+                }
             }
         }
 
@@ -537,28 +677,76 @@ public class VendorAppointmentBookingController : BasePublicController
         if (vendorId <= 0)
             return Challenge();
 
+        return View("~/Plugins/Misc.AppointmentBooking/Views/Account/Bookings.cshtml", new VendorBookingTabModel
+        {
+            ActiveTab = "upcoming"
+        });
+    }
+
+    public async Task<IActionResult> BookingsTab(string tab = "upcoming")
+    {
+        var vendorId = await GetCurrentVendorIdAsync();
+        if (vendorId <= 0)
+            return Challenge();
+
+        var activeTab = string.Equals(tab, "completed", StringComparison.OrdinalIgnoreCase) ? "completed" : "upcoming";
+        var model = new VendorBookingTabModel
+        {
+            ActiveTab = activeTab,
+            Bookings = await PrepareVendorBookingModelsAsync(vendorId, activeTab)
+        };
+
+        var viewPath = activeTab == "completed"
+            ? "~/Plugins/Misc.AppointmentBooking/Views/Account/_BookingsCompleted.cshtml"
+            : "~/Plugins/Misc.AppointmentBooking/Views/Account/_BookingsUpcoming.cshtml";
+
+        return PartialView(viewPath, model);
+    }
+
+    protected virtual async Task<IList<VendorBookingModel>> PrepareVendorBookingModelsAsync(int vendorId, string activeTab)
+    {
         var services = (await _appointmentBookingService.GetServicesByVendorAsync(vendorId)).ToDictionary(service => service.Id, service => service.Name);
         var bookings = await _appointmentBookingService.GetBookingsByVendorAsync(vendorId);
+        var isCompletedTab = string.Equals(activeTab, "completed", StringComparison.OrdinalIgnoreCase);
+        var filteredBookings = bookings
+            .Where(booking => isCompletedTab ? IsCompletedBooking(booking) : !IsCompletedBooking(booking));
+        filteredBookings = isCompletedTab
+            ? filteredBookings.OrderByDescending(booking => booking.StartUtc)
+            : filteredBookings.OrderBy(booking => booking.StartUtc);
         var model = new List<VendorBookingModel>();
-        foreach (var booking in bookings)
+
+        foreach (var booking in filteredBookings)
         {
+            var product = booking.ProductId > 0 ? await _productService.GetProductByIdAsync(booking.ProductId) : null;
+            var displayCustomerName = !string.IsNullOrWhiteSpace(booking.AttendeeName)
+                ? booking.AttendeeName
+                : await PrepareCustomerDisplayNameAsync(booking.CustomerId);
+
             model.Add(new VendorBookingModel
             {
                 Id = booking.Id,
                 ServiceName = services.TryGetValue(booking.ServiceId, out var serviceName) ? serviceName : $"Service #{booking.ServiceId}",
                 CustomerDisplayName = await PrepareCustomerDisplayNameAsync(booking.CustomerId),
+                DisplayCustomerName = displayCustomerName,
                 OrderId = booking.OrderId,
                 OrderDisplayText = booking.OrderId.HasValue ? $"#{booking.OrderId.Value}" : "Not checked out",
+                ProductId = booking.ProductId,
                 StartUtc = booking.StartUtc,
                 StartText = await FormatDateTimeAsync(booking.StartUtc),
                 EndUtc = booking.EndUtc,
                 EndText = await FormatDateTimeAsync(booking.EndUtc),
+                DateHeaderText = await FormatBookingDateHeaderAsync(booking.StartUtc),
+                TimeRangeText = await FormatBookingTimeRangeAsync(booking.StartUtc, booking.EndUtc),
+                DurationMinutes = Math.Max(1, (int)Math.Round((booking.EndUtc - booking.StartUtc).TotalMinutes)),
+                PriceText = product != null ? await _priceFormatter.FormatPriceAsync(product.Price) : await _priceFormatter.FormatPriceAsync(decimal.Zero),
                 Status = booking.Status,
+                StatusText = string.IsNullOrWhiteSpace(booking.Status) ? "Pending" : booking.Status,
+                StatusCssClass = GetBookingStatusCssClass(booking.Status),
                 AttendeeName = booking.AttendeeName,
                 AttendeeEmail = booking.AttendeeEmail
             });
         }
 
-        return View("~/Plugins/Misc.AppointmentBooking/Views/Account/Bookings.cshtml", model);
+        return model;
     }
 }

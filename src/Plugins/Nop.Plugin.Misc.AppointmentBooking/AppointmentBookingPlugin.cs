@@ -165,6 +165,13 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         }
     }
 
+    protected virtual async Task RepairServiceProductsAsync()
+    {
+        var services = await _appointmentBookingService.GetAllServicesAsync();
+        foreach (var service in services)
+            await _appointmentBookingService.SaveServiceAsync(service);
+    }
+
     /// <summary>
     /// Gets a configuration page URL
     /// </summary>
@@ -229,6 +236,7 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         await EnsureServiceProductTemplateAsync();
         await EnsureSampleServicesAsync();
+        await RepairServiceProductsAsync();
 
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
         {
@@ -266,6 +274,7 @@ public class AppointmentBookingPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     {
         await EnsureServiceProductTemplateAsync();
         await EnsureSampleServicesAsync();
+        await RepairServiceProductsAsync();
 
         await base.UpdateAsync(currentVersion, targetVersion);
     }

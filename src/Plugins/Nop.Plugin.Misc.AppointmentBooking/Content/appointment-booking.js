@@ -34,6 +34,31 @@
         setActiveDate(root, dateButton.getAttribute('data-appointment-date'));
     });
 
+    document.addEventListener('submit', function (event) {
+        var form = event.target.closest('[data-appointment-booking-form]');
+        if (!form) {
+            return;
+        }
+
+        var selectedTime = form.querySelector('input[name="startUtc"]:checked');
+        var validationMessage = form.querySelector('[data-appointment-validation-message]');
+
+        if (selectedTime) {
+            if (validationMessage) {
+                validationMessage.hidden = true;
+            }
+            return;
+        }
+
+        event.preventDefault();
+        if (validationMessage) {
+            validationMessage.hidden = false;
+            if (typeof validationMessage.focus === 'function') {
+                validationMessage.focus();
+            }
+        }
+    });
+
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('[data-appointment-timezone]').forEach(function (element) {
             try {

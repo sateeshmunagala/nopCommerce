@@ -1,4 +1,4 @@
-@model IList<VendorBookingModel>
+@model VendorBookingTabModel
 
 @{
     Layout = "_ColumnsTwo";
@@ -6,8 +6,13 @@
     NopHtml.AddTitleParts("Bookings");
     NopHtml.AddTitleParts(T("PageTitle.Account").Text);
     NopHtml.AddCssFileParts(@"~/Plugins/Misc.AppointmentBooking/Content/vendor-services.css", null);
+    NopHtml.AddScriptParts(ResourceLocation.Footer, @"~/lib_npm/htmx.org/dist/htmx.min.js");
+    NopHtml.AddScriptParts(ResourceLocation.Footer, @"~/Plugins/Misc.AppointmentBooking/Content/vendor-services.js");
     NopHtml.AppendPageCssClassParts("html-account-page");
     NopHtml.AppendPageCssClassParts("html-appointment-bookings-page");
+
+    var upcomingUrl = Url.RouteUrl(AppointmentBookingDefaults.AccountBookingsTabRouteName, new { tab = "upcoming" });
+    var completedUrl = Url.RouteUrl(AppointmentBookingDefaults.AccountBookingsTabRouteName, new { tab = "completed" });
 }
 
 @section left
@@ -25,39 +30,31 @@
     </div>
 
     <div class="page-body">
-        @if (!Model.Any())
-        {
-            <div class="no-data">No bookings yet.</div>
-        }
-        else
-        {
-            <div class="appointment-table-wrap">
-                <table class="appointment-table">
-                    <thead>
-                        <tr>
-                            <th>Service</th>
-                            <th>Start</th>
-                            <th>End</th>
-                            <th>Status</th>
-                            <th>Order</th>
-                            <th>Customer</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var booking in Model)
-                        {
-                            <tr>
-                                <td>@booking.ServiceName</td>
-                                <td>@booking.StartText</td>
-                                <td>@booking.EndText</td>
-                                <td>@booking.Status</td>
-                                <td>@booking.OrderDisplayText</td>
-                                <td>@booking.CustomerDisplayName</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
+        <nav class="appointment-booking-tabs" aria-label="Booking sections">
+            <button type="button"
+                    class="appointment-booking-tab active"
+                    data-appointment-booking-tab="upcoming"
+                    hx-get="@upcomingUrl"
+                    hx-target="#appointment-bookings-panel"
+                    hx-swap="innerHTML">
+                Upcoming
+            </button>
+            <button type="button"
+                    class="appointment-booking-tab"
+                    data-appointment-booking-tab="completed"
+                    hx-get="@completedUrl"
+                    hx-target="#appointment-bookings-panel"
+                    hx-swap="innerHTML">
+                Completed
+            </button>
+        </nav>
+
+        <section id="appointment-bookings-panel"
+                 class="appointment-bookings-panel"
+                 hx-get="@upcomingUrl"
+                 hx-trigger="load"
+                 hx-swap="innerHTML"
+                 aria-live="polite">
+        </section>
     </div>
 </div>

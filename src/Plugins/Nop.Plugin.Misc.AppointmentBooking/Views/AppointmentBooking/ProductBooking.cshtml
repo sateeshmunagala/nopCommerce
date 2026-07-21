@@ -25,8 +25,10 @@
         </div>
         @if (slotGroups.Any())
         {
-            <form asp-controller="AppointmentBooking" asp-action="HoldSlot" asp-route-productId="@Model.Id" method="post">
+            <form asp-route="Nop.Plugin.Misc.AppointmentBooking.HoldSlot" asp-route-productId="@Model.Id" method="post" data-appointment-booking-form>
+                @Html.AntiForgeryToken()
                 <input type="hidden" name="serviceId" value="@Model.ServiceId" />
+                <div class="message-error appointment-booking__validation" data-appointment-validation-message tabindex="-1" hidden>Select an appointment time.</div>
 
                 <div class="appointment-booking__selector">
                     <div class="appointment-booking__label">Date</div>

@@ -1,0 +1,76 @@
+@model VendorBookingTabModel
+
+@if (!Model.Bookings.Any())
+{
+    <div class="appointment-bookings-empty">
+        <div class="appointment-bookings-empty__art" aria-hidden="true">
+            <span class="appointment-bookings-empty__circle"></span>
+            <span class="appointment-bookings-empty__person"></span>
+            <span class="appointment-bookings-empty__phone"></span>
+            <span class="appointment-bookings-empty__card"></span>
+        </div>
+        <h2>Share your page</h2>
+        <p>A new booking might just be around the corner,<br />share your page today!</p>
+        <a class="button-1 appointment-bookings-empty__action" href="@Url.RouteUrl(AppointmentBookingDefaults.AccountServicesRouteName)">Share page</a>
+    </div>
+}
+else
+{
+    foreach (var dateGroup in Model.Bookings.GroupBy(booking => booking.DateHeaderText))
+    {
+        <section class="appointment-booking-date-group">
+            <h2>@dateGroup.Key</h2>
+
+            @foreach (var booking in dateGroup)
+            {
+                <article class="appointment-booking-card">
+                    <div class="appointment-booking-card__main">
+                        <div class="appointment-booking-card__top">
+                            <span>@booking.TimeRangeText</span>
+                            <strong>@booking.PriceText</strong>
+                        </div>
+
+                        <div class="appointment-booking-card__details">
+                            <h3>@booking.DisplayCustomerName</h3>
+                            <p>@booking.ServiceName (@booking.DurationMinutes mins)</p>
+                        </div>
+
+                        <div class="appointment-booking-card__status-row">
+                            <span class="appointment-booking-status @booking.StatusCssClass">@booking.StatusText</span>
+                            <button type="button" class="button-2 appointment-booking-more" aria-haspopup="true" aria-expanded="false">
+                                More Actions
+                                <span aria-hidden="true"></span>
+                            </button>
+                        </div>
+
+                        <div class="appointment-booking-source">
+                            <span aria-hidden="true"></span>
+                            <div>
+                                <strong>Booking from Hito</strong>
+                                <p>This booking was made through topmate's marketplace</p>
+                            </div>
+                            <small>Discovery Fees: 20% + tx fees</small>
+                        </div>
+                    </div>
+
+                    <aside class="appointment-booking-card__price" aria-label="Price breakdown">
+                        <div class="appointment-booking-card__price-head">
+                            <h3>Price Breakdown</h3>
+                            <button type="button" aria-label="Close price breakdown">x</button>
+                        </div>
+                        <dl>
+                            <div>
+                                <dt>Base Price</dt>
+                                <dd>@booking.PriceText</dd>
+                            </div>
+                            <div class="appointment-booking-card__total">
+                                <dt>Total</dt>
+                                <dd>@booking.PriceText</dd>
+                            </div>
+                        </dl>
+                    </aside>
+                </article>
+            }
+        </section>
+    }
+}

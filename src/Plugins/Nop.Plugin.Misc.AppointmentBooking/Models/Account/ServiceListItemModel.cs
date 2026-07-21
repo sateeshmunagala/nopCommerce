@@ -15,5 +15,7 @@ public record ServiceListItemModel
 
     public string Price { get; set; }
 
+    public string ProductUrl { get; set; }
+
     public bool IsPublic { get; set; }
 }

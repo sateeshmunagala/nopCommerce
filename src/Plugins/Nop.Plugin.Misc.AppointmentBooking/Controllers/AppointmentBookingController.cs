@@ -239,12 +239,19 @@ public class AppointmentBookingController : BasePublicController
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> HoldSlot(int productId, int serviceId, DateTime startUtc)
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
         var product = await _productService.GetProductByIdAsync(productId);
         if (product == null)
             return RedirectToRoute(NopRouteNames.General.HOMEPAGE);
+
+        if (startUtc == default)
+        {
+            _notificationService.ErrorNotification("Select an appointment time.");
+            return RedirectToRoute(AppointmentBookingDefaults.ProductBookingRouteName, new { productId });
+        }
 
         var hold = await _appointmentBookingService.CreateTimeSlotHoldAsync(serviceId, productId, customer.Id, startUtc);
         if (hold == null)
@@ -308,7 +315,15 @@ public class AppointmentBookingController : BasePublicController
         if (service == null)
             return RedirectToAction("Services");
 
-        service = await _appointmentBookingService.SaveServiceAsync(ToServiceEntity(model, service));
+        try
+        {
+            service = await _appointmentBookingService.SaveServiceAsync(ToServiceEntity(model, service));
+        }
+        catch (InvalidOperationException exception)
+        {
+            _notificationService.ErrorNotification(exception.Message);
+            return View("~/Plugins/Misc.AppointmentBooking/Views/Admin/EditService.cshtml", await ToServiceModelAsync(service));
+        }
 
         _notificationService.SuccessNotification("Appointment service saved.");
         return RedirectToAction("EditService", new { id = service.Id });

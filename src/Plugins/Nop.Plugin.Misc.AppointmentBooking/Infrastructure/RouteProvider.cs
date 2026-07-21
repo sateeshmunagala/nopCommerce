@@ -79,6 +79,10 @@ public class RouteProvider : BaseRouteProvider, IRouteProvider
             pattern: $"{lang}/appointment-booking/account/services/edit/{{id}}",
             defaults: new { controller = "VendorAppointmentBooking", action = "EditService" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountDeleteServiceRouteName,
+            pattern: $"{lang}/appointment-booking/account/services/{{id}}/delete",
+            defaults: new { controller = "VendorAppointmentBooking", action = "DeleteService" });
+
         endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountServiceAvailabilityRouteName,
             pattern: $"{lang}/appointment-booking/account/services/{{id}}/availability",
             defaults: new { controller = "VendorAppointmentBooking", action = "Availability" });
@@ -90,6 +94,10 @@ public class RouteProvider : BaseRouteProvider, IRouteProvider
         endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountBookingsRouteName,
             pattern: $"{lang}/appointment-booking/account/bookings",
             defaults: new { controller = "VendorAppointmentBooking", action = "Bookings" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AppointmentBookingDefaults.AccountBookingsTabRouteName,
+            pattern: $"{lang}/appointment-booking/account/bookings/{{tab}}",
+            defaults: new { controller = "VendorAppointmentBooking", action = "BookingsTab" });
 
     }
 

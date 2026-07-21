@@ -108,7 +108,7 @@
 
 .vendor-service-actions {
   flex-wrap: wrap;
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 
 .vendor-service-links {
@@ -127,6 +127,96 @@
   background: #fff;
   color: #394452;
   cursor: pointer;
+}
+
+.service-icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  min-height: 46px;
+  padding: 0;
+}
+
+.service-icon-button svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.service-icon-button:hover,
+.service-icon-button:focus-visible {
+  border-color: #9fb2c7;
+  background: #f8fafc;
+}
+
+.service-icon-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.service-icon-button[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 2;
+  max-width: 160px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: #111827;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.service-icon-button[data-tooltip]:hover::after,
+.service-icon-button[data-tooltip]:focus-visible::after {
+  opacity: 1;
+}
+
+.service-delete-form {
+  margin: 0;
+}
+
+.service-delete-button {
+  color: #9f1d1d;
+}
+
+.service-delete-button:hover,
+.service-delete-button:focus-visible {
+  border-color: #e5b4b4;
+  background: #fff5f5;
+}
+
+.service-copied-icon {
+  display: none;
+}
+
+.service-icon-button.copied {
+  border-color: #a9d5bd;
+  color: #17623a;
+  background: #eefbf3;
+}
+
+.service-icon-button.copied .service-copy-icon {
+  display: none;
+}
+
+.service-icon-button.copied .service-copied-icon {
+  display: block;
 }
 
 .appointment-back-link {
@@ -201,6 +291,376 @@
 
 .appointment-calendar-tabs a:hover {
   border-bottom-color: #1f6fb2;
+}
+
+.appointment-booking-tabs {
+  display: flex;
+  gap: 30px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.appointment-booking-tab {
+  min-height: 38px;
+  padding: 0 0 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #000;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.appointment-booking-tab.active {
+  border-bottom-color: #111;
+  font-weight: 700;
+}
+
+.appointment-bookings-panel {
+  min-height: 260px;
+}
+
+.appointment-bookings-empty {
+  display: grid;
+  justify-items: center;
+  padding: 34px 16px 22px;
+  text-align: center;
+}
+
+.appointment-bookings-empty__art {
+  position: relative;
+  width: 170px;
+  height: 150px;
+  margin-bottom: 18px;
+}
+
+.appointment-bookings-empty__circle {
+  position: absolute;
+  left: 16px;
+  top: 34px;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: #ffbc0a;
+}
+
+.appointment-bookings-empty__person {
+  position: absolute;
+  left: 54px;
+  top: 40px;
+  width: 58px;
+  height: 88px;
+  border: 2px solid #111;
+  border-radius: 28px 28px 8px 8px;
+  background: #fff;
+}
+
+.appointment-bookings-empty__person::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: -20px;
+  width: 26px;
+  height: 26px;
+  border: 2px solid #111;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.appointment-bookings-empty__person::after {
+  content: "";
+  position: absolute;
+  left: -28px;
+  top: -30px;
+  width: 18px;
+  height: 58px;
+  border: 2px solid #111;
+  border-radius: 12px;
+  background: #fff;
+  transform: rotate(-34deg);
+}
+
+.appointment-bookings-empty__phone {
+  position: absolute;
+  right: 10px;
+  top: 54px;
+  width: 46px;
+  height: 84px;
+  border: 2px solid #111;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.appointment-bookings-empty__phone::after {
+  content: "%";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.appointment-bookings-empty__card {
+  position: absolute;
+  right: 0;
+  top: 28px;
+  width: 70px;
+  height: 30px;
+  border: 2px solid #111;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.appointment-bookings-empty__card::before {
+  content: "$";
+  position: absolute;
+  left: 8px;
+  top: 3px;
+  color: #111;
+  font-weight: 700;
+}
+
+.appointment-bookings-empty h2 {
+  margin: 0 0 10px;
+  color: #2d3748;
+  font-size: 24px;
+}
+
+.appointment-bookings-empty p {
+  margin: 0 0 20px;
+  color: #2d3748;
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.appointment-bookings-empty__action {
+  min-width: 110px;
+  border-radius: 4px;
+  background: #111;
+}
+
+.appointment-booking-date-group {
+  padding: 34px 0 0;
+}
+
+.appointment-booking-date-group > h2 {
+  margin: 0 0 12px 30px;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.appointment-booking-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.95fr);
+  max-width: 830px;
+  border: 1px solid #e3e3e3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.appointment-booking-card__main {
+  min-width: 0;
+}
+
+.appointment-booking-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 60px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #111827;
+  box-sizing: border-box;
+}
+
+.appointment-booking-card__top strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 45px;
+  height: 30px;
+  border-radius: 999px;
+  background: #9a6104;
+  color: #fff;
+  font-weight: 700;
+}
+
+.appointment-booking-card__details {
+  padding: 24px 20px 16px;
+}
+
+.appointment-booking-card__details h3 {
+  margin: 0 0 10px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.appointment-booking-card__details p {
+  margin: 0;
+  color: #4b5563;
+}
+
+.appointment-booking-card__status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 20px;
+}
+
+.appointment-booking-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.appointment-booking-status.cancelled {
+  background: #fff1ef;
+  color: #8c160e;
+}
+
+.appointment-booking-status.completed,
+.appointment-booking-status.confirmed {
+  background: #eefbf3;
+  color: #17623a;
+}
+
+.appointment-booking-status.pending {
+  background: #fff8ea;
+  color: #76521a;
+}
+
+.appointment-booking-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 142px;
+  min-height: 40px;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: #f5f5f5;
+  color: #111827;
+}
+
+.appointment-booking-more span {
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid #111827;
+  border-bottom: 2px solid #111827;
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.appointment-booking-source {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 20px 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff0e6;
+  color: #000;
+}
+
+.appointment-booking-source > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff8b3d;
+}
+
+.appointment-booking-source strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 13px;
+}
+
+.appointment-booking-source p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.appointment-booking-source small {
+  color: #8a6b5c;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.appointment-booking-card__price {
+  display: flex;
+  flex-direction: column;
+  min-height: 290px;
+  border-left: 1px solid #e6e6e6;
+  background: #fff;
+}
+
+.appointment-booking-card__price-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 8px;
+}
+
+.appointment-booking-card__price-head h3 {
+  margin: 0;
+  color: #111;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.appointment-booking-card__price-head button {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: #f0e5d8;
+  color: #9a6104;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.appointment-booking-card__price dl {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  margin: 0;
+}
+
+.appointment-booking-card__price dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 20px 14px;
+  color: #111;
+}
+
+.appointment-booking-card__price dt,
+.appointment-booking-card__price dd {
+  margin: 0;
+}
+
+.appointment-booking-card__price dt {
+  font-weight: 700;
+}
+
+.appointment-booking-card__price dd {
+  font-weight: 700;
+}
+
+.appointment-booking-card__total {
+  margin-top: auto;
 }
 
 .appointment-calendar-layout {
@@ -297,43 +757,124 @@
 
 .appointment-date-picker {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
+  gap: 12px;
   margin-top: 8px;
+  justify-items: center;
 }
 
-.appointment-date-pill {
-  min-width: 0;
-  min-height: 58px;
-  padding: 8px 4px;
+.appointment-calendar-picker .ui-datepicker {
+  width: 280px;
+  max-width: calc(100vw - 72px);
+  padding: 10px;
   border: 1px solid #d7dde5;
-  border-radius: 8px;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.appointment-calendar-picker .ui-datepicker-header {
+  margin-bottom: 8px;
+  border: 0;
+  border-radius: 4px;
+  background: #f5f7fa;
+  color: #394452;
+}
+
+.appointment-calendar-picker .ui-datepicker-title {
+  color: #394452;
+  font-weight: 600;
+}
+
+.appointment-calendar-picker .ui-datepicker-title select {
+  min-height: 28px;
+  border: 1px solid #d7dde5;
+  border-radius: 4px;
   background: #fff;
   color: #394452;
+}
+
+.appointment-calendar-picker .ui-datepicker-prev,
+.appointment-calendar-picker .ui-datepicker-next {
   cursor: pointer;
+}
+
+.appointment-calendar-picker .ui-datepicker-calendar th,
+.appointment-calendar-picker .ui-datepicker-calendar td {
+  width: 34px;
+  height: 32px;
+  padding: 1px;
   text-align: center;
 }
 
-.appointment-date-pill span,
-.appointment-date-pill strong {
-  display: block;
+.appointment-calendar-picker .ui-datepicker-calendar th span,
+.appointment-calendar-picker .ui-datepicker-calendar td a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  box-sizing: border-box;
+  text-align: center;
 }
 
-.appointment-date-pill span {
-  margin-bottom: 3px;
-  font-size: 11px;
-  color: #586270;
+.appointment-calendar-picker .ui-datepicker-calendar td a.ui-state-default {
+  background: #fff;
+  color: #394452;
 }
 
-.appointment-date-pill strong {
-  font-size: 16px;
-}
-
-.appointment-date-pill.selected {
+.appointment-calendar-picker .ui-datepicker-calendar td a.ui-state-hover,
+.appointment-calendar-picker .ui-datepicker-calendar td.appointment-datepicker-selected a {
   border-color: #24b99a;
   background: #e5f2ee;
   color: #17623a;
-  box-shadow: inset 0 0 0 1px #24b99a;
+}
+
+.appointment-calendar-picker .ui-datepicker-calendar td a.ui-state-active {
+  border-color: #24b99a;
+  background: #24b99a;
+  color: #fff;
+}
+
+.appointment-selected-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  min-height: 0;
+}
+
+.appointment-selected-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid #24b99a;
+  border-radius: 999px;
+  background: #e5f2ee;
+  color: #17623a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.appointment-selected-date button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #17623a;
+  cursor: pointer;
+  font-weight: 700;
 }
 
 .appointment-editor-panel textarea,
@@ -407,7 +948,26 @@
     text-align: left;
   }
 
-  .appointment-date-picker {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .appointment-booking-tabs {
+    gap: 22px;
+  }
+
+  .appointment-booking-card {
+    grid-template-columns: 1fr;
+  }
+
+  .appointment-booking-card__price {
+    min-height: 180px;
+    border-left: 0;
+    border-top: 1px solid #e6e6e6;
+  }
+
+  .appointment-booking-source {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .appointment-booking-source small {
+    grid-column: 2;
+    white-space: normal;
   }
 }

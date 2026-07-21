@@ -20,6 +20,8 @@ public record AvailabilityModel
 
     public IList<SelectListItem> TimeOptions { get; set; } = new List<SelectListItem>();
 
+    public IList<SelectListItem> AvailableTimeZones { get; set; } = new List<SelectListItem>();
+
     public IList<BlockedDateModel> BlockedDates { get; set; } = new List<BlockedDateModel>();
 
     public string UnavailableDateValues { get; set; }

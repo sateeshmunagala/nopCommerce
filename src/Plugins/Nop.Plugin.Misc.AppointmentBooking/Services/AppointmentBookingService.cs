@@ -81,14 +81,58 @@ public class AppointmentBookingService : IAppointmentBookingService
         return dateUtc.Date.Add(timeUtc.TimeOfDay);
     }
 
-    protected virtual async Task<int> GetServiceProductTemplateIdAsync()
+    protected virtual async Task<int> EnsureServiceProductTemplateAsync()
     {
         var templates = await _productTemplateService.GetAllProductTemplatesAsync();
-        return templates.FirstOrDefault(template =>
-            string.Equals(template.ViewPath, AppointmentBookingDefaults.ServiceProductTemplateViewPath, StringComparison.OrdinalIgnoreCase))?.Id ??
+        var template = templates.FirstOrDefault(template =>
+            string.Equals(template.ViewPath, AppointmentBookingDefaults.ServiceProductTemplateViewPath, StringComparison.OrdinalIgnoreCase)) ??
             templates.FirstOrDefault(template =>
-                string.Equals(template.Name, AppointmentBookingDefaults.ServiceProductTemplateName, StringComparison.OrdinalIgnoreCase))?.Id ??
-            0;
+                string.Equals(template.Name, AppointmentBookingDefaults.ServiceProductTemplateName, StringComparison.OrdinalIgnoreCase));
+
+        var ignoredProductTypes = ((int)ProductType.GroupedProduct).ToString();
+        if (template == null)
+        {
+            var productTemplate = new ProductTemplate
+            {
+                Name = AppointmentBookingDefaults.ServiceProductTemplateName,
+                ViewPath = AppointmentBookingDefaults.ServiceProductTemplateViewPath,
+                DisplayOrder = 22,
+                IgnoredProductTypes = ignoredProductTypes
+            };
+
+            await _productTemplateService.InsertProductTemplateAsync(productTemplate);
+            return productTemplate.Id;
+        }
+
+        var changed = false;
+        if (!string.Equals(template.Name, AppointmentBookingDefaults.ServiceProductTemplateName, StringComparison.Ordinal))
+        {
+            template.Name = AppointmentBookingDefaults.ServiceProductTemplateName;
+            changed = true;
+        }
+
+        if (!string.Equals(template.ViewPath, AppointmentBookingDefaults.ServiceProductTemplateViewPath, StringComparison.Ordinal))
+        {
+            template.ViewPath = AppointmentBookingDefaults.ServiceProductTemplateViewPath;
+            changed = true;
+        }
+
+        if (template.DisplayOrder != 22)
+        {
+            template.DisplayOrder = 22;
+            changed = true;
+        }
+
+        if (!string.Equals(template.IgnoredProductTypes, ignoredProductTypes, StringComparison.Ordinal))
+        {
+            template.IgnoredProductTypes = ignoredProductTypes;
+            changed = true;
+        }
+
+        if (changed)
+            await _productTemplateService.UpdateProductTemplateAsync(template);
+
+        return template.Id;
     }
 
     protected virtual async Task<Product> EnsureServiceProductAsync(BookableService service)
@@ -99,7 +143,9 @@ public class AppointmentBookingService : IAppointmentBookingService
         var mapping = await GetActiveProductMappingByServiceAsync(service.Id);
         var product = mapping?.ProductId > 0 ? await _productService.GetProductByIdAsync(mapping.ProductId) : null;
         var now = DateTime.UtcNow;
-        var productTemplateId = await GetServiceProductTemplateIdAsync();
+        var productTemplateId = await EnsureServiceProductTemplateAsync();
+        if (productTemplateId <= 0)
+            throw new InvalidOperationException($"The '{AppointmentBookingDefaults.ServiceProductTemplateName}' product template could not be created or found.");
 
         if (product == null)
         {
@@ -111,6 +157,7 @@ public class AppointmentBookingService : IAppointmentBookingService
                 ShortDescription = string.Empty,
                 FullDescription = service.Description,
                 ProductTemplateId = productTemplateId,
+                Price = decimal.Zero,
                 VendorId = service.VendorId,
                 Published = service.IsActive,
                 DisableBuyButton = false,
@@ -130,15 +177,18 @@ public class AppointmentBookingService : IAppointmentBookingService
         {
             product.Name = service.Name;
             product.FullDescription = service.Description;
-            product.ProductTemplateId = productTemplateId > 0 ? productTemplateId : product.ProductTemplateId;
+            product.ProductTemplateId = productTemplateId;
             product.VendorId = service.VendorId;
             product.Published = service.IsActive;
+            product.ProductType = ProductType.SimpleProduct;
             product.VisibleIndividually = true;
             product.DisableBuyButton = false;
             product.DisableWishlistButton = true;
             product.IsShipEnabled = false;
+            product.ManageInventoryMethod = ManageInventoryMethod.DontManageStock;
+            product.StockQuantity = product.StockQuantity <= 0 ? 10000 : product.StockQuantity;
             product.OrderMinimumQuantity = product.OrderMinimumQuantity <= 0 ? 1 : product.OrderMinimumQuantity;
-            product.OrderMaximumQuantity = product.OrderMaximumQuantity <= 0 ? 1 : product.OrderMaximumQuantity;
+            product.OrderMaximumQuantity = 1;
             product.UpdatedOnUtc = now;
 
             await _productService.UpdateProductAsync(product);
@@ -417,6 +467,12 @@ public class AppointmentBookingService : IAppointmentBookingService
     public async Task<AvailabilityException> SaveAvailabilityExceptionAsync(AvailabilityException availabilityException)
     {
         ArgumentNullException.ThrowIfNull(availabilityException);
+
+        if (availabilityException.EndTimeUtc.TimeOfDay <= availabilityException.StartTimeUtc.TimeOfDay &&
+            availabilityException.EndTimeUtc.Date > availabilityException.StartTimeUtc.Date)
+        {
+            availabilityException.EndTimeUtc = availabilityException.StartTimeUtc.Date.AddDays(1).AddSeconds(-1);
+        }
 
         var now = DateTime.UtcNow;
         availabilityException.UpdatedOnUtc = now;

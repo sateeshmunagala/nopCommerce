@@ -11,9 +11,13 @@ public record VendorBookingModel
 
     public string CustomerDisplayName { get; set; }
 
+    public string DisplayCustomerName { get; set; }
+
     public int? OrderId { get; set; }
 
     public string OrderDisplayText { get; set; }
+
+    public int ProductId { get; set; }
 
     public DateTime StartUtc { get; set; }
 
@@ -23,9 +27,28 @@ public record VendorBookingModel
 
     public string EndText { get; set; }
 
+    public string DateHeaderText { get; set; }
+
+    public string TimeRangeText { get; set; }
+
+    public int DurationMinutes { get; set; }
+
+    public string PriceText { get; set; }
+
     public string Status { get; set; }
+
+    public string StatusText { get; set; }
+
+    public string StatusCssClass { get; set; }
 
     public string AttendeeName { get; set; }
 
     public string AttendeeEmail { get; set; }
+}
+
+public record VendorBookingTabModel
+{
+    public string ActiveTab { get; set; }
+
+    public IList<VendorBookingModel> Bookings { get; set; } = new List<VendorBookingModel>();
 }

@@ -46,6 +46,11 @@ public static class AppointmentBookingDefaults
     public static string AccountEditServiceRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Service.Edit";
 
     /// <summary>
+    /// Gets the vendor account service delete route name
+    /// </summary>
+    public static string AccountDeleteServiceRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Service.Delete";
+
+    /// <summary>
     /// Gets the vendor account service availability route name
     /// </summary>
     public static string AccountServiceAvailabilityRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Service.Availability";
@@ -79,6 +84,11 @@ public static class AppointmentBookingDefaults
     /// Gets the vendor account bookings route name
     /// </summary>
     public static string AccountBookingsRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Bookings";
+
+    /// <summary>
+    /// Gets the vendor account bookings tab route name
+    /// </summary>
+    public static string AccountBookingsTabRouteName => "Nop.Plugin.Misc.AppointmentBooking.Account.Bookings.Tab";
 
     /// <summary>
     /// Gets the vendor account services tab id
