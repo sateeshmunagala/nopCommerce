@@ -69,17 +69,18 @@
         </div>
     </div>
     <div class="page-body">
-        <div class="section vendor-job-page-section">
-            <form asp-action="@(Model.IsEditMode ? "VendorJobEdit" : "VendorJobCreation")"
-                  asp-route-productId="@(Model.IsEditMode ? Model.Id : (int?)null)"
-                  method="post"
-                  class="vendor-job-form-shell">
-                <input asp-for="Id" type="hidden" />
-                <input asp-for="IsEditMode" type="hidden" />
-                <input asp-for="Sku" type="hidden" />
-                <div class="fieldset">
-                    <div class="vendor-job-posting-shell">
-                        <div asp-validation-summary="ModelOnly" class="message-error"></div>
+        <div class="section">
+            <div class="vendor-job-page-section">
+                <form asp-action="@(Model.IsEditMode ? "VendorJobEdit" : "VendorJobCreation")"
+                      asp-route-productId="@(Model.IsEditMode ? Model.Id : (int?)null)"
+                      method="post"
+                      class="vendor-job-form-shell">
+                    <input asp-for="Id" type="hidden" />
+                    <input asp-for="IsEditMode" type="hidden" />
+                    <input asp-for="Sku" type="hidden" />
+                    <div class="fieldset">
+                        <div class="vendor-job-posting-shell">
+                            <div asp-validation-summary="ModelOnly" class="message-error"></div>
 
                         <section class="vendor-job-form-section">
                             <div class="vendor-job-form-section-heading">
@@ -221,7 +222,7 @@
                                 <h3 class="vendor-job-form-section-title">@interviewSettingsText</h3>
                                 <p class="vendor-job-form-section-copy">Keep the application gate, publish state, and interview requirements aligned before going live.</p>
                             </div>
-                            <div class="vendor-job-form-simple-grid vendor-job-form-interview-grid">
+                            <div class="vendor-job-form-simple-grid vendor-job-form-interview-grid vendor-job-form-checkbox-list">
                                 <div class="vendor-job-form-field">
                                     <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.ResumeRequired)">
                                         <input type="hidden" name="@Html.NameFor(model => model.ResumeRequired)" value="false" />
@@ -269,7 +270,8 @@
                         </div>
                     </div>
                 </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
