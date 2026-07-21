@@ -695,6 +695,7 @@ public class RuntimeAndAdminTests
                 var name when name == AIInterviewDefaults.MockRefreshTokenRouteName => "/mockaiinterview/refresh-token",
                 var name when name == AIInterviewDefaults.MockSpeechTokenRouteName => "/mockaiinterview/speech-token",
                 var name when name == AIInterviewDefaults.MockRecordingUploadRouteName => "/mockaiinterview/upload-recording",
+                var name when name == AIInterviewDefaults.MockRuntimeClientEventRouteName => "/mockaiinterview/runtime-client-event",
                 _ => string.Empty
             });
         controller.Url = urlHelper.Object;
@@ -709,6 +710,7 @@ public class RuntimeAndAdminTests
         Assert.That(model.ClientSettings.QuestionCount, Is.EqualTo(5));
         Assert.That(model.ReportUrl, Is.EqualTo("/mockaiinterview/report/1"));
         Assert.That(model.ClientSettings.ReportUrl, Is.EqualTo("/mockaiinterview/report/1"));
+        Assert.That(model.ClientSettings.RuntimeClientEventUrl, Is.EqualTo("/mockaiinterview/runtime-client-event"));
     }
 
     [Test]
@@ -739,6 +741,7 @@ public class RuntimeAndAdminTests
                 var name when name == AIInterviewDefaults.MockRefreshTokenRouteName => "/mockaiinterview/refresh-token",
                 var name when name == AIInterviewDefaults.MockSpeechTokenRouteName => "/mockaiinterview/speech-token",
                 var name when name == AIInterviewDefaults.MockRecordingUploadRouteName => "/mockaiinterview/upload-recording",
+                var name when name == AIInterviewDefaults.MockRuntimeClientEventRouteName => "/mockaiinterview/runtime-client-event",
                 _ => string.Empty
             });
         _runtimeController.Url = urlHelper.Object;
@@ -938,6 +941,13 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("SpeechSDK"));
         Assert.That(runtimeViewText, Does.Contain("speechTokenUrl"));
         Assert.That(runtimeViewText, Does.Contain("beginInterviewUrl"));
+        Assert.That(runtimeViewText, Does.Contain("runtimeClientEventUrl"));
+        Assert.That(runtimeViewText, Does.Contain("const reportRuntimeClientRequestFailure = (event) =>"));
+        Assert.That(runtimeViewText, Does.Contain("event.requestName === 'runtime-client-event'"));
+        Assert.That(runtimeViewText, Does.Contain("failureKind: 'http-status'"));
+        Assert.That(runtimeViewText, Does.Contain("failureKind: 'invalid-json'"));
+        Assert.That(runtimeViewText, Does.Contain("failureKind: 'non-json-response'"));
+        Assert.That(runtimeViewText, Does.Contain("failureKind: 'fetch-exception'"));
         Assert.That(runtimeViewText, Does.Contain("submitAnswer"));
         Assert.That(runtimeViewText, Does.Contain("stopInterview"));
         Assert.That(runtimeViewText, Does.Contain("runtime-question-count"));
@@ -1441,6 +1451,125 @@ public class RuntimeAndAdminTests
                 message.Contains("UserAgent=test-agent") &&
                 message.Contains("ScreenSize=1920x1080") &&
                 message.Contains("ViewportSize=1280x720")),
+            It.IsAny<Customer>()), Times.Once);
+    }
+
+    [Test]
+    public async Task RuntimeClientEvent_ValidSession_WritesNetworkFailureActivity()
+    {
+        var session = new InterviewSession
+        {
+            Id = 78,
+            CustomerId = 13,
+            ProductId = 35,
+            Token = "client-event-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        var customer = new Customer { Id = session.CustomerId, Email = "candidate@example.com" };
+        var activityService = new Mock<ICustomerActivityService>();
+        string activityComment = null;
+
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("client-event-token")).ReturnsAsync(session);
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(customer);
+        activityService.Setup(x => x.InsertActivityAsync(
+                customer,
+                "AIInterview.Runtime.NetworkRequestFailed",
+                It.IsAny<string>(),
+                It.IsAny<BaseEntity>()))
+            .Callback<Customer, string, string, BaseEntity>((_, _, comment, _) => activityComment = comment)
+            .ReturnsAsync(new ActivityLog());
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            nopLogger: _nopLogger.Object,
+            customerActivityService: activityService.Object);
+
+        var result = await controller.RuntimeClientEvent(
+            "client-event-token",
+            "network-request-failed",
+            "submit-answer",
+            500,
+            "Candidate typed answer should not be logged",
+            "http-status",
+            1800);
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        Assert.That(((JsonResult)result).Value.GetType().GetProperty("success")?.GetValue(((JsonResult)result).Value, null), Is.EqualTo(true));
+        Assert.That(activityComment, Does.Contain("SessionId=78"));
+        Assert.That(activityComment, Does.Contain("CustomerId=13"));
+        Assert.That(activityComment, Does.Contain("ProductId=35"));
+        Assert.That(activityComment, Does.Contain("Request=submit-answer"));
+        Assert.That(activityComment, Does.Contain("StatusCode=500"));
+        Assert.That(activityComment, Does.Contain("FailureKind=http-status"));
+        Assert.That(activityComment, Does.Contain("ElapsedMs=1800"));
+        Assert.That(activityComment, Does.Contain("Message=Runtime request returned HTTP 500."));
+        Assert.That(activityComment, Does.Not.Contain("client-event-token"));
+        Assert.That(activityComment, Does.Not.Contain("Candidate typed answer"));
+        activityService.Verify(x => x.InsertActivityAsync(
+            customer,
+            "AIInterview.Runtime.NetworkRequestFailed",
+            It.IsAny<string>(),
+            It.IsAny<BaseEntity>()), Times.Once);
+        _nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview runtime client request failure",
+            It.Is<string>(message => message == activityComment),
+            customer), Times.Once);
+    }
+
+    [Test]
+    public async Task RuntimeClientEvent_InvalidToken_IsHandledSafely()
+    {
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("raw-token-secret")).ReturnsAsync((InterviewSession)null);
+        var activityService = new Mock<ICustomerActivityService>();
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            nopLogger: _nopLogger.Object,
+            customerActivityService: activityService.Object);
+
+        var result = await controller.RuntimeClientEvent(
+            "raw-token-secret",
+            "network-request-failed",
+            "submit-answer?token=raw-token-secret",
+            0,
+            "Candidate typed answer should not be logged",
+            "fetch-exception",
+            25);
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var success = ((JsonResult)result).Value.GetType().GetProperty("success")?.GetValue(((JsonResult)result).Value, null);
+        Assert.That(success, Is.EqualTo(false));
+        activityService.Verify(x => x.InsertActivityAsync(It.IsAny<Customer>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<BaseEntity>()), Times.Never);
+        _nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview runtime client request failure",
+            It.Is<string>(message =>
+                message.Contains("Token=raw-to...") &&
+                message.Contains("Request=unknown") &&
+                message.Contains("FailureKind=fetch-exception") &&
+                message.Contains("Unable to reach the interview service.") &&
+                !message.Contains("raw-token-secret") &&
+                !message.Contains("Candidate typed answer")),
             It.IsAny<Customer>()), Times.Once);
     }
 

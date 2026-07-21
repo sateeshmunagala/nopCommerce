@@ -110,10 +110,13 @@ public class PluginDefaultsTests
         Assert.That(AIInterviewDefaults.AdminMockPracticeSessionsRouteName, Is.EqualTo("Plugin.Misc.AIInterview.Admin.MockPracticeSessions"));
         Assert.That(AIInterviewDefaults.AdminMockPracticeSessionsListRouteName, Is.EqualTo("Plugin.Misc.AIInterview.Admin.MockPracticeSessions.List"));
         Assert.That(AIInterviewDefaults.AdminMockPracticeSessionsMenuSystemName, Is.EqualTo("AIInterview.MockPracticeSessions"));
+        Assert.That(AIInterviewDefaults.MockRuntimeClientEventRouteName, Is.EqualTo("Plugin.Misc.AIInterview.Mock.RuntimeClientEvent"));
         Assert.That(routeProviderText, Does.Contain("pattern: \"Admin/AIInterviewAdmin/MockPracticeSessions\""));
         Assert.That(routeProviderText, Does.Contain("pattern: \"Admin/AIInterviewAdmin/MockPracticeSessionsList\""));
+        Assert.That(routeProviderText, Does.Contain("pattern: \"mockaiinterview/runtime-client-event\""));
         Assert.That(routeProviderText, Does.Contain("name: AIInterviewDefaults.AdminMockPracticeSessionsRouteName"));
         Assert.That(routeProviderText, Does.Contain("name: AIInterviewDefaults.AdminMockPracticeSessionsListRouteName"));
+        Assert.That(routeProviderText, Does.Contain("name: AIInterviewDefaults.MockRuntimeClientEventRouteName"));
     }
 
     [Test]

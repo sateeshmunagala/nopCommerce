@@ -193,6 +193,93 @@ public class MockAiInterviewController : BasePluginController
         return string.Join("; ", details);
     }
 
+    protected static string NormalizeRuntimeClientRequestName(string requestName)
+    {
+        var normalized = (requestName ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "submit-answer" => "submit-answer",
+            "begin" => "begin",
+            "speech-token" => "speech-token",
+            "speech-usage" => "speech-usage",
+            "upload-recording" => "upload-recording",
+            "refresh-token" => "refresh-token",
+            "acknowledge-guidelines" => "acknowledge-guidelines",
+            "stop" => "stop",
+            "runtime-client-event" => "runtime-client-event",
+            _ => "unknown"
+        };
+    }
+
+    protected static string NormalizeRuntimeClientFailureKind(string failureKind)
+    {
+        var normalized = (failureKind ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "http-status" => "http-status",
+            "invalid-json" => "invalid-json",
+            "non-json-response" => "non-json-response",
+            "fetch-exception" => "fetch-exception",
+            "network-error" => "network-error",
+            _ => "unknown"
+        };
+    }
+
+    protected static string SanitizeRuntimeClientMessage(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return string.Empty;
+
+        var sanitized = new string(message
+            .Replace('\r', ' ')
+            .Replace('\n', ' ')
+            .Trim()
+            .Select(character => char.IsLetterOrDigit(character) || char.IsWhiteSpace(character) || ".,:;!?()_-".Contains(character) ? character : ' ')
+            .ToArray());
+
+        sanitized = string.Join(" ", sanitized.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries));
+        return sanitized.Length <= 180 ? sanitized : sanitized[..180];
+    }
+
+    protected static string BuildRuntimeClientFailureMessage(string failureKind, int? statusCode)
+    {
+        return NormalizeRuntimeClientFailureKind(failureKind) switch
+        {
+            "http-status" => statusCode.HasValue
+                ? $"Runtime request returned HTTP {Math.Clamp(statusCode.Value, 0, 999)}."
+                : "Runtime request returned a failed HTTP status.",
+            "invalid-json" => "Runtime request returned invalid JSON.",
+            "non-json-response" => "Runtime request returned a non-JSON response.",
+            "fetch-exception" or "network-error" => "Unable to reach the interview service.",
+            _ => "Runtime request failed."
+        };
+    }
+
+    protected static string BuildRuntimeClientFailureActivityComment(InterviewSession session, string requestName, int? statusCode, string message, string failureKind, long? elapsedMilliseconds)
+    {
+        var details = new List<string>
+        {
+            $"SessionId={session?.Id ?? 0}",
+            $"CustomerId={session?.CustomerId ?? 0}",
+            $"ProductId={session?.ProductId ?? 0}",
+            $"Request={NormalizeRuntimeClientRequestName(requestName)}"
+        };
+
+        if (statusCode.HasValue)
+            details.Add($"StatusCode={Math.Clamp(statusCode.Value, 0, 999)}");
+
+        details.Add($"FailureKind={NormalizeRuntimeClientFailureKind(failureKind)}");
+
+        if (elapsedMilliseconds.HasValue)
+            details.Add($"ElapsedMs={Math.Max(0, elapsedMilliseconds.Value)}");
+
+        var safeMessage = SanitizeRuntimeClientMessage(string.IsNullOrWhiteSpace(message) ? BuildRuntimeClientFailureMessage(failureKind, statusCode) : message);
+        if (!string.IsNullOrWhiteSpace(safeMessage))
+            details.Add($"Message={safeMessage}");
+
+        return string.Join("; ", details);
+    }
+
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
     {
         var text = await _localizationService.GetResourceAsync(resourceKey);
@@ -1136,6 +1223,7 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.SpeechTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechTokenRouteName);
         model.ClientSettings.SpeechUsageUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechUsageRouteName);
         model.ClientSettings.AcknowledgeGuidelinesUrl = Url?.RouteUrl(AIInterviewDefaults.MockAcknowledgeGuidelinesRouteName);
+        model.ClientSettings.RuntimeClientEventUrl = Url?.RouteUrl(AIInterviewDefaults.MockRuntimeClientEventRouteName);
         model.ClientSettings.ProductName = model.ProductName;
         model.ClientSettings.Token = session?.Token;
         model.ReportUrl = GetMockReportUrl(session?.Id ?? model.SessionId);
@@ -1258,6 +1346,45 @@ public class MockAiInterviewController : BasePluginController
         }
 
         return Json(new { success = true, message = "Guidelines acknowledgement logged." });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> RuntimeClientEvent(string token, string eventType, string requestName, int? statusCode, string message, string failureKind, long? elapsedMilliseconds)
+    {
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
+        var session = tokenRenewal.Session;
+        var safeRequestName = NormalizeRuntimeClientRequestName(requestName);
+        var safeFailureKind = NormalizeRuntimeClientFailureKind(failureKind);
+        var safeMessage = BuildRuntimeClientFailureMessage(safeFailureKind, statusCode);
+
+        if (string.Equals(safeRequestName, "runtime-client-event", StringComparison.OrdinalIgnoreCase))
+            return Json(new { success = false, message = "Runtime client-event logging is not recursive." });
+
+        if (session == null)
+        {
+            await LogRuntimeIssueAsync(
+                "AI Interview runtime client request failure",
+                $"Event=RuntimeClientRequestFailed; Token={MaskToken(token)}; Request={safeRequestName}; StatusCode={statusCode?.ToString(CultureInfo.InvariantCulture) ?? string.Empty}; FailureKind={safeFailureKind}; ElapsedMs={Math.Max(0, elapsedMilliseconds ?? 0)}; Message={safeMessage};",
+                await ResolveLogCustomerAsync());
+
+            return Json(new { success = false, message = "Runtime client event ignored for invalid session." });
+        }
+
+        var comment = BuildRuntimeClientFailureActivityComment(session, safeRequestName, statusCode, safeMessage, safeFailureKind, elapsedMilliseconds);
+        await LogRuntimeActivityAsync(session, "AIInterview.Runtime.NetworkRequestFailed", comment);
+        await LogRuntimeIssueAsync("AI Interview runtime client request failure", comment, await ResolveLogCustomerAsync(session));
+
+        if (tokenRenewal.Renewed)
+        {
+            return Json(new
+            {
+                success = true,
+                newToken = tokenRenewal.Session.Token,
+                tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+            });
+        }
+
+        return Json(new { success = true });
     }
 
     [NonAction]

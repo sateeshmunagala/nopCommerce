@@ -1839,6 +1839,7 @@ public class RuntimeServiceTests
             QuestionCount = 5,
             SubmitAnswerUrl = "/submit",
             StopInterviewUrl = "/stop",
+            RuntimeClientEventUrl = "/runtime-client-event",
             SpeechAvailable = true
         }, new System.Text.Json.JsonSerializerOptions
         {
@@ -1848,6 +1849,7 @@ public class RuntimeServiceTests
         Assert.That(json, Does.Contain("\"questionCount\""));
         Assert.That(json, Does.Contain("\"submitAnswerUrl\""));
         Assert.That(json, Does.Contain("\"stopInterviewUrl\""));
+        Assert.That(json, Does.Contain("\"runtimeClientEventUrl\""));
         Assert.That(json, Does.Contain("\"speechAvailable\""));
     }
 

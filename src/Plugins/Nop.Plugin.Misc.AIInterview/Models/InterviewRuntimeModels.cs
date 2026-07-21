@@ -54,6 +54,7 @@ public record RuntimeClientSettingsModel
     public string RecordingUploadUrl { get; set; }
     public string BeginInterviewUrl { get; set; }
     public string AcknowledgeGuidelinesUrl { get; set; }
+    public string RuntimeClientEventUrl { get; set; }
     public string SpeechRegion { get; set; }
     public string SpeechVoiceName { get; set; }
     public string ProductName { get; set; }

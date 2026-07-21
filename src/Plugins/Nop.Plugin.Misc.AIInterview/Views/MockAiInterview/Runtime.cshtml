@@ -1642,8 +1642,68 @@
             transcriptBody.scrollTop = transcriptBody.scrollHeight;
         };
 
+        const normalizeRuntimeFailureMessage = (message) => {
+            const normalized = (message || '')
+                .replace(/[\r\n]+/g, ' ')
+                .replace(/[^\w\s.,:;!?()_-]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            return normalized.length > 180 ? normalized.slice(0, 180) : normalized;
+        };
+
+        const getRuntimeRequestName = (url) => {
+            try {
+                const loggingPath = config.runtimeClientEventUrl
+                    ? new URL(config.runtimeClientEventUrl, window.location.origin).pathname.toLowerCase()
+                    : '';
+                const requestPath = new URL(url || '', window.location.origin).pathname.toLowerCase();
+                if (loggingPath && requestPath === loggingPath)
+                    return 'runtime-client-event';
+
+                if (requestPath.endsWith('/submit-answer')) return 'submit-answer';
+                if (requestPath.endsWith('/begin')) return 'begin';
+                if (requestPath.endsWith('/speech-token')) return 'speech-token';
+                if (requestPath.endsWith('/speech-usage')) return 'speech-usage';
+                if (requestPath.endsWith('/upload-recording')) return 'upload-recording';
+                if (requestPath.endsWith('/refresh-token')) return 'refresh-token';
+                if (requestPath.endsWith('/acknowledge-guidelines')) return 'acknowledge-guidelines';
+                if (requestPath.endsWith('/stop')) return 'stop';
+            } catch {}
+
+            return 'unknown';
+        };
+
+        const reportRuntimeClientRequestFailure = (event) => {
+            if (!config.runtimeClientEventUrl || !event || event.requestName === 'runtime-client-event')
+                return;
+
+            try {
+                const payload = new URLSearchParams({
+                    token: sessionToken,
+                    eventType: 'network-request-failed',
+                    requestName: event.requestName || 'unknown',
+                    failureKind: event.failureKind || 'unknown',
+                    message: normalizeRuntimeFailureMessage(event.message || 'Runtime request failed.'),
+                    elapsedMilliseconds: String(Math.max(0, Math.round(event.elapsedMilliseconds || 0)))
+                });
+
+                if (Number.isFinite(event.statusCode))
+                    payload.append('statusCode', String(event.statusCode));
+
+                fetch(config.runtimeClientEventUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: payload
+                }).catch(error => logActivity(`Runtime client-event log failed: ${error?.message || 'unknown'}`));
+            } catch (error) {
+                logActivity(`Runtime client-event log skipped: ${error?.message || 'unknown'}`);
+            }
+        };
+
         const postForm = async (url, formData) => {
             logActivity('Request started.');
+            const requestName = getRuntimeRequestName(url);
+            const requestStartedAt = performance.now();
             try {
                 const response = await fetch(url, {
                     method: 'POST',
@@ -1659,6 +1719,13 @@
                         msg = getRuntimeMessage(parsed, msg);
                     } catch {}
                     logActivity(`Request failed (${response.status}): ${msg}`);
+                    reportRuntimeClientRequestFailure({
+                        requestName,
+                        statusCode: response.status,
+                        failureKind: 'http-status',
+                        message: msg,
+                        elapsedMilliseconds: performance.now() - requestStartedAt
+                    });
                     return { success: false, message: msg, status: response.status };
                 }
 
@@ -1669,16 +1736,31 @@
                     return result;
                 } catch {
                     logActivity(`Request failed: Invalid JSON response.`);
+                    reportRuntimeClientRequestFailure({
+                        requestName,
+                        statusCode: response.status,
+                        failureKind: 'invalid-json',
+                        message: 'Invalid JSON response from server.',
+                        elapsedMilliseconds: performance.now() - requestStartedAt
+                    });
                     return { success: false, message: 'Invalid response from server.' };
                 }
             } catch (e) {
                 logActivity(`Request error: ${e.message}`);
+                reportRuntimeClientRequestFailure({
+                    requestName,
+                    failureKind: 'fetch-exception',
+                    message: e?.message || 'Network request failed.',
+                    elapsedMilliseconds: performance.now() - requestStartedAt
+                });
                 return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
             }
         };
 
         const postMultipart = async (url, formData) => {
             logActivity('Multipart request started.');
+            const requestName = getRuntimeRequestName(url);
+            const requestStartedAt = performance.now();
             try {
                 const response = await fetch(url, {
                     method: 'POST',
@@ -1693,12 +1775,26 @@
                         msg = getRuntimeMessage(parsed, msg);
                     } catch {}
                     logActivity(`Multipart request failed (${response.status}): ${msg}`);
+                    reportRuntimeClientRequestFailure({
+                        requestName,
+                        statusCode: response.status,
+                        failureKind: 'http-status',
+                        message: msg,
+                        elapsedMilliseconds: performance.now() - requestStartedAt
+                    });
                     return { success: false, message: msg, status: response.status };
                 }
 
                 const contentType = response.headers.get('content-type') || '';
                 if (!contentType.includes('application/json')) {
                     logActivity(`Multipart request failed: non-JSON response.`);
+                    reportRuntimeClientRequestFailure({
+                        requestName,
+                        statusCode: response.status,
+                        failureKind: 'non-json-response',
+                        message: 'Non-JSON response from server.',
+                        elapsedMilliseconds: performance.now() - requestStartedAt
+                    });
                     return { success: false, message: 'Invalid response format from server.' };
                 }
 
@@ -1709,10 +1805,23 @@
                     return result;
                 } catch {
                     logActivity(`Multipart request failed: Invalid JSON response.`);
+                    reportRuntimeClientRequestFailure({
+                        requestName,
+                        statusCode: response.status,
+                        failureKind: 'invalid-json',
+                        message: 'Invalid JSON response from server.',
+                        elapsedMilliseconds: performance.now() - requestStartedAt
+                    });
                     return { success: false, message: 'Invalid response from server.' };
                 }
             } catch (e) {
                 logActivity(`Multipart request error: ${e.message}`);
+                reportRuntimeClientRequestFailure({
+                    requestName,
+                    failureKind: 'fetch-exception',
+                    message: e?.message || 'Network request failed.',
+                    elapsedMilliseconds: performance.now() - requestStartedAt
+                });
                 return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
             }
         };

@@ -159,6 +159,10 @@ public class RouteProvider : IRouteProvider
             pattern: "mockaiinterview/acknowledge-guidelines",
             defaults: new { controller = "MockAiInterview", action = "AcknowledgeGuidelines" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockRuntimeClientEventRouteName,
+            pattern: "mockaiinterview/runtime-client-event",
+            defaults: new { controller = "MockAiInterview", action = "RuntimeClientEvent" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockHistoryRouteName,
             pattern: "mockaiinterview/history",
             defaults: new { controller = "MockAiInterview", action = "History" });
