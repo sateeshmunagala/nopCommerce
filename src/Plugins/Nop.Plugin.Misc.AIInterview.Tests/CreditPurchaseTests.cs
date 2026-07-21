@@ -25,6 +25,7 @@ public class CreditPurchaseTests
     private Mock<IProductService> _productService;
     private Mock<ICustomerService> _customerService;
     private Mock<ICreditService> _creditService;
+    private Mock<ICreditDepositNotificationService> _creditDepositNotificationService;
     private Mock<ILogger<CreditPurchaseService>> _logger;
     private AIInterviewSettings _settings;
     private CreditPurchaseService _service;
@@ -37,6 +38,7 @@ public class CreditPurchaseTests
         _productService = new Mock<IProductService>();
         _customerService = new Mock<ICustomerService>();
         _creditService = new Mock<ICreditService>();
+        _creditDepositNotificationService = new Mock<ICreditDepositNotificationService>();
         _logger = new Mock<ILogger<CreditPurchaseService>>();
         _settings = new AIInterviewSettings { CreditProductSkuMappingsJson = DefaultMappingsJson };
 
@@ -56,6 +58,8 @@ public class CreditPurchaseTests
             .Returns(Task.CompletedTask);
 
         _customerService.Setup(x => x.IsRegisteredAsync(It.IsAny<Customer>(), true)).ReturnsAsync(true);
+        _creditDepositNotificationService.Setup(x => x.SendCreditDepositedNotificationAsync(It.IsAny<CreditDepositNotificationRequest>()))
+            .Returns(Task.CompletedTask);
 
         _service = new CreditPurchaseService(
             _grantRepository.Object,
@@ -64,7 +68,8 @@ public class CreditPurchaseTests
             _customerService.Object,
             _creditService.Object,
             _settings,
-            _logger.Object);
+            _logger.Object,
+            _creditDepositNotificationService.Object);
     }
 
     [Test]
@@ -102,6 +107,12 @@ public class CreditPurchaseTests
         await _service.GrantCreditsForPaidOrderAsync(order);
 
         _creditService.Verify(x => x.AddCreditAsync(20, 1, "Purchased credit pack: order #1002, SKU AI-CREDIT-1, credits 1"), Times.Once);
+        _creditDepositNotificationService.Verify(x => x.SendCreditDepositedNotificationAsync(It.Is<CreditDepositNotificationRequest>(request =>
+            request.CustomerId == 20 &&
+            request.CreditsDeposited == 1 &&
+            request.DepositSource == CreditDepositSources.ViaOrder &&
+            request.OrderId == 1002 &&
+            request.Remarks.Contains("AI-CREDIT-1"))), Times.Once);
         _grantRepository.Verify(x => x.InsertAsync(It.Is<CreditPurchaseGrant>(grant =>
             grant.OrderId == 1002 &&
             grant.OrderItemId == 12 &&
@@ -185,6 +196,11 @@ public class CreditPurchaseTests
         await _service.GrantCreditsForPaidOrderAsync(order);
 
         _creditService.Verify(x => x.AddCreditAsync(60, 1, It.IsAny<string>()), Times.Once);
+        _creditDepositNotificationService.Verify(x => x.SendCreditDepositedNotificationAsync(It.Is<CreditDepositNotificationRequest>(request =>
+            request.CustomerId == 60 &&
+            request.CreditsDeposited == 1 &&
+            request.DepositSource == CreditDepositSources.ViaOrder &&
+            request.OrderId == 1006)), Times.Once);
         _grantRepository.Verify(x => x.InsertAsync(It.IsAny<CreditPurchaseGrant>(), true), Times.Once);
     }
 

@@ -290,6 +290,26 @@ public interface ICreditPurchaseService
     Task GrantCreditsForPaidOrderAsync(Nop.Core.Domain.Orders.Order order);
 }
 
+public static class CreditDepositSources
+{
+    public const string ViaOrder = "Via order";
+    public const string ViaAdminTopUp = "Via admin top-up";
+}
+
+public sealed record CreditDepositNotificationRequest
+{
+    public int CustomerId { get; init; }
+    public decimal CreditsDeposited { get; init; }
+    public string DepositSource { get; init; }
+    public int? OrderId { get; init; }
+    public string Remarks { get; init; }
+}
+
+public interface ICreditDepositNotificationService
+{
+    Task SendCreditDepositedNotificationAsync(CreditDepositNotificationRequest request);
+}
+
 public interface ISponsorInviteService
 {
     Task InsertSponsorInviteAsync(SponsorInvite invite);

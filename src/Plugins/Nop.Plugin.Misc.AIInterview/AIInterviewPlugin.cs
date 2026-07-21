@@ -283,6 +283,49 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
                 IsActive = true
             });
         }
+
+        var creditDepositedTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.CreditDeposited", 0);
+        if (!(creditDepositedTemplates?.Any() ?? false))
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.CreditDeposited",
+                Subject = "Credits deposited: %AIInterview.CreditsDeposited% credits",
+                Body = @"<div style=""font-family:Arial,Helvetica,sans-serif;background:#f6f8fb;padding:24px;color:#1f2937;"">
+  <div style=""max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;"">
+    <div style=""padding:22px 24px;border-bottom:1px solid #e5e7eb;"">
+      <h1 style=""margin:0;font-size:22px;line-height:1.3;color:#111827;"">Credits deposited</h1>
+      <p style=""margin:8px 0 0;color:#4b5563;font-size:14px;"">Hello %Customer.FullName%, your AIInterview credits have been updated.</p>
+    </div>
+    <div style=""padding:20px 24px;"">
+      <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" style=""border:1px solid #e5e7eb;border-radius:6px;background:#fafafa;margin-bottom:14px;"">
+        <tr>
+          <td style=""padding:12px;border:1px solid #e5e7eb;border-radius:6px;background:#fafafa;"">
+            <div style=""font-size:12px;color:#6b7280;text-transform:uppercase;"">Deposited</div>
+            <div style=""font-size:24px;font-weight:700;color:#111827;"">%AIInterview.CreditsDeposited%</div>
+            <div style=""font-size:13px;color:#4b5563;"">%AIInterview.DepositSource%</div>
+          </td>
+        </tr>
+      </table>
+      <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" style=""border-collapse:collapse;margin-top:14px;"">
+        <tr>
+          <td style=""width:50%;padding:12px;border:1px solid #e5e7eb;background:#ffffff;"">
+            <div style=""font-size:12px;color:#6b7280;text-transform:uppercase;"">Total credits</div>
+            <div style=""font-size:20px;font-weight:700;color:#111827;"">%AIInterview.TotalCredits%</div>
+          </td>
+          <td style=""width:50%;padding:12px;border:1px solid #e5e7eb;background:#ffffff;"">
+            <div style=""font-size:12px;color:#6b7280;text-transform:uppercase;"">Withdrawn credits</div>
+            <div style=""font-size:20px;font-weight:700;color:#111827;"">%AIInterview.WithdrawnCredits%</div>
+          </td>
+        </tr>
+      </table>
+      <p style=""margin:20px 0 0;""><a href=""%AIInterview.CreditPageUrl%"" style=""display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px;font-size:14px;"">View credits</a></p>
+    </div>
+  </div>
+</div>",
+                IsActive = true
+            });
+        }
     }
 
     protected async Task EnsureJobProductTemplateAsync()

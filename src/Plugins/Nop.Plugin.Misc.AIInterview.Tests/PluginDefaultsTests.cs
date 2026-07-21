@@ -412,6 +412,38 @@ public class PluginDefaultsTests
     }
 
     [Test]
+    public async Task EnsureMessageTemplates_Creates_CreditDeposited_Template()
+    {
+        var settingService = new Mock<ISettingService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var webHelper = new Mock<IWebHelper>();
+        var messageTemplateService = new Mock<IMessageTemplateService>();
+        var insertedTemplates = new List<Nop.Core.Domain.Messages.MessageTemplate>();
+
+        messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync(It.IsAny<string>(), 0))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate>());
+        messageTemplateService.Setup(x => x.InsertMessageTemplateAsync(It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>()))
+            .Callback<Nop.Core.Domain.Messages.MessageTemplate>(template => insertedTemplates.Add(template))
+            .Returns(Task.CompletedTask);
+
+        var plugin = new AIInterviewPlugin(localizationService.Object, settingService.Object, webHelper.Object, messageTemplateService.Object);
+        var method = typeof(AIInterviewPlugin).GetMethod("EnsureMessageTemplatesAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        await (Task)method.Invoke(plugin, null);
+
+        var creditTemplate = insertedTemplates.SingleOrDefault(template => template.Name == "AIInterview.CreditDeposited");
+        Assert.That(creditTemplate, Is.Not.Null);
+        Assert.That(creditTemplate.IsActive, Is.True);
+        Assert.That(creditTemplate.Subject, Is.EqualTo("Credits deposited: %AIInterview.CreditsDeposited% credits"));
+        Assert.That(creditTemplate.Body, Does.Contain("%AIInterview.CreditsDeposited%"));
+        Assert.That(creditTemplate.Body, Does.Contain("%AIInterview.DepositSource%"));
+        Assert.That(creditTemplate.Body, Does.Contain("%AIInterview.TotalCredits%"));
+        Assert.That(creditTemplate.Body, Does.Contain("%AIInterview.WithdrawnCredits%"));
+        Assert.That(creditTemplate.Body, Does.Contain("%AIInterview.CreditPageUrl%"));
+        Assert.That(creditTemplate.Body, Does.Contain("Withdrawn credits"));
+    }
+
+    [Test]
     public void Runtime_Localization_Resources_Contain_Directly_Used_NextQuestion_Key()
     {
         var upgradeMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);

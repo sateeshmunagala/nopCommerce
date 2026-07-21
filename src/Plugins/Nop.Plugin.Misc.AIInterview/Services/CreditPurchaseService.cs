@@ -20,6 +20,7 @@ public class CreditPurchaseService : ICreditPurchaseService
     private readonly IProductService _productService;
     private readonly ICustomerService _customerService;
     private readonly ICreditService _creditService;
+    private readonly ICreditDepositNotificationService _creditDepositNotificationService;
     private readonly AIInterviewSettings _settings;
     private readonly ILogger<CreditPurchaseService> _logger;
 
@@ -29,7 +30,8 @@ public class CreditPurchaseService : ICreditPurchaseService
         ICustomerService customerService,
         ICreditService creditService,
         AIInterviewSettings settings,
-        ILogger<CreditPurchaseService> logger)
+        ILogger<CreditPurchaseService> logger,
+        ICreditDepositNotificationService creditDepositNotificationService = null)
     {
         _grantRepository = grantRepository;
         _orderService = orderService;
@@ -38,6 +40,7 @@ public class CreditPurchaseService : ICreditPurchaseService
         _creditService = creditService;
         _settings = settings;
         _logger = logger;
+        _creditDepositNotificationService = creditDepositNotificationService;
     }
 
     public async Task GrantCreditsForPaidOrderAsync(Order order)
@@ -148,6 +151,18 @@ public class CreditPurchaseService : ICreditPurchaseService
                 scope.Complete();
                 _logger.LogInformation("Granted credit purchase for order {OrderId}, orderItem {OrderItemId}, customer {CustomerId}, product {ProductId}, credits {CreditsGranted}.",
                     order.Id, orderItem.Id, order.CustomerId, product.Id, creditsToGrant);
+
+                if (_creditDepositNotificationService != null)
+                {
+                    await _creditDepositNotificationService.SendCreditDepositedNotificationAsync(new CreditDepositNotificationRequest
+                    {
+                        CustomerId = order.CustomerId,
+                        CreditsDeposited = creditsToGrant,
+                        DepositSource = CreditDepositSources.ViaOrder,
+                        OrderId = order.Id,
+                        Remarks = $"Purchased credit pack: order #{order.Id}, SKU {sku}, credits {creditsToGrant}"
+                    });
+                }
             }
             catch (Exception ex) when (IsDuplicateGrantException(ex))
             {

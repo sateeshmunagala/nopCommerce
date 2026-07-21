@@ -50,6 +50,7 @@ public class AdminBaselineTests
     private Mock<ILogger<AIInterviewAdminController>> _logger;
     private Mock<IWorkContext> _workContext;
     private Mock<ISettingService> _settingService;
+    private Mock<ICreditDepositNotificationService> _creditDepositNotificationService;
     private Mock<IRepository<Customer>> _customerRepository;
     private Mock<IRepository<InterviewSession>> _sessionRepository;
     private Mock<IRepository<Product>> _productRepository;
@@ -83,6 +84,7 @@ public class AdminBaselineTests
         _logger = new Mock<ILogger<AIInterviewAdminController>>();
         _workContext = new Mock<IWorkContext>();
         _settingService = new Mock<ISettingService>();
+        _creditDepositNotificationService = new Mock<ICreditDepositNotificationService>();
         _customerRepository = new Mock<IRepository<Customer>>();
         _sessionRepository = new Mock<IRepository<InterviewSession>>();
         _productRepository = new Mock<IRepository<Product>>();
@@ -139,6 +141,8 @@ public class AdminBaselineTests
                 func == null ? _wallets.ToList() : func(_wallets.AsQueryable()).ToList());
         _customerService.Setup(x => x.GetCustomersByIdsAsync(It.IsAny<int[]>()))
             .ReturnsAsync(new List<Customer>());
+        _creditDepositNotificationService.Setup(x => x.SendCreditDepositedNotificationAsync(It.IsAny<CreditDepositNotificationRequest>()))
+            .Returns(Task.CompletedTask);
 
         _workContext.Setup(x => x.GetCurrentCustomerAsync())
             .ReturnsAsync(new Customer { Id = 42, VendorId = 0, Email = "admin@example.com", FirstName = "Admin" });
@@ -166,7 +170,9 @@ public class AdminBaselineTests
             null,
             null,
             _sessionRepository.Object,
-            _productRepository.Object);
+            _productRepository.Object,
+            null,
+            _creditDepositNotificationService.Object);
 
         var defaultUrlHelper = new Mock<IUrlHelper>();
         defaultUrlHelper.Setup(x => x.Action(It.IsAny<UrlActionContext>()))
@@ -1000,6 +1006,11 @@ public class AdminBaselineTests
 
         Assert.That(result, Is.InstanceOf<ViewResult>());
         _creditService.Verify(x => x.AddCreditAsync(101, 25, "Plugins.Misc.AIInterview.Admin.TopUp.Remarks"), Times.Once);
+        _creditDepositNotificationService.Verify(x => x.SendCreditDepositedNotificationAsync(It.Is<CreditDepositNotificationRequest>(request =>
+            request.CustomerId == 101 &&
+            request.CreditsDeposited == 25 &&
+            request.DepositSource == CreditDepositSources.ViaAdminTopUp &&
+            request.Remarks == "Plugins.Misc.AIInterview.Admin.TopUp.Remarks")), Times.Once);
     }
 
     [Test]
@@ -1068,6 +1079,27 @@ public class AdminBaselineTests
 
         Assert.That(result, Is.InstanceOf<ViewResult>());
         _creditService.Verify(x => x.AddCreditAsync(202, 15, "Plugins.Misc.AIInterview.Admin.TopUp.Remarks"), Times.Once);
+        _creditDepositNotificationService.Verify(x => x.SendCreditDepositedNotificationAsync(It.Is<CreditDepositNotificationRequest>(request =>
+            request.CustomerId == 202 &&
+            request.CreditsDeposited == 15 &&
+            request.DepositSource == CreditDepositSources.ViaAdminTopUp &&
+            request.Remarks == "Plugins.Misc.AIInterview.Admin.TopUp.Remarks")), Times.Once);
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Invalid_TopUp_Amount_Does_Not_Send_Deposit_Notification()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, VendorId = 0 });
+
+        await _controller.ApplicantCredits(new CreditManagementModel
+        {
+            CustomerId = 202,
+            Amount = 0
+        });
+
+        _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        _creditDepositNotificationService.Verify(x => x.SendCreditDepositedNotificationAsync(It.IsAny<CreditDepositNotificationRequest>()), Times.Never);
     }
 
     [Test]

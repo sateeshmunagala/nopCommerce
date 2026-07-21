@@ -12,6 +12,8 @@ using Nop.Services.Localization;
 using Nop.Services.Vendors;
 using Nop.Services.Helpers;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using System.Globalization;
 using System.Security.Cryptography;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
@@ -565,6 +567,129 @@ public class CreditService : ICreditService
         });
 
         return true;
+    }
+}
+
+public class CreditDepositNotificationService : ICreditDepositNotificationService
+{
+    public const string TemplateName = "AIInterview.CreditDeposited";
+
+    private readonly ICustomerService _customerService;
+    private readonly IRepository<CreditWallet> _walletRepository;
+    private readonly IRepository<CreditLedgerEntry> _ledgerRepository;
+    private readonly Nop.Services.Messages.IWorkflowMessageService _workflowMessageService;
+    private readonly Nop.Services.Messages.IMessageTemplateService _messageTemplateService;
+    private readonly Nop.Services.Messages.IEmailAccountService _emailAccountService;
+    private readonly Nop.Services.Messages.IMessageTokenProvider _messageTokenProvider;
+    private readonly EmailAccountSettings _emailAccountSettings;
+    private readonly IStoreContext _storeContext;
+    private readonly IWebHelper _webHelper;
+    private readonly ILogger<CreditDepositNotificationService> _logger;
+    private readonly AIInterviewSettings _settings;
+
+    public CreditDepositNotificationService(
+        ICustomerService customerService,
+        IRepository<CreditWallet> walletRepository,
+        IRepository<CreditLedgerEntry> ledgerRepository,
+        Nop.Services.Messages.IWorkflowMessageService workflowMessageService,
+        Nop.Services.Messages.IMessageTemplateService messageTemplateService,
+        Nop.Services.Messages.IEmailAccountService emailAccountService,
+        Nop.Services.Messages.IMessageTokenProvider messageTokenProvider,
+        EmailAccountSettings emailAccountSettings,
+        IStoreContext storeContext,
+        IWebHelper webHelper,
+        ILogger<CreditDepositNotificationService> logger,
+        AIInterviewSettings settings = null)
+    {
+        _customerService = customerService;
+        _walletRepository = walletRepository;
+        _ledgerRepository = ledgerRepository;
+        _workflowMessageService = workflowMessageService;
+        _messageTemplateService = messageTemplateService;
+        _emailAccountService = emailAccountService;
+        _messageTokenProvider = messageTokenProvider;
+        _emailAccountSettings = emailAccountSettings;
+        _storeContext = storeContext;
+        _webHelper = webHelper;
+        _logger = logger;
+        _settings = settings;
+    }
+
+    public async Task SendCreditDepositedNotificationAsync(CreditDepositNotificationRequest request)
+    {
+        if (request == null || request.CustomerId <= 0 || request.CreditsDeposited <= 0)
+            return;
+
+        try
+        {
+            var customer = await _customerService.GetCustomerByIdAsync(request.CustomerId);
+            if (customer == null || string.IsNullOrWhiteSpace(customer.Email) || !CommonHelper.IsValidEmail(customer.Email))
+                return;
+
+            var store = await _storeContext.GetCurrentStoreAsync();
+            var storeId = store?.Id ?? 0;
+            var languageId = store?.DefaultLanguageId ?? 0;
+
+            var templates = await _messageTemplateService.GetMessageTemplatesByNameAsync(TemplateName, storeId);
+            var template = templates?.FirstOrDefault();
+            if (template == null || !template.IsActive)
+                return;
+
+            var emailAccountId = template.EmailAccountId > 0 ? template.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId;
+            var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(emailAccountId);
+            emailAccount ??= (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
+            if (emailAccount == null)
+                return;
+
+            var wallets = (await _walletRepository.GetAllAsync(query => query.Where(wallet => wallet.CustomerId == request.CustomerId)))
+                .OrderBy(wallet => wallet.Id)
+                .ToList();
+            var walletIds = wallets.Select(wallet => wallet.Id).ToArray();
+            var totalCredits = wallets.Sum(wallet => wallet.Balance);
+            var withdrawnCredits = walletIds.Length == 0
+                ? 0m
+                : _ledgerRepository.Table
+                    .Where(entry => walletIds.Contains(entry.CreditWalletId) &&
+                        entry.Amount < 0 &&
+                        entry.TransactionType == "Withdrawal")
+                    .Sum(entry => -entry.Amount);
+
+            var storeLocation = (_webHelper.GetStoreLocation() ?? string.Empty).TrimEnd('/');
+            var creditPagePath = string.IsNullOrWhiteSpace(_settings?.CreditPurchasePageUrl)
+                ? AIInterviewDefaults.DefaultCreditPurchasePageUrl
+                : _settings.CreditPurchasePageUrl;
+            var creditPageUrl = creditPagePath.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? creditPagePath
+                : $"{storeLocation}/{creditPagePath.TrimStart('/')}";
+            var tokens = new List<Nop.Services.Messages.Token>();
+            await _messageTokenProvider.AddCustomerTokensAsync(tokens, customer);
+            tokens.Add(new Nop.Services.Messages.Token("AIInterview.CreditsDeposited", FormatCredits(request.CreditsDeposited)));
+            tokens.Add(new Nop.Services.Messages.Token("AIInterview.DepositSource", request.DepositSource ?? string.Empty));
+            tokens.Add(new Nop.Services.Messages.Token("AIInterview.TotalCredits", FormatCredits(totalCredits)));
+            tokens.Add(new Nop.Services.Messages.Token("AIInterview.WithdrawnCredits", FormatCredits(withdrawnCredits)));
+            tokens.Add(new Nop.Services.Messages.Token("AIInterview.CreditPageUrl", creditPageUrl));
+            tokens.Add(new Nop.Services.Messages.Token("AIInterview.OrderId", request.OrderId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty));
+            tokens.Add(new Nop.Services.Messages.Token("AIInterview.TransactionDate", DateTime.UtcNow.ToString("u", CultureInfo.InvariantCulture)));
+            tokens.Add(new Nop.Services.Messages.Token("AIInterview.DepositRemarks", request.Remarks ?? string.Empty));
+
+            await _workflowMessageService.SendNotificationAsync(
+                template,
+                emailAccount,
+                languageId,
+                tokens,
+                customer.Email,
+                $"{customer.FirstName} {customer.LastName}".Trim(),
+                ignoreDelayBeforeSend: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to send AIInterview credit deposit notification for customer {CustomerId}.", request.CustomerId);
+        }
+    }
+
+    private static string FormatCredits(decimal value)
+    {
+        return value.ToString("0.####", CultureInfo.InvariantCulture);
     }
 }
 

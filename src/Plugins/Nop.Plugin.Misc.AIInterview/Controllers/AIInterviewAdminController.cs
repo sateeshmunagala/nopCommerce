@@ -69,6 +69,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly AIInterviewSettings _aiInterviewSettings;
     private readonly MockAIInterviewSettings _mockAIInterviewSettings;
     private readonly IJobProductAccessService _jobProductAccessService;
+    private readonly ICreditDepositNotificationService _creditDepositNotificationService;
 
     public AIInterviewAdminController(ICreditService creditService,
         ISponsorInviteService inviteService,
@@ -93,7 +94,8 @@ public class AIInterviewAdminController : BasePluginController
         IInterviewTurnService interviewTurnService = null,
         IRepository<InterviewSession> sessionRepository = null,
         IRepository<Product> productRepository = null,
-        IJobProductAccessService jobProductAccessService = null)
+        IJobProductAccessService jobProductAccessService = null,
+        ICreditDepositNotificationService creditDepositNotificationService = null)
     {
         _creditService = creditService;
         _inviteService = inviteService;
@@ -119,6 +121,7 @@ public class AIInterviewAdminController : BasePluginController
         _aiInterviewSettings = aiInterviewSettings;
         _mockAIInterviewSettings = mockAIInterviewSettings;
         _jobProductAccessService = jobProductAccessService;
+        _creditDepositNotificationService = creditDepositNotificationService;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -1194,7 +1197,18 @@ public class AIInterviewAdminController : BasePluginController
             return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, false));
         }
 
-        await _creditService.AddCreditAsync(model.CustomerId, model.Amount, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Remarks"));
+        var remarks = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Remarks");
+        await _creditService.AddCreditAsync(model.CustomerId, model.Amount, remarks);
+        if (_creditDepositNotificationService != null)
+        {
+            await _creditDepositNotificationService.SendCreditDepositedNotificationAsync(new CreditDepositNotificationRequest
+            {
+                CustomerId = model.CustomerId,
+                CreditsDeposited = model.Amount,
+                DepositSource = CreditDepositSources.ViaAdminTopUp,
+                Remarks = remarks
+            });
+        }
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Success"));
 
         return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, true));

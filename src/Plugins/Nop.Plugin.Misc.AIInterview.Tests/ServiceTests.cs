@@ -8,6 +8,10 @@ using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
+using Nop.Services.Customers;
+using Nop.Services.Helpers;
+using Nop.Services.Messages;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
@@ -483,6 +487,163 @@ public class ServiceTests
         walletRepository.Verify(x => x.InsertAsync(It.Is<CreditWallet>(wallet => wallet.CustomerId == 55 && wallet.Balance == 25), true), Times.Once);
         walletRepository.Verify(x => x.UpdateAsync(It.Is<CreditWallet>(wallet => wallet.CustomerId == 55 && wallet.Balance == 25), true), Times.Once);
         ledgerRepository.Verify(x => x.InsertAsync(It.Is<CreditLedgerEntry>(entry => entry.CreditWalletId == 17 && entry.Amount == 25 && entry.Remarks == "Admin top-up"), true), Times.Once);
+    }
+
+    [TestCase(CreditDepositSources.ViaOrder)]
+    [TestCase(CreditDepositSources.ViaAdminTopUp)]
+    public async Task CreditDepositNotificationService_Sends_Deposit_Email_With_Credit_Tokens(string source)
+    {
+        var customerService = new Mock<ICustomerService>();
+        var walletRepository = new Mock<IRepository<CreditWallet>>();
+        var ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
+        var workflowMessageService = new Mock<IWorkflowMessageService>();
+        var messageTemplateService = new Mock<IMessageTemplateService>();
+        var emailAccountService = new Mock<IEmailAccountService>();
+        var messageTokenProvider = new Mock<IMessageTokenProvider>();
+        var storeContext = new Mock<Nop.Core.IStoreContext>();
+        var webHelper = new Mock<IWebHelper>();
+        var logger = new Mock<ILogger<CreditDepositNotificationService>>();
+        var emailAccountSettings = new Nop.Core.Domain.Messages.EmailAccountSettings { DefaultEmailAccountId = 7 };
+        var customer = new Customer { Id = 5, Email = "candidate@example.com", FirstName = "Asha", LastName = "Rao" };
+        var wallets = new List<CreditWallet>
+        {
+            new() { Id = 11, CustomerId = 5, Balance = 15 },
+            new() { Id = 12, CustomerId = 5, Balance = 2.5m }
+        };
+        var ledgerEntries = new List<CreditLedgerEntry>
+        {
+            new() { CreditWalletId = 11, Amount = 20, TransactionType = "Deposit" },
+            new() { CreditWalletId = 11, Amount = -3, TransactionType = "Withdrawal" },
+            new() { CreditWalletId = 12, Amount = -1.25m, TransactionType = "Withdrawal" },
+            new() { CreditWalletId = 12, Amount = -9, TransactionType = "Adjustment" },
+            new() { CreditWalletId = 99, Amount = -100, TransactionType = "Withdrawal" }
+        };
+        var template = new Nop.Core.Domain.Messages.MessageTemplate { Name = CreditDepositNotificationService.TemplateName, IsActive = true };
+        var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 7, Email = "store@example.com" };
+        var store = new Nop.Core.Domain.Stores.Store { Id = 4, DefaultLanguageId = 9 };
+
+        customerService.Setup(x => x.GetCustomerByIdAsync(5)).ReturnsAsync(customer);
+        walletRepository.Setup(x => x.GetAllAsync(
+                It.IsAny<Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>>>(),
+                It.IsAny<Func<Nop.Core.Caching.ICacheKeyService, Nop.Core.Caching.CacheKey>>(),
+                true))
+            .ReturnsAsync((Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>> func, Func<Nop.Core.Caching.ICacheKeyService, Nop.Core.Caching.CacheKey> _, bool __) =>
+                func == null ? wallets.ToList() : func(wallets.AsQueryable()).ToList());
+        ledgerRepository.SetupGet(x => x.Table).Returns(() => ledgerEntries.AsQueryable());
+        storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
+        messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync(CreditDepositNotificationService.TemplateName, 4))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { template });
+        emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(7)).ReturnsAsync(emailAccount);
+        messageTokenProvider.Setup(x => x.AddCustomerTokensAsync(It.IsAny<IList<Token>>(), customer))
+            .Returns(Task.CompletedTask);
+        webHelper.Setup(x => x.GetStoreLocation(It.IsAny<bool?>())).Returns("https://store.example/");
+        workflowMessageService.Setup(x => x.SendNotificationAsync(
+                template,
+                emailAccount,
+                9,
+                It.Is<IList<Token>>(tokens =>
+                    tokens.Any(token => token.Key == "AIInterview.CreditsDeposited" && Equals(token.Value, "10")) &&
+                    tokens.Any(token => token.Key == "AIInterview.DepositSource" && Equals(token.Value, source)) &&
+                    tokens.Any(token => token.Key == "AIInterview.TotalCredits" && Equals(token.Value, "17.5")) &&
+                    tokens.Any(token => token.Key == "AIInterview.WithdrawnCredits" && Equals(token.Value, "4.25")) &&
+                    tokens.Any(token => token.Key == "AIInterview.CreditPageUrl" && Equals(token.Value, "https://store.example/pricing")) &&
+                    tokens.Any(token => token.Key == "AIInterview.OrderId" && Equals(token.Value, "77")) &&
+                    tokens.Any(token => token.Key == "AIInterview.DepositRemarks" && Equals(token.Value, "test deposit"))),
+                "candidate@example.com",
+                "Asha Rao",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true))
+            .ReturnsAsync(1);
+
+        var service = new CreditDepositNotificationService(
+            customerService.Object,
+            walletRepository.Object,
+            ledgerRepository.Object,
+            workflowMessageService.Object,
+            messageTemplateService.Object,
+            emailAccountService.Object,
+            messageTokenProvider.Object,
+            emailAccountSettings,
+            storeContext.Object,
+            webHelper.Object,
+            logger.Object);
+
+        await service.SendCreditDepositedNotificationAsync(new CreditDepositNotificationRequest
+        {
+            CustomerId = 5,
+            CreditsDeposited = 10,
+            DepositSource = source,
+            OrderId = 77,
+            Remarks = "test deposit"
+        });
+
+        workflowMessageService.Verify(x => x.SendNotificationAsync(
+            template,
+            emailAccount,
+            9,
+            It.IsAny<IList<Token>>(),
+            "candidate@example.com",
+            "Asha Rao",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true), Times.Once);
+    }
+
+    [Test]
+    public async Task CreditDepositNotificationService_Skips_Missing_Email_Without_Failing()
+    {
+        var customerService = new Mock<ICustomerService>();
+        var walletRepository = new Mock<IRepository<CreditWallet>>();
+        var ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
+        var workflowMessageService = new Mock<IWorkflowMessageService>();
+        var service = new CreditDepositNotificationService(
+            customerService.Object,
+            walletRepository.Object,
+            ledgerRepository.Object,
+            workflowMessageService.Object,
+            new Mock<IMessageTemplateService>().Object,
+            new Mock<IEmailAccountService>().Object,
+            new Mock<IMessageTokenProvider>().Object,
+            new Nop.Core.Domain.Messages.EmailAccountSettings(),
+            new Mock<Nop.Core.IStoreContext>().Object,
+            new Mock<IWebHelper>().Object,
+            new Mock<ILogger<CreditDepositNotificationService>>().Object);
+
+        customerService.Setup(x => x.GetCustomerByIdAsync(5)).ReturnsAsync(new Customer { Id = 5, Email = " " });
+
+        await service.SendCreditDepositedNotificationAsync(new CreditDepositNotificationRequest
+        {
+            CustomerId = 5,
+            CreditsDeposited = 10,
+            DepositSource = CreditDepositSources.ViaAdminTopUp
+        });
+
+        workflowMessageService.Verify(x => x.SendNotificationAsync(
+            It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>(),
+            It.IsAny<Nop.Core.Domain.Messages.EmailAccount>(),
+            It.IsAny<int>(),
+            It.IsAny<IList<Token>>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<bool>()), Times.Never);
     }
 
     [Test]
