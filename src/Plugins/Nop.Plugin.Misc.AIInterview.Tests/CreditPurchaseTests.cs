@@ -106,7 +106,7 @@ public class CreditPurchaseTests
 
         await _service.GrantCreditsForPaidOrderAsync(order);
 
-        _creditService.Verify(x => x.AddCreditAsync(20, 1, "Purchased credit pack: order #1002, SKU AI-CREDIT-1, credits 1"), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(20, 1, "Purchased credit pack: order #1002, SKU AI-CREDIT-1, credits 1", CreditLedgerSources.Order, 101, 1002), Times.Once);
         _creditDepositNotificationService.Verify(x => x.SendCreditDepositedNotificationAsync(It.Is<CreditDepositNotificationRequest>(request =>
             request.CustomerId == 20 &&
             request.CreditsDeposited == 1 &&
@@ -136,7 +136,7 @@ public class CreditPurchaseTests
 
         await _service.GrantCreditsForPaidOrderAsync(order);
 
-        _creditService.Verify(x => x.AddCreditAsync(30, 20, "Purchased credit pack: order #1003, SKU AI-CREDIT-10, credits 20"), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(30, 20, "Purchased credit pack: order #1003, SKU AI-CREDIT-10, credits 20", CreditLedgerSources.Order, 102, 1003), Times.Once);
     }
 
     [Test]
@@ -154,7 +154,7 @@ public class CreditPurchaseTests
 
         await _service.GrantCreditsForPaidOrderAsync(order);
 
-        _creditService.Verify(x => x.AddCreditAsync(40, 20, "Purchased credit pack: order #1004, SKU AI-CREDIT-20, credits 20"), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(40, 20, "Purchased credit pack: order #1004, SKU AI-CREDIT-20, credits 20", CreditLedgerSources.Order, 103, 1004), Times.Once);
     }
 
     [Test]
@@ -175,8 +175,8 @@ public class CreditPurchaseTests
 
         await _service.GrantCreditsForPaidOrderAsync(order);
 
-        _creditService.Verify(x => x.AddCreditAsync(50, 1, It.Is<string>(remarks => remarks.Contains("AI-CREDIT-1"))), Times.Once);
-        _creditService.Verify(x => x.AddCreditAsync(50, It.Is<decimal>(amount => amount != 1), It.IsAny<string>()), Times.Never);
+        _creditService.Verify(x => x.AddCreditAsync(50, 1, It.Is<string>(remarks => remarks.Contains("AI-CREDIT-1")), CreditLedgerSources.Order, 104, 1005), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(50, It.Is<decimal>(amount => amount != 1), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
     [Test]
@@ -195,7 +195,7 @@ public class CreditPurchaseTests
         await _service.GrantCreditsForPaidOrderAsync(order);
         await _service.GrantCreditsForPaidOrderAsync(order);
 
-        _creditService.Verify(x => x.AddCreditAsync(60, 1, It.IsAny<string>()), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(60, 1, It.IsAny<string>(), CreditLedgerSources.Order, 106, 1006), Times.Once);
         _creditDepositNotificationService.Verify(x => x.SendCreditDepositedNotificationAsync(It.Is<CreditDepositNotificationRequest>(request =>
             request.CustomerId == 60 &&
             request.CreditsDeposited == 1 &&

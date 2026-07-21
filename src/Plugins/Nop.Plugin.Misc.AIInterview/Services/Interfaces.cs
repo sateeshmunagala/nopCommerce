@@ -282,7 +282,23 @@ public interface ICreditService
 {
     Task<CreditWallet> GetOrCreateWalletAsync(int customerId);
     Task AddCreditAsync(int customerId, decimal amount, string remarks);
+    Task AddCreditAsync(int customerId, decimal amount, string remarks, string ledgerSource, int productId = 0, int orderId = 0);
     Task<bool> AuthorizeAndChargeAsync(int customerId, decimal amount, string remarks);
+    Task<bool> AuthorizeAndChargeAsync(int customerId, decimal amount, string remarks, string ledgerSource, int productId = 0, int sponsorInviteId = 0);
+}
+
+public static class CreditLedgerSources
+{
+    public const string Order = "Order";
+    public const string AdminTopUp = "Admin top-up";
+    public const string InterviewUsage = "Interview usage";
+    public const string SponsorInterviewUsage = "Sponsor interview usage";
+    public const string Adjustment = "Adjustment";
+}
+
+public interface ICreditActivityService
+{
+    Task<CreditActivityModel> BuildCreditActivityModelAsync(Customer customer, int page, int pageSize);
 }
 
 public interface ICreditPurchaseService

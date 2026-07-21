@@ -11,6 +11,7 @@
     var appliedJobsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityAppliedJobsTabKey });
     var savedJobsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivitySavedJobsTabKey });
     var mockInterviewsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityMockInterviewsTabKey });
+    var creditsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityCreditsTabKey });
     ViewData["IsMyActivity"] = true;
 }
 
@@ -58,6 +59,17 @@
                    hx-indicator="#my-activity-loading"
                    aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivityMockInterviewsTabKey ? "page" : null)">
                     @T("Plugins.Misc.AIInterview.MyActivity.Tab.MockInterviews")
+                </a>
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivityCreditsTabKey ? "is-active" : null)"
+                   href="@creditsUrl"
+                   data-my-activity-tab="@AIInterviewDefaults.MyActivityCreditsTabKey"
+                   hx-get="@creditsUrl"
+                   hx-target="#my-activity-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   hx-indicator="#my-activity-loading"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivityCreditsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.MyActivity.Tab.Credits")
                 </a>
             </nav>
 

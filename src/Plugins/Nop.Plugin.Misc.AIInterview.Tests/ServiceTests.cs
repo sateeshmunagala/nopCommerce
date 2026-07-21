@@ -489,6 +489,121 @@ public class ServiceTests
         ledgerRepository.Verify(x => x.InsertAsync(It.Is<CreditLedgerEntry>(entry => entry.CreditWalletId == 17 && entry.Amount == 25 && entry.Remarks == "Admin top-up"), true), Times.Once);
     }
 
+    [Test]
+    public async Task CreditActivityService_BuildCreditActivityModel_Aggregates_CurrentCustomer_Ledger()
+    {
+        var customer = new Customer { Id = 7 };
+        var createdUtc = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);
+        var wallets = new List<CreditWallet>
+        {
+            new() { Id = 1, CustomerId = 7, Balance = 4 },
+            new() { Id = 2, CustomerId = 7, Balance = 2 },
+            new() { Id = 9, CustomerId = 99, Balance = 100 }
+        };
+        var ledgers = new List<CreditLedgerEntry>
+        {
+            new() { Id = 1, CreditWalletId = 1, Amount = 10, TransactionType = "Deposit", LedgerSource = CreditLedgerSources.Order, ProductId = 101, OrderId = 500, CreatedOnUtc = createdUtc },
+            new() { Id = 2, CreditWalletId = 2, Amount = 5, TransactionType = "Deposit", Remarks = "internal admin note", CreatedOnUtc = createdUtc.AddHours(1) },
+            new() { Id = 3, CreditWalletId = 1, Amount = -1, TransactionType = "Withdrawal", LedgerSource = CreditLedgerSources.InterviewUsage, ProductId = 201, CreatedOnUtc = createdUtc.AddHours(2) },
+            new() { Id = 4, CreditWalletId = 2, Amount = -2, TransactionType = "Withdrawal", LedgerSource = CreditLedgerSources.SponsorInterviewUsage, ProductId = 202, SponsorInviteId = 33, CreatedOnUtc = createdUtc.AddHours(3) },
+            new() { Id = 5, CreditWalletId = 9, Amount = 100, TransactionType = "Deposit", ProductId = 999, CreatedOnUtc = createdUtc.AddHours(4) }
+        };
+        var service = CreateCreditActivityService(wallets, ledgers,
+            products: new List<Product>
+            {
+                new() { Id = 101, Name = "Credit Pack 10" },
+                new() { Id = 201, Name = "Backend Engineer" },
+                new() { Id = 202, Name = "Data Analyst" },
+                new() { Id = 999, Name = "Other Customer Product" }
+            });
+
+        var model = await service.BuildCreditActivityModelAsync(customer, page: 1, pageSize: 10);
+
+        Assert.That(model.CurrentBalance, Is.EqualTo(6));
+        Assert.That(model.CurrentBalanceDisplay, Is.EqualTo("6"));
+        Assert.That(model.TotalDeposited, Is.EqualTo(15));
+        Assert.That(model.TotalWithdrawn, Is.EqualTo(3));
+        Assert.That(model.Entries.Count, Is.EqualTo(4));
+
+        Assert.That(model.Entries.Select(entry => entry.JobProduct), Does.Not.Contain("Other Customer Product"));
+        Assert.That(model.Entries.Select(entry => entry.CreditsDisplay), Is.EqualTo(new[] { "-2", "-1", "+5", "+10" }));
+        Assert.That(model.Entries.Select(entry => entry.BalanceAfterDisplay), Is.EqualTo(new[] { "12", "14", "15", "10" }));
+
+        var sponsored = model.Entries[0];
+        Assert.That(sponsored.Source, Is.EqualTo(CreditLedgerSources.SponsorInterviewUsage));
+        Assert.That(sponsored.Description, Is.EqualTo("Sponsored interview started"));
+        Assert.That(sponsored.JobProduct, Is.EqualTo("Data Analyst"));
+        Assert.That(sponsored.CreatedOn, Is.EqualTo(new DateTime(2026, 7, 20, 8, 30, 0)));
+
+        var interview = model.Entries[1];
+        Assert.That(interview.Type, Is.EqualTo("Withdrawal"));
+        Assert.That(interview.Source, Is.EqualTo(CreditLedgerSources.InterviewUsage));
+        Assert.That(interview.Description, Is.EqualTo("Interview started"));
+        Assert.That(interview.JobProduct, Is.EqualTo("Backend Engineer"));
+
+        var adminTopUp = model.Entries[2];
+        Assert.That(adminTopUp.Type, Is.EqualTo("Deposit"));
+        Assert.That(adminTopUp.Source, Is.EqualTo(CreditLedgerSources.AdminTopUp));
+        Assert.That(adminTopUp.Description, Is.EqualTo("Admin credit top-up"));
+        Assert.That(adminTopUp.JobProduct, Is.EqualTo("Credit top-up"));
+
+        var orderDeposit = model.Entries[3];
+        Assert.That(orderDeposit.Source, Is.EqualTo(CreditLedgerSources.Order));
+        Assert.That(orderDeposit.Description, Is.EqualTo("Credit pack purchase"));
+        Assert.That(orderDeposit.JobProduct, Is.EqualTo("Credit Pack 10"));
+    }
+
+    [Test]
+    public async Task CreditActivityService_BuildCreditActivityModel_Resolves_Historical_Grant_And_Session_Metadata()
+    {
+        var customer = new Customer { Id = 8 };
+        var createdUtc = new DateTime(2026, 7, 20, 10, 0, 0, DateTimeKind.Utc);
+        var service = CreateCreditActivityService(
+            wallets: new List<CreditWallet> { new() { Id = 8, CustomerId = 8, Balance = 4 } },
+            ledgers: new List<CreditLedgerEntry>
+            {
+                new() { Id = 10, CreditWalletId = 8, Amount = 5, TransactionType = "Deposit", Remarks = "raw order #123", CreatedOnUtc = createdUtc },
+                new() { Id = 11, CreditWalletId = 8, Amount = -1, TransactionType = "Withdrawal", Remarks = "Interview Start Charge", CreatedOnUtc = createdUtc.AddMinutes(1) }
+            },
+            grants: new List<CreditPurchaseGrant>
+            {
+                new() { Id = 1, CustomerId = 8, ProductId = 301, CreditsGranted = 5, CreatedOnUtc = createdUtc.AddMinutes(-1) }
+            },
+            sessions: new List<InterviewSession>
+            {
+                new() { Id = 1, CustomerId = 8, ProductId = 401, CreatedOnUtc = createdUtc.AddMinutes(2) }
+            },
+            products: new List<Product>
+            {
+                new() { Id = 301, Name = "Starter Credits" },
+                new() { Id = 401, Name = "QA Engineer" }
+            });
+
+        var model = await service.BuildCreditActivityModelAsync(customer, page: 1, pageSize: 10);
+
+        Assert.That(model.Entries[0].Source, Is.EqualTo(CreditLedgerSources.InterviewUsage));
+        Assert.That(model.Entries[0].JobProduct, Is.EqualTo("QA Engineer"));
+        Assert.That(model.Entries[0].Description, Is.EqualTo("Interview started"));
+        Assert.That(model.Entries[1].Source, Is.EqualTo(CreditLedgerSources.Order));
+        Assert.That(model.Entries[1].JobProduct, Is.EqualTo("Starter Credits"));
+        Assert.That(model.Entries[1].Description, Is.EqualTo("Credit pack purchase"));
+    }
+
+    [Test]
+    public async Task CreditActivityService_BuildCreditActivityModel_Returns_Empty_State_Model()
+    {
+        var service = CreateCreditActivityService(new List<CreditWallet>(), new List<CreditLedgerEntry>());
+
+        var model = await service.BuildCreditActivityModelAsync(new Customer { Id = 10 }, page: 1, pageSize: 5);
+
+        Assert.That(model.CurrentBalanceDisplay, Is.EqualTo("0"));
+        Assert.That(model.TotalDepositedDisplay, Is.EqualTo("0"));
+        Assert.That(model.TotalWithdrawnDisplay, Is.EqualTo("0"));
+        Assert.That(model.TotalCount, Is.EqualTo(0));
+        Assert.That(model.TotalPages, Is.EqualTo(0));
+        Assert.That(model.Entries, Is.Empty);
+    }
+
     [TestCase(CreditDepositSources.ViaOrder)]
     [TestCase(CreditDepositSources.ViaAdminTopUp)]
     public async Task CreditDepositNotificationService_Sends_Deposit_Email_With_Credit_Tokens(string source)
@@ -734,5 +849,60 @@ public class ServiceTests
         Assert.That(result.ResumeRequired, Is.False);
         Assert.That(result.InterviewRequired, Is.False);
         Assert.That(result.MinimumScore, Is.EqualTo(73.25m));
+    }
+
+    private static CreditActivityService CreateCreditActivityService(
+        List<CreditWallet> wallets,
+        List<CreditLedgerEntry> ledgers,
+        List<CreditPurchaseGrant> grants = null,
+        List<InterviewSession> sessions = null,
+        List<JobApplication> applications = null,
+        List<SponsorInvite> invites = null,
+        List<Product> products = null)
+    {
+        grants ??= new List<CreditPurchaseGrant>();
+        sessions ??= new List<InterviewSession>();
+        applications ??= new List<JobApplication>();
+        invites ??= new List<SponsorInvite>();
+        products ??= new List<Product>();
+
+        var walletRepository = new Mock<IRepository<CreditWallet>>();
+        var ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
+        var grantRepository = new Mock<IRepository<CreditPurchaseGrant>>();
+        var sessionRepository = new Mock<IRepository<InterviewSession>>();
+        var applicationRepository = new Mock<IRepository<JobApplication>>();
+        var inviteRepository = new Mock<IRepository<SponsorInvite>>();
+        var productService = new Mock<IProductService>();
+        var dateTimeHelper = new Mock<IDateTimeHelper>();
+        var indiaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+
+        walletRepository.Setup(x => x.GetAllAsync(
+                It.IsAny<Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>>>(),
+                It.IsAny<Func<ICacheKeyService, CacheKey>>(),
+                true))
+            .ReturnsAsync((Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>> func, Func<ICacheKeyService, CacheKey> _, bool __) =>
+                func == null ? wallets.ToList() : func(wallets.AsQueryable()).ToList());
+        ledgerRepository.SetupGet(x => x.Table).Returns(() => ledgers.AsQueryable());
+        grantRepository.SetupGet(x => x.Table).Returns(() => grants.AsQueryable());
+        sessionRepository.SetupGet(x => x.Table).Returns(() => sessions.AsQueryable());
+        inviteRepository.SetupGet(x => x.Table).Returns(() => invites.AsQueryable());
+        applicationRepository.Setup(x => x.GetByIdAsync(It.IsAny<int?>(), It.IsAny<Func<ICacheKeyService, CacheKey>>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .ReturnsAsync((int? id, Func<ICacheKeyService, CacheKey> _, bool __, bool ___) => applications.FirstOrDefault(application => application.Id == id));
+        productService.Setup(x => x.GetProductByIdAsync(It.IsAny<int>()))
+            .ReturnsAsync((int id) => products.FirstOrDefault(product => product.Id == id));
+        dateTimeHelper.Setup(x => x.GetCustomerTimeZoneAsync(It.IsAny<Customer>())).ReturnsAsync(indiaTimeZone);
+        dateTimeHelper.Setup(x => x.ConvertToUserTime(It.IsAny<DateTime>(), It.IsAny<TimeZoneInfo>(), It.IsAny<TimeZoneInfo>()))
+            .Returns((DateTime value, TimeZoneInfo sourceTimeZone, TimeZoneInfo destinationTimeZone) =>
+                TimeZoneInfo.ConvertTime(DateTime.SpecifyKind(value, DateTimeKind.Utc), sourceTimeZone, destinationTimeZone));
+
+        return new CreditActivityService(
+            walletRepository.Object,
+            ledgerRepository.Object,
+            grantRepository.Object,
+            sessionRepository.Object,
+            applicationRepository.Object,
+            inviteRepository.Object,
+            productService.Object,
+            dateTimeHelper.Object);
     }
 }

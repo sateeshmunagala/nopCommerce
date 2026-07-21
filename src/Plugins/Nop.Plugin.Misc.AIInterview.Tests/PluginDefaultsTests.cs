@@ -86,6 +86,66 @@ public class PluginDefaultsTests
     }
 
     [Test]
+    public void MyActivity_Credits_Tab_Is_Wired_Without_Changing_Default_Tab()
+    {
+        var controllerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "AIInterviewController.cs"));
+        var shellViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyActivity.cshtml"));
+        var tabPartialText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MyActivityTabContent.cshtml"));
+        var pluginText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("AIInterviewPlugin.cs"));
+
+        Assert.That(AIInterviewDefaults.MyActivityCreditsTabKey, Is.EqualTo("credits"));
+        Assert.That(new MyActivityPageModel().ActiveTab, Is.EqualTo(AIInterviewDefaults.MyActivityAppliedJobsTabKey));
+        Assert.That(controllerText, Does.Contain("AIInterviewDefaults.MyActivityCreditsTabKey"));
+        Assert.That(controllerText, Does.Contain("BuildCreditActivityModelAsync(customer, page, pageSize)"));
+        Assert.That(shellViewText, Does.Contain("Plugins.Misc.AIInterview.MyActivity.Tab.Credits"));
+        Assert.That(shellViewText, Does.Contain("hx-target=\"#my-activity-content\""));
+        Assert.That(tabPartialText, Does.Contain("_MyActivityCreditsContent.cshtml"));
+        Assert.That(pluginText, Does.Contain("AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources())"));
+    }
+
+    [Test]
+    public void MyActivity_Credits_View_Contains_Required_Summary_And_Columns()
+    {
+        var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MyActivityCreditsContent.cshtml"));
+        var requiredColumns = new[]
+        {
+            "Plugins.Misc.AIInterview.MyActivity.Credits.Date",
+            "Plugins.Misc.AIInterview.MyActivity.Credits.Type",
+            "Plugins.Misc.AIInterview.MyActivity.Credits.Credits",
+            "Plugins.Misc.AIInterview.MyActivity.Credits.BalanceAfter",
+            "Plugins.Misc.AIInterview.MyActivity.Credits.JobProduct",
+            "Plugins.Misc.AIInterview.MyActivity.Credits.Source",
+            "Plugins.Misc.AIInterview.MyActivity.Credits.Description"
+        };
+
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.MyActivity.Credits.CurrentBalance"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.MyActivity.Credits.TotalDeposited"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.MyActivity.Credits.TotalWithdrawn"));
+        Assert.That(viewText, Does.Not.Contain("Last activity date"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.MyActivity.Credits.Empty"));
+        Assert.That(viewText, Does.Contain("_MyActivityPager.cshtml"));
+
+        var previousIndex = -1;
+        foreach (var column in requiredColumns)
+        {
+            var index = viewText.IndexOf(column, StringComparison.Ordinal);
+            Assert.That(index, Is.GreaterThan(previousIndex), $"{column} is missing or out of order.");
+            previousIndex = index;
+        }
+    }
+
+    [Test]
+    public void MyActivity_Credits_Locale_Resources_Are_Exposed_For_Install_And_Update()
+    {
+        var method = typeof(AIInterviewPlugin).GetMethod("GetMyActivityCreditLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var resources = (Dictionary<string, string>)method.Invoke(null, null);
+
+        Assert.That(resources["Plugins.Misc.AIInterview.MyActivity.Tab.Credits"], Is.EqualTo("Credits"));
+        Assert.That(resources["Plugins.Misc.AIInterview.MyActivity.Credits.JobProduct"], Is.EqualTo("Job/Product"));
+        Assert.That(resources["Plugins.Misc.AIInterview.MyActivity.Credits.Empty"], Is.EqualTo("No credit activity yet"));
+    }
+
+    [Test]
     public void Locale_Resources_DoNotContain_CaseInsensitive_Duplicates()
     {
         var upgradeMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);

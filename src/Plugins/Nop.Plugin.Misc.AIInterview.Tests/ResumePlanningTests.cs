@@ -299,7 +299,7 @@ public class ResumePlanningTests
         localizationService.Setup(service => service.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
         sessionService.Setup(service => service.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
         productService.Setup(service => service.GetProductByIdAsync(44)).ReturnsAsync(product);
-        creditService.Setup(service => service.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>())).ReturnsAsync(true);
+        creditService.Setup(service => service.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>(), CreditLedgerSources.InterviewUsage, product.Id, 0)).ReturnsAsync(true);
         applicationService.Setup(service => service.GetJobApplicationsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<JobApplication>());
         jobRequirementService.Setup(service => service.GetRequirementsAsync(44)).ReturnsAsync(new JobRequirementsModel { QuestionCount = 5 });
         resumeFileService.Setup(service => service.ValidateResumeFile(resumeFile)).Returns(new ResumeFileValidationResult { Success = true });

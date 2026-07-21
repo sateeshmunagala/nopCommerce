@@ -1,0 +1,108 @@
+@model Nop.Plugin.Misc.AIInterview.Models.CreditActivityModel
+
+@{
+    var pagerModel = new MyActivityPagerModel
+    {
+        Page = Model.Page,
+        PageSize = Model.PageSize,
+        TotalCount = Model.TotalCount,
+        TotalPages = Model.TotalPages,
+        RouteValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["tab"] = AIInterviewDefaults.MyActivityCreditsTabKey
+        }
+    };
+}
+
+<div class="applications-card my-activity-credits-card">
+    <div class="my-activity-credit-summary" data-credit-summary="true">
+        <div class="my-activity-credit-summary-item">
+            <span>@T("Plugins.Misc.AIInterview.MyActivity.Credits.CurrentBalance")</span>
+            <strong>@Model.CurrentBalanceDisplay</strong>
+        </div>
+        <div class="my-activity-credit-summary-item">
+            <span>@T("Plugins.Misc.AIInterview.MyActivity.Credits.TotalDeposited")</span>
+            <strong>@Model.TotalDepositedDisplay</strong>
+        </div>
+        <div class="my-activity-credit-summary-item">
+            <span>@T("Plugins.Misc.AIInterview.MyActivity.Credits.TotalWithdrawn")</span>
+            <strong>@Model.TotalWithdrawnDisplay</strong>
+        </div>
+    </div>
+
+    @if (Model.Entries.Any())
+    {
+        <div class="applications-table-wrap applications-table-scroller my-activity-credits-table-wrap">
+            <table class="applications-table my-activity-credits-table">
+                <thead>
+                    <tr>
+                        <th class="col-date">@T("Plugins.Misc.AIInterview.MyActivity.Credits.Date")</th>
+                        <th class="col-type">@T("Plugins.Misc.AIInterview.MyActivity.Credits.Type")</th>
+                        <th class="col-credits">@T("Plugins.Misc.AIInterview.MyActivity.Credits.Credits")</th>
+                        <th class="col-balance">@T("Plugins.Misc.AIInterview.MyActivity.Credits.BalanceAfter")</th>
+                        <th class="col-job-product">@T("Plugins.Misc.AIInterview.MyActivity.Credits.JobProduct")</th>
+                        <th class="col-source">@T("Plugins.Misc.AIInterview.MyActivity.Credits.Source")</th>
+                        <th class="col-description">@T("Plugins.Misc.AIInterview.MyActivity.Credits.Description")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in Model.Entries)
+                    {
+                        <tr>
+                            <td class="col-date">@entry.CreatedOnDisplay</td>
+                            <td class="col-type">@entry.Type</td>
+                            <td class="col-credits @(entry.Credits < 0 ? "is-negative" : "is-positive")">@entry.CreditsDisplay</td>
+                            <td class="col-balance">@entry.BalanceAfterDisplay</td>
+                            <td class="col-job-product">@entry.JobProduct</td>
+                            <td class="col-source">@entry.Source</td>
+                            <td class="col-description">@entry.Description</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="responsive-data-list credits-mobile-list" aria-label="@T("Plugins.Misc.AIInterview.MyActivity.Tab.Credits")">
+            @foreach (var entry in Model.Entries)
+            {
+                <article class="responsive-data-card">
+                    <div class="responsive-data-card-head">
+                        <div class="responsive-data-card-head-copy">
+                            <strong class="responsive-data-card-title">@entry.JobProduct</strong>
+                            <div class="applications-footnote">@entry.CreatedOnDisplay</div>
+                        </div>
+                        <div class="responsive-data-card-chip-group">
+                            <span class="status-pill">@entry.Type</span>
+                            <span class="score-chip @(entry.Credits < 0 ? "is-negative" : "is-positive")">@entry.CreditsDisplay</span>
+                        </div>
+                    </div>
+                    <div class="responsive-data-card-grid">
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.MyActivity.Credits.BalanceAfter")</span>
+                            <span class="responsive-data-card-value">@entry.BalanceAfterDisplay</span>
+                        </div>
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.MyActivity.Credits.Source")</span>
+                            <span class="responsive-data-card-value">@entry.Source</span>
+                        </div>
+                        <div class="responsive-data-card-item responsive-data-card-item-wide">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.MyActivity.Credits.Description")</span>
+                            <span class="responsive-data-card-value">@entry.Description</span>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityPager.cshtml", pagerModel)
+        }
+    }
+    else
+    {
+        <div class="my-activity-empty-state">
+            <p>@T("Plugins.Misc.AIInterview.MyActivity.Credits.Empty")</p>
+        </div>
+    }
+</div>

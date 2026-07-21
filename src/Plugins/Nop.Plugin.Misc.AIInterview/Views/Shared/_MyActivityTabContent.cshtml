@@ -22,6 +22,9 @@
                 })
             }
             break;
+        case var value when string.Equals(value, AIInterviewDefaults.MyActivityCreditsTabKey, StringComparison.Ordinal):
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityCreditsContent.cshtml", Model.Credits)
+            break;
         default:
             @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyApplicationsContent.cshtml", Model.AppliedJobs)
             break;

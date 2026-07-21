@@ -146,7 +146,10 @@ public class CreditPurchaseService : ICreditPurchaseService
                 });
 
                 await _creditService.AddCreditAsync(order.CustomerId, creditsToGrant,
-                    $"Purchased credit pack: order #{order.Id}, SKU {sku}, credits {creditsToGrant}");
+                    $"Purchased credit pack: order #{order.Id}, SKU {sku}, credits {creditsToGrant}",
+                    CreditLedgerSources.Order,
+                    product.Id,
+                    order.Id);
 
                 scope.Complete();
                 _logger.LogInformation("Granted credit purchase for order {OrderId}, orderItem {OrderItemId}, customer {CustomerId}, product {ProductId}, credits {CreditsGranted}.",

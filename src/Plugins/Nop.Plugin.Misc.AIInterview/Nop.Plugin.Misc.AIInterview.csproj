@@ -56,6 +56,7 @@
     <None Remove="Views\Shared\_EmployerDashboardOverviewContent.cshtml" />
     <None Remove="Views\Shared\_EmployerDashboardTabContent.cshtml" />
     <None Remove="Views\Shared\_MyActivityPager.cshtml" />
+    <None Remove="Views\Shared\_MyActivityCreditsContent.cshtml" />
     <None Remove="Views\Shared\_MyActivitySavedJobsContent.cshtml" />
     <None Remove="Views\Shared\_MyActivityTabContent.cshtml" />
     <None Remove="Views\Shared\_MyApplicationsContent.cshtml" />
@@ -169,6 +170,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\_MyActivityPager.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivityCreditsContent.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\_MyActivitySavedJobsContent.cshtml">

@@ -114,6 +114,36 @@ public record MockInterviewHistoryListModel : BaseNopModel
     public IList<InterviewHistoryItemModel> Items { get; set; }
 }
 
+public record MyActivityCreditLedgerRowModel : BaseNopModel
+{
+    public DateTime CreatedOnUtc { get; set; }
+    public DateTime CreatedOn { get; set; }
+    public string CreatedOnDisplay { get; set; }
+    public string Type { get; set; }
+    public decimal Credits { get; set; }
+    public decimal BalanceAfter { get; set; }
+    public string JobProduct { get; set; }
+    public string Source { get; set; }
+    public string Description { get; set; }
+    public string CreditsDisplay { get; set; }
+    public string BalanceAfterDisplay { get; set; }
+}
+
+public record CreditActivityModel : BaseNopModel
+{
+    public decimal CurrentBalance { get; set; }
+    public decimal TotalDeposited { get; set; }
+    public decimal TotalWithdrawn { get; set; }
+    public string CurrentBalanceDisplay { get; set; }
+    public string TotalDepositedDisplay { get; set; }
+    public string TotalWithdrawnDisplay { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 5;
+    public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
+    public IList<MyActivityCreditLedgerRowModel> Entries { get; set; } = new List<MyActivityCreditLedgerRowModel>();
+}
+
 public record MyActivityPagerModel : BaseNopModel
 {
     public int Page { get; set; }
@@ -132,12 +162,14 @@ public record MyActivityPageModel : BaseNopModel
         AppliedJobs = new ApplicationListModel();
         SavedJobs = new SavedJobsListModel();
         MockInterviews = new MockInterviewHistoryListModel();
+        Credits = new CreditActivityModel();
     }
 
     public string ActiveTab { get; set; } = AIInterviewDefaults.MyActivityAppliedJobsTabKey;
     public ApplicationListModel AppliedJobs { get; set; }
     public SavedJobsListModel SavedJobs { get; set; }
     public MockInterviewHistoryListModel MockInterviews { get; set; }
+    public CreditActivityModel Credits { get; set; }
 }
 
 public record UpdateStatusModel : BaseNopModel

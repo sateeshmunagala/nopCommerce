@@ -217,6 +217,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
         await EnsureRuntimeActivityLogTypesAsync();
 
         await base.UpdateAsync(currentVersion, targetVersion);
@@ -744,6 +745,25 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         };
     }
 
+    protected static Dictionary<string, string> GetMyActivityCreditLocaleResources()
+    {
+        return new Dictionary<string, string>
+        {
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.Credits"] = "Credits",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.CurrentBalance"] = "Current balance",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.TotalDeposited"] = "Total deposited",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.TotalWithdrawn"] = "Total withdrawn",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.Date"] = "Date",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.Type"] = "Type",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.Credits"] = "Credits",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.BalanceAfter"] = "Balance after",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.JobProduct"] = "Job/Product",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.Source"] = "Source",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.Description"] = "Description",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.Empty"] = "No credit activity yet"
+        };
+    }
+
     protected static Dictionary<string, string> GetAdminLocaleResources()
     {
         return new Dictionary<string, string>
@@ -962,6 +982,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureMessageTemplatesAsync();
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
 
         //locales
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
@@ -1308,6 +1329,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         });
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
         await EnsureRuntimeActivityLogTypesAsync();
 
         await base.InstallAsync();

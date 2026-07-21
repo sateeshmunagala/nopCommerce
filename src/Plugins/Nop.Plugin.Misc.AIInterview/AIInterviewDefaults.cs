@@ -155,6 +155,7 @@ public static class AIInterviewDefaults
     public static string MyActivityAppliedJobsTabKey => "applied-jobs";
     public static string MyActivitySavedJobsTabKey => "saved-jobs";
     public static string MyActivityMockInterviewsTabKey => "mock-interviews";
+    public static string MyActivityCreditsTabKey => "credits";
     public static string EmployerDashboardOverviewTabKey => "overview";
     public static string EmployerDashboardJobsTabKey => "jobs";
     public static string EmployerDashboardApplicationsTabKey => "applications";

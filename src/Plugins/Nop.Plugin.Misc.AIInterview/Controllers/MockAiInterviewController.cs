@@ -1086,7 +1086,10 @@ public class MockAiInterviewController : BasePluginController
                 var sponsorWallet = await _creditService.GetOrCreateWalletAsync(invite.SponsorId);
                 if (sponsorWallet.Balance >= 1)
                 {
-                    var chargedSponsor = await _creditService.AuthorizeAndChargeAsync(invite.SponsorId, 1, $"Sponsored Interview Start Charge for {customer.Email}");
+                    var chargedSponsor = await _creditService.AuthorizeAndChargeAsync(invite.SponsorId, 1, $"Sponsored Interview Start Charge for {customer.Email}",
+                        CreditLedgerSources.SponsorInterviewUsage,
+                        productId,
+                        invite.Id);
                     if (chargedSponsor)
                     {
                         validSponsorInvite = true;
@@ -1098,7 +1101,9 @@ public class MockAiInterviewController : BasePluginController
 
         if (!validSponsorInvite)
         {
-            var charged = await _creditService.AuthorizeAndChargeAsync(customer.Id, 1, "Interview Start Charge");
+            var charged = await _creditService.AuthorizeAndChargeAsync(customer.Id, 1, "Interview Start Charge",
+                CreditLedgerSources.InterviewUsage,
+                productId);
             if (!charged)
                 return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.NoCredits", "Insufficient credits. Please purchase credits to start the interview.");
         }

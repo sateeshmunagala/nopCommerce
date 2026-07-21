@@ -602,6 +602,7 @@ body.html-aiinterview-vendor-job-creation-page {
 }
 
 .applications-mobile-list,
+.credits-mobile-list,
 .employer-mobile-list,
 .history-mobile-list,
 .invite-mobile-list,
@@ -5120,6 +5121,64 @@ body.ai-job-preview-open .item-box {
     margin-left: 0;
 }
 
+.my-activity-credit-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.my-activity-credit-summary-item {
+    display: grid;
+    gap: 6px;
+    padding: 16px;
+    border: 1px solid #d6dee6;
+    background: #ffffff;
+}
+
+.my-activity-credit-summary-item span {
+    color: #4a5c6d;
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-transform: uppercase;
+}
+
+.my-activity-credit-summary-item strong {
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.my-activity-credits-table .col-credits,
+.my-activity-credits-table .col-balance {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.my-activity-credits-table .col-date,
+.my-activity-credits-table .col-type,
+.my-activity-credits-table .col-source {
+    white-space: nowrap;
+}
+
+.my-activity-credits-table .col-job-product,
+.my-activity-credits-table .col-description {
+    min-width: 160px;
+}
+
+.my-activity-credits-table .is-positive,
+.credits-mobile-list .is-positive {
+    color: #047857;
+}
+
+.my-activity-credits-table .is-negative,
+.credits-mobile-list .is-negative {
+    color: #b42318;
+}
+
 .my-activity-empty-state {
     padding: 24px;
     border: 1px solid #d6dee6;
@@ -5673,12 +5732,14 @@ body.ai-job-preview-open .item-box {
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list,
+    .html-aiinterview-my-activity-page .credits-mobile-list,
     .html-aiinterview-my-activity-page .history-mobile-list {
         display: grid;
         gap: 12px;
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card,
+    .html-aiinterview-my-activity-page .credits-mobile-list .responsive-data-card,
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card {
         gap: 12px;
         padding: 14px;
@@ -5688,34 +5749,40 @@ body.ai-job-preview-open .item-box {
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-head,
+    .html-aiinterview-my-activity-page .credits-mobile-list .responsive-data-card-head,
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-head {
         gap: 10px;
         align-items: flex-start;
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-head-copy,
+    .html-aiinterview-my-activity-page .credits-mobile-list .responsive-data-card-head-copy,
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-head-copy {
         gap: 2px;
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-title,
+    .html-aiinterview-my-activity-page .credits-mobile-list .responsive-data-card-title,
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-title {
         font-size: 0.96rem;
         line-height: 1.1;
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .applications-footnote,
+    .html-aiinterview-my-activity-page .credits-mobile-list .applications-footnote,
     .html-aiinterview-my-activity-page .history-mobile-list .applications-footnote {
         font-size: 0.84rem;
         line-height: 1.35;
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-chip-group,
+    .html-aiinterview-my-activity-page .credits-mobile-list .responsive-data-card-chip-group,
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-chip-group {
         gap: 6px;
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .score-chip,
+    .html-aiinterview-my-activity-page .credits-mobile-list .score-chip,
     .html-aiinterview-my-activity-page .history-mobile-list .score-chip {
         min-width: 36px;
         min-height: 36px;
@@ -5723,18 +5790,21 @@ body.ai-job-preview-open .item-box {
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .status-pill,
+    .html-aiinterview-my-activity-page .credits-mobile-list .status-pill,
     .html-aiinterview-my-activity-page .history-mobile-list .status-pill {
         min-height: 36px;
         padding: 4px 10px;
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-grid,
+    .html-aiinterview-my-activity-page .credits-mobile-list .responsive-data-card-grid,
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-item,
+    .html-aiinterview-my-activity-page .credits-mobile-list .responsive-data-card-item,
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-item {
         gap: 4px;
         padding: 10px 12px;
@@ -5744,12 +5814,14 @@ body.ai-job-preview-open .item-box {
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-label,
+    .html-aiinterview-my-activity-page .credits-mobile-list .responsive-data-card-label,
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-label {
         font-size: 0.72rem;
         letter-spacing: 0.04em;
     }
 
     .html-aiinterview-my-activity-page .applications-mobile-list .responsive-data-card-value,
+    .html-aiinterview-my-activity-page .credits-mobile-list .responsive-data-card-value,
     .html-aiinterview-my-activity-page .history-mobile-list .responsive-data-card-value {
         font-size: 0.92rem;
         line-height: 1.35;
@@ -5826,6 +5898,10 @@ body.ai-job-preview-open .item-box {
 
     .my-activity-pager-summary {
         width: 100%;
+    }
+
+    .my-activity-credit-summary {
+        grid-template-columns: 1fr;
     }
 
     .html-aiinterview-employer-dashboard-page .employer-dashboard-metrics,

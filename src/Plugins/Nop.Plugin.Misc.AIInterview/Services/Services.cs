@@ -6,6 +6,7 @@ using Nop.Core.Domain.Vendors;
 using Nop.Data;
 using Nop.Data.Extensions;
 using Nop.Plugin.Misc.AIInterview.Domain;
+using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
@@ -534,6 +535,11 @@ public class CreditService : ICreditService
 
     public async Task AddCreditAsync(int customerId, decimal amount, string remarks)
     {
+        await AddCreditAsync(customerId, amount, remarks, null);
+    }
+
+    public async Task AddCreditAsync(int customerId, decimal amount, string remarks, string ledgerSource, int productId = 0, int orderId = 0)
+    {
         var wallet = await GetOrCreateWalletAsync(customerId);
         wallet.Balance += amount;
         await _walletRepository.UpdateAsync(wallet);
@@ -543,12 +549,20 @@ public class CreditService : ICreditService
             CreditWalletId = wallet.Id,
             Amount = amount,
             TransactionType = "Deposit",
+            LedgerSource = ledgerSource,
+            ProductId = productId,
+            OrderId = orderId,
             Remarks = remarks,
             CreatedOnUtc = DateTime.UtcNow
         });
     }
 
     public async Task<bool> AuthorizeAndChargeAsync(int customerId, decimal amount, string remarks)
+    {
+        return await AuthorizeAndChargeAsync(customerId, amount, remarks, null);
+    }
+
+    public async Task<bool> AuthorizeAndChargeAsync(int customerId, decimal amount, string remarks, string ledgerSource, int productId = 0, int sponsorInviteId = 0)
     {
         var wallet = await GetOrCreateWalletAsync(customerId);
         if (wallet.Balance < amount)
@@ -562,11 +576,288 @@ public class CreditService : ICreditService
             CreditWalletId = wallet.Id,
             Amount = -amount,
             TransactionType = "Withdrawal",
+            LedgerSource = ledgerSource,
+            ProductId = productId,
+            SponsorInviteId = sponsorInviteId,
             Remarks = remarks,
             CreatedOnUtc = DateTime.UtcNow
         });
 
         return true;
+    }
+}
+
+public class CreditActivityService : ICreditActivityService
+{
+    private sealed record LedgerDisplayContext(CreditLedgerEntry Entry, int CustomerId, decimal BalanceAfter);
+
+    private readonly IRepository<CreditWallet> _walletRepository;
+    private readonly IRepository<CreditLedgerEntry> _ledgerRepository;
+    private readonly IRepository<CreditPurchaseGrant> _grantRepository;
+    private readonly IRepository<InterviewSession> _sessionRepository;
+    private readonly IRepository<JobApplication> _applicationRepository;
+    private readonly IRepository<SponsorInvite> _inviteRepository;
+    private readonly Nop.Services.Catalog.IProductService _productService;
+    private readonly IDateTimeHelper _dateTimeHelper;
+
+    public CreditActivityService(
+        IRepository<CreditWallet> walletRepository,
+        IRepository<CreditLedgerEntry> ledgerRepository,
+        IRepository<CreditPurchaseGrant> grantRepository,
+        IRepository<InterviewSession> sessionRepository,
+        IRepository<JobApplication> applicationRepository,
+        IRepository<SponsorInvite> inviteRepository,
+        Nop.Services.Catalog.IProductService productService,
+        IDateTimeHelper dateTimeHelper)
+    {
+        _walletRepository = walletRepository;
+        _ledgerRepository = ledgerRepository;
+        _grantRepository = grantRepository;
+        _sessionRepository = sessionRepository;
+        _applicationRepository = applicationRepository;
+        _inviteRepository = inviteRepository;
+        _productService = productService;
+        _dateTimeHelper = dateTimeHelper;
+    }
+
+    public async Task<CreditActivityModel> BuildCreditActivityModelAsync(Customer customer, int page, int pageSize)
+    {
+        ArgumentNullException.ThrowIfNull(customer);
+
+        var normalizedPageSize = pageSize < 1 ? 5 : Math.Min(pageSize, 50);
+        var wallets = (await _walletRepository.GetAllAsync(query => query.Where(wallet => wallet.CustomerId == customer.Id)))
+            .OrderBy(wallet => wallet.Id)
+            .ToList();
+        var walletIds = wallets.Select(wallet => wallet.Id).ToArray();
+        var ledgerEntries = walletIds.Length == 0
+            ? new List<CreditLedgerEntry>()
+            : await _ledgerRepository.Table
+                .Where(entry => walletIds.Contains(entry.CreditWalletId))
+                .OrderBy(entry => entry.CreatedOnUtc)
+                .ThenBy(entry => entry.Id)
+                .ToListAsync();
+
+        var totalCount = ledgerEntries.Count;
+        var totalPages = totalCount > 0 ? (int)Math.Ceiling(totalCount / (double)normalizedPageSize) : 0;
+        var normalizedPage = page < 1 ? 1 : page;
+        if (totalPages > 0 && normalizedPage > totalPages)
+            normalizedPage = totalPages;
+
+        decimal runningBalance = 0;
+        var displayContexts = ledgerEntries
+            .Select(entry =>
+            {
+                runningBalance += entry.Amount;
+                return new LedgerDisplayContext(entry, customer.Id, runningBalance);
+            })
+            .OrderByDescending(context => context.Entry.CreatedOnUtc)
+            .ThenByDescending(context => context.Entry.Id)
+            .ToList();
+
+        var pagedContexts = displayContexts
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToList();
+
+        var rows = new List<MyActivityCreditLedgerRowModel>();
+        var customerTimeZone = _dateTimeHelper == null ? TimeZoneInfo.Utc : await _dateTimeHelper.GetCustomerTimeZoneAsync(customer);
+        foreach (var context in pagedContexts)
+        {
+            var entry = context.Entry;
+            var localCreatedOn = _dateTimeHelper == null
+                ? DateTime.SpecifyKind(entry.CreatedOnUtc, DateTimeKind.Utc).ToLocalTime()
+                : _dateTimeHelper.ConvertToUserTime(entry.CreatedOnUtc, TimeZoneInfo.Utc, customerTimeZone);
+            var metadata = await ResolveDisplayMetadataAsync(context);
+            var creditsDisplay = FormatCredits(entry.Amount, includeSign: true);
+
+            rows.Add(new MyActivityCreditLedgerRowModel
+            {
+                CreatedOnUtc = entry.CreatedOnUtc,
+                CreatedOn = localCreatedOn,
+                CreatedOnDisplay = localCreatedOn.ToString("g", CultureInfo.CurrentCulture),
+                Type = entry.Amount >= 0 ? "Deposit" : "Withdrawal",
+                Credits = entry.Amount,
+                CreditsDisplay = creditsDisplay,
+                BalanceAfter = context.BalanceAfter,
+                BalanceAfterDisplay = FormatCredits(context.BalanceAfter),
+                JobProduct = metadata.JobProduct,
+                Source = metadata.Source,
+                Description = metadata.Description
+            });
+        }
+
+        return new CreditActivityModel
+        {
+            CurrentBalance = wallets.Sum(wallet => wallet.Balance),
+            CurrentBalanceDisplay = FormatCredits(wallets.Sum(wallet => wallet.Balance)),
+            TotalDeposited = ledgerEntries.Where(entry => entry.Amount > 0).Sum(entry => entry.Amount),
+            TotalDepositedDisplay = FormatCredits(ledgerEntries.Where(entry => entry.Amount > 0).Sum(entry => entry.Amount)),
+            TotalWithdrawn = ledgerEntries.Where(entry => entry.Amount < 0).Sum(entry => -entry.Amount),
+            TotalWithdrawnDisplay = FormatCredits(ledgerEntries.Where(entry => entry.Amount < 0).Sum(entry => -entry.Amount)),
+            Page = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            Entries = rows
+        };
+    }
+
+    private async Task<(string JobProduct, string Source, string Description)> ResolveDisplayMetadataAsync(LedgerDisplayContext context)
+    {
+        var entry = context.Entry;
+        if (entry.Amount > 0)
+            return await ResolveDepositDisplayMetadataAsync(context);
+
+        if (entry.Amount < 0)
+            return await ResolveWithdrawalDisplayMetadataAsync(context);
+
+        return ("-", CreditLedgerSources.Adjustment, "Credit adjustment");
+    }
+
+    private async Task<(string JobProduct, string Source, string Description)> ResolveDepositDisplayMetadataAsync(LedgerDisplayContext context)
+    {
+        var entry = context.Entry;
+        var productName = await ResolveProductNameAsync(entry.ProductId);
+        var grant = await ResolvePurchaseGrantAsync(context);
+        productName ??= await ResolveProductNameAsync(grant?.ProductId ?? 0);
+
+        if (IsSource(entry, CreditLedgerSources.Order) || entry.OrderId > 0 || grant != null)
+            return (productName ?? "Credit pack", CreditLedgerSources.Order, "Credit pack purchase");
+
+        return ("Credit top-up", CreditLedgerSources.AdminTopUp, "Admin credit top-up");
+    }
+
+    private async Task<(string JobProduct, string Source, string Description)> ResolveWithdrawalDisplayMetadataAsync(LedgerDisplayContext context)
+    {
+        var entry = context.Entry;
+        var productName = await ResolveProductNameAsync(entry.ProductId);
+        var isSponsored = IsSource(entry, CreditLedgerSources.SponsorInterviewUsage) || entry.SponsorInviteId > 0;
+
+        if (productName == null)
+        {
+            var session = await ResolveInterviewSessionAsync(context);
+            productName = await ResolveSessionProductNameAsync(session);
+            isSponsored = isSponsored || session?.SponsorInviteId > 0;
+        }
+
+        if (isSponsored)
+            return (productName ?? "-", CreditLedgerSources.SponsorInterviewUsage, "Sponsored interview started");
+
+        if (IsSource(entry, CreditLedgerSources.Adjustment) || !string.Equals(entry.TransactionType, "Withdrawal", StringComparison.OrdinalIgnoreCase))
+            return (productName ?? "-", CreditLedgerSources.Adjustment, "Credit adjustment");
+
+        return (productName ?? "-", CreditLedgerSources.InterviewUsage, "Interview started");
+    }
+
+    private static bool IsSource(CreditLedgerEntry entry, string source)
+    {
+        return string.Equals(entry?.LedgerSource, source, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<CreditPurchaseGrant> ResolvePurchaseGrantAsync(LedgerDisplayContext context)
+    {
+        var entry = context.Entry;
+        if (entry.OrderId > 0)
+        {
+            var orderGrants = await _grantRepository.Table
+                .Where(grant => grant.CustomerId == context.CustomerId && grant.OrderId == entry.OrderId)
+                .ToListAsync();
+            var byOrder = orderGrants
+                .OrderBy(grant => Math.Abs(grant.CreditsGranted - entry.Amount))
+                .ThenBy(grant => Math.Abs((grant.CreatedOnUtc - entry.CreatedOnUtc).TotalSeconds))
+                .FirstOrDefault();
+            if (byOrder != null)
+                return byOrder;
+        }
+
+        var matchingGrants = await _grantRepository.Table
+            .Where(grant => grant.CustomerId == context.CustomerId &&
+                grant.CreditsGranted == entry.Amount &&
+                grant.CreatedOnUtc >= entry.CreatedOnUtc.AddMinutes(-5) &&
+                grant.CreatedOnUtc <= entry.CreatedOnUtc.AddMinutes(5))
+            .ToListAsync();
+
+        return matchingGrants
+            .OrderBy(grant => Math.Abs((grant.CreatedOnUtc - entry.CreatedOnUtc).TotalSeconds))
+            .FirstOrDefault();
+    }
+
+    private async Task<InterviewSession> ResolveInterviewSessionAsync(LedgerDisplayContext context)
+    {
+        var entry = context.Entry;
+        if (entry.SponsorInviteId > 0)
+        {
+            var sponsoredSessions = await _sessionRepository.Table
+                .Where(session => session.SponsorInviteId == entry.SponsorInviteId &&
+                    session.CreatedOnUtc >= entry.CreatedOnUtc.AddMinutes(-5) &&
+                    session.CreatedOnUtc <= entry.CreatedOnUtc.AddMinutes(10))
+                .ToListAsync();
+            var sponsoredSession = sponsoredSessions
+                .OrderBy(session => Math.Abs((session.CreatedOnUtc - entry.CreatedOnUtc).TotalSeconds))
+                .FirstOrDefault();
+            if (sponsoredSession != null)
+                return sponsoredSession;
+        }
+
+        var directSessions = await _sessionRepository.Table
+            .Where(session => session.CustomerId == context.CustomerId &&
+                session.CreatedOnUtc >= entry.CreatedOnUtc.AddMinutes(-5) &&
+                session.CreatedOnUtc <= entry.CreatedOnUtc.AddMinutes(10))
+            .ToListAsync();
+        var directSession = directSessions
+            .OrderBy(session => Math.Abs((session.CreatedOnUtc - entry.CreatedOnUtc).TotalSeconds))
+            .FirstOrDefault();
+        if (directSession != null)
+            return directSession;
+
+        var inviteIds = await _inviteRepository.Table
+            .Where(invite => invite.SponsorId == context.CustomerId)
+            .Select(invite => invite.Id)
+            .ToListAsync();
+        if (!inviteIds.Any())
+            return null;
+
+        var sponsorSessions = await _sessionRepository.Table
+            .Where(session => inviteIds.Contains(session.SponsorInviteId) &&
+                session.CreatedOnUtc >= entry.CreatedOnUtc.AddMinutes(-5) &&
+                session.CreatedOnUtc <= entry.CreatedOnUtc.AddMinutes(10))
+            .ToListAsync();
+
+        return sponsorSessions
+            .OrderBy(session => Math.Abs((session.CreatedOnUtc - entry.CreatedOnUtc).TotalSeconds))
+            .FirstOrDefault();
+    }
+
+    private async Task<string> ResolveSessionProductNameAsync(InterviewSession session)
+    {
+        if (session == null)
+            return null;
+
+        var productName = await ResolveProductNameAsync(session.SourceProductId > 0 ? session.SourceProductId : session.ProductId);
+        if (productName != null)
+            return productName;
+
+        if (session.JobApplicationId <= 0)
+            return null;
+
+        var application = await _applicationRepository.GetByIdAsync(session.JobApplicationId);
+        productName = await ResolveProductNameAsync(application?.ProductId ?? 0);
+        return productName ?? application?.JobTitle;
+    }
+
+    private async Task<string> ResolveProductNameAsync(int productId)
+    {
+        if (productId <= 0 || _productService == null)
+            return null;
+
+        var product = await _productService.GetProductByIdAsync(productId);
+        return string.IsNullOrWhiteSpace(product?.Name) ? null : product.Name;
+    }
+
+    private static string FormatCredits(decimal value, bool includeSign = false)
+    {
+        var formatted = value.ToString("0.####", CultureInfo.InvariantCulture);
+        return includeSign && value > 0 ? $"+{formatted}" : formatted;
     }
 }
 

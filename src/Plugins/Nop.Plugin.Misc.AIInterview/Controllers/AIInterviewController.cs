@@ -70,6 +70,7 @@ public class AIInterviewController : BasePluginController
     private readonly IJobProductAccessService _jobProductAccessService;
     private readonly ISponsorInviteService _inviteService;
     private readonly ICreditService _creditService;
+    private readonly ICreditActivityService _creditActivityService;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -98,7 +99,8 @@ public class AIInterviewController : BasePluginController
         IAIInterviewJobDisplayService aiInterviewJobDisplayService = null,
         IJobProductAccessService jobProductAccessService = null,
         ISponsorInviteService inviteService = null,
-        ICreditService creditService = null)
+        ICreditService creditService = null,
+        ICreditActivityService creditActivityService = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -128,6 +130,7 @@ public class AIInterviewController : BasePluginController
         _jobProductAccessService = jobProductAccessService;
         _inviteService = inviteService;
         _creditService = creditService;
+        _creditActivityService = creditActivityService;
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -154,7 +157,8 @@ public class AIInterviewController : BasePluginController
         IAIInterviewJobDisplayService aiInterviewJobDisplayService = null,
         IJobProductAccessService jobProductAccessService = null,
         ISponsorInviteService inviteService = null,
-        ICreditService creditService = null)
+        ICreditService creditService = null,
+        ICreditActivityService creditActivityService = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -182,7 +186,8 @@ public class AIInterviewController : BasePluginController
             aiInterviewJobDisplayService,
             jobProductAccessService,
             inviteService,
-            creditService)
+            creditService,
+            creditActivityService)
     {
     }
 
@@ -581,6 +586,7 @@ public class AIInterviewController : BasePluginController
         {
             var value when string.Equals(value, AIInterviewDefaults.MyActivitySavedJobsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.MyActivitySavedJobsTabKey,
             var value when string.Equals(value, AIInterviewDefaults.MyActivityMockInterviewsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.MyActivityMockInterviewsTabKey,
+            var value when string.Equals(value, AIInterviewDefaults.MyActivityCreditsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.MyActivityCreditsTabKey,
             _ => AIInterviewDefaults.MyActivityAppliedJobsTabKey
         };
     }
@@ -825,6 +831,11 @@ public class AIInterviewController : BasePluginController
                 break;
             case var value when string.Equals(value, AIInterviewDefaults.MyActivityMockInterviewsTabKey, StringComparison.Ordinal):
                 model.MockInterviews = await BuildMockInterviewHistoryModelAsync(customer, page, pageSize);
+                break;
+            case var value when string.Equals(value, AIInterviewDefaults.MyActivityCreditsTabKey, StringComparison.Ordinal):
+                model.Credits = _creditActivityService == null
+                    ? new CreditActivityModel()
+                    : await _creditActivityService.BuildCreditActivityModelAsync(customer, page, pageSize);
                 break;
             default:
                 model.AppliedJobs = await BuildMyApplicationsModelAsync(customer, sortOrder, status, minScore, maxScore, page, pageSize, true);

@@ -28,6 +28,7 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<IAIInterviewClient, InterviewAiClient>();
         services.AddScoped<IInterviewRuntimeService, InterviewRuntimeService>();
         services.AddScoped<ICreditService, CreditService>();
+        services.AddScoped<ICreditActivityService, CreditActivityService>();
         services.AddScoped<ICreditDepositNotificationService, CreditDepositNotificationService>();
         services.AddScoped<ICreditPurchaseService, CreditPurchaseService>();
         services.AddScoped<ISponsorInviteService, SponsorInviteService>();
