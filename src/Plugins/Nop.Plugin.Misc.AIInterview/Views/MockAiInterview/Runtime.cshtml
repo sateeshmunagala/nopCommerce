@@ -370,6 +370,8 @@
         let speechAudioElement = null;
         let speechAudioObjectUrl = '';
         let speechAudioCaptureStream = null;
+        let botAudioCapturedForCurrentSpeech = false;
+        let botAudioRecordingFallbackNotifiedForCurrentSpeech = false;
         let recordingAudioContext = null;
         let recordingAudioDestination = null;
         let recordingMicSource = null;
@@ -505,6 +507,14 @@
                 : '';
         };
 
+        const hasPermissionBackedAudioDeviceList = (devices) => devices.some(device => {
+            const deviceId = device.deviceId || '';
+            return !!device.label || (!!deviceId && deviceId !== 'default' && deviceId !== 'communications');
+        });
+
+        const hasOnlyUnlabeledAudioDevices = (devices) => devices.length > 0
+            && devices.every(device => !(device.label || '').trim());
+
         const getSelectedAudioInputConstraints = () => {
             if (!selectedAudioInputId)
                 return true;
@@ -533,10 +543,11 @@
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 availableAudioInputs = devices.filter(device => device.kind === 'audioinput');
                 availableAudioOutputs = devices.filter(device => device.kind === 'audiooutput');
+                const inputListCanConfirmAvailability = hasPermissionBackedAudioDeviceList(availableAudioInputs);
 
                 const inputStillAvailable = !selectedAudioInputId
                     || availableAudioInputs.some(device => device.deviceId === selectedAudioInputId);
-                if (!inputStillAvailable) {
+                if (!inputStillAvailable && inputListCanConfirmAvailability) {
                     selectedAudioInputId = '';
                     writeLocalStorageValue(audioInputStorageKey, '');
                     setAudioDeviceStatus('Selected microphone unavailable. Using default microphone.');
@@ -558,9 +569,14 @@
                 if (audioOutputSelect)
                     audioOutputSelect.disabled = !supportsAudioOutputSelection;
 
-                if (!supportsAudioOutputSelection)
+                const currentStatus = (audioDeviceStatus?.textContent || '').trim();
+                if (!supportsAudioOutputSelection && !currentStatus)
                     setAudioDeviceStatus('Speaker selection is not supported in this browser.');
-                else if (!audioDeviceStatus?.textContent)
+                else if (supportsAudioOutputSelection && !availableAudioOutputs.some(device => device.deviceId) && !currentStatus)
+                    setAudioDeviceStatus('Using browser default speaker.');
+                else if (hasOnlyUnlabeledAudioDevices(availableAudioInputs) && !isMicActive() && !currentStatus)
+                    setAudioDeviceStatus('Allow microphone access to show device names.');
+                else if (!currentStatus)
                     setAudioDeviceStatus(selectedAudioOutputId ? 'Speaker selected.' : 'Using browser default speaker.');
             } catch (error) {
                 logActivity(`Audio device enumeration failed. reason=${error?.message || error?.name || 'unknown'}`);
@@ -607,19 +623,53 @@
             return tracks.length ? new MediaStream(tracks) : null;
         };
 
+        const hasLiveAudioTrack = (stream) => getLiveTracks(stream, 'audio').length > 0;
+
+        const hasSpeechAudioSource = () => !!(speechAudioElement?.currentSrc || speechAudioElement?.getAttribute('src'));
+
+        const revokeSpeechAudioObjectUrl = () => {
+            if (!speechAudioObjectUrl)
+                return;
+
+            try {
+                URL.revokeObjectURL(speechAudioObjectUrl);
+            } catch {}
+            speechAudioObjectUrl = '';
+        };
+
         const getSpeechAudioCaptureStream = () => {
-            if (speechAudioCaptureStream?.getAudioTracks?.().length)
+            if (!hasSpeechAudioSource()) {
+                speechAudioCaptureStream = null;
+                return null;
+            }
+
+            if (hasLiveAudioTrack(speechAudioCaptureStream))
                 return speechAudioCaptureStream;
 
+            speechAudioCaptureStream = null;
             if (!speechAudioElement?.captureStream)
                 return null;
 
             try {
                 speechAudioCaptureStream = speechAudioElement.captureStream();
-                return speechAudioCaptureStream;
+                return hasLiveAudioTrack(speechAudioCaptureStream) ? speechAudioCaptureStream : null;
             } catch {
                 return null;
             }
+        };
+
+        const noteBotAudioRecordingFallback = () => {
+            if (botAudioRecordingFallbackNotifiedForCurrentSpeech)
+                return;
+
+            botAudioCapturedForCurrentSpeech = false;
+            botAudioRecordingFallbackNotifiedForCurrentSpeech = true;
+            const message = 'Interviewer audio recording depends on screen audio in this browser.';
+            logActivity('Interviewer voice recording is falling back to browser/system capture only.');
+            if (recordingEnabled)
+                setRecordingStatus(message, false);
+            else
+                setAudioDeviceStatus(message);
         };
 
         const disconnectRecordingAudioSources = () => {
@@ -2652,15 +2702,23 @@
 
         const playControlledSpeechAudio = async (audioData) => {
             const audioElement = ensureSpeechAudioElement();
-            if (speechAudioObjectUrl)
-                URL.revokeObjectURL(speechAudioObjectUrl);
+            botAudioCapturedForCurrentSpeech = false;
+            botAudioRecordingFallbackNotifiedForCurrentSpeech = false;
+            revokeSpeechAudioObjectUrl();
 
             const audioBlob = new Blob([audioData], { type: 'audio/mpeg' });
             speechAudioObjectUrl = URL.createObjectURL(audioBlob);
             audioElement.src = speechAudioObjectUrl;
+            audioElement.load?.();
+            if (!hasLiveAudioTrack(speechAudioCaptureStream))
+                speechAudioCaptureStream = null;
             await applySelectedAudioOutput(audioElement);
 
             speechAudioCaptureStream = getSpeechAudioCaptureStream();
+            botAudioCapturedForCurrentSpeech = hasLiveAudioTrack(speechAudioCaptureStream);
+            if (!botAudioCapturedForCurrentSpeech)
+                noteBotAudioRecordingFallback();
+
             if (recordingEnabled)
                 await syncRecording();
 
@@ -2671,10 +2729,16 @@
                 };
                 const handleEnded = () => {
                     cleanup();
+                    revokeSpeechAudioObjectUrl();
                     resolve();
                 };
                 const handleError = () => {
                     cleanup();
+                    revokeSpeechAudioObjectUrl();
+                    audioElement.removeAttribute('src');
+                    audioElement.load?.();
+                    speechAudioCaptureStream = null;
+                    botAudioCapturedForCurrentSpeech = false;
                     reject(new Error('Speech audio playback failed.'));
                 };
 
@@ -2747,12 +2811,15 @@
                 const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
                 if (purpose === 'question')
                     setHeaderStatus('Playing interviewer audio.', false);
+                botAudioCapturedForCurrentSpeech = false;
+                botAudioRecordingFallbackNotifiedForCurrentSpeech = false;
 
                 try {
                     const audioData = await synthesizeSpeechAudioData(speechConfig, text);
                     await playControlledSpeechAudio(audioData);
                 } catch (controlledPlaybackError) {
                     logActivity(`Controlled speech playback unavailable. reason=${controlledPlaybackError?.message || controlledPlaybackError?.name || 'unknown'}`);
+                    noteBotAudioRecordingFallback();
                     await speakTextWithDefaultOutput(speechConfig, text);
                 } finally {
                     if (purpose === 'question')
@@ -3427,8 +3494,7 @@
             stopScreenShare();
             clearAllRuntimeTimers();
             closeRecordingAudioMix();
-            if (speechAudioObjectUrl)
-                URL.revokeObjectURL(speechAudioObjectUrl);
+            revokeSpeechAudioObjectUrl();
         });
 
         loadPersistedAudioDeviceSelections();
