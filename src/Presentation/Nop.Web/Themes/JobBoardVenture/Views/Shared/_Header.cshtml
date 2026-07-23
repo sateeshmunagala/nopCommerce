@@ -48,8 +48,7 @@
 
         <div class="header-logo">
             <a href="@Url.RouteUrl(NopRouteNames.General.HOMEPAGE)" class="jb-brand">
-                <span class="jb-brand-mark" aria-hidden="true"></span>
-                <span class="jb-brand-name">@currentStore.Name</span>
+                @await Component.InvokeAsync(typeof(LogoViewComponent))
             </a>
         </div>
 

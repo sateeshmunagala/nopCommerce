@@ -7,6 +7,8 @@
                 return 'saved-jobs';
             case 'mock-interviews':
                 return 'mock-interviews';
+            case 'credits':
+                return 'credits';
             default:
                 return 'applied-jobs';
         }

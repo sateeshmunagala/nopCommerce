@@ -49,7 +49,7 @@
                     {
                         <div class="inputs">
                             <label class="jb-register-field-label" for="@Html.IdFor(m => m.FirstName)">@T("Account.Fields.FirstName"):</label>
-                            <input asp-for="FirstName" />
+                            <input asp-for="FirstName" placeholder="@T("Account.Fields.FirstName")" />
                             @if (Model.FirstNameRequired)
                             {
                                 <nop-required />
@@ -61,7 +61,7 @@
                     {
                         <div class="inputs">
                             <label class="jb-register-field-label" for="@Html.IdFor(m => m.LastName)">@T("Account.Fields.LastName"):</label>
-                            <input asp-for="LastName" />
+                            <input asp-for="LastName" placeholder="@T("Account.Fields.LastName")" />
                             @if (Model.LastNameRequired)
                             {
                                 <nop-required />
@@ -93,7 +93,7 @@
                     }
                     <div class="inputs">
                         <label class="jb-register-field-label" for="@Html.IdFor(m => m.Email)">@T("Account.Fields.Email"):</label>
-                        <input asp-for="Email" />
+                        <input asp-for="Email" placeholder="@T("Account.Fields.Email")" />
                         <nop-required />
                         <span asp-validation-for="Email"></span>
                     </div>
@@ -101,7 +101,7 @@
                     {
                         <div class="inputs">
                             <label class="jb-register-field-label" for="@Html.IdFor(m => m.ConfirmEmail)">@T("Account.Fields.ConfirmEmail"):</label>
-                            <input asp-for="ConfirmEmail" />
+                            <input asp-for="ConfirmEmail" placeholder="@T("Account.Fields.ConfirmEmail")" />
                             <nop-required />
                             <span asp-validation-for="ConfirmEmail"></span>
                         </div>
@@ -110,7 +110,7 @@
                     {
                         <div class="inputs">
                             <label class="jb-register-field-label" for="@Html.IdFor(m => m.Username)">@T("Account.Fields.Username"):</label>
-                            <input asp-for="Username" />
+                            <input asp-for="Username" placeholder="@T("Account.Fields.Username")" />
                             <nop-required />
                             <span asp-validation-for="Username"></span>
                             @if (Model.CheckUsernameAvailabilityEnabled)
@@ -133,7 +133,7 @@
                         {
                             <div class="inputs">
                                 <label class="jb-register-field-label" for="@Html.IdFor(m => m.Company)">@T("Account.Fields.Company"):</label>
-                                <input asp-for="Company" />
+                                <input asp-for="Company" placeholder="@T("Account.Fields.Company")" />
                                 @if (Model.CompanyRequired)
                                 {
                                     <nop-required />
@@ -145,7 +145,7 @@
                         {
                             <div class="inputs">
                                 <label class="jb-register-field-label" for="@Html.IdFor(m => m.VatNumber)">@T("Account.Fields.VatNumber"):</label>
-                                <input asp-for="VatNumber" />
+                                <input asp-for="VatNumber" placeholder="@T("Account.Fields.VatNumber")" />
                                 @if (Model.VatNumberRequired)
                                 {
                                     <nop-required />
@@ -173,7 +173,7 @@
                         {
                             <div class="inputs">
                                 <label class="jb-register-field-label" for="@Html.IdFor(m => m.StreetAddress)">@T("Account.Fields.StreetAddress"):</label>
-                                <input asp-for="StreetAddress" />
+                                <input asp-for="StreetAddress" placeholder="@T("Account.Fields.StreetAddress")" />
                                 @if (Model.StreetAddressRequired)
                                 {
                                     <nop-required />
@@ -185,7 +185,7 @@
                         {
                             <div class="inputs">
                                 <label class="jb-register-field-label" for="@Html.IdFor(m => m.StreetAddress2)">@T("Account.Fields.StreetAddress2"):</label>
-                                <input asp-for="StreetAddress2" />
+                                <input asp-for="StreetAddress2" placeholder="@T("Account.Fields.StreetAddress2")" />
                                 @if (Model.StreetAddress2Required)
                                 {
                                     <nop-required />
@@ -197,7 +197,7 @@
                         {
                             <div class="inputs">
                                 <label class="jb-register-field-label" for="@Html.IdFor(m => m.ZipPostalCode)">@T("Account.Fields.ZipPostalCode"):</label>
-                                <input asp-for="ZipPostalCode" />
+                                <input asp-for="ZipPostalCode" placeholder="@T("Account.Fields.ZipPostalCode")" />
                                 @if (Model.ZipPostalCodeRequired)
                                 {
                                     <nop-required />
@@ -209,7 +209,7 @@
                         {
                             <div class="inputs">
                                 <label class="jb-register-field-label" for="@Html.IdFor(m => m.County)">@T("Account.Fields.County"):</label>
-                                <input asp-for="County" />
+                                <input asp-for="County" placeholder="@T("Account.Fields.County")" />
                                 @if (Model.CountyRequired)
                                 {
                                     <nop-required />
@@ -221,7 +221,7 @@
                         {
                             <div class="inputs">
                                 <label class="jb-register-field-label" for="@Html.IdFor(m => m.City)">@T("Account.Fields.City"):</label>
-                                <input asp-for="City" />
+                                <input asp-for="City" placeholder="@T("Account.Fields.City")" />
                                 @if (Model.CityRequired)
                                 {
                                     <nop-required />
@@ -289,7 +289,7 @@
                         {
                             <div class="inputs">
                                 <label class="jb-register-field-label" for="@Html.IdFor(m => m.Fax)">@T("Account.Fields.Fax"):</label>
-                                <input asp-for="Fax" />
+                                <input asp-for="Fax" placeholder="@T("Account.Fields.Fax")" />
                                 @if (Model.FaxRequired)
                                 {
                                     <nop-required />
@@ -357,13 +357,13 @@
                 <div class="form-fields">
                     <div class="inputs">
                         <label class="jb-register-field-label" for="@Html.IdFor(m => m.Password)">@T("Account.Fields.Password"):</label>
-                        <input asp-for="Password" />
+                        <input asp-for="Password" placeholder="@T("Account.Fields.Password")" />
                         <nop-required />
                         <span asp-validation-for="Password"></span>
                     </div>
                     <div class="inputs">
                         <label class="jb-register-field-label" for="@Html.IdFor(m => m.ConfirmPassword)">@T("Account.Fields.ConfirmPassword"):</label>
-                        <input asp-for="ConfirmPassword" />
+                        <input asp-for="ConfirmPassword" placeholder="@T("Account.Fields.ConfirmPassword")" />
                         <nop-required />
                         <span asp-validation-for="ConfirmPassword"></span>
                     </div>

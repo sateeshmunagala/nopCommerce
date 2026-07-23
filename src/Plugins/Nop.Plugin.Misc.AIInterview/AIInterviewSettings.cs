@@ -1,4 +1,4 @@
-using Nop.Core.Configuration;
+﻿using Nop.Core.Configuration;
 
 namespace Nop.Plugin.Misc.AIInterview;
 
@@ -81,6 +81,7 @@ public class AIInterviewSettings : ISettings
     /// Gets or sets the URL for the pricing or credit purchase page
     /// </summary>
     public string CreditPurchasePageUrl { get; set; }
+    public string CreditPageUrl { get; set; }
 
     /// <summary>
     /// Gets or sets the credit pack amount

@@ -1,4 +1,4 @@
-using Nop.Core;
+﻿using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Messages;
@@ -946,9 +946,9 @@ public class CreditDepositNotificationService : ICreditDepositNotificationServic
                     .Sum(entry => -entry.Amount);
 
             var storeLocation = (_webHelper.GetStoreLocation() ?? string.Empty).TrimEnd('/');
-            var creditPagePath = string.IsNullOrWhiteSpace(_settings?.CreditPurchasePageUrl)
+            var creditPagePath = string.IsNullOrWhiteSpace(_settings?.CreditPageUrl)
                 ? AIInterviewDefaults.DefaultCreditPurchasePageUrl
-                : _settings.CreditPurchasePageUrl;
+                : _settings.CreditPageUrl;
             var creditPageUrl = creditPagePath.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                 ? creditPagePath
                 : $"{storeLocation}/{creditPagePath.TrimStart('/')}";
