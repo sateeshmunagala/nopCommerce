@@ -40,6 +40,10 @@
                 </div>
             </div>
             <div class="runtime-meta">
+                <button type="button" id="open-runtime-feedback" class="button-2 runtime-feedback-trigger" aria-haspopup="dialog" aria-controls="runtime-feedback-modal" aria-label="@T("Plugins.Misc.AIInterview.Runtime.Feedback.Trigger")">
+                    <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
+                    <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Trigger")</span>
+                </button>
                 @if (!string.IsNullOrWhiteSpace(Model.CandidateName))
                 {
                     <span class="runtime-candidate-chip">@Model.CandidateName</span>
@@ -169,7 +173,7 @@
                                     <i class="fa-solid fa-comments" aria-hidden="true"></i>
                                 </div>
                                 <div class="runtime-chat-placeholder-copy">
-                                    <div class="runtime-chat-placeholder-title">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
+                                    @* <div class="runtime-chat-placeholder-title">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div> *@
                                     <div class="runtime-chat-placeholder-text">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
                                 </div>
                             </div>
@@ -300,6 +304,105 @@
     </div>
 </div>
 
+<div id="runtime-feedback-modal" class="runtime-modal runtime-feedback-modal" aria-hidden="true">
+    <div class="runtime-modal-card runtime-feedback-card" role="dialog" aria-modal="true" aria-labelledby="runtime-feedback-title">
+        <div class="runtime-feedback-head">
+            <div class="runtime-feedback-title-row">
+                <span class="runtime-feedback-title-icon"><i class="fa-regular fa-circle-question" aria-hidden="true"></i></span>
+                <h3 id="runtime-feedback-title">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Title")</h3>
+            </div>
+            <button type="button" id="runtime-feedback-close" class="runtime-feedback-close" aria-label="@T("Plugins.Misc.AIInterview.Runtime.Close")">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+        <p class="runtime-feedback-intro">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Intro")</p>
+        <div class="runtime-feedback-field">
+            <label for="runtime-feedback-issue">@T("Plugins.Misc.AIInterview.Runtime.Feedback.IssueLabel")</label>
+            <div class="runtime-feedback-select-wrap">
+                <span class="runtime-feedback-select-icon"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></span>
+                <select id="runtime-feedback-issue">
+                    <option value="AI is not speaking">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.AiNotSpeaking")</option>
+                    <option value="Typing is not working">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.TypingNotWorking")</option>
+                    <option value="Loading issues">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.LoadingIssues")</option>
+                    <option value="Taking too much time for result generation">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.ResultDelay")</option>
+                    <option value="Other issue">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.OtherIssue")</option>
+                </select>
+                <span class="runtime-feedback-chevron"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
+            </div>
+        </div>
+
+        <div class="runtime-feedback-solutions">
+            <div class="runtime-feedback-solution is-active" data-feedback-solution="AI is not speaking">
+                <div class="runtime-feedback-solution-panel"><strong>@T("Plugins.Misc.AIInterview.Runtime.Feedback.SolutionLabel")</strong> @T("Plugins.Misc.AIInterview.Runtime.Feedback.Solution.AiNotSpeaking")</div>
+                <label class="runtime-feedback-toggle-row">
+                    <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.BackupSpeaker")</span>
+                    <input type="checkbox" id="runtime-feedback-backup-speaker" role="switch" />
+                </label>
+                <div class="runtime-feedback-note">@T("Plugins.Misc.AIInterview.Runtime.Feedback.BackupSpeakerNote")</div>
+                <div class="runtime-feedback-helpful">
+                    <div>@T("Plugins.Misc.AIInterview.Runtime.Feedback.WasHelpful")</div>
+                    <div class="runtime-feedback-helpful-buttons">
+                        <button type="button" data-feedback-helpfulness="helpful" aria-label="Helpful" aria-pressed="false"><i class="fa-regular fa-thumbs-up" aria-hidden="true"></i></button>
+                        <button type="button" data-feedback-helpfulness="not_helpful" aria-label="Not helpful" aria-pressed="false"><i class="fa-regular fa-thumbs-down" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div class="runtime-feedback-solution runtime-js-hidden" data-feedback-solution="Typing is not working">
+                <div class="runtime-feedback-solution-panel"><strong>@T("Plugins.Misc.AIInterview.Runtime.Feedback.SolutionLabel")</strong> @T("Plugins.Misc.AIInterview.Runtime.Feedback.Solution.TypingNotWorking")</div>
+                <div class="runtime-feedback-helpful">
+                    <div>@T("Plugins.Misc.AIInterview.Runtime.Feedback.WasHelpful")</div>
+                    <div class="runtime-feedback-helpful-buttons">
+                        <button type="button" data-feedback-helpfulness="helpful" aria-label="Helpful" aria-pressed="false"><i class="fa-regular fa-thumbs-up" aria-hidden="true"></i></button>
+                        <button type="button" data-feedback-helpfulness="not_helpful" aria-label="Not helpful" aria-pressed="false"><i class="fa-regular fa-thumbs-down" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div class="runtime-feedback-solution runtime-js-hidden" data-feedback-solution="Loading issues">
+                <div class="runtime-feedback-solution-panel"><strong>@T("Plugins.Misc.AIInterview.Runtime.Feedback.SolutionLabel")</strong> @T("Plugins.Misc.AIInterview.Runtime.Feedback.Solution.LoadingIssues")</div>
+                <div class="runtime-feedback-helpful">
+                    <div>@T("Plugins.Misc.AIInterview.Runtime.Feedback.WasHelpful")</div>
+                    <div class="runtime-feedback-helpful-buttons">
+                        <button type="button" data-feedback-helpfulness="helpful" aria-label="Helpful" aria-pressed="false"><i class="fa-regular fa-thumbs-up" aria-hidden="true"></i></button>
+                        <button type="button" data-feedback-helpfulness="not_helpful" aria-label="Not helpful" aria-pressed="false"><i class="fa-regular fa-thumbs-down" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div class="runtime-feedback-solution runtime-js-hidden" data-feedback-solution="Taking too much time for result generation">
+                <div class="runtime-feedback-solution-panel"><strong>@T("Plugins.Misc.AIInterview.Runtime.Feedback.SolutionLabel")</strong> @T("Plugins.Misc.AIInterview.Runtime.Feedback.Solution.ResultDelay")</div>
+                <div class="runtime-feedback-helpful">
+                    <div>@T("Plugins.Misc.AIInterview.Runtime.Feedback.WasHelpful")</div>
+                    <div class="runtime-feedback-helpful-buttons">
+                        <button type="button" data-feedback-helpfulness="helpful" aria-label="Helpful" aria-pressed="false"><i class="fa-regular fa-thumbs-up" aria-hidden="true"></i></button>
+                        <button type="button" data-feedback-helpfulness="not_helpful" aria-label="Not helpful" aria-pressed="false"><i class="fa-regular fa-thumbs-down" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="runtime-feedback-other" class="runtime-feedback-other runtime-js-hidden">
+            <div class="runtime-feedback-field">
+                <label for="runtime-feedback-comment">@T("Plugins.Misc.AIInterview.Runtime.Feedback.CommentLabel")</label>
+                <textarea id="runtime-feedback-comment" maxlength="4000" placeholder="@T("Plugins.Misc.AIInterview.Runtime.Feedback.CommentPlaceholder")"></textarea>
+            </div>
+            <div class="runtime-feedback-field">
+                <label for="runtime-feedback-attachment">@T("Plugins.Misc.AIInterview.Runtime.Feedback.AttachmentLabel")</label>
+                <label class="runtime-feedback-upload" for="runtime-feedback-attachment">
+                    <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
+                    <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.UploadText")</span>
+                    <small id="runtime-feedback-file-name"></small>
+                </label>
+                <input type="file" id="runtime-feedback-attachment" accept=".png,.jpg,.jpeg,.pdf,.doc,.docx,.txt" />
+            </div>
+        </div>
+
+        <div id="runtime-feedback-status" class="runtime-feedback-status" aria-live="polite"></div>
+        <div class="runtime-modal-actions runtime-feedback-actions">
+            <button type="button" id="runtime-feedback-cancel" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.Cancel")</button>
+            <button type="button" id="runtime-feedback-submit" class="button-1">@T("Plugins.Misc.AIInterview.Runtime.Feedback.GotIt")</button>
+        </div>
+    </div>
+</div>
+
 <script asp-location="Footer">
     (() => {
         const config = @Html.Raw(clientSettings);
@@ -352,6 +455,19 @@
         const guidelinesCheckbox = document.getElementById('guidelines-acknowledge');
         const guidelinesAcknowledgeLabel = guidelinesCheckbox?.closest('.runtime-guidelines-ack');
         const guidelinesAgreeButton = document.getElementById('guidelines-agree');
+        const feedbackTrigger = document.getElementById('open-runtime-feedback');
+        const feedbackModal = document.getElementById('runtime-feedback-modal');
+        const feedbackCloseButton = document.getElementById('runtime-feedback-close');
+        const feedbackCancelButton = document.getElementById('runtime-feedback-cancel');
+        const feedbackSubmitButton = document.getElementById('runtime-feedback-submit');
+        const feedbackIssueSelect = document.getElementById('runtime-feedback-issue');
+        const feedbackOtherPanel = document.getElementById('runtime-feedback-other');
+        const feedbackComment = document.getElementById('runtime-feedback-comment');
+        const feedbackAttachment = document.getElementById('runtime-feedback-attachment');
+        const feedbackFileName = document.getElementById('runtime-feedback-file-name');
+        const feedbackStatus = document.getElementById('runtime-feedback-status');
+        const feedbackSolutionPanels = Array.from(document.querySelectorAll('[data-feedback-solution]'));
+        const feedbackHelpfulnessButtons = Array.from(document.querySelectorAll('[data-feedback-helpfulness]'));
         const runtimeLog = document.getElementById('runtime-log');
         const audioMeter = Array.from(document.querySelectorAll('#audio-meter span'));
         const reportButton = document.getElementById('view-report');
@@ -402,6 +518,9 @@
         let screenShareInterrupted = false;
         let guidelinesAcknowledged = false;
         let guidelinesAcknowledgedAt = null;
+        let feedbackHelpfulness = '';
+        let feedbackSubmitInFlight = false;
+        let feedbackLastFocusedElement = null;
         let completedRedirectTimer = null;
         let completedCountdown = null;
         let completedCleanupTimer = null;
@@ -1011,6 +1130,139 @@
         };
 
         const closeGuidelinesModal = () => setGuidelinesModalOpen(false);
+
+        const isOtherFeedbackIssue = () => feedbackIssueSelect?.value === 'Other issue';
+
+        const setFeedbackStatus = (message = '', isError = false) => {
+            if (!feedbackStatus)
+                return;
+
+            feedbackStatus.textContent = message;
+            feedbackStatus.classList.toggle('is-error', !!message && isError);
+            feedbackStatus.classList.toggle('is-success', !!message && !isError);
+        };
+
+        const updateFeedbackHelpfulnessState = (value = '') => {
+            feedbackHelpfulness = value;
+            feedbackHelpfulnessButtons.forEach(button => {
+                const selected = button.dataset.feedbackHelpfulness === feedbackHelpfulness;
+                button.classList.toggle('is-selected', selected);
+                button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
+        };
+
+        const updateFeedbackIssueState = () => {
+            const issue = feedbackIssueSelect?.value || '';
+            const otherIssue = isOtherFeedbackIssue();
+            feedbackSolutionPanels.forEach(panel => {
+                const isActive = panel.dataset.feedbackSolution === issue && !otherIssue;
+                panel.classList.toggle('is-active', isActive);
+                panel.classList.toggle('runtime-js-hidden', !isActive);
+            });
+
+            feedbackOtherPanel?.classList.toggle('runtime-js-hidden', !otherIssue);
+            if (feedbackSubmitButton)
+                feedbackSubmitButton.textContent = otherIssue ? '@T("Plugins.Misc.AIInterview.Runtime.Feedback.SubmitReport")' : '@T("Plugins.Misc.AIInterview.Runtime.Feedback.GotIt")';
+            setFeedbackStatus();
+        };
+
+        const getFeedbackFocusableElements = () => Array.from(feedbackModal?.querySelectorAll('button:not(:disabled), select:not(:disabled), textarea:not(:disabled), input:not(:disabled), a[href]') || [])
+            .filter(element => element.offsetParent !== null);
+
+        const trapFeedbackFocus = (event) => {
+            if (!feedbackModal?.classList.contains('is-open') || event.key !== 'Tab')
+                return;
+
+            const focusable = getFeedbackFocusableElements();
+            if (!focusable.length)
+                return;
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+
+        const setFeedbackModalOpen = (open) => {
+            if (!feedbackModal)
+                return;
+
+            feedbackModal.classList.toggle('is-open', open);
+            feedbackModal.setAttribute('aria-hidden', open ? 'false' : 'true');
+            if (open) {
+                feedbackLastFocusedElement = document.activeElement;
+                updateFeedbackIssueState();
+                window.setTimeout(() => feedbackIssueSelect?.focus(), 0);
+            } else {
+                if (feedbackLastFocusedElement?.focus)
+                    feedbackLastFocusedElement.focus();
+            }
+        };
+
+        const closeFeedbackModal = () => setFeedbackModalOpen(false);
+
+        const submitRuntimeFeedback = async () => {
+            if (feedbackSubmitInFlight)
+                return;
+
+            if (!config.feedbackUrl) {
+                setFeedbackStatus('Feedback endpoint is unavailable.', true);
+                return;
+            }
+
+            const issue = feedbackIssueSelect?.value || '';
+            const comment = feedbackComment?.value?.trim() || '';
+            const otherIssue = issue === 'Other issue';
+            if (otherIssue && !comment) {
+                setFeedbackStatus('@T("Plugins.Misc.AIInterview.Runtime.Feedback.CommentRequired")', true);
+                feedbackComment?.focus();
+                return;
+            }
+
+            if (!(await ensureRuntimeTokenFresh()))
+                return;
+
+            const formData = new FormData();
+            formData.append('token', sessionToken);
+            formData.append('issue', issue);
+            formData.append('helpfulness', otherIssue ? '' : feedbackHelpfulness);
+            formData.append('comment', otherIssue ? comment : '');
+            if (otherIssue && feedbackAttachment?.files?.length)
+                formData.append('attachment', feedbackAttachment.files[0]);
+
+            feedbackSubmitInFlight = true;
+            const originalText = feedbackSubmitButton?.textContent || '';
+            if (feedbackSubmitButton) {
+                feedbackSubmitButton.disabled = true;
+                feedbackSubmitButton.classList.add('is-loading');
+                feedbackSubmitButton.textContent = 'Submitting...';
+            }
+            setFeedbackStatus();
+
+            const result = await postMultipart(config.feedbackUrl, formData);
+            feedbackSubmitInFlight = false;
+            if (feedbackSubmitButton) {
+                feedbackSubmitButton.disabled = false;
+                feedbackSubmitButton.classList.remove('is-loading');
+                feedbackSubmitButton.textContent = originalText;
+            }
+
+            if (!isSuccess(result)) {
+                setFeedbackStatus(getRuntimeMessage(result, 'Unable to submit feedback.'), true);
+                return;
+            }
+
+            setFeedbackStatus(getRuntimeMessage(result, '@T("Plugins.Misc.AIInterview.Runtime.Feedback.Success")'), false);
+            if (otherIssue && feedbackAttachment)
+                feedbackAttachment.value = '';
+            if (feedbackFileName)
+                feedbackFileName.textContent = '';
+        };
 
         const logGuidelinesAcknowledgement = () => {
             const payload = {
@@ -2036,6 +2288,7 @@
                 if (requestPath.endsWith('/speech-usage')) return 'speech-usage';
                 if (requestPath.endsWith('/upload-recording')) return 'upload-recording';
                 if (requestPath.endsWith('/refresh-token')) return 'refresh-token';
+                if (requestPath.endsWith('/feedback')) return 'feedback';
                 if (requestPath.endsWith('/acknowledge-guidelines')) return 'acknowledge-guidelines';
                 if (requestPath.endsWith('/stop')) return 'stop';
             } catch {}
@@ -3344,6 +3597,33 @@
 
         if (guidelinesButton)
             guidelinesButton.addEventListener('click', openGuidelinesModal);
+        if (feedbackTrigger)
+            feedbackTrigger.addEventListener('click', () => setFeedbackModalOpen(true));
+        if (feedbackCloseButton)
+            feedbackCloseButton.addEventListener('click', closeFeedbackModal);
+        if (feedbackCancelButton)
+            feedbackCancelButton.addEventListener('click', closeFeedbackModal);
+        if (feedbackSubmitButton)
+            feedbackSubmitButton.addEventListener('click', submitRuntimeFeedback);
+        if (feedbackIssueSelect)
+            feedbackIssueSelect.addEventListener('change', updateFeedbackIssueState);
+        feedbackHelpfulnessButtons.forEach(button => {
+            button.addEventListener('click', () => updateFeedbackHelpfulnessState(button.dataset.feedbackHelpfulness || ''));
+        });
+        if (feedbackAttachment) {
+            feedbackAttachment.addEventListener('change', () => {
+                const file = feedbackAttachment.files?.[0];
+                if (feedbackFileName)
+                    feedbackFileName.textContent = file?.name || '';
+            });
+        }
+        if (feedbackModal) {
+            feedbackModal.addEventListener('click', (event) => {
+                if (event.target === feedbackModal)
+                    closeFeedbackModal();
+            });
+            feedbackModal.addEventListener('keydown', trapFeedbackFocus);
+        }
         runtimeTabs.forEach(tab => {
             tab.addEventListener('click', () => setActiveRuntimePanel(tab.dataset.runtimeTab));
         });
@@ -3417,8 +3697,11 @@
         }
         document.addEventListener('click', () => setAudioDevicePanelOpen(false));
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape')
+            if (event.key === 'Escape') {
                 setAudioDevicePanelOpen(false);
+                if (feedbackModal?.classList.contains('is-open'))
+                    closeFeedbackModal();
+            }
         });
         navigator.mediaDevices?.addEventListener?.('devicechange', () => {
             refreshAudioDevices().catch(error => logActivity(`Audio device refresh failed. reason=${error?.message || 'unknown'}`));
@@ -3514,6 +3797,7 @@
         updateStartButtonState();
         updateSubmitAvailability();
         updateAuxiliaryControlsState();
+        updateFeedbackIssueState();
         refreshAudioDevices().catch(error => logActivity(`Audio device refresh failed. reason=${error?.message || 'unknown'}`));
         syncAnswerCaption();
         guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);

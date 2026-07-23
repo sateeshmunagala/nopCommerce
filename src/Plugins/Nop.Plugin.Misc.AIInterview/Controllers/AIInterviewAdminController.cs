@@ -18,6 +18,7 @@ using Nop.Services.Catalog;
 using Nop.Services.Configuration;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
+using Nop.Services.Media;
 using Nop.Services.Messages;
 using Nop.Services.Vendors;
 using Nop.Services.Helpers;
@@ -70,6 +71,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly MockAIInterviewSettings _mockAIInterviewSettings;
     private readonly IJobProductAccessService _jobProductAccessService;
     private readonly ICreditDepositNotificationService _creditDepositNotificationService;
+    private readonly IDownloadService _downloadService;
 
     public AIInterviewAdminController(ICreditService creditService,
         ISponsorInviteService inviteService,
@@ -95,7 +97,8 @@ public class AIInterviewAdminController : BasePluginController
         IRepository<InterviewSession> sessionRepository = null,
         IRepository<Product> productRepository = null,
         IJobProductAccessService jobProductAccessService = null,
-        ICreditDepositNotificationService creditDepositNotificationService = null)
+        ICreditDepositNotificationService creditDepositNotificationService = null,
+        IDownloadService downloadService = null)
     {
         _creditService = creditService;
         _inviteService = inviteService;
@@ -122,6 +125,7 @@ public class AIInterviewAdminController : BasePluginController
         _mockAIInterviewSettings = mockAIInterviewSettings;
         _jobProductAccessService = jobProductAccessService;
         _creditDepositNotificationService = creditDepositNotificationService;
+        _downloadService = downloadService;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -561,6 +565,13 @@ public class AIInterviewAdminController : BasePluginController
         var answeredQuestionCount = turns.Count(turn => !string.IsNullOrWhiteSpace(turn.AnswerText));
         var scoredTurns = turns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score!.Value).ToList();
         var turnModels = new List<CandidateDetailsTurnModel>();
+        var feedbackAttachment = session.CandidateFeedbackAttachmentDownloadId > 0 && _downloadService != null
+            ? await _downloadService.GetDownloadByIdAsync(session.CandidateFeedbackAttachmentDownloadId)
+            : null;
+        var feedbackAttachmentName = BuildDownloadDisplayName(feedbackAttachment);
+        var feedbackAttachmentUrl = feedbackAttachment != null
+            ? Url.Action("DownloadFile", "Download", new { area = AreaNames.ADMIN, downloadGuid = feedbackAttachment.DownloadGuid })
+            : string.Empty;
 
         foreach (var turn in turns)
         {
@@ -631,6 +642,14 @@ public class AIInterviewAdminController : BasePluginController
             CompletedOn = await FormatAdminLocalDateTimeAsync(session.CompletedOnUtc, "-"),
             SummaryText = reportSections.Summary,
             FeedbackText = reportSections.Feedback,
+            CandidateFeedbackIssue = session.CandidateFeedbackIssue,
+            CandidateFeedbackHelpfulness = session.CandidateFeedbackHelpfulness,
+            CandidateFeedbackComment = session.CandidateFeedbackComment,
+            CandidateFeedbackAttachmentDownloadId = session.CandidateFeedbackAttachmentDownloadId,
+            CandidateFeedbackAttachmentName = feedbackAttachmentName,
+            CandidateFeedbackAttachmentUrl = feedbackAttachmentUrl,
+            CandidateFeedbackSubmittedOnUtc = session.CandidateFeedbackSubmittedOnUtc,
+            CandidateFeedbackSubmittedOn = await FormatAdminLocalDateTimeAsync(session.CandidateFeedbackSubmittedOnUtc, "-"),
             ReportData = session.ReportData,
             QuestionScores = session.QuestionScores,
             SessionKey = session.SessionKey,
@@ -648,6 +667,21 @@ public class AIInterviewAdminController : BasePluginController
     protected virtual string Csv(string value)
     {
         return $"\"{(value ?? string.Empty).Replace("\"", "\"\"")}\"";
+    }
+
+    protected virtual string BuildDownloadDisplayName(Nop.Core.Domain.Media.Download download)
+    {
+        if (download == null)
+            return string.Empty;
+
+        var fileName = Path.GetFileName(download.Filename ?? string.Empty);
+        var extension = download.Extension ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(fileName))
+            fileName = $"attachment-{download.Id}";
+
+        return !string.IsNullOrWhiteSpace(extension) && !fileName.EndsWith(extension, StringComparison.OrdinalIgnoreCase)
+            ? $"{fileName}{extension}"
+            : fileName;
     }
 
     protected virtual bool TryValidateCreditProductSkuMappingsJson(string json)

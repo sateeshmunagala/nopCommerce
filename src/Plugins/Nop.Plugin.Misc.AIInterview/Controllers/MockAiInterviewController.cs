@@ -18,8 +18,10 @@ using Nop.Services.Seo;
 using NopLogger = Nop.Services.Logging.ILogger;
 using Nop.Web.Framework.Controllers;
 using Microsoft.Extensions.Logging;
+using Nop.Core.Domain.Media;
 using NopLogLevel = Nop.Core.Domain.Logging.LogLevel;
 using Nop.Services.Logging;
+using Nop.Services.Media;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core.Domain.Catalog;
@@ -32,6 +34,35 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 public class MockAiInterviewController : BasePluginController
 {
     private const string VoiceUnavailableMessage = "Voice mode is unavailable. Please type your answer below.";
+    private const string FeedbackIssueOther = "Other issue";
+    private const int MaxFeedbackCommentLength = 4000;
+    private const long MaxFeedbackAttachmentBytes = 5 * 1024 * 1024;
+    private static readonly string[] FeedbackIssues =
+    [
+        "AI is not speaking",
+        "Typing is not working",
+        "Loading issues",
+        "Taking too much time for result generation",
+        FeedbackIssueOther
+    ];
+
+    private static readonly HashSet<string> FeedbackHelpfulnessValues = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "helpful",
+        "not_helpful"
+    };
+
+    private static readonly HashSet<string> FeedbackAttachmentExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".txt"
+    };
+
     private static readonly string[] PracticeDifficultyKeywords =
     [
         "practice difficulty",
@@ -76,6 +107,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IProductAttributeService _productAttributeService;
     private readonly IJobProductAccessService _jobProductAccessService;
     private readonly ICustomerActivityService _customerActivityService;
+    private readonly IDownloadService _downloadService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -101,7 +133,8 @@ public class MockAiInterviewController : BasePluginController
         IProductAttributeParser productAttributeParser = null,
         IProductAttributeService productAttributeService = null,
         IJobProductAccessService jobProductAccessService = null,
-        ICustomerActivityService customerActivityService = null)
+        ICustomerActivityService customerActivityService = null,
+        IDownloadService downloadService = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -128,6 +161,7 @@ public class MockAiInterviewController : BasePluginController
         _productAttributeService = productAttributeService;
         _jobProductAccessService = jobProductAccessService;
         _customerActivityService = customerActivityService;
+        _downloadService = downloadService;
     }
 
     protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
@@ -204,6 +238,7 @@ public class MockAiInterviewController : BasePluginController
             "speech-usage" => "speech-usage",
             "upload-recording" => "upload-recording",
             "refresh-token" => "refresh-token",
+            "feedback" => "feedback",
             "acknowledge-guidelines" => "acknowledge-guidelines",
             "stop" => "stop",
             "runtime-client-event" => "runtime-client-event",
@@ -1225,6 +1260,7 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.CompleteInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
         model.ClientSettings.RefreshTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockRefreshTokenRouteName);
         model.ClientSettings.StopInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
+        model.ClientSettings.FeedbackUrl = Url?.RouteUrl(AIInterviewDefaults.MockFeedbackRouteName);
         model.ClientSettings.SpeechTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechTokenRouteName);
         model.ClientSettings.SpeechUsageUrl = Url?.RouteUrl(AIInterviewDefaults.MockSpeechUsageRouteName);
         model.ClientSettings.AcknowledgeGuidelinesUrl = Url?.RouteUrl(AIInterviewDefaults.MockAcknowledgeGuidelinesRouteName);
@@ -1530,6 +1566,145 @@ public class MockAiInterviewController : BasePluginController
         await PublishCompletionAsync(session);
 
         return Json(new { success = true, score = session.Score });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Feedback(string token, string issue, string helpfulness, string comment, IFormFile attachment)
+    {
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
+        var session = tokenRenewal.Session;
+        if (session == null)
+        {
+            await LogRuntimeIssueAsync("AI Interview feedback submission failure", $"Feedback rejected invalid session for token {MaskToken(token)}.", await ResolveLogCustomerAsync());
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+        }
+
+        var normalizedIssue = NormalizeFeedbackIssue(issue);
+        if (string.IsNullOrWhiteSpace(normalizedIssue))
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Feedback.InvalidIssue", "Select a valid issue.");
+
+        var normalizedHelpfulness = NormalizeFeedbackHelpfulness(helpfulness);
+        if (normalizedHelpfulness == null && !string.IsNullOrWhiteSpace(helpfulness))
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Feedback.InvalidHelpfulness", "Select a valid helpfulness option.");
+
+        var normalizedComment = NormalizeFeedbackComment(comment);
+        var isOtherIssue = string.Equals(normalizedIssue, FeedbackIssueOther, StringComparison.Ordinal);
+        var hasAttachment = attachment?.Length > 0;
+
+        if (!isOtherIssue && hasAttachment)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Feedback.AttachmentOnlyOther", "Attachments are only available for Other issue reports.");
+
+        if (isOtherIssue && string.IsNullOrWhiteSpace(normalizedComment))
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Feedback.CommentRequired", "Please describe your issue before submitting.");
+
+        var attachmentDownloadId = 0;
+        if (isOtherIssue && hasAttachment)
+        {
+            var attachmentValidationMessage = ValidateFeedbackAttachment(attachment);
+            if (!string.IsNullOrWhiteSpace(attachmentValidationMessage))
+                return Json(new { success = false, message = attachmentValidationMessage, error = attachmentValidationMessage });
+
+            if (_downloadService == null)
+                return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Feedback.UploadUnavailable", "Attachment upload is unavailable.");
+
+            var download = await StoreFeedbackAttachmentAsync(attachment);
+            attachmentDownloadId = download.Id;
+        }
+
+        session.CandidateFeedbackIssue = normalizedIssue;
+        session.CandidateFeedbackHelpfulness = normalizedHelpfulness;
+        session.CandidateFeedbackComment = normalizedComment;
+        session.CandidateFeedbackAttachmentDownloadId = attachmentDownloadId;
+        session.CandidateFeedbackSubmittedOnUtc = DateTime.UtcNow;
+        await _interviewSessionService.UpdateInterviewSessionAsync(session);
+
+        await LogRuntimeActivityAsync(
+            session,
+            "AIInterview.Runtime.FeedbackSubmitted",
+            BuildRuntimeActivityComment(session, $"Feedback submitted. Issue={normalizedIssue}; Helpfulness={normalizedHelpfulness ?? string.Empty}; AttachmentDownloadId={attachmentDownloadId}."));
+
+        if (tokenRenewal.Renewed)
+        {
+            return Json(new
+            {
+                success = true,
+                message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Feedback.Success", "Thanks for the report. Your feedback has been submitted."),
+                newToken = tokenRenewal.Session.Token,
+                tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+            });
+        }
+
+        return Json(new { success = true, message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Feedback.Success", "Thanks for the report. Your feedback has been submitted.") });
+    }
+
+    protected static string NormalizeFeedbackIssue(string issue)
+    {
+        var normalized = (issue ?? string.Empty).Trim();
+        return FeedbackIssues.FirstOrDefault(allowed => string.Equals(allowed, normalized, StringComparison.Ordinal));
+    }
+
+    protected static string NormalizeFeedbackHelpfulness(string helpfulness)
+    {
+        var normalized = (helpfulness ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalized))
+            return null;
+
+        return FeedbackHelpfulnessValues.Contains(normalized) ? normalized : null;
+    }
+
+    protected static string NormalizeFeedbackComment(string comment)
+    {
+        if (string.IsNullOrWhiteSpace(comment))
+            return string.Empty;
+
+        var normalized = string.Join(" ", comment.Replace('\r', ' ').Replace('\n', ' ').Trim().Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries));
+        return normalized.Length <= MaxFeedbackCommentLength ? normalized : normalized[..MaxFeedbackCommentLength];
+    }
+
+    protected static string ValidateFeedbackAttachment(IFormFile attachment)
+    {
+        if (attachment == null || attachment.Length <= 0)
+            return string.Empty;
+
+        var extension = Path.GetExtension(attachment.FileName ?? string.Empty);
+        if (!FeedbackAttachmentExtensions.Contains(extension))
+            return "Allowed attachment types: PNG, JPG, PDF, DOC, DOCX, TXT.";
+
+        if (attachment.Length > MaxFeedbackAttachmentBytes)
+            return "Attachment size must be 5 MB or smaller.";
+
+        return string.Empty;
+    }
+
+    protected virtual async Task<Download> StoreFeedbackAttachmentAsync(IFormFile attachment)
+    {
+        var download = new Download
+        {
+            DownloadGuid = Guid.NewGuid(),
+            UseDownloadUrl = false,
+            DownloadBinary = await _downloadService.GetDownloadBitsAsync(attachment),
+            ContentType = string.IsNullOrWhiteSpace(attachment.ContentType) ? GetFeedbackAttachmentContentType(attachment.FileName) : attachment.ContentType,
+            Filename = attachment.FileName,
+            Extension = Path.GetExtension(attachment.FileName),
+            IsNew = true
+        };
+
+        await _downloadService.InsertDownloadAsync(download);
+        return download;
+    }
+
+    protected static string GetFeedbackAttachmentContentType(string fileName)
+    {
+        return Path.GetExtension(fileName ?? string.Empty).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".pdf" => "application/pdf",
+            ".doc" => "application/msword",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".txt" => "text/plain",
+            _ => "application/octet-stream"
+        };
     }
 
     protected async Task PublishCompletionAsync(InterviewSession session)

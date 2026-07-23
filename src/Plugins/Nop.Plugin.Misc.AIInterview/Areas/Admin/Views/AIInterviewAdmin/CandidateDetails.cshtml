@@ -205,6 +205,49 @@
                             <h3>Behavior Notes</h3>
                             <div class="candidate-dashboard-textbox">@(!string.IsNullOrWhiteSpace(Model.StatusComment) ? Model.StatusComment : "No behavior notes or status comments captured.")</div>
                         </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.CandidateFeedbackIssue))
+                        {
+                            <div class="candidate-dashboard-card">
+                                <h3>Runtime Feedback</h3>
+                                <div class="candidate-dashboard-matrix candidate-dashboard-matrix-compact">
+                                    <div class="candidate-dashboard-field">
+                                        <div class="candidate-dashboard-label">Issue</div>
+                                        <div class="candidate-dashboard-value">@Model.CandidateFeedbackIssue</div>
+                                    </div>
+                                    <div class="candidate-dashboard-field">
+                                        <div class="candidate-dashboard-label">Helpfulness</div>
+                                        <div class="candidate-dashboard-value">@(!string.IsNullOrWhiteSpace(Model.CandidateFeedbackHelpfulness) ? Model.CandidateFeedbackHelpfulness : "-")</div>
+                                    </div>
+                                    <div class="candidate-dashboard-field">
+                                        <div class="candidate-dashboard-label">Submitted</div>
+                                        <div class="candidate-dashboard-value">@Model.CandidateFeedbackSubmittedOn</div>
+                                    </div>
+                                    @if (Model.CandidateFeedbackAttachmentDownloadId > 0)
+                                    {
+                                        <div class="candidate-dashboard-field">
+                                            <div class="candidate-dashboard-label">Attachment</div>
+                                            <div class="candidate-dashboard-value candidate-dashboard-wrap">
+                                                @if (!string.IsNullOrWhiteSpace(Model.CandidateFeedbackAttachmentUrl))
+                                                {
+                                                    <a href="@Model.CandidateFeedbackAttachmentUrl">@(!string.IsNullOrWhiteSpace(Model.CandidateFeedbackAttachmentName) ? Model.CandidateFeedbackAttachmentName : $"Download #{Model.CandidateFeedbackAttachmentDownloadId}")</a>
+                                                }
+                                                else
+                                                {
+                                                    <span>@(!string.IsNullOrWhiteSpace(Model.CandidateFeedbackAttachmentName) ? Model.CandidateFeedbackAttachmentName : $"Download #{Model.CandidateFeedbackAttachmentDownloadId}")</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(Model.CandidateFeedbackComment))
+                                {
+                                    <div class="candidate-dashboard-question-block">
+                                        <div class="candidate-dashboard-label">Comment</div>
+                                        <div class="candidate-dashboard-textbox">@Model.CandidateFeedbackComment</div>
+                                    </div>
+                                }
+                            </div>
+                        }
                         <div class="candidate-dashboard-card">
                             <h3>System Text Logs</h3>
                             <div class="candidate-dashboard-logbox">@(!string.IsNullOrWhiteSpace(Model.ReportData) ? Model.ReportData : "No report payload generated.")</div>

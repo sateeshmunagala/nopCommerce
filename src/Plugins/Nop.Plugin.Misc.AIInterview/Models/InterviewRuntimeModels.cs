@@ -48,6 +48,7 @@ public record RuntimeClientSettingsModel
     public string CompleteInterviewUrl { get; set; }
     public string RefreshTokenUrl { get; set; }
     public string StopInterviewUrl { get; set; }
+    public string FeedbackUrl { get; set; }
     public string TranscriptUrl { get; set; }
     public string SpeechTokenUrl { get; set; }
     public string SpeechUsageUrl { get; set; }

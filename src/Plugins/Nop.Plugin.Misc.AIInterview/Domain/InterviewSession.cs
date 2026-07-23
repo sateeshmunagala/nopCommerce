@@ -36,6 +36,11 @@ public class InterviewSession : BaseEntity
     public decimal TotalSpeechCostUsd { get; set; }
     public decimal TotalAzureCostUsd { get; set; }
     public int SponsorInviteId { get; set; }
+    public string CandidateFeedbackIssue { get; set; }
+    public string CandidateFeedbackHelpfulness { get; set; }
+    public string CandidateFeedbackComment { get; set; }
+    public int CandidateFeedbackAttachmentDownloadId { get; set; }
+    public DateTime? CandidateFeedbackSubmittedOnUtc { get; set; }
     public DateTime CreatedOnUtc { get; set; }
     public DateTime? StartedOnUtc { get; set; }
     public DateTime? CompletedOnUtc { get; set; }

@@ -139,6 +139,10 @@ public class RouteProvider : IRouteProvider
             pattern: "mockaiinterview/stop",
             defaults: new { controller = "MockAiInterview", action = "Stop" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockFeedbackRouteName,
+            pattern: "mockaiinterview/feedback",
+            defaults: new { controller = "MockAiInterview", action = "Feedback" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockRefreshTokenRouteName,
             pattern: "mockaiinterview/refresh-token",
             defaults: new { controller = "MockAiInterview", action = "RefreshToken" });

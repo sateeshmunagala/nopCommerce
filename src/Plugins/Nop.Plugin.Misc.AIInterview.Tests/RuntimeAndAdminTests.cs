@@ -10,11 +10,13 @@ using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Plugin.Misc.AIInterview.Events;
+using Nop.Core.Domain.Media;
 using Nop.Services.Catalog;
 using Nop.Services.Configuration;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
+using Nop.Services.Media;
 using Nop.Services.Messages;
 using NUnit.Framework;
 
@@ -29,6 +31,7 @@ public class RuntimeAndAdminTests
     private Mock<ICustomerService> _customerService;
     private Mock<Nop.Core.Events.IEventPublisher> _eventPublisher;
     private Mock<ILogger> _nopLogger;
+    private Mock<IDownloadService> _downloadService;
     private MockAiInterviewController _runtimeController;
 
     private Mock<ICreditService> _creditService;
@@ -52,6 +55,7 @@ public class RuntimeAndAdminTests
         _customerService = new Mock<ICustomerService>();
         _eventPublisher = new Mock<Nop.Core.Events.IEventPublisher>();
         _nopLogger = new Mock<ILogger>();
+        _downloadService = new Mock<IDownloadService>();
         _creditService = new Mock<ICreditService>();
         _inviteService = new Mock<ISponsorInviteService>();
         _productService = new Mock<IProductService>();
@@ -304,6 +308,166 @@ public class RuntimeAndAdminTests
         var json = (JsonResult)result;
         var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
         Assert.That(error, Is.EqualTo("Invalid or expired session token."));
+    }
+
+    [Test]
+    public async Task Runtime_Feedback_ValidSolutionOption_PersistsIssueHelpfulnessAndTimestamp()
+    {
+        var session = new InterviewSession
+        {
+            Id = 101,
+            Token = "feedback-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("feedback-token")).ReturnsAsync(session);
+        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+
+        var result = await _runtimeController.Feedback("feedback-token", "AI is not speaking", "helpful", null, null);
+        var json = (JsonResult)result;
+
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.True);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
+            s.CandidateFeedbackIssue == "AI is not speaking" &&
+            s.CandidateFeedbackHelpfulness == "helpful" &&
+            string.IsNullOrWhiteSpace(s.CandidateFeedbackComment) &&
+            s.CandidateFeedbackAttachmentDownloadId == 0 &&
+            s.CandidateFeedbackSubmittedOnUtc.HasValue)), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_Feedback_InvalidIssue_IsRejected()
+    {
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("feedback-token")).ReturnsAsync(new InterviewSession
+        {
+            Token = "feedback-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        });
+
+        var result = await _runtimeController.Feedback("feedback-token", "Screen is weird", "helpful", null, null);
+        var json = (JsonResult)result;
+
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Select a valid issue."));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Feedback_InvalidHelpfulness_IsRejected()
+    {
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("feedback-token")).ReturnsAsync(new InterviewSession
+        {
+            Token = "feedback-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        });
+
+        var result = await _runtimeController.Feedback("feedback-token", "Loading issues", "maybe", null, null);
+        var json = (JsonResult)result;
+
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Select a valid helpfulness option."));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Feedback_OtherIssueWithoutComment_IsRejected()
+    {
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("feedback-token")).ReturnsAsync(new InterviewSession
+        {
+            Token = "feedback-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        });
+
+        var result = await _runtimeController.Feedback("feedback-token", "Other issue", null, "  ", null);
+        var json = (JsonResult)result;
+
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Please describe your issue before submitting."));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Feedback_OtherIssueWithComment_PersistsComment()
+    {
+        var session = new InterviewSession
+        {
+            Id = 102,
+            Token = "feedback-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("feedback-token")).ReturnsAsync(session);
+        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+
+        var result = await _runtimeController.Feedback("feedback-token", "Other issue", null, "  Something failed  ", null);
+        var json = (JsonResult)result;
+
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.True);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
+            s.CandidateFeedbackIssue == "Other issue" &&
+            s.CandidateFeedbackHelpfulness == null &&
+            s.CandidateFeedbackComment == "Something failed" &&
+            s.CandidateFeedbackAttachmentDownloadId == 0 &&
+            s.CandidateFeedbackSubmittedOnUtc.HasValue)), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_Feedback_OtherIssueWithAttachment_StoresDownloadId()
+    {
+        var session = new InterviewSession
+        {
+            Id = 103,
+            Token = "feedback-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        var file = new Mock<IFormFile>();
+        file.SetupGet(x => x.FileName).Returns("issue.png");
+        file.SetupGet(x => x.ContentType).Returns("image/png");
+        file.SetupGet(x => x.Length).Returns(12);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("feedback-token")).ReturnsAsync(session);
+        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        _downloadService.Setup(x => x.GetDownloadBitsAsync(file.Object)).ReturnsAsync(new byte[] { 1, 2, 3 });
+        _downloadService.Setup(x => x.InsertDownloadAsync(It.IsAny<Download>()))
+            .Callback<Download>(download => download.Id = 456)
+            .Returns(Task.CompletedTask);
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            null,
+            null,
+            null,
+            null,
+            null,
+            _nopLogger.Object,
+            downloadService: _downloadService.Object);
+
+        var result = await controller.Feedback("feedback-token", "Other issue", null, "Upload details", file.Object);
+        var json = (JsonResult)result;
+
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.True);
+        _downloadService.Verify(x => x.InsertDownloadAsync(It.Is<Download>(download =>
+            download.DownloadGuid != Guid.Empty &&
+            !download.UseDownloadUrl &&
+            download.ContentType == "image/png" &&
+            download.Filename == "issue.png" &&
+            download.Extension == ".png" &&
+            download.IsNew)), Times.Once);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
+            s.CandidateFeedbackIssue == "Other issue" &&
+            s.CandidateFeedbackComment == "Upload details" &&
+            s.CandidateFeedbackAttachmentDownloadId == 456)), Times.Once);
     }
 
     [Test]
@@ -1787,6 +1951,11 @@ public class RuntimeAndAdminTests
         {
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Missing", "Fallback text");
         }
+    }
+
+    private static T GetJsonValue<T>(JsonResult json, string propertyName)
+    {
+        return (T)json.Value.GetType().GetProperty(propertyName).GetValue(json.Value, null);
     }
 
     [Test]

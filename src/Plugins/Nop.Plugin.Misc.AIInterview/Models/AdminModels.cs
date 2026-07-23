@@ -378,6 +378,14 @@ public record CandidateDetailsModel : BaseNopModel
     public string CompletedOn { get; set; }
     public string SummaryText { get; set; }
     public string FeedbackText { get; set; }
+    public string CandidateFeedbackIssue { get; set; }
+    public string CandidateFeedbackHelpfulness { get; set; }
+    public string CandidateFeedbackComment { get; set; }
+    public int CandidateFeedbackAttachmentDownloadId { get; set; }
+    public string CandidateFeedbackAttachmentName { get; set; }
+    public string CandidateFeedbackAttachmentUrl { get; set; }
+    public DateTime? CandidateFeedbackSubmittedOnUtc { get; set; }
+    public string CandidateFeedbackSubmittedOn { get; set; }
     public string ReportData { get; set; }
     public string QuestionScores { get; set; }
     public string SessionKey { get; set; }
