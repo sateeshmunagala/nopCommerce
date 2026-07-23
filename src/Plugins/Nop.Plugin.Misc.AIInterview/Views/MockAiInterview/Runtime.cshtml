@@ -97,6 +97,23 @@
                         </button>
                     </div>
                     <div class="runtime-control-group runtime-control-group-center">
+                        <div class="runtime-audio-device-control" id="runtime-audio-device-control">
+                            <button type="button" id="toggle-audio-devices" class="runtime-icon-button button-2" aria-label="Audio devices" title="Audio devices" aria-expanded="false" aria-controls="runtime-audio-device-panel">
+                                <i class="fa-solid fa-headphones" aria-hidden="true"></i>
+                                <span class="sr-only">Audio devices</span>
+                            </button>
+                            <div id="runtime-audio-device-panel" class="runtime-audio-device-panel runtime-js-hidden" role="dialog" aria-label="Audio devices">
+                                <div class="runtime-audio-device-field">
+                                    <label for="runtime-audio-input"><i class="fa-solid fa-microphone" aria-hidden="true"></i><span>Microphone</span></label>
+                                    <select id="runtime-audio-input"></select>
+                                </div>
+                                <div class="runtime-audio-device-field">
+                                    <label for="runtime-audio-output"><i class="fa-solid fa-volume-high" aria-hidden="true"></i><span>Speaker</span></label>
+                                    <select id="runtime-audio-output"></select>
+                                </div>
+                                <div id="runtime-audio-device-status" class="runtime-audio-device-status" aria-live="polite"></div>
+                            </div>
+                        </div>
                         <button type="button" id="toggle-mic" class="runtime-icon-button button-2" aria-label="Turn microphone on" title="Turn microphone on">
                             <i class="fa-solid fa-microphone" aria-hidden="true"></i>
                             <span class="sr-only">Turn microphone on</span>
@@ -326,6 +343,11 @@
         const screenShareButton = document.getElementById('toggle-screen-share');
         const repeatQuestionButton = document.getElementById('repeat-question');
         const runtimeBackButton = document.getElementById('runtime-back');
+        const audioDeviceToggle = document.getElementById('toggle-audio-devices');
+        const audioDevicePanel = document.getElementById('runtime-audio-device-panel');
+        const audioInputSelect = document.getElementById('runtime-audio-input');
+        const audioOutputSelect = document.getElementById('runtime-audio-output');
+        const audioDeviceStatus = document.getElementById('runtime-audio-device-status');
         const guidelinesModal = document.getElementById('guidelines-modal');
         const guidelinesCheckbox = document.getElementById('guidelines-acknowledge');
         const guidelinesAcknowledgeLabel = guidelinesCheckbox?.closest('.runtime-guidelines-ack');
@@ -340,6 +362,21 @@
         let analyser = null;
         let audioContext = null;
         let meterFrame = null;
+        let availableAudioInputs = [];
+        let availableAudioOutputs = [];
+        let selectedAudioInputId = '';
+        let selectedAudioOutputId = '';
+        let audioDevicePanelOpen = false;
+        let speechAudioElement = null;
+        let speechAudioObjectUrl = '';
+        let speechAudioCaptureStream = null;
+        let recordingAudioContext = null;
+        let recordingAudioDestination = null;
+        let recordingMicSource = null;
+        let recordingBotAudioSource = null;
+        let recordingScreenAudioSource = null;
+        let recordingStreamSignature = '';
+        let activeRecordingSignature = '';
         let tokenRefreshTimer = null;
         let guidelinesModalTimer = null;
         let speechRecognizer = null;
@@ -373,6 +410,10 @@
         const finalRecordingUploadTimeoutMs = 10000;
         const slowSubmitStatusDelayMs = 5000;
         const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';
+        const audioInputStorageKey = 'aiinterview.runtime.audioInputDeviceId';
+        const audioOutputStorageKey = 'aiinterview.runtime.audioOutputDeviceId';
+        const supportsAudioOutputSelection = typeof HTMLMediaElement !== 'undefined'
+            && 'setSinkId' in HTMLMediaElement.prototype;
 
         let countdownTimer = null;
         let countdownValue = autoSubmitDelaySeconds;
@@ -401,6 +442,286 @@
                 return window.crypto.randomUUID();
 
             return `speech-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        };
+
+        const readLocalStorageValue = (key) => {
+            try {
+                return window.localStorage?.getItem(key) || '';
+            } catch {
+                return '';
+            }
+        };
+
+        const writeLocalStorageValue = (key, value) => {
+            try {
+                if (!window.localStorage)
+                    return;
+
+                if (value)
+                    window.localStorage.setItem(key, value);
+                else
+                    window.localStorage.removeItem(key);
+            } catch {}
+        };
+
+        const loadPersistedAudioDeviceSelections = () => {
+            selectedAudioInputId = readLocalStorageValue(audioInputStorageKey);
+            selectedAudioOutputId = readLocalStorageValue(audioOutputStorageKey);
+        };
+
+        const setAudioDeviceStatus = (message = '') => {
+            if (audioDeviceStatus)
+                audioDeviceStatus.textContent = message;
+        };
+
+        const setAudioDevicePanelOpen = (open) => {
+            audioDevicePanelOpen = open;
+            audioDevicePanel?.classList.toggle('runtime-js-hidden', !open);
+            audioDeviceToggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+
+        const setSelectOptions = (select, devices, defaultLabel, itemLabelPrefix, selectedId) => {
+            if (!select)
+                return;
+
+            const previousValue = selectedId || '';
+            select.replaceChildren();
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = defaultLabel;
+            select.appendChild(defaultOption);
+
+            devices
+                .filter(device => device.deviceId)
+                .forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.textContent = device.label || `${itemLabelPrefix} ${index + 1}`;
+                    select.appendChild(option);
+                });
+
+            select.value = Array.from(select.options).some(option => option.value === previousValue)
+                ? previousValue
+                : '';
+        };
+
+        const getSelectedAudioInputConstraints = () => {
+            if (!selectedAudioInputId)
+                return true;
+
+            return { deviceId: { exact: selectedAudioInputId } };
+        };
+
+        const isSelectedAudioInputFailure = (error) => {
+            const name = error?.name || '';
+            const message = error?.message || '';
+            return name === 'OverconstrainedError'
+                || name === 'ConstraintNotSatisfiedError'
+                || name === 'NotFoundError'
+                || /device|constraint|not found|not available/i.test(message);
+        };
+
+        const refreshAudioDevices = async () => {
+            if (!navigator.mediaDevices?.enumerateDevices) {
+                audioInputSelect && (audioInputSelect.disabled = true);
+                audioOutputSelect && (audioOutputSelect.disabled = true);
+                setAudioDeviceStatus('Audio device selection is not supported in this browser.');
+                return;
+            }
+
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                availableAudioInputs = devices.filter(device => device.kind === 'audioinput');
+                availableAudioOutputs = devices.filter(device => device.kind === 'audiooutput');
+
+                const inputStillAvailable = !selectedAudioInputId
+                    || availableAudioInputs.some(device => device.deviceId === selectedAudioInputId);
+                if (!inputStillAvailable) {
+                    selectedAudioInputId = '';
+                    writeLocalStorageValue(audioInputStorageKey, '');
+                    setAudioDeviceStatus('Selected microphone unavailable. Using default microphone.');
+                }
+
+                const outputStillAvailable = !selectedAudioOutputId
+                    || availableAudioOutputs.some(device => device.deviceId === selectedAudioOutputId);
+                if (!outputStillAvailable) {
+                    selectedAudioOutputId = '';
+                    writeLocalStorageValue(audioOutputStorageKey, '');
+                    setAudioDeviceStatus('Using browser default speaker.');
+                }
+
+                setSelectOptions(audioInputSelect, availableAudioInputs, 'Default microphone', 'Microphone', selectedAudioInputId);
+                setSelectOptions(audioOutputSelect, availableAudioOutputs, 'Default speaker', 'Speaker', selectedAudioOutputId);
+
+                if (audioInputSelect)
+                    audioInputSelect.disabled = false;
+                if (audioOutputSelect)
+                    audioOutputSelect.disabled = !supportsAudioOutputSelection;
+
+                if (!supportsAudioOutputSelection)
+                    setAudioDeviceStatus('Speaker selection is not supported in this browser.');
+                else if (!audioDeviceStatus?.textContent)
+                    setAudioDeviceStatus(selectedAudioOutputId ? 'Speaker selected.' : 'Using browser default speaker.');
+            } catch (error) {
+                logActivity(`Audio device enumeration failed. reason=${error?.message || error?.name || 'unknown'}`);
+                setAudioDeviceStatus('Audio devices unavailable.');
+            }
+        };
+
+        const ensureSpeechAudioElement = () => {
+            if (speechAudioElement)
+                return speechAudioElement;
+
+            speechAudioElement = document.createElement('audio');
+            speechAudioElement.preload = 'auto';
+            speechAudioElement.className = 'runtime-js-hidden';
+            speechAudioElement.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(speechAudioElement);
+            return speechAudioElement;
+        };
+
+        const applySelectedAudioOutput = async (audioElement) => {
+            if (!audioElement || !supportsAudioOutputSelection)
+                return false;
+
+            try {
+                await audioElement.setSinkId(selectedAudioOutputId || '');
+                setAudioDeviceStatus(selectedAudioOutputId ? 'Speaker selected.' : 'Using browser default speaker.');
+                return true;
+            } catch (error) {
+                logActivity(`Speaker output selection failed. reason=${error?.message || error?.name || 'unknown'}`);
+                selectedAudioOutputId = '';
+                writeLocalStorageValue(audioOutputStorageKey, '');
+                if (audioOutputSelect)
+                    audioOutputSelect.value = '';
+                setAudioDeviceStatus('Using browser default speaker.');
+                return false;
+            }
+        };
+
+        const getLiveTracks = (stream, kind = '') => stream?.getTracks?.()
+            .filter(track => track.readyState === 'live' && (!kind || track.kind === kind)) || [];
+
+        const createSingleKindStream = (stream, kind) => {
+            const tracks = getLiveTracks(stream, kind);
+            return tracks.length ? new MediaStream(tracks) : null;
+        };
+
+        const getSpeechAudioCaptureStream = () => {
+            if (speechAudioCaptureStream?.getAudioTracks?.().length)
+                return speechAudioCaptureStream;
+
+            if (!speechAudioElement?.captureStream)
+                return null;
+
+            try {
+                speechAudioCaptureStream = speechAudioElement.captureStream();
+                return speechAudioCaptureStream;
+            } catch {
+                return null;
+            }
+        };
+
+        const disconnectRecordingAudioSources = () => {
+            [recordingMicSource, recordingBotAudioSource, recordingScreenAudioSource].forEach(source => {
+                try {
+                    source?.disconnect?.();
+                } catch {}
+            });
+            recordingMicSource = null;
+            recordingBotAudioSource = null;
+            recordingScreenAudioSource = null;
+        };
+
+        const getRecordingSignature = () => [
+            ...getLiveTracks(screenShareStream, 'video').map(track => `screen-video:${track.id}`),
+            ...getLiveTracks(cameraStream, 'video').map(track => `camera-video:${track.id}`),
+            ...getLiveTracks(micStream, 'audio').map(track => `mic-audio:${track.id}`),
+            ...getLiveTracks(screenShareStream, 'audio').map(track => `screen-audio:${track.id}`),
+            ...getLiveTracks(getSpeechAudioCaptureStream(), 'audio').map(track => `bot-audio:${track.id}`)
+        ].join('|');
+
+        const refreshRecordingAudioMix = () => {
+            disconnectRecordingAudioSources();
+            recordingAudioDestination = null;
+
+            const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextCtor)
+                return null;
+
+            const micAudioStream = createSingleKindStream(micStream, 'audio');
+            const screenAudioStream = createSingleKindStream(screenShareStream, 'audio');
+            const botAudioStream = createSingleKindStream(getSpeechAudioCaptureStream(), 'audio');
+            if (!micAudioStream && !screenAudioStream && !botAudioStream)
+                return null;
+
+            try {
+                recordingAudioContext ??= new AudioContextCtor();
+                if (recordingAudioContext.state === 'suspended')
+                    recordingAudioContext.resume?.();
+
+                recordingAudioDestination = recordingAudioContext.createMediaStreamDestination();
+                if (micAudioStream) {
+                    recordingMicSource = recordingAudioContext.createMediaStreamSource(micAudioStream);
+                    recordingMicSource.connect(recordingAudioDestination);
+                }
+                if (screenAudioStream) {
+                    recordingScreenAudioSource = recordingAudioContext.createMediaStreamSource(screenAudioStream);
+                    recordingScreenAudioSource.connect(recordingAudioDestination);
+                }
+                if (botAudioStream) {
+                    recordingBotAudioSource = recordingAudioContext.createMediaStreamSource(botAudioStream);
+                    recordingBotAudioSource.connect(recordingAudioDestination);
+                }
+                recordingStreamSignature = getRecordingSignature();
+                return recordingAudioDestination.stream;
+            } catch (error) {
+                logActivity(`Recording audio mix unavailable. reason=${error?.message || error?.name || 'unknown'}`);
+                disconnectRecordingAudioSources();
+                recordingAudioDestination = null;
+                return null;
+            }
+        };
+
+        const closeRecordingAudioMix = () => {
+            disconnectRecordingAudioSources();
+            recordingAudioDestination = null;
+            recordingStreamSignature = '';
+            try {
+                recordingAudioContext?.close?.();
+            } catch {}
+            recordingAudioContext = null;
+        };
+
+        const stopMicPreview = async () => {
+            if (meterFrame) {
+                cancelAnimationFrame(meterFrame);
+                meterFrame = null;
+            }
+
+            audioContext?.close?.();
+            audioContext = null;
+            analyser = null;
+            audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
+        };
+
+        const stopMicStream = async () => {
+            micStream?.getTracks().forEach(track => track.stop());
+            micStream = null;
+            await stopMicPreview();
+        };
+
+        const switchAudioInputDevice = async (deviceId) => {
+            selectedAudioInputId = deviceId || '';
+            writeLocalStorageValue(audioInputStorageKey, selectedAudioInputId);
+            setAudioDeviceStatus('Microphone changed.');
+
+            if (!isMicActive())
+                return;
+
+            await stopSpeechRecognition();
+            await stopMicStream();
+            await setMic(true);
         };
 
         const appendRecognitionDuration = () => {
@@ -757,6 +1078,8 @@
             screenShareActive = false;
             screenShareInterrupted = false;
             screenShareAudioAvailable = false;
+            if (!mediaRecorder)
+                refreshRecordingAudioMix();
             setScreenShareInterruptionWarning(false);
             setScreenShareStatus(runtimeStoppedOrCompleted ? 'Screen sharing ended' : 'Screen sharing required');
             updateAuxiliaryControlsState();
@@ -1125,6 +1448,7 @@
             await stopSpeechRecognition();
             if (recordingEnabled && mediaRecorder)
                 await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording paused until screen sharing resumes.' });
+            refreshRecordingAudioMix();
             setScreenShareStatus('Screen sharing ended. Resume screen sharing to continue.', 'warning');
             setScreenShareInterruptionWarning(true);
             updateStartButtonState();
@@ -1147,6 +1471,7 @@
                 screenShareInterrupted = false;
                 setScreenShareInterruptionWarning(false);
                 updateScreenShareAudioNotice();
+                refreshRecordingAudioMix();
                 clearRecoveredMediaBlockingStatus();
                 updateAuxiliaryControlsState();
                 return true;
@@ -1170,6 +1495,7 @@
                 screenShareInterrupted = false;
                 setScreenShareInterruptionWarning(false);
                 updateScreenShareAudioNotice(true);
+                refreshRecordingAudioMix();
                 clearRecoveredMediaBlockingStatus();
                 const [screenTrack] = screenShareStream.getVideoTracks();
                 if (screenTrack) {
@@ -1425,18 +1751,12 @@
                 if (recordingButton)
                     recordingButton.disabled = true;
                 cameraStream?.getTracks().forEach(track => track.stop());
-                micStream?.getTracks().forEach(track => track.stop());
                 cameraStream = null;
-                micStream = null;
-                audioContext?.close?.();
-                audioContext = null;
-                analyser = null;
-                meterFrame && cancelAnimationFrame(meterFrame);
-                meterFrame = null;
+                await stopMicStream();
+                closeRecordingAudioMix();
                 video.srcObject = null;
                 video.style.display = 'none';
                 cameraPlaceholder.style.display = '';
-                audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
                 await stopSpeechRecognition();
             } catch (error) {
                 logActivity(`Completion media cleanup failed: ${error?.message || 'unknown'}`);
@@ -1829,12 +2149,24 @@
         const getActiveRecordingStream = () => {
             const tracks = [];
             const seenTrackIds = new Set();
+            const signature = getRecordingSignature();
+            if (!mediaRecorder && signature !== recordingStreamSignature)
+                refreshRecordingAudioMix();
+
             if (screenShareStream?.getTracks)
-                tracks.push(...screenShareStream.getTracks().filter(track => track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
+                tracks.push(...screenShareStream.getTracks().filter(track => track.kind === 'video' && track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
             if (cameraStream?.getTracks)
-                tracks.push(...cameraStream.getTracks().filter(track => track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
-            if (micStream?.getTracks)
-                tracks.push(...micStream.getTracks().filter(track => track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
+                tracks.push(...cameraStream.getTracks().filter(track => track.kind === 'video' && track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
+
+            const mixedAudioTracks = recordingAudioDestination?.stream?.getAudioTracks?.().filter(track => track.readyState === 'live') || [];
+            if (mixedAudioTracks.length) {
+                tracks.push(...mixedAudioTracks.filter(track => !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
+            } else {
+                if (screenShareStream?.getTracks)
+                    tracks.push(...screenShareStream.getTracks().filter(track => track.kind === 'audio' && track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
+                if (micStream?.getTracks)
+                    tracks.push(...micStream.getTracks().filter(track => track.kind === 'audio' && track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
+            }
 
             return tracks.length ? new MediaStream(tracks) : null;
         };
@@ -1964,6 +2296,7 @@
             const recorder = mediaRecorder;
             const mimeType = recordingMimeType || 'video/webm';
             mediaRecorder = null;
+            activeRecordingSignature = '';
             let uploaded = false;
 
             await new Promise(resolve => {
@@ -2037,6 +2370,7 @@
                     : (MediaRecorder.isTypeSupported('video/webm') ? { mimeType: 'video/webm' } : {});
                 logActivity(`MediaRecorder support confirmed. requestedMimeType=${options.mimeType || 'browser-default'}`);
                 mediaRecorder = new MediaRecorder(stream, options);
+                activeRecordingSignature = recordingStreamSignature || getRecordingSignature();
                 recordingMimeType = mediaRecorder.mimeType || options.mimeType || 'video/webm';
                 recordingChunks = [];
                 mediaRecorder.addEventListener('dataavailable', event => {
@@ -2053,6 +2387,7 @@
                     updateAuxiliaryControlsState();
             } catch (error) {
                 mediaRecorder = null;
+                activeRecordingSignature = '';
                 recordingChunks = [];
                 logActivity(`Recording start failure. reason=${error?.message || error?.name || 'unknown'}`);
                 setRecordingStatus('Recording could not be started.', true);
@@ -2069,12 +2404,16 @@
                 return;
             }
 
-            if (canStartRecording())
+            if (mediaRecorder && activeRecordingSignature && getRecordingSignature() !== activeRecordingSignature && canStartRecording()) {
+                await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording restarting with updated media tracks.' });
                 await startRecording();
-            else if (!getActiveRecordingStream() && recordingEnabled && mediaPermissionDenied && !screenShareActive)
+            } else if (canStartRecording()) {
+                await startRecording();
+            } else if (!getActiveRecordingStream() && recordingEnabled && mediaPermissionDenied && !screenShareActive) {
                 logActivity('Recording is waiting for screen share because camera or microphone permission was denied.');
-            else if (!getActiveRecordingStream() && recordingEnabled)
+            } else if (!getActiveRecordingStream() && recordingEnabled) {
                 logActivity('Recording waiting for screen share, camera, or microphone.');
+            }
         };
 
         const scheduleTokenRefresh = () => {
@@ -2194,7 +2533,19 @@
             try {
                 const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
                 speechConfig.speechRecognitionLanguage = 'en-US';
-                const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+                let audioConfig = null;
+                if (selectedAudioInputId && SpeechSDK.AudioConfig.fromMicrophoneInput) {
+                    try {
+                        audioConfig = SpeechSDK.AudioConfig.fromMicrophoneInput(selectedAudioInputId);
+                    } catch (error) {
+                        logActivity(`Selected speech microphone unavailable. reason=${error?.message || error?.name || 'unknown'}`);
+                        selectedAudioInputId = '';
+                        writeLocalStorageValue(audioInputStorageKey, '');
+                        if (audioInputSelect)
+                            audioInputSelect.value = '';
+                    }
+                }
+                audioConfig ??= SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
                 speechRecognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
                 recognitionActiveSinceMs ??= Date.now();
 
@@ -2276,6 +2627,88 @@
                 await startSpeechRecognition();
         };
 
+        const synthesizeSpeechAudioData = async (speechConfig, text) => {
+            if (SpeechSDK.SpeechSynthesisOutputFormat?.Audio24Khz48KBitRateMonoMp3)
+                speechConfig.speechSynthesisOutputFormat = SpeechSDK.SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3;
+
+            const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, null);
+            try {
+                return await new Promise((resolve, reject) => {
+                    synthesizer.speakTextAsync(text, (result) => {
+                        if (result?.audioData?.byteLength) {
+                            resolve(result.audioData);
+                            return;
+                        }
+
+                        reject(new Error(result?.errorDetails || 'Speech synthesis produced no audio data.'));
+                    }, (result) => {
+                        reject(new Error(result?.errorDetails || result?.error || 'Speech synthesis failed.'));
+                    });
+                });
+            } finally {
+                synthesizer.close();
+            }
+        };
+
+        const playControlledSpeechAudio = async (audioData) => {
+            const audioElement = ensureSpeechAudioElement();
+            if (speechAudioObjectUrl)
+                URL.revokeObjectURL(speechAudioObjectUrl);
+
+            const audioBlob = new Blob([audioData], { type: 'audio/mpeg' });
+            speechAudioObjectUrl = URL.createObjectURL(audioBlob);
+            audioElement.src = speechAudioObjectUrl;
+            await applySelectedAudioOutput(audioElement);
+
+            speechAudioCaptureStream = getSpeechAudioCaptureStream();
+            if (recordingEnabled)
+                await syncRecording();
+
+            await new Promise((resolve, reject) => {
+                const cleanup = () => {
+                    audioElement.removeEventListener('ended', handleEnded);
+                    audioElement.removeEventListener('error', handleError);
+                };
+                const handleEnded = () => {
+                    cleanup();
+                    resolve();
+                };
+                const handleError = () => {
+                    cleanup();
+                    reject(new Error('Speech audio playback failed.'));
+                };
+
+                audioElement.addEventListener('ended', handleEnded, { once: true });
+                audioElement.addEventListener('error', handleError, { once: true });
+                audioElement.currentTime = 0;
+                audioElement.play().catch(error => {
+                    cleanup();
+                    reject(error);
+                });
+            });
+        };
+
+        const speakTextWithDefaultOutput = async (speechConfig, text) => {
+            const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
+            const handleSynthesisCanceled = async (_, eventArgs) => {
+                const cancellationDetails = (eventArgs?.errorDetails || '').trim();
+                logActivity(`Speech synthesis canceled. ${cancellationDetails || 'No additional details.'}`);
+                await disableSpeechForRuntime(voicePlaybackUnavailableMessage);
+                setHeaderStatus(voicePlaybackUnavailableMessage, true);
+            };
+            synthesizer.SynthesisCanceled = handleSynthesisCanceled;
+            synthesizer.synthesisCanceled = handleSynthesisCanceled;
+            await new Promise((resolve, reject) => {
+                synthesizer.speakTextAsync(text, () => {
+                    synthesizer.close();
+                    resolve();
+                }, (result) => {
+                    synthesizer.close();
+                    reject(new Error(result?.errorDetails || result?.error || 'Speech synthesis failed.'));
+                });
+            });
+        };
+
         const speakText = async (text, purpose = 'question') => {
             if (!config.speechAvailable || !text || isPlaceholderSpeechText(text))
                 return;
@@ -2312,32 +2745,20 @@
 
             try {
                 const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
-                const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
-                const handleSynthesisCanceled = async (_, eventArgs) => {
-                    const cancellationDetails = (eventArgs?.errorDetails || '').trim();
-                    logActivity(`Speech synthesis canceled. ${cancellationDetails || 'No additional details.'}`);
-                    await disableSpeechForRuntime(voicePlaybackUnavailableMessage);
-                    setHeaderStatus(voicePlaybackUnavailableMessage, true);
-                };
-                synthesizer.synthesisStarted = () => {
-                    if (purpose === 'question')
-                        setHeaderStatus('Playing interviewer audio.', false);
-                };
-                synthesizer.synthesisCompleted = () => {
+                if (purpose === 'question')
+                    setHeaderStatus('Playing interviewer audio.', false);
+
+                try {
+                    const audioData = await synthesizeSpeechAudioData(speechConfig, text);
+                    await playControlledSpeechAudio(audioData);
+                } catch (controlledPlaybackError) {
+                    logActivity(`Controlled speech playback unavailable. reason=${controlledPlaybackError?.message || controlledPlaybackError?.name || 'unknown'}`);
+                    await speakTextWithDefaultOutput(speechConfig, text);
+                } finally {
                     if (purpose === 'question')
                         setHeaderStatus('', false);
-                };
-                synthesizer.SynthesisCanceled = handleSynthesisCanceled;
-                synthesizer.synthesisCanceled = handleSynthesisCanceled;
-                await new Promise((resolve, reject) => {
-                    synthesizer.speakTextAsync(text, () => {
-                        synthesizer.close();
-                        resolve();
-                    }, (result) => {
-                        synthesizer.close();
-                        reject(new Error(result?.errorDetails || result?.error || 'Speech synthesis failed.'));
-                    });
-                });
+                }
+
                 if (purpose === 'question')
                     logActivity('Question speech completed.');
                 else if (purpose === 'reminder')
@@ -2397,6 +2818,7 @@
                 video.style.display = 'block';
                 cameraPlaceholder.style.display = 'none';
                 logActivity('Camera started.');
+                await refreshAudioDevices();
                 clearRecoveredMediaBlockingStatus();
                 updateAuxiliaryControlsState();
                 updateStartButtonState();
@@ -2425,12 +2847,7 @@
             }
 
             if (!enabled) {
-                micStream?.getTracks().forEach(track => track.stop());
-                micStream = null;
-                audioContext?.close?.();
-                audioContext = null;
-                analyser = null;
-                audioMeter.forEach(bar => { bar.style.height = '8px'; bar.style.background = '#cbd5e1'; });
+                await stopMicStream();
                 logActivity('Mic stopped.');
                 await stopSpeechRecognition();
                 if (interviewStarted)
@@ -2444,7 +2861,24 @@
             }
 
             try {
-                micStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({
+                        video: false,
+                        audio: getSelectedAudioInputConstraints()
+                    });
+                } catch (error) {
+                    if (!selectedAudioInputId || !isSelectedAudioInputFailure(error))
+                        throw error;
+
+                    logActivity(`Selected microphone unavailable. reason=${error?.message || error?.name || 'unknown'}`);
+                    selectedAudioInputId = '';
+                    writeLocalStorageValue(audioInputStorageKey, '');
+                    if (audioInputSelect)
+                        audioInputSelect.value = '';
+                    setAudioDeviceStatus('Selected microphone unavailable. Using default microphone.');
+                    micStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+                }
+                await refreshAudioDevices();
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const source = audioContext.createMediaStreamSource(micStream);
                 analyser = audioContext.createAnalyser();
@@ -2466,6 +2900,7 @@
                 };
                 updateMeter();
                 logActivity('Mic started.');
+                refreshRecordingAudioMix();
                 await resumeSpeechRecognitionForActiveQuestion();
                 clearRecoveredMediaBlockingStatus();
                 updateAuxiliaryControlsState();
@@ -2886,6 +3321,37 @@
             updateStartButtonState();
             setStatus('Please acknowledge the interview guidelines before starting.', false);
         });
+        if (audioDeviceToggle) {
+            audioDeviceToggle.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                setAudioDevicePanelOpen(!audioDevicePanelOpen);
+                if (audioDevicePanelOpen)
+                    await refreshAudioDevices();
+            });
+        }
+        if (audioDevicePanel) {
+            audioDevicePanel.addEventListener('click', event => event.stopPropagation());
+        }
+        if (audioInputSelect) {
+            audioInputSelect.addEventListener('change', async () => {
+                await switchAudioInputDevice(audioInputSelect.value);
+            });
+        }
+        if (audioOutputSelect) {
+            audioOutputSelect.addEventListener('change', async () => {
+                selectedAudioOutputId = audioOutputSelect.value || '';
+                writeLocalStorageValue(audioOutputStorageKey, selectedAudioOutputId);
+                await applySelectedAudioOutput(ensureSpeechAudioElement());
+            });
+        }
+        document.addEventListener('click', () => setAudioDevicePanelOpen(false));
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape')
+                setAudioDevicePanelOpen(false);
+        });
+        navigator.mediaDevices?.addEventListener?.('devicechange', () => {
+            refreshAudioDevices().catch(error => logActivity(`Audio device refresh failed. reason=${error?.message || 'unknown'}`));
+        });
         document.getElementById('toggle-camera').addEventListener('click', async () => await setCamera(!isCameraActive()));
         document.getElementById('toggle-mic').addEventListener('click', async () => await setMic(!isMicActive()));
         if (screenShareButton) {
@@ -2960,8 +3426,12 @@
         window.addEventListener('pagehide', () => {
             stopScreenShare();
             clearAllRuntimeTimers();
+            closeRecordingAudioMix();
+            if (speechAudioObjectUrl)
+                URL.revokeObjectURL(speechAudioObjectUrl);
         });
 
+        loadPersistedAudioDeviceSelections();
         renderTranscript();
         setActiveRuntimePanel('conversation');
         updateAnswerInputState();
@@ -2974,6 +3444,7 @@
         updateStartButtonState();
         updateSubmitAvailability();
         updateAuxiliaryControlsState();
+        refreshAudioDevices().catch(error => logActivity(`Audio device refresh failed. reason=${error?.message || 'unknown'}`));
         syncAnswerCaption();
         guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);
         scheduleTokenRefresh();

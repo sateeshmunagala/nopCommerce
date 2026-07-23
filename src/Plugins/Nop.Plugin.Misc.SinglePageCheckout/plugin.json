@@ -4,7 +4,7 @@
   "SystemName": "Misc.SinglePageCheckout",
   "Version": "1.00",
   "SupportedVersions": [ "5.00" ],
-  "Author": "nopCommerce team",
+  "Author": "skillFinder team",
   "DisplayOrder": 1,
   "FileName": "Nop.Plugin.Misc.SinglePageCheckout.dll",
   "Description": "Provides a single-page checkout experience."

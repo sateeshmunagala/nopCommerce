@@ -2600,6 +2600,70 @@ body.ai-job-preview-open .item-box {
     color: #188f78;
 }
 
+.runtime-audio-device-control {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.runtime-audio-device-panel {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 10px);
+    z-index: 10;
+    width: 300px;
+    max-width: min(320px, calc(100vw - 32px));
+    padding: 12px;
+    border: 1px solid #dbe3ec;
+    border-radius: 1px;
+    background: #ffffff;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
+    transform: translateX(-50%);
+}
+
+.runtime-audio-device-field {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.runtime-audio-device-field label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.runtime-audio-device-field label i {
+    color: #188f78;
+    font-size: 12px;
+}
+
+.runtime-audio-device-field select {
+    width: 100%;
+    min-height: 34px;
+    padding: 6px 8px;
+    border: 1px solid #cfdae5;
+    border-radius: 1px;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 13px;
+}
+
+.runtime-audio-device-field select:disabled {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.runtime-audio-device-status {
+    min-height: 16px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
 .runtime-shell .runtime-icon-button.is-active {
     border-color: #35d6b4;
     background: #d8f8f1;
@@ -3367,6 +3431,13 @@ body.ai-job-preview-open .item-box {
 
     .runtime-icon-button {
         flex: 0 0 42px;
+    }
+
+    .runtime-audio-device-panel {
+        left: 0;
+        right: auto;
+        width: min(320px, calc(100vw - 32px));
+        transform: none;
     }
 
     .runtime-sidebar {

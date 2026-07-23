@@ -4,7 +4,7 @@
   "SystemName": "Misc.AIInterview",
   "Version": "1.29",
   "SupportedVersions": [ "5.00" ],
-  "Author": "nopCommerce team",
+  "Author": "skillFinder team",
   "DisplayOrder": 1,
   "FileName": "Nop.Plugin.Misc.AIInterview.dll",
   "Description": "AI Interview plugin"
