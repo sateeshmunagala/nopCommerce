@@ -141,6 +141,9 @@ public class SettingMigration : MigrationBase
             $"{nameof(CustomerSettings)}.PhoneNumberValidationUseRegex",
             $"{nameof(CustomerSettings)}.PhoneNumberValidationRule"
         ]);
+
+        //#3456
+        this.SetSettingIfNotExists<ReturnRequestSettings, bool>(settings => settings.ReturnRequestsForCompletedOrdersOnly, true);
     }
 
     public override void Down()

@@ -9122,6 +9122,12 @@
   <LocaleResource Name="Admin.Configuration.Settings.Order.ReturnRequestsEnabled.Hint">
     <Value>Check if you want to allow customers to submit return requests for items they've previously purchased.</Value>
   </LocaleResource>
+  <LocaleResource Name="Admin.Configuration.Settings.Order.ReturnRequestsForCompletedOrdersOnly">
+    <Value>Allow return requests only for completed orders</Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Configuration.Settings.Order.ReturnRequestsForCompletedOrdersOnly.Hint">
+    <Value>Check this option to allow return requests only for completed orders.</Value>
+  </LocaleResource>
   <LocaleResource Name="Admin.Configuration.Settings.Order.ReturnRequestSettings">
     <Value>Return request (withdrawal button) settings</Value>
   </LocaleResource>
