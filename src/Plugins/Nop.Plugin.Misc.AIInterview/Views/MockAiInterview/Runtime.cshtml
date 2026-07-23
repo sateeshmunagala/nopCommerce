@@ -667,7 +667,7 @@
             const message = 'Interviewer audio recording depends on screen audio in this browser.';
             logActivity('Interviewer voice recording is falling back to browser/system capture only.');
             if (recordingEnabled)
-                setRecordingStatus(message, false);
+                setRecordingStatus(message, false, true);
             else
                 setAudioDeviceStatus(message);
         };
@@ -1291,12 +1291,12 @@
         const buildCompletedRedirectMessage = (remainingSeconds) =>
             `Interview completed. Please wait, creating the report. Redirecting to report in ${remainingSeconds}s.`;
 
-        const setRecordingStatus = (message, isError) => {
+        const setRecordingStatus = (message, isError, forceVisible = false) => {
             if (!recordingStatus)
                 return;
 
             recordingStatus.textContent = message || '';
-            const isVisible = !!message && !!config.recordingAvailable && !!isError;
+            const isVisible = !!message && !!config.recordingAvailable && (!!isError || !!forceVisible);
             recordingStatus.className = `runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
         };
 
@@ -2727,6 +2727,13 @@
                     audioElement.removeEventListener('ended', handleEnded);
                     audioElement.removeEventListener('error', handleError);
                 };
+                const cleanupFailedPlayback = () => {
+                    revokeSpeechAudioObjectUrl();
+                    audioElement.removeAttribute('src');
+                    audioElement.load?.();
+                    speechAudioCaptureStream = null;
+                    botAudioCapturedForCurrentSpeech = false;
+                };
                 const handleEnded = () => {
                     cleanup();
                     revokeSpeechAudioObjectUrl();
@@ -2734,11 +2741,7 @@
                 };
                 const handleError = () => {
                     cleanup();
-                    revokeSpeechAudioObjectUrl();
-                    audioElement.removeAttribute('src');
-                    audioElement.load?.();
-                    speechAudioCaptureStream = null;
-                    botAudioCapturedForCurrentSpeech = false;
+                    cleanupFailedPlayback();
                     reject(new Error('Speech audio playback failed.'));
                 };
 
@@ -2747,6 +2750,7 @@
                 audioElement.currentTime = 0;
                 audioElement.play().catch(error => {
                     cleanup();
+                    cleanupFailedPlayback();
                     reject(error);
                 });
             });
