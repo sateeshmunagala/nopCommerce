@@ -829,6 +829,10 @@ public class LocalizationMigration : MigrationBase
             //#3456
             ["Admin.Configuration.Settings.Order.ReturnRequestsForCompletedOrdersOnly"] = "Allow return requests only for completed orders",
             ["Admin.Configuration.Settings.Order.ReturnRequestsForCompletedOrdersOnly.Hint"] = "Check this option to allow return requests only for completed orders.",
+
+            //#8229
+            ["Admin.Configuration.Settings.Order.DownloadableProductsReturnRequestsAllowed"] = "Allow return requests for downloadable products",
+            ["Admin.Configuration.Settings.Order.DownloadableProductsReturnRequestsAllowed.Hint"] = "Check this option to allow return requests for downloadable products.",
         });
 
         #endregion
