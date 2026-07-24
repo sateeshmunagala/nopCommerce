@@ -103,6 +103,9 @@ public class ResumeFileService : IResumeFileService
 public class ResumeTextExtractionService : IResumeTextExtractionService
 {
     private static readonly Regex WhitespaceRegex = new(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex InlineWhitespaceRegex = new(@"[^\S\r\n]+", RegexOptions.Compiled);
+    private static readonly Regex LineBreakRegex = new(@"\r\n|\r|\n", RegexOptions.Compiled);
+    private static readonly Regex ExcessBlankLinesRegex = new(@"(?:\n\s*){3,}", RegexOptions.Compiled);
     private static readonly Regex SecretQueryParameterRegex = new(@"(?i)([?&](?:sig|se|sp|sv|sr|skoid|sktid|skt|ske|sks|skv|api[-_]?key|subscription[-_]?key|code|token|key)=)[^&\s]+", RegexOptions.Compiled);
     private const int MaxExtractedTextLength = 12000;
 
@@ -183,7 +186,7 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
                 modelId,
                 timeoutSeconds);
 
-            var normalized = NormalizeWhitespace(extractedText);
+            var normalized = NormalizeExtractedResumeText(extractedText);
             if (string.IsNullOrWhiteSpace(normalized))
             {
                 return new ResumeTextExtractionResult
@@ -265,7 +268,7 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
 
     private static string BuildExtractionDiagnosticMessage(string message)
     {
-        var normalized = SanitizeDiagnostic(NormalizeWhitespace(message));
+        var normalized = SanitizeDiagnostic(NormalizeDiagnosticWhitespace(message));
         return string.IsNullOrWhiteSpace(normalized)
             ? "azure_document_intelligence_read_failure"
             : TruncateDiagnostic(normalized);
@@ -285,11 +288,26 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
             : value.Length <= 220 ? value : value[..220];
     }
 
-    private static string NormalizeWhitespace(string text)
+    private static string NormalizeDiagnosticWhitespace(string text)
     {
         return string.IsNullOrWhiteSpace(text)
             ? string.Empty
             : WhitespaceRegex.Replace(WebUtility.HtmlDecode(text), " ").Trim();
+    }
+
+    private static string NormalizeExtractedResumeText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        var normalizedLineBreaks = LineBreakRegex.Replace(WebUtility.HtmlDecode(text), "\n");
+        var normalizedLines = normalizedLineBreaks
+            .Split('\n')
+            .Select(line => InlineWhitespaceRegex.Replace(line, " ").Trim());
+
+        return ExcessBlankLinesRegex
+            .Replace(string.Join("\n", normalizedLines), "\n\n")
+            .Trim();
     }
 }
 
@@ -318,10 +336,12 @@ public class AzureDocumentIntelligenceResumeReader : IAzureDocumentIntelligenceR
     {
         using var timeoutSource = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
         var client = new DocumentIntelligenceClient(endpoint, new AzureKeyCredential(apiKey));
+        var options = new AnalyzeDocumentOptions(modelId, BinaryData.FromBytes(binary));
+        // Azure.AI.DocumentIntelligence 1.0.0 does not expose a content-type property on AnalyzeDocumentOptions.
+        // Keep the parameter in this boundary so a future SDK can apply PDF/DOCX content types without changing callers.
         var operation = await client.AnalyzeDocumentAsync(
             WaitUntil.Completed,
-            modelId,
-            BinaryData.FromBytes(binary),
+            options,
             timeoutSource.Token);
 
         return ExtractPlainText(operation.Value);

@@ -69,9 +69,32 @@ public class ResumePlanningTests
     }
 
     [Test]
-    public async Task ResumeTextExtractionService_AzureResult_NormalizesWhitespace_And_Caps()
+    public async Task ResumeTextExtractionService_AzureResult_PreservesUsefulLineBreaks()
     {
-        var longText = $"Senior   .NET   Engineer {new string('A', 12100)}";
+        var text = "Skills\r\nC#   Azure   SQL\r\n\r\n\r\nProjects\r\nPayments    Platform";
+        var reader = new FakeAzureDocumentIntelligenceResumeReader(text);
+        var service = new ResumeTextExtractionService(new AIInterviewSettings
+        {
+            AzureDocumentIntelligenceEndpointUrl = "https://document.example.com/",
+            AzureDocumentIntelligenceApiKey = "test-key"
+        }, reader);
+        var download = new Download
+        {
+            Filename = "resume.docx",
+            Extension = ".docx",
+            DownloadBinary = Encoding.UTF8.GetBytes("fake-docx-binary")
+        };
+
+        var result = await service.ExtractTextAsync(download);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Text, Is.EqualTo("Skills\nC# Azure SQL\n\nProjects\nPayments Platform"));
+    }
+
+    [Test]
+    public async Task ResumeTextExtractionService_AzureResult_CapsNormalizedText()
+    {
+        var longText = $"Senior   .NET   Engineer\n{new string('A', 12100)}";
         var reader = new FakeAzureDocumentIntelligenceResumeReader(longText);
         var service = new ResumeTextExtractionService(new AIInterviewSettings
         {
@@ -88,11 +111,39 @@ public class ResumePlanningTests
         var result = await service.ExtractTextAsync(download);
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Text, Does.StartWith("Senior .NET Engineer"));
+        Assert.That(result.Text, Does.StartWith("Senior .NET Engineer\n"));
         Assert.That(result.Text.Length, Is.EqualTo(12000));
         Assert.That(reader.ContentType, Is.EqualTo("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
         Assert.That(reader.ModelId, Is.EqualTo("prebuilt-read"));
         Assert.That(reader.TimeoutSeconds, Is.EqualTo(60));
+    }
+
+    [Test]
+    public async Task ResumeTextExtractionService_PdfAndDocx_PassExpectedContentTypesToReader()
+    {
+        var settings = new AIInterviewSettings
+        {
+            AzureDocumentIntelligenceEndpointUrl = "https://document.example.com/",
+            AzureDocumentIntelligenceApiKey = "test-key"
+        };
+        var pdfReader = new FakeAzureDocumentIntelligenceResumeReader("pdf text");
+        var docxReader = new FakeAzureDocumentIntelligenceResumeReader("docx text");
+
+        await new ResumeTextExtractionService(settings, pdfReader).ExtractTextAsync(new Download
+        {
+            Filename = "resume.pdf",
+            Extension = ".pdf",
+            DownloadBinary = Encoding.UTF8.GetBytes("fake-pdf-binary")
+        });
+        await new ResumeTextExtractionService(settings, docxReader).ExtractTextAsync(new Download
+        {
+            Filename = "resume.docx",
+            Extension = ".docx",
+            DownloadBinary = Encoding.UTF8.GetBytes("fake-docx-binary")
+        });
+
+        Assert.That(pdfReader.ContentType, Is.EqualTo("application/pdf"));
+        Assert.That(docxReader.ContentType, Is.EqualTo("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
     }
 
     [Test]
