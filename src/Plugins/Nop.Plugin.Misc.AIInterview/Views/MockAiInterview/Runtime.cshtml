@@ -613,9 +613,24 @@
             } catch {}
         };
 
+        const isPseudoAudioDeviceId = (deviceId) => {
+            const normalized = (deviceId || '').toLowerCase();
+            return normalized === 'default' || normalized === 'communications';
+        };
+
         const loadPersistedAudioDeviceSelections = () => {
             selectedAudioInputId = readLocalStorageValue(audioInputStorageKey);
             selectedAudioOutputId = readLocalStorageValue(audioOutputStorageKey);
+
+            if (isPseudoAudioDeviceId(selectedAudioInputId)) {
+                selectedAudioInputId = '';
+                writeLocalStorageValue(audioInputStorageKey, '');
+            }
+
+            if (isPseudoAudioDeviceId(selectedAudioOutputId)) {
+                selectedAudioOutputId = '';
+                writeLocalStorageValue(audioOutputStorageKey, '');
+            }
         };
 
         const setAudioDeviceStatus = (message = '') => {
@@ -655,10 +670,9 @@
         };
 
         const isPseudoAudioDevice = (device) => {
-            const deviceId = (device?.deviceId || '').toLowerCase();
             const label = (device?.label || '').trim().toLowerCase();
 
-            if (deviceId === 'default' || deviceId === 'communications')
+            if (isPseudoAudioDeviceId(device?.deviceId))
                 return true;
 
             return label === 'default'
