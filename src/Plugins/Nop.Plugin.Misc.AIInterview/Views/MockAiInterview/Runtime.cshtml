@@ -95,10 +95,6 @@
                             <i class="fa-solid fa-book-open" aria-hidden="true"></i>
                             <span class="sr-only">@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Title")</span>
                         </button>
-                        <button type="button" id="repeat-question" class="runtime-icon-button button-2" aria-label="Repeat question" title="Repeat question">
-                            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
-                            <span class="sr-only">Repeat question</span>
-                        </button>
                     </div>
                     <div class="runtime-control-group runtime-control-group-center">
                         <div class="runtime-audio-device-control" id="runtime-audio-device-control">
@@ -137,10 +133,6 @@
                             <button type="button" id="toggle-recording" class="runtime-icon-button button-2" aria-label="Recording status" title="Recording status">
                                 <i class="fa-solid fa-circle" aria-hidden="true"></i>
                                 <span class="sr-only">Recording status</span>
-                            </button>
-                            <button type="button" id="open-transcript" class="runtime-icon-button button-2" aria-label="Transcript" title="Transcript">
-                                <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
-                                <span class="sr-only">@T("Plugins.Misc.AIInterview.Runtime.Transcript")</span>
                             </button>
                         </div>
                     </div>
@@ -317,17 +309,38 @@
         </div>
         <p class="runtime-feedback-intro">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Intro")</p>
         <div class="runtime-feedback-field">
-            <label for="runtime-feedback-issue">@T("Plugins.Misc.AIInterview.Runtime.Feedback.IssueLabel")</label>
+            <label for="runtime-feedback-issue-button">@T("Plugins.Misc.AIInterview.Runtime.Feedback.IssueLabel")</label>
             <div class="runtime-feedback-select-wrap">
-                <span class="runtime-feedback-select-icon"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></span>
-                <select id="runtime-feedback-issue">
-                    <option value="AI is not speaking">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.AiNotSpeaking")</option>
-                    <option value="Typing is not working">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.TypingNotWorking")</option>
-                    <option value="Loading issues">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.LoadingIssues")</option>
-                    <option value="Taking too much time for result generation">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.ResultDelay")</option>
-                    <option value="Other issue">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.OtherIssue")</option>
-                </select>
-                <span class="runtime-feedback-chevron"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
+                <input type="hidden" id="runtime-feedback-issue" value="AI is not speaking" />
+                <button type="button" id="runtime-feedback-issue-button" class="runtime-feedback-issue-button" aria-haspopup="listbox" aria-expanded="false" aria-controls="runtime-feedback-issue-listbox">
+                    <span class="runtime-feedback-issue-current">
+                        <i id="runtime-feedback-issue-current-icon" class="fa-solid fa-volume-xmark" aria-hidden="true"></i>
+                        <span id="runtime-feedback-issue-current-text">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.AiNotSpeaking")</span>
+                    </span>
+                    <span class="runtime-feedback-chevron"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
+                </button>
+                <div id="runtime-feedback-issue-listbox" class="runtime-feedback-issue-listbox runtime-js-hidden" role="listbox" aria-labelledby="runtime-feedback-issue-button">
+                    <button type="button" class="runtime-feedback-issue-option is-active" role="option" tabindex="-1" aria-selected="true" data-feedback-issue-value="AI is not speaking" data-feedback-issue-icon="fa-solid fa-volume-xmark">
+                        <i class="fa-solid fa-volume-xmark" aria-hidden="true"></i>
+                        <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.AiNotSpeaking")</span>
+                    </button>
+                    <button type="button" class="runtime-feedback-issue-option" role="option" tabindex="-1" aria-selected="false" data-feedback-issue-value="Typing is not working" data-feedback-issue-icon="fa-regular fa-keyboard">
+                        <i class="fa-regular fa-keyboard" aria-hidden="true"></i>
+                        <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.TypingNotWorking")</span>
+                    </button>
+                    <button type="button" class="runtime-feedback-issue-option" role="option" tabindex="-1" aria-selected="false" data-feedback-issue-value="Loading issues" data-feedback-issue-icon="fa-solid fa-spinner">
+                        <i class="fa-solid fa-spinner" aria-hidden="true"></i>
+                        <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.LoadingIssues")</span>
+                    </button>
+                    <button type="button" class="runtime-feedback-issue-option" role="option" tabindex="-1" aria-selected="false" data-feedback-issue-value="Taking too much time for result generation" data-feedback-issue-icon="fa-regular fa-clock">
+                        <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                        <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.ResultDelay")</span>
+                    </button>
+                    <button type="button" class="runtime-feedback-issue-option" role="option" tabindex="-1" aria-selected="false" data-feedback-issue-value="Other issue" data-feedback-issue-icon="fa-regular fa-circle-question">
+                        <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
+                        <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.OtherIssue")</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -461,6 +474,11 @@
         const feedbackCancelButton = document.getElementById('runtime-feedback-cancel');
         const feedbackSubmitButton = document.getElementById('runtime-feedback-submit');
         const feedbackIssueSelect = document.getElementById('runtime-feedback-issue');
+        const feedbackIssueButton = document.getElementById('runtime-feedback-issue-button');
+        const feedbackIssueListbox = document.getElementById('runtime-feedback-issue-listbox');
+        const feedbackIssueCurrentIcon = document.getElementById('runtime-feedback-issue-current-icon');
+        const feedbackIssueCurrentText = document.getElementById('runtime-feedback-issue-current-text');
+        const feedbackIssueOptions = Array.from(document.querySelectorAll('.runtime-feedback-issue-option'));
         const feedbackOtherPanel = document.getElementById('runtime-feedback-other');
         const feedbackComment = document.getElementById('runtime-feedback-comment');
         const feedbackAttachment = document.getElementById('runtime-feedback-attachment');
@@ -1131,7 +1149,9 @@
 
         const closeGuidelinesModal = () => setGuidelinesModalOpen(false);
 
-        const isOtherFeedbackIssue = () => feedbackIssueSelect?.value === 'Other issue';
+        const getSelectedFeedbackIssue = () => feedbackIssueSelect?.value || 'AI is not speaking';
+
+        const isOtherFeedbackIssue = () => getSelectedFeedbackIssue() === 'Other issue';
 
         const setFeedbackStatus = (message = '', isError = false) => {
             if (!feedbackStatus)
@@ -1151,8 +1171,51 @@
             });
         };
 
+        const getFeedbackOptionIndex = (value) => Math.max(0, feedbackIssueOptions.findIndex(option => option.dataset.feedbackIssueValue === value));
+
+        const setFeedbackIssueListboxOpen = (open) => {
+            if (!feedbackIssueButton || !feedbackIssueListbox)
+                return;
+
+            feedbackIssueListbox.classList.toggle('runtime-js-hidden', !open);
+            feedbackIssueButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+
+        const setActiveFeedbackIssueOption = (index) => {
+            if (!feedbackIssueOptions.length)
+                return;
+
+            const normalizedIndex = Math.max(0, Math.min(index, feedbackIssueOptions.length - 1));
+            feedbackIssueOptions.forEach((option, optionIndex) => {
+                const active = optionIndex === normalizedIndex;
+                option.classList.toggle('is-active', active);
+                if (active)
+                    option.scrollIntoView({ block: 'nearest' });
+            });
+        };
+
+        const selectFeedbackIssue = (option, closeListbox = true) => {
+            if (!option || !feedbackIssueSelect)
+                return;
+
+            const value = option.dataset.feedbackIssueValue || '';
+            feedbackIssueSelect.value = value;
+            feedbackIssueOptions.forEach(candidate => {
+                const selected = candidate === option;
+                candidate.setAttribute('aria-selected', selected ? 'true' : 'false');
+                candidate.classList.toggle('is-active', selected);
+            });
+            if (feedbackIssueCurrentIcon)
+                feedbackIssueCurrentIcon.className = option.dataset.feedbackIssueIcon || '';
+            if (feedbackIssueCurrentText)
+                feedbackIssueCurrentText.textContent = option.querySelector('span')?.textContent || value;
+            if (closeListbox)
+                setFeedbackIssueListboxOpen(false);
+            updateFeedbackIssueState();
+        };
+
         const updateFeedbackIssueState = () => {
-            const issue = feedbackIssueSelect?.value || '';
+            const issue = getSelectedFeedbackIssue();
             const otherIssue = isOtherFeedbackIssue();
             feedbackSolutionPanels.forEach(panel => {
                 const isActive = panel.dataset.feedbackSolution === issue && !otherIssue;
@@ -1166,7 +1229,40 @@
             setFeedbackStatus();
         };
 
-        const getFeedbackFocusableElements = () => Array.from(feedbackModal?.querySelectorAll('button:not(:disabled), select:not(:disabled), textarea:not(:disabled), input:not(:disabled), a[href]') || [])
+        const handleFeedbackIssueButtonKeydown = (event) => {
+            const isOpen = feedbackIssueButton?.getAttribute('aria-expanded') === 'true';
+            const selectedIndex = getFeedbackOptionIndex(getSelectedFeedbackIssue());
+            const activeIndex = Math.max(0, feedbackIssueOptions.findIndex(option => option.classList.contains('is-active')));
+
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                setFeedbackIssueListboxOpen(true);
+                const nextIndex = event.key === 'ArrowDown'
+                    ? (isOpen ? Math.min(activeIndex + 1, feedbackIssueOptions.length - 1) : selectedIndex)
+                    : (isOpen ? Math.max(activeIndex - 1, 0) : selectedIndex);
+                setActiveFeedbackIssueOption(nextIndex);
+                return;
+            }
+
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                if (!isOpen) {
+                    setFeedbackIssueListboxOpen(true);
+                    setActiveFeedbackIssueOption(selectedIndex);
+                    return;
+                }
+
+                selectFeedbackIssue(feedbackIssueOptions[activeIndex] || feedbackIssueOptions[selectedIndex]);
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                setFeedbackIssueListboxOpen(false);
+                feedbackIssueButton?.focus();
+            }
+        };
+
+        const getFeedbackFocusableElements = () => Array.from(feedbackModal?.querySelectorAll('button:not(:disabled):not([tabindex="-1"]), select:not(:disabled), textarea:not(:disabled), input:not(:disabled), a[href]') || [])
             .filter(element => element.offsetParent !== null);
 
         const trapFeedbackFocus = (event) => {
@@ -1197,8 +1293,9 @@
             if (open) {
                 feedbackLastFocusedElement = document.activeElement;
                 updateFeedbackIssueState();
-                window.setTimeout(() => feedbackIssueSelect?.focus(), 0);
+                window.setTimeout(() => feedbackIssueButton?.focus(), 0);
             } else {
+                setFeedbackIssueListboxOpen(false);
                 if (feedbackLastFocusedElement?.focus)
                     feedbackLastFocusedElement.focus();
             }
@@ -1215,7 +1312,7 @@
                 return;
             }
 
-            const issue = feedbackIssueSelect?.value || '';
+            const issue = getSelectedFeedbackIssue();
             const comment = feedbackComment?.value?.trim() || '';
             const otherIssue = issue === 'Other issue';
             if (otherIssue && !comment) {
@@ -3605,8 +3702,23 @@
             feedbackCancelButton.addEventListener('click', closeFeedbackModal);
         if (feedbackSubmitButton)
             feedbackSubmitButton.addEventListener('click', submitRuntimeFeedback);
-        if (feedbackIssueSelect)
-            feedbackIssueSelect.addEventListener('change', updateFeedbackIssueState);
+        if (feedbackIssueButton) {
+            feedbackIssueButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const isOpen = feedbackIssueButton.getAttribute('aria-expanded') === 'true';
+                setFeedbackIssueListboxOpen(!isOpen);
+                setActiveFeedbackIssueOption(getFeedbackOptionIndex(getSelectedFeedbackIssue()));
+            });
+            feedbackIssueButton.addEventListener('keydown', handleFeedbackIssueButtonKeydown);
+        }
+        feedbackIssueOptions.forEach(option => {
+            option.addEventListener('click', (event) => {
+                event.stopPropagation();
+                selectFeedbackIssue(option);
+                feedbackIssueButton?.focus();
+            });
+            option.addEventListener('mousemove', () => setActiveFeedbackIssueOption(feedbackIssueOptions.indexOf(option)));
+        });
         feedbackHelpfulnessButtons.forEach(button => {
             button.addEventListener('click', () => updateFeedbackHelpfulnessState(button.dataset.feedbackHelpfulness || ''));
         });
@@ -3621,6 +3733,8 @@
             feedbackModal.addEventListener('click', (event) => {
                 if (event.target === feedbackModal)
                     closeFeedbackModal();
+                else if (!event.target.closest?.('.runtime-feedback-select-wrap'))
+                    setFeedbackIssueListboxOpen(false);
             });
             feedbackModal.addEventListener('keydown', trapFeedbackFocus);
         }
@@ -3698,6 +3812,7 @@
         document.addEventListener('click', () => setAudioDevicePanelOpen(false));
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
+                setFeedbackIssueListboxOpen(false);
                 setAudioDevicePanelOpen(false);
                 if (feedbackModal?.classList.contains('is-open'))
                     closeFeedbackModal();
@@ -3747,8 +3862,8 @@
         primaryActionButton.addEventListener('click', beginInterview);
         document.getElementById('stop-interview').addEventListener('click', stopInterview);
         document.getElementById('stop-interview-top').addEventListener('click', stopInterview);
-        document.getElementById('open-transcript').addEventListener('click', () => transcript.classList.add('is-open'));
-        document.getElementById('close-transcript').addEventListener('click', () => transcript.classList.remove('is-open'));
+        document.getElementById('open-transcript')?.addEventListener('click', () => transcript.classList.add('is-open'));
+        document.getElementById('close-transcript')?.addEventListener('click', () => transcript.classList.remove('is-open'));
         if (runtimeBackButton) {
             runtimeBackButton.addEventListener('click', () => {
                 if (window.history.length > 1) {
