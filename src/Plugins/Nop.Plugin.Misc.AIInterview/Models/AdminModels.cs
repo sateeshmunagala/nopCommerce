@@ -51,6 +51,9 @@ public record AiServiceSettingsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.CreditPurchasePageUrl")]
     public string CreditPurchasePageUrl { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.SupportPhoneNumber")]
+    public string SupportPhoneNumber { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiEndpointUrl")]
     public string AzureOpenAiEndpointUrl { get; set; }
 

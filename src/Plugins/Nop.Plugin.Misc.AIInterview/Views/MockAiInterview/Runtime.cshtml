@@ -336,6 +336,10 @@
                         <i class="fa-regular fa-clock" aria-hidden="true"></i>
                         <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.ResultDelay")</span>
                     </button>
+                    <button type="button" class="runtime-feedback-issue-option" role="option" tabindex="-1" aria-selected="false" data-feedback-issue-value="Talk to support team" data-feedback-issue-icon="fa-solid fa-phone">
+                        <i class="fa-solid fa-phone" aria-hidden="true"></i>
+                        <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.TalkToSupportTeam")</span>
+                    </button>
                     <button type="button" class="runtime-feedback-issue-option" role="option" tabindex="-1" aria-selected="false" data-feedback-issue-value="Other issue" data-feedback-issue-icon="fa-regular fa-circle-question">
                         <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
                         <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Option.OtherIssue")</span>
@@ -347,11 +351,6 @@
         <div class="runtime-feedback-solutions">
             <div class="runtime-feedback-solution is-active" data-feedback-solution="AI is not speaking">
                 <div class="runtime-feedback-solution-panel"><strong>@T("Plugins.Misc.AIInterview.Runtime.Feedback.SolutionLabel")</strong> @T("Plugins.Misc.AIInterview.Runtime.Feedback.Solution.AiNotSpeaking")</div>
-                <label class="runtime-feedback-toggle-row">
-                    <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.BackupSpeaker")</span>
-                    <input type="checkbox" id="runtime-feedback-backup-speaker" role="switch" />
-                </label>
-                <div class="runtime-feedback-note">@T("Plugins.Misc.AIInterview.Runtime.Feedback.BackupSpeakerNote")</div>
                 <div class="runtime-feedback-helpful">
                     <div>@T("Plugins.Misc.AIInterview.Runtime.Feedback.WasHelpful")</div>
                     <div class="runtime-feedback-helpful-buttons">
@@ -389,6 +388,17 @@
                         <button type="button" data-feedback-helpfulness="not_helpful" aria-label="Not helpful" aria-pressed="false"><i class="fa-regular fa-thumbs-down" aria-hidden="true"></i></button>
                     </div>
                 </div>
+            </div>
+            <div class="runtime-feedback-solution runtime-feedback-support runtime-js-hidden" data-feedback-solution="Talk to support team">
+                <div class="runtime-feedback-support-label">@T("Plugins.Misc.AIInterview.Runtime.Feedback.SolutionLabel")</div>
+                <div class="runtime-feedback-support-card">
+                    <span class="runtime-feedback-support-icon"><i class="fa-solid fa-phone" aria-hidden="true"></i></span>
+                    <div class="runtime-feedback-support-copy">
+                        <strong>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Support.CallSupport")</strong>
+                        <span>@Model.SupportPhoneNumber</span>
+                    </div>
+                </div>
+                <div class="runtime-feedback-support-note">@T("Plugins.Misc.AIInterview.Runtime.Feedback.Support.AvailabilityNote")</div>
             </div>
         </div>
 
@@ -1152,6 +1162,7 @@
         const getSelectedFeedbackIssue = () => feedbackIssueSelect?.value || 'AI is not speaking';
 
         const isOtherFeedbackIssue = () => getSelectedFeedbackIssue() === 'Other issue';
+        const isSupportFeedbackIssue = () => getSelectedFeedbackIssue() === 'Talk to support team';
 
         const setFeedbackStatus = (message = '', isError = false) => {
             if (!feedbackStatus)
@@ -1217,6 +1228,7 @@
         const updateFeedbackIssueState = () => {
             const issue = getSelectedFeedbackIssue();
             const otherIssue = isOtherFeedbackIssue();
+            const supportIssue = isSupportFeedbackIssue();
             feedbackSolutionPanels.forEach(panel => {
                 const isActive = panel.dataset.feedbackSolution === issue && !otherIssue;
                 panel.classList.toggle('is-active', isActive);
@@ -1224,6 +1236,8 @@
             });
 
             feedbackOtherPanel?.classList.toggle('runtime-js-hidden', !otherIssue);
+            if (otherIssue || supportIssue)
+                updateFeedbackHelpfulnessState('');
             if (feedbackSubmitButton)
                 feedbackSubmitButton.textContent = otherIssue ? '@T("Plugins.Misc.AIInterview.Runtime.Feedback.SubmitReport")' : '@T("Plugins.Misc.AIInterview.Runtime.Feedback.GotIt")';
             setFeedbackStatus();
@@ -1315,6 +1329,7 @@
             const issue = getSelectedFeedbackIssue();
             const comment = feedbackComment?.value?.trim() || '';
             const otherIssue = issue === 'Other issue';
+            const supportIssue = issue === 'Talk to support team';
             if (otherIssue && !comment) {
                 setFeedbackStatus('@T("Plugins.Misc.AIInterview.Runtime.Feedback.CommentRequired")', true);
                 feedbackComment?.focus();
@@ -1327,7 +1342,7 @@
             const formData = new FormData();
             formData.append('token', sessionToken);
             formData.append('issue', issue);
-            formData.append('helpfulness', otherIssue ? '' : feedbackHelpfulness);
+            formData.append('helpfulness', otherIssue || supportIssue ? '' : feedbackHelpfulness);
             formData.append('comment', otherIssue ? comment : '');
             if (otherIssue && feedbackAttachment?.files?.length)
                 formData.append('attachment', feedbackAttachment.files[0]);

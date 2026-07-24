@@ -21,6 +21,7 @@ public record InterviewRuntimeModel : BaseNopModel
     public decimal Score { get; set; }
     public bool IsCompleted { get; set; }
     public bool IsMockMode { get; set; }
+    public string SupportPhoneNumber { get; set; }
     public IEnumerable<InterviewTurnViewModel> Turns { get; set; } = new List<InterviewTurnViewModel>();
     public RuntimeClientSettingsModel ClientSettings { get; set; } = new();
 }

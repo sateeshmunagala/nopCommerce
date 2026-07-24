@@ -103,6 +103,7 @@ public static class AIInterviewDefaults
     public static string DefaultCreditPurchasePageUrl => "/pricing";
     public static string DefaultAzureDocumentIntelligenceModelId => "prebuilt-read";
     public const int DefaultAzureDocumentIntelligenceTimeoutSeconds = 60;
+    public static string DefaultSupportPhoneNumber => "+91 72073 33883";
 
     public static string InterviewDifficultyAttributeName => "Interview Difficulty";
 

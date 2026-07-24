@@ -3553,6 +3553,62 @@ body.ai-job-preview-open .item-box {
     color: var(--jb-accent-dark, #24b99a);
 }
 
+.runtime-feedback-support {
+    padding: 18px;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.runtime-feedback-support-label {
+    color: var(--jb-accent-dark, #24b99a);
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.runtime-feedback-support-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 8px;
+    background: var(--jb-white, #ffffff);
+}
+
+.runtime-feedback-support-icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--jb-accent, #35d6b4) 12%, var(--jb-white, #ffffff));
+    color: var(--jb-accent-dark, #24b99a);
+}
+
+.runtime-feedback-support-copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.runtime-feedback-support-copy strong {
+    color: var(--jb-ink, #2c2c2c);
+    font-size: 1rem;
+}
+
+.runtime-feedback-support-copy span {
+    color: var(--jb-accent-dark, #24b99a);
+    font-weight: 800;
+}
+
+.runtime-feedback-support-note {
+    color: var(--jb-muted, #909090);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
 .runtime-feedback-toggle-row {
     justify-content: space-between;
     gap: 16px;
@@ -3631,9 +3687,9 @@ body.ai-job-preview-open .item-box {
 .runtime-feedback-upload {
     display: grid;
     justify-items: center;
-    gap: 8px;
-    min-height: 108px;
-    padding: 18px;
+    gap: 4px;
+    min-height: 58px;
+    padding: 8px 12px;
     border: 1px dashed var(--jb-accent, #35d6b4);
     border-radius: 6px;
     background: color-mix(in srgb, var(--jb-accent, #35d6b4) 12%, var(--jb-white, #ffffff));
@@ -3643,7 +3699,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-feedback-upload i {
-    font-size: 24px;
+    font-size: 18px;
     color: var(--jb-accent-dark, #24b99a);
 }
 

@@ -34,6 +34,7 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 public class MockAiInterviewController : BasePluginController
 {
     private const string VoiceUnavailableMessage = "Voice mode is unavailable. Please type your answer below.";
+    private const string FeedbackIssueSupport = "Talk to support team";
     private const string FeedbackIssueOther = "Other issue";
     private const int MaxFeedbackCommentLength = 4000;
     private const long MaxFeedbackAttachmentBytes = 5 * 1024 * 1024;
@@ -43,6 +44,7 @@ public class MockAiInterviewController : BasePluginController
         "Typing is not working",
         "Loading issues",
         "Taking too much time for result generation",
+        FeedbackIssueSupport,
         FeedbackIssueOther
     ];
 

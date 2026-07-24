@@ -2636,6 +2636,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Score = session.Score,
             IsCompleted = session.CompletedOnUtc.HasValue,
             IsMockMode = _mockSettings?.UseMockResponses ?? true,
+            SupportPhoneNumber = string.IsNullOrWhiteSpace(_settings.SupportPhoneNumber) ? AIInterviewDefaults.DefaultSupportPhoneNumber : _settings.SupportPhoneNumber.Trim(),
             ReportUrl = string.Empty,
             TokenExpiryUtc = session.TokenExpiryUtc,
             Turns = MapTurns(visibleTurns),

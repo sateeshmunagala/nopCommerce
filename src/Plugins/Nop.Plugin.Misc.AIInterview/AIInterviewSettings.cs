@@ -55,6 +55,8 @@ public class AIInterviewSettings : ISettings
 
     public string AzureUsageCurrencyCode { get; set; }
 
+    public string SupportPhoneNumber { get; set; } = AIInterviewDefaults.DefaultSupportPhoneNumber;
+
     /// <summary>
     /// Gets or sets the minimum score required in an interview to apply
     /// </summary>

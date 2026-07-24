@@ -202,6 +202,7 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.ServiceSettings = settingsModel.ServiceSettings;
             currentAiInterviewSettings.CreditProductSkuMappingsJson = settingsModel.CreditProductSkuMappingsJson;
             currentAiInterviewSettings.CreditPurchasePageUrl = settingsModel.CreditPurchasePageUrl;
+            currentAiInterviewSettings.SupportPhoneNumber = NormalizeSupportPhoneNumber(settingsModel.SupportPhoneNumber);
             currentAiInterviewSettings.AzureOpenAiEndpointUrl = settingsModel.AzureOpenAiEndpointUrl;
             currentAiInterviewSettings.AzureOpenAiApiKey = PreserveSecretIfBlank(settingsModel.AzureOpenAiApiKey, currentAiInterviewSettings.AzureOpenAiApiKey);
             currentAiInterviewSettings.AzureOpenAiDeploymentOrModel = settingsModel.AzureOpenAiDeploymentOrModel;
@@ -713,6 +714,13 @@ public class AIInterviewAdminController : BasePluginController
         return timeoutSeconds > 0
             ? timeoutSeconds
             : AIInterviewDefaults.DefaultAzureDocumentIntelligenceTimeoutSeconds;
+    }
+
+    protected virtual string NormalizeSupportPhoneNumber(string phoneNumber)
+    {
+        return string.IsNullOrWhiteSpace(phoneNumber)
+            ? AIInterviewDefaults.DefaultSupportPhoneNumber
+            : phoneNumber.Trim();
     }
 
     protected virtual List<string> ParseEmails(string text)
@@ -1382,6 +1390,7 @@ public class AIInterviewAdminController : BasePluginController
             ServiceSettings = aiInterviewSettings.ServiceSettings,
             CreditProductSkuMappingsJson = aiInterviewSettings.CreditProductSkuMappingsJson,
             CreditPurchasePageUrl = aiInterviewSettings.CreditPurchasePageUrl,
+            SupportPhoneNumber = NormalizeSupportPhoneNumber(aiInterviewSettings.SupportPhoneNumber),
             AzureOpenAiEndpointUrl = aiInterviewSettings.AzureOpenAiEndpointUrl,
             AzureOpenAiApiKey = aiInterviewSettings.AzureOpenAiApiKey,
             AzureOpenAiDeploymentOrModel = aiInterviewSettings.AzureOpenAiDeploymentOrModel,
@@ -1404,6 +1413,7 @@ public class AIInterviewAdminController : BasePluginController
         };
 
         model.Provider = AzureOpenAiProviderValue;
+        model.SupportPhoneNumber = NormalizeSupportPhoneNumber(model.SupportPhoneNumber);
         model.AzureDocumentIntelligenceModelId = NormalizeAzureDocumentIntelligenceModelId(model.AzureDocumentIntelligenceModelId);
         model.AzureDocumentIntelligenceTimeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(model.AzureDocumentIntelligenceTimeoutSeconds);
         model.AvailableProviders = BuildProviderSelectList(model.Provider);
