@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -118,7 +118,7 @@ public partial class InterviewAiClient
                     new { role = "system", content = systemPrompt },
                     new { role = "user", content = prompt }
                 },
-                temperature = 0.2,
+                temperature = 0.8,
                 max_tokens = maxTokens
             };
 

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Headers;
@@ -226,7 +226,7 @@ public partial class InterviewAiClient : IAIInterviewClient
                     },
                     new { role = "user", content = prompt }
                 },
-                temperature = 0.2,
+                temperature = 0.8,
                 max_tokens = 400
             };
 
