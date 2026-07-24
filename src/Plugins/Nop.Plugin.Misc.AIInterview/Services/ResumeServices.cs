@@ -1,9 +1,8 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using DocumentFormat.OpenXml;
-using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
+using Azure;
+using Azure.AI.DocumentIntelligence;
 using Microsoft.AspNetCore.Http;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Media;
@@ -12,7 +11,6 @@ using Nop.Services.Catalog;
 using Nop.Core.Domain.Logging;
 using Nop.Services.Media;
 using NopLogger = Nop.Services.Logging.ILogger;
-using UglyToad.PdfPig;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
@@ -105,18 +103,30 @@ public class ResumeFileService : IResumeFileService
 public class ResumeTextExtractionService : IResumeTextExtractionService
 {
     private static readonly Regex WhitespaceRegex = new(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex SecretQueryParameterRegex = new(@"(?i)([?&](?:sig|se|sp|sv|sr|skoid|sktid|skt|ske|sks|skv|api[-_]?key|subscription[-_]?key|code|token|key)=)[^&\s]+", RegexOptions.Compiled);
     private const int MaxExtractedTextLength = 12000;
 
-    public Task<ResumeTextExtractionResult> ExtractTextAsync(Download download)
+    private readonly AIInterviewSettings _aiInterviewSettings;
+    private readonly IAzureDocumentIntelligenceResumeReader _azureDocumentIntelligenceResumeReader;
+
+    public ResumeTextExtractionService(
+        AIInterviewSettings aiInterviewSettings = null,
+        IAzureDocumentIntelligenceResumeReader azureDocumentIntelligenceResumeReader = null)
+    {
+        _aiInterviewSettings = aiInterviewSettings ?? new AIInterviewSettings();
+        _azureDocumentIntelligenceResumeReader = azureDocumentIntelligenceResumeReader ?? new AzureDocumentIntelligenceResumeReader();
+    }
+
+    public async Task<ResumeTextExtractionResult> ExtractTextAsync(Download download)
     {
         if (download == null)
         {
-            return Task.FromResult(new ResumeTextExtractionResult
+            return new ResumeTextExtractionResult
             {
                 Success = false,
                 ErrorCode = "missing_download",
                 ErrorMessage = "Resume file could not be loaded."
-            });
+            };
         }
 
         var extension = Path.GetExtension(download.Filename ?? download.Extension ?? string.Empty);
@@ -125,122 +135,147 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
 
         if (download.DownloadBinary == null || download.DownloadBinary.Length == 0)
         {
-            return Task.FromResult(new ResumeTextExtractionResult
+            return new ResumeTextExtractionResult
             {
                 Success = false,
                 ErrorCode = "missing_binary",
                 ErrorMessage = "Resume file is empty."
-            });
+            };
+        }
+
+        var contentType = GetSupportedContentType(extension);
+        if (contentType == null)
+        {
+            return new ResumeTextExtractionResult
+            {
+                Success = false,
+                ErrorCode = "unsupported_extension",
+                ErrorMessage = "Only PDF and DOCX resumes are supported."
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(_aiInterviewSettings.AzureDocumentIntelligenceEndpointUrl) ||
+            string.IsNullOrWhiteSpace(_aiInterviewSettings.AzureDocumentIntelligenceApiKey))
+        {
+            return BuildExtractionFailure(
+                "AzureDocumentIntelligenceConfigurationException",
+                "azure_document_intelligence_not_configured");
+        }
+
+        if (!Uri.TryCreate(_aiInterviewSettings.AzureDocumentIntelligenceEndpointUrl.Trim(), UriKind.Absolute, out var endpoint) ||
+            endpoint.Scheme is not ("https" or "http"))
+        {
+            return BuildExtractionFailure(
+                "AzureDocumentIntelligenceConfigurationException",
+                "invalid_azure_document_intelligence_endpoint");
         }
 
         try
         {
-            var extractedText = extension?.Equals(".pdf", StringComparison.OrdinalIgnoreCase) == true
-                ? ExtractPdfText(download.DownloadBinary)
-                : extension?.Equals(".docx", StringComparison.OrdinalIgnoreCase) == true
-                    ? ExtractDocxText(download.DownloadBinary)
-                    : null;
-
-            if (extractedText == null)
-            {
-                return Task.FromResult(new ResumeTextExtractionResult
-                {
-                    Success = false,
-                    ErrorCode = "unsupported_extension",
-                    ErrorMessage = "Only PDF and DOCX resumes are supported."
-                });
-            }
+            var modelId = NormalizeAzureDocumentIntelligenceModelId(_aiInterviewSettings.AzureDocumentIntelligenceModelId);
+            var timeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(_aiInterviewSettings.AzureDocumentIntelligenceTimeoutSeconds);
+            var extractedText = await _azureDocumentIntelligenceResumeReader.ReadTextAsync(
+                download.DownloadBinary,
+                extension,
+                contentType,
+                endpoint,
+                _aiInterviewSettings.AzureDocumentIntelligenceApiKey.Trim(),
+                modelId,
+                timeoutSeconds);
 
             var normalized = NormalizeWhitespace(extractedText);
             if (string.IsNullOrWhiteSpace(normalized))
             {
-                return Task.FromResult(new ResumeTextExtractionResult
+                return new ResumeTextExtractionResult
                 {
                     Success = false,
                     ErrorCode = "empty_text",
                     ErrorMessage = "Resume text could not be extracted."
-                });
+                };
             }
 
-            return Task.FromResult(new ResumeTextExtractionResult
+            return new ResumeTextExtractionResult
             {
                 Success = true,
                 Text = normalized.Length <= MaxExtractedTextLength ? normalized : normalized[..MaxExtractedTextLength]
-            });
+            };
         }
-        catch (OpenXmlPackageException ex)
+        catch (RequestFailedException ex)
         {
-            return Task.FromResult(new ResumeTextExtractionResult
-            {
-                Success = false,
-                ErrorCode = "extraction_failed",
-                ErrorMessage = "Resume text could not be extracted.",
-                ExceptionType = ex.GetType().Name,
-                DiagnosticMessage = BuildExtractionDiagnosticMessage(extension, ex.Message, invalidPackage: true)
-            });
+            return BuildExtractionFailure(ex.GetType().Name, BuildAzureRequestFailedDiagnosticMessage(ex));
+        }
+        catch (OperationCanceledException ex)
+        {
+            return BuildExtractionFailure(ex.GetType().Name, "azure_document_intelligence_timeout");
         }
         catch (Exception ex)
         {
-            return Task.FromResult(new ResumeTextExtractionResult
-            {
-                Success = false,
-                ErrorCode = "extraction_failed",
-                ErrorMessage = "Resume text could not be extracted.",
-                ExceptionType = ex.GetType().Name,
-                DiagnosticMessage = BuildExtractionDiagnosticMessage(extension, ex.Message)
-            });
+            return BuildExtractionFailure(ex.GetType().Name, BuildExtractionDiagnosticMessage(ex.Message));
         }
     }
 
-    private static string ExtractPdfText(byte[] binary)
+    private static ResumeTextExtractionResult BuildExtractionFailure(string exceptionType, string diagnosticMessage)
     {
-        using var stream = new MemoryStream(binary, writable: false);
-        using var document = PdfDocument.Open(stream);
-        return string.Join(Environment.NewLine, document.GetPages().Select(page => page.Text));
-    }
-
-    private static string ExtractDocxText(byte[] binary)
-    {
-        using var stream = new MemoryStream(binary, writable: false);
-        using var document = WordprocessingDocument.Open(stream, false);
-        var parts = new List<string>
+        return new ResumeTextExtractionResult
         {
-            ExtractOpenXmlText(document.MainDocumentPart?.Document),
-            string.Join(" ", (document.MainDocumentPart?.HeaderParts ?? Enumerable.Empty<HeaderPart>()).Select(part => ExtractOpenXmlText(part.Header))),
-            string.Join(" ", (document.MainDocumentPart?.FooterParts ?? Enumerable.Empty<FooterPart>()).Select(part => ExtractOpenXmlText(part.Footer))),
-            ExtractOpenXmlText(document.MainDocumentPart?.FootnotesPart?.Footnotes),
-            ExtractOpenXmlText(document.MainDocumentPart?.EndnotesPart?.Endnotes),
-            ExtractOpenXmlText(document.MainDocumentPart?.WordprocessingCommentsPart?.Comments)
+            Success = false,
+            ErrorCode = "extraction_failed",
+            ErrorMessage = "Resume text could not be extracted.",
+            ExceptionType = exceptionType,
+            DiagnosticMessage = diagnosticMessage
         };
-
-        return string.Join(" ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
     }
 
-    private static string ExtractOpenXmlText(OpenXmlPartRootElement root)
+    private static string GetSupportedContentType(string extension)
     {
-        return root == null
+        return extension?.ToLowerInvariant() switch
+        {
+            ".pdf" => "application/pdf",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            _ => null
+        };
+    }
+
+    private static string NormalizeAzureDocumentIntelligenceModelId(string modelId)
+    {
+        return string.IsNullOrWhiteSpace(modelId)
+            ? AIInterviewDefaults.DefaultAzureDocumentIntelligenceModelId
+            : modelId.Trim();
+    }
+
+    private static int NormalizeAzureDocumentIntelligenceTimeoutSeconds(int timeoutSeconds)
+    {
+        return timeoutSeconds > 0
+            ? timeoutSeconds
+            : AIInterviewDefaults.DefaultAzureDocumentIntelligenceTimeoutSeconds;
+    }
+
+    private static string BuildAzureRequestFailedDiagnosticMessage(RequestFailedException exception)
+    {
+        var parts = new List<string>();
+        if (exception.Status > 0)
+            parts.Add($"azure_document_intelligence_status_{exception.Status}");
+        if (!string.IsNullOrWhiteSpace(exception.ErrorCode))
+            parts.Add(exception.ErrorCode);
+        if (!string.IsNullOrWhiteSpace(exception.Message))
+            parts.Add(exception.Message);
+
+        return BuildExtractionDiagnosticMessage(string.Join(": ", parts));
+    }
+
+    private static string BuildExtractionDiagnosticMessage(string message)
+    {
+        var normalized = SanitizeDiagnostic(NormalizeWhitespace(message));
+        return string.IsNullOrWhiteSpace(normalized)
+            ? "azure_document_intelligence_read_failure"
+            : TruncateDiagnostic(normalized);
+    }
+
+    private static string SanitizeDiagnostic(string value)
+    {
+        return string.IsNullOrWhiteSpace(value)
             ? string.Empty
-            : string.Join(" ", root.Descendants<Text>().Select(text => text.Text));
-    }
-
-    private static string BuildExtractionDiagnosticMessage(string extension, string message, bool invalidPackage = false)
-    {
-        if (extension?.Equals(".pdf", StringComparison.OrdinalIgnoreCase) == true)
-            return string.IsNullOrWhiteSpace(message) ? "pdf_read_failure" : TruncateDiagnostic(NormalizeWhitespace(message));
-
-        var normalized = NormalizeWhitespace(message);
-        if (string.IsNullOrWhiteSpace(normalized))
-            return invalidPackage ? "invalid_openxml_package" : "docx_read_failure";
-
-        var lowerMessage = normalized.ToLowerInvariant();
-        if (lowerMessage.Contains("encrypted", StringComparison.Ordinal) || lowerMessage.Contains("password", StringComparison.Ordinal) || lowerMessage.Contains("protected", StringComparison.Ordinal))
-            return "docx_protected_or_encrypted";
-        if (invalidPackage || lowerMessage.Contains("package", StringComparison.Ordinal) || lowerMessage.Contains("zip", StringComparison.Ordinal))
-            return "invalid_openxml_package";
-        if (lowerMessage.Contains("strict", StringComparison.Ordinal))
-            return "strict_or_malformed_docx";
-
-        return TruncateDiagnostic(normalized);
+            : SecretQueryParameterRegex.Replace(value, "$1REDACTED");
     }
 
     private static string TruncateDiagnostic(string value)
@@ -255,6 +290,54 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
         return string.IsNullOrWhiteSpace(text)
             ? string.Empty
             : WhitespaceRegex.Replace(WebUtility.HtmlDecode(text), " ").Trim();
+    }
+}
+
+public interface IAzureDocumentIntelligenceResumeReader
+{
+    Task<string> ReadTextAsync(
+        byte[] binary,
+        string extension,
+        string contentType,
+        Uri endpoint,
+        string apiKey,
+        string modelId,
+        int timeoutSeconds);
+}
+
+public class AzureDocumentIntelligenceResumeReader : IAzureDocumentIntelligenceResumeReader
+{
+    public async Task<string> ReadTextAsync(
+        byte[] binary,
+        string extension,
+        string contentType,
+        Uri endpoint,
+        string apiKey,
+        string modelId,
+        int timeoutSeconds)
+    {
+        using var timeoutSource = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+        var client = new DocumentIntelligenceClient(endpoint, new AzureKeyCredential(apiKey));
+        var operation = await client.AnalyzeDocumentAsync(
+            WaitUntil.Completed,
+            modelId,
+            BinaryData.FromBytes(binary),
+            timeoutSource.Token);
+
+        return ExtractPlainText(operation.Value);
+    }
+
+    private static string ExtractPlainText(AnalyzeResult result)
+    {
+        if (!string.IsNullOrWhiteSpace(result?.Content))
+            return result.Content;
+
+        var pageLines = result?.Pages?
+            .SelectMany(page => page.Lines ?? Enumerable.Empty<DocumentLine>())
+            .Select(line => line.Content)
+            .Where(content => !string.IsNullOrWhiteSpace(content));
+
+        return pageLines == null ? string.Empty : string.Join(Environment.NewLine, pageLines);
     }
 }
 

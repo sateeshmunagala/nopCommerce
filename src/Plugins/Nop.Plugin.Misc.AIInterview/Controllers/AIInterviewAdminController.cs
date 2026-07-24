@@ -207,6 +207,10 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.AzureOpenAiDeploymentOrModel = settingsModel.AzureOpenAiDeploymentOrModel;
             currentAiInterviewSettings.AzureSpeechKey = PreserveSecretIfBlank(settingsModel.AzureSpeechKey, currentAiInterviewSettings.AzureSpeechKey);
             currentAiInterviewSettings.AzureSpeechRegion = settingsModel.AzureSpeechRegion;
+            currentAiInterviewSettings.AzureDocumentIntelligenceEndpointUrl = settingsModel.AzureDocumentIntelligenceEndpointUrl;
+            currentAiInterviewSettings.AzureDocumentIntelligenceApiKey = PreserveSecretIfBlank(settingsModel.AzureDocumentIntelligenceApiKey, currentAiInterviewSettings.AzureDocumentIntelligenceApiKey);
+            currentAiInterviewSettings.AzureDocumentIntelligenceModelId = NormalizeAzureDocumentIntelligenceModelId(settingsModel.AzureDocumentIntelligenceModelId);
+            currentAiInterviewSettings.AzureDocumentIntelligenceTimeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(settingsModel.AzureDocumentIntelligenceTimeoutSeconds);
             currentAiInterviewSettings.TrackAzureOpenAiUsage = settingsModel.TrackAzureOpenAiUsage;
             currentAiInterviewSettings.TrackAzureSpeechUsage = settingsModel.TrackAzureSpeechUsage;
             currentAiInterviewSettings.CalculateAzureCostPerInterview = settingsModel.CalculateAzureCostPerInterview;
@@ -695,6 +699,20 @@ public class AIInterviewAdminController : BasePluginController
             return existingValue;
 
         return candidateValue.Trim();
+    }
+
+    protected virtual string NormalizeAzureDocumentIntelligenceModelId(string modelId)
+    {
+        return string.IsNullOrWhiteSpace(modelId)
+            ? AIInterviewDefaults.DefaultAzureDocumentIntelligenceModelId
+            : modelId.Trim();
+    }
+
+    protected virtual int NormalizeAzureDocumentIntelligenceTimeoutSeconds(int timeoutSeconds)
+    {
+        return timeoutSeconds > 0
+            ? timeoutSeconds
+            : AIInterviewDefaults.DefaultAzureDocumentIntelligenceTimeoutSeconds;
     }
 
     protected virtual List<string> ParseEmails(string text)
@@ -1369,6 +1387,10 @@ public class AIInterviewAdminController : BasePluginController
             AzureOpenAiDeploymentOrModel = aiInterviewSettings.AzureOpenAiDeploymentOrModel,
             AzureSpeechKey = aiInterviewSettings.AzureSpeechKey,
             AzureSpeechRegion = aiInterviewSettings.AzureSpeechRegion,
+            AzureDocumentIntelligenceEndpointUrl = aiInterviewSettings.AzureDocumentIntelligenceEndpointUrl,
+            AzureDocumentIntelligenceApiKey = aiInterviewSettings.AzureDocumentIntelligenceApiKey,
+            AzureDocumentIntelligenceModelId = NormalizeAzureDocumentIntelligenceModelId(aiInterviewSettings.AzureDocumentIntelligenceModelId),
+            AzureDocumentIntelligenceTimeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(aiInterviewSettings.AzureDocumentIntelligenceTimeoutSeconds),
             TrackAzureOpenAiUsage = aiInterviewSettings.TrackAzureOpenAiUsage,
             TrackAzureSpeechUsage = aiInterviewSettings.TrackAzureSpeechUsage,
             CalculateAzureCostPerInterview = aiInterviewSettings.CalculateAzureCostPerInterview,
@@ -1382,6 +1404,8 @@ public class AIInterviewAdminController : BasePluginController
         };
 
         model.Provider = AzureOpenAiProviderValue;
+        model.AzureDocumentIntelligenceModelId = NormalizeAzureDocumentIntelligenceModelId(model.AzureDocumentIntelligenceModelId);
+        model.AzureDocumentIntelligenceTimeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(model.AzureDocumentIntelligenceTimeoutSeconds);
         model.AvailableProviders = BuildProviderSelectList(model.Provider);
         return model;
     }

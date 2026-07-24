@@ -101,6 +101,8 @@ public static class AIInterviewDefaults
 
     public static string DefaultCreditProductSkuMappingsJson => "{\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}";
     public static string DefaultCreditPurchasePageUrl => "/pricing";
+    public static string DefaultAzureDocumentIntelligenceModelId => "prebuilt-read";
+    public const int DefaultAzureDocumentIntelligenceTimeoutSeconds = 60;
 
     public static string InterviewDifficultyAttributeName => "Interview Difficulty";
 

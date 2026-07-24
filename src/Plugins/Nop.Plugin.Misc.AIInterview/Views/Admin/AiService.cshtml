@@ -79,6 +79,36 @@
                     </div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureSpeechRegion" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechRegion" /></div></div>
                     <hr />
+                    <h4>Azure Document Intelligence</h4>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="AzureDocumentIntelligenceEndpointUrl" /></div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="AzureDocumentIntelligenceEndpointUrl" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceEndpointUrl.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="AzureDocumentIntelligenceApiKey" /></div>
+                        <div class="col-md-9">
+                            <input asp-for="AzureDocumentIntelligenceApiKey" class="form-control" type="text" value="" autocomplete="off" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceApiKey.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="AzureDocumentIntelligenceModelId" /></div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="AzureDocumentIntelligenceModelId" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceModelId.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="AzureDocumentIntelligenceTimeoutSeconds" /></div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="AzureDocumentIntelligenceTimeoutSeconds" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds.Hint")</small>
+                        </div>
+                    </div>
+                    <hr />
                     <h4>Usage tracking / pricing</h4>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="TrackAzureOpenAiUsage" /></div><div class="col-md-9"><nop-editor asp-for="TrackAzureOpenAiUsage" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="TrackAzureSpeechUsage" /></div><div class="col-md-9"><nop-editor asp-for="TrackAzureSpeechUsage" /></div></div>

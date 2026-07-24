@@ -22,6 +22,7 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<IInterviewSessionService, InterviewSessionService>();
         services.AddScoped<IInterviewTurnService, InterviewTurnService>();
         services.AddScoped<IResumeFileService, ResumeFileService>();
+        services.AddScoped<IAzureDocumentIntelligenceResumeReader, AzureDocumentIntelligenceResumeReader>();
         services.AddScoped<IResumeTextExtractionService, ResumeTextExtractionService>();
         services.AddScoped<IResumeProfileService, ResumeProfileService>();
         services.AddScoped<IAzureUsageService, AzureUsageService>();

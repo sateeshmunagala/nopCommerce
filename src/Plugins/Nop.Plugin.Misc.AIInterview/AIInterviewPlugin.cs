@@ -209,6 +209,12 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (string.IsNullOrWhiteSpace(settings.AzureUsageCurrencyCode))
             settings.AzureUsageCurrencyCode = "USD";
 
+        if (string.IsNullOrWhiteSpace(settings.AzureDocumentIntelligenceModelId))
+            settings.AzureDocumentIntelligenceModelId = AIInterviewDefaults.DefaultAzureDocumentIntelligenceModelId;
+
+        if (settings.AzureDocumentIntelligenceTimeoutSeconds <= 0)
+            settings.AzureDocumentIntelligenceTimeoutSeconds = AIInterviewDefaults.DefaultAzureDocumentIntelligenceTimeoutSeconds;
+
         await _settingService.SaveSettingAsync(settings);
         await EnsureJobProductTemplateAsync();
         await EnsureMockPracticeProductTemplateAsync();
@@ -551,6 +557,14 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.ApplyPanel.Description"] = "Apply for this role and start the mock interview directly from this page. Interview difficulty is handled automatically.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.SignInPrompt"] = "Sign in to apply and start the interview for this role.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.NextQuestion"] = "Next question ready.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceEndpointUrl"] = "Azure Document Intelligence Endpoint URL",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceApiKey"] = "Azure Document Intelligence API Key",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceModelId"] = "Azure Document Intelligence Model ID",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds"] = "Azure Document Intelligence Timeout Seconds",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceEndpointUrl.Hint"] = "Endpoint for the Azure AI Document Intelligence resource used to read candidate resumes.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceApiKey.Hint"] = "Used server-side only for resume text extraction. Leave blank to keep the existing key.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceModelId.Hint"] = "Use prebuilt-read unless Azure support instructs otherwise.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds.Hint"] = "Maximum time to wait for resume reading before returning an extraction failure.",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl"] = "Azure Blob Storage Container URL",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
@@ -802,6 +816,14 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel"] = "Azure OpenAI Deployment / Model",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechKey"] = "Azure Speech Key",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRegion"] = "Azure Speech Region",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceEndpointUrl"] = "Azure Document Intelligence Endpoint URL",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceApiKey"] = "Azure Document Intelligence API Key",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceModelId"] = "Azure Document Intelligence Model ID",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds"] = "Azure Document Intelligence Timeout Seconds",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceEndpointUrl.Hint"] = "Endpoint for the Azure AI Document Intelligence resource used to read candidate resumes.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceApiKey.Hint"] = "Used server-side only for resume text extraction. Leave blank to keep the existing key.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceModelId.Hint"] = "Use prebuilt-read unless Azure support instructs otherwise.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds.Hint"] = "Maximum time to wait for resume reading before returning an extraction failure.",
             ["Plugins.Misc.AIInterview.Admin.AiService.TrackAzureOpenAiUsage"] = "Track Azure OpenAI Usage",
             ["Plugins.Misc.AIInterview.Admin.AiService.TrackAzureSpeechUsage"] = "Track Azure Speech Usage",
             ["Plugins.Misc.AIInterview.Admin.AiService.CalculateAzureCostPerInterview"] = "Calculate Azure Cost Per Interview",
@@ -908,6 +930,14 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Difficulty.Low"] = "Low",
             ["Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Difficulty.Medium"] = "Medium",
             ["Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Difficulty.Advanced"] = "Advanced",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceEndpointUrl"] = "Azure Document Intelligence Endpoint URL",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceApiKey"] = "Azure Document Intelligence API Key",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceModelId"] = "Azure Document Intelligence Model ID",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds"] = "Azure Document Intelligence Timeout Seconds",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceEndpointUrl.Hint"] = "Endpoint for the Azure AI Document Intelligence resource used to read candidate resumes.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceApiKey.Hint"] = "Used server-side only for resume text extraction. Leave blank to keep the existing key.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceModelId.Hint"] = "Use prebuilt-read unless Azure support instructs otherwise.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds.Hint"] = "Maximum time to wait for resume reading before returning an extraction failure.",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl"] = "Azure Blob Storage Container URL",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
@@ -994,6 +1024,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             TrackAzureSpeechUsage = true,
             CalculateAzureCostPerInterview = true,
             AzureUsageCurrencyCode = "USD",
+            AzureDocumentIntelligenceModelId = AIInterviewDefaults.DefaultAzureDocumentIntelligenceModelId,
+            AzureDocumentIntelligenceTimeoutSeconds = AIInterviewDefaults.DefaultAzureDocumentIntelligenceTimeoutSeconds,
             CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson,
             CreditPurchasePageUrl = AIInterviewDefaults.DefaultCreditPurchasePageUrl
         };
@@ -1192,6 +1224,14 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.CreditPackPrice"] = "Credit Pack Price",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditPurchasePageUrl"] = "Credit Purchase Page URL",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.CreditPurchasePageUrl.Hint"] = "Relative or absolute URL used by the job page when the user has no credits. The default is /pricing.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureDocumentIntelligenceEndpointUrl"] = "Azure Document Intelligence Endpoint URL",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureDocumentIntelligenceApiKey"] = "Azure Document Intelligence API Key",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureDocumentIntelligenceModelId"] = "Azure Document Intelligence Model ID",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds"] = "Azure Document Intelligence Timeout Seconds",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureDocumentIntelligenceEndpointUrl.Hint"] = "Endpoint for the Azure AI Document Intelligence resource used to read candidate resumes.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureDocumentIntelligenceApiKey.Hint"] = "Used server-side only for resume text extraction. Leave blank to keep the existing key.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureDocumentIntelligenceModelId.Hint"] = "Use prebuilt-read unless Azure support instructs otherwise.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds.Hint"] = "Maximum time to wait for resume reading before returning an extraction failure.",
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.TopUp.InvalidAmount"] = "Invalid top-up amount.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.TopUp.Success"] = "Credits topped up successfully.",

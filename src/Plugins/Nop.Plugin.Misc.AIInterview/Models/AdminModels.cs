@@ -66,6 +66,18 @@ public record AiServiceSettingsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRegion")]
     public string AzureSpeechRegion { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceEndpointUrl")]
+    public string AzureDocumentIntelligenceEndpointUrl { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceApiKey")]
+    public string AzureDocumentIntelligenceApiKey { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceModelId")]
+    public string AzureDocumentIntelligenceModelId { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds")]
+    public int AzureDocumentIntelligenceTimeoutSeconds { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.TrackAzureOpenAiUsage")]
     public bool TrackAzureOpenAiUsage { get; set; }
 

@@ -1,7 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -27,40 +25,34 @@ namespace Nop.Plugin.Misc.AIInterview.Tests;
 [TestFixture]
 public class ResumePlanningTests
 {
-    private static byte[] CreateDocx(params string[] paragraphs)
+    private sealed class FakeAzureDocumentIntelligenceResumeReader : IAzureDocumentIntelligenceResumeReader
     {
-        using var stream = new MemoryStream();
-        using (var document = WordprocessingDocument.Create(stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document, true))
+        private readonly string _text;
+        private readonly Exception _exception;
+
+        public FakeAzureDocumentIntelligenceResumeReader(string text = null, Exception exception = null)
         {
-            var mainPart = document.AddMainDocumentPart();
-            mainPart.Document = new Document(
-                new Body(paragraphs.Select(text => new Paragraph(new Run(new Text(text))))));
+            _text = text;
+            _exception = exception;
         }
 
-        return stream.ToArray();
-    }
+        public string Extension { get; private set; }
+        public string ContentType { get; private set; }
+        public string ModelId { get; private set; }
+        public int TimeoutSeconds { get; private set; }
 
-    private static byte[] CreateDocxWithHeaderAndFooter(string bodyText, string headerText, string footerText)
-    {
-        using var stream = new MemoryStream();
-        using (var document = WordprocessingDocument.Create(stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document, true))
+        public Task<string> ReadTextAsync(byte[] binary, string extension, string contentType, Uri endpoint, string apiKey, string modelId, int timeoutSeconds)
         {
-            var mainPart = document.AddMainDocumentPart();
-            mainPart.Document = new Document(new Body(new Paragraph(new Run(new Text(bodyText)))));
+            Extension = extension;
+            ContentType = contentType;
+            ModelId = modelId;
+            TimeoutSeconds = timeoutSeconds;
 
-            var headerPart = mainPart.AddNewPart<HeaderPart>();
-            headerPart.Header = new Header(new Paragraph(new Run(new Text(headerText))));
-            var footerPart = mainPart.AddNewPart<FooterPart>();
-            footerPart.Footer = new Footer(new Paragraph(new Run(new Text(footerText))));
+            if (_exception != null)
+                throw _exception;
 
-            var sectionProperties = new SectionProperties(
-                new HeaderReference { Id = mainPart.GetIdOfPart(headerPart), Type = HeaderFooterValues.Default },
-                new FooterReference { Id = mainPart.GetIdOfPart(footerPart), Type = HeaderFooterValues.Default });
-            mainPart.Document.Body.Append(sectionProperties);
-            mainPart.Document.Save();
+            return Task.FromResult(_text);
         }
-
-        return stream.ToArray();
     }
 
     private static IFormFile CreateResumeFile(string fileName, string content)
@@ -77,26 +69,40 @@ public class ResumePlanningTests
     }
 
     [Test]
-    public async Task ResumeTextExtractionService_Docx_NormalizesWhitespace()
+    public async Task ResumeTextExtractionService_AzureResult_NormalizesWhitespace_And_Caps()
     {
-        var service = new ResumeTextExtractionService();
+        var longText = $"Senior   .NET   Engineer {new string('A', 12100)}";
+        var reader = new FakeAzureDocumentIntelligenceResumeReader(longText);
+        var service = new ResumeTextExtractionService(new AIInterviewSettings
+        {
+            AzureDocumentIntelligenceEndpointUrl = "https://document.example.com/",
+            AzureDocumentIntelligenceApiKey = "test-key"
+        }, reader);
         var download = new Download
         {
             Filename = "resume.docx",
             Extension = ".docx",
-            DownloadBinary = CreateDocx("Senior   .NET   Engineer", "Built payment platform   with Azure")
+            DownloadBinary = Encoding.UTF8.GetBytes("fake-docx-binary")
         };
 
         var result = await service.ExtractTextAsync(download);
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Text, Is.EqualTo("Senior .NET Engineer Built payment platform with Azure"));
+        Assert.That(result.Text, Does.StartWith("Senior .NET Engineer"));
+        Assert.That(result.Text.Length, Is.EqualTo(12000));
+        Assert.That(reader.ContentType, Is.EqualTo("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+        Assert.That(reader.ModelId, Is.EqualTo("prebuilt-read"));
+        Assert.That(reader.TimeoutSeconds, Is.EqualTo(60));
     }
 
     [Test]
-    public async Task ResumeTextExtractionService_Unsupported_And_Empty_Content_Fail_Safely()
+    public async Task ResumeTextExtractionService_Unsupported_And_Empty_Binary_Fail_Safely()
     {
-        var service = new ResumeTextExtractionService();
+        var service = new ResumeTextExtractionService(new AIInterviewSettings
+        {
+            AzureDocumentIntelligenceEndpointUrl = "https://document.example.com/",
+            AzureDocumentIntelligenceApiKey = "test-key"
+        }, new FakeAzureDocumentIntelligenceResumeReader("text"));
 
         var unsupported = await service.ExtractTextAsync(new Download
         {
@@ -109,50 +115,74 @@ public class ResumePlanningTests
         {
             Filename = "resume.docx",
             Extension = ".docx",
-            DownloadBinary = CreateDocx(string.Empty, "   ")
+            DownloadBinary = Array.Empty<byte>()
         });
 
         Assert.That(unsupported.Success, Is.False);
         Assert.That(unsupported.ErrorCode, Is.EqualTo("unsupported_extension"));
         Assert.That(empty.Success, Is.False);
-        Assert.That(empty.ErrorCode, Is.EqualTo("empty_text"));
+        Assert.That(empty.ErrorCode, Is.EqualTo("missing_binary"));
     }
 
     [Test]
-    public async Task ResumeTextExtractionService_InvalidDocx_ReturnsExtractionFailed()
+    public async Task ResumeTextExtractionService_MissingAzureSettings_ReturnsExtractionFailed()
     {
-        var service = new ResumeTextExtractionService();
+        var service = new ResumeTextExtractionService(new AIInterviewSettings(), new FakeAzureDocumentIntelligenceResumeReader("text"));
 
         var result = await service.ExtractTextAsync(new Download
         {
-            Filename = "invalid.docx",
-            Extension = ".docx",
-            ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            DownloadBinary = Encoding.UTF8.GetBytes("not-a-real-openxml-package")
+            Filename = "resume.pdf",
+            Extension = ".pdf",
+            ContentType = "application/pdf",
+            DownloadBinary = Encoding.UTF8.GetBytes("fake-pdf-binary")
         });
 
         Assert.That(result.Success, Is.False);
         Assert.That(result.ErrorCode, Is.EqualTo("extraction_failed"));
-        Assert.That(result.ExceptionType, Is.Not.Empty);
+        Assert.That(result.DiagnosticMessage, Is.EqualTo("azure_document_intelligence_not_configured"));
     }
 
     [Test]
-    public async Task ResumeTextExtractionService_Docx_ExtractsSupportedWordParts()
+    public async Task ResumeTextExtractionService_EmptyAzureText_ReturnsEmptyText()
     {
-        var service = new ResumeTextExtractionService();
-        var download = new Download
+        var service = new ResumeTextExtractionService(new AIInterviewSettings
+        {
+            AzureDocumentIntelligenceEndpointUrl = "https://document.example.com/",
+            AzureDocumentIntelligenceApiKey = "test-key"
+        }, new FakeAzureDocumentIntelligenceResumeReader("   "));
+
+        var result = await service.ExtractTextAsync(new Download
         {
             Filename = "resume.docx",
             Extension = ".docx",
-            DownloadBinary = CreateDocxWithHeaderAndFooter("Body content", "Header content", "Footer content")
-        };
+            ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            DownloadBinary = Encoding.UTF8.GetBytes("fake-docx-binary")
+        });
 
-        var result = await service.ExtractTextAsync(download);
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.ErrorCode, Is.EqualTo("empty_text"));
+    }
 
-        Assert.That(result.Success, Is.True);
-        Assert.That(result.Text, Does.Contain("Body content"));
-        Assert.That(result.Text, Does.Contain("Header content"));
-        Assert.That(result.Text, Does.Contain("Footer content"));
+    [Test]
+    public async Task ResumeTextExtractionService_InvalidAzureEndpoint_ReturnsExtractionFailed()
+    {
+        var service = new ResumeTextExtractionService(new AIInterviewSettings
+        {
+            AzureDocumentIntelligenceEndpointUrl = "not-a-uri",
+            AzureDocumentIntelligenceApiKey = "test-key"
+        }, new FakeAzureDocumentIntelligenceResumeReader("text"));
+
+        var result = await service.ExtractTextAsync(new Download
+        {
+            Filename = "resume.pdf",
+            Extension = ".pdf",
+            ContentType = "application/pdf",
+            DownloadBinary = Encoding.UTF8.GetBytes("fake-pdf-binary")
+        });
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.ErrorCode, Is.EqualTo("extraction_failed"));
+        Assert.That(result.DiagnosticMessage, Is.EqualTo("invalid_azure_document_intelligence_endpoint"));
     }
 
     [Test]
