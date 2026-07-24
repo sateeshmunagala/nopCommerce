@@ -654,6 +654,19 @@
                 : '';
         };
 
+        const isPseudoAudioDevice = (device) => {
+            const deviceId = (device?.deviceId || '').toLowerCase();
+            const label = (device?.label || '').trim().toLowerCase();
+
+            if (deviceId === 'default' || deviceId === 'communications')
+                return true;
+
+            return label === 'default'
+                || label === 'communications'
+                || label.startsWith('default -')
+                || label.startsWith('communications -');
+        };
+
         const hasPermissionBackedAudioDeviceList = (devices) => devices.some(device => {
             const deviceId = device.deviceId || '';
             return !!device.label || (!!deviceId && deviceId !== 'default' && deviceId !== 'communications');
@@ -688,8 +701,12 @@
 
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                availableAudioInputs = devices.filter(device => device.kind === 'audioinput');
-                availableAudioOutputs = devices.filter(device => device.kind === 'audiooutput');
+                availableAudioInputs = devices
+                    .filter(device => device.kind === 'audioinput')
+                    .filter(device => !isPseudoAudioDevice(device));
+                availableAudioOutputs = devices
+                    .filter(device => device.kind === 'audiooutput')
+                    .filter(device => !isPseudoAudioDevice(device));
                 const inputListCanConfirmAvailability = hasPermissionBackedAudioDeviceList(availableAudioInputs);
 
                 const inputStillAvailable = !selectedAudioInputId

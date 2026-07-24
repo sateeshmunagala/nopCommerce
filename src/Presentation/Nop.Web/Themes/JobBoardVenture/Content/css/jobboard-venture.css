@@ -2452,13 +2452,6 @@ body.jb-search-open .jb-drawer-overlay {
     margin-right: auto;
 }
 
-.footer-upper {
-    /* Temporary hard collapse: the upper footer area is intentionally hidden to remove the large empty gap. */
-    display: none;
-    padding: 0;
-    gap: 0;
-}
-
 .footer-main {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
@@ -10788,25 +10781,6 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     .html-registration-page .registration-page textarea::placeholder {
         color: #8a9298;
     }
-}
-
-/* Temporary hard override: keep only a single separator above copyright and remove the empty footer gap on every viewport. */
-.footer {
-    margin-top: 10px !important;
-    border-top: 0 !important;
-}
-
-.footer-upper {
-    display: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    gap: 0 !important;
-    min-height: 0 !important;
-}
-
-.footer-lower {
-    padding-top: 10px !important;
-    border-top: 1px dashed #cfcfcf !important;
 }
 
 /* Remove the extra top gap on single-column storefront pages. */
