@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Azure;
@@ -111,13 +112,16 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
 
     private readonly AIInterviewSettings _aiInterviewSettings;
     private readonly IAzureDocumentIntelligenceResumeReader _azureDocumentIntelligenceResumeReader;
+    private readonly NopLogger _nopLogger;
 
     public ResumeTextExtractionService(
         AIInterviewSettings aiInterviewSettings = null,
-        IAzureDocumentIntelligenceResumeReader azureDocumentIntelligenceResumeReader = null)
+        IAzureDocumentIntelligenceResumeReader azureDocumentIntelligenceResumeReader = null,
+        NopLogger nopLogger = null)
     {
         _aiInterviewSettings = aiInterviewSettings ?? new AIInterviewSettings();
         _azureDocumentIntelligenceResumeReader = azureDocumentIntelligenceResumeReader ?? new AzureDocumentIntelligenceResumeReader();
+        _nopLogger = nopLogger;
     }
 
     public async Task<ResumeTextExtractionResult> ExtractTextAsync(Download download)
@@ -157,25 +161,31 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
             };
         }
 
+        var modelId = NormalizeAzureDocumentIntelligenceModelId(_aiInterviewSettings.AzureDocumentIntelligenceModelId);
+        var stopwatch = Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(_aiInterviewSettings.AzureDocumentIntelligenceEndpointUrl) ||
             string.IsNullOrWhiteSpace(_aiInterviewSettings.AzureDocumentIntelligenceApiKey))
         {
-            return BuildExtractionFailure(
+            var failure = BuildExtractionFailure(
                 "AzureDocumentIntelligenceConfigurationException",
                 "azure_document_intelligence_not_configured");
+            await TryLogAzureResumeExtractionFailureAsync(download, extension, modelId, stopwatch.ElapsedMilliseconds, failure);
+            return failure;
         }
 
         if (!Uri.TryCreate(_aiInterviewSettings.AzureDocumentIntelligenceEndpointUrl.Trim(), UriKind.Absolute, out var endpoint) ||
             endpoint.Scheme is not ("https" or "http"))
         {
-            return BuildExtractionFailure(
+            var failure = BuildExtractionFailure(
                 "AzureDocumentIntelligenceConfigurationException",
                 "invalid_azure_document_intelligence_endpoint");
+            await TryLogAzureResumeExtractionFailureAsync(download, extension, modelId, stopwatch.ElapsedMilliseconds, failure);
+            return failure;
         }
 
         try
         {
-            var modelId = NormalizeAzureDocumentIntelligenceModelId(_aiInterviewSettings.AzureDocumentIntelligenceModelId);
             var timeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(_aiInterviewSettings.AzureDocumentIntelligenceTimeoutSeconds);
             var extractedText = await _azureDocumentIntelligenceResumeReader.ReadTextAsync(
                 download.DownloadBinary,
@@ -189,12 +199,14 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
             var normalized = NormalizeExtractedResumeText(extractedText);
             if (string.IsNullOrWhiteSpace(normalized))
             {
-                return new ResumeTextExtractionResult
+                var failure = new ResumeTextExtractionResult
                 {
                     Success = false,
                     ErrorCode = "empty_text",
                     ErrorMessage = "Resume text could not be extracted."
                 };
+                await TryLogAzureResumeExtractionFailureAsync(download, extension, modelId, stopwatch.ElapsedMilliseconds, failure);
+                return failure;
             }
 
             return new ResumeTextExtractionResult
@@ -205,15 +217,58 @@ public class ResumeTextExtractionService : IResumeTextExtractionService
         }
         catch (RequestFailedException ex)
         {
-            return BuildExtractionFailure(ex.GetType().Name, BuildAzureRequestFailedDiagnosticMessage(ex));
+            var failure = BuildExtractionFailure(ex.GetType().Name, BuildAzureRequestFailedDiagnosticMessage(ex));
+            await TryLogAzureResumeExtractionFailureAsync(download, extension, modelId, stopwatch.ElapsedMilliseconds, failure);
+            return failure;
         }
         catch (OperationCanceledException ex)
         {
-            return BuildExtractionFailure(ex.GetType().Name, "azure_document_intelligence_timeout");
+            var failure = BuildExtractionFailure(ex.GetType().Name, "azure_document_intelligence_timeout");
+            await TryLogAzureResumeExtractionFailureAsync(download, extension, modelId, stopwatch.ElapsedMilliseconds, failure);
+            return failure;
         }
         catch (Exception ex)
         {
-            return BuildExtractionFailure(ex.GetType().Name, BuildExtractionDiagnosticMessage(ex.Message));
+            var failure = BuildExtractionFailure(ex.GetType().Name, BuildExtractionDiagnosticMessage(ex.Message));
+            await TryLogAzureResumeExtractionFailureAsync(download, extension, modelId, stopwatch.ElapsedMilliseconds, failure);
+            return failure;
+        }
+    }
+
+    private async Task TryLogAzureResumeExtractionFailureAsync(Download download, string extension, string modelId, long durationMs, ResumeTextExtractionResult failure)
+    {
+        if (_nopLogger == null || failure == null)
+            return;
+
+        try
+        {
+            var metadata = new List<string>
+            {
+                $"ErrorCode={TruncateDiagnostic(failure.ErrorCode)}",
+                $"ResumeDownloadId={download?.Id ?? 0}",
+                $"FileExtension={TruncateDiagnostic(extension)}",
+                $"FileSizeBytes={download?.DownloadBinary?.LongLength ?? 0}",
+                $"ModelId={TruncateDiagnostic(modelId)}",
+                $"DurationMs={Math.Max(0, durationMs)}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(failure.ExceptionType))
+                metadata.Add($"ExceptionType={TruncateDiagnostic(failure.ExceptionType)}");
+            if (!string.IsNullOrWhiteSpace(failure.DiagnosticMessage))
+                metadata.Add($"Diagnostic={TruncateDiagnostic(SanitizeDiagnostic(failure.DiagnosticMessage))}");
+
+            var level = string.Equals(failure.ErrorCode, "extraction_failed", StringComparison.OrdinalIgnoreCase)
+                ? LogLevel.Error
+                : LogLevel.Warning;
+
+            await _nopLogger.InsertLogAsync(
+                level,
+                "AI Interview Azure resume extraction failed",
+                string.Join("; ", metadata) + ".",
+                null);
+        }
+        catch
+        {
         }
     }
 

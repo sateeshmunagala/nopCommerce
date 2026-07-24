@@ -237,6 +237,49 @@ public class ResumePlanningTests
     }
 
     [Test]
+    public async Task ResumeTextExtractionService_AzureFailure_LogsSafeMetadata()
+    {
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+        var service = new ResumeTextExtractionService(new AIInterviewSettings
+        {
+            AzureDocumentIntelligenceEndpointUrl = "https://document.example.com/",
+            AzureDocumentIntelligenceApiKey = "test-secret-key",
+            AzureDocumentIntelligenceModelId = "custom-read"
+        }, new FakeAzureDocumentIntelligenceResumeReader(exception: new InvalidOperationException("Azure failed https://storage.example.com/resume.pdf?sig=secret-signature")), nopLogger.Object);
+
+        var result = await service.ExtractTextAsync(new Download
+        {
+            Id = 321,
+            Filename = "resume.pdf",
+            Extension = ".pdf",
+            ContentType = "application/pdf",
+            DownloadBinary = Encoding.UTF8.GetBytes("fake-pdf-binary")
+        });
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.ErrorCode, Is.EqualTo("extraction_failed"));
+        Assert.That(result.ErrorMessage, Is.EqualTo("Resume text could not be extracted."));
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Error,
+            "AI Interview Azure resume extraction failed",
+            It.Is<string>(message =>
+                message.Contains("ErrorCode=extraction_failed") &&
+                message.Contains("ResumeDownloadId=321") &&
+                message.Contains("FileExtension=.pdf") &&
+                message.Contains("FileSizeBytes=15") &&
+                message.Contains("ModelId=custom-read") &&
+                message.Contains("DurationMs=") &&
+                message.Contains("ExceptionType=InvalidOperationException") &&
+                message.Contains("sig=REDACTED") &&
+                !message.Contains("test-secret-key") &&
+                !message.Contains("secret-signature") &&
+                !message.Contains("fake-pdf-binary")),
+            null), Times.Once);
+    }
+
+    [Test]
     public async Task InterviewAiClient_MockResumeProfile_And_QuestionPlan_Return_Structured_Data()
     {
         var client = new InterviewAiClient(new AIInterviewSettings(), new MockAIInterviewSettings { UseMockResponses = true });
