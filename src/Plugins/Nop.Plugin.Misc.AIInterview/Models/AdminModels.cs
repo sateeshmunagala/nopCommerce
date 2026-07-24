@@ -348,6 +348,50 @@ public record MockPracticeSessionRowModel : BaseNopModel
     public string ReportUrl { get; set; }
 }
 
+public record FeedbackReportSearchModel : BaseSearchModel
+{
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.FeedbackReports.Candidate")]
+    public string CandidateKeyword { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.FeedbackReports.Issue")]
+    public string Issue { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.FeedbackReports.Helpfulness")]
+    public string Helpfulness { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.FeedbackReports.SubmittedFrom")]
+    public DateTime? SubmittedFrom { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.FeedbackReports.SubmittedTo")]
+    public DateTime? SubmittedTo { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.FeedbackReports.HasAttachment")]
+    public bool? HasAttachment { get; set; }
+
+    public IList<SelectListItem> AvailableIssues { get; set; } = new List<SelectListItem>();
+    public IList<SelectListItem> AvailableHelpfulnessOptions { get; set; } = new List<SelectListItem>();
+    public IList<SelectListItem> AvailableHasAttachmentOptions { get; set; } = new List<SelectListItem>();
+}
+
+public record FeedbackReportListModel : BasePagedListModel<FeedbackReportRowModel>;
+
+public record FeedbackReportRowModel : BaseNopModel
+{
+    public int SessionId { get; set; }
+    public int CustomerId { get; set; }
+    public string Submitted { get; set; }
+    public DateTime? SubmittedOnUtc { get; set; }
+    public string CandidateName { get; set; }
+    public string CandidateEmail { get; set; }
+    public string CandidateAdminUrl { get; set; }
+    public string Issue { get; set; }
+    public string Helpfulness { get; set; }
+    public string CommentPreview { get; set; }
+    public bool HasAttachment { get; set; }
+    public string Attachment { get; set; }
+    public string DetailsUrl { get; set; }
+}
+
 public record CandidateDetailsModel : BaseNopModel
 {
     public int SessionId { get; set; }

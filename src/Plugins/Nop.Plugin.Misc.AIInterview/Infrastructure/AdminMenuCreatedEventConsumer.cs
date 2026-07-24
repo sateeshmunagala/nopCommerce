@@ -43,6 +43,7 @@ public class AdminMenuCreatedEventConsumer : BaseAdminMenuCreatedEventConsumer
             await BuildChildAsync(AIInterviewDefaults.AdminApplicantCreditsMenuSystemName, "Plugins.Misc.AIInterview.Admin.Menu.ApplicantCredits", AIInterviewDefaults.AdminApplicantCreditsRouteName),
             await BuildChildAsync(AIInterviewDefaults.AdminScoreboardMenuSystemName, "Plugins.Misc.AIInterview.Admin.Menu.Scoreboard", AIInterviewDefaults.AdminScoreboardRouteName),
             await BuildChildAsync(AIInterviewDefaults.AdminMockPracticeSessionsMenuSystemName, "Plugins.Misc.AIInterview.Admin.Menu.MockPracticeSessions", AIInterviewDefaults.AdminMockPracticeSessionsRouteName),
+            await BuildChildAsync(AIInterviewDefaults.AdminFeedbackReportsMenuSystemName, "Plugins.Misc.AIInterview.Admin.Menu.FeedbackReports", AIInterviewDefaults.AdminFeedbackReportsRouteName),
         };
 
         return item;

@@ -1620,6 +1620,15 @@ public class MockAiInterviewController : BasePluginController
         session.CandidateFeedbackSubmittedOnUtc = DateTime.UtcNow;
         await _interviewSessionService.UpdateInterviewSessionAsync(session);
 
+        try
+        {
+            await _interviewSessionService.SendRuntimeFeedbackSubmittedAdminNotificationAsync(session, 0);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Unable to send runtime feedback admin notification for interview session {SessionId}.", session.Id);
+        }
+
         await LogRuntimeActivityAsync(
             session,
             "AIInterview.Runtime.FeedbackSubmitted",

@@ -184,6 +184,27 @@ public class PluginDefaultsTests
     }
 
     [Test]
+    public void FeedbackReports_Route_Menu_And_Locale_Resources_Are_Configured()
+    {
+        var routeProviderText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Infrastructure", "RouteProvider.cs"));
+        var menuText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Infrastructure", "AdminMenuCreatedEventConsumer.cs"));
+        var adminMethod = typeof(AIInterviewPlugin).GetMethod("GetAdminLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var upgradeMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
+        var adminResources = (Dictionary<string, string>)adminMethod.Invoke(null, null);
+        var upgradeResources = (Dictionary<string, string>)upgradeMethod.Invoke(null, null);
+
+        Assert.That(AIInterviewDefaults.AdminFeedbackReportsRouteName, Is.EqualTo("Plugin.Misc.AIInterview.Admin.FeedbackReports"));
+        Assert.That(AIInterviewDefaults.AdminFeedbackReportsListRouteName, Is.EqualTo("Plugin.Misc.AIInterview.Admin.FeedbackReports.List"));
+        Assert.That(AIInterviewDefaults.AdminFeedbackReportsMenuSystemName, Is.EqualTo("AIInterview.FeedbackReports"));
+        Assert.That(routeProviderText, Does.Contain("pattern: \"Admin/AIInterview/FeedbackReports\""));
+        Assert.That(routeProviderText, Does.Contain("pattern: \"Admin/AIInterview/FeedbackReports/List\""));
+        Assert.That(menuText, Does.Contain("AIInterviewDefaults.AdminFeedbackReportsMenuSystemName"));
+        Assert.That(adminResources["Plugins.Misc.AIInterview.Admin.Menu.FeedbackReports"], Is.EqualTo("Feedback Reports"));
+        Assert.That(adminResources["Plugins.Misc.AIInterview.Admin.FeedbackReports.Title"], Is.EqualTo("Feedback Reports"));
+        Assert.That(upgradeResources["Plugins.Misc.AIInterview.Admin.FeedbackReports.Title"], Is.EqualTo("Feedback Reports"));
+    }
+
+    [Test]
     public void MockPracticeSessions_Locale_Resources_Contain_All_Used_Admin_Keys()
     {
         var adminMethod = typeof(AIInterviewPlugin).GetMethod("GetAdminLocaleResources", BindingFlags.NonPublic | BindingFlags.Static);
@@ -505,6 +526,36 @@ public class PluginDefaultsTests
         Assert.That(creditTemplate.Body, Does.Contain("%AIInterview.WithdrawnCredits%"));
         Assert.That(creditTemplate.Body, Does.Contain("%AIInterview.CreditPageUrl%"));
         Assert.That(creditTemplate.Body, Does.Contain("Withdrawn credits"));
+    }
+
+    [Test]
+    public async Task EnsureMessageTemplates_Creates_RuntimeFeedback_AdminNotification_Template()
+    {
+        var settingService = new Mock<ISettingService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var webHelper = new Mock<IWebHelper>();
+        var messageTemplateService = new Mock<IMessageTemplateService>();
+        var insertedTemplates = new List<Nop.Core.Domain.Messages.MessageTemplate>();
+
+        messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync(It.IsAny<string>(), 0))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate>());
+        messageTemplateService.Setup(x => x.InsertMessageTemplateAsync(It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>()))
+            .Callback<Nop.Core.Domain.Messages.MessageTemplate>(template => insertedTemplates.Add(template))
+            .Returns(Task.CompletedTask);
+
+        var plugin = new AIInterviewPlugin(localizationService.Object, settingService.Object, webHelper.Object, messageTemplateService.Object);
+        var method = typeof(AIInterviewPlugin).GetMethod("EnsureMessageTemplatesAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        await (Task)method.Invoke(plugin, null);
+
+        var feedbackTemplate = insertedTemplates.SingleOrDefault(template => template.Name == "AIInterview.RuntimeFeedbackSubmitted.AdminNotification");
+        Assert.That(feedbackTemplate, Is.Not.Null);
+        Assert.That(feedbackTemplate.IsActive, Is.True);
+        Assert.That(feedbackTemplate.Subject, Is.EqualTo("Runtime Feedback Submitted: %AIInterview.FeedbackIssue%"));
+        Assert.That(feedbackTemplate.Body, Does.Contain("%AIInterview.SessionId%"));
+        Assert.That(feedbackTemplate.Body, Does.Contain("%AIInterview.FeedbackReportsUrl%"));
+        Assert.That(feedbackTemplate.Body, Does.Contain("%AIInterview.CandidateDetailsUrl%"));
+        Assert.That(feedbackTemplate.Body, Does.Contain("%AIInterview.FeedbackHasAttachment%"));
     }
 
     [Test]

@@ -215,6 +215,8 @@ public class ApplicationService : IApplicationService
 
 public class InterviewSessionService : IInterviewSessionService
 {
+    public const string RuntimeFeedbackAdminNotificationTemplateName = "AIInterview.RuntimeFeedbackSubmitted.AdminNotification";
+
     private readonly IRepository<InterviewSession> _sessionRepository;
     private readonly ICustomerService _customerService;
     private readonly IApplicationService _applicationService;
@@ -346,6 +348,61 @@ public class InterviewSessionService : IInterviewSessionService
                 }
             }
         }
+    }
+
+    public async Task SendRuntimeFeedbackSubmittedAdminNotificationAsync(InterviewSession session, int languageId)
+    {
+        if (session == null || string.IsNullOrWhiteSpace(session.CandidateFeedbackIssue))
+            return;
+
+        var store = await _storeContext.GetCurrentStoreAsync();
+        var storeId = store?.Id ?? 0;
+        var effectiveLanguageId = languageId > 0 ? languageId : store?.DefaultLanguageId ?? 0;
+        var templates = await _messageTemplateService.GetMessageTemplatesByNameAsync(RuntimeFeedbackAdminNotificationTemplateName, storeId);
+        var template = templates?.FirstOrDefault();
+        if (template == null || !template.IsActive)
+            return;
+
+        var emailAccountId = template.EmailAccountId > 0 ? template.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId;
+        var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(emailAccountId);
+        emailAccount ??= (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
+        if (emailAccount == null || string.IsNullOrWhiteSpace(emailAccount.Email))
+            return;
+
+        var customer = session.CustomerId > 0 ? await _customerService.GetCustomerByIdAsync(session.CustomerId) : null;
+        var jobTitle = await ResolveSessionJobTitleAsync(session);
+        var storeLocation = (_webHelper.GetStoreLocation() ?? string.Empty).TrimEnd('/');
+        var submittedOn = session.CandidateFeedbackSubmittedOnUtc.HasValue
+            ? _dateTimeHelper.ConvertToUserTime(session.CandidateFeedbackSubmittedOnUtc.Value, TimeZoneInfo.Utc, _dateTimeHelper.DefaultStoreTimeZone).ToString("g", CultureInfo.InvariantCulture)
+            : string.Empty;
+
+        var tokens = new List<Nop.Services.Messages.Token>();
+        if (customer != null)
+            await _messageTokenProvider.AddCustomerTokensAsync(tokens, customer);
+        else
+        {
+            tokens.Add(new Nop.Services.Messages.Token("Customer.FullName", string.Empty));
+            tokens.Add(new Nop.Services.Messages.Token("Customer.Email", string.Empty));
+        }
+
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.SessionId", session.Id.ToString(CultureInfo.InvariantCulture)));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.JobTitle", jobTitle ?? string.Empty));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.FeedbackIssue", session.CandidateFeedbackIssue ?? string.Empty));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.FeedbackHelpfulness", session.CandidateFeedbackHelpfulness ?? string.Empty));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.FeedbackComment", session.CandidateFeedbackComment ?? string.Empty));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.FeedbackSubmittedOn", submittedOn));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.FeedbackHasAttachment", session.CandidateFeedbackAttachmentDownloadId > 0 ? "Yes" : "No"));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.FeedbackReportsUrl", $"{storeLocation}/Admin/AIInterview/FeedbackReports"));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.CandidateDetailsUrl", $"{storeLocation}/Admin/AIInterviewAdmin/CandidateDetails?sessionId={session.Id}"));
+
+        await _workflowMessageService.SendNotificationAsync(
+            template,
+            emailAccount,
+            effectiveLanguageId,
+            tokens,
+            emailAccount.Email,
+            emailAccount.DisplayName,
+            ignoreDelayBeforeSend: true);
     }
 
     public async Task InsertInterviewSessionAsync(InterviewSession session)
@@ -495,6 +552,37 @@ public class InterviewSessionService : IInterviewSessionService
         }
 
         return false;
+    }
+
+    protected virtual async Task<string> ResolveSessionJobTitleAsync(InterviewSession session)
+    {
+        if (session == null)
+            return string.Empty;
+
+        if (session.ProductId > 0)
+        {
+            var product = await _productService.GetProductByIdAsync(session.ProductId);
+            if (!string.IsNullOrWhiteSpace(product?.Name))
+                return product.Name;
+        }
+
+        if (session.JobApplicationId > 0)
+        {
+            var application = await _applicationService.GetJobApplicationByIdAsync(session.JobApplicationId);
+            if (!string.IsNullOrWhiteSpace(application?.JobTitle))
+                return application.JobTitle;
+
+            if (application?.ProductId > 0)
+            {
+                var product = await _productService.GetProductByIdAsync(application.ProductId);
+                if (!string.IsNullOrWhiteSpace(product?.Name))
+                    return product.Name;
+            }
+        }
+
+        return session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice
+            ? "Practice Interview"
+            : string.Empty;
     }
 
     protected static string GenerateRecordingShareToken()

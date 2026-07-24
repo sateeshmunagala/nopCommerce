@@ -33,6 +33,10 @@ public static class AIInterviewDefaults
 
     public static string AdminMockPracticeSessionsListRouteName => "Plugin.Misc.AIInterview.Admin.MockPracticeSessions.List";
 
+    public static string AdminFeedbackReportsRouteName => "Plugin.Misc.AIInterview.Admin.FeedbackReports";
+
+    public static string AdminFeedbackReportsListRouteName => "Plugin.Misc.AIInterview.Admin.FeedbackReports.List";
+
     public static string AdminMenuSystemName => "AIInterview";
     public static string AdminConfigureMenuSystemName => "AIInterview.Configure";
     public static string AdminAiServiceMenuSystemName => "AIInterview.AiService";
@@ -41,6 +45,7 @@ public static class AIInterviewDefaults
     public static string AdminApplicantCreditsMenuSystemName => "AIInterview.ApplicantCredits";
     public static string AdminScoreboardMenuSystemName => "AIInterview.Scoreboard";
     public static string AdminMockPracticeSessionsMenuSystemName => "AIInterview.MockPracticeSessions";
+    public static string AdminFeedbackReportsMenuSystemName => "AIInterview.FeedbackReports";
 
     /// <summary>
     /// Gets the public index route name

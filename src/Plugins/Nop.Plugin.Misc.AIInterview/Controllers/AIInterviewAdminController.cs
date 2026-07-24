@@ -375,6 +375,117 @@ public class AIInterviewAdminController : BasePluginController
         return View("~/Plugins/Misc.AIInterview/Views/Admin/MockPracticeSessions.cshtml", searchModel);
     }
 
+    public async Task<IActionResult> FeedbackReports(FeedbackReportSearchModel searchModel)
+    {
+        searchModel ??= new FeedbackReportSearchModel();
+        searchModel.SetGridPageSize();
+        if (searchModel.PageSize <= 0)
+            searchModel.SetGridPageSize(10, "10, 20, 50, 100");
+
+        await PrepareFeedbackReportSearchModelAsync(searchModel);
+
+        return View("~/Plugins/Misc.AIInterview/Views/Admin/FeedbackReports.cshtml", searchModel);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> FeedbackReportsList(FeedbackReportSearchModel searchModel)
+    {
+        searchModel ??= new FeedbackReportSearchModel();
+        await PrepareFeedbackReportSearchModelAsync(searchModel);
+
+        if (_sessionRepository == null)
+        {
+            var emptyPagedList = new Nop.Core.PagedList<FeedbackReportRowModel>(new List<FeedbackReportRowModel>(), Math.Max(searchModel.Page - 1, 0), searchModel.PageSize > 0 ? searchModel.PageSize : 10, 0);
+            return Json(await new FeedbackReportListModel().PrepareToGridAsync(searchModel, emptyPagedList, () => AsyncEnumerable.Empty<FeedbackReportRowModel>()));
+        }
+
+        if (searchModel.Length <= 0)
+            searchModel.Length = searchModel.PageSize > 0 ? searchModel.PageSize : 10;
+
+        var candidateKeyword = searchModel.CandidateKeyword?.Trim();
+        var issue = searchModel.Issue?.Trim();
+        var helpfulness = searchModel.Helpfulness?.Trim();
+        var (submittedFromUtc, submittedToExclusiveUtc) = await ConvertLocalDateRangeToUtcAsync(searchModel.SubmittedFrom, searchModel.SubmittedTo);
+
+        var query =
+            from session in _sessionRepository.Table
+            join customer in _customerRepository.Table on session.CustomerId equals customer.Id into customerJoin
+            from customer in customerJoin.DefaultIfEmpty()
+            where session.CandidateFeedbackIssue != null && session.CandidateFeedbackIssue != string.Empty
+            select new
+            {
+                Session = session,
+                Customer = customer
+            };
+
+        if (!string.IsNullOrWhiteSpace(candidateKeyword))
+        {
+            query = query.Where(item =>
+                (item.Customer != null && (item.Customer.FirstName ?? string.Empty).Contains(candidateKeyword)) ||
+                (item.Customer != null && (item.Customer.LastName ?? string.Empty).Contains(candidateKeyword)) ||
+                (item.Customer != null && (item.Customer.Email ?? string.Empty).Contains(candidateKeyword)) ||
+                (item.Customer != null && (((item.Customer.FirstName ?? string.Empty) + " " + (item.Customer.LastName ?? string.Empty)).Trim()).Contains(candidateKeyword)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(issue))
+            query = query.Where(item => (item.Session.CandidateFeedbackIssue ?? string.Empty) == issue);
+
+        if (!string.IsNullOrWhiteSpace(helpfulness))
+            query = query.Where(item => (item.Session.CandidateFeedbackHelpfulness ?? string.Empty) == helpfulness);
+
+        if (submittedFromUtc.HasValue)
+            query = query.Where(item => item.Session.CandidateFeedbackSubmittedOnUtc.HasValue && item.Session.CandidateFeedbackSubmittedOnUtc.Value >= submittedFromUtc.Value);
+
+        if (submittedToExclusiveUtc.HasValue)
+            query = query.Where(item => item.Session.CandidateFeedbackSubmittedOnUtc.HasValue && item.Session.CandidateFeedbackSubmittedOnUtc.Value < submittedToExclusiveUtc.Value);
+
+        if (searchModel.HasAttachment == true)
+            query = query.Where(item => item.Session.CandidateFeedbackAttachmentDownloadId > 0);
+        else if (searchModel.HasAttachment == false)
+            query = query.Where(item => item.Session.CandidateFeedbackAttachmentDownloadId <= 0);
+
+        query = query
+            .OrderByDescending(item => item.Session.CandidateFeedbackSubmittedOnUtc ?? item.Session.CreatedOnUtc)
+            .ThenByDescending(item => item.Session.Id);
+
+        var totalCount = await query.CountAsync();
+        var pageItems = await query
+            .Skip(searchModel.Start)
+            .Take(searchModel.Length)
+            .ToListAsync();
+
+        var rows = new List<FeedbackReportRowModel>();
+        foreach (var item in pageItems)
+        {
+            var download = item.Session.CandidateFeedbackAttachmentDownloadId > 0 && _downloadService != null
+                ? await _downloadService.GetDownloadByIdAsync(item.Session.CandidateFeedbackAttachmentDownloadId)
+                : null;
+            var attachmentName = BuildDownloadDisplayName(download);
+
+            rows.Add(new FeedbackReportRowModel
+            {
+                SessionId = item.Session.Id,
+                CustomerId = item.Session.CustomerId,
+                SubmittedOnUtc = item.Session.CandidateFeedbackSubmittedOnUtc,
+                Submitted = await FormatAdminLocalDateTimeAsync(item.Session.CandidateFeedbackSubmittedOnUtc, "-"),
+                CandidateName = BuildCustomerDisplayName(item.Customer),
+                CandidateEmail = item.Customer?.Email ?? string.Empty,
+                CandidateAdminUrl = item.Session.CustomerId > 0 ? BuildCustomerAdminUrl(item.Session.CustomerId) : string.Empty,
+                Issue = item.Session.CandidateFeedbackIssue ?? string.Empty,
+                Helpfulness = item.Session.CandidateFeedbackHelpfulness ?? string.Empty,
+                CommentPreview = BuildFeedbackCommentPreview(item.Session.CandidateFeedbackComment),
+                HasAttachment = item.Session.CandidateFeedbackAttachmentDownloadId > 0,
+                Attachment = item.Session.CandidateFeedbackAttachmentDownloadId > 0
+                    ? (!string.IsNullOrWhiteSpace(attachmentName) ? attachmentName : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.FeedbackReports.Yes"))
+                    : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.FeedbackReports.No"),
+                DetailsUrl = Url.Action(nameof(CandidateDetails), "AIInterviewAdmin", new { area = AreaNames.ADMIN, sessionId = item.Session.Id }) ?? string.Empty
+            });
+        }
+
+        var pagedList = new Nop.Core.PagedList<FeedbackReportRowModel>(rows, Math.Max(searchModel.Page - 1, 0), searchModel.PageSize, totalCount);
+        return Json(await new FeedbackReportListModel().PrepareToGridAsync(searchModel, pagedList, () => rows.ToAsyncEnumerable()));
+    }
+
     [HttpPost]
     public async Task<IActionResult> MockPracticeSessionsList(MockPracticeSessionSearchModel searchModel)
     {
@@ -1550,6 +1661,77 @@ public class AIInterviewAdminController : BasePluginController
         searchModel.AvailableStatuses = await BuildMockPracticeStatusSelectListAsync(searchModel.Status);
         searchModel.AvailableHasResumeOptions = await BuildMockPracticeHasResumeSelectListAsync(searchModel.HasResume);
         searchModel.AvailableDifficulties = await BuildMockPracticeDifficultySelectListAsync(searchModel.Difficulty);
+    }
+
+    protected virtual async Task PrepareFeedbackReportSearchModelAsync(FeedbackReportSearchModel searchModel)
+    {
+        if (searchModel == null)
+            return;
+
+        searchModel.AvailableIssues = await BuildFeedbackIssueSelectListAsync(searchModel.Issue);
+        searchModel.AvailableHelpfulnessOptions = await BuildFeedbackHelpfulnessSelectListAsync(searchModel.Helpfulness);
+        searchModel.AvailableHasAttachmentOptions = await BuildFeedbackHasAttachmentSelectListAsync(searchModel.HasAttachment);
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildFeedbackIssueSelectListAsync(string selectedIssue)
+    {
+        var items = new List<SelectListItem>
+        {
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.FeedbackReports.All"), Value = string.Empty, Selected = string.IsNullOrWhiteSpace(selectedIssue) }
+        };
+
+        if (_sessionRepository != null)
+        {
+            var issues = await _sessionRepository.Table
+                .Where(session => session.CandidateFeedbackIssue != null && session.CandidateFeedbackIssue != string.Empty)
+                .Select(session => session.CandidateFeedbackIssue)
+                .Distinct()
+                .ToListAsync();
+
+            items.AddRange(issues
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+                .Select(value => new SelectListItem
+                {
+                    Text = value,
+                    Value = value,
+                    Selected = string.Equals(value, selectedIssue, StringComparison.OrdinalIgnoreCase)
+                }));
+        }
+
+        return items;
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildFeedbackHelpfulnessSelectListAsync(string selectedHelpfulness)
+    {
+        return new List<SelectListItem>
+        {
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.FeedbackReports.All"), Value = string.Empty, Selected = string.IsNullOrWhiteSpace(selectedHelpfulness) },
+            new() { Text = "Helpful", Value = "helpful", Selected = string.Equals(selectedHelpfulness, "helpful", StringComparison.OrdinalIgnoreCase) },
+            new() { Text = "Not helpful", Value = "not_helpful", Selected = string.Equals(selectedHelpfulness, "not_helpful", StringComparison.OrdinalIgnoreCase) }
+        };
+    }
+
+    protected virtual async Task<IList<SelectListItem>> BuildFeedbackHasAttachmentSelectListAsync(bool? selectedValue)
+    {
+        return new List<SelectListItem>
+        {
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.FeedbackReports.All"), Value = string.Empty, Selected = !selectedValue.HasValue },
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.FeedbackReports.Yes"), Value = bool.TrueString, Selected = selectedValue == true },
+            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.FeedbackReports.No"), Value = bool.FalseString, Selected = selectedValue == false }
+        };
+    }
+
+    protected virtual string BuildFeedbackCommentPreview(string comment, int maxLength = 160)
+    {
+        if (string.IsNullOrWhiteSpace(comment))
+            return string.Empty;
+
+        var normalized = string.Join(" ", comment.Split((char[])null, StringSplitOptions.RemoveEmptyEntries));
+        if (normalized.Length <= maxLength)
+            return normalized;
+
+        return normalized.Substring(0, Math.Max(0, maxLength - 3)).TrimEnd() + "...";
     }
 
     protected virtual async Task<IList<SelectListItem>> BuildMockPracticeStatusSelectListAsync(string selectedStatus)

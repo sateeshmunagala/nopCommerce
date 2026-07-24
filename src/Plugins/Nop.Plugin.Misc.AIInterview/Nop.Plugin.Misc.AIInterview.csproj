@@ -45,6 +45,7 @@
     <None Remove="Views\Admin\VendorCredits.cshtml" />
     <None Remove="Views\Admin\ApplicantCredits.cshtml" />
     <None Remove="Views\Admin\Scoreboard.cshtml" />
+    <None Remove="Views\Admin\FeedbackReports.cshtml" />
     <None Remove="Views\Admin\_ProductJobRequirements.cshtml" />
     <None Remove="Views\Shared\_CandidateReportDrawer.cshtml" />
     <None Remove="Views\Shared\_AIInterviewJobDetailsContent.cshtml" />
@@ -137,6 +138,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Admin\Scoreboard.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\FeedbackReports.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Admin\_ProductJobRequirements.cshtml">

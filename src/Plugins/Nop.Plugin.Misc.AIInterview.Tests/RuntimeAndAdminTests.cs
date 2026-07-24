@@ -56,6 +56,8 @@ public class RuntimeAndAdminTests
         _eventPublisher = new Mock<Nop.Core.Events.IEventPublisher>();
         _nopLogger = new Mock<ILogger>();
         _downloadService = new Mock<IDownloadService>();
+        _sessionService.Setup(x => x.SendRuntimeFeedbackSubmittedAdminNotificationAsync(It.IsAny<InterviewSession>(), It.IsAny<int>()))
+            .Returns(Task.CompletedTask);
         _creditService = new Mock<ICreditService>();
         _inviteService = new Mock<ISponsorInviteService>();
         _productService = new Mock<IProductService>();
@@ -333,6 +335,9 @@ public class RuntimeAndAdminTests
             string.IsNullOrWhiteSpace(s.CandidateFeedbackComment) &&
             s.CandidateFeedbackAttachmentDownloadId == 0 &&
             s.CandidateFeedbackSubmittedOnUtc.HasValue)), Times.Once);
+        _sessionService.Verify(x => x.SendRuntimeFeedbackSubmittedAdminNotificationAsync(It.Is<InterviewSession>(s =>
+            s.Id == 101 &&
+            s.CandidateFeedbackIssue == "AI is not speaking"), 0), Times.Once);
     }
 
     [Test]
@@ -351,6 +356,7 @@ public class RuntimeAndAdminTests
         Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
         Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Select a valid issue."));
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        _sessionService.Verify(x => x.SendRuntimeFeedbackSubmittedAdminNotificationAsync(It.IsAny<InterviewSession>(), It.IsAny<int>()), Times.Never);
     }
 
     [Test]
@@ -369,6 +375,7 @@ public class RuntimeAndAdminTests
         Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
         Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Select a valid helpfulness option."));
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        _sessionService.Verify(x => x.SendRuntimeFeedbackSubmittedAdminNotificationAsync(It.IsAny<InterviewSession>(), It.IsAny<int>()), Times.Never);
     }
 
     [Test]

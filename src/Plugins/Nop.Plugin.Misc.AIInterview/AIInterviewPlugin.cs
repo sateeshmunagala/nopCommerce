@@ -337,6 +337,31 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
                 IsActive = true
             });
         }
+
+        var runtimeFeedbackTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.RuntimeFeedbackSubmitted.AdminNotification", 0);
+        if (!(runtimeFeedbackTemplates?.Any() ?? false))
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = "AIInterview.RuntimeFeedbackSubmitted.AdminNotification",
+                Subject = "Runtime Feedback Submitted: %AIInterview.FeedbackIssue%",
+                Body = @"<p>Runtime feedback was submitted.</p>
+<table>
+  <tr><td>Session ID</td><td>%AIInterview.SessionId%</td></tr>
+  <tr><td>Candidate</td><td>%Customer.FullName%</td></tr>
+  <tr><td>Candidate email</td><td>%Customer.Email%</td></tr>
+  <tr><td>Job / interview</td><td>%AIInterview.JobTitle%</td></tr>
+  <tr><td>Issue</td><td>%AIInterview.FeedbackIssue%</td></tr>
+  <tr><td>Helpfulness</td><td>%AIInterview.FeedbackHelpfulness%</td></tr>
+  <tr><td>Comment</td><td>%AIInterview.FeedbackComment%</td></tr>
+  <tr><td>Submitted</td><td>%AIInterview.FeedbackSubmittedOn%</td></tr>
+  <tr><td>Attachment uploaded</td><td>%AIInterview.FeedbackHasAttachment%</td></tr>
+</table>
+<p><a href=""%AIInterview.FeedbackReportsUrl%"">Open Feedback Reports</a></p>
+<p><a href=""%AIInterview.CandidateDetailsUrl%"">Open Candidate Details</a></p>",
+                IsActive = true
+            });
+        }
     }
 
     protected async Task EnsureJobProductTemplateAsync()
@@ -574,6 +599,24 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"] = "Paste the SAS token string exactly as issued. It is stored only in admin settings.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.FeedbackReports"] = "Feedback Reports",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Title"] = "Feedback Reports",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Search"] = "Search",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Submitted"] = "Submitted",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.SubmittedFrom"] = "Submitted from",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.SubmittedTo"] = "Submitted to",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Candidate"] = "Candidate",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.CandidateEmail"] = "Candidate Email",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Issue"] = "Issue",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Helpfulness"] = "Helpfulness",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Comment"] = "Comment preview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Attachment"] = "Attachment",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.SessionId"] = "Session ID",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Details"] = "Details",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.HasAttachment"] = "Has attachment",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.All"] = "All",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Yes"] = "Yes",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.No"] = "No",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.EmailInvalid"] = "Enter a valid email address.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Status"] = "Status",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.StatusComment"] = "Status comment",
@@ -796,6 +839,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.ApplicantCredits"] = "Applicant Credits",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.Scoreboard"] = "Candidate Scoreboard",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.MockPracticeSessions"] = "Mock Practice Sessions",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.FeedbackReports"] = "Feedback Reports",
             ["Plugins.Misc.AIInterview.Admin.Configure.Title"] = "AI Interview Configuration",
             ["Plugins.Misc.AIInterview.Admin.Configure.General"] = "General Settings",
             ["Plugins.Misc.AIInterview.Admin.Configure.Service"] = "AI Service Settings",
@@ -848,6 +892,23 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.CreditProductSkuMappingsJson.Invalid"] = "The credit product SKU mappings JSON is invalid. Use a JSON object such as {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10}.",
             ["Plugins.Misc.AIInterview.Admin.AiService.CreditPurchasePageUrl"] = "Credit Purchase Page URL",
             ["Plugins.Misc.AIInterview.Admin.AiService.CreditPurchasePageUrl.Hint"] = "Relative or absolute URL used by the job page when the user has no credits. The default is /pricing.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Title"] = "Feedback Reports",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Search"] = "Search",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Submitted"] = "Submitted",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.SubmittedFrom"] = "Submitted from",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.SubmittedTo"] = "Submitted to",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Candidate"] = "Candidate",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.CandidateEmail"] = "Candidate Email",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Issue"] = "Issue",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Helpfulness"] = "Helpfulness",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Comment"] = "Comment preview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Attachment"] = "Attachment",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.SessionId"] = "Session ID",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Details"] = "Details",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.HasAttachment"] = "Has attachment",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.All"] = "All",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Yes"] = "Yes",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.No"] = "No",
             ["Plugins.Misc.AIInterview.Admin.SponsorInvites.Title"] = "Sponsor Invite Management",
             ["Plugins.Misc.AIInterview.Admin.SponsorInvites.Create"] = "Create Invites",
             ["Plugins.Misc.AIInterview.Admin.SponsorInvites.List"] = "Existing Invites",

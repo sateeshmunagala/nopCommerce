@@ -24,6 +24,7 @@ public interface IApplicationService
 public interface IInterviewSessionService
 {
     Task SendInterviewCompletionNotificationAsync(InterviewSession session, int languageId);
+    Task SendRuntimeFeedbackSubmittedAdminNotificationAsync(InterviewSession session, int languageId);
     Task InsertInterviewSessionAsync(InterviewSession session);
     Task<InterviewSession> GetInterviewSessionByIdAsync(int sessionId);
     Task<InterviewSession> GetLatestCompletedSessionByCustomerIdAndProductIdAsync(int customerId, int productId);
