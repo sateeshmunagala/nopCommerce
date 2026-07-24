@@ -8058,8 +8058,12 @@ body.jb-filter-panel-open .product-filters {
 }
 
 .html-login-page .login-page .login-password {
+    display: block;
+    box-sizing: border-box;
     position: relative;
+    width: 100%;
     min-width: 0;
+    max-width: none;
 }
 
 .html-login-page .login-page .login-password input {
@@ -8094,13 +8098,13 @@ body.jb-filter-panel-open .product-filters {
     display: flex;
     grid-template-columns: none;
     align-items: center;
-    gap: 10px;
+    gap: 0;
     margin-top: 8px;
 }
 
 .html-login-page .login-page .inputs.reversed > label {
     width: auto;
-    margin: 0;
+    margin: 0 0 0 4px;
     font-family: "Lato", Arial, sans-serif;
     font-size: 0.9rem;
     text-transform: none;
