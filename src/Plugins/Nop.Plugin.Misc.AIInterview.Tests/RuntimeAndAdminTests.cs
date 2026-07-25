@@ -1893,6 +1893,42 @@ public class RuntimeAndAdminTests
         Assert.That(serialized, Does.Not.Contain("api-key=secret-key"));
     }
 
+    [TestCase("api-key=secret-key", "secret-key")]
+    [TestCase("authorization: secret-auth", "secret-auth")]
+    [TestCase("bearer=secret-bearer", "secret-bearer")]
+    [TestCase("https://example.test/path?sig=secret-signature", "secret-signature")]
+    [TestCase("client_secret=secret-client", "secret-client")]
+    public async Task Admin_TestAzureOpenAiConnection_VariedAdapterFailures_DoNotExposeSecrets(string secretBearingReason, string secret)
+    {
+        var settings = new AIInterviewSettings
+        {
+            AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+            AzureOpenAiApiKey = "settings-secret-key",
+            AzureOpenAiDeploymentOrModel = "deployment"
+        };
+        var controller = CreateAiInterviewAdminController(settings, new AzureOpenAiChatCompletionResult
+        {
+            Success = false,
+            FailureKind = "azure-openai-exception",
+            Reason = secretBearingReason,
+            StatusCode = 400,
+            ErrorCode = secretBearingReason,
+            ErrorMessage = $"detail {secretBearingReason}",
+            ResponseBody = $"detail {secretBearingReason}",
+            Endpoint = "https://example.openai.azure.com/",
+            EndpointHost = "example.openai.azure.com",
+            DeploymentOrModel = "deployment"
+        });
+
+        var result = (JsonResult)await controller.TestAzureOpenAiConnection();
+        var serialized = System.Text.Json.JsonSerializer.Serialize(result.Value);
+
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
+        Assert.That(serialized, Does.Not.Contain(secret));
+        Assert.That(serialized, Does.Not.Contain("settings-secret-key"));
+        Assert.That(serialized, Does.Not.Contain($"detail {secretBearingReason}"));
+    }
+
     [Test]
     public async Task InterviewAiClient_GenerateQuestion_AdapterFailure_ReturnsUnavailableAndLogsSafeDetails()
     {

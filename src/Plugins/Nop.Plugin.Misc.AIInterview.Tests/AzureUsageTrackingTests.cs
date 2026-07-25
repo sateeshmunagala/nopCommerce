@@ -102,6 +102,47 @@ public class AzureUsageTrackingTests
         Assert.That(usageDocument.RootElement.GetProperty("total_tokens").GetInt32(), Is.EqualTo(168));
     }
 
+    [TestCase("api-key=secret-key failed", "api-key=<redacted>", "secret-key")]
+    [TestCase("Authorization: BearerTokenValue failed", "Authorization=<redacted>", "BearerTokenValue")]
+    [TestCase("refresh_token: refresh-secret failed", "refresh_token=<redacted>", "refresh-secret")]
+    [TestCase("https://example.test/path?sig=secret-signature", "sig=<redacted>", "secret-signature")]
+    [TestCase("client_secret=secret-client", "client_secret=<redacted>", "secret-client")]
+    public void AzureOpenAiChatCompletionAdapter_SanitizesSecretBearingDiagnostics(string input, string expected, string secret)
+    {
+        var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("SanitizeDiagnosticText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        var sanitized = (string)method.Invoke(null, new object[] { input });
+
+        Assert.That(sanitized, Does.Contain(expected));
+        Assert.That(sanitized, Does.Not.Contain(secret));
+    }
+
+    [Test]
+    public void AzureOpenAiChatCompletionAdapter_NormalizesResourceEndpointForSdkClient()
+    {
+        var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("NormalizeResourceEndpoint", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        var normalized = (Uri)method.Invoke(null, new object[] { "https://example.openai.azure.com/openai/deployments/deploy/chat/completions?api-version=2024-06-01&api-key=secret" });
+
+        Assert.That(normalized.ToString(), Is.EqualTo("https://example.openai.azure.com/"));
+        Assert.That(normalized.Host, Is.EqualTo("example.openai.azure.com"));
+        Assert.That(normalized.ToString(), Does.Not.Contain("deploy"));
+        Assert.That(normalized.ToString(), Does.Not.Contain("secret"));
+    }
+
+    [Test]
+    public void AzureOpenAiChatCompletionAdapter_FormatsEndpointMetadataAsHostOnly()
+    {
+        var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("BuildEndpointMetadataValue", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        var metadataValue = (string)method.Invoke(null, new object[] { new Uri("https://example.openai.azure.com/") });
+        var emptyValue = (string)method.Invoke(null, new object[] { null });
+
+        Assert.That(metadataValue, Is.EqualTo("example.openai.azure.com/"));
+        Assert.That(metadataValue, Does.Not.Contain("https://"));
+        Assert.That(emptyValue, Is.EqualTo("<empty>"));
+    }
+
     [Test]
     public async Task AzureUsageService_RecordOpenAiUsage_StoresCostAndUpdatesSessionSummary()
     {

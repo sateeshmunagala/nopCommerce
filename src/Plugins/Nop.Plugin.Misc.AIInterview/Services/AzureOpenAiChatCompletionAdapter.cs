@@ -129,9 +129,14 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             {
                 mode,
                 responseId = completion?.Id,
-                endpoint = endpoint == null ? "<empty>" : $"{endpoint.Host}/"
+                endpoint = BuildEndpointMetadataValue(endpoint)
             })
         };
+    }
+
+    private static string BuildEndpointMetadataValue(Uri endpoint)
+    {
+        return endpoint == null ? "<empty>" : $"{endpoint.Host}/";
     }
 
     private static string SanitizeDiagnosticText(string value)
