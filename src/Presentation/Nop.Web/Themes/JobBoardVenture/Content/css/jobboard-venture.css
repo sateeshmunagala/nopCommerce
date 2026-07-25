@@ -2454,14 +2454,15 @@ body.jb-search-open .jb-drawer-overlay {
 
 .footer-main {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 24px;
     align-items: start;
 }
 
 .footer-navigation {
+    grid-column: 1 / 4;
     display: grid;
-    grid-template-columns: repeat(3, minmax(170px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 18px 24px;
     flex: none;
 }
@@ -2561,13 +2562,6 @@ body.jb-search-open .jb-drawer-overlay {
 .newsletter-subscribe-button {
     min-width: 64px;
     border-radius: 0;
-}
-
-@media (min-width: 1001px) {
-    .footer-menu--newsletter {
-        position: relative;
-        left: -50px;
-    }
 }
 
 .footer-lower {
@@ -3674,14 +3668,6 @@ body.jb-search-open .jb-drawer-overlay {
 
     .jb-drawer-selectors:empty {
         display: none !important;
-    }
-}
-
-@media (min-width: 1001px) {
-    .footer-menu--newsletter {
-        position: relative !important;
-        left: -50px !important;
-        margin-left: 0 !important;
     }
 }
 
