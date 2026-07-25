@@ -1880,6 +1880,52 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Admin_TestAzureOpenAiConnection_UnsupportedEndpointHost_ReturnsFailFastMessage()
+    {
+        var controller = CreateAiInterviewAdminController(new AIInterviewSettings
+        {
+            AzureOpenAiEndpointUrl = "https://example.azurewebsites.net/",
+            AzureOpenAiApiKey = "secret-key",
+            AzureOpenAiDeploymentOrModel = "deployment"
+        }, new AzureOpenAiChatCompletionResult { Success = true });
+
+        var result = (JsonResult)await controller.TestAzureOpenAiConnection();
+
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(result, "message"), Does.Contain("openai.azure.com").And.Contain("cognitiveservices.azure.com"));
+    }
+
+    [Test]
+    public void Gpt5RequestContract_UsesMaxCompletionTokensOnlyInActiveCallPaths()
+    {
+        var adapterText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Services", "AzureOpenAiChatCompletionAdapter.cs"));
+        var runtimeClientText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Services", "InterviewRuntimeService.cs"));
+        var resumePlanningText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Services", "InterviewAiClient.ResumePlanning.cs"));
+        var adminControllerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "AIInterviewAdminController.cs"));
+
+        Assert.That(adapterText, Does.Contain("MaxOutputTokenCount = request.MaxCompletionTokens"));
+        Assert.That(runtimeClientText, Does.Contain("MaxCompletionTokens = 400"));
+        Assert.That(resumePlanningText, Does.Contain("MaxCompletionTokens = maxTokens"));
+        Assert.That(adminControllerText, Does.Contain("MaxCompletionTokens = 32"));
+        Assert.That(adapterText + runtimeClientText + resumePlanningText + adminControllerText, Does.Not.Contain("MaxTokens ="));
+        Assert.That(adapterText + runtimeClientText + resumePlanningText + adminControllerText, Does.Not.Contain("Temperature ="));
+    }
+
+    [Test]
+    public void RuntimeClientEvent_RouteAndDiagnosticsStrings_RemainMappedAndSafe()
+    {
+        var routeProviderText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Infrastructure", "RouteProvider.cs"));
+        var controllerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "MockAiInterviewController.cs"));
+        var runtimeViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+
+        Assert.That(routeProviderText, Does.Contain("pattern: \"mockaiinterview/runtime-client-event\""));
+        Assert.That(routeProviderText, Does.Contain("action = \"RuntimeClientEvent\""));
+        Assert.That(controllerText, Does.Contain("model.ClientSettings.RuntimeClientEventUrl = Url?.RouteUrl(AIInterviewDefaults.MockRuntimeClientEventRouteName);"));
+        Assert.That(runtimeViewText, Does.Contain("event.requestName === 'runtime-client-event'"));
+        Assert.That(runtimeViewText, Does.Contain("failureKind: 'fetch-exception'"));
+    }
+
+    [Test]
     public async Task Admin_TestAzureOpenAiConnection_AdapterFailure_ReturnsSafeFailure()
     {
         var settings = new AIInterviewSettings

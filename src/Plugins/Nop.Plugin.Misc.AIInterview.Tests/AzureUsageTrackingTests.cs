@@ -130,6 +130,35 @@ public class AzureUsageTrackingTests
     }
 
     [Test]
+    public void AzureOpenAiChatCompletionRequest_UsesMaxCompletionTokensOnly()
+    {
+        var requestType = typeof(AzureOpenAiChatCompletionRequest);
+
+        Assert.That(requestType.GetProperty("MaxCompletionTokens"), Is.Not.Null);
+        Assert.That(requestType.GetProperty("MaxTokens"), Is.Null);
+        Assert.That(requestType.GetProperty("Temperature"), Is.Null);
+    }
+
+    [TestCase("https://example.openai.azure.com/")]
+    [TestCase("https://example.cognitiveservices.azure.com/")]
+    public void AzureOpenAiChatCompletionAdapter_AcceptsSupportedResourceEndpointFamilies(string endpoint)
+    {
+        var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("ValidateConfiguration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        var result = (AzureOpenAiChatCompletionResult)method.Invoke(null, new object[]
+        {
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = endpoint,
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-deployment"
+            }
+        });
+
+        Assert.That(result, Is.Null);
+    }
+
+    [Test]
     public void AzureOpenAiChatCompletionAdapter_RejectsNonBaseEndpointShapes()
     {
         var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("ValidateConfiguration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
@@ -161,6 +190,27 @@ public class AzureUsageTrackingTests
         Assert.That(deploymentResult.Success, Is.False);
         Assert.That(deploymentResult.Reason, Does.Contain("deployment name"));
     }
+
+    [Test]
+    public void AzureOpenAiChatCompletionAdapter_RejectsUnsupportedEndpointHost()
+    {
+        var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("ValidateConfiguration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        var result = (AzureOpenAiChatCompletionResult)method.Invoke(null, new object[]
+        {
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.azurewebsites.net/",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-deployment"
+            }
+        });
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("azure-openai-configuration-invalid"));
+        Assert.That(result.Reason, Does.Contain("openai.azure.com").And.Contain("cognitiveservices.azure.com"));
+    }
+
 
     [Test]
     public void AzureOpenAiChatCompletionAdapter_FormatsEndpointMetadataAsHostOnly()

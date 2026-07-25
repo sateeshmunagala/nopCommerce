@@ -109,6 +109,9 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             return BuildConfigurationInvalidResult("Azure OpenAI endpoint must be an absolute HTTPS resource endpoint.", settings.AzureOpenAiEndpointUrl, deploymentOrModel);
         }
 
+        if (!IsSupportedAzureOpenAiEndpointHost(endpoint.Host))
+            return BuildConfigurationInvalidResult("Azure OpenAI endpoint host must be an Azure OpenAI resource host under openai.azure.com or cognitiveservices.azure.com.", settings.AzureOpenAiEndpointUrl, deploymentOrModel);
+
         if (!string.IsNullOrWhiteSpace(endpoint.Query) ||
             !string.IsNullOrWhiteSpace(endpoint.Fragment) ||
             (!string.IsNullOrWhiteSpace(endpoint.AbsolutePath) && !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal)))
@@ -120,6 +123,16 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             return BuildConfigurationInvalidResult("Azure OpenAI deployment/model must be a deployment name, not a URL or path.", settings.AzureOpenAiEndpointUrl, deploymentOrModel);
 
         return null;
+    }
+
+    private static bool IsSupportedAzureOpenAiEndpointHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+            return false;
+
+        var normalized = host.Trim().ToLowerInvariant();
+        return normalized.EndsWith(".openai.azure.com", StringComparison.Ordinal) ||
+            normalized.EndsWith(".cognitiveservices.azure.com", StringComparison.Ordinal);
     }
 
     private static AzureOpenAiChatCompletionResult BuildConfigurationInvalidResult(string reason, string endpoint, string deploymentOrModel)

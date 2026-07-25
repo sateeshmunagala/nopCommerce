@@ -1967,6 +1967,9 @@ public class AIInterviewAdminController : BasePluginController
             return "Azure OpenAI endpoint must be an absolute HTTPS resource endpoint.";
         }
 
+        if (!IsSupportedAzureOpenAiEndpointHost(endpointUri.Host))
+            return "Azure OpenAI endpoint host must be an Azure OpenAI resource host under openai.azure.com or cognitiveservices.azure.com.";
+
         if (!string.IsNullOrWhiteSpace(endpointUri.Query) ||
             !string.IsNullOrWhiteSpace(endpointUri.Fragment) ||
             (!string.IsNullOrWhiteSpace(endpointUri.AbsolutePath) && !string.Equals(endpointUri.AbsolutePath, "/", StringComparison.Ordinal)))
@@ -1978,6 +1981,16 @@ public class AIInterviewAdminController : BasePluginController
             return "Azure OpenAI deployment/model must be a deployment name, not a URL or path.";
 
         return string.Empty;
+    }
+
+    protected static bool IsSupportedAzureOpenAiEndpointHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+            return false;
+
+        var normalized = host.Trim().ToLowerInvariant();
+        return normalized.EndsWith(".openai.azure.com", StringComparison.Ordinal) ||
+            normalized.EndsWith(".cognitiveservices.azure.com", StringComparison.Ordinal);
     }
 
     protected virtual string BuildVendorAdminUrl(int vendorId)
