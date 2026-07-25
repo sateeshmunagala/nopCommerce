@@ -99,6 +99,8 @@ public record SubmitInterviewAnswerResponse
     public decimal Score { get; init; }
     public string Feedback { get; init; }
     public string Message { get; init; }
+    public bool ReportGenerationInProgress { get; init; }
+    public int EstimatedWaitSeconds { get; init; }
     public IList<InterviewTurnViewModel> Turns { get; init; } = new List<InterviewTurnViewModel>();
 }
 
@@ -117,6 +119,8 @@ public record CompleteInterviewResponse
     public string Message { get; init; }
     public string Completion { get; init; }
     public string ReportUrl { get; init; }
+    public bool ReportGenerationInProgress { get; init; }
+    public int EstimatedWaitSeconds { get; init; }
     public IList<InterviewTurnViewModel> Turns { get; init; } = new List<InterviewTurnViewModel>();
 }
 

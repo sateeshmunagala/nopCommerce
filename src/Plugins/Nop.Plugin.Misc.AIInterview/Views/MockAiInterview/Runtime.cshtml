@@ -559,6 +559,7 @@
         const finalRecordingUploadTimeoutMs = 10000;
         const slowSubmitStatusDelayMs = 5000;
         const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';
+        const reportGenerationMessage = 'Report is being generated. Please wait and also you will receive an email shortly once generated.';
         const audioInputStorageKey = 'aiinterview.runtime.audioInputDeviceId';
         const audioOutputStorageKey = 'aiinterview.runtime.audioOutputDeviceId';
         const supportsAudioOutputSelection = typeof HTMLMediaElement !== 'undefined'
@@ -2142,40 +2143,37 @@
             return completionRecordingCleanupPromise;
         };
 
-        const startCompletedRedirectCountdown = (reportUrl) => {
-            if (!reportUrl)
-                return;
+        const startReportGenerationTimer = (result, reportUrl) => {
+            const estimatedWaitSeconds = Math.min(120, Math.max(60, Number(getValue(result, 'estimatedWaitSeconds', 'EstimatedWaitSeconds') || 90)));
+            let remaining = estimatedWaitSeconds;
+            const renderRemaining = () => {
+                const minutes = String(Math.floor(remaining / 60)).padStart(2, '0');
+                const seconds = String(remaining % 60).padStart(2, '0');
+                setStatus(`Estimated wait: ${minutes}:${seconds}`, false);
+            };
 
-            actionsPanel?.classList.remove('runtime-js-hidden');
-            reportButton.style.display = 'inline-flex';
-            reportButton.onclick = () => window.location.href = reportUrl;
-
-            let remaining = completedRedirectDelaySeconds;
-            setHeaderStatus(buildCompletedRedirectMessage(remaining), false);
+            setHeaderStatus(reportGenerationMessage, false);
+            renderRemaining();
             completedCountdown = setInterval(() => {
-                remaining -= 1;
-                if (remaining < 0)
-                    return;
-
-                setHeaderStatus(buildCompletedRedirectMessage(remaining), false);
+                remaining = Math.max(0, remaining - 1);
+                renderRemaining();
                 if (remaining <= 0)
                     clearInterval(completedCountdown);
             }, 1000);
-            completedRedirectTimer = setTimeout(() => {
-                clearInterval(completedCountdown);
-                setHeaderStatus('', false);
-                window.location.href = reportUrl;
-            }, completedRedirectDelaySeconds * 1000);
+
+            if (reportUrl) {
+                actionsPanel?.classList.remove('runtime-js-hidden');
+                reportButton.style.display = 'inline-flex';
+                reportButton.onclick = () => window.location.href = reportUrl;
+            }
         };
 
         const finalizeCompletedState = async (result) => {
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
-            const completionText = reportUrl
-                ? 'Interview completed. View Report is available.'
-                : 'Interview completed. Finalizing report.';
+            const completionText = reportGenerationMessage;
 
             isSpeakingOrSubmitting = true;
-            setHeaderStatus('Finalizing report. Preparing recording...', false);
+            setHeaderStatus(reportGenerationMessage, false);
             try {
                 const recordingUploaded = await withTimeout(
                     finalizeRecordingBeforeCompletion(),
@@ -2215,11 +2213,7 @@
             updateAnswerInputState();
             updateStartButtonState();
             updateAuxiliaryControlsState();
-            if (reportUrl) {
-                actionsPanel?.classList.remove('runtime-js-hidden');
-                reportButton.style.display = 'inline-flex';
-                reportButton.onclick = () => window.location.href = reportUrl;
-            } else {
+            if (!reportUrl) {
                 actionsPanel?.classList.add('runtime-js-hidden');
                 reportButton.style.display = 'none';
             }
@@ -2239,7 +2233,7 @@
             updateAnswerInputState();
             submitButton.disabled = true;
             updateStartButtonState();
-            setHeaderStatus(reportUrl ? 'Finalizing report. Preparing recording...' : 'Finalizing report...', false);
+            setHeaderStatus(reportGenerationMessage, false);
             clearCompletedRedirectState();
             if (reportUrl) {
                 actionsPanel?.classList.remove('runtime-js-hidden');
@@ -2257,7 +2251,7 @@
                         logActivity(`Completion finalization exception: ${error?.message || 'unknown'}`);
                         setRecordingStatus('Recording finalization failed. Continuing to report.', true);
                     })
-                    .finally(() => startCompletedRedirectCountdown(reportUrl));
+                    .finally(() => startReportGenerationTimer(result, reportUrl));
             }, 0);
         };
 

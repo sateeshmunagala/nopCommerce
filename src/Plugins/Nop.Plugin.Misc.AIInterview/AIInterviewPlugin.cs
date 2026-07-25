@@ -200,6 +200,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (await _settingService.GetSettingAsync("aiinterviewsettings.calculateazurecostperinterview") == null)
             settings.CalculateAzureCostPerInterview = true;
 
+        if (await _settingService.GetSettingAsync("aiinterviewsettings.enablefinalscoringatcompletion") == null)
+            settings.EnableFinalScoringAtCompletion = true;
+
         if (string.IsNullOrWhiteSpace(settings.CreditProductSkuMappingsJson))
             settings.CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson;
 
@@ -1103,6 +1106,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             TrackAzureOpenAiUsage = true,
             TrackAzureSpeechUsage = true,
             CalculateAzureCostPerInterview = true,
+            EnableFinalScoringAtCompletion = true,
             AzureUsageCurrencyCode = "USD",
             SupportPhoneNumber = AIInterviewDefaults.DefaultSupportPhoneNumber,
             AzureDocumentIntelligenceModelId = AIInterviewDefaults.DefaultAzureDocumentIntelligenceModelId,

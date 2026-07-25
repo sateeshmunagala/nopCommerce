@@ -2227,6 +2227,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
+        if (IsFinalScoringAtCompletionEnabled())
+            return await SubmitAnswerWithoutImmediateScoringAsync(session, turns, currentTurn, request, answer, submitStopwatch);
+
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
         var jobTitle = product?.Name ?? await GetJobTitleAsync(session.SourceProductId > 0 ? session.SourceProductId : session.ProductId);
         var jobContext = BuildInterviewContext(session, product);
@@ -2366,11 +2369,100 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         };
     }
 
+    protected virtual async Task<SubmitInterviewAnswerResponse> SubmitAnswerWithoutImmediateScoringAsync(
+        InterviewSession session,
+        IList<InterviewTurn> turns,
+        InterviewTurn currentTurn,
+        SubmitInterviewAnswerRequest request,
+        string answer,
+        Stopwatch submitStopwatch)
+    {
+        var maxQuestions = GetMaxQuestions(session);
+
+        currentTurn.AnswerText = answer;
+        currentTurn.AnsweredOnUtc = DateTime.UtcNow;
+        await _turnService.UpdateInterviewTurnAsync(currentTurn);
+        await TrackSpeechRecognitionUsageAsync(session, currentTurn, request);
+        await LogRuntimeIssueAsync(
+            NopLogLevel.Information,
+            "AI Interview submit persisted without scoring",
+            $"Mode=submit; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; TurnId={currentTurn.Id}; SequenceNumber={currentTurn.SequenceNumber}; Reason=final scoring at completion enabled; ElapsedMs={submitStopwatch.ElapsedMilliseconds}.",
+            await ResolveLogCustomerAsync(session));
+        await LogRuntimeActivityAsync(
+            session,
+            "AIInterview.Runtime.AnswerSubmitted",
+            BuildRuntimeActivityComment(session, currentTurn, "Answer submitted without immediate scoring.", submitStopwatch.ElapsedMilliseconds),
+            entity: currentTurn);
+
+        turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
+        var completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, maxQuestions).ToList();
+        var answeredCount = completedTurns.Count;
+        var shouldComplete = answeredCount >= maxQuestions;
+        if (!shouldComplete)
+        {
+            var replenishedTurns = await EnsureSingleActiveTurnAsync(session, turns);
+            turns = replenishedTurns.Turns.ToList();
+            var nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
+
+            if (nextTurn == null)
+            {
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Warning,
+                    "AI Interview next planned question unavailable",
+                    $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; ConfiguredQuestions={maxQuestions}; ExistingTurns={turns.Count}; AnsweredTurns={answeredCount}; Reason=next planned turn missing.",
+                    await ResolveLogCustomerAsync(session));
+                await LogRuntimeActivityAsync(
+                    session,
+                    "AIInterview.Runtime.AnswerSubmitFailed",
+                    BuildRuntimeActivityComment(session, currentTurn, "Next planned question missing.", submitStopwatch.ElapsedMilliseconds),
+                    entity: currentTurn);
+                return new SubmitInterviewAnswerResponse
+                {
+                    Success = false,
+                    Message = "The AI interview service is temporarily unavailable. Please try again later.",
+                    Feedback = "The AI interview service is temporarily unavailable. Please try again later."
+                };
+            }
+
+            await _sessionService.UpdateInterviewSessionAsync(session);
+
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = true,
+                IsTerminated = false,
+                Question = nextTurn.QuestionText,
+                Score = session.Score,
+                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.NextQuestion"),
+                Interrupted = false,
+                Completion = string.Empty,
+                Turn = MapTurn(currentTurn),
+                Turns = MapTurns(InterviewTurnNormalizationHelper.GetVisibleRuntimeTurns(turns, maxQuestions))
+            };
+        }
+
+        var completion = await CompleteInterviewInternalAsync(session, turns, "Interview completed.");
+        return new SubmitInterviewAnswerResponse
+        {
+            Success = completion.Success,
+            IsTerminated = completion.IsTerminated,
+            Completion = completion.Completion,
+            Score = completion.Score,
+            Message = completion.Message,
+            ReportUrl = completion.ReportUrl,
+            Interrupted = false,
+            Question = string.Empty,
+            Turn = MapTurn(currentTurn),
+            Turns = completion.Turns,
+            ReportGenerationInProgress = completion.ReportGenerationInProgress,
+            EstimatedWaitSeconds = completion.EstimatedWaitSeconds
+        };
+    }
+
     public async Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null)
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
         var now = DateTime.UtcNow;
-        if (!IsSessionUsable(session, now))
+        if (session == null || (!IsSessionUsable(session, now) && !session.CompletedOnUtc.HasValue))
         {
             return new CompleteInterviewResponse
             {
@@ -3151,17 +3243,42 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             await LogRuntimeActivityAsync(
                 session,
-                "AIInterview.Runtime.CompletionFinalizationFailed",
+                "AIInterview.Runtime.InterviewCompleted",
                 BuildRuntimeActivityComment(session, message: "Session already completed or inactive.", elapsedMilliseconds: completionStopwatch.ElapsedMilliseconds));
             return new CompleteInterviewResponse
             {
-                Success = false,
+                Success = session.CompletedOnUtc.HasValue,
                 IsTerminated = true,
-                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken")
+                Score = session.Score,
+                Feedback = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, GetMaxQuestions(session)).LastOrDefault()?.Feedback ?? reason ?? string.Empty,
+                Message = session.CompletedOnUtc.HasValue
+                    ? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore")
+                    : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"),
+                Completion = session.ReportData,
+                ReportUrl = string.Empty,
+                Turns = MapTurns(InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, GetMaxQuestions(session)))
             };
         }
 
         var completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, GetMaxQuestions(session)).ToList();
+        if (IsFinalScoringAtCompletionEnabled())
+        {
+            var finalScoring = await FinalizeInterviewScoringAsync(session, completedTurns, reason);
+            if (!finalScoring.Success)
+            {
+                await LogRuntimeActivityAsync(
+                    session,
+                    "AIInterview.Runtime.CompletionFinalizationFailed",
+                    BuildRuntimeActivityComment(session, message: finalScoring.Message, elapsedMilliseconds: completionStopwatch.ElapsedMilliseconds));
+                return finalScoring;
+            }
+
+            turns = finalScoring.Turns.Any()
+                ? completedTurns
+                : turns;
+        }
+
+        completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, GetMaxQuestions(session)).ToList();
         session.IsActive = false;
         session.CompletedOnUtc = DateTime.UtcNow;
         session.Score = completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
@@ -3184,6 +3301,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
             Completion = session.ReportData,
             ReportUrl = string.Empty,
+            ReportGenerationInProgress = IsFinalScoringAtCompletionEnabled(),
+            EstimatedWaitSeconds = IsFinalScoringAtCompletionEnabled() ? 90 : 0,
             Turns = MapTurns(completedTurns)
         };
 
@@ -3191,6 +3310,125 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             session.Id, session.CustomerId, session.ProductId);
 
         return completion;
+    }
+
+    protected virtual bool IsFinalScoringAtCompletionEnabled()
+    {
+        return _settings?.EnableFinalScoringAtCompletion != false;
+    }
+
+    protected virtual async Task<CompleteInterviewResponse> FinalizeInterviewScoringAsync(InterviewSession session, IList<InterviewTurn> turns, string reason)
+    {
+        var finalScoringStopwatch = Stopwatch.StartNew();
+        var answeredTurns = InterviewTurnNormalizationHelper
+            .GetCompletedReportTurns(turns, GetMaxQuestions(session))
+            .Where(turn => !string.IsNullOrWhiteSpace(turn.AnswerText))
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+
+        await LogRuntimeIssueAsync(
+            NopLogLevel.Information,
+            "AI Interview final scoring started",
+            $"Mode=final-score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}; Reason={BuildSafeValue(reason)}.",
+            await ResolveLogCustomerAsync(session));
+
+        try
+        {
+            var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+            var jobTitle = product?.Name ?? await GetJobTitleAsync(session.SourceProductId > 0 ? session.SourceProductId : session.ProductId);
+            var jobContext = BuildInterviewContext(session, product);
+            var resumeProfileJson = await GetResumeProfileJsonAsync(session, product);
+
+            foreach (var turn in answeredTurns.Where(turn => !turn.Score.HasValue))
+            {
+                var evaluation = await _aiClient.ScoreAnswerAsync(new AIInterviewClientRequest
+                {
+                    JobTitle = jobTitle,
+                    JobContext = jobContext,
+                    Difficulty = session.Difficulty,
+                    Prompt = _settings.Prompt,
+                    Question = turn.QuestionText,
+                    Answer = turn.AnswerText,
+                    QuestionNumber = turn.SequenceNumber,
+                    ResumeProfileJson = resumeProfileJson,
+                    CurrentTurnRubricJson = turn.RubricJson,
+                    PreviousQuestions = InterviewTurnNormalizationHelper
+                        .GetCanonicalTurns(turns, GetMaxQuestions(session))
+                        .Select(candidate => candidate.QuestionText)
+                        .ToList(),
+                    PreviousScores = answeredTurns
+                        .Where(candidate => candidate.Id != turn.Id && candidate.Score.HasValue)
+                        .Select(candidate => candidate.Score.Value)
+                        .ToList(),
+                    PreviousTurns = BuildPreviousTurnContext(InterviewTurnNormalizationHelper.GetCanonicalTurns(turns, GetMaxQuestions(session)), turn)
+                });
+                await TrackOpenAiUsageAsync(
+                    session.Id,
+                    turn.Id,
+                    AzureUsageMetricDefaults.UsageKindOpenAiAnswerScoring,
+                    "FinalScoreAnswer",
+                    evaluation?.UsageInfo,
+                    evaluation?.AdditionalUsageInfos,
+                    JsonSerializer.Serialize(new
+                    {
+                        questionNumber = turn.SequenceNumber,
+                        mode = "final-score"
+                    }, StorageSerializerOptions));
+
+                if (evaluation == null || !evaluation.Success || !evaluation.Score.HasValue)
+                    throw new InvalidOperationException(evaluation?.ErrorMessage ?? "Final scoring missing required score.");
+
+                turn.Score = Math.Clamp(evaluation.Score.Value, 0, 100);
+                turn.Feedback = evaluation.Feedback;
+                turn.RubricJson = BuildMergedRubricJson(turn.RubricJson, evaluation);
+                turn.RawAIResponseJson = BuildMergedRawAiResponseJson(turn.RawAIResponseJson, evaluation.RawJson);
+                await _turnService.UpdateInterviewTurnAsync(turn);
+            }
+
+            var scoredTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(answeredTurns, GetMaxQuestions(session)).ToList();
+            session.Score = scoredTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
+            session.QuestionScores = JsonSerializer.Serialize(scoredTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
+            session.ReportData = BuildReport(scoredTurns, session.Score, reason);
+
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview final scoring completed",
+                $"Mode=final-score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}; ScoredTurns={scoredTurns.Count(turn => turn.Score.HasValue)}; ElapsedMs={finalScoringStopwatch.ElapsedMilliseconds}.",
+                await ResolveLogCustomerAsync(session));
+
+            return new CompleteInterviewResponse
+            {
+                Success = true,
+                IsTerminated = true,
+                Score = session.Score,
+                Feedback = scoredTurns.LastOrDefault()?.Feedback ?? reason ?? string.Empty,
+                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
+                Completion = session.ReportData,
+                ReportGenerationInProgress = true,
+                EstimatedWaitSeconds = 90,
+                Turns = MapTurns(scoredTurns)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "AI Interview final scoring failed for session {SessionId}.", session.Id);
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Warning,
+                "AI Interview final scoring failed",
+                $"Mode=final-score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}; Reason={BuildSafeValue(ex.Message)}; ElapsedMs={finalScoringStopwatch.ElapsedMilliseconds}.",
+                await ResolveLogCustomerAsync(session));
+
+            return new CompleteInterviewResponse
+            {
+                Success = false,
+                IsTerminated = false,
+                Message = "Report generation is taking longer than expected. Please try opening the report from your interview history shortly.",
+                ReportGenerationInProgress = false,
+                EstimatedWaitSeconds = 0,
+                Turns = MapTurns(answeredTurns)
+            };
+        }
     }
 
     protected virtual async Task PublishCompletionAsync(InterviewSession session)

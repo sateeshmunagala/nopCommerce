@@ -45,6 +45,8 @@ public class AIInterviewSettings : ISettings
 
     public bool CalculateAzureCostPerInterview { get; set; }
 
+    public bool EnableFinalScoringAtCompletion { get; set; } = true;
+
     public decimal AzureOpenAiPromptTokenPricePerThousand { get; set; }
 
     public decimal AzureOpenAiCompletionTokenPricePerThousand { get; set; }

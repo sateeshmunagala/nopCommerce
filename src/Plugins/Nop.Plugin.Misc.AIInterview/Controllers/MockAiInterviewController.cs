@@ -1477,6 +1477,8 @@ public class MockAiInterviewController : BasePluginController
                     turns = runtimeResponse?.Turns,
                     interrupted = runtimeResponse?.Interrupted == true,
                     message = runtimeResponse?.Message,
+                    reportGenerationInProgress = runtimeResponse?.ReportGenerationInProgress == true,
+                    estimatedWaitSeconds = runtimeResponse?.EstimatedWaitSeconds ?? 0,
                     newToken = tokenRenewal.Session.Token,
                     tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
                 });
@@ -1491,7 +1493,9 @@ public class MockAiInterviewController : BasePluginController
                 runtimeResponse.Turn,
                 runtimeResponse.Turns,
                 runtimeResponse.Interrupted,
-                runtimeResponse.Message
+                runtimeResponse.Message,
+                runtimeResponse.ReportGenerationInProgress,
+                runtimeResponse.EstimatedWaitSeconds
             });
         }
 
@@ -1537,6 +1541,8 @@ public class MockAiInterviewController : BasePluginController
                     message = response?.Message,
                     reportUrl,
                     turns = response?.Turns,
+                    reportGenerationInProgress = response?.ReportGenerationInProgress == true,
+                    estimatedWaitSeconds = response?.EstimatedWaitSeconds ?? 0,
                     newToken = tokenRenewal.Session.Token,
                     tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
                 });
@@ -1548,6 +1554,8 @@ public class MockAiInterviewController : BasePluginController
                 response.IsTerminated,
                 response.Message,
                 ReportUrl = reportUrl,
+                response.ReportGenerationInProgress,
+                response.EstimatedWaitSeconds,
                 response.Turns
             });
         }
