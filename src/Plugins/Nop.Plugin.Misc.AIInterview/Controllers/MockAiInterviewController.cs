@@ -33,6 +33,8 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
 public class MockAiInterviewController : BasePluginController
 {
+    public const long MaxRecordingUploadBytes = 100L * 1024L * 1024L;
+
     private const string VoiceUnavailableMessage = "Voice mode is unavailable. Please type your answer below.";
     private const string FeedbackIssueSupport = "Talk to support team";
     private const string FeedbackIssueOther = "Other issue";
@@ -278,8 +280,11 @@ public class MockAiInterviewController : BasePluginController
         return sanitized.Length <= 180 ? sanitized : sanitized[..180];
     }
 
-    protected static string BuildRuntimeClientFailureMessage(string failureKind, int? statusCode)
+    protected static string BuildRuntimeClientFailureMessage(string failureKind, int? statusCode, string requestName = null)
     {
+        if (NormalizeRuntimeClientRequestName(requestName) == "upload-recording" && statusCode == 413)
+            return "Recording upload exceeded the 100 MB request limit or an upstream host/proxy size limit.";
+
         return NormalizeRuntimeClientFailureKind(failureKind) switch
         {
             "http-status" => statusCode.HasValue
@@ -310,7 +315,7 @@ public class MockAiInterviewController : BasePluginController
         if (elapsedMilliseconds.HasValue)
             details.Add($"ElapsedMs={Math.Max(0, elapsedMilliseconds.Value)}");
 
-        var safeMessage = SanitizeRuntimeClientMessage(string.IsNullOrWhiteSpace(message) ? BuildRuntimeClientFailureMessage(failureKind, statusCode) : message);
+        var safeMessage = SanitizeRuntimeClientMessage(string.IsNullOrWhiteSpace(message) ? BuildRuntimeClientFailureMessage(failureKind, statusCode, requestName) : message);
         if (!string.IsNullOrWhiteSpace(safeMessage))
             details.Add($"Message={safeMessage}");
 
@@ -1398,7 +1403,7 @@ public class MockAiInterviewController : BasePluginController
         var session = tokenRenewal.Session;
         var safeRequestName = NormalizeRuntimeClientRequestName(requestName);
         var safeFailureKind = NormalizeRuntimeClientFailureKind(failureKind);
-        var safeMessage = BuildRuntimeClientFailureMessage(safeFailureKind, statusCode);
+        var safeMessage = BuildRuntimeClientFailureMessage(safeFailureKind, statusCode, safeRequestName);
 
         if (string.Equals(safeRequestName, "runtime-client-event", StringComparison.OrdinalIgnoreCase))
             return Json(new { success = false, message = "Runtime client-event logging is not recursive." });
@@ -1803,6 +1808,8 @@ public class MockAiInterviewController : BasePluginController
     }
 
     [HttpPost]
+    [RequestSizeLimit(MaxRecordingUploadBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxRecordingUploadBytes)]
     public async Task<IActionResult> UploadRecording(string token, IFormFile recording)
     {
         if (_interviewRuntimeService == null)

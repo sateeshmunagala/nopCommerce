@@ -201,6 +201,122 @@ public class AzureUsageTrackingTests
     }
 
     [Test]
+    public async Task AzureOpenAiChatCompletionAdapter_UnsupportedMaxTokensCompatibilityFailure_RetriesResponsesShapeAndSucceeds()
+    {
+        var requestUris = new List<Uri>();
+        var requestBodies = new List<string>();
+        var handler = new TestHttpMessageHandler(request =>
+        {
+            requestUris.Add(request.RequestUri);
+            requestBodies.Add(request.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+
+            if (requestUris.Count == 1)
+            {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent(
+                        "{\"error\":{\"code\":\"unsupported_parameter\",\"message\":\"Unsupported parameter: max_tokens; use max_completion_tokens.\"}}",
+                        Encoding.UTF8,
+                        "application/json")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    "{\"id\":\"resp_fallback\",\"model\":\"gpt-5\",\"usage\":{\"input_tokens\":21,\"output_tokens\":9,\"total_tokens\":30},\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"{\\\"question\\\":\\\"Fallback works\\\",\\\"complete\\\":false}\"}]}]}",
+                    Encoding.UTF8,
+                    "application/json")
+            };
+        });
+        var adapter = new AzureOpenAiChatCompletionAdapter(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.cognitiveservices.azure.com/",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-deployment"
+            },
+            new HttpClient(handler));
+
+        var result = await adapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+        {
+            Mode = "generate",
+            OperationName = "llm-question-generation",
+            SystemPrompt = "System prompt",
+            UserPrompt = "User prompt",
+            MaxCompletionTokens = 321
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Content, Is.EqualTo("{\"question\":\"Fallback works\",\"complete\":false}"));
+        Assert.That(result.FallbackUsed, Is.True);
+        Assert.That(result.RequestShape, Is.EqualTo("responses"));
+        Assert.That(result.UsageInfo.MetadataJson, Does.Contain("\"requestShape\":\"responses\""));
+        Assert.That(result.UsageInfo.MetadataJson, Does.Contain("\"fallbackUsed\":true"));
+        Assert.That(requestUris.Count, Is.EqualTo(2));
+        Assert.That(requestUris[0].ToString(), Is.EqualTo("https://example.cognitiveservices.azure.com/openai/deployments/gpt-5-deployment/chat/completions?api-version=2025-04-01-preview"));
+        Assert.That(requestUris[1].ToString(), Is.EqualTo("https://example.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview"));
+        Assert.That(requestBodies[0], Does.Contain("\"max_completion_tokens\":321"));
+        Assert.That(requestBodies[0], Does.Not.Contain("\"max_tokens\""));
+        Assert.That(requestBodies[1], Does.Contain("\"max_output_tokens\":321"));
+        Assert.That(requestBodies[1], Does.Contain("\"model\":\"gpt-5-deployment\""));
+        Assert.That(requestBodies[1], Does.Not.Contain("\"max_tokens\""));
+    }
+
+    [Test]
+    public async Task AzureOpenAiChatCompletionAdapter_ResponsesFallbackFailure_ReturnsSanitizedDiagnostics()
+    {
+        var handler = new TestHttpMessageHandler(request =>
+        {
+            if (request.RequestUri.AbsolutePath.EndsWith("/chat/completions", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent(
+                        "{\"error\":{\"code\":\"unsupported_parameter\",\"message\":\"Unsupported parameter: max_tokens; use max_completion_tokens.\"}}",
+                        Encoding.UTF8,
+                        "application/json")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.InternalServerError)
+            {
+                ReasonPhrase = "Internal Server Error",
+                Content = new StringContent(
+                    "{\"error\":{\"code\":\"server_error\",\"message\":\"api-key=secret-key failed during fallback\"}}",
+                    Encoding.UTF8,
+                    "application/json")
+            };
+        });
+        var adapter = new AzureOpenAiChatCompletionAdapter(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.cognitiveservices.azure.com/",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-deployment"
+            },
+            new HttpClient(handler));
+
+        var result = await adapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+        {
+            Mode = "profile",
+            OperationName = "llm-resume-profile",
+            SystemPrompt = "System prompt",
+            UserPrompt = "User prompt",
+            MaxCompletionTokens = 321
+        });
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("azure-openai-http-failure"));
+        Assert.That(result.StatusCode, Is.EqualTo(500));
+        Assert.That(result.RequestShape, Is.EqualTo("responses"));
+        Assert.That(result.FallbackUsed, Is.True);
+        Assert.That(result.ErrorCode, Is.EqualTo("server_error"));
+        Assert.That(result.ErrorMessage, Does.Contain("api-key=<redacted>"));
+        Assert.That(result.ResponseBody, Does.Not.Contain("secret-key"));
+    }
+
+    [Test]
     public async Task AzureOpenAiChatCompletionAdapter_ExtractsChatCompletionStringContent()
     {
         var adapter = CreateAdapterForSuccessResponse("{\"id\":\"resp_string\",\"model\":\"gpt-5\",\"choices\":[{\"message\":{\"content\":\"{\\\"question\\\":\\\"String content\\\",\\\"complete\\\":false}\"}}]}");

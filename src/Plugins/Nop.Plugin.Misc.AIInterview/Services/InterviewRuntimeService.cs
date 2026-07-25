@@ -222,12 +222,10 @@ public partial class InterviewAiClient : IAIInterviewClient
                 if (result.UsageInfo != null)
                     additionalUsageInfos.Add(result.UsageInfo);
 
-                var retryDetail = BuildAzureLengthRetryLog(mode, result, "retrying", maxCompletionTokens, ScoreLengthRetryMaxCompletionTokens);
-                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI length retry", retryDetail);
+                var retryDetail = BuildAzureLengthRetryLog(mode, result, "retry initiated due to truncation", maxCompletionTokens, ScoreLengthRetryMaxCompletionTokens);
+                await LogAiClientIssueAsync(NopLogLevel.Information, "AI Interview Azure OpenAI truncation retry initiated", retryDetail);
 
                 result = await CompleteAzureChatAsync(request, mode, prompt, ScoreLengthRetryMaxCompletionTokens);
-                var retryOutcomeDetail = BuildAzureLengthRetryLog(mode, result, string.IsNullOrWhiteSpace(result?.Content) ? "exhausted" : "response received", ScoreLengthRetryMaxCompletionTokens, null);
-                await LogAiClientIssueAsync(string.IsNullOrWhiteSpace(result?.Content) ? NopLogLevel.Warning : NopLogLevel.Information, "AI Interview Azure OpenAI length retry outcome", retryOutcomeDetail);
             }
 
             if (result?.Success != true)
@@ -250,6 +248,12 @@ public partial class InterviewAiClient : IAIInterviewClient
             var usageInfo = result.UsageInfo;
             if (string.IsNullOrWhiteSpace(result.Content))
             {
+                if (additionalUsageInfos.Count > 0)
+                {
+                    var retryExhaustedDetail = BuildAzureLengthRetryLog(mode, result, "retry exhausted", ScoreLengthRetryMaxCompletionTokens, null);
+                    await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI truncation retry exhausted", retryExhaustedDetail);
+                }
+
                 var detail = BuildAzureContractFailureLog(mode, result.Endpoint, result.DeploymentOrModel, BuildEmptyContentReason(result), result.ResponseBody);
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty content string.", mode);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
@@ -258,7 +262,21 @@ public partial class InterviewAiClient : IAIInterviewClient
 
             var parsed = ParseStructuredResponse(result.Content);
             if (parsed != null)
+            {
+                if (additionalUsageInfos.Count > 0)
+                {
+                    var retryRecoveredDetail = BuildAzureLengthRetryLog(mode, result, "retry recovered", ScoreLengthRetryMaxCompletionTokens, null);
+                    await LogAiClientIssueAsync(NopLogLevel.Information, "AI Interview Azure OpenAI truncation retry recovered", retryRecoveredDetail);
+                }
+
                 return parsed with { UsageInfo = usageInfo, AdditionalUsageInfos = additionalUsageInfos };
+            }
+
+            if (additionalUsageInfos.Count > 0)
+            {
+                var retryExhaustedDetail = BuildAzureLengthRetryLog(mode, result, "retry exhausted", ScoreLengthRetryMaxCompletionTokens, null);
+                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI truncation retry exhausted", retryExhaustedDetail);
+            }
 
             var contractReason = BuildStructuredResponseFailureLog(result.Content, mode);
             _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON or failed contract parsing.", mode);
@@ -373,11 +391,14 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
 """;
     }
 
-    protected static string BuildAzureHttpFailureLog(string mode, string endpoint, int statusCode, string reasonPhrase, string responseBody)
+    protected static string BuildAzureHttpFailureLog(string mode, string endpoint, int statusCode, string reasonPhrase, string responseBody, string requestShape = null, bool fallbackUsed = false, string deploymentOrModel = null)
     {
         var errorCode = string.Empty;
         var errorMessage = string.Empty;
         var responseSnippet = string.Empty;
+        var deployment = !string.IsNullOrWhiteSpace(deploymentOrModel)
+            ? deploymentOrModel
+            : ExtractAzureDeploymentName(endpoint);
 
         if (!string.IsNullOrWhiteSpace(responseBody))
         {
@@ -411,7 +432,11 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
             details.Add($"ReasonPhrase={SanitizeDiagnosticText(TruncateSafe(reasonPhrase, 80))}");
         details.Add($"EndpointHost={BuildSanitizedEndpointHost(endpoint)}");
         details.Add($"Endpoint={BuildSanitizedEndpointValue(endpoint)}");
-        details.Add($"Deployment={BuildSafeValue(ExtractAzureDeploymentName(endpoint))}");
+        details.Add($"Deployment={BuildSafeValue(deployment)}");
+        if (!string.IsNullOrWhiteSpace(requestShape))
+            details.Add($"RequestShape={BuildSafeValue(requestShape)}");
+        if (fallbackUsed)
+            details.Add("FallbackUsed=true");
         details.Add($"ResponseLength={(responseBody ?? string.Empty).Length}");
         if (!string.IsNullOrWhiteSpace(errorCode))
             details.Add($"AzureErrorCode={errorCode}");
@@ -459,12 +484,19 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
 
     protected static string BuildAzureLengthRetryLog(string mode, AzureOpenAiChatCompletionResult result, string outcome, int maxCompletionTokens, int? retryMaxCompletionTokens)
     {
+        var normalizedOutcome = outcome ?? string.Empty;
+        var reason = normalizedOutcome.Contains("recovered", StringComparison.OrdinalIgnoreCase)
+            ? "retry recovered after truncation"
+            : normalizedOutcome.Contains("exhausted", StringComparison.OrdinalIgnoreCase) &&
+                (result?.IsLengthTruncated != true || !string.IsNullOrWhiteSpace(result?.Content))
+                    ? "retry exhausted after truncation"
+                    : BuildEmptyContentReason(result);
         var details = new List<string>
         {
             $"Mode={mode}",
             $"Operation={BuildAzureOperationName(mode)}",
             "FailureKind=azure-openai-length-truncation",
-            $"Reason={BuildEmptyContentReason(result)}",
+            $"Reason={BuildSafeValue(reason)}",
             $"Outcome={BuildSafeValue(outcome)}",
             $"FinishReason={BuildSafeValue(result?.FinishReason)}",
             $"EndpointHost={BuildSanitizedEndpointHost(result?.Endpoint)}",
@@ -501,7 +533,7 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
     protected static string BuildAzureAdapterFailureLog(string mode, AzureOpenAiChatCompletionResult result)
     {
         if (string.Equals(result?.FailureKind, "azure-openai-http-failure", StringComparison.OrdinalIgnoreCase))
-            return BuildAzureHttpFailureLog(mode, result?.Endpoint, result?.StatusCode ?? 0, result?.ReasonPhrase, result?.ResponseBody);
+            return BuildAzureHttpFailureLog(mode, result?.Endpoint, result?.StatusCode ?? 0, result?.ReasonPhrase, result?.ResponseBody, result?.RequestShape, result?.FallbackUsed ?? false, result?.DeploymentOrModel);
 
         return string.Join("; ", new[]
         {

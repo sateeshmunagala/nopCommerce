@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Core.Infrastructure;
 using Nop.Plugin.Misc.AIInterview.Services;
 
@@ -38,6 +40,10 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<IJobRequirementService, JobRequirementService>();
         services.AddScoped<IJobProductAccessService, JobProductAccessService>();
         services.AddScoped<IAIInterviewJobDisplayService, AIInterviewJobDisplayService>();
+        services.Configure<FormOptions>(options =>
+        {
+            options.MultipartBodyLengthLimit = Math.Max(options.MultipartBodyLengthLimit, MockAiInterviewController.MaxRecordingUploadBytes);
+        });
     }
 
     /// <summary>

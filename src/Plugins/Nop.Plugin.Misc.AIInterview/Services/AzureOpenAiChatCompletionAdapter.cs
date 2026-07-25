@@ -30,17 +30,34 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
 
         try
         {
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, BuildChatCompletionsUri(endpoint, deploymentOrModel));
-            httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            httpRequest.Headers.Add("api-key", _settings.AzureOpenAiApiKey.Trim());
-            httpRequest.Content = new StringContent(BuildRequestBody(request), Encoding.UTF8, "application/json");
+            using var httpRequest = BuildAzureOpenAiHttpRequest(
+                BuildChatCompletionsUri(endpoint, deploymentOrModel),
+                BuildChatCompletionsRequestBody(request),
+                _settings.AzureOpenAiApiKey);
 
             using var response = await _httpClient.SendAsync(httpRequest);
             var responseBody = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
-                return BuildHttpFailureResult(response, responseBody, endpoint, deploymentOrModel);
+            {
+                if (IsUnsupportedMaxTokensCompatibilityFailure(response, responseBody))
+                {
+                    using var fallbackRequest = BuildAzureOpenAiHttpRequest(
+                        BuildResponsesUri(endpoint),
+                        BuildResponsesRequestBody(request, deploymentOrModel),
+                        _settings.AzureOpenAiApiKey);
 
-            return BuildSuccessResult(responseBody, request?.Mode, endpoint, deploymentOrModel);
+                    using var fallbackResponse = await _httpClient.SendAsync(fallbackRequest);
+                    var fallbackResponseBody = await fallbackResponse.Content.ReadAsStringAsync();
+                    if (!fallbackResponse.IsSuccessStatusCode)
+                        return BuildHttpFailureResult(fallbackResponse, fallbackResponseBody, endpoint, deploymentOrModel, "responses", true);
+
+                    return BuildSuccessResult(fallbackResponseBody, request?.Mode, endpoint, deploymentOrModel, "responses", true);
+                }
+
+                return BuildHttpFailureResult(response, responseBody, endpoint, deploymentOrModel, "chat-completions", false);
+            }
+
+            return BuildSuccessResult(responseBody, request?.Mode, endpoint, deploymentOrModel, "chat-completions", false);
         }
         catch (RequestFailedException ex)
         {
@@ -73,7 +90,27 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
         return builder.Uri;
     }
 
-    private static string BuildRequestBody(AzureOpenAiChatCompletionRequest request)
+    private static Uri BuildResponsesUri(Uri endpoint)
+    {
+        var builder = new UriBuilder(endpoint)
+        {
+            Path = "openai/responses",
+            Query = $"api-version={AzureOpenAiApiVersion}"
+        };
+
+        return builder.Uri;
+    }
+
+    private static HttpRequestMessage BuildAzureOpenAiHttpRequest(Uri uri, string requestBody, string apiKey)
+    {
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, uri);
+        httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        httpRequest.Headers.Add("api-key", apiKey?.Trim());
+        httpRequest.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+        return httpRequest;
+    }
+
+    private static string BuildChatCompletionsRequestBody(AzureOpenAiChatCompletionRequest request)
     {
         return JsonSerializer.Serialize(new Dictionary<string, object>
         {
@@ -86,7 +123,18 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
         });
     }
 
-    private static AzureOpenAiChatCompletionResult BuildSuccessResult(string responseBody, string mode, Uri endpoint, string deploymentOrModel)
+    private static string BuildResponsesRequestBody(AzureOpenAiChatCompletionRequest request, string deploymentOrModel)
+    {
+        return JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["model"] = deploymentOrModel,
+            ["instructions"] = request?.SystemPrompt ?? string.Empty,
+            ["input"] = request?.UserPrompt ?? string.Empty,
+            ["max_output_tokens"] = request?.MaxCompletionTokens ?? 0
+        });
+    }
+
+    private static AzureOpenAiChatCompletionResult BuildSuccessResult(string responseBody, string mode, Uri endpoint, string deploymentOrModel, string requestShape, bool fallbackUsed)
     {
         using var document = JsonDocument.Parse(responseBody);
         var root = document.RootElement;
@@ -104,7 +152,9 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             ResponseId = TryGetString(root, "id"),
             FinishReason = finishReason,
             IsLengthTruncated = IsLengthFinishReason(finishReason),
-            UsageInfo = BuildUsageInfo(root, mode, endpoint, deploymentOrModel)
+            RequestShape = requestShape,
+            FallbackUsed = fallbackUsed,
+            UsageInfo = BuildUsageInfo(root, mode, endpoint, deploymentOrModel, requestShape, fallbackUsed)
         };
     }
 
@@ -209,7 +259,7 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             : SanitizeDiagnosticText(endpoint.Trim());
     }
 
-    private static AzureOpenAiUsageInfo BuildUsageInfo(JsonElement response, string mode, Uri endpoint, string deploymentOrModel)
+    private static AzureOpenAiUsageInfo BuildUsageInfo(JsonElement response, string mode, Uri endpoint, string deploymentOrModel, string requestShape, bool fallbackUsed)
     {
         var hasUsage = response.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object;
         if (!hasUsage && string.IsNullOrWhiteSpace(deploymentOrModel))
@@ -241,7 +291,9 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             {
                 mode,
                 responseId = TryGetString(response, "id"),
-                endpoint = BuildEndpointMetadataValue(endpoint)
+                endpoint = BuildEndpointMetadataValue(endpoint),
+                requestShape,
+                fallbackUsed
             })
         };
     }
@@ -251,7 +303,7 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
         return endpoint == null ? "<empty>" : $"{endpoint.Host}/";
     }
 
-    private static AzureOpenAiChatCompletionResult BuildHttpFailureResult(HttpResponseMessage response, string responseBody, Uri endpoint, string deploymentOrModel)
+    private static AzureOpenAiChatCompletionResult BuildHttpFailureResult(HttpResponseMessage response, string responseBody, Uri endpoint, string deploymentOrModel, string requestShape = null, bool fallbackUsed = false)
     {
         var errorCode = string.Empty;
         var errorMessage = string.Empty;
@@ -288,8 +340,20 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             ResponseBody = SanitizeDiagnosticText(responseBody),
             Endpoint = endpoint?.ToString(),
             EndpointHost = endpoint?.Host,
-            DeploymentOrModel = deploymentOrModel
+            DeploymentOrModel = deploymentOrModel,
+            RequestShape = requestShape,
+            FallbackUsed = fallbackUsed
         };
+    }
+
+    private static bool IsUnsupportedMaxTokensCompatibilityFailure(HttpResponseMessage response, string responseBody)
+    {
+        if (response == null || (int)response.StatusCode != 400 || string.IsNullOrWhiteSpace(responseBody))
+            return false;
+
+        var sanitized = SanitizeDiagnosticText(responseBody);
+        return sanitized.Contains("unsupported_parameter", StringComparison.OrdinalIgnoreCase) &&
+            sanitized.Contains("max_tokens", StringComparison.OrdinalIgnoreCase);
     }
 
     private static AzureOpenAiChatCompletionResult BuildRequestFailedResult(RequestFailedException exception, Uri endpoint, string deploymentOrModel)

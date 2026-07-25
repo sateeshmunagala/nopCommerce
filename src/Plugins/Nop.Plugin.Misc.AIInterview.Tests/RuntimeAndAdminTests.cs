@@ -1752,6 +1752,61 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task RuntimeClientEvent_UploadRecording413_WritesActionableSizeLimitMessage()
+    {
+        var session = new InterviewSession
+        {
+            Id = 79,
+            CustomerId = 14,
+            ProductId = 36,
+            Token = "upload-event-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        var customer = new Customer { Id = session.CustomerId, Email = "candidate@example.com" };
+        var activityService = new Mock<ICustomerActivityService>();
+        string activityComment = null;
+
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("upload-event-token")).ReturnsAsync(session);
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(customer);
+        activityService.Setup(x => x.InsertActivityAsync(
+                customer,
+                "AIInterview.Runtime.NetworkRequestFailed",
+                It.IsAny<string>(),
+                It.IsAny<BaseEntity>()))
+            .Callback<Customer, string, string, BaseEntity>((_, _, comment, _) => activityComment = comment)
+            .ReturnsAsync(new ActivityLog());
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            nopLogger: _nopLogger.Object,
+            customerActivityService: activityService.Object);
+
+        var result = await controller.RuntimeClientEvent(
+            "upload-event-token",
+            "network-request-failed",
+            "upload-recording",
+            413,
+            null,
+            "http-status",
+            1200);
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        Assert.That(activityComment, Does.Contain("Request=upload-recording"));
+        Assert.That(activityComment, Does.Contain("StatusCode=413"));
+        Assert.That(activityComment, Does.Contain("Recording upload exceeded the 100 MB request limit or an upstream host proxy size limit."));
+    }
+
+    [Test]
     public async Task RuntimeClientEvent_InvalidToken_IsHandledSafely()
     {
         _sessionService.Setup(x => x.GetSessionByTokenAsync("raw-token-secret")).ReturnsAsync((InterviewSession)null);
@@ -1977,10 +2032,14 @@ public class RuntimeAndAdminTests
         var routeProviderText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Infrastructure", "RouteProvider.cs"));
         var controllerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "MockAiInterviewController.cs"));
         var runtimeViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+        var startupText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Infrastructure", "PluginNopStartup.cs"));
 
         Assert.That(routeProviderText, Does.Contain("pattern: \"mockaiinterview/runtime-client-event\""));
         Assert.That(routeProviderText, Does.Contain("action = \"RuntimeClientEvent\""));
         Assert.That(controllerText, Does.Contain("model.ClientSettings.RuntimeClientEventUrl = Url?.RouteUrl(AIInterviewDefaults.MockRuntimeClientEventRouteName);"));
+        Assert.That(controllerText, Does.Contain("[RequestSizeLimit(MaxRecordingUploadBytes)]"));
+        Assert.That(controllerText, Does.Contain("[RequestFormLimits(MultipartBodyLengthLimit = MaxRecordingUploadBytes)]"));
+        Assert.That(startupText, Does.Contain("options.MultipartBodyLengthLimit = Math.Max(options.MultipartBodyLengthLimit, MockAiInterviewController.MaxRecordingUploadBytes);"));
         Assert.That(runtimeViewText, Does.Contain("event.requestName === 'runtime-client-event'"));
         Assert.That(runtimeViewText, Does.Contain("failureKind: 'fetch-exception'"));
     }
@@ -2249,13 +2308,22 @@ public class RuntimeAndAdminTests
         Assert.That(adapter.Requests[0].MaxCompletionTokens, Is.EqualTo(1200));
         Assert.That(adapter.Requests[1].MaxCompletionTokens, Is.EqualTo(2000));
         nopLogger.Verify(logger => logger.InsertLogAsync(
-            LogLevel.Warning,
-            "AI Interview Azure OpenAI length retry",
+            LogLevel.Information,
+            "AI Interview Azure OpenAI truncation retry initiated",
             It.Is<string>(message =>
+                message.Contains("Outcome=retry initiated due to truncation") &&
                 message.Contains("Reason=empty response content (finish_reason=length)") &&
                 message.Contains("Deployment=gpt-5-mini") &&
                 message.Contains("MaxCompletionTokens=1200") &&
                 message.Contains("RetryMaxCompletionTokens=2000")),
+            null), Times.Once);
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Information,
+            "AI Interview Azure OpenAI truncation retry recovered",
+            It.Is<string>(message =>
+                message.Contains("Outcome=retry recovered") &&
+                message.Contains("Deployment=gpt-5-mini") &&
+                message.Contains("MaxCompletionTokens=2000")),
             null), Times.Once);
         nopLogger.Verify(logger => logger.InsertLogAsync(
             It.IsAny<LogLevel>(),
@@ -2318,9 +2386,9 @@ public class RuntimeAndAdminTests
         Assert.That(adapter.Requests[1].MaxCompletionTokens, Is.EqualTo(2000));
         nopLogger.Verify(logger => logger.InsertLogAsync(
             LogLevel.Warning,
-            "AI Interview Azure OpenAI length retry outcome",
+            "AI Interview Azure OpenAI truncation retry exhausted",
             It.Is<string>(message =>
-                message.Contains("Outcome=exhausted") &&
+                message.Contains("Outcome=retry exhausted") &&
                 message.Contains("Reason=empty response content (finish_reason=length)") &&
                 message.Contains("Deployment=gpt-5-mini")),
             null), Times.Once);

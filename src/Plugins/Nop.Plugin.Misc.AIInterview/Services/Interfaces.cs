@@ -118,6 +118,8 @@ public sealed record AzureOpenAiChatCompletionResult
     public string ResponseId { get; init; }
     public string FinishReason { get; init; }
     public bool IsLengthTruncated { get; init; }
+    public string RequestShape { get; init; }
+    public bool FallbackUsed { get; init; }
     public AzureOpenAiUsageInfo UsageInfo { get; init; }
 }
 
