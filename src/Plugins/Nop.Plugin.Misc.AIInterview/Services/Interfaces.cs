@@ -84,6 +84,7 @@ public interface IAIInterviewClient
     Task<AIResumeProfileResponse> AnalyzeResumeAsync(AIResumeProfileRequest request);
     Task<AIInterviewQuestionPlanResponse> GenerateQuestionPlanAsync(AIInterviewQuestionPlanRequest request);
     Task<AIInterviewClientResponse> ScoreAnswerAsync(AIInterviewClientRequest request);
+    Task<AIInterviewFinalScoringResponse> ScoreInterviewAtCompletionAsync(AIInterviewFinalScoringRequest request);
 }
 
 public interface IAzureOpenAiChatCompletionAdapter
@@ -292,6 +293,49 @@ public record AIInterviewHistoryItem
     public string Answer { get; init; }
     public decimal? Score { get; init; }
     public string Feedback { get; init; }
+}
+
+public record AIInterviewFinalScoringRequest
+{
+    public string JobTitle { get; init; }
+    public string JobContext { get; init; }
+    public string Difficulty { get; init; }
+    public string Prompt { get; init; }
+    public string ResumeProfileJson { get; init; }
+    public IList<AIInterviewFinalScoringTurnRequest> Turns { get; init; } = new List<AIInterviewFinalScoringTurnRequest>();
+}
+
+public record AIInterviewFinalScoringTurnRequest
+{
+    public int SequenceNumber { get; init; }
+    public string Question { get; init; }
+    public string Answer { get; init; }
+    public string CurrentTurnRubricJson { get; init; }
+}
+
+public record AIInterviewFinalScoringResponse
+{
+    public bool Success { get; init; } = true;
+    public IList<AIInterviewFinalScoringTurnResult> Turns { get; init; } = new List<AIInterviewFinalScoringTurnResult>();
+    public decimal? Score { get; init; }
+    public string Completion { get; init; }
+    public string ErrorMessage { get; init; }
+    public string RawJson { get; init; }
+    public AzureOpenAiUsageInfo UsageInfo { get; init; }
+}
+
+public record AIInterviewFinalScoringTurnResult
+{
+    public int SequenceNumber { get; init; }
+    public decimal? Score { get; init; }
+    public decimal? TechnicalScore { get; init; }
+    public decimal? CommunicationScore { get; init; }
+    public decimal? ProfessionalismScore { get; init; }
+    public decimal? PositiveAttitudeScore { get; init; }
+    public string Feedback { get; init; }
+    public string AnswerQuality { get; init; }
+    public string NonSubstantiveReason { get; init; }
+    public string RubricJson { get; init; }
 }
 
 public record AIInterviewClientResponse

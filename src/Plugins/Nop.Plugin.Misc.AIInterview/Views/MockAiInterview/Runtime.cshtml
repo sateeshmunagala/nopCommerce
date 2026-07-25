@@ -559,7 +559,7 @@
         const finalRecordingUploadTimeoutMs = 10000;
         const slowSubmitStatusDelayMs = 5000;
         const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';
-        const reportGenerationMessage = 'Report is being generated. Please wait and also you will receive an email shortly once generated.';
+        const reportGenerationMessage = 'Report is being generated. Please wait and also you will receive an email shortly once report is generated.';
         const audioInputStorageKey = 'aiinterview.runtime.audioInputDeviceId';
         const audioOutputStorageKey = 'aiinterview.runtime.audioOutputDeviceId';
         const supportsAudioOutputSelection = typeof HTMLMediaElement !== 'undefined'
@@ -2143,6 +2143,26 @@
             return completionRecordingCleanupPromise;
         };
 
+        const startReportGenerationWaitingState = (estimatedWaitSeconds = 90) => {
+            clearCompletedRedirectState();
+            const normalizedWaitSeconds = Math.min(120, Math.max(60, Number(estimatedWaitSeconds || 90)));
+            let remaining = normalizedWaitSeconds;
+            const renderRemaining = () => {
+                const minutes = String(Math.floor(remaining / 60)).padStart(2, '0');
+                const seconds = String(remaining % 60).padStart(2, '0');
+                setStatus(`Estimated wait: ${minutes}:${seconds}`, false);
+            };
+
+            setHeaderStatus(reportGenerationMessage, false);
+            renderRemaining();
+            completedCountdown = setInterval(() => {
+                remaining = Math.max(0, remaining - 1);
+                renderRemaining();
+                if (remaining <= 0)
+                    clearInterval(completedCountdown);
+            }, 1000);
+        };
+
         const startReportGenerationTimer = (result, reportUrl) => {
             const estimatedWaitSeconds = Math.min(120, Math.max(60, Number(getValue(result, 'estimatedWaitSeconds', 'EstimatedWaitSeconds') || 90)));
             let remaining = estimatedWaitSeconds;
@@ -3431,9 +3451,16 @@
             isSpeakingOrSubmitting = true;
             isSubmittingAnswer = true;
             clearAnswerTimers();
-            setHeaderStatus(auto ? 'Auto submitting answer...' : 'Submitting answer...', false);
+            const turnStateBeforeSubmit = getTurnState();
+            const activeTurn = turnStateBeforeSubmit.activePendingTurn;
+            const willCompleteOnSubmit = (turnStateBeforeSubmit.answeredCount + 1) >= totalQuestions ||
+                (activeTurn?.sequenceNumber || 0) >= totalQuestions;
+            if (willCompleteOnSubmit)
+                startReportGenerationWaitingState();
+            else
+                setHeaderStatus(auto ? 'Auto submitting answer...' : 'Submitting answer...', false);
             slowSubmitTimer = setTimeout(() => {
-                setHeaderStatus('Still submitting your answer. Please keep this page open.', false);
+                setHeaderStatus(willCompleteOnSubmit ? reportGenerationMessage : 'Still submitting your answer. Please keep this page open.', false);
                 logActivity('Answer submission is still pending.');
             }, slowSubmitStatusDelayMs);
             submitBtn.disabled = true;
@@ -3447,7 +3474,6 @@
                 pendingRecognitionClientEventId = createClientEventId();
 
             const body = new URLSearchParams({ token: sessionToken, answer: trimmedAnswer });
-            const activeTurn = getTurnState().activePendingTurn;
             if (activeTurn?.turnId)
                 body.append('turnId', String(activeTurn.turnId));
             if (activeTurn?.sequenceNumber)
@@ -3473,16 +3499,22 @@
                 answerNeedsEditAfterFailure = true;
                 updateSubmitAvailability();
                 resetSubmitButtonText();
+                clearCompletedRedirectState();
                 setHeaderStatus('', false);
                 return;
             }
             logActivity('Submit response success: ' + getRuntimeMessage(result, 'Answer saved.'));
-            setHeaderStatus('', false);
+            if (!willCompleteOnSubmit)
+                setHeaderStatus('', false);
             answerNeedsEditAfterFailure = false;
 
             const isTerminated = getValue(result, "isTerminated", "IsTerminated");
             const resultQuestion = getValue(result, "question", "Question");
             const resultMessage = getRuntimeMessage(result, '');
+            if (!isTerminated && willCompleteOnSubmit) {
+                clearCompletedRedirectState();
+                setHeaderStatus('', false);
+            }
             const returnedTurns = getValue(result, 'turns', 'Turns');
             if (Array.isArray(returnedTurns))
                 replaceTurns(returnedTurns);
@@ -3557,6 +3589,7 @@
                 stopTopBtn.classList.add('is-loading');
                 stopTopBtn.textContent = 'Stopping...';
             }
+            startReportGenerationWaitingState();
 
             if (mediaRecorder && recordingEnabled)
                 await stopRecording(true);
@@ -3578,6 +3611,7 @@
                 }
 
                 logActivity('Stop response failure: ' + getRuntimeMessage(result, 'Unable to stop interview.'));
+                clearCompletedRedirectState();
                 setStatus(getRuntimeMessage(result, 'Unable to stop interview.'), true);
                 updateStartButtonState();
                 updateSubmitAvailability();

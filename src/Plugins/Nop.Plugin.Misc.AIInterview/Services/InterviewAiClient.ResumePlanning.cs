@@ -91,6 +91,43 @@ public partial class InterviewAiClient
         };
     }
 
+    public async Task<AIInterviewFinalScoringResponse> ScoreInterviewAtCompletionAsync(AIInterviewFinalScoringRequest request)
+    {
+        if (_mockSettings?.UseMockResponses != false)
+            return BuildMockFinalScoring(request);
+
+        var answeredCount = request?.Turns?.Count ?? 0;
+        var result = await CallAzureContentAsync(
+            "final-score",
+            "Return JSON only. Final scoring mode contract: turns array with sequenceNumber, technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, optional answerQuality, optional nonSubstantiveReason, optional rubricJson; plus overallScore and completion. Score every supplied answered turn exactly once. Do not add, remove, or renumber turns. All scores must be numeric 0-100. score must be the average of the four category scores. Reserve score 0 only for empty, copied, refusal, AI-persona, or unrelated answers.",
+            BuildFinalScoringPrompt(request),
+            Math.Clamp(1200 + answeredCount * 650, 2000, 8000));
+
+        if (!result.Success)
+        {
+            return new AIInterviewFinalScoringResponse
+            {
+                Success = false,
+                ErrorMessage = result.ErrorMessage,
+                UsageInfo = result.UsageInfo
+            };
+        }
+
+        var parsed = ParseFinalScoringResponse(result.Content, request?.Turns);
+        if (parsed != null)
+            return parsed with { RawJson = TruncateSafe(result.Content, 6000), UsageInfo = result.UsageInfo };
+
+        var contractReason = BuildStructuredResponseFailureLog(result.Content, "final-score");
+        _logger?.LogWarning("Azure OpenAI final scoring call failed contract validation.");
+        await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview final scoring contract failure", contractReason);
+        return new AIInterviewFinalScoringResponse
+        {
+            Success = false,
+            ErrorMessage = "Final scoring is unavailable.",
+            UsageInfo = result.UsageInfo
+        };
+    }
+
     private async Task<AzureContentCallResult> CallAzureContentAsync(string mode, string systemPrompt, string prompt, int maxTokens)
     {
         var endpointConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiEndpointUrl);
@@ -230,6 +267,53 @@ public partial class InterviewAiClient
         return builder.ToString();
     }
 
+    private static string BuildFinalScoringPrompt(AIInterviewFinalScoringRequest request)
+    {
+        var turns = (request?.Turns ?? new List<AIInterviewFinalScoringTurnRequest>())
+            .OrderBy(turn => turn.SequenceNumber)
+            .Select(turn => new
+            {
+                turn.SequenceNumber,
+                Question = TruncateSafe(turn.Question, 1200),
+                Answer = TruncateSafe(turn.Answer, 2500),
+                CurrentTurnRubricJson = TruncateSafe(turn.CurrentTurnRubricJson, 1600)
+            })
+            .ToList();
+
+        var builder = new StringBuilder();
+        builder.AppendLine("Interview mode: final-score");
+        builder.AppendLine($"Job title: {request?.JobTitle}");
+        builder.AppendLine($"Job context: {TruncateSafe(request?.JobContext, 2500)}");
+        builder.AppendLine($"Difficulty: {request?.Difficulty}");
+        builder.AppendLine($"Global prompt: {request?.Prompt}");
+        builder.AppendLine("Resume profile JSON:");
+        builder.AppendLine(TruncateSafe(request?.ResumeProfileJson, 4000));
+        builder.AppendLine("Answered turns to score, in order:");
+        builder.AppendLine(JsonSerializer.Serialize(turns, ResumePlanSerializerOptions));
+        builder.AppendLine("Response contract:");
+        builder.Append("""
+{
+  "turns": [
+    {
+      "sequenceNumber": 1,
+      "technicalScore": 0,
+      "communicationScore": 0,
+      "professionalismScore": 0,
+      "positiveAttitudeScore": 0,
+      "score": 0,
+      "feedback": "string",
+      "answerQuality": "non_substantive|weak|substantive",
+      "nonSubstantiveReason": "optional string",
+      "rubricJson": {}
+    }
+  ],
+  "overallScore": 0,
+  "completion": "short final report summary"
+}
+""");
+        return builder.ToString();
+    }
+
     private static AIResumeProfileResponse ParseResumeProfileResponse(string content)
     {
         try
@@ -271,6 +355,85 @@ public partial class InterviewAiClient
             Technologies = ParseStringArray(element, "technologies", 10, 80),
             Responsibilities = ParseStringArray(element, "responsibilities", 8, 160),
             Impact = TruncateSafe(TryGetString(element, "impact"), 200)
+        };
+    }
+
+    private static AIInterviewFinalScoringResponse ParseFinalScoringResponse(string content, IList<AIInterviewFinalScoringTurnRequest> expectedTurns)
+    {
+        try
+        {
+            var normalized = ExtractJsonObjectPayload(content);
+            using var document = JsonDocument.Parse(normalized);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("turns", out var turnsElement) || turnsElement.ValueKind != JsonValueKind.Array)
+                return null;
+
+            var expectedSequenceNumbers = (expectedTurns ?? new List<AIInterviewFinalScoringTurnRequest>())
+                .Select(turn => turn.SequenceNumber)
+                .ToHashSet();
+            var turns = turnsElement.EnumerateArray()
+                .Select(ParseFinalScoringTurnResult)
+                .Where(turn => turn != null)
+                .ToList();
+
+            if (turns.Count != expectedSequenceNumbers.Count ||
+                turns.Any(turn => !expectedSequenceNumbers.Contains(turn.SequenceNumber)) ||
+                turns.Any(turn => !turn.Score.HasValue ||
+                    !turn.TechnicalScore.HasValue ||
+                    !turn.CommunicationScore.HasValue ||
+                    !turn.ProfessionalismScore.HasValue ||
+                    !turn.PositiveAttitudeScore.HasValue ||
+                    string.IsNullOrWhiteSpace(turn.Feedback)))
+            {
+                return new AIInterviewFinalScoringResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Final scoring response did not score every answered turn.",
+                    RawJson = TruncateSafe(content, 6000)
+                };
+            }
+
+            var overallScore = TryGetFinalScoringDecimal(root, "overallScore")
+                ?? turns.Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
+            return new AIInterviewFinalScoringResponse
+            {
+                Success = true,
+                Turns = turns,
+                Score = Math.Clamp(overallScore, 0, 100),
+                Completion = TruncateSafe(TryGetString(root, "completion"), 2000),
+                RawJson = TruncateSafe(content, 6000)
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static AIInterviewFinalScoringTurnResult ParseFinalScoringTurnResult(JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+            return null;
+
+        if (!element.TryGetProperty("sequenceNumber", out var sequenceElement) || !sequenceElement.TryGetInt32(out var sequenceNumber))
+            return null;
+
+        var rubricJson = string.Empty;
+        if (element.TryGetProperty("rubricJson", out var rubricElement) && rubricElement.ValueKind != JsonValueKind.Undefined && rubricElement.ValueKind != JsonValueKind.Null)
+            rubricJson = rubricElement.GetRawText();
+
+        return new AIInterviewFinalScoringTurnResult
+        {
+            SequenceNumber = sequenceNumber,
+            TechnicalScore = TryGetFinalScoringDecimal(element, "technicalScore"),
+            CommunicationScore = TryGetFinalScoringDecimal(element, "communicationScore"),
+            ProfessionalismScore = TryGetFinalScoringDecimal(element, "professionalismScore"),
+            PositiveAttitudeScore = TryGetFinalScoringDecimal(element, "positiveAttitudeScore"),
+            Score = TryGetFinalScoringDecimal(element, "score"),
+            Feedback = TruncateSafe(TryGetString(element, "feedback"), 1000),
+            AnswerQuality = TruncateSafe(TryGetString(element, "answerQuality"), 80),
+            NonSubstantiveReason = TruncateSafe(TryGetString(element, "nonSubstantiveReason"), 240),
+            RubricJson = rubricJson
         };
     }
 
@@ -362,6 +525,21 @@ public partial class InterviewAiClient
         return element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : string.Empty;
+    }
+
+    private static decimal? TryGetFinalScoringDecimal(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var property))
+            return null;
+
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetDecimal(out var numeric))
+            return Math.Clamp(numeric, 0, 100);
+
+        if (property.ValueKind == JsonValueKind.String &&
+            decimal.TryParse(property.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
+            return Math.Clamp(parsed, 0, 100);
+
+        return null;
     }
 
     private static string NormalizePlanCategory(string category)
@@ -491,6 +669,57 @@ public partial class InterviewAiClient
             Success = true,
             Questions = questions,
             RawJson = JsonSerializer.Serialize(new { questions }, ResumePlanSerializerOptions)
+        };
+    }
+
+    private AIInterviewFinalScoringResponse BuildMockFinalScoring(AIInterviewFinalScoringRequest request)
+    {
+        var scoredTurns = (request?.Turns ?? new List<AIInterviewFinalScoringTurnRequest>())
+            .OrderBy(turn => turn.SequenceNumber)
+            .Select(turn =>
+            {
+                var score = BuildMockScore(new AIInterviewClientRequest
+                {
+                    JobTitle = request?.JobTitle,
+                    JobContext = request?.JobContext,
+                    Difficulty = request?.Difficulty,
+                    Prompt = request?.Prompt,
+                    Question = turn.Question,
+                    Answer = turn.Answer,
+                    QuestionNumber = turn.SequenceNumber,
+                    ResumeProfileJson = request?.ResumeProfileJson,
+                    CurrentTurnRubricJson = turn.CurrentTurnRubricJson
+                });
+
+                return new AIInterviewFinalScoringTurnResult
+                {
+                    SequenceNumber = turn.SequenceNumber,
+                    TechnicalScore = score.TechnicalScore,
+                    CommunicationScore = score.CommunicationScore,
+                    ProfessionalismScore = score.ProfessionalismScore,
+                    PositiveAttitudeScore = score.PositiveAttitudeScore,
+                    Score = score.Score,
+                    Feedback = score.Feedback,
+                    AnswerQuality = score.AnswerQuality,
+                    NonSubstantiveReason = score.NonSubstantiveReason,
+                    RubricJson = score.RubricJson
+                };
+            })
+            .ToList();
+
+        var overallScore = scoredTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
+        return new AIInterviewFinalScoringResponse
+        {
+            Success = true,
+            Turns = scoredTurns,
+            Score = overallScore,
+            Completion = "Final scoring completed.",
+            RawJson = JsonSerializer.Serialize(new
+            {
+                turns = scoredTurns,
+                overallScore,
+                completion = "Final scoring completed."
+            }, ResumePlanSerializerOptions)
         };
     }
 

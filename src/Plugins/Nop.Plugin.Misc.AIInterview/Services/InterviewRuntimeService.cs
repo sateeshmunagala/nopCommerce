@@ -3261,6 +3261,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
 
         var completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, GetMaxQuestions(session)).ToList();
+        var finalScoringCompletion = aiCompletion;
         if (IsFinalScoringAtCompletionEnabled())
         {
             var finalScoring = await FinalizeInterviewScoringAsync(session, completedTurns, reason);
@@ -3273,9 +3274,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 return finalScoring;
             }
 
-            turns = finalScoring.Turns.Any()
-                ? completedTurns
-                : turns;
+            finalScoringCompletion = finalScoring.Completion;
         }
 
         completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, GetMaxQuestions(session)).ToList();
@@ -3283,7 +3282,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         session.CompletedOnUtc = DateTime.UtcNow;
         session.Score = completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
         session.QuestionScores = JsonSerializer.Serialize(completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
-        session.ReportData = BuildReport(completedTurns, session.Score, reason, aiCompletion);
+        session.ReportData = BuildReport(completedTurns, session.Score, reason, finalScoringCompletion);
         await _sessionService.UpdateInterviewSessionAsync(session);
 
         await PublishCompletionAsync(session);
@@ -3301,7 +3300,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
             Completion = session.ReportData,
             ReportUrl = string.Empty,
-            ReportGenerationInProgress = IsFinalScoringAtCompletionEnabled(),
+            ReportGenerationInProgress = false,
             EstimatedWaitSeconds = IsFinalScoringAtCompletionEnabled() ? 90 : 0,
             Turns = MapTurns(completedTurns)
         };
@@ -3329,71 +3328,107 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         await LogRuntimeIssueAsync(
             NopLogLevel.Information,
-            "AI Interview final scoring started",
+            "AI Interview final scoring started (batch)",
             $"Mode=final-score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}; Reason={BuildSafeValue(reason)}.",
             await ResolveLogCustomerAsync(session));
 
         try
         {
+            if (!answeredTurns.Any())
+            {
+                session.Score = 0;
+                session.QuestionScores = JsonSerializer.Serialize(Array.Empty<decimal>());
+                session.ReportData = BuildReport(answeredTurns, session.Score, reason);
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Information,
+                    "AI Interview final scoring completed (batch)",
+                    $"Mode=final-score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns=0; ScoredTurns=0; ElapsedMs={finalScoringStopwatch.ElapsedMilliseconds}.",
+                    await ResolveLogCustomerAsync(session));
+
+                return new CompleteInterviewResponse
+                {
+                    Success = true,
+                    IsTerminated = true,
+                    Score = session.Score,
+                    Feedback = reason ?? string.Empty,
+                    Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
+                    Completion = string.Empty,
+                    ReportGenerationInProgress = false,
+                    EstimatedWaitSeconds = 90,
+                    Turns = MapTurns(answeredTurns)
+                };
+            }
+
             var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
             var jobTitle = product?.Name ?? await GetJobTitleAsync(session.SourceProductId > 0 ? session.SourceProductId : session.ProductId);
             var jobContext = BuildInterviewContext(session, product);
             var resumeProfileJson = await GetResumeProfileJsonAsync(session, product);
 
-            foreach (var turn in answeredTurns.Where(turn => !turn.Score.HasValue))
+            var finalScoring = await _aiClient.ScoreInterviewAtCompletionAsync(new AIInterviewFinalScoringRequest
             {
-                var evaluation = await _aiClient.ScoreAnswerAsync(new AIInterviewClientRequest
+                JobTitle = jobTitle,
+                JobContext = jobContext,
+                Difficulty = session.Difficulty,
+                Prompt = _settings.Prompt,
+                ResumeProfileJson = resumeProfileJson,
+                Turns = answeredTurns.Select(turn => new AIInterviewFinalScoringTurnRequest
                 {
-                    JobTitle = jobTitle,
-                    JobContext = jobContext,
-                    Difficulty = session.Difficulty,
-                    Prompt = _settings.Prompt,
+                    SequenceNumber = turn.SequenceNumber,
                     Question = turn.QuestionText,
                     Answer = turn.AnswerText,
-                    QuestionNumber = turn.SequenceNumber,
-                    ResumeProfileJson = resumeProfileJson,
-                    CurrentTurnRubricJson = turn.RubricJson,
-                    PreviousQuestions = InterviewTurnNormalizationHelper
-                        .GetCanonicalTurns(turns, GetMaxQuestions(session))
-                        .Select(candidate => candidate.QuestionText)
-                        .ToList(),
-                    PreviousScores = answeredTurns
-                        .Where(candidate => candidate.Id != turn.Id && candidate.Score.HasValue)
-                        .Select(candidate => candidate.Score.Value)
-                        .ToList(),
-                    PreviousTurns = BuildPreviousTurnContext(InterviewTurnNormalizationHelper.GetCanonicalTurns(turns, GetMaxQuestions(session)), turn)
-                });
-                await TrackOpenAiUsageAsync(
-                    session.Id,
-                    turn.Id,
-                    AzureUsageMetricDefaults.UsageKindOpenAiAnswerScoring,
-                    "FinalScoreAnswer",
-                    evaluation?.UsageInfo,
-                    evaluation?.AdditionalUsageInfos,
-                    JsonSerializer.Serialize(new
-                    {
-                        questionNumber = turn.SequenceNumber,
-                        mode = "final-score"
-                    }, StorageSerializerOptions));
+                    CurrentTurnRubricJson = turn.RubricJson
+                }).ToList()
+            });
+            await TrackOpenAiUsageAsync(
+                session.Id,
+                null,
+                AzureUsageMetricDefaults.UsageKindOpenAiAnswerScoring,
+                "ScoreInterviewAtCompletion",
+                finalScoring?.UsageInfo,
+                metadataJson: JsonSerializer.Serialize(new
+                {
+                    answeredTurns = answeredTurns.Count,
+                    mode = "final-score-batch"
+                }, StorageSerializerOptions));
 
-                if (evaluation == null || !evaluation.Success || !evaluation.Score.HasValue)
-                    throw new InvalidOperationException(evaluation?.ErrorMessage ?? "Final scoring missing required score.");
+            if (finalScoring == null || !finalScoring.Success)
+                throw new InvalidOperationException(finalScoring?.ErrorMessage ?? "Final batch scoring failed.");
 
-                turn.Score = Math.Clamp(evaluation.Score.Value, 0, 100);
-                turn.Feedback = evaluation.Feedback;
+            var scoresBySequenceNumber = finalScoring.Turns
+                .GroupBy(turn => turn.SequenceNumber)
+                .ToDictionary(group => group.Key, group => group.First());
+            if (scoresBySequenceNumber.Count != answeredTurns.Count)
+                throw new InvalidOperationException("Final batch scoring did not return one score per answered turn.");
+
+            foreach (var turn in answeredTurns)
+            {
+                if (!scoresBySequenceNumber.TryGetValue(turn.SequenceNumber, out var score) ||
+                    !score.Score.HasValue ||
+                    !score.TechnicalScore.HasValue ||
+                    !score.CommunicationScore.HasValue ||
+                    !score.ProfessionalismScore.HasValue ||
+                    !score.PositiveAttitudeScore.HasValue ||
+                    string.IsNullOrWhiteSpace(score.Feedback))
+                {
+                    throw new InvalidOperationException("Final batch scoring returned an incomplete turn score.");
+                }
+
+                var evaluation = BuildClientResponseFromFinalScoringResult(score, finalScoring.RawJson);
+                turn.Score = Math.Clamp(score.Score.Value, 0, 100);
+                turn.Feedback = score.Feedback;
                 turn.RubricJson = BuildMergedRubricJson(turn.RubricJson, evaluation);
-                turn.RawAIResponseJson = BuildMergedRawAiResponseJson(turn.RawAIResponseJson, evaluation.RawJson);
+                turn.RawAIResponseJson = BuildMergedRawAiResponseJson(turn.RawAIResponseJson, finalScoring.RawJson);
                 await _turnService.UpdateInterviewTurnAsync(turn);
             }
 
             var scoredTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(answeredTurns, GetMaxQuestions(session)).ToList();
             session.Score = scoredTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
             session.QuestionScores = JsonSerializer.Serialize(scoredTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
-            session.ReportData = BuildReport(scoredTurns, session.Score, reason);
+            session.ReportData = BuildReport(scoredTurns, session.Score, reason, finalScoring.Completion);
 
             await LogRuntimeIssueAsync(
                 NopLogLevel.Information,
-                "AI Interview final scoring completed",
+                "AI Interview final scoring completed (batch)",
                 $"Mode=final-score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}; ScoredTurns={scoredTurns.Count(turn => turn.Score.HasValue)}; ElapsedMs={finalScoringStopwatch.ElapsedMilliseconds}.",
                 await ResolveLogCustomerAsync(session));
 
@@ -3404,8 +3439,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 Score = session.Score,
                 Feedback = scoredTurns.LastOrDefault()?.Feedback ?? reason ?? string.Empty,
                 Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
-                Completion = session.ReportData,
-                ReportGenerationInProgress = true,
+                Completion = finalScoring.Completion,
+                ReportGenerationInProgress = false,
                 EstimatedWaitSeconds = 90,
                 Turns = MapTurns(scoredTurns)
             };
@@ -3415,7 +3450,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             _logger?.LogWarning(ex, "AI Interview final scoring failed for session {SessionId}.", session.Id);
             await LogRuntimeIssueAsync(
                 NopLogLevel.Warning,
-                "AI Interview final scoring failed",
+                "AI Interview final scoring failed (batch)",
                 $"Mode=final-score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}; Reason={BuildSafeValue(ex.Message)}; ElapsedMs={finalScoringStopwatch.ElapsedMilliseconds}.",
                 await ResolveLogCustomerAsync(session));
 
@@ -3429,6 +3464,24 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 Turns = MapTurns(answeredTurns)
             };
         }
+    }
+
+    protected static AIInterviewClientResponse BuildClientResponseFromFinalScoringResult(AIInterviewFinalScoringTurnResult score, string rawJson)
+    {
+        return new AIInterviewClientResponse
+        {
+            Success = true,
+            TechnicalScore = score?.TechnicalScore,
+            CommunicationScore = score?.CommunicationScore,
+            ProfessionalismScore = score?.ProfessionalismScore,
+            PositiveAttitudeScore = score?.PositiveAttitudeScore,
+            Score = score?.Score,
+            Feedback = score?.Feedback,
+            AnswerQuality = score?.AnswerQuality,
+            NonSubstantiveReason = score?.NonSubstantiveReason,
+            RubricJson = score?.RubricJson,
+            RawJson = rawJson
+        };
     }
 
     protected virtual async Task PublishCompletionAsync(InterviewSession session)
