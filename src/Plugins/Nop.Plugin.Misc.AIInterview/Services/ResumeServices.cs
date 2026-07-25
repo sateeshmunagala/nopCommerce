@@ -756,7 +756,7 @@ public class ResumeProfileService : IResumeProfileService
             return product.Name;
 
         return string.Equals(session?.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase)
-            ? "Mock Practice Interview"
+            ? "AI Practice Interview"
             : "Interview";
     }
 

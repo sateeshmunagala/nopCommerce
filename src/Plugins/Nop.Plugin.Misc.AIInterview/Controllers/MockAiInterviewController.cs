@@ -727,7 +727,7 @@ public class MockAiInterviewController : BasePluginController
         {
             return (
                 "Plugins.Misc.AIInterview.MockPractice.SelectionRequired",
-                "We couldn't start your mock interview. Please select a difficulty level, a skill, or upload your resume before continuing.");
+                "We couldn't start your AI interview. Please select a difficulty level, a skill, or upload your resume before continuing.");
         }
 
         var distinctMessage = string.Join(" ", validationErrors.Distinct(StringComparer.OrdinalIgnoreCase));
