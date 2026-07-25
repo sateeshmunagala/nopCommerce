@@ -72,6 +72,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly IJobProductAccessService _jobProductAccessService;
     private readonly ICreditDepositNotificationService _creditDepositNotificationService;
     private readonly IDownloadService _downloadService;
+    private readonly IAzureOpenAiChatCompletionAdapter _azureOpenAiChatCompletionAdapter;
 
     public AIInterviewAdminController(ICreditService creditService,
         ISponsorInviteService inviteService,
@@ -98,7 +99,8 @@ public class AIInterviewAdminController : BasePluginController
         IRepository<Product> productRepository = null,
         IJobProductAccessService jobProductAccessService = null,
         ICreditDepositNotificationService creditDepositNotificationService = null,
-        IDownloadService downloadService = null)
+        IDownloadService downloadService = null,
+        IAzureOpenAiChatCompletionAdapter azureOpenAiChatCompletionAdapter = null)
     {
         _creditService = creditService;
         _inviteService = inviteService;
@@ -126,6 +128,7 @@ public class AIInterviewAdminController : BasePluginController
         _jobProductAccessService = jobProductAccessService;
         _creditDepositNotificationService = creditDepositNotificationService;
         _downloadService = downloadService;
+        _azureOpenAiChatCompletionAdapter = azureOpenAiChatCompletionAdapter;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -235,6 +238,78 @@ public class AIInterviewAdminController : BasePluginController
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
         return RedirectToRoute(AIInterviewDefaults.AdminAiServiceRouteName);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> TestAzureOpenAiConnection()
+    {
+        var aiInterviewSettings = await _settingService.LoadSettingAsync<AIInterviewSettings>() ?? _aiInterviewSettings;
+        var endpointConfigured = !string.IsNullOrWhiteSpace(aiInterviewSettings?.AzureOpenAiEndpointUrl);
+        var apiKeyConfigured = !string.IsNullOrWhiteSpace(aiInterviewSettings?.AzureOpenAiApiKey);
+        var deploymentConfigured = !string.IsNullOrWhiteSpace(aiInterviewSettings?.AzureOpenAiDeploymentOrModel);
+        if (!endpointConfigured || !apiKeyConfigured || !deploymentConfigured)
+        {
+            return Json(new
+            {
+                success = false,
+                message = await GetLocalizedTextAsync(
+                    "Plugins.Misc.AIInterview.Admin.AiService.TestConnection.ConfigurationIncomplete",
+                    "Azure OpenAI settings are incomplete. Save endpoint, API key, and deployment/model first.")
+            });
+        }
+
+        try
+        {
+            var adapter = _azureOpenAiChatCompletionAdapter ?? new AzureOpenAiChatCompletionAdapter(aiInterviewSettings);
+            var result = await adapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+            {
+                Mode = "test-connection",
+                OperationName = "llm-test-connection",
+                SystemPrompt = "Reply with JSON only.",
+                UserPrompt = "{\"test\":\"connection\"}",
+                MaxTokens = 32,
+                Temperature = 0f
+            });
+
+            if (result.Success)
+            {
+                return Json(new
+                {
+                    success = true,
+                    message = await GetLocalizedTextAsync(
+                        "Plugins.Misc.AIInterview.Admin.AiService.TestConnection.Success",
+                        "Azure OpenAI connection succeeded.")
+                });
+            }
+
+            _logger.LogWarning(
+                "Azure OpenAI admin test connection failed. FailureKind={FailureKind}; Status={Status}; EndpointHost={EndpointHost}; Deployment={Deployment}.",
+                result.FailureKind,
+                result.StatusCode,
+                result.EndpointHost,
+                SanitizeAdminDiagnosticText(result.DeploymentOrModel));
+
+            return Json(new
+            {
+                success = false,
+                message = string.Format(
+                    await GetLocalizedTextAsync(
+                        "Plugins.Misc.AIInterview.Admin.AiService.TestConnection.Failure",
+                        "Azure OpenAI connection failed. {0}"),
+                    BuildAdminTestConnectionFailureMessage(result))
+            });
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Azure OpenAI admin test connection failed.");
+            return Json(new
+            {
+                success = false,
+                message = await GetLocalizedTextAsync(
+                    "Plugins.Misc.AIInterview.Admin.AiService.TestConnection.Exception",
+                    "Azure OpenAI connection failed. Check endpoint, API key, and deployment/model.")
+            });
+        }
     }
 
     [HttpPost]
@@ -1844,6 +1919,32 @@ public class AIInterviewAdminController : BasePluginController
     protected virtual string BuildProductAdminUrl(int productId)
     {
         return productId > 0 ? Url.Action("Edit", "Product", new { area = AreaNames.ADMIN, id = productId }) : string.Empty;
+    }
+
+    protected static string BuildAdminTestConnectionFailureMessage(AzureOpenAiChatCompletionResult result)
+    {
+        var parts = new List<string>();
+        if (result?.StatusCode > 0)
+            parts.Add($"HTTP {result.StatusCode}");
+        if (!string.IsNullOrWhiteSpace(result?.ErrorCode))
+            parts.Add(SanitizeAdminDiagnosticText(result.ErrorCode));
+        if (!string.IsNullOrWhiteSpace(result?.Reason))
+            parts.Add(SanitizeAdminDiagnosticText(result.Reason));
+
+        return parts.Any()
+            ? string.Join("; ", parts)
+            : "Check endpoint, API key, and deployment/model.";
+    }
+
+    protected static string SanitizeAdminDiagnosticText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var sanitized = value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, "(?i)(api[-_ ]?key|authorization|access[_-]?token|refresh[_-]?token|bearer|subscription[-_ ]?key)\\s*[:=]\\s*\\\"?[^\\\"\\s,;}]+", "$1=<redacted>");
+        sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, "(?i)(sig|signature|code|client_secret)=([^&\\s]+)", "$1=<redacted>");
+        return sanitized.Length <= 180 ? sanitized : sanitized[..180];
     }
 
     protected virtual string BuildVendorAdminUrl(int vendorId)

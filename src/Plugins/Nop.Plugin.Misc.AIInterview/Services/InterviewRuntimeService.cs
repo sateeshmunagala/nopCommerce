@@ -81,15 +81,17 @@ public partial class InterviewAiClient : IAIInterviewClient
     private readonly AIInterviewSettings _settings;
     private readonly MockAIInterviewSettings _mockSettings;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IAzureOpenAiChatCompletionAdapter _azureOpenAiChatCompletionAdapter;
     private readonly IWorkContext _workContext;
     private readonly NopLogger _nopLogger;
     private readonly ILogger<InterviewAiClient> _logger;
 
-    public InterviewAiClient(AIInterviewSettings settings, MockAIInterviewSettings mockSettings, IHttpClientFactory httpClientFactory = null, IWorkContext workContext = null, NopLogger nopLogger = null, ILogger<InterviewAiClient> logger = null)
+    public InterviewAiClient(AIInterviewSettings settings, MockAIInterviewSettings mockSettings, IHttpClientFactory httpClientFactory = null, IWorkContext workContext = null, NopLogger nopLogger = null, ILogger<InterviewAiClient> logger = null, IAzureOpenAiChatCompletionAdapter azureOpenAiChatCompletionAdapter = null)
     {
         _settings = settings;
         _mockSettings = mockSettings;
         _httpClientFactory = httpClientFactory;
+        _azureOpenAiChatCompletionAdapter = azureOpenAiChatCompletionAdapter ?? new AzureOpenAiChatCompletionAdapter(settings);
         _workContext = workContext;
         _nopLogger = nopLogger;
         _logger = logger;
@@ -206,78 +208,50 @@ public partial class InterviewAiClient : IAIInterviewClient
 
         try
         {
-            var endpoint = _settings.AzureOpenAiEndpointUrl.TrimEnd('/');
-            if (!endpoint.Contains("/openai/deployments/", StringComparison.OrdinalIgnoreCase))
-                endpoint = $"{endpoint}/openai/deployments/{_settings.AzureOpenAiDeploymentOrModel.Trim()}/chat/completions?api-version=2024-06-01";
-            else if (!endpoint.Contains("api-version=", StringComparison.OrdinalIgnoreCase))
-                endpoint += endpoint.Contains('?') ? "&api-version=2024-06-01" : "?api-version=2024-06-01";
-
             var prompt = BuildPrompt(request, mode);
-            var payload = new
+            var result = await _azureOpenAiChatCompletionAdapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
             {
-                messages = new object[]
+                Mode = mode,
+                OperationName = BuildAzureOperationName(mode),
+                SystemPrompt = mode == "generate"
+                    ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
+                    : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, optional nextQuestion, completion, optional answerQuality, optional nonSubstantiveReason, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. rubricJson should be a JSON object that repeats the category scores and score. Distinguish answerQuality as non_substantive, weak, or substantive. Reserve score 0 and answerQuality non_substantive only for empty, copied, refusal, AI-persona, or unrelated answers. If the answer attempts the question but is generic, vague, or lacks evidence, classify it as weak and assign low but non-zero scores with concrete feedback.",
+                UserPrompt = prompt,
+                MaxTokens = 400,
+                Temperature = 0.8f
+            });
+
+            if (!result.Success)
+            {
+                var detail = BuildAzureAdapterFailureLog(mode, result);
+                if (string.Equals(result.FailureKind, "azure-openai-http-failure", StringComparison.OrdinalIgnoreCase))
                 {
-                    new
-                    {
-                        role = "system",
-                        content = mode == "generate"
-                            ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
-                            : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, optional nextQuestion, completion, optional answerQuality, optional nonSubstantiveReason, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. rubricJson should be a JSON object that repeats the category scores and score. Distinguish answerQuality as non_substantive, weak, or substantive. Reserve score 0 and answerQuality non_substantive only for empty, copied, refusal, AI-persona, or unrelated answers. If the answer attempts the question but is generic, vague, or lacks evidence, classify it as weak and assign low but non-zero scores with concrete feedback."
-                    },
-                    new { role = "user", content = prompt }
-                },
-                temperature = 0.8,
-                max_tokens = 400
-            };
+                    _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}.", result.StatusCode);
+                    await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", detail);
+                }
+                else
+                {
+                    _logger?.LogWarning("Azure OpenAI call exception.");
+                    await LogAiClientIssueAsync(NopLogLevel.Error, "AI Interview Azure OpenAI exception", detail);
+                }
 
-            using var httpClient = CreateHttpClient();
-            httpClient.DefaultRequestHeaders.Add("api-key", _settings.AzureOpenAiApiKey.Trim());
-            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            var body = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            var result = await httpClient.PostAsync(endpoint, body);
-            var json = await result.Content.ReadAsStringAsync();
-
-            if (!result.IsSuccessStatusCode)
-            {
-                var detail = BuildAzureHttpFailureLog(mode, endpoint, (int)result.StatusCode, result.ReasonPhrase, json);
-                _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}.", result.StatusCode);
-                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", detail);
                 return BuildUnavailableResponse(detail);
             }
 
-            using var document = JsonDocument.Parse(json);
-            var usageInfo = BuildAzureOpenAiUsageInfo(document.RootElement, mode, endpoint);
-            if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+            var usageInfo = result.UsageInfo;
+            if (string.IsNullOrWhiteSpace(result.Content))
             {
-                var detail = BuildAzureContractFailureLog(mode, endpoint, "empty response choices", json);
-                _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty choices.", mode);
-                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
-                return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
-            }
-
-            if (!choices[0].TryGetProperty("message", out var message) || !message.TryGetProperty("content", out var contentProperty))
-            {
-                var detail = BuildAzureContractFailureLog(mode, endpoint, "missing message content", json);
-                _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Missing message content.", mode);
-                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
-                return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
-            }
-
-            var content = contentProperty.GetString();
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                var detail = BuildAzureContractFailureLog(mode, endpoint, "empty response content", json);
+                var detail = BuildAzureContractFailureLog(mode, result.Endpoint, "empty response content", result.ResponseBody);
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty content string.", mode);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
                 return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
             }
 
-            var parsed = ParseStructuredResponse(content);
+            var parsed = ParseStructuredResponse(result.Content);
             if (parsed != null)
                 return parsed with { UsageInfo = usageInfo };
 
-            var contractReason = BuildStructuredResponseFailureLog(content, mode);
+            var contractReason = BuildStructuredResponseFailureLog(result.Content, mode);
             _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON or failed contract parsing.", mode);
             await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", contractReason);
             return BuildUnavailableResponse(contractReason) with { UsageInfo = usageInfo };
@@ -441,6 +415,25 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
             $"ExceptionType={BuildSafeValue(exception?.GetType().Name)}",
             $"ExceptionMessage={SanitizeDiagnosticText(TruncateSafe(exception?.Message, 300))}",
             $"ExceptionDetail={SanitizeDiagnosticText(TruncateSafe(exception?.ToString(), 500))}"
+        }) + ".";
+    }
+
+    protected static string BuildAzureAdapterFailureLog(string mode, AzureOpenAiChatCompletionResult result)
+    {
+        if (string.Equals(result?.FailureKind, "azure-openai-http-failure", StringComparison.OrdinalIgnoreCase))
+            return BuildAzureHttpFailureLog(mode, result?.Endpoint, result?.StatusCode ?? 0, result?.ReasonPhrase, result?.ResponseBody);
+
+        return string.Join("; ", new[]
+        {
+            $"Mode={mode}",
+            $"Operation={BuildAzureOperationName(mode)}",
+            $"FailureKind={BuildSafeValue(result?.FailureKind ?? "azure-openai-exception")}",
+            $"Reason={BuildSafeValue(result?.Reason)}",
+            $"EndpointHost={BuildSanitizedEndpointHost(result?.Endpoint)}",
+            $"Endpoint={BuildSanitizedEndpointValue(result?.Endpoint)}",
+            $"Deployment={BuildSafeValue(result?.DeploymentOrModel)}",
+            $"ExceptionMessage={SanitizeDiagnosticText(TruncateSafe(result?.ErrorMessage, 300))}",
+            $"ExceptionDetail={SanitizeDiagnosticText(TruncateSafe(result?.ResponseBody, 500))}"
         }) + ".";
     }
 

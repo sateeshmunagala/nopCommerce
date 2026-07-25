@@ -30,35 +30,44 @@ public class AzureUsageTrackingTests
         }
     }
 
+    private sealed class FakeAzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapter
+    {
+        private readonly AzureOpenAiChatCompletionResult _result;
+
+        public FakeAzureOpenAiChatCompletionAdapter(AzureOpenAiChatCompletionResult result)
+        {
+            _result = result;
+        }
+
+        public Task<AzureOpenAiChatCompletionResult> CompleteChatAsync(AzureOpenAiChatCompletionRequest request)
+        {
+            return Task.FromResult(_result);
+        }
+    }
+
     [Test]
     public async Task InterviewAiClient_GenerateQuestion_ExtractsAzureUsageMetadata()
     {
-        var responseJson = """
+        var adapter = new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
         {
-          "id": "resp_123",
-          "model": "gpt-4o-mini",
-          "usage": {
-            "prompt_tokens": 123,
-            "completion_tokens": 45,
-            "total_tokens": 168
-          },
-          "choices": [
+            Success = true,
+            Content = "{\"question\":\"Tell me about your background.\",\"complete\":false}",
+            Endpoint = "https://example.openai.azure.com",
+            EndpointHost = "example.openai.azure.com",
+            DeploymentOrModel = "resume-deployment",
+            ModelName = "gpt-4o-mini",
+            ResponseId = "resp_123",
+            UsageInfo = new AzureOpenAiUsageInfo
             {
-              "message": {
-                "content": "{\"question\":\"Tell me about your background.\",\"complete\":false}"
-              }
+                DeploymentOrModel = "resume-deployment",
+                ModelName = "gpt-4o-mini",
+                PromptTokens = 123,
+                CompletionTokens = 45,
+                TotalTokens = 168,
+                RawUsageJson = "{\"prompt_tokens\":123,\"completion_tokens\":45,\"total_tokens\":168}",
+                MetadataJson = "{\"mode\":\"generate\",\"responseId\":\"resp_123\",\"endpoint\":\"example.openai.azure.com/\"}"
             }
-          ]
-        }
-        """;
-
-        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
         });
-        var httpClientFactory = new Mock<IHttpClientFactory>();
-        httpClientFactory.Setup(x => x.CreateClient(It.IsAny<string>()))
-            .Returns(new HttpClient(handler, disposeHandler: false));
 
         var client = new InterviewAiClient(
             new AIInterviewSettings
@@ -68,7 +77,7 @@ public class AzureUsageTrackingTests
                 AzureOpenAiDeploymentOrModel = "resume-deployment"
             },
             new MockAIInterviewSettings { UseMockResponses = false },
-            httpClientFactory.Object);
+            azureOpenAiChatCompletionAdapter: adapter);
 
         var response = await client.GenerateQuestionAsync(new AIInterviewClientRequest
         {

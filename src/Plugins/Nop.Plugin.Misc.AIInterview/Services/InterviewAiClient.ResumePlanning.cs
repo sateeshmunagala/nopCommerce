@@ -105,63 +105,35 @@ public partial class InterviewAiClient
 
         try
         {
-            var endpoint = _settings.AzureOpenAiEndpointUrl.TrimEnd('/');
-            if (!endpoint.Contains("/openai/deployments/", StringComparison.OrdinalIgnoreCase))
-                endpoint = $"{endpoint}/openai/deployments/{_settings.AzureOpenAiDeploymentOrModel.Trim()}/chat/completions?api-version=2024-06-01";
-            else if (!endpoint.Contains("api-version=", StringComparison.OrdinalIgnoreCase))
-                endpoint += endpoint.Contains('?') ? "&api-version=2024-06-01" : "?api-version=2024-06-01";
-
-            var payload = new
+            var result = await _azureOpenAiChatCompletionAdapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
             {
-                messages = new object[]
-                {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = prompt }
-                },
-                temperature = 0.8,
-                max_tokens = maxTokens
-            };
+                Mode = mode,
+                OperationName = BuildAzureOperationName(mode),
+                SystemPrompt = systemPrompt,
+                UserPrompt = prompt,
+                MaxTokens = maxTokens,
+                Temperature = 0.8f
+            });
 
-            using var httpClient = CreateHttpClient();
-            httpClient.DefaultRequestHeaders.Add("api-key", _settings.AzureOpenAiApiKey.Trim());
-            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            using var body = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            var response = await httpClient.PostAsync(endpoint, body);
-            var json = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
+            if (!result.Success)
             {
-                var detail = BuildAzureHttpFailureLog(mode, endpoint, (int)response.StatusCode, response.ReasonPhrase, json);
-                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", detail);
+                var detail = BuildAzureAdapterFailureLog(mode, result);
+                var shortMessage = string.Equals(result.FailureKind, "azure-openai-http-failure", StringComparison.OrdinalIgnoreCase)
+                    ? "AI Interview Azure OpenAI HTTP failure"
+                    : "AI Interview Azure OpenAI exception";
+                await LogAiClientIssueAsync(NopLogLevel.Warning, shortMessage, detail);
                 return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", null);
             }
 
-            using var document = JsonDocument.Parse(json);
-            var usageInfo = BuildAzureOpenAiUsageInfo(document.RootElement, mode, endpoint);
-            if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+            var usageInfo = result.UsageInfo;
+            if (string.IsNullOrWhiteSpace(result.Content))
             {
-                var detail = BuildAzureContractFailureLog(mode, endpoint, "empty response choices", json);
+                var detail = BuildAzureContractFailureLog(mode, result.Endpoint, "empty response content", result.ResponseBody);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
                 return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", usageInfo);
             }
 
-            if (!choices[0].TryGetProperty("message", out var message) || !message.TryGetProperty("content", out var contentProperty))
-            {
-                var detail = BuildAzureContractFailureLog(mode, endpoint, "missing message content", json);
-                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
-                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", usageInfo);
-            }
-
-            var content = contentProperty.GetString();
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                var detail = BuildAzureContractFailureLog(mode, endpoint, "empty response content", json);
-                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
-                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", usageInfo);
-            }
-
-            return new AzureContentCallResult(true, content, string.Empty, usageInfo);
+            return new AzureContentCallResult(true, result.Content, string.Empty, usageInfo);
         }
         catch (JsonException ex)
         {

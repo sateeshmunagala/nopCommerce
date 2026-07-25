@@ -33,8 +33,8 @@ public partial class InterviewAiClient
                 };
         }
 
-        var promptTokens = TryGetUsageInt(usageElement, "prompt_tokens");
-        var completionTokens = TryGetUsageInt(usageElement, "completion_tokens");
+        var promptTokens = TryGetUsageInt(usageElement, "prompt_tokens", "input_tokens");
+        var completionTokens = TryGetUsageInt(usageElement, "completion_tokens", "output_tokens");
         var totalTokens = TryGetUsageInt(usageElement, "total_tokens");
         if (totalTokens <= 0)
             totalTokens = promptTokens + completionTokens;
@@ -56,16 +56,19 @@ public partial class InterviewAiClient
         };
     }
 
-    protected static int TryGetUsageInt(JsonElement element, string propertyName)
+    protected static int TryGetUsageInt(JsonElement element, params string[] propertyNames)
     {
-        if (!element.TryGetProperty(propertyName, out var property))
-            return 0;
+        foreach (var propertyName in propertyNames ?? Array.Empty<string>())
+        {
+            if (!element.TryGetProperty(propertyName, out var property))
+                continue;
 
-        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var number))
-            return Math.Max(0, number);
+            if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var number))
+                return Math.Max(0, number);
 
-        if (property.ValueKind == JsonValueKind.String && int.TryParse(property.GetString(), out number))
-            return Math.Max(0, number);
+            if (property.ValueKind == JsonValueKind.String && int.TryParse(property.GetString(), out number))
+                return Math.Max(0, number);
+        }
 
         return 0;
     }

@@ -86,6 +86,40 @@ public interface IAIInterviewClient
     Task<AIInterviewClientResponse> ScoreAnswerAsync(AIInterviewClientRequest request);
 }
 
+public interface IAzureOpenAiChatCompletionAdapter
+{
+    Task<AzureOpenAiChatCompletionResult> CompleteChatAsync(AzureOpenAiChatCompletionRequest request);
+}
+
+public sealed record AzureOpenAiChatCompletionRequest
+{
+    public string Mode { get; init; }
+    public string OperationName { get; init; }
+    public string SystemPrompt { get; init; }
+    public string UserPrompt { get; init; }
+    public int MaxTokens { get; init; }
+    public float Temperature { get; init; } = 0.8f;
+}
+
+public sealed record AzureOpenAiChatCompletionResult
+{
+    public bool Success { get; init; }
+    public string Content { get; init; }
+    public string FailureKind { get; init; }
+    public string Reason { get; init; }
+    public int? StatusCode { get; init; }
+    public string ReasonPhrase { get; init; }
+    public string ErrorCode { get; init; }
+    public string ErrorMessage { get; init; }
+    public string ResponseBody { get; init; }
+    public string Endpoint { get; init; }
+    public string EndpointHost { get; init; }
+    public string DeploymentOrModel { get; init; }
+    public string ModelName { get; init; }
+    public string ResponseId { get; init; }
+    public AzureOpenAiUsageInfo UsageInfo { get; init; }
+}
+
 public sealed record AzureOpenAiUsageInfo
 {
     public string DeploymentOrModel { get; init; }
