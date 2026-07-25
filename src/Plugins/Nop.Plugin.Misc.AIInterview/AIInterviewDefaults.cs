@@ -83,7 +83,7 @@ public static class AIInterviewDefaults
 
     public static string JobProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.JobDetails.cshtml";
 
-    public static string MockPracticeProductTemplateName => "AI Interview Mock Practice";
+    public static string MockPracticeProductTemplateName => "AI Interview Practice";
 
     public static string MockPracticeProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.MockPractice.cshtml";
 
