@@ -41,8 +41,11 @@ public class AzureUsageTrackingTests
             _result = result;
         }
 
+        public List<AzureOpenAiChatCompletionRequest> Requests { get; } = new();
+
         public Task<AzureOpenAiChatCompletionResult> CompleteChatAsync(AzureOpenAiChatCompletionRequest request)
         {
+            Requests.Add(request);
             return Task.FromResult(_result);
         }
     }
@@ -119,6 +122,96 @@ public class AzureUsageTrackingTests
         Assert.That(usageDocument.RootElement.GetProperty("prompt_tokens").GetInt32(), Is.EqualTo(123));
         Assert.That(usageDocument.RootElement.GetProperty("completion_tokens").GetInt32(), Is.EqualTo(45));
         Assert.That(usageDocument.RootElement.GetProperty("total_tokens").GetInt32(), Is.EqualTo(168));
+    }
+
+    [Test]
+    public async Task InterviewAiClient_FinalBatchScoring_ScoresAllAnsweredTurnsWithOneCall()
+    {
+        var adapter = new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
+        {
+            Success = true,
+            Content = """
+{
+  "turns": [
+    {"sequenceNumber":1,"technicalScore":80,"communicationScore":82,"professionalismScore":84,"positiveAttitudeScore":86,"score":83,"feedback":"Good project detail.","rubricJson":{"score":83}},
+    {"sequenceNumber":2,"technicalScore":70,"communicationScore":72,"professionalismScore":74,"positiveAttitudeScore":76,"score":73,"feedback":"Adequate technical answer.","rubricJson":{"score":73}}
+  ],
+  "overallScore":78,
+  "completion":"Batch final scoring complete."
+}
+""",
+            UsageInfo = new AzureOpenAiUsageInfo { PromptTokens = 200, CompletionTokens = 80, TotalTokens = 280 }
+        });
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            azureOpenAiChatCompletionAdapter: adapter);
+
+        var response = await client.ScoreInterviewAtCompletionAsync(new AIInterviewFinalScoringRequest
+        {
+            JobTitle = "Developer",
+            Turns = new List<AIInterviewFinalScoringTurnRequest>
+            {
+                new() { SequenceNumber = 1, Question = "Q1", Answer = "A1" },
+                new() { SequenceNumber = 2, Question = "Q2", Answer = "A2" }
+            }
+        });
+
+        Assert.That(response.Success, Is.True);
+        Assert.That(response.Turns.Count, Is.EqualTo(2));
+        Assert.That(response.Score, Is.EqualTo(78));
+        Assert.That(response.Completion, Is.EqualTo("Batch final scoring complete."));
+        Assert.That(response.UsageInfo.TotalTokens, Is.EqualTo(280));
+        Assert.That(adapter.Requests.Count, Is.EqualTo(1));
+        Assert.That(adapter.Requests[0].Mode, Is.EqualTo("final-score"));
+        Assert.That(adapter.Requests[0].UserPrompt, Does.Contain("\"sequenceNumber\":1"));
+        Assert.That(adapter.Requests[0].UserPrompt, Does.Contain("\"sequenceNumber\":2"));
+    }
+
+    [Test]
+    public async Task InterviewAiClient_FinalBatchScoring_RejectsIncompleteTurnScorePayload()
+    {
+        var adapter = new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
+        {
+            Success = true,
+            Content = """
+{
+  "turns": [
+    {"sequenceNumber":1,"technicalScore":80,"communicationScore":82,"professionalismScore":84,"positiveAttitudeScore":86,"score":83,"feedback":"Good project detail."},
+    {"sequenceNumber":2,"technicalScore":70,"communicationScore":72,"professionalismScore":74,"positiveAttitudeScore":76}
+  ],
+  "overallScore":78,
+  "completion":"Incomplete."
+}
+"""
+        });
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            azureOpenAiChatCompletionAdapter: adapter);
+
+        var response = await client.ScoreInterviewAtCompletionAsync(new AIInterviewFinalScoringRequest
+        {
+            JobTitle = "Developer",
+            Turns = new List<AIInterviewFinalScoringTurnRequest>
+            {
+                new() { SequenceNumber = 1, Question = "Q1", Answer = "A1" },
+                new() { SequenceNumber = 2, Question = "Q2", Answer = "A2" }
+            }
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ErrorMessage, Does.Contain("score every answered turn").Or.Contain("Final scoring is unavailable"));
     }
 
     [TestCase("api-key=secret-key failed", "api-key=<redacted>", "secret-key")]

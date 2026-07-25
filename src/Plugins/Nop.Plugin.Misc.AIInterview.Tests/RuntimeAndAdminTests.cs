@@ -1147,6 +1147,204 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task RuntimeService_SubmitAnswer_FinalScoringFlagOn_BypassesPerAnswerScoring()
+    {
+        var session = new InterviewSession
+        {
+            Id = 301,
+            Token = "submit-final-on",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10),
+            QuestionCount = 2
+        };
+        var turns = new List<InterviewTurn>
+        {
+            new() { Id = 1, InterviewSessionId = session.Id, SequenceNumber = 1, QuestionText = "Describe your project architecture.", AskedOnUtc = DateTime.UtcNow },
+            new() { Id = 2, InterviewSessionId = session.Id, SequenceNumber = 2, QuestionText = "How did you test it?", AskedOnUtc = DateTime.UtcNow }
+        };
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(turns);
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>())).Returns(Task.CompletedTask);
+        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        var service = CreateRuntimeService(turnService, aiClient, new AIInterviewSettings { EnableFinalScoringAtCompletion = true, Prompt = "Be concise" });
+
+        var response = await service.SubmitAnswerAsync(new SubmitInterviewAnswerRequest
+        {
+            Token = session.Token,
+            Answer = "I designed APIs with queues, monitoring, and rollback plans.",
+            TurnId = 1,
+            SequenceNumber = 1
+        });
+
+        Assert.That(response.Success, Is.True);
+        Assert.That(response.IsTerminated, Is.False);
+        Assert.That(response.Question, Is.EqualTo("How did you test it?"));
+        Assert.That(turns[0].AnswerText, Is.Not.Empty);
+        Assert.That(turns[0].Score, Is.Null);
+        aiClient.Verify(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+        aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task RuntimeService_SubmitAnswer_FinalScoringFlagOff_UsesLegacyPerAnswerScoring()
+    {
+        var session = new InterviewSession
+        {
+            Id = 302,
+            Token = "submit-final-off",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10),
+            QuestionCount = 2
+        };
+        var turns = new List<InterviewTurn>
+        {
+            new() { Id = 1, InterviewSessionId = session.Id, SequenceNumber = 1, QuestionText = "Describe a production issue you solved.", AskedOnUtc = DateTime.UtcNow },
+            new() { Id = 2, InterviewSessionId = session.Id, SequenceNumber = 2, QuestionText = "How did you prevent regressions?", AskedOnUtc = DateTime.UtcNow }
+        };
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(turns);
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>())).Returns(Task.CompletedTask);
+        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse
+            {
+                Success = true,
+                Score = 82,
+                TechnicalScore = 80,
+                CommunicationScore = 82,
+                ProfessionalismScore = 84,
+                PositiveAttitudeScore = 82,
+                Feedback = "Good answer.",
+                RubricJson = "{\"score\":82}",
+                RawJson = "{\"score\":82}"
+            });
+        var service = CreateRuntimeService(turnService, aiClient, new AIInterviewSettings { EnableFinalScoringAtCompletion = false, Prompt = "Be concise" });
+
+        var response = await service.SubmitAnswerAsync(new SubmitInterviewAnswerRequest
+        {
+            Token = session.Token,
+            Answer = "I isolated the regression, shipped a fix, and added automated coverage.",
+            TurnId = 1,
+            SequenceNumber = 1
+        });
+
+        Assert.That(response.Success, Is.True);
+        Assert.That(response.IsTerminated, Is.False);
+        Assert.That(turns[0].Score, Is.EqualTo(82));
+        aiClient.Verify(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()), Times.Once);
+        aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task RuntimeService_CompleteInterview_FinalBatchScoring_UsesAnsweredTurnsOnlyAndReturnsSynchronousFlags()
+    {
+        var session = new InterviewSession
+        {
+            Id = 303,
+            Token = "complete-partial",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10),
+            QuestionCount = 3
+        };
+        var turns = new List<InterviewTurn>
+        {
+            new() { Id = 1, InterviewSessionId = session.Id, SequenceNumber = 1, QuestionText = "Q1", AnswerText = "A1 with concrete project details.", AskedOnUtc = DateTime.UtcNow, AnsweredOnUtc = DateTime.UtcNow },
+            new() { Id = 2, InterviewSessionId = session.Id, SequenceNumber = 2, QuestionText = "Q2", AnswerText = "A2 with testing and monitoring details.", AskedOnUtc = DateTime.UtcNow, AnsweredOnUtc = DateTime.UtcNow },
+            new() { Id = 3, InterviewSessionId = session.Id, SequenceNumber = 3, QuestionText = "Q3 pending", AskedOnUtc = DateTime.UtcNow }
+        };
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(turns);
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>())).Returns(Task.CompletedTask);
+        aiClient.Setup(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()))
+            .ReturnsAsync(new AIInterviewFinalScoringResponse
+            {
+                Success = true,
+                Completion = "Final summary.",
+                Turns = new List<AIInterviewFinalScoringTurnResult>
+                {
+                    BuildFinalScore(1, 80),
+                    BuildFinalScore(2, 90)
+                }
+            });
+        var service = CreateRuntimeService(turnService, aiClient, new AIInterviewSettings { EnableFinalScoringAtCompletion = true, Prompt = "Be concise" });
+
+        var response = await service.CompleteInterviewAsync(session.Token, "Stopped by user");
+
+        Assert.That(response.Success, Is.True);
+        Assert.That(response.IsTerminated, Is.True);
+        Assert.That(response.ReportGenerationInProgress, Is.False);
+        Assert.That(response.Turns.Count, Is.EqualTo(2));
+        Assert.That(session.IsActive, Is.False);
+        Assert.That(session.Score, Is.EqualTo(85));
+        Assert.That(session.ReportData, Does.Contain("Stopped by user"));
+        var scores = System.Text.Json.JsonSerializer.Deserialize<List<decimal>>(session.QuestionScores);
+        Assert.That(scores, Is.EqualTo(new List<decimal> { 80, 90 }));
+        aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.Is<AIInterviewFinalScoringRequest>(request =>
+            request.Turns.Count == 2 &&
+            request.Turns.All(turn => turn.SequenceNumber == 1 || turn.SequenceNumber == 2))), Times.Once);
+        aiClient.Verify(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task RuntimeService_CompleteInterview_FinalBatchScoringRejectsIncompleteTurnScores()
+    {
+        var session = new InterviewSession
+        {
+            Id = 304,
+            Token = "complete-incomplete",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10),
+            QuestionCount = 2
+        };
+        var turns = new List<InterviewTurn>
+        {
+            new() { Id = 1, InterviewSessionId = session.Id, SequenceNumber = 1, QuestionText = "Q1", AnswerText = "A1 with real detail.", AskedOnUtc = DateTime.UtcNow, AnsweredOnUtc = DateTime.UtcNow },
+            new() { Id = 2, InterviewSessionId = session.Id, SequenceNumber = 2, QuestionText = "Q2", AnswerText = "A2 with real detail.", AskedOnUtc = DateTime.UtcNow, AnsweredOnUtc = DateTime.UtcNow }
+        };
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(turns);
+        aiClient.Setup(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()))
+            .ReturnsAsync(new AIInterviewFinalScoringResponse
+            {
+                Success = true,
+                Turns = new List<AIInterviewFinalScoringTurnResult>
+                {
+                    BuildFinalScore(1, 80)
+                }
+            });
+        var service = CreateRuntimeService(turnService, aiClient, new AIInterviewSettings { EnableFinalScoringAtCompletion = true, Prompt = "Be concise" });
+
+        var response = await service.CompleteInterviewAsync(session.Token, "Stopped by user");
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.IsTerminated, Is.False);
+        Assert.That(session.IsActive, Is.True);
+        Assert.That(turns.All(turn => turn.Score == null), Is.True);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public void RuntimeView_UsesApprovedReportGenerationCopyAndClearsWaitingTimerOnFailure()
+    {
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+
+        Assert.That(runtimeViewText, Does.Contain("Report is being generated. Please wait and also you will receive an email shortly once report is generated."));
+        Assert.That(runtimeViewText, Does.Contain("startReportGenerationWaitingState();"));
+        Assert.That(runtimeViewText, Does.Contain("clearCompletedRedirectState();"));
+        Assert.That(runtimeViewText, Does.Contain("Unable to stop interview."));
+        Assert.That(runtimeViewText, Does.Contain("Unable to submit answer."));
+    }
+
+    [Test]
     public void RuntimeView_Contains_Recording_And_Upload_Hooks()
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
@@ -2610,6 +2808,41 @@ public class RuntimeAndAdminTests
     private static T GetJsonValue<T>(JsonResult json, string propertyName)
     {
         return (T)json.Value.GetType().GetProperty(propertyName).GetValue(json.Value, null);
+    }
+
+    private InterviewRuntimeService CreateRuntimeService(Mock<IInterviewTurnService> turnService, Mock<IAIInterviewClient> aiClient, AIInterviewSettings settings)
+    {
+        return new InterviewRuntimeService(
+            _sessionService.Object,
+            turnService.Object,
+            aiClient.Object,
+            _productService.Object,
+            _customerService.Object,
+            new Mock<IApplicationService>().Object,
+            new Mock<IResumeProfileService>().Object,
+            new Mock<IAzureUsageService>().Object,
+            _localizationService.Object,
+            settings,
+            new MockAIInterviewSettings { UseMockResponses = false },
+            new Mock<System.Net.Http.IHttpClientFactory>().Object,
+            _workContext.Object,
+            _eventPublisher.Object,
+            _nopLogger.Object);
+    }
+
+    private static AIInterviewFinalScoringTurnResult BuildFinalScore(int sequenceNumber, decimal score)
+    {
+        return new AIInterviewFinalScoringTurnResult
+        {
+            SequenceNumber = sequenceNumber,
+            TechnicalScore = score,
+            CommunicationScore = score,
+            ProfessionalismScore = score,
+            PositiveAttitudeScore = score,
+            Score = score,
+            Feedback = $"Feedback {sequenceNumber}.",
+            RubricJson = $"{{\"score\":{score}}}"
+        };
     }
 
     private AIInterviewAdminController CreateAiInterviewAdminController(AIInterviewSettings settings, AzureOpenAiChatCompletionResult adapterResult = null, IAzureOpenAiChatCompletionAdapter adapter = null)
