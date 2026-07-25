@@ -11,9 +11,11 @@ using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Plugin.Misc.AIInterview.Events;
 using Nop.Core.Domain.Media;
+using Nop.Data;
 using Nop.Services.Catalog;
 using Nop.Services.Configuration;
 using Nop.Services.Customers;
+using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Media;
@@ -45,6 +47,21 @@ public class RuntimeAndAdminTests
 
     private Mock<IProductService> _productService;
     private SponsorInviteService _inviteServiceImplementation;
+
+    private sealed class FakeAzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapter
+    {
+        private readonly AzureOpenAiChatCompletionResult _result;
+
+        public FakeAzureOpenAiChatCompletionAdapter(AzureOpenAiChatCompletionResult result)
+        {
+            _result = result;
+        }
+
+        public Task<AzureOpenAiChatCompletionResult> CompleteChatAsync(AzureOpenAiChatCompletionRequest request)
+        {
+            return Task.FromResult(_result);
+        }
+    }
 
     [SetUp]
     public void SetUp()
@@ -1803,6 +1820,175 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Admin_TestAzureOpenAiConnection_Success_ReturnsConciseJson()
+    {
+        var settings = new AIInterviewSettings
+        {
+            AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+            AzureOpenAiApiKey = "secret-key",
+            AzureOpenAiDeploymentOrModel = "deployment"
+        };
+        _settingService.Setup(service => service.LoadSettingAsync<AIInterviewSettings>(0))
+            .ReturnsAsync(settings);
+        var controller = CreateAiInterviewAdminController(settings, new AzureOpenAiChatCompletionResult
+        {
+            Success = true,
+            Content = "{\"ok\":true}",
+            Endpoint = "https://example.openai.azure.com/",
+            EndpointHost = "example.openai.azure.com",
+            DeploymentOrModel = "deployment"
+        });
+
+        var result = (JsonResult)await controller.TestAzureOpenAiConnection();
+
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.True);
+        Assert.That(GetJsonValue<string>(result, "message"), Is.EqualTo("Azure OpenAI connection succeeded."));
+    }
+
+    [Test]
+    public async Task Admin_TestAzureOpenAiConnection_ConfigIncomplete_ReturnsFailureWithoutAdapterCall()
+    {
+        var controller = CreateAiInterviewAdminController(new AIInterviewSettings
+        {
+            AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+            AzureOpenAiDeploymentOrModel = "deployment"
+        }, new AzureOpenAiChatCompletionResult { Success = true });
+
+        var result = (JsonResult)await controller.TestAzureOpenAiConnection();
+
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(result, "message"), Is.EqualTo("Azure OpenAI settings are incomplete. Save endpoint, API key, and deployment/model first."));
+    }
+
+    [Test]
+    public async Task Admin_TestAzureOpenAiConnection_AdapterFailure_ReturnsSafeFailure()
+    {
+        var settings = new AIInterviewSettings
+        {
+            AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+            AzureOpenAiApiKey = "secret-key",
+            AzureOpenAiDeploymentOrModel = "deployment"
+        };
+        var controller = CreateAiInterviewAdminController(settings, new AzureOpenAiChatCompletionResult
+        {
+            Success = false,
+            FailureKind = "azure-openai-http-failure",
+            Reason = "http failure",
+            StatusCode = 401,
+            ErrorCode = "Unauthorized",
+            ErrorMessage = "api-key=secret-key failed",
+            ResponseBody = "api-key=secret-key failed",
+            Endpoint = "https://example.openai.azure.com/",
+            EndpointHost = "example.openai.azure.com",
+            DeploymentOrModel = "deployment"
+        });
+
+        var result = (JsonResult)await controller.TestAzureOpenAiConnection();
+        var serialized = System.Text.Json.JsonSerializer.Serialize(result.Value);
+
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(result, "message"), Does.Contain("Azure OpenAI connection failed."));
+        Assert.That(GetJsonValue<string>(result, "message"), Does.Contain("HTTP 401"));
+        Assert.That(serialized, Does.Not.Contain("secret-key"));
+        Assert.That(serialized, Does.Not.Contain("api-key=secret-key"));
+    }
+
+    [Test]
+    public async Task InterviewAiClient_GenerateQuestion_AdapterFailure_ReturnsUnavailableAndLogsSafeDetails()
+    {
+        var nopLogger = new Mock<ILogger>();
+        nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            nopLogger: nopLogger.Object,
+            azureOpenAiChatCompletionAdapter: new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
+            {
+                Success = false,
+                FailureKind = "azure-openai-http-failure",
+                Reason = "http failure",
+                StatusCode = 429,
+                ReasonPhrase = "Too Many Requests",
+                ResponseBody = "{\"error\":{\"code\":\"rate_limit\",\"message\":\"api-key=secret-key throttled\"}}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "deployment"
+            }));
+
+        var response = await client.GenerateQuestionAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Difficulty = "Medium",
+            Prompt = "Prompt"
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ErrorMessage, Does.Contain("AI service unavailable"));
+        Assert.That(response.ErrorMessage, Does.Contain("api-key=<redacted>"));
+        Assert.That(response.ErrorMessage, Does.Not.Contain("secret-key"));
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI HTTP failure",
+            It.Is<string>(message =>
+                message.Contains("FailureKind=azure-openai-http-failure") &&
+                message.Contains("EndpointHost=example.openai.azure.com") &&
+                !message.Contains("secret-key")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task InterviewAiClient_ScoreAnswer_AdapterFailure_ReturnsUnavailableAndDoesNotLeakSecret()
+    {
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            azureOpenAiChatCompletionAdapter: new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
+            {
+                Success = false,
+                FailureKind = "azure-openai-exception",
+                Reason = "RequestFailedException",
+                ErrorMessage = "authorization=secret-key failed",
+                ResponseBody = "authorization=secret-key failed",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "deployment"
+            }));
+
+        var response = await client.ScoreAnswerAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Question = "Q1",
+            Answer = "A1"
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ErrorMessage, Does.Contain("AI service unavailable"));
+        Assert.That(response.ErrorMessage, Does.Contain("authorization=<redacted>"));
+        Assert.That(response.ErrorMessage, Does.Not.Contain("secret-key"));
+    }
+
+    [Test]
+    public void AiService_View_Shows_AzureOpenAi_ConfigurationHints()
+    {
+        var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "AiService.cshtml"));
+
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiEndpointUrl.Hint"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel.Hint"));
+        Assert.That(viewText, Does.Contain("TestAzureOpenAiConnection"));
+    }
+
+    [Test]
     public async Task Admin_Invite_Validation_InvalidAttempts()
     {
         _customerService.Setup(x => x.GetCustomerByIdAsync(1)).ReturnsAsync(new Customer { Id = 1, VendorId = 1 });
@@ -1963,6 +2149,36 @@ public class RuntimeAndAdminTests
     private static T GetJsonValue<T>(JsonResult json, string propertyName)
     {
         return (T)json.Value.GetType().GetProperty(propertyName).GetValue(json.Value, null);
+    }
+
+    private AIInterviewAdminController CreateAiInterviewAdminController(AIInterviewSettings settings, AzureOpenAiChatCompletionResult adapterResult)
+    {
+        _settingService.Setup(service => service.LoadSettingAsync<AIInterviewSettings>(0))
+            .ReturnsAsync(settings);
+        _localizationService.Setup(service => service.GetResourceAsync(It.IsAny<string>()))
+            .ReturnsAsync((string key) => key);
+
+        return new AIInterviewAdminController(
+            _creditService.Object,
+            _inviteService.Object,
+            new Mock<IApplicationService>().Object,
+            _sessionService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            _localizationService.Object,
+            _notificationService.Object,
+            new Mock<IDateTimeHelper>().Object,
+            new Mock<Microsoft.Extensions.Logging.ILogger<AIInterviewAdminController>>().Object,
+            _workContext.Object,
+            _settingService.Object,
+            new Mock<IRepository<Customer>>().Object,
+            new Mock<IRepository<CreditWallet>>().Object,
+            new Mock<IRepository<CreditLedgerEntry>>().Object,
+            new Mock<IRepository<CreditPurchaseGrant>>().Object,
+            settings,
+            _mockAIInterviewSettings,
+            azureOpenAiChatCompletionAdapter: new FakeAzureOpenAiChatCompletionAdapter(adapterResult));
     }
 
     [Test]

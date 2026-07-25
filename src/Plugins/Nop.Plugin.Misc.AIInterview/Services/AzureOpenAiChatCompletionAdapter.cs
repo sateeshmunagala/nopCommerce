@@ -1,5 +1,6 @@
 using System.ClientModel;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Azure;
 using Azure.AI.OpenAI;
 using OpenAI.Chat;
@@ -59,10 +60,10 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
                 FailureKind = "azure-openai-http-failure",
                 Reason = "http failure",
                 StatusCode = ex.Status,
-                ReasonPhrase = ex.Message,
-                ErrorCode = ex.ErrorCode,
-                ErrorMessage = ex.Message,
-                ResponseBody = ex.Message,
+                ReasonPhrase = SanitizeDiagnosticText(ex.Message),
+                ErrorCode = SanitizeDiagnosticText(ex.ErrorCode),
+                ErrorMessage = SanitizeDiagnosticText(ex.Message),
+                ResponseBody = SanitizeDiagnosticText(ex.Message),
                 Endpoint = endpoint.ToString(),
                 EndpointHost = endpoint.Host,
                 DeploymentOrModel = deploymentOrModel
@@ -74,9 +75,9 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             {
                 Success = false,
                 FailureKind = "azure-openai-exception",
-                Reason = ex.GetType().Name,
-                ErrorMessage = ex.Message,
-                ResponseBody = ex.ToString(),
+                Reason = SanitizeDiagnosticText(ex.GetType().Name),
+                ErrorMessage = SanitizeDiagnosticText(ex.Message),
+                ResponseBody = SanitizeDiagnosticText(ex.ToString()),
                 Endpoint = endpoint.ToString(),
                 EndpointHost = endpoint.Host,
                 DeploymentOrModel = deploymentOrModel
@@ -131,5 +132,16 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
                 endpoint = endpoint == null ? "<empty>" : $"{endpoint.Host}/"
             })
         };
+    }
+
+    private static string SanitizeDiagnosticText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var sanitized = value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        sanitized = Regex.Replace(sanitized, "(?i)(api[-_ ]?key|authorization|access[_-]?token|refresh[_-]?token|bearer|subscription[-_ ]?key)\\s*[:=]\\s*\\\"?[^\\\"\\s,;}]+", "$1=<redacted>");
+        sanitized = Regex.Replace(sanitized, "(?i)(sig|signature|code|client_secret)=([^&\\s]+)", "$1=<redacted>");
+        return sanitized.Length <= 1000 ? sanitized : sanitized[..1000];
     }
 }

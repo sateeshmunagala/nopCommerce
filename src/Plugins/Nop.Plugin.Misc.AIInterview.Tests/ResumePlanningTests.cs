@@ -25,6 +25,21 @@ namespace Nop.Plugin.Misc.AIInterview.Tests;
 [TestFixture]
 public class ResumePlanningTests
 {
+    private sealed class FakeAzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapter
+    {
+        private readonly AzureOpenAiChatCompletionResult _result;
+
+        public FakeAzureOpenAiChatCompletionAdapter(AzureOpenAiChatCompletionResult result)
+        {
+            _result = result;
+        }
+
+        public Task<AzureOpenAiChatCompletionResult> CompleteChatAsync(AzureOpenAiChatCompletionRequest request)
+        {
+            return Task.FromResult(_result);
+        }
+    }
+
     private sealed class FakeAzureDocumentIntelligenceResumeReader : IAzureDocumentIntelligenceResumeReader
     {
         private readonly string _text;
@@ -325,6 +340,160 @@ public class ResumePlanningTests
         Assert.That(plan.Questions.Skip(1).Any(question => question.Category == "skill"), Is.True);
         Assert.That(plan.Questions.Skip(1).Any(question => question.Category == "project_scenario"), Is.True);
         Assert.That(plan.Questions.All(question => !string.IsNullOrWhiteSpace(question.Question)), Is.True);
+    }
+
+    [Test]
+    public async Task AnalyzeResumeAsync_AdapterFailure_ReturnsUnavailableWithoutLeakingSecrets()
+    {
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "resume-deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            nopLogger: nopLogger.Object,
+            azureOpenAiChatCompletionAdapter: new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
+            {
+                Success = false,
+                FailureKind = "azure-openai-http-failure",
+                Reason = "http failure",
+                StatusCode = 401,
+                ReasonPhrase = "Unauthorized",
+                ResponseBody = "{\"error\":{\"code\":\"Unauthorized\",\"message\":\"api-key=secret-key is invalid\"}}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "resume-deployment"
+            }));
+
+        var response = await client.AnalyzeResumeAsync(new AIResumeProfileRequest
+        {
+            JobTitle = "Engineer",
+            ResumeText = "C# Azure"
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ErrorMessage, Does.Contain("AI service unavailable"));
+        Assert.That(response.ErrorMessage, Does.Contain("api-key=<redacted>"));
+        Assert.That(response.ErrorMessage, Does.Not.Contain("secret-key"));
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI HTTP failure",
+            It.Is<string>(message => message.Contains("FailureKind=azure-openai-http-failure") && !message.Contains("secret-key")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task AnalyzeResumeAsync_ContractFailure_ReturnsUnavailableAndLogsContractFailure()
+    {
+        var nopLogger = new Mock<NopLogger>();
+        nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "resume-deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            nopLogger: nopLogger.Object,
+            azureOpenAiChatCompletionAdapter: new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = "not-json",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "resume-deployment"
+            }));
+
+        var response = await client.AnalyzeResumeAsync(new AIResumeProfileRequest
+        {
+            JobTitle = "Engineer",
+            ResumeText = "C# Azure"
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ErrorMessage, Is.EqualTo("Resume profiling is unavailable."));
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview resume profile contract failure",
+            It.Is<string>(message => message.Contains("Mode=resume-profile") && message.Contains("FailureKind=azure-openai-contract-failure")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task GenerateQuestionPlanAsync_AdapterFailure_ReturnsUnavailableWithoutLeakingSecrets()
+    {
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "plan-deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            azureOpenAiChatCompletionAdapter: new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
+            {
+                Success = false,
+                FailureKind = "azure-openai-exception",
+                Reason = "RequestFailedException",
+                ErrorMessage = "authorization=secret-key failed",
+                ResponseBody = "authorization=secret-key failed",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "plan-deployment"
+            }));
+
+        var response = await client.GenerateQuestionPlanAsync(new AIInterviewQuestionPlanRequest
+        {
+            JobTitle = "Engineer",
+            QuestionCount = 2,
+            ResumeProfileJson = "{}"
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ErrorMessage, Does.Contain("AI service unavailable"));
+        Assert.That(response.ErrorMessage, Does.Contain("authorization=<redacted>"));
+        Assert.That(response.ErrorMessage, Does.Not.Contain("secret-key"));
+    }
+
+    [Test]
+    public async Task GenerateQuestionPlanAsync_ContractFailure_ReturnsUnavailableWithUsageInfo()
+    {
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "plan-deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            azureOpenAiChatCompletionAdapter: new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = "{\"questions\":[]}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "plan-deployment",
+                UsageInfo = new AzureOpenAiUsageInfo { DeploymentOrModel = "plan-deployment", PromptTokens = 10, CompletionTokens = 5, TotalTokens = 15 }
+            }));
+
+        var response = await client.GenerateQuestionPlanAsync(new AIInterviewQuestionPlanRequest
+        {
+            JobTitle = "Engineer",
+            QuestionCount = 2,
+            ResumeProfileJson = "{}"
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ErrorMessage, Is.EqualTo("Question plan did not return the configured number of questions."));
+        Assert.That(response.UsageInfo, Is.Not.Null);
+        Assert.That(response.UsageInfo.TotalTokens, Is.EqualTo(15));
     }
 
     [Test]
