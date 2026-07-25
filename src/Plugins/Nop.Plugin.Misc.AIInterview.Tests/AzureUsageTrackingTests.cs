@@ -123,12 +123,43 @@ public class AzureUsageTrackingTests
     {
         var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("NormalizeResourceEndpoint", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
-        var normalized = (Uri)method.Invoke(null, new object[] { "https://example.openai.azure.com/openai/deployments/deploy/chat/completions?api-version=2024-06-01&api-key=secret" });
+        var normalized = (Uri)method.Invoke(null, new object[] { "https://example.openai.azure.com/" });
 
         Assert.That(normalized.ToString(), Is.EqualTo("https://example.openai.azure.com/"));
         Assert.That(normalized.Host, Is.EqualTo("example.openai.azure.com"));
-        Assert.That(normalized.ToString(), Does.Not.Contain("deploy"));
-        Assert.That(normalized.ToString(), Does.Not.Contain("secret"));
+    }
+
+    [Test]
+    public void AzureOpenAiChatCompletionAdapter_RejectsNonBaseEndpointShapes()
+    {
+        var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("ValidateConfiguration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        var pathResult = (AzureOpenAiChatCompletionResult)method.Invoke(null, new object[]
+        {
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com/openai/deployments/deploy/chat/completions?api-version=2024-06-01&api-key=secret",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "deploy"
+            }
+        });
+        var deploymentResult = (AzureOpenAiChatCompletionResult)method.Invoke(null, new object[]
+        {
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com/",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "openai/deployments/deploy"
+            }
+        });
+
+        Assert.That(pathResult.Success, Is.False);
+        Assert.That(pathResult.FailureKind, Is.EqualTo("azure-openai-configuration-invalid"));
+        Assert.That(pathResult.Reason, Does.Contain("resource base endpoint"));
+        Assert.That(pathResult.Endpoint, Is.EqualTo("https://example.openai.azure.com/"));
+        Assert.That(pathResult.Endpoint, Does.Not.Contain("secret"));
+        Assert.That(deploymentResult.Success, Is.False);
+        Assert.That(deploymentResult.Reason, Does.Contain("deployment name"));
     }
 
     [Test]

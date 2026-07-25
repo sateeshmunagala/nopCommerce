@@ -111,8 +111,7 @@ public partial class InterviewAiClient
                 OperationName = BuildAzureOperationName(mode),
                 SystemPrompt = systemPrompt,
                 UserPrompt = prompt,
-                MaxTokens = maxTokens,
-                Temperature = 0.8f
+                MaxCompletionTokens = maxTokens
             });
 
             if (!result.Success)

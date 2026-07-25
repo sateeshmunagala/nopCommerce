@@ -258,6 +258,16 @@ public class AIInterviewAdminController : BasePluginController
             });
         }
 
+        var configurationFailure = ValidateAzureOpenAiAdminConfiguration(aiInterviewSettings);
+        if (!string.IsNullOrWhiteSpace(configurationFailure))
+        {
+            return Json(new
+            {
+                success = false,
+                message = configurationFailure
+            });
+        }
+
         try
         {
             var adapter = _azureOpenAiChatCompletionAdapter ?? new AzureOpenAiChatCompletionAdapter(aiInterviewSettings);
@@ -267,8 +277,7 @@ public class AIInterviewAdminController : BasePluginController
                 OperationName = "llm-test-connection",
                 SystemPrompt = "Reply with JSON only.",
                 UserPrompt = "{\"test\":\"connection\"}",
-                MaxTokens = 32,
-                Temperature = 0f
+                MaxCompletionTokens = 32
             });
 
             if (result.Success)
@@ -1945,6 +1954,30 @@ public class AIInterviewAdminController : BasePluginController
         sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, "(?i)(api[-_ ]?key|authorization|access[_-]?token|refresh[_-]?token|bearer|subscription[-_ ]?key)\\s*[:=]\\s*\\\"?[^\\\"\\s,;}]+", "$1=<redacted>");
         sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, "(?i)(sig|signature|code|client_secret)=([^&\\s]+)", "$1=<redacted>");
         return sanitized.Length <= 180 ? sanitized : sanitized[..180];
+    }
+
+    protected static string ValidateAzureOpenAiAdminConfiguration(AIInterviewSettings settings)
+    {
+        var endpoint = settings?.AzureOpenAiEndpointUrl?.Trim();
+        var deploymentOrModel = settings?.AzureOpenAiDeploymentOrModel?.Trim();
+
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri) ||
+            !string.Equals(endpointUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Azure OpenAI endpoint must be an absolute HTTPS resource endpoint.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(endpointUri.Query) ||
+            !string.IsNullOrWhiteSpace(endpointUri.Fragment) ||
+            (!string.IsNullOrWhiteSpace(endpointUri.AbsolutePath) && !string.Equals(endpointUri.AbsolutePath, "/", StringComparison.Ordinal)))
+        {
+            return "Azure OpenAI endpoint must be the resource base endpoint only. Do not include deployment paths, chat/completions, or query-string API versions.";
+        }
+
+        if (deploymentOrModel.Contains('/') || deploymentOrModel.Contains('\\') || deploymentOrModel.Contains('?') || deploymentOrModel.Contains('#'))
+            return "Azure OpenAI deployment/model must be a deployment name, not a URL or path.";
+
+        return string.Empty;
     }
 
     protected virtual string BuildVendorAdminUrl(int vendorId)

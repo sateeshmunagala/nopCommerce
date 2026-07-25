@@ -18,6 +18,10 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
 
     public virtual async Task<AzureOpenAiChatCompletionResult> CompleteChatAsync(AzureOpenAiChatCompletionRequest request)
     {
+        var validationFailure = ValidateConfiguration(_settings);
+        if (validationFailure != null)
+            return validationFailure;
+
         var endpoint = NormalizeResourceEndpoint(_settings?.AzureOpenAiEndpointUrl);
         var deploymentOrModel = _settings?.AzureOpenAiDeploymentOrModel?.Trim();
 
@@ -32,8 +36,7 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             };
             var options = new ChatCompletionOptions
             {
-                Temperature = request.Temperature,
-                MaxOutputTokenCount = request.MaxTokens
+                MaxOutputTokenCount = request.MaxCompletionTokens
             };
 
             var response = await chatClient.CompleteChatAsync(messages, options);
@@ -78,10 +81,80 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
         if (string.IsNullOrWhiteSpace(value))
             throw new InvalidOperationException("Azure OpenAI endpoint is not configured.");
 
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Azure OpenAI endpoint is not a valid absolute URI.");
 
+        if (!string.IsNullOrWhiteSpace(uri.Query) ||
+            !string.IsNullOrWhiteSpace(uri.Fragment) ||
+            (!string.IsNullOrWhiteSpace(uri.AbsolutePath) && !string.Equals(uri.AbsolutePath, "/", StringComparison.Ordinal)))
+            throw new InvalidOperationException("Azure OpenAI endpoint must be the resource base endpoint.");
+
         return new Uri($"{uri.Scheme}://{uri.Authority}");
+    }
+
+    private static AzureOpenAiChatCompletionResult ValidateConfiguration(AIInterviewSettings settings)
+    {
+        var deploymentOrModel = settings?.AzureOpenAiDeploymentOrModel?.Trim();
+        if (string.IsNullOrWhiteSpace(settings?.AzureOpenAiEndpointUrl))
+            return BuildConfigurationInvalidResult("Azure OpenAI endpoint is not configured.", settings?.AzureOpenAiEndpointUrl, deploymentOrModel);
+        if (string.IsNullOrWhiteSpace(settings?.AzureOpenAiApiKey))
+            return BuildConfigurationInvalidResult("Azure OpenAI API key is not configured.", settings.AzureOpenAiEndpointUrl, deploymentOrModel);
+        if (string.IsNullOrWhiteSpace(deploymentOrModel))
+            return BuildConfigurationInvalidResult("Azure OpenAI deployment/model is not configured.", settings.AzureOpenAiEndpointUrl, deploymentOrModel);
+
+        if (!Uri.TryCreate(settings.AzureOpenAiEndpointUrl.Trim(), UriKind.Absolute, out var endpoint) ||
+            !string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return BuildConfigurationInvalidResult("Azure OpenAI endpoint must be an absolute HTTPS resource endpoint.", settings.AzureOpenAiEndpointUrl, deploymentOrModel);
+        }
+
+        if (!string.IsNullOrWhiteSpace(endpoint.Query) ||
+            !string.IsNullOrWhiteSpace(endpoint.Fragment) ||
+            (!string.IsNullOrWhiteSpace(endpoint.AbsolutePath) && !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal)))
+        {
+            return BuildConfigurationInvalidResult("Azure OpenAI endpoint must be the resource base endpoint only. Do not include deployment paths, chat/completions, or query-string API versions.", settings.AzureOpenAiEndpointUrl, deploymentOrModel);
+        }
+
+        if (deploymentOrModel.Contains('/') || deploymentOrModel.Contains('\\') || deploymentOrModel.Contains('?') || deploymentOrModel.Contains('#'))
+            return BuildConfigurationInvalidResult("Azure OpenAI deployment/model must be a deployment name, not a URL or path.", settings.AzureOpenAiEndpointUrl, deploymentOrModel);
+
+        return null;
+    }
+
+    private static AzureOpenAiChatCompletionResult BuildConfigurationInvalidResult(string reason, string endpoint, string deploymentOrModel)
+    {
+        return new AzureOpenAiChatCompletionResult
+        {
+            Success = false,
+            FailureKind = "azure-openai-configuration-invalid",
+            Reason = SanitizeDiagnosticText(reason),
+            ErrorMessage = SanitizeDiagnosticText(reason),
+            Endpoint = TryBuildEndpointValue(endpoint),
+            EndpointHost = TryBuildEndpointHost(endpoint),
+            DeploymentOrModel = SanitizeDiagnosticText(deploymentOrModel)
+        };
+    }
+
+    private static string TryBuildEndpointValue(string endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+            return "<empty>";
+
+        if (!Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var uri))
+            return SanitizeDiagnosticText(endpoint.Trim());
+
+        return $"{uri.Scheme}://{uri.Authority}/";
+    }
+
+    private static string TryBuildEndpointHost(string endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+            return "<empty>";
+
+        return Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var uri)
+            ? uri.Host
+            : SanitizeDiagnosticText(endpoint.Trim());
     }
 
     private static AzureOpenAiUsageInfo BuildUsageInfo(ChatCompletion completion, string mode, Uri endpoint, string deploymentOrModel)

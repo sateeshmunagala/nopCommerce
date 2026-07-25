@@ -217,8 +217,7 @@ public partial class InterviewAiClient : IAIInterviewClient
                     ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
                     : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, optional nextQuestion, completion, optional answerQuality, optional nonSubstantiveReason, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. rubricJson should be a JSON object that repeats the category scores and score. Distinguish answerQuality as non_substantive, weak, or substantive. Reserve score 0 and answerQuality non_substantive only for empty, copied, refusal, AI-persona, or unrelated answers. If the answer attempts the question but is generic, vague, or lacks evidence, classify it as weak and assign low but non-zero scores with concrete feedback.",
                 UserPrompt = prompt,
-                MaxTokens = 400,
-                Temperature = 0.8f
+                MaxCompletionTokens = 400
             });
 
             if (!result.Success)

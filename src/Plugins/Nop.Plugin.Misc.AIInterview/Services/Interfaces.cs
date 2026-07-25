@@ -97,8 +97,7 @@ public sealed record AzureOpenAiChatCompletionRequest
     public string OperationName { get; init; }
     public string SystemPrompt { get; init; }
     public string UserPrompt { get; init; }
-    public int MaxTokens { get; init; }
-    public float Temperature { get; init; } = 0.8f;
+    public int MaxCompletionTokens { get; init; }
 }
 
 public sealed record AzureOpenAiChatCompletionResult

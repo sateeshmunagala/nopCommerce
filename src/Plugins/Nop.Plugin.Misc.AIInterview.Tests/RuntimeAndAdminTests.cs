@@ -1861,6 +1861,25 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Admin_TestAzureOpenAiConnection_InvalidEndpointShape_ReturnsFailFastMessage()
+    {
+        var controller = CreateAiInterviewAdminController(new AIInterviewSettings
+        {
+            AzureOpenAiEndpointUrl = "https://example.openai.azure.com/openai/deployments/deploy/chat/completions?api-version=2024-06-01&api-key=secret",
+            AzureOpenAiApiKey = "secret-key",
+            AzureOpenAiDeploymentOrModel = "deployment"
+        }, new AzureOpenAiChatCompletionResult { Success = true });
+
+        var result = (JsonResult)await controller.TestAzureOpenAiConnection();
+        var serialized = System.Text.Json.JsonSerializer.Serialize(result.Value);
+
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(result, "message"), Does.Contain("resource base endpoint"));
+        Assert.That(serialized, Does.Not.Contain("secret-key"));
+        Assert.That(serialized, Does.Not.Contain("api-key=secret"));
+    }
+
+    [Test]
     public async Task Admin_TestAzureOpenAiConnection_AdapterFailure_ReturnsSafeFailure()
     {
         var settings = new AIInterviewSettings
