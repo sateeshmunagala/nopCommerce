@@ -219,6 +219,26 @@ public class AzureUsageTrackingTests
     }
 
     [Test]
+    public async Task AzureOpenAiChatCompletionAdapter_ParsesLengthFinishReason()
+    {
+        var adapter = CreateAdapterForSuccessResponse("{\"id\":\"resp_length\",\"model\":\"gpt-5\",\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"\"}}]}");
+
+        var result = await adapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+        {
+            Mode = "score",
+            SystemPrompt = "System prompt",
+            UserPrompt = "User prompt",
+            MaxCompletionTokens = 1200
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Content, Is.Empty);
+        Assert.That(result.FinishReason, Is.EqualTo("length"));
+        Assert.That(result.IsLengthTruncated, Is.True);
+        Assert.That(result.ResponseBody, Does.Contain("\"finish_reason\":\"length\""));
+    }
+
+    [Test]
     public async Task AzureOpenAiChatCompletionAdapter_ExtractsChatCompletionMultipartTextContent()
     {
         var adapter = CreateAdapterForSuccessResponse("{\"id\":\"resp_parts\",\"model\":\"gpt-5\",\"choices\":[{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"question\\\":\\\"Multipart \"},{\"type\":\"text\",\"text\":\"content\\\",\\\"complete\\\":false}\"}]}}]}");

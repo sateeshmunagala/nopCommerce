@@ -116,6 +116,8 @@ public sealed record AzureOpenAiChatCompletionResult
     public string DeploymentOrModel { get; init; }
     public string ModelName { get; init; }
     public string ResponseId { get; init; }
+    public string FinishReason { get; init; }
+    public bool IsLengthTruncated { get; init; }
     public AzureOpenAiUsageInfo UsageInfo { get; init; }
 }
 

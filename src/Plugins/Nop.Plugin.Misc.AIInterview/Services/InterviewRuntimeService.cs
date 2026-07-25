@@ -78,6 +78,10 @@ public class InterviewTurnService : IInterviewTurnService
 
 public partial class InterviewAiClient : IAIInterviewClient
 {
+    private const int GenerateMaxCompletionTokens = 400;
+    private const int ScoreMaxCompletionTokens = 1200;
+    private const int ScoreLengthRetryMaxCompletionTokens = 2000;
+
     private readonly AIInterviewSettings _settings;
     private readonly MockAIInterviewSettings _mockSettings;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -209,23 +213,29 @@ public partial class InterviewAiClient : IAIInterviewClient
         try
         {
             var prompt = BuildPrompt(request, mode);
-            var result = await _azureOpenAiChatCompletionAdapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
-            {
-                Mode = mode,
-                OperationName = BuildAzureOperationName(mode),
-                SystemPrompt = mode == "generate"
-                    ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
-                    : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, optional nextQuestion, completion, optional answerQuality, optional nonSubstantiveReason, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. rubricJson should be a JSON object that repeats the category scores and score. Distinguish answerQuality as non_substantive, weak, or substantive. Reserve score 0 and answerQuality non_substantive only for empty, copied, refusal, AI-persona, or unrelated answers. If the answer attempts the question but is generic, vague, or lacks evidence, classify it as weak and assign low but non-zero scores with concrete feedback.",
-                UserPrompt = prompt,
-                MaxCompletionTokens = 400
-            });
+            var maxCompletionTokens = GetInitialMaxCompletionTokens(mode);
+            var result = await CompleteAzureChatAsync(request, mode, prompt, maxCompletionTokens);
+            var additionalUsageInfos = new List<AzureOpenAiUsageInfo>();
 
-            if (!result.Success)
+            if (ShouldRetryLengthTruncatedEmptyScoreContent(mode, result))
+            {
+                if (result.UsageInfo != null)
+                    additionalUsageInfos.Add(result.UsageInfo);
+
+                var retryDetail = BuildAzureLengthRetryLog(mode, result, "retrying", maxCompletionTokens, ScoreLengthRetryMaxCompletionTokens);
+                await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI length retry", retryDetail);
+
+                result = await CompleteAzureChatAsync(request, mode, prompt, ScoreLengthRetryMaxCompletionTokens);
+                var retryOutcomeDetail = BuildAzureLengthRetryLog(mode, result, string.IsNullOrWhiteSpace(result?.Content) ? "exhausted" : "response received", ScoreLengthRetryMaxCompletionTokens, null);
+                await LogAiClientIssueAsync(string.IsNullOrWhiteSpace(result?.Content) ? NopLogLevel.Warning : NopLogLevel.Information, "AI Interview Azure OpenAI length retry outcome", retryOutcomeDetail);
+            }
+
+            if (result?.Success != true)
             {
                 var detail = BuildAzureAdapterFailureLog(mode, result);
-                if (string.Equals(result.FailureKind, "azure-openai-http-failure", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(result?.FailureKind, "azure-openai-http-failure", StringComparison.OrdinalIgnoreCase))
                 {
-                    _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}.", result.StatusCode);
+                    _logger?.LogWarning("Azure OpenAI call failed with status {StatusCode}.", result?.StatusCode);
                     await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI HTTP failure", detail);
                 }
                 else
@@ -240,20 +250,20 @@ public partial class InterviewAiClient : IAIInterviewClient
             var usageInfo = result.UsageInfo;
             if (string.IsNullOrWhiteSpace(result.Content))
             {
-                var detail = BuildAzureContractFailureLog(mode, result.Endpoint, result.DeploymentOrModel, "empty response content", result.ResponseBody);
+                var detail = BuildAzureContractFailureLog(mode, result.Endpoint, result.DeploymentOrModel, BuildEmptyContentReason(result), result.ResponseBody);
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty content string.", mode);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
-                return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
+                return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo, AdditionalUsageInfos = additionalUsageInfos };
             }
 
             var parsed = ParseStructuredResponse(result.Content);
             if (parsed != null)
-                return parsed with { UsageInfo = usageInfo };
+                return parsed with { UsageInfo = usageInfo, AdditionalUsageInfos = additionalUsageInfos };
 
             var contractReason = BuildStructuredResponseFailureLog(result.Content, mode);
             _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Invalid JSON or failed contract parsing.", mode);
             await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", contractReason);
-            return BuildUnavailableResponse(contractReason) with { UsageInfo = usageInfo };
+            return BuildUnavailableResponse(contractReason) with { UsageInfo = usageInfo, AdditionalUsageInfos = additionalUsageInfos };
         }
         catch (System.Text.Json.JsonException ex)
         {
@@ -270,6 +280,42 @@ public partial class InterviewAiClient : IAIInterviewClient
             return BuildUnavailableResponse(detail);
         }
 
+    }
+
+    private Task<AzureOpenAiChatCompletionResult> CompleteAzureChatAsync(AIInterviewClientRequest request, string mode, string prompt, int maxCompletionTokens)
+    {
+        return _azureOpenAiChatCompletionAdapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+        {
+            Mode = mode,
+            OperationName = BuildAzureOperationName(mode),
+            SystemPrompt = mode == "generate"
+                ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
+                : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, optional nextQuestion, completion, optional answerQuality, optional nonSubstantiveReason, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. rubricJson should be a JSON object that repeats the category scores and score. Distinguish answerQuality as non_substantive, weak, or substantive. Reserve score 0 and answerQuality non_substantive only for empty, copied, refusal, AI-persona, or unrelated answers. If the answer attempts the question but is generic, vague, or lacks evidence, classify it as weak and assign low but non-zero scores with concrete feedback.",
+            UserPrompt = prompt,
+            MaxCompletionTokens = maxCompletionTokens
+        });
+    }
+
+    private static int GetInitialMaxCompletionTokens(string mode)
+    {
+        return string.Equals(mode, "score", StringComparison.OrdinalIgnoreCase)
+            ? ScoreMaxCompletionTokens
+            : GenerateMaxCompletionTokens;
+    }
+
+    private static bool ShouldRetryLengthTruncatedEmptyScoreContent(string mode, AzureOpenAiChatCompletionResult result)
+    {
+        return string.Equals(mode, "score", StringComparison.OrdinalIgnoreCase) &&
+            result?.Success == true &&
+            string.IsNullOrWhiteSpace(result.Content) &&
+            result.IsLengthTruncated;
+    }
+
+    private static string BuildEmptyContentReason(AzureOpenAiChatCompletionResult result)
+    {
+        return result?.IsLengthTruncated == true
+            ? $"empty response content (finish_reason={BuildSafeValue(result.FinishReason)})"
+            : "empty response content";
     }
 
     protected virtual async Task LogAiClientIssueAsync(NopLogLevel level, string shortMessage, string fullMessage)
@@ -409,6 +455,33 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
     protected static string BuildAzureContractFailureLog(string mode, string endpoint, string reason, string responseBody)
     {
         return BuildAzureContractFailureLog(mode, endpoint, null, reason, responseBody);
+    }
+
+    protected static string BuildAzureLengthRetryLog(string mode, AzureOpenAiChatCompletionResult result, string outcome, int maxCompletionTokens, int? retryMaxCompletionTokens)
+    {
+        var details = new List<string>
+        {
+            $"Mode={mode}",
+            $"Operation={BuildAzureOperationName(mode)}",
+            "FailureKind=azure-openai-length-truncation",
+            $"Reason={BuildEmptyContentReason(result)}",
+            $"Outcome={BuildSafeValue(outcome)}",
+            $"FinishReason={BuildSafeValue(result?.FinishReason)}",
+            $"EndpointHost={BuildSanitizedEndpointHost(result?.Endpoint)}",
+            $"Endpoint={BuildSanitizedEndpointValue(result?.Endpoint)}",
+            $"Deployment={BuildSafeValue(result?.DeploymentOrModel)}",
+            $"MaxCompletionTokens={maxCompletionTokens}",
+            $"ResponseLength={(result?.ResponseBody ?? string.Empty).Length}"
+        };
+
+        if (retryMaxCompletionTokens.HasValue)
+            details.Add($"RetryMaxCompletionTokens={retryMaxCompletionTokens.Value}");
+
+        var responseSnippet = BuildResponseSnippet(result?.ResponseBody);
+        if (!string.IsNullOrWhiteSpace(responseSnippet))
+            details.Add($"Sample={responseSnippet}");
+
+        return string.Join("; ", details) + ".";
     }
 
     protected static string BuildAzureExceptionLog(string mode, string failureKind, string reason, Exception exception)

@@ -63,6 +63,27 @@ public class RuntimeAndAdminTests
         }
     }
 
+    private sealed class SequenceAzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapter
+    {
+        private readonly Queue<AzureOpenAiChatCompletionResult> _results;
+
+        public SequenceAzureOpenAiChatCompletionAdapter(params AzureOpenAiChatCompletionResult[] results)
+        {
+            _results = new Queue<AzureOpenAiChatCompletionResult>(results);
+        }
+
+        public List<AzureOpenAiChatCompletionRequest> Requests { get; } = new();
+
+        public Task<AzureOpenAiChatCompletionResult> CompleteChatAsync(AzureOpenAiChatCompletionRequest request)
+        {
+            Requests.Add(request);
+            if (_results.Count == 0)
+                throw new InvalidOperationException("No fake Azure OpenAI result configured.");
+
+            return Task.FromResult(_results.Dequeue());
+        }
+    }
+
     private sealed class ThrowingAzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapter
     {
         private readonly Exception _exception;
@@ -1940,7 +1961,10 @@ public class RuntimeAndAdminTests
         Assert.That(adapterText, Does.Not.Contain("ChatCompletionOptions"));
         Assert.That(adapterText, Does.Not.Contain("CompleteChatAsync(messages"));
         Assert.That(adapterText, Does.Not.Contain("MaxOutputTokenCount"));
-        Assert.That(runtimeClientText, Does.Contain("MaxCompletionTokens = 400"));
+        Assert.That(runtimeClientText, Does.Contain("private const int GenerateMaxCompletionTokens = 400"));
+        Assert.That(runtimeClientText, Does.Contain("private const int ScoreMaxCompletionTokens = 1200"));
+        Assert.That(runtimeClientText, Does.Contain("private const int ScoreLengthRetryMaxCompletionTokens = 2000"));
+        Assert.That(runtimeClientText, Does.Contain("MaxCompletionTokens = maxCompletionTokens"));
         Assert.That(resumePlanningText, Does.Contain("MaxCompletionTokens = maxTokens"));
         Assert.That(adminControllerText, Does.Contain("MaxCompletionTokens = 32"));
         Assert.That(adapterText + runtimeClientText + resumePlanningText + adminControllerText, Does.Not.Contain("MaxTokens ="));
@@ -2170,6 +2194,144 @@ public class RuntimeAndAdminTests
                 !message.Contains("Deployment=<empty>") &&
                 !message.Contains("ResponseLength=0") &&
                 message.Contains("resp_empty")),
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task InterviewAiClient_ScoreAnswer_LengthTruncatedEmptyContent_RetriesWithHigherTokenBudgetAndSucceeds()
+    {
+        var nopLogger = new Mock<ILogger>();
+        nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+        var adapter = new SequenceAzureOpenAiChatCompletionAdapter(
+            new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = string.Empty,
+                ResponseBody = "{\"id\":\"resp_length\",\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"\"}}]}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "gpt-5-mini",
+                FinishReason = "length",
+                IsLengthTruncated = true
+            },
+            new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = "{\"technicalScore\":80,\"communicationScore\":75,\"professionalismScore\":85,\"positiveAttitudeScore\":90,\"score\":82.5,\"feedback\":\"Good answer.\",\"complete\":false,\"rubricJson\":{\"technicalScore\":80,\"communicationScore\":75,\"professionalismScore\":85,\"positiveAttitudeScore\":90,\"score\":82.5}}",
+                ResponseBody = "{\"id\":\"resp_retry\",\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"content\":\"valid\"}}]}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "gpt-5-mini",
+                FinishReason = "stop"
+            });
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-mini"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            nopLogger: nopLogger.Object,
+            azureOpenAiChatCompletionAdapter: adapter);
+
+        var response = await client.ScoreAnswerAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Question = "Describe a production incident.",
+            Answer = "I identified the failed dependency, rolled traffic back, and coordinated the postmortem."
+        });
+
+        Assert.That(response.Success, Is.True);
+        Assert.That(response.Score, Is.EqualTo(82.5m));
+        Assert.That(adapter.Requests.Count, Is.EqualTo(2));
+        Assert.That(adapter.Requests[0].MaxCompletionTokens, Is.EqualTo(1200));
+        Assert.That(adapter.Requests[1].MaxCompletionTokens, Is.EqualTo(2000));
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI length retry",
+            It.Is<string>(message =>
+                message.Contains("Reason=empty response content (finish_reason=length)") &&
+                message.Contains("Deployment=gpt-5-mini") &&
+                message.Contains("MaxCompletionTokens=1200") &&
+                message.Contains("RetryMaxCompletionTokens=2000")),
+            null), Times.Once);
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            It.IsAny<LogLevel>(),
+            "AI Interview Azure OpenAI contract failure",
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Never);
+    }
+
+    [Test]
+    public async Task InterviewAiClient_ScoreAnswer_LengthTruncatedRetryExhausted_LogsExplicitContractFailure()
+    {
+        var nopLogger = new Mock<ILogger>();
+        nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+        var adapter = new SequenceAzureOpenAiChatCompletionAdapter(
+            new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = string.Empty,
+                ResponseBody = "{\"id\":\"resp_length_1\",\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"\"}}]}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "gpt-5-mini",
+                FinishReason = "length",
+                IsLengthTruncated = true
+            },
+            new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = string.Empty,
+                ResponseBody = "{\"id\":\"resp_length_2\",\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"\"}}]}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "gpt-5-mini",
+                FinishReason = "length",
+                IsLengthTruncated = true
+            });
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-mini"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            nopLogger: nopLogger.Object,
+            azureOpenAiChatCompletionAdapter: adapter);
+
+        var response = await client.ScoreAnswerAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Question = "Describe a production incident.",
+            Answer = "I identified the failed dependency, rolled traffic back, and coordinated the postmortem."
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ErrorMessage, Does.Contain("empty response content (finish_reason=length)"));
+        Assert.That(adapter.Requests.Count, Is.EqualTo(2));
+        Assert.That(adapter.Requests[0].MaxCompletionTokens, Is.EqualTo(1200));
+        Assert.That(adapter.Requests[1].MaxCompletionTokens, Is.EqualTo(2000));
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI length retry outcome",
+            It.Is<string>(message =>
+                message.Contains("Outcome=exhausted") &&
+                message.Contains("Reason=empty response content (finish_reason=length)") &&
+                message.Contains("Deployment=gpt-5-mini")),
+            null), Times.Once);
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI contract failure",
+            It.Is<string>(message =>
+                message.Contains("Reason=empty response content (finish_reason=length)") &&
+                message.Contains("Deployment=gpt-5-mini") &&
+                !message.Contains("Deployment=<empty>") &&
+                !message.Contains("ResponseLength=0")),
             null), Times.Once);
     }
 

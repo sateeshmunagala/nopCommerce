@@ -90,6 +90,7 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
     {
         using var document = JsonDocument.Parse(responseBody);
         var root = document.RootElement;
+        var finishReason = ExtractFinishReason(root);
 
         return new AzureOpenAiChatCompletionResult
         {
@@ -101,6 +102,8 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             DeploymentOrModel = deploymentOrModel,
             ModelName = TryGetString(root, "model"),
             ResponseId = TryGetString(root, "id"),
+            FinishReason = finishReason,
+            IsLengthTruncated = IsLengthFinishReason(finishReason),
             UsageInfo = BuildUsageInfo(root, mode, endpoint, deploymentOrModel)
         };
     }
@@ -393,6 +396,41 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
 
         if (element.TryGetProperty("content", out var content))
             AppendTextParts(content, builder);
+    }
+
+    private static string ExtractFinishReason(JsonElement response)
+    {
+        if (response.TryGetProperty("choices", out var choices) &&
+            choices.ValueKind == JsonValueKind.Array &&
+            choices.GetArrayLength() > 0)
+        {
+            var chatFinishReason = TryGetString(choices[0], "finish_reason");
+            if (!string.IsNullOrWhiteSpace(chatFinishReason))
+                return SanitizeDiagnosticText(chatFinishReason);
+        }
+
+        var finishReason = TryGetString(response, "finish_reason");
+        if (!string.IsNullOrWhiteSpace(finishReason))
+            return SanitizeDiagnosticText(finishReason);
+
+        if (response.TryGetProperty("output", out var output) && output.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in output.EnumerateArray())
+            {
+                finishReason = TryGetString(item, "finish_reason");
+                if (!string.IsNullOrWhiteSpace(finishReason))
+                    return SanitizeDiagnosticText(finishReason);
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static bool IsLengthFinishReason(string finishReason)
+    {
+        return string.Equals(finishReason, "length", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(finishReason, "max_tokens", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(finishReason, "max_completion_tokens", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string TryGetString(JsonElement element, string propertyName)
