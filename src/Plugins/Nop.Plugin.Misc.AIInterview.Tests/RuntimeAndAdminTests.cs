@@ -2126,6 +2126,54 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task InterviewAiClient_GenerateQuestion_EmptyContentContractFailure_LogsDeploymentFromAdapterResult()
+    {
+        var nopLogger = new Mock<ILogger>();
+        nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+        var responseBody = "{\"id\":\"resp_empty\",\"model\":\"gpt-5\",\"choices\":[{\"message\":{\"content\":\"\"}}]}";
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            nopLogger: nopLogger.Object,
+            azureOpenAiChatCompletionAdapter: new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = string.Empty,
+                ResponseBody = responseBody,
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "deployment"
+            }));
+
+        var response = await client.GenerateQuestionAsync(new AIInterviewClientRequest
+        {
+            JobTitle = "Engineer",
+            Difficulty = "Medium",
+            Prompt = "Prompt"
+        });
+
+        Assert.That(response.Success, Is.False);
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure OpenAI contract failure",
+            It.Is<string>(message =>
+                message.Contains("FailureKind=azure-openai-contract-failure") &&
+                message.Contains("Reason=empty response content") &&
+                message.Contains("EndpointHost=example.openai.azure.com") &&
+                message.Contains("Deployment=deployment") &&
+                !message.Contains("Deployment=<empty>") &&
+                !message.Contains("ResponseLength=0") &&
+                message.Contains("resp_empty")),
+            null), Times.Once);
+    }
+
+    [Test]
     public async Task InterviewAiClient_ScoreAnswer_AdapterFailure_ReturnsUnavailableAndDoesNotLeakSecret()
     {
         var client = new InterviewAiClient(

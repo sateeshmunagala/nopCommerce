@@ -95,6 +95,7 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
         {
             Success = true,
             Content = ExtractAssistantContent(root),
+            ResponseBody = SanitizeDiagnosticText(responseBody),
             Endpoint = endpoint.ToString(),
             EndpointHost = endpoint.Host,
             DeploymentOrModel = deploymentOrModel,
@@ -319,6 +320,26 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
 
     private static string ExtractAssistantContent(JsonElement response)
     {
+        var chatContent = ExtractChatCompletionContent(response);
+        if (!string.IsNullOrWhiteSpace(chatContent))
+            return chatContent;
+
+        var directOutputText = TryGetString(response, "output_text");
+        if (!string.IsNullOrWhiteSpace(directOutputText))
+            return directOutputText;
+
+        if (!response.TryGetProperty("output", out var output) || output.ValueKind != JsonValueKind.Array)
+            return string.Empty;
+
+        var builder = new StringBuilder();
+        foreach (var item in output.EnumerateArray())
+            AppendTextParts(item, builder);
+
+        return builder.ToString();
+    }
+
+    private static string ExtractChatCompletionContent(JsonElement response)
+    {
         if (!response.TryGetProperty("choices", out var choices) || choices.ValueKind != JsonValueKind.Array || choices.GetArrayLength() == 0)
             return string.Empty;
 
@@ -332,17 +353,46 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
         if (content.ValueKind == JsonValueKind.String)
             return content.GetString();
 
-        if (content.ValueKind != JsonValueKind.Array)
-            return string.Empty;
-
         var builder = new StringBuilder();
-        foreach (var part in content.EnumerateArray())
-        {
-            if (part.ValueKind == JsonValueKind.Object && part.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String)
-                builder.Append(text.GetString());
-        }
+        AppendTextParts(content, builder);
 
         return builder.ToString();
+    }
+
+    private static void AppendTextParts(JsonElement element, StringBuilder builder)
+    {
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            builder.Append(element.GetString());
+            return;
+        }
+
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+                AppendTextParts(item, builder);
+            return;
+        }
+
+        if (element.ValueKind != JsonValueKind.Object)
+            return;
+
+        var outputText = TryGetString(element, "output_text");
+        if (!string.IsNullOrWhiteSpace(outputText))
+        {
+            builder.Append(outputText);
+            return;
+        }
+
+        var text = TryGetString(element, "text");
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            builder.Append(text);
+            return;
+        }
+
+        if (element.TryGetProperty("content", out var content))
+            AppendTextParts(content, builder);
     }
 
     private static string TryGetString(JsonElement element, string propertyName)

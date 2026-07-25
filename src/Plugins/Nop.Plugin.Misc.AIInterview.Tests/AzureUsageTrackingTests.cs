@@ -47,6 +47,23 @@ public class AzureUsageTrackingTests
         }
     }
 
+    private static AzureOpenAiChatCompletionAdapter CreateAdapterForSuccessResponse(string responseBody)
+    {
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(responseBody, Encoding.UTF8, "application/json")
+        });
+
+        return new AzureOpenAiChatCompletionAdapter(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.cognitiveservices.azure.com/",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-deployment"
+            },
+            new HttpClient(handler));
+    }
+
     [Test]
     public async Task InterviewAiClient_GenerateQuestion_ExtractsAzureUsageMetadata()
     {
@@ -176,10 +193,83 @@ public class AzureUsageTrackingTests
         Assert.That(requestBody, Does.Contain("\"max_completion_tokens\":123"));
         Assert.That(requestBody, Does.Not.Contain("\"max_tokens\""));
         Assert.That(requestBody, Does.Not.Contain("\"temperature\""));
+        Assert.That(result.ResponseBody, Does.Contain("\"id\":\"resp_123\""));
         Assert.That(result.UsageInfo.PromptTokens, Is.EqualTo(11));
         Assert.That(result.UsageInfo.CompletionTokens, Is.EqualTo(7));
         Assert.That(result.UsageInfo.TotalTokens, Is.EqualTo(18));
         Assert.That(result.UsageInfo.MetadataJson, Does.Contain("example.cognitiveservices.azure.com/"));
+    }
+
+    [Test]
+    public async Task AzureOpenAiChatCompletionAdapter_ExtractsChatCompletionStringContent()
+    {
+        var adapter = CreateAdapterForSuccessResponse("{\"id\":\"resp_string\",\"model\":\"gpt-5\",\"choices\":[{\"message\":{\"content\":\"{\\\"question\\\":\\\"String content\\\",\\\"complete\\\":false}\"}}]}");
+
+        var result = await adapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+        {
+            Mode = "generate",
+            SystemPrompt = "System prompt",
+            UserPrompt = "User prompt",
+            MaxCompletionTokens = 123
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Content, Is.EqualTo("{\"question\":\"String content\",\"complete\":false}"));
+        Assert.That(result.ResponseBody, Does.Contain("\"id\":\"resp_string\""));
+    }
+
+    [Test]
+    public async Task AzureOpenAiChatCompletionAdapter_ExtractsChatCompletionMultipartTextContent()
+    {
+        var adapter = CreateAdapterForSuccessResponse("{\"id\":\"resp_parts\",\"model\":\"gpt-5\",\"choices\":[{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"question\\\":\\\"Multipart \"},{\"type\":\"text\",\"text\":\"content\\\",\\\"complete\\\":false}\"}]}}]}");
+
+        var result = await adapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+        {
+            Mode = "generate",
+            SystemPrompt = "System prompt",
+            UserPrompt = "User prompt",
+            MaxCompletionTokens = 123
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Content, Is.EqualTo("{\"question\":\"Multipart content\",\"complete\":false}"));
+        Assert.That(result.ResponseBody, Does.Contain("\"id\":\"resp_parts\""));
+    }
+
+    [Test]
+    public async Task AzureOpenAiChatCompletionAdapter_ExtractsResponsesOutputTextFallbackContent()
+    {
+        var adapter = CreateAdapterForSuccessResponse("{\"id\":\"resp_output\",\"model\":\"gpt-5\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"{\\\"question\\\":\\\"Responses fallback\\\",\\\"complete\\\":false}\"}]}]}");
+
+        var result = await adapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+        {
+            Mode = "generate",
+            SystemPrompt = "System prompt",
+            UserPrompt = "User prompt",
+            MaxCompletionTokens = 123
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Content, Is.EqualTo("{\"question\":\"Responses fallback\",\"complete\":false}"));
+        Assert.That(result.ResponseBody, Does.Contain("\"id\":\"resp_output\""));
+    }
+
+    [Test]
+    public async Task AzureOpenAiChatCompletionAdapter_SanitizesSuccessResponseBodyDiagnostics()
+    {
+        var adapter = CreateAdapterForSuccessResponse("{\"id\":\"resp_safe\",\"model\":\"gpt-5\",\"diagnostic\":\"api-key=secret-key\",\"choices\":[{\"message\":{\"content\":\"{\\\"question\\\":\\\"Safe body\\\",\\\"complete\\\":false}\"}}]}");
+
+        var result = await adapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+        {
+            Mode = "generate",
+            SystemPrompt = "System prompt",
+            UserPrompt = "User prompt",
+            MaxCompletionTokens = 123
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.ResponseBody, Does.Contain("api-key=<redacted>"));
+        Assert.That(result.ResponseBody, Does.Not.Contain("secret-key"));
     }
 
     [Test]

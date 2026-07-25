@@ -240,7 +240,7 @@ public partial class InterviewAiClient : IAIInterviewClient
             var usageInfo = result.UsageInfo;
             if (string.IsNullOrWhiteSpace(result.Content))
             {
-                var detail = BuildAzureContractFailureLog(mode, result.Endpoint, "empty response content", result.ResponseBody);
+                var detail = BuildAzureContractFailureLog(mode, result.Endpoint, result.DeploymentOrModel, "empty response content", result.ResponseBody);
                 _logger?.LogWarning("Azure OpenAI call failed. Mode: {Mode}. Reason: Empty content string.", mode);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
                 return BuildUnavailableResponse(detail) with { UsageInfo = usageInfo };
@@ -380,9 +380,12 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
         return string.Join("; ", details) + ".";
     }
 
-    protected static string BuildAzureContractFailureLog(string mode, string endpoint, string reason, string responseBody)
+    protected static string BuildAzureContractFailureLog(string mode, string endpoint, string deploymentOrModel, string reason, string responseBody)
     {
         var responseSnippet = BuildResponseSnippet(responseBody);
+        var deployment = !string.IsNullOrWhiteSpace(deploymentOrModel)
+            ? deploymentOrModel
+            : ExtractAzureDeploymentName(endpoint);
         var details = new List<string>
         {
             $"Mode={mode}",
@@ -391,7 +394,7 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
             $"Reason={BuildSafeValue(reason)}",
             $"EndpointHost={BuildSanitizedEndpointHost(endpoint)}",
             $"Endpoint={BuildSanitizedEndpointValue(endpoint)}",
-            $"Deployment={BuildSafeValue(ExtractAzureDeploymentName(endpoint))}",
+            $"Deployment={BuildSafeValue(deployment)}",
             $"ResponseLength={(responseBody ?? string.Empty).Length}"
         };
         if (!string.IsNullOrWhiteSpace(responseSnippet))
@@ -401,6 +404,11 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
         }
 
         return string.Join("; ", details) + ".";
+    }
+
+    protected static string BuildAzureContractFailureLog(string mode, string endpoint, string reason, string responseBody)
+    {
+        return BuildAzureContractFailureLog(mode, endpoint, null, reason, responseBody);
     }
 
     protected static string BuildAzureExceptionLog(string mode, string failureKind, string reason, Exception exception)
