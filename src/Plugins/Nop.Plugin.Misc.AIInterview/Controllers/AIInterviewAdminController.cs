@@ -27,6 +27,8 @@ using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Models.DataTables;
 using Nop.Web.Framework.Models.Extensions;
 using Nop.Web.Framework.Mvc.Filters;
+using NopLogLevel = Nop.Core.Domain.Logging.LogLevel;
+using NopLogger = Nop.Services.Logging.ILogger;
 
 namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
@@ -73,6 +75,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly ICreditDepositNotificationService _creditDepositNotificationService;
     private readonly IDownloadService _downloadService;
     private readonly IAzureOpenAiChatCompletionAdapter _azureOpenAiChatCompletionAdapter;
+    private readonly NopLogger _nopLogger;
 
     public AIInterviewAdminController(ICreditService creditService,
         ISponsorInviteService inviteService,
@@ -100,7 +103,8 @@ public class AIInterviewAdminController : BasePluginController
         IJobProductAccessService jobProductAccessService = null,
         ICreditDepositNotificationService creditDepositNotificationService = null,
         IDownloadService downloadService = null,
-        IAzureOpenAiChatCompletionAdapter azureOpenAiChatCompletionAdapter = null)
+        IAzureOpenAiChatCompletionAdapter azureOpenAiChatCompletionAdapter = null,
+        NopLogger nopLogger = null)
     {
         _creditService = creditService;
         _inviteService = inviteService;
@@ -129,6 +133,7 @@ public class AIInterviewAdminController : BasePluginController
         _creditDepositNotificationService = creditDepositNotificationService;
         _downloadService = downloadService;
         _azureOpenAiChatCompletionAdapter = azureOpenAiChatCompletionAdapter;
+        _nopLogger = nopLogger;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -249,6 +254,12 @@ public class AIInterviewAdminController : BasePluginController
         var deploymentConfigured = !string.IsNullOrWhiteSpace(aiInterviewSettings?.AzureOpenAiDeploymentOrModel);
         if (!endpointConfigured || !apiKeyConfigured || !deploymentConfigured)
         {
+            await LogAzureTestConnectionFailureAsync(
+                "AI Interview Azure test connection configuration invalid",
+                aiInterviewSettings,
+                "azure-openai-configuration-incomplete",
+                "configuration incomplete");
+
             return Json(new
             {
                 success = false,
@@ -261,6 +272,12 @@ public class AIInterviewAdminController : BasePluginController
         var configurationFailure = ValidateAzureOpenAiAdminConfiguration(aiInterviewSettings);
         if (!string.IsNullOrWhiteSpace(configurationFailure))
         {
+            await LogAzureTestConnectionFailureAsync(
+                "AI Interview Azure test connection configuration invalid",
+                aiInterviewSettings,
+                "azure-openai-configuration-invalid",
+                configurationFailure);
+
             return Json(new
             {
                 success = false,
@@ -297,6 +314,12 @@ public class AIInterviewAdminController : BasePluginController
                 result.StatusCode,
                 result.EndpointHost,
                 SanitizeAdminDiagnosticText(result.DeploymentOrModel));
+            await LogAzureTestConnectionFailureAsync(
+                "AI Interview Azure test connection failed",
+                aiInterviewSettings,
+                result.FailureKind,
+                result.Reason,
+                result);
 
             return Json(new
             {
@@ -311,6 +334,13 @@ public class AIInterviewAdminController : BasePluginController
         catch (Exception exception)
         {
             _logger.LogWarning(exception, "Azure OpenAI admin test connection failed.");
+            await LogAzureTestConnectionFailureAsync(
+                "AI Interview Azure test connection failed",
+                aiInterviewSettings,
+                "azure-openai-exception",
+                exception.GetType().Name,
+                exception: exception);
+
             return Json(new
             {
                 success = false,
@@ -1961,36 +1991,89 @@ public class AIInterviewAdminController : BasePluginController
         var endpoint = settings?.AzureOpenAiEndpointUrl?.Trim();
         var deploymentOrModel = settings?.AzureOpenAiDeploymentOrModel?.Trim();
 
-        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri) ||
-            !string.Equals(endpointUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return "Azure OpenAI endpoint must be an absolute HTTPS resource endpoint.";
-        }
+        if (!AzureOpenAiChatCompletionAdapter.TryNormalizeAzureOpenAiEndpoint(endpoint, out _, out var endpointFailureReason))
+            return endpointFailureReason;
 
-        if (!IsSupportedAzureOpenAiEndpointHost(endpointUri.Host))
-            return "Azure OpenAI endpoint host must be an Azure OpenAI resource host under openai.azure.com or cognitiveservices.azure.com.";
-
-        if (!string.IsNullOrWhiteSpace(endpointUri.Query) ||
-            !string.IsNullOrWhiteSpace(endpointUri.Fragment) ||
-            (!string.IsNullOrWhiteSpace(endpointUri.AbsolutePath) && !string.Equals(endpointUri.AbsolutePath, "/", StringComparison.Ordinal)))
-        {
-            return "Azure OpenAI endpoint must be the resource base endpoint only. Do not include deployment paths, chat/completions, or query-string API versions.";
-        }
-
-        if (deploymentOrModel.Contains('/') || deploymentOrModel.Contains('\\') || deploymentOrModel.Contains('?') || deploymentOrModel.Contains('#'))
+        if (!string.IsNullOrWhiteSpace(deploymentOrModel) &&
+            (deploymentOrModel.Contains('/') || deploymentOrModel.Contains('\\') || deploymentOrModel.Contains('?') || deploymentOrModel.Contains('#')))
             return "Azure OpenAI deployment/model must be a deployment name, not a URL or path.";
 
         return string.Empty;
     }
 
-    protected static bool IsSupportedAzureOpenAiEndpointHost(string host)
+    protected virtual async Task LogAzureTestConnectionFailureAsync(string shortMessage, AIInterviewSettings settings, string failureKind, string reason, AzureOpenAiChatCompletionResult result = null, Exception exception = null)
     {
-        if (string.IsNullOrWhiteSpace(host))
-            return false;
+        if (_nopLogger == null)
+            return;
 
-        var normalized = host.Trim().ToLowerInvariant();
-        return normalized.EndsWith(".openai.azure.com", StringComparison.Ordinal) ||
-            normalized.EndsWith(".cognitiveservices.azure.com", StringComparison.Ordinal);
+        try
+        {
+            var customer = _workContext == null ? null : await _workContext.GetCurrentCustomerAsync();
+            await _nopLogger.InsertLogAsync(
+                NopLogLevel.Warning,
+                shortMessage,
+                BuildAzureTestConnectionFailureLog(settings, failureKind, reason, result, exception),
+                customer);
+        }
+        catch (Exception logException)
+        {
+            _logger?.LogWarning(logException, "Failed to write Azure OpenAI admin test connection failure to nop log.");
+        }
+    }
+
+    protected static string BuildAzureTestConnectionFailureLog(AIInterviewSettings settings, string failureKind, string reason, AzureOpenAiChatCompletionResult result = null, Exception exception = null)
+    {
+        var endpoint = result?.Endpoint ?? settings?.AzureOpenAiEndpointUrl;
+        var endpointHost = !string.IsNullOrWhiteSpace(result?.EndpointHost)
+            ? result.EndpointHost
+            : BuildAdminEndpointHost(endpoint);
+        var deployment = result?.DeploymentOrModel ?? settings?.AzureOpenAiDeploymentOrModel;
+        var details = new List<string>
+        {
+            "Operation=llm-test-connection",
+            $"FailureKind={SanitizeAdminDiagnosticText(failureKind)}",
+            $"EndpointHost={SanitizeAdminDiagnosticText(endpointHost)}",
+            $"Endpoint={SanitizeAdminDiagnosticText(BuildAdminEndpointValue(endpoint))}",
+            $"Deployment={SanitizeAdminDiagnosticText(deployment)}"
+        };
+
+        if (result?.StatusCode > 0)
+            details.Add($"HttpStatus={result.StatusCode}");
+        if (!string.IsNullOrWhiteSpace(result?.ErrorCode))
+            details.Add($"ErrorCode={SanitizeAdminDiagnosticText(result.ErrorCode)}");
+        if (!string.IsNullOrWhiteSpace(reason))
+            details.Add($"Reason={SanitizeAdminDiagnosticText(reason)}");
+        if (!string.IsNullOrWhiteSpace(result?.ErrorMessage))
+            details.Add($"ErrorMessage={SanitizeAdminDiagnosticText(result.ErrorMessage)}");
+        if (exception != null)
+        {
+            details.Add($"ExceptionType={SanitizeAdminDiagnosticText(exception.GetType().Name)}");
+            details.Add($"ExceptionMessage={SanitizeAdminDiagnosticText(exception.Message)}");
+        }
+
+        return string.Join("; ", details) + ".";
+    }
+
+    protected static string BuildAdminEndpointHost(string endpoint)
+    {
+        if (AzureOpenAiChatCompletionAdapter.TryNormalizeAzureOpenAiEndpoint(endpoint, out var normalizedEndpoint, out _))
+            return normalizedEndpoint.Host;
+
+        if (Uri.TryCreate(endpoint?.Trim(), UriKind.Absolute, out var uri))
+            return uri.Host;
+
+        return string.IsNullOrWhiteSpace(endpoint) ? "<empty>" : endpoint.Trim();
+    }
+
+    protected static string BuildAdminEndpointValue(string endpoint)
+    {
+        if (AzureOpenAiChatCompletionAdapter.TryNormalizeAzureOpenAiEndpoint(endpoint, out var normalizedEndpoint, out _))
+            return normalizedEndpoint.ToString();
+
+        if (Uri.TryCreate(endpoint?.Trim(), UriKind.Absolute, out var uri))
+            return $"{uri.Scheme}://{uri.Authority}/";
+
+        return string.IsNullOrWhiteSpace(endpoint) ? "<empty>" : endpoint.Trim();
     }
 
     protected virtual string BuildVendorAdminUrl(int vendorId)

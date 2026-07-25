@@ -123,10 +123,10 @@ public class AzureUsageTrackingTests
     {
         var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("NormalizeResourceEndpoint", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
-        var normalized = (Uri)method.Invoke(null, new object[] { "https://example.openai.azure.com/" });
+        var normalized = (Uri)method.Invoke(null, new object[] { "https://example.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview" });
 
-        Assert.That(normalized.ToString(), Is.EqualTo("https://example.openai.azure.com/"));
-        Assert.That(normalized.Host, Is.EqualTo("example.openai.azure.com"));
+        Assert.That(normalized.ToString(), Is.EqualTo("https://example.cognitiveservices.azure.com/"));
+        Assert.That(normalized.Host, Is.EqualTo("example.cognitiveservices.azure.com"));
     }
 
     [Test]
@@ -159,17 +159,17 @@ public class AzureUsageTrackingTests
     }
 
     [Test]
-    public void AzureOpenAiChatCompletionAdapter_RejectsNonBaseEndpointShapes()
+    public void AzureOpenAiChatCompletionAdapter_AcceptsOperationStyleEndpointAndRejectsPathLikeDeployment()
     {
         var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("ValidateConfiguration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
-        var pathResult = (AzureOpenAiChatCompletionResult)method.Invoke(null, new object[]
+        var operationEndpointResult = (AzureOpenAiChatCompletionResult)method.Invoke(null, new object[]
         {
             new AIInterviewSettings
             {
-                AzureOpenAiEndpointUrl = "https://example.openai.azure.com/openai/deployments/deploy/chat/completions?api-version=2024-06-01&api-key=secret",
+                AzureOpenAiEndpointUrl = "https://example.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview",
                 AzureOpenAiApiKey = "secret-key",
-                AzureOpenAiDeploymentOrModel = "deploy"
+                AzureOpenAiDeploymentOrModel = "gpt-5-deployment"
             }
         });
         var deploymentResult = (AzureOpenAiChatCompletionResult)method.Invoke(null, new object[]
@@ -182,11 +182,7 @@ public class AzureUsageTrackingTests
             }
         });
 
-        Assert.That(pathResult.Success, Is.False);
-        Assert.That(pathResult.FailureKind, Is.EqualTo("azure-openai-configuration-invalid"));
-        Assert.That(pathResult.Reason, Does.Contain("resource base endpoint"));
-        Assert.That(pathResult.Endpoint, Is.EqualTo("https://example.openai.azure.com/"));
-        Assert.That(pathResult.Endpoint, Does.Not.Contain("secret"));
+        Assert.That(operationEndpointResult, Is.Null);
         Assert.That(deploymentResult.Success, Is.False);
         Assert.That(deploymentResult.Reason, Does.Contain("deployment name"));
     }

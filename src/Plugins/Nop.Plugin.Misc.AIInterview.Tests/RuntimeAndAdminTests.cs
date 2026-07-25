@@ -63,6 +63,21 @@ public class RuntimeAndAdminTests
         }
     }
 
+    private sealed class ThrowingAzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapter
+    {
+        private readonly Exception _exception;
+
+        public ThrowingAzureOpenAiChatCompletionAdapter(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        public Task<AzureOpenAiChatCompletionResult> CompleteChatAsync(AzureOpenAiChatCompletionRequest request)
+        {
+            throw _exception;
+        }
+    }
+
     [SetUp]
     public void SetUp()
     {
@@ -1848,6 +1863,7 @@ public class RuntimeAndAdminTests
     [Test]
     public async Task Admin_TestAzureOpenAiConnection_ConfigIncomplete_ReturnsFailureWithoutAdapterCall()
     {
+        _workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(new Customer { Id = 77, Email = "admin@example.com" });
         var controller = CreateAiInterviewAdminController(new AIInterviewSettings
         {
             AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
@@ -1858,25 +1874,32 @@ public class RuntimeAndAdminTests
 
         Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
         Assert.That(GetJsonValue<string>(result, "message"), Is.EqualTo("Azure OpenAI settings are incomplete. Save endpoint, API key, and deployment/model first."));
+        _nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure test connection configuration invalid",
+            It.Is<string>(message =>
+                message.Contains("Operation=llm-test-connection") &&
+                message.Contains("FailureKind=azure-openai-configuration-incomplete") &&
+                message.Contains("EndpointHost=example.openai.azure.com") &&
+                message.Contains("Deployment=deployment") &&
+                message.Contains("Reason=configuration incomplete")),
+            It.Is<Customer>(customer => customer.Id == 77)), Times.Once);
     }
 
     [Test]
-    public async Task Admin_TestAzureOpenAiConnection_InvalidEndpointShape_ReturnsFailFastMessage()
+    public async Task Admin_TestAzureOpenAiConnection_OperationEndpointShape_PassesPreValidation()
     {
         var controller = CreateAiInterviewAdminController(new AIInterviewSettings
         {
-            AzureOpenAiEndpointUrl = "https://example.openai.azure.com/openai/deployments/deploy/chat/completions?api-version=2024-06-01&api-key=secret",
+            AzureOpenAiEndpointUrl = "https://example.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview",
             AzureOpenAiApiKey = "secret-key",
             AzureOpenAiDeploymentOrModel = "deployment"
         }, new AzureOpenAiChatCompletionResult { Success = true });
 
         var result = (JsonResult)await controller.TestAzureOpenAiConnection();
-        var serialized = System.Text.Json.JsonSerializer.Serialize(result.Value);
 
-        Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
-        Assert.That(GetJsonValue<string>(result, "message"), Does.Contain("resource base endpoint"));
-        Assert.That(serialized, Does.Not.Contain("secret-key"));
-        Assert.That(serialized, Does.Not.Contain("api-key=secret"));
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.True);
+        Assert.That(GetJsonValue<string>(result, "message"), Is.EqualTo("Azure OpenAI connection succeeded."));
     }
 
     [Test]
@@ -1893,6 +1916,15 @@ public class RuntimeAndAdminTests
 
         Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
         Assert.That(GetJsonValue<string>(result, "message"), Does.Contain("openai.azure.com").And.Contain("cognitiveservices.azure.com"));
+        _nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure test connection configuration invalid",
+            It.Is<string>(message =>
+                message.Contains("Operation=llm-test-connection") &&
+                message.Contains("FailureKind=azure-openai-configuration-invalid") &&
+                message.Contains("EndpointHost=example.azurewebsites.net") &&
+                message.Contains("Reason=Azure OpenAI endpoint host")),
+            It.IsAny<Customer>()), Times.Once);
     }
 
     [Test]
@@ -1928,6 +1960,7 @@ public class RuntimeAndAdminTests
     [Test]
     public async Task Admin_TestAzureOpenAiConnection_AdapterFailure_ReturnsSafeFailure()
     {
+        _workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(new Customer { Id = 88, Email = "admin@example.com" });
         var settings = new AIInterviewSettings
         {
             AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
@@ -1956,6 +1989,51 @@ public class RuntimeAndAdminTests
         Assert.That(GetJsonValue<string>(result, "message"), Does.Contain("HTTP 401"));
         Assert.That(serialized, Does.Not.Contain("secret-key"));
         Assert.That(serialized, Does.Not.Contain("api-key=secret-key"));
+        _nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure test connection failed",
+            It.Is<string>(message =>
+                message.Contains("Operation=llm-test-connection") &&
+                message.Contains("FailureKind=azure-openai-http-failure") &&
+                message.Contains("HttpStatus=401") &&
+                message.Contains("EndpointHost=example.openai.azure.com") &&
+                message.Contains("Deployment=deployment") &&
+                message.Contains("ErrorCode=Unauthorized") &&
+                !message.Contains("secret-key") &&
+                !message.Contains("api-key=secret-key")),
+            It.Is<Customer>(customer => customer.Id == 88)), Times.Once);
+    }
+
+    [Test]
+    public async Task Admin_TestAzureOpenAiConnection_AdapterException_LogsWarningSafely()
+    {
+        var settings = new AIInterviewSettings
+        {
+            AzureOpenAiEndpointUrl = "https://example.openai.azure.com/openai/responses?api-version=2025-04-01-preview",
+            AzureOpenAiApiKey = "secret-key",
+            AzureOpenAiDeploymentOrModel = "deployment"
+        };
+        var controller = CreateAiInterviewAdminController(
+            settings,
+            adapter: new ThrowingAzureOpenAiChatCompletionAdapter(new InvalidOperationException("authorization: secret-token failed; sig=secret-signature")));
+
+        var result = (JsonResult)await controller.TestAzureOpenAiConnection();
+
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
+        _nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview Azure test connection failed",
+            It.Is<string>(message =>
+                message.Contains("Operation=llm-test-connection") &&
+                message.Contains("FailureKind=azure-openai-exception") &&
+                message.Contains("EndpointHost=example.openai.azure.com") &&
+                message.Contains("Deployment=deployment") &&
+                message.Contains("ExceptionType=InvalidOperationException") &&
+                message.Contains("authorization=<redacted>") &&
+                message.Contains("sig=<redacted>") &&
+                !message.Contains("secret-token") &&
+                !message.Contains("secret-signature")),
+            It.IsAny<Customer>()), Times.Once);
     }
 
     [TestCase("api-key=secret-key", "secret-key")]
@@ -2252,7 +2330,7 @@ public class RuntimeAndAdminTests
         return (T)json.Value.GetType().GetProperty(propertyName).GetValue(json.Value, null);
     }
 
-    private AIInterviewAdminController CreateAiInterviewAdminController(AIInterviewSettings settings, AzureOpenAiChatCompletionResult adapterResult)
+    private AIInterviewAdminController CreateAiInterviewAdminController(AIInterviewSettings settings, AzureOpenAiChatCompletionResult adapterResult = null, IAzureOpenAiChatCompletionAdapter adapter = null)
     {
         _settingService.Setup(service => service.LoadSettingAsync<AIInterviewSettings>(0))
             .ReturnsAsync(settings);
@@ -2279,7 +2357,8 @@ public class RuntimeAndAdminTests
             new Mock<IRepository<CreditPurchaseGrant>>().Object,
             settings,
             _mockAIInterviewSettings,
-            azureOpenAiChatCompletionAdapter: new FakeAzureOpenAiChatCompletionAdapter(adapterResult));
+            azureOpenAiChatCompletionAdapter: adapter ?? new FakeAzureOpenAiChatCompletionAdapter(adapterResult),
+            nopLogger: _nopLogger.Object);
     }
 
     [Test]
