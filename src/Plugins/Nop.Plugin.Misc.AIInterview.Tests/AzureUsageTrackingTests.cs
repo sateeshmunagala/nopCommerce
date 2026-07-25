@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Linq;
 using Azure;
 using Moq;
 using Nop.Core.Caching;
@@ -119,7 +120,7 @@ public class AzureUsageTrackingTests
     }
 
     [Test]
-    public void AzureOpenAiChatCompletionAdapter_NormalizesResourceEndpointForSdkClient()
+    public void AzureOpenAiChatCompletionAdapter_NormalizesResourceEndpointForHttpClient()
     {
         var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("NormalizeResourceEndpoint", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
@@ -127,6 +128,58 @@ public class AzureUsageTrackingTests
 
         Assert.That(normalized.ToString(), Is.EqualTo("https://example.cognitiveservices.azure.com/"));
         Assert.That(normalized.Host, Is.EqualTo("example.cognitiveservices.azure.com"));
+    }
+
+    [Test]
+    public async Task AzureOpenAiChatCompletionAdapter_SendsMaxCompletionTokensOnly()
+    {
+        string requestBody = null;
+        Uri requestUri = null;
+        string apiKeyHeader = null;
+        var handler = new TestHttpMessageHandler(request =>
+        {
+            requestUri = request.RequestUri;
+            requestBody = request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            apiKeyHeader = request.Headers.TryGetValues("api-key", out var values)
+                ? values.SingleOrDefault()
+                : null;
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    "{\"id\":\"resp_123\",\"model\":\"gpt-5\",\"usage\":{\"prompt_tokens\":11,\"completion_tokens\":7,\"total_tokens\":18},\"choices\":[{\"message\":{\"content\":\"{\\\"question\\\":\\\"Tell me about a production incident.\\\",\\\"complete\\\":false}\"}}]}",
+                    Encoding.UTF8,
+                    "application/json")
+            };
+        });
+        var adapter = new AzureOpenAiChatCompletionAdapter(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-deployment"
+            },
+            new HttpClient(handler));
+
+        var result = await adapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+        {
+            Mode = "generate",
+            OperationName = "llm-question-generation",
+            SystemPrompt = "System prompt",
+            UserPrompt = "User prompt",
+            MaxCompletionTokens = 123
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(requestUri.ToString(), Is.EqualTo("https://example.cognitiveservices.azure.com/openai/deployments/gpt-5-deployment/chat/completions?api-version=2025-04-01-preview"));
+        Assert.That(apiKeyHeader, Is.EqualTo("secret-key"));
+        Assert.That(requestBody, Does.Contain("\"max_completion_tokens\":123"));
+        Assert.That(requestBody, Does.Not.Contain("\"max_tokens\""));
+        Assert.That(requestBody, Does.Not.Contain("\"temperature\""));
+        Assert.That(result.UsageInfo.PromptTokens, Is.EqualTo(11));
+        Assert.That(result.UsageInfo.CompletionTokens, Is.EqualTo(7));
+        Assert.That(result.UsageInfo.TotalTokens, Is.EqualTo(18));
+        Assert.That(result.UsageInfo.MetadataJson, Does.Contain("example.cognitiveservices.azure.com/"));
     }
 
     [Test]

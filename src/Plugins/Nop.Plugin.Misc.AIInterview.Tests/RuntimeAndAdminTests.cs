@@ -1935,7 +1935,11 @@ public class RuntimeAndAdminTests
         var resumePlanningText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Services", "InterviewAiClient.ResumePlanning.cs"));
         var adminControllerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "AIInterviewAdminController.cs"));
 
-        Assert.That(adapterText, Does.Contain("MaxOutputTokenCount = request.MaxCompletionTokens"));
+        Assert.That(adapterText, Does.Contain("[\"max_completion_tokens\"] = request?.MaxCompletionTokens ?? 0"));
+        Assert.That(adapterText, Does.Not.Contain("GetChatClient"));
+        Assert.That(adapterText, Does.Not.Contain("ChatCompletionOptions"));
+        Assert.That(adapterText, Does.Not.Contain("CompleteChatAsync(messages"));
+        Assert.That(adapterText, Does.Not.Contain("MaxOutputTokenCount"));
         Assert.That(runtimeClientText, Does.Contain("MaxCompletionTokens = 400"));
         Assert.That(resumePlanningText, Does.Contain("MaxCompletionTokens = maxTokens"));
         Assert.That(adminControllerText, Does.Contain("MaxCompletionTokens = 32"));

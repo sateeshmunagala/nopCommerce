@@ -1,19 +1,22 @@
-using System.ClientModel;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Azure;
-using Azure.AI.OpenAI;
-using OpenAI.Chat;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
 public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapter
 {
-    private readonly AIInterviewSettings _settings;
+    private const string AzureOpenAiApiVersion = "2025-04-01-preview";
 
-    public AzureOpenAiChatCompletionAdapter(AIInterviewSettings settings)
+    private readonly AIInterviewSettings _settings;
+    private readonly HttpClient _httpClient;
+
+    public AzureOpenAiChatCompletionAdapter(AIInterviewSettings settings, HttpClient httpClient = null)
     {
         _settings = settings;
+        _httpClient = httpClient ?? new HttpClient();
     }
 
     public virtual async Task<AzureOpenAiChatCompletionResult> CompleteChatAsync(AzureOpenAiChatCompletionRequest request)
@@ -27,33 +30,17 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
 
         try
         {
-            var azureClient = new AzureOpenAIClient(endpoint, new ApiKeyCredential(_settings.AzureOpenAiApiKey.Trim()));
-            var chatClient = azureClient.GetChatClient(deploymentOrModel);
-            var messages = new ChatMessage[]
-            {
-                new SystemChatMessage(request.SystemPrompt ?? string.Empty),
-                new UserChatMessage(request.UserPrompt ?? string.Empty)
-            };
-            var options = new ChatCompletionOptions
-            {
-                MaxOutputTokenCount = request.MaxCompletionTokens
-            };
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, BuildChatCompletionsUri(endpoint, deploymentOrModel));
+            httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            httpRequest.Headers.Add("api-key", _settings.AzureOpenAiApiKey.Trim());
+            httpRequest.Content = new StringContent(BuildRequestBody(request), Encoding.UTF8, "application/json");
 
-            var response = await chatClient.CompleteChatAsync(messages, options);
-            var completion = response.Value;
-            var content = string.Join(string.Empty, completion.Content.Select(part => part.Text));
+            using var response = await _httpClient.SendAsync(httpRequest);
+            var responseBody = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+                return BuildHttpFailureResult(response, responseBody, endpoint, deploymentOrModel);
 
-            return new AzureOpenAiChatCompletionResult
-            {
-                Success = true,
-                Content = content,
-                Endpoint = endpoint.ToString(),
-                EndpointHost = endpoint.Host,
-                DeploymentOrModel = deploymentOrModel,
-                ModelName = completion.Model,
-                ResponseId = completion.Id,
-                UsageInfo = BuildUsageInfo(completion, request?.Mode, endpoint, deploymentOrModel)
-            };
+            return BuildSuccessResult(responseBody, request?.Mode, endpoint, deploymentOrModel);
         }
         catch (RequestFailedException ex)
         {
@@ -73,6 +60,48 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
                 DeploymentOrModel = deploymentOrModel
             };
         }
+    }
+
+    private static Uri BuildChatCompletionsUri(Uri endpoint, string deploymentOrModel)
+    {
+        var builder = new UriBuilder(endpoint)
+        {
+            Path = $"openai/deployments/{Uri.EscapeDataString(deploymentOrModel)}/chat/completions",
+            Query = $"api-version={AzureOpenAiApiVersion}"
+        };
+
+        return builder.Uri;
+    }
+
+    private static string BuildRequestBody(AzureOpenAiChatCompletionRequest request)
+    {
+        return JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["messages"] = new[]
+            {
+                new { role = "system", content = request?.SystemPrompt ?? string.Empty },
+                new { role = "user", content = request?.UserPrompt ?? string.Empty }
+            },
+            ["max_completion_tokens"] = request?.MaxCompletionTokens ?? 0
+        });
+    }
+
+    private static AzureOpenAiChatCompletionResult BuildSuccessResult(string responseBody, string mode, Uri endpoint, string deploymentOrModel)
+    {
+        using var document = JsonDocument.Parse(responseBody);
+        var root = document.RootElement;
+
+        return new AzureOpenAiChatCompletionResult
+        {
+            Success = true,
+            Content = ExtractAssistantContent(root),
+            Endpoint = endpoint.ToString(),
+            EndpointHost = endpoint.Host,
+            DeploymentOrModel = deploymentOrModel,
+            ModelName = TryGetString(root, "model"),
+            ResponseId = TryGetString(root, "id"),
+            UsageInfo = BuildUsageInfo(root, mode, endpoint, deploymentOrModel)
+        };
     }
 
     private static Uri NormalizeResourceEndpoint(string endpoint)
@@ -176,16 +205,16 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             : SanitizeDiagnosticText(endpoint.Trim());
     }
 
-    private static AzureOpenAiUsageInfo BuildUsageInfo(ChatCompletion completion, string mode, Uri endpoint, string deploymentOrModel)
+    private static AzureOpenAiUsageInfo BuildUsageInfo(JsonElement response, string mode, Uri endpoint, string deploymentOrModel)
     {
-        var usage = completion?.Usage;
-        if (completion == null && usage == null && string.IsNullOrWhiteSpace(deploymentOrModel))
+        var hasUsage = response.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object;
+        if (!hasUsage && string.IsNullOrWhiteSpace(deploymentOrModel))
             return null;
 
-        var promptTokens = Math.Max(0, usage?.InputTokenCount ?? 0);
-        var completionTokens = Math.Max(0, usage?.OutputTokenCount ?? 0);
-        var totalTokens = Math.Max(0, usage?.TotalTokenCount ?? promptTokens + completionTokens);
-        var rawUsageJson = usage == null
+        var promptTokens = hasUsage ? Math.Max(0, TryGetInt(usage, "prompt_tokens") ?? TryGetInt(usage, "input_tokens") ?? 0) : 0;
+        var completionTokens = hasUsage ? Math.Max(0, TryGetInt(usage, "completion_tokens") ?? TryGetInt(usage, "output_tokens") ?? 0) : 0;
+        var totalTokens = hasUsage ? Math.Max(0, TryGetInt(usage, "total_tokens") ?? promptTokens + completionTokens) : 0;
+        var rawUsageJson = !hasUsage
             ? null
             : JsonSerializer.Serialize(new
             {
@@ -199,7 +228,7 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
         return new AzureOpenAiUsageInfo
         {
             DeploymentOrModel = deploymentOrModel,
-            ModelName = completion?.Model,
+            ModelName = TryGetString(response, "model"),
             PromptTokens = promptTokens,
             CompletionTokens = completionTokens,
             TotalTokens = totalTokens,
@@ -207,7 +236,7 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
             MetadataJson = JsonSerializer.Serialize(new
             {
                 mode,
-                responseId = completion?.Id,
+                responseId = TryGetString(response, "id"),
                 endpoint = BuildEndpointMetadataValue(endpoint)
             })
         };
@@ -216,6 +245,47 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
     private static string BuildEndpointMetadataValue(Uri endpoint)
     {
         return endpoint == null ? "<empty>" : $"{endpoint.Host}/";
+    }
+
+    private static AzureOpenAiChatCompletionResult BuildHttpFailureResult(HttpResponseMessage response, string responseBody, Uri endpoint, string deploymentOrModel)
+    {
+        var errorCode = string.Empty;
+        var errorMessage = string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(responseBody))
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(responseBody);
+                if (document.RootElement.TryGetProperty("error", out var error) && error.ValueKind == JsonValueKind.Object)
+                {
+                    errorCode = TryGetString(error, "code");
+                    errorMessage = TryGetString(error, "message");
+                }
+            }
+            catch (JsonException)
+            {
+                errorMessage = responseBody;
+            }
+        }
+
+        var reasonPhrase = SanitizeDiagnosticText(response?.ReasonPhrase);
+        var sanitizedErrorMessage = SanitizeDiagnosticText(errorMessage);
+
+        return new AzureOpenAiChatCompletionResult
+        {
+            Success = false,
+            FailureKind = "azure-openai-http-failure",
+            Reason = "http failure",
+            StatusCode = response == null ? null : (int)response.StatusCode,
+            ReasonPhrase = reasonPhrase,
+            ErrorCode = SanitizeDiagnosticText(errorCode),
+            ErrorMessage = string.IsNullOrWhiteSpace(sanitizedErrorMessage) ? reasonPhrase : sanitizedErrorMessage,
+            ResponseBody = SanitizeDiagnosticText(responseBody),
+            Endpoint = endpoint?.ToString(),
+            EndpointHost = endpoint?.Host,
+            DeploymentOrModel = deploymentOrModel
+        };
     }
 
     private static AzureOpenAiChatCompletionResult BuildRequestFailedResult(RequestFailedException exception, Uri endpoint, string deploymentOrModel)
@@ -245,5 +315,53 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
         sanitized = Regex.Replace(sanitized, "(?i)(api[-_ ]?key|authorization|access[_-]?token|refresh[_-]?token|bearer|subscription[-_ ]?key)\\s*[:=]\\s*\\\"?[^\\\"\\s,;}]+", "$1=<redacted>");
         sanitized = Regex.Replace(sanitized, "(?i)(sig|signature|code|client_secret)=([^&\\s]+)", "$1=<redacted>");
         return sanitized.Length <= 1000 ? sanitized : sanitized[..1000];
+    }
+
+    private static string ExtractAssistantContent(JsonElement response)
+    {
+        if (!response.TryGetProperty("choices", out var choices) || choices.ValueKind != JsonValueKind.Array || choices.GetArrayLength() == 0)
+            return string.Empty;
+
+        var firstChoice = choices[0];
+        if (!firstChoice.TryGetProperty("message", out var message) || message.ValueKind != JsonValueKind.Object ||
+            !message.TryGetProperty("content", out var content))
+        {
+            return string.Empty;
+        }
+
+        if (content.ValueKind == JsonValueKind.String)
+            return content.GetString();
+
+        if (content.ValueKind != JsonValueKind.Array)
+            return string.Empty;
+
+        var builder = new StringBuilder();
+        foreach (var part in content.EnumerateArray())
+        {
+            if (part.ValueKind == JsonValueKind.Object && part.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String)
+                builder.Append(text.GetString());
+        }
+
+        return builder.ToString();
+    }
+
+    private static string TryGetString(JsonElement element, string propertyName)
+    {
+        return element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty(propertyName, out var property) &&
+            property.ValueKind == JsonValueKind.String
+                ? property.GetString()
+                : null;
+    }
+
+    private static int? TryGetInt(JsonElement element, string propertyName)
+    {
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(propertyName, out var property))
+            return null;
+
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var value))
+            return value;
+
+        return null;
     }
 }
