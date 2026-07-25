@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using Azure;
 using Moq;
 using Nop.Core.Caching;
 using Nop.Plugin.Misc.AIInterview.Domain;
@@ -141,6 +142,60 @@ public class AzureUsageTrackingTests
         Assert.That(metadataValue, Is.EqualTo("example.openai.azure.com/"));
         Assert.That(metadataValue, Does.Not.Contain("https://"));
         Assert.That(emptyValue, Is.EqualTo("<empty>"));
+    }
+
+    [Test]
+    public void AzureOpenAiChatCompletionAdapter_MapsRequestFailedExceptionFields()
+    {
+        var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("BuildRequestFailedResult", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var exception = new RequestFailedException(429, "Too many requests for deployment.", "rate_limit_exceeded", null);
+
+        var result = (AzureOpenAiChatCompletionResult)method.Invoke(null, new object[]
+        {
+            exception,
+            new Uri("https://example.openai.azure.com/"),
+            "interview-deployment"
+        });
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.FailureKind, Is.EqualTo("azure-openai-http-failure"));
+        Assert.That(result.Reason, Is.EqualTo("http failure"));
+        Assert.That(result.StatusCode, Is.EqualTo(429));
+        Assert.That(result.ReasonPhrase, Does.Contain("Too many requests for deployment."));
+        Assert.That(result.ErrorCode, Is.EqualTo("rate_limit_exceeded"));
+        Assert.That(result.ErrorMessage, Does.Contain("Too many requests for deployment."));
+        Assert.That(result.ResponseBody, Does.Contain("Too many requests for deployment."));
+        Assert.That(result.Endpoint, Is.EqualTo("https://example.openai.azure.com/"));
+        Assert.That(result.EndpointHost, Is.EqualTo("example.openai.azure.com"));
+        Assert.That(result.DeploymentOrModel, Is.EqualTo("interview-deployment"));
+    }
+
+    [Test]
+    public void AzureOpenAiChatCompletionAdapter_RequestFailedMappingRedactsDiagnostics()
+    {
+        var method = typeof(AzureOpenAiChatCompletionAdapter).GetMethod("BuildRequestFailedResult", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var exception = new RequestFailedException(
+            401,
+            "Authorization: secret-auth failed; api-key=secret-key; https://example.test/?sig=secret-signature",
+            "client_secret=secret-client",
+            null);
+
+        var result = (AzureOpenAiChatCompletionResult)method.Invoke(null, new object[]
+        {
+            exception,
+            new Uri("https://example.openai.azure.com/"),
+            "deployment"
+        });
+        var serialized = JsonSerializer.Serialize(result);
+
+        Assert.That(serialized, Does.Contain("Authorization=<redacted>"));
+        Assert.That(serialized, Does.Contain("api-key=<redacted>"));
+        Assert.That(serialized, Does.Contain("sig=<redacted>"));
+        Assert.That(serialized, Does.Contain("client_secret=<redacted>"));
+        Assert.That(serialized, Does.Not.Contain("secret-auth"));
+        Assert.That(serialized, Does.Not.Contain("secret-key"));
+        Assert.That(serialized, Does.Not.Contain("secret-signature"));
+        Assert.That(serialized, Does.Not.Contain("secret-client"));
     }
 
     [Test]

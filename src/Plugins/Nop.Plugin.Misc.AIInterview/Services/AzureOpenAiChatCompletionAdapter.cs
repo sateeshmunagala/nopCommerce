@@ -54,20 +54,7 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
         }
         catch (RequestFailedException ex)
         {
-            return new AzureOpenAiChatCompletionResult
-            {
-                Success = false,
-                FailureKind = "azure-openai-http-failure",
-                Reason = "http failure",
-                StatusCode = ex.Status,
-                ReasonPhrase = SanitizeDiagnosticText(ex.Message),
-                ErrorCode = SanitizeDiagnosticText(ex.ErrorCode),
-                ErrorMessage = SanitizeDiagnosticText(ex.Message),
-                ResponseBody = SanitizeDiagnosticText(ex.Message),
-                Endpoint = endpoint.ToString(),
-                EndpointHost = endpoint.Host,
-                DeploymentOrModel = deploymentOrModel
-            };
+            return BuildRequestFailedResult(ex, endpoint, deploymentOrModel);
         }
         catch (Exception ex)
         {
@@ -137,6 +124,24 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
     private static string BuildEndpointMetadataValue(Uri endpoint)
     {
         return endpoint == null ? "<empty>" : $"{endpoint.Host}/";
+    }
+
+    private static AzureOpenAiChatCompletionResult BuildRequestFailedResult(RequestFailedException exception, Uri endpoint, string deploymentOrModel)
+    {
+        return new AzureOpenAiChatCompletionResult
+        {
+            Success = false,
+            FailureKind = "azure-openai-http-failure",
+            Reason = "http failure",
+            StatusCode = exception?.Status,
+            ReasonPhrase = SanitizeDiagnosticText(exception?.Message),
+            ErrorCode = SanitizeDiagnosticText(exception?.ErrorCode),
+            ErrorMessage = SanitizeDiagnosticText(exception?.Message),
+            ResponseBody = SanitizeDiagnosticText(exception?.Message),
+            Endpoint = endpoint?.ToString(),
+            EndpointHost = endpoint?.Host,
+            DeploymentOrModel = deploymentOrModel
+        };
     }
 
     private static string SanitizeDiagnosticText(string value)
