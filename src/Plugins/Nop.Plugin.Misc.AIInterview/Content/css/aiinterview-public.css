@@ -3166,7 +3166,7 @@ body.ai-job-preview-open .item-box {
 
 .runtime-permissions-card {
     display: grid;
-    gap: 12px;
+    gap: 10px;
     width: min(800px, 100%);
     padding: 16px;
     border-color: var(--jb-border, #dedede);
@@ -3178,7 +3178,7 @@ body.ai-job-preview-open .item-box {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
 }
 
 .runtime-permissions-head h3 {
@@ -3336,12 +3336,6 @@ body.ai-job-preview-open .item-box {
     align-items: center;
 }
 
-.runtime-permissions-card .button-1,
-.runtime-permissions-card .button-2 {
-    min-height: 38px;
-    padding: 8px 14px;
-}
-
 .runtime-permissions-choice-row .button-2.is-selected {
     border-color: var(--jb-accent, #35d6b4);
     background: color-mix(in srgb, var(--jb-accent, #35d6b4) 16%, var(--jb-white, #ffffff));
@@ -3428,8 +3422,14 @@ body.ai-job-preview-open .item-box {
     justify-content: flex-end;
     gap: 8px;
     margin-top: 0;
-    padding-top: 12px;
+    padding-top: 10px;
     border-top: 1px solid var(--jb-border, #dedede);
+}
+
+.runtime-permissions-actions .button-1,
+.runtime-permissions-actions .button-2 {
+    min-height: 38px;
+    padding: 8px 14px;
 }
 
 .runtime-modal-head {
@@ -4189,7 +4189,7 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-permissions-stepper {
-        grid-template-columns: repeat(7, 122px);
+        grid-template-columns: repeat(7, 106px);
         margin: 0 -2px;
         padding-bottom: 4px;
     }
