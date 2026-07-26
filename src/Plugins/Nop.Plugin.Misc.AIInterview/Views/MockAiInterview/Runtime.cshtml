@@ -1511,7 +1511,7 @@
 
             if (!navigator.mediaDevices?.getUserMedia) {
                 if (precheckCameraStatus)
-                    precheckCameraStatus.textContent = 'Camera is not available. Please provide permissions.';
+                    precheckCameraStatus.textContent = 'Camera is not available. You can continue using text answers.';
                 return;
             }
 
@@ -1525,7 +1525,7 @@
             } catch {
                 stopPrecheckCamera();
                 if (precheckCameraStatus)
-                    precheckCameraStatus.textContent = 'Camera is not available. Please provide permissions.';
+                    precheckCameraStatus.textContent = 'Camera is not available. You can continue using text answers.';
             }
         };
 
