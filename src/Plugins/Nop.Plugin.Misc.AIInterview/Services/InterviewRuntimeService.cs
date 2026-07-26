@@ -2100,7 +2100,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (session == null)
             return null;
 
-        var ensuredTurns = await EnsureSingleActiveTurnAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer);
+        var ensuredTurns = await EnsureQuestionPlanAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer);
         var turns = ensuredTurns.Turns.ToList();
         if (!turns.Any())
         {
@@ -2315,9 +2315,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var shouldComplete = answeredCount >= maxQuestions;
         if (!shouldComplete)
         {
-            var replenishedTurns = await EnsureSingleActiveTurnAsync(session, turns);
-            turns = replenishedTurns.Turns.ToList();
             var nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
+            if (nextTurn == null)
+            {
+                var replenishedTurns = await EnsureSingleActiveTurnAsync(session, turns);
+                turns = replenishedTurns.Turns.ToList();
+                nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
+            }
 
             if (nextTurn == null)
             {
@@ -2402,9 +2406,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var shouldComplete = answeredCount >= maxQuestions;
         if (!shouldComplete)
         {
-            var replenishedTurns = await EnsureSingleActiveTurnAsync(session, turns);
-            turns = replenishedTurns.Turns.ToList();
             var nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
+            if (nextTurn == null)
+            {
+                var replenishedTurns = await EnsureSingleActiveTurnAsync(session, turns);
+                turns = replenishedTurns.Turns.ToList();
+                nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
+            }
 
             if (nextTurn == null)
             {

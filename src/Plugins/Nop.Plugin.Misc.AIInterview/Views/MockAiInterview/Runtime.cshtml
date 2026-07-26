@@ -672,6 +672,7 @@
         let completedCountdown = null;
         let completedCleanupTimer = null;
         let completionRecordingCleanupPromise = null;
+        let completionLiveMediaStopPromise = null;
         let finalCompletionSpoken = false;
         const autoSubmitDelaySeconds = 15;
         const completionWaitSeconds = 120;
@@ -2623,22 +2624,77 @@
                 resetTimers();
         };
 
+        const stopLiveMediaForCompletion = async () => {
+            if (completionLiveMediaStopPromise)
+                return completionLiveMediaStopPromise;
+
+            completionLiveMediaStopPromise = (async () => {
+                let preserveRecordingPromise = Promise.resolve(false);
+                try {
+                    if (mediaRecorder) {
+                        logActivity('Completion live recording stop started.');
+                        preserveRecordingPromise = stopRecording(false, { preserveSegment: true, statusMessage: 'Recording captured for final upload.' });
+                    }
+                } catch (error) {
+                    logActivity(`Completion recording preserve failed: ${error?.message || 'unknown'}`);
+                }
+
+                try {
+                    stopScreenShare();
+                    setScreenShareInterruptionWarning(false);
+                    if (recordingButton)
+                        recordingButton.disabled = true;
+                    cameraStream?.getTracks().forEach(track => track.stop());
+                    cameraStream = null;
+                    await stopMicStream();
+                    video.srcObject = null;
+                    video.style.display = 'none';
+                    cameraPlaceholder.style.display = '';
+                    await stopSpeechRecognition();
+                    updateAnswerInputState();
+                    updateStartButtonState();
+                    updateAuxiliaryControlsState();
+                } catch (error) {
+                    logActivity(`Completion live media stop failed: ${error?.message || 'unknown'}`);
+                }
+
+                try {
+                    await preserveRecordingPromise;
+                } catch (error) {
+                    logActivity(`Completion recording preserve exception: ${error?.message || 'unknown'}`);
+                }
+
+                closeRecordingAudioMix();
+            })();
+
+            return completionLiveMediaStopPromise;
+        };
+
         const finalizeRecordingBeforeCompletion = async () => {
             if (completionRecordingCleanupPromise)
                 return completionRecordingCleanupPromise;
 
             completionRecordingCleanupPromise = (async () => {
+                await stopLiveMediaForCompletion();
+
                 if (!config.recordingAvailable || !recordingEnabled)
                     return false;
 
-                if (!mediaRecorder && preservedRecordingSegments.length === 0 && recordingChunks.length === 0)
+                if (!mediaRecorder && preservedRecordingSegments.length === 0 && recordingChunks.length === 0) {
+                    setRecordingStatus('', false);
                     return false;
+                }
 
                 try {
+                    setRecordingStatus('Uploading interview recording...', false, true);
                     logActivity('Final recording upload before completion started.');
-                    await stopRecording(true);
+                    const uploaded = await stopRecording(true);
                     logActivity('Final recording upload before completion finished.');
-                    return true;
+                    if (uploaded)
+                        setRecordingStatus('Recording uploaded.', false, true);
+                    else if ((recordingStatus?.textContent || '') === 'Uploading interview recording...')
+                        setRecordingStatus('', false);
+                    return uploaded;
                 } catch (error) {
                     const message = error?.message || 'Recording upload failed.';
                     logActivity(`Final recording upload before completion failed: ${message}`);
@@ -2670,19 +2726,26 @@
             if (!completionBox)
                 return;
 
-            completionBox.replaceChildren();
+            let timer = document.getElementById('runtime-completion-countdown');
+            if (!timer) {
+                completionBox.replaceChildren();
 
-            const message = document.createElement('strong');
-            message.textContent = reportGenerationMessage;
+                const message = document.createElement('strong');
+                message.textContent = reportGenerationMessage;
 
-            const timer = document.createElement('div');
-            timer.id = 'runtime-completion-countdown';
+                timer = document.createElement('div');
+                timer.id = 'runtime-completion-countdown';
+                timer.style.marginTop = '6px';
+                timer.style.fontWeight = '700';
+                completionBox.append(message, timer);
+            }
+
             timer.textContent = formatCountdown(remainingSeconds);
-            timer.style.marginTop = '6px';
-            timer.style.fontWeight = '700';
+            timer.hidden = false;
+            timer.style.display = 'block';
 
-            completionBox.append(message, timer);
             completionBox.classList.remove('runtime-js-hidden');
+            completionBox.hidden = false;
             completionBox.style.display = 'block';
             updateReportButton(reportUrl);
         };
@@ -2746,22 +2809,7 @@
                 setRecordingStatus('Recording upload failed or timed out. Continuing to report.', true);
             }
             recordingEnabled = false;
-            try {
-                stopScreenShare();
-                setScreenShareInterruptionWarning(false);
-                if (recordingButton)
-                    recordingButton.disabled = true;
-                cameraStream?.getTracks().forEach(track => track.stop());
-                cameraStream = null;
-                await stopMicStream();
-                closeRecordingAudioMix();
-                video.srcObject = null;
-                video.style.display = 'none';
-                cameraPlaceholder.style.display = '';
-                await stopSpeechRecognition();
-            } catch (error) {
-                logActivity(`Completion media cleanup failed: ${error?.message || 'unknown'}`);
-            }
+            await stopLiveMediaForCompletion();
             questionBox.textContent = completionText;
             messageBox.textContent = completionText;
             messageBox.classList.add('runtime-js-hidden');
@@ -2787,6 +2835,7 @@
             submitButton.disabled = true;
             updateStartButtonState();
             setHeaderStatus(reportGenerationMessage, false);
+            stopLiveMediaForCompletion().catch(error => logActivity(`Completion live media stop exception: ${error?.message || 'unknown'}`));
             startReportGenerationWaitingState(reportUrl);
             clearTokenRefreshTimer();
             updateAuxiliaryControlsState();
