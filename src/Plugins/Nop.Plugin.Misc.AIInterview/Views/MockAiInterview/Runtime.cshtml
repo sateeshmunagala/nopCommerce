@@ -183,7 +183,7 @@
                         </div>
 
                         <div id="runtime-status" class="runtime-status runtime-js-hidden"></div>
-                        <div id="runtime-completion" class="runtime-message is-info runtime-js-hidden"></div>
+                        <div id="runtime-completion" class="runtime-message is-info runtime-js-hidden" aria-live="polite"></div>
                     </section>
 
                     <section class="runtime-sidebar-panel" id="runtime-panel-details" data-runtime-panel="details" role="tabpanel" aria-labelledby="runtime-tab-details" hidden>
@@ -555,7 +555,8 @@
         let completionRecordingCleanupPromise = null;
         let finalCompletionSpoken = false;
         const autoSubmitDelaySeconds = 15;
-        const completedRedirectDelaySeconds = 15;
+        const completionWaitSeconds = 120;
+        const completedRedirectDelaySeconds = 3;
         const finalRecordingUploadTimeoutMs = 10000;
         const slowSubmitStatusDelayMs = 5000;
         const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';
@@ -572,6 +573,7 @@
         let runtimeTimerHandle = null;
         let timerStartedAt = null;
         let answerNeedsEditAfterFailure = false;
+        let completionWaitGeneration = 0;
         let screenShareAudioAvailable = false;
         let recognitionTurnCharacters = 0;
         let recognitionTurnDurationMs = 0;
@@ -1532,12 +1534,18 @@
         };
 
         const clearCompletedRedirectState = () => {
+            completionWaitGeneration += 1;
             clearInterval(completedCountdown);
             clearTimeout(completedRedirectTimer);
             clearTimeout(completedCleanupTimer);
             completedCountdown = null;
             completedRedirectTimer = null;
             completedCleanupTimer = null;
+            if (completionBox) {
+                completionBox.replaceChildren();
+                completionBox.classList.add('runtime-js-hidden');
+                completionBox.style.display = 'none';
+            }
         };
 
         const clearActiveInterviewTimers = () => {
@@ -1646,7 +1654,25 @@
             });
         };
 
+        const formatCountdown = (remainingSeconds) => {
+            const safeRemainingSeconds = Math.max(0, Math.round(Number(remainingSeconds) || 0));
+            const minutes = String(Math.floor(safeRemainingSeconds / 60)).padStart(2, '0');
+            const seconds = String(safeRemainingSeconds % 60).padStart(2, '0');
+            return `${minutes}:${seconds}`;
+        };
+
+        const shouldSuppressCompletedStatus = (message, isError) => {
+            if (!runtimeStoppedOrCompleted || !isError || !message)
+                return false;
+
+            logActivity(`Post-completion status suppressed: ${message}`);
+            return true;
+        };
+
         const setStatus = (message, isError) => {
+            if (shouldSuppressCompletedStatus(message, isError))
+                return;
+
             statusBox.textContent = message || '';
             const isVisible = !!message && (isError || runtimeStoppedOrCompleted || stopInProgress);
             statusBox.className = `runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
@@ -1654,6 +1680,8 @@
 
         const setHeaderStatus = (message, isError = false) => {
             if (!headerStatusBox)
+                return;
+            if (shouldSuppressCompletedStatus(message, isError))
                 return;
 
             headerStatusBox.textContent = message || '';
@@ -1683,9 +1711,6 @@
                 setHeaderStatus('', false);
             }
         };
-
-        const buildCompletedRedirectMessage = (remainingSeconds) =>
-            `Interview completed. Please wait, creating the report. Redirecting to report in ${remainingSeconds}s.`;
 
         const setRecordingStatus = (message, isError, forceVisible = false) => {
             if (!recordingStatus)
@@ -2143,49 +2168,80 @@
             return completionRecordingCleanupPromise;
         };
 
-        const startReportGenerationWaitingState = (estimatedWaitSeconds = 90) => {
-            clearCompletedRedirectState();
-            const normalizedWaitSeconds = Math.min(120, Math.max(60, Number(estimatedWaitSeconds || 90)));
-            let remaining = normalizedWaitSeconds;
-            const renderRemaining = () => {
-                const minutes = String(Math.floor(remaining / 60)).padStart(2, '0');
-                const seconds = String(remaining % 60).padStart(2, '0');
-                setStatus(`Estimated wait: ${minutes}:${seconds}`, false);
-            };
-
-            setHeaderStatus(reportGenerationMessage, false);
-            renderRemaining();
-            completedCountdown = setInterval(() => {
-                remaining = Math.max(0, remaining - 1);
-                renderRemaining();
-                if (remaining <= 0)
-                    clearInterval(completedCountdown);
-            }, 1000);
-        };
-
-        const startReportGenerationTimer = (result, reportUrl) => {
-            const estimatedWaitSeconds = Math.min(120, Math.max(60, Number(getValue(result, 'estimatedWaitSeconds', 'EstimatedWaitSeconds') || 90)));
-            let remaining = estimatedWaitSeconds;
-            const renderRemaining = () => {
-                const minutes = String(Math.floor(remaining / 60)).padStart(2, '0');
-                const seconds = String(remaining % 60).padStart(2, '0');
-                setStatus(`Estimated wait: ${minutes}:${seconds}`, false);
-            };
-
-            setHeaderStatus(reportGenerationMessage, false);
-            renderRemaining();
-            completedCountdown = setInterval(() => {
-                remaining = Math.max(0, remaining - 1);
-                renderRemaining();
-                if (remaining <= 0)
-                    clearInterval(completedCountdown);
-            }, 1000);
+        const updateReportButton = (reportUrl) => {
+            if (!reportButton)
+                return;
 
             if (reportUrl) {
                 actionsPanel?.classList.remove('runtime-js-hidden');
                 reportButton.style.display = 'inline-flex';
                 reportButton.onclick = () => window.location.href = reportUrl;
+                return;
             }
+
+            actionsPanel?.classList.add('runtime-js-hidden');
+            reportButton.style.display = 'none';
+            reportButton.onclick = null;
+        };
+
+        const renderCompletionWaitState = (remainingSeconds, reportUrl = '') => {
+            if (!completionBox)
+                return;
+
+            completionBox.replaceChildren();
+
+            const message = document.createElement('strong');
+            message.textContent = reportGenerationMessage;
+
+            const timer = document.createElement('div');
+            timer.id = 'runtime-completion-countdown';
+            timer.textContent = formatCountdown(remainingSeconds);
+            timer.style.marginTop = '6px';
+            timer.style.fontWeight = '700';
+
+            completionBox.append(message, timer);
+            completionBox.classList.remove('runtime-js-hidden');
+            completionBox.style.display = 'block';
+            updateReportButton(reportUrl);
+        };
+
+        const startReportGenerationWaitingState = (reportUrl = '') => {
+            clearCompletedRedirectState();
+            const generation = completionWaitGeneration;
+            let remaining = completionWaitSeconds;
+            const renderRemaining = () => {
+                renderCompletionWaitState(remaining, reportUrl);
+            };
+
+            setHeaderStatus(reportGenerationMessage, false);
+            setStatus('', false);
+            renderRemaining();
+            completedCountdown = setInterval(() => {
+                if (generation !== completionWaitGeneration)
+                    return;
+
+                remaining = Math.max(0, remaining - 1);
+                renderRemaining();
+                if (remaining <= 0) {
+                    clearInterval(completedCountdown);
+                    completedCountdown = null;
+                }
+            }, 1000);
+        };
+
+        const startReportGenerationTimer = (reportUrl) => {
+            updateReportButton(reportUrl);
+            if (!reportUrl)
+                return;
+
+            clearTimeout(completedRedirectTimer);
+            const generation = completionWaitGeneration;
+            completedRedirectTimer = setTimeout(() => {
+                if (generation !== completionWaitGeneration || !runtimeStoppedOrCompleted)
+                    return;
+
+                window.location.href = reportUrl;
+            }, completedRedirectDelaySeconds * 1000);
         };
 
         const finalizeCompletedState = async (result) => {
@@ -2228,15 +2284,12 @@
             messageBox.textContent = completionText;
             messageBox.classList.add('runtime-js-hidden');
             setRuntimeCaption('Interviewer', completionText);
-            completionBox.classList.add('runtime-js-hidden');
-            completionBox.style.display = 'none';
+            completionBox.classList.remove('runtime-js-hidden');
+            completionBox.style.display = 'block';
             updateAnswerInputState();
             updateStartButtonState();
             updateAuxiliaryControlsState();
-            if (!reportUrl) {
-                actionsPanel?.classList.add('runtime-js-hidden');
-                reportButton.style.display = 'none';
-            }
+            updateReportButton(reportUrl);
         };
 
         const setCompletedState = async (result) => {
@@ -2248,21 +2301,11 @@
             answerNeedsEditAfterFailure = false;
             setStatus('', false);
             messageBox.classList.add('runtime-js-hidden');
-            completionBox.classList.add('runtime-js-hidden');
-            completionBox.style.display = 'none';
             updateAnswerInputState();
             submitButton.disabled = true;
             updateStartButtonState();
             setHeaderStatus(reportGenerationMessage, false);
-            clearCompletedRedirectState();
-            if (reportUrl) {
-                actionsPanel?.classList.remove('runtime-js-hidden');
-                reportButton.style.display = 'inline-flex';
-                reportButton.onclick = () => window.location.href = reportUrl;
-            } else {
-                actionsPanel?.classList.add('runtime-js-hidden');
-                reportButton.style.display = 'none';
-            }
+            startReportGenerationWaitingState(reportUrl);
             clearTokenRefreshTimer();
             updateAuxiliaryControlsState();
             completedCleanupTimer = setTimeout(() => {
@@ -2271,7 +2314,7 @@
                         logActivity(`Completion finalization exception: ${error?.message || 'unknown'}`);
                         setRecordingStatus('Recording finalization failed. Continuing to report.', true);
                     })
-                    .finally(() => startReportGenerationTimer(result, reportUrl));
+                    .finally(() => startReportGenerationTimer(reportUrl));
             }, 0);
         };
 
@@ -2453,6 +2496,13 @@
             return 'unknown';
         };
 
+        const shouldIgnoreCompletedAsyncFailure = (requestName) => {
+            if (!runtimeStoppedOrCompleted)
+                return false;
+
+            return !['feedback', 'runtime-client-event', 'upload-recording'].includes(requestName || 'unknown');
+        };
+
         const reportRuntimeClientRequestFailure = (event) => {
             if (!config.runtimeClientEventUrl || !event || event.requestName === 'runtime-client-event')
                 return;
@@ -2506,6 +2556,9 @@
                         message: msg,
                         elapsedMilliseconds: performance.now() - requestStartedAt
                     });
+                    if (shouldIgnoreCompletedAsyncFailure(requestName))
+                        return { success: false, ignored: true, message: '' };
+
                     return { success: false, message: msg, status: response.status };
                 }
 
@@ -2523,6 +2576,9 @@
                         message: 'Invalid JSON response from server.',
                         elapsedMilliseconds: performance.now() - requestStartedAt
                     });
+                    if (shouldIgnoreCompletedAsyncFailure(requestName))
+                        return { success: false, ignored: true, message: '' };
+
                     return { success: false, message: 'Invalid response from server.' };
                 }
             } catch (e) {
@@ -2533,6 +2589,9 @@
                     message: e?.message || 'Network request failed.',
                     elapsedMilliseconds: performance.now() - requestStartedAt
                 });
+                if (shouldIgnoreCompletedAsyncFailure(requestName))
+                    return { success: false, ignored: true, message: '' };
+
                 return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
             }
         };
@@ -2562,6 +2621,9 @@
                         message: msg,
                         elapsedMilliseconds: performance.now() - requestStartedAt
                     });
+                    if (shouldIgnoreCompletedAsyncFailure(requestName))
+                        return { success: false, ignored: true, message: '' };
+
                     return { success: false, message: msg, status: response.status };
                 }
 
@@ -2575,6 +2637,9 @@
                         message: 'Non-JSON response from server.',
                         elapsedMilliseconds: performance.now() - requestStartedAt
                     });
+                    if (shouldIgnoreCompletedAsyncFailure(requestName))
+                        return { success: false, ignored: true, message: '' };
+
                     return { success: false, message: 'Invalid response format from server.' };
                 }
 
@@ -2592,6 +2657,9 @@
                         message: 'Invalid JSON response from server.',
                         elapsedMilliseconds: performance.now() - requestStartedAt
                     });
+                    if (shouldIgnoreCompletedAsyncFailure(requestName))
+                        return { success: false, ignored: true, message: '' };
+
                     return { success: false, message: 'Invalid response from server.' };
                 }
             } catch (e) {
@@ -2602,6 +2670,9 @@
                     message: e?.message || 'Network request failed.',
                     elapsedMilliseconds: performance.now() - requestStartedAt
                 });
+                if (shouldIgnoreCompletedAsyncFailure(requestName))
+                    return { success: false, ignored: true, message: '' };
+
                 return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
             }
         };
@@ -2951,12 +3022,17 @@
         };
 
         const requestSpeechToken = async () => {
+            if (runtimeStoppedOrCompleted)
+                return null;
             if (speechUnavailable || !config.speechAvailable)
                 return { success: false, message: voiceUnavailableMessage };
             if (!await ensureRuntimeTokenFresh())
                 return null;
 
             const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
+            if (runtimeStoppedOrCompleted)
+                return null;
+
             const speechToken = getValue(tokenResult, 'token', 'Token');
             const region = getValue(tokenResult, 'region', 'Region');
             if (!tokenResult || !isSuccess(tokenResult) || !speechToken) {
@@ -2978,11 +3054,17 @@
                 return;
 
             if (!(await ensureSpeechSdk())) {
+                if (runtimeStoppedOrCompleted)
+                    return;
+
                 setStatus('Speech features are unavailable in this browser.', true);
                 return;
             }
 
             const tokenResult = await requestSpeechToken();
+            if (runtimeStoppedOrCompleted)
+                return;
+
             if (!tokenResult || !tokenResult.success) {
                 logActivity('Speech token request failure.');
                 setStatus(getRuntimeMessage(tokenResult, voiceUnavailableMessage), true);
@@ -3062,6 +3144,9 @@
                     const cancellationDetails = (eventArgs?.errorDetails || '').trim();
                     const isSpeechError = cancellationReason === SpeechSDK.CancellationReason?.Error || !!cancellationDetails;
                     logActivity(`Speech recognition canceled. reason=${cancellationReason || 'unknown'} details=${cancellationDetails || 'none'}`);
+                    if (runtimeStoppedOrCompleted)
+                        return;
+
                     if (isSpeechError) {
                         await disableSpeechForRuntime(voiceInputUnavailableMessage);
                         setHeaderStatus(voiceInputUnavailableMessage, true);
@@ -3077,6 +3162,9 @@
             } catch {
                 appendRecognitionDuration();
                 await stopSpeechRecognition();
+                if (runtimeStoppedOrCompleted)
+                    return;
+
                 setStatus('Speech recognition could not be started.', true);
             }
         };
@@ -3213,7 +3301,8 @@
             if (!tokenResult || !tokenResult.success) {
                 const failureReason = tokenResult?.message || voiceUnavailableMessage;
                 logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${failureReason}`);
-                setHeaderStatus(failureReason, true);
+                if (!runtimeStoppedOrCompleted)
+                    setHeaderStatus(failureReason, true);
                 isSpeakingOrSubmitting = false;
                 if (shouldResumeRecognition && !speechUnavailable && isMicActive())
                     await startSpeechRecognition();
@@ -3260,7 +3349,8 @@
                 const reason = error?.message || 'Speech synthesis failed.';
                 logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${reason}`);
                 await disableSpeechForRuntime(voicePlaybackUnavailableMessage);
-                setHeaderStatus(voicePlaybackUnavailableMessage, true);
+                if (!runtimeStoppedOrCompleted)
+                    setHeaderStatus(voicePlaybackUnavailableMessage, true);
             } finally {
                 isSpeakingOrSubmitting = false;
                 if (shouldResumeRecognition && !runtimeStoppedOrCompleted && !speechUnavailable && isMicActive())
