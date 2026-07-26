@@ -236,7 +236,7 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(settingsModel.RecordingAudioBitsPerSecond);
             currentAiInterviewSettings.RecordingSourceMode = NormalizeRecordingSourceMode(settingsModel.RecordingSourceMode);
             currentAiInterviewSettings.RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(settingsModel.RecordingUploadTimeoutMs);
-            currentAiInterviewSettings.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(settingsModel.FinalizationWaitTimeoutMs);
+            currentAiInterviewSettings.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(settingsModel.FinalizationWaitTimeoutMs, currentAiInterviewSettings.RecordingUploadTimeoutMs);
             await _settingService.SaveSettingAsync(currentAiInterviewSettings);
         }
         catch (Exception exception)
@@ -996,12 +996,14 @@ public class AIInterviewAdminController : BasePluginController
             AIInterviewDefaults.MaxRecordingUploadTimeoutMs);
     }
 
-    protected virtual int NormalizeFinalizationWaitTimeoutMs(int timeoutMs)
+    protected virtual int NormalizeFinalizationWaitTimeoutMs(int timeoutMs, int recordingUploadTimeoutMs = 0)
     {
-        return Math.Clamp(
+        var normalized = Math.Clamp(
             timeoutMs <= 0 ? AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs : timeoutMs,
             AIInterviewDefaults.MinFinalizationWaitTimeoutMs,
             AIInterviewDefaults.MaxFinalizationWaitTimeoutMs);
+        var normalizedUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(recordingUploadTimeoutMs);
+        return Math.Max(normalized, normalizedUploadTimeoutMs + 5000);
     }
 
     protected virtual string NormalizeSupportPhoneNumber(string phoneNumber)
@@ -1704,7 +1706,7 @@ public class AIInterviewAdminController : BasePluginController
             RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(aiInterviewSettings.RecordingAudioBitsPerSecond),
             RecordingSourceMode = NormalizeRecordingSourceMode(aiInterviewSettings.RecordingSourceMode),
             RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(aiInterviewSettings.RecordingUploadTimeoutMs),
-            FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(aiInterviewSettings.FinalizationWaitTimeoutMs)
+            FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(aiInterviewSettings.FinalizationWaitTimeoutMs, aiInterviewSettings.RecordingUploadTimeoutMs)
         };
 
         model.Provider = AzureOpenAiProviderValue;
@@ -1717,7 +1719,7 @@ public class AIInterviewAdminController : BasePluginController
         model.RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(model.RecordingAudioBitsPerSecond);
         model.RecordingSourceMode = NormalizeRecordingSourceMode(model.RecordingSourceMode);
         model.RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(model.RecordingUploadTimeoutMs);
-        model.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(model.FinalizationWaitTimeoutMs);
+        model.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(model.FinalizationWaitTimeoutMs, model.RecordingUploadTimeoutMs);
         model.AvailableProviders = BuildProviderSelectList(model.Provider);
         model.AvailableRecordingSourceModes = BuildRecordingSourceModeSelectList(model.RecordingSourceMode);
         return model;

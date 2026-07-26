@@ -227,7 +227,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         settings.RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(settings.RecordingAudioBitsPerSecond);
         settings.RecordingSourceMode = NormalizeRecordingSourceMode(settings.RecordingSourceMode);
         settings.RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(settings.RecordingUploadTimeoutMs);
-        settings.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(settings.FinalizationWaitTimeoutMs);
+        settings.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(settings.FinalizationWaitTimeoutMs, settings.RecordingUploadTimeoutMs);
 
         await _settingService.SaveSettingAsync(settings);
         await EnsureJobProductTemplateAsync();
@@ -1194,12 +1194,14 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             AIInterviewDefaults.MaxRecordingUploadTimeoutMs);
     }
 
-    protected static int NormalizeFinalizationWaitTimeoutMs(int timeoutMs)
+    protected static int NormalizeFinalizationWaitTimeoutMs(int timeoutMs, int recordingUploadTimeoutMs = 0)
     {
-        return Math.Clamp(
+        var normalized = Math.Clamp(
             timeoutMs <= 0 ? AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs : timeoutMs,
             AIInterviewDefaults.MinFinalizationWaitTimeoutMs,
             AIInterviewDefaults.MaxFinalizationWaitTimeoutMs);
+        var normalizedUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(recordingUploadTimeoutMs);
+        return Math.Max(normalized, normalizedUploadTimeoutMs + 5000);
     }
 
     public override async Task InstallAsync()
@@ -1222,7 +1224,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             RecordingAudioBitsPerSecond = AIInterviewDefaults.DefaultRecordingAudioBitsPerSecond,
             RecordingSourceMode = AIInterviewDefaults.DefaultRecordingSourceMode,
             RecordingUploadTimeoutMs = AIInterviewDefaults.DefaultRecordingUploadTimeoutMs,
-            FinalizationWaitTimeoutMs = AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs,
+            FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs, AIInterviewDefaults.DefaultRecordingUploadTimeoutMs),
             AzureDocumentIntelligenceModelId = AIInterviewDefaults.DefaultAzureDocumentIntelligenceModelId,
             AzureDocumentIntelligenceTimeoutSeconds = AIInterviewDefaults.DefaultAzureDocumentIntelligenceTimeoutSeconds,
             CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson,

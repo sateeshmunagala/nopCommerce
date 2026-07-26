@@ -155,6 +155,12 @@ public partial class InterviewAiClient
                 "Return JSON only. Strengths summary mode contract: strengthsText string, optional confidence string, optional evidenceTurnNumbers integer array. strengthsText must be 200 to 300 characters, plain text, no markdown, no bullets, and grounded only in the submitted answered turns. Strict JSON-first retry: start the response with { and output only one complete JSON object. No markdown fences, preface, trailing prose, or partial JSON.",
                 prompt,
                 retryMaxCompletionTokens);
+
+            var retryRecovered = result.Success && !string.IsNullOrWhiteSpace(result.Content);
+            await LogAiClientIssueAsync(
+                retryRecovered ? NopLogLevel.Information : NopLogLevel.Warning,
+                retryRecovered ? "AI Interview strengths summary retry recovered" : "AI Interview strengths summary retry exhausted",
+                $"Mode=strengths-summary; InitialMaxCompletionTokens={maxCompletionTokens}; RetryMaxCompletionTokens={retryMaxCompletionTokens}; FinishReason={BuildSafeValue(result.FinishReason)}; ResponseLength={(result.Content ?? string.Empty).Length}; Outcome={(retryRecovered ? "strengths-summary-retry-recovered" : "strengths-summary-retry-exhausted")}.");
         }
 
         if (!result.Success)

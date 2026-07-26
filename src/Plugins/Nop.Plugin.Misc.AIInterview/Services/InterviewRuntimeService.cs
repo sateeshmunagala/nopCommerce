@@ -1634,6 +1634,30 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
     }
 
+    protected virtual async Task LogSubmitNextTurnMarkerAsync(NopLogLevel level, string marker, InterviewSession session, InterviewTurn currentTurn, int answeredTurns, long elapsedMilliseconds)
+    {
+        await LogRuntimeIssueAsync(
+            level,
+            "AI Interview submit next-turn path",
+            BuildSubmitNextTurnMarkerLog(marker, session, currentTurn, answeredTurns, elapsedMilliseconds),
+            await ResolveLogCustomerAsync(session));
+    }
+
+    protected static string BuildSubmitNextTurnMarkerLog(string marker, InterviewSession session, InterviewTurn currentTurn, int answeredTurns, long elapsedMilliseconds)
+    {
+        return string.Join("; ", new[]
+        {
+            $"Marker={BuildSafeValue(marker)}",
+            $"SessionId={session?.Id ?? 0}",
+            $"ProductId={session?.ProductId ?? 0}",
+            $"CustomerId={session?.CustomerId ?? 0}",
+            $"CurrentTurnId={currentTurn?.Id ?? 0}",
+            $"CurrentSequenceNumber={currentTurn?.SequenceNumber ?? 0}",
+            $"AnsweredTurns={Math.Max(0, answeredTurns)}",
+            $"ElapsedMs={Math.Max(0, elapsedMilliseconds)}"
+        });
+    }
+
     protected static string BuildRuntimeActivityComment(InterviewSession session, InterviewTurn turn = null, string message = null, long? elapsedMilliseconds = null, int? statusCode = null, string failureKind = null)
     {
         var details = new List<string>
@@ -2316,8 +2340,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (!shouldComplete)
         {
             var nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
+            var fallbackAttempted = false;
             if (nextTurn == null)
             {
+                fallbackAttempted = true;
                 var replenishedTurns = await EnsureSingleActiveTurnAsync(session, turns);
                 turns = replenishedTurns.Turns.ToList();
                 nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
@@ -2328,7 +2354,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 await LogRuntimeIssueAsync(
                     NopLogLevel.Warning,
                     "AI Interview next planned question unavailable",
-                    $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; ConfiguredQuestions={maxQuestions}; ExistingTurns={turns.Count}; AnsweredTurns={answeredCount}; Reason=next planned turn missing.",
+                    $"{BuildSubmitNextTurnMarkerLog("fallback-next-turn-failed", session, currentTurn, answeredCount, submitStopwatch.ElapsedMilliseconds)}; Mode=plan; ConfiguredQuestions={maxQuestions}; ExistingTurns={turns.Count}; Reason=next planned turn missing.",
                     await ResolveLogCustomerAsync(session));
                 await LogRuntimeActivityAsync(
                     session,
@@ -2342,6 +2368,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     Feedback = "The AI interview service is temporarily unavailable. Please try again later."
                 };
             }
+
+            await LogSubmitNextTurnMarkerAsync(
+                fallbackAttempted ? NopLogLevel.Warning : NopLogLevel.Information,
+                fallbackAttempted ? "fallback-next-turn-generated" : "planned-next-turn-used",
+                session,
+                currentTurn,
+                answeredCount,
+                submitStopwatch.ElapsedMilliseconds);
 
             await _sessionService.UpdateInterviewSessionAsync(session);
 
@@ -2407,8 +2441,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (!shouldComplete)
         {
             var nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
+            var fallbackAttempted = false;
             if (nextTurn == null)
             {
+                fallbackAttempted = true;
                 var replenishedTurns = await EnsureSingleActiveTurnAsync(session, turns);
                 turns = replenishedTurns.Turns.ToList();
                 nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
@@ -2419,7 +2455,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 await LogRuntimeIssueAsync(
                     NopLogLevel.Warning,
                     "AI Interview next planned question unavailable",
-                    $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; ConfiguredQuestions={maxQuestions}; ExistingTurns={turns.Count}; AnsweredTurns={answeredCount}; Reason=next planned turn missing.",
+                    $"{BuildSubmitNextTurnMarkerLog("fallback-next-turn-failed", session, currentTurn, answeredCount, submitStopwatch.ElapsedMilliseconds)}; Mode=plan; ConfiguredQuestions={maxQuestions}; ExistingTurns={turns.Count}; Reason=next planned turn missing.",
                     await ResolveLogCustomerAsync(session));
                 await LogRuntimeActivityAsync(
                     session,
@@ -2433,6 +2469,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     Feedback = "The AI interview service is temporarily unavailable. Please try again later."
                 };
             }
+
+            await LogSubmitNextTurnMarkerAsync(
+                fallbackAttempted ? NopLogLevel.Warning : NopLogLevel.Information,
+                fallbackAttempted ? "fallback-next-turn-generated" : "planned-next-turn-used",
+                session,
+                currentTurn,
+                answeredCount,
+                submitStopwatch.ElapsedMilliseconds);
 
             await _sessionService.UpdateInterviewSessionAsync(session);
 
@@ -2845,12 +2889,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             AIInterviewDefaults.MaxRecordingUploadTimeoutMs);
     }
 
-    protected static int NormalizeFinalizationWaitTimeoutMs(int timeoutMs)
+    protected static int NormalizeFinalizationWaitTimeoutMs(int timeoutMs, int recordingUploadTimeoutMs = 0)
     {
-        return Math.Clamp(
+        var normalized = Math.Clamp(
             timeoutMs <= 0 ? AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs : timeoutMs,
             AIInterviewDefaults.MinFinalizationWaitTimeoutMs,
             AIInterviewDefaults.MaxFinalizationWaitTimeoutMs);
+        var normalizedUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(recordingUploadTimeoutMs);
+        return Math.Max(normalized, normalizedUploadTimeoutMs + 5000);
     }
 
     protected virtual async Task<InterviewRuntimeModel> BuildRuntimeModelAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null)
@@ -2911,7 +2957,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(_settings.RecordingAudioBitsPerSecond),
                 RecordingSourceMode = NormalizeRecordingSourceMode(_settings.RecordingSourceMode),
                 RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(_settings.RecordingUploadTimeoutMs),
-                FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(_settings.FinalizationWaitTimeoutMs)
+                FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(_settings.FinalizationWaitTimeoutMs, _settings.RecordingUploadTimeoutMs)
             }
         };
     }

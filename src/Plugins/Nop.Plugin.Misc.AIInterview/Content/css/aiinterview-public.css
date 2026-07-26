@@ -3346,7 +3346,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-permissions-step[data-permission-step="1"] {
-    grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.7fr);
+    grid-template-columns: minmax(320px, 0.95fr) minmax(320px, 1fr);
     align-items: center;
     column-gap: 18px;
 }
@@ -3362,6 +3362,18 @@ body.ai-job-preview-open .item-box {
 .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-status,
 .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-choice-row {
     grid-column: 2;
+}
+
+.runtime-permissions-step[data-permission-step="1"] .runtime-permissions-choice-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.runtime-permissions-step[data-permission-step="1"] .runtime-permissions-choice-row .button-2 {
+    width: 100%;
+    min-width: 0;
+    padding-right: 10px;
+    padding-left: 10px;
 }
 
 .runtime-permissions-choice-row .button-2.is-selected {
@@ -4233,6 +4245,10 @@ body.ai-job-preview-open .item-box {
     .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-status,
     .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-choice-row {
         grid-column: 1;
+    }
+
+    .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-choice-row {
+        grid-template-columns: 1fr;
     }
 
     .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-video-frame {
