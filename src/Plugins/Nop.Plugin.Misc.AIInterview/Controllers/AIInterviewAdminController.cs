@@ -214,6 +214,7 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.AzureOpenAiEndpointUrl = settingsModel.AzureOpenAiEndpointUrl;
             currentAiInterviewSettings.AzureOpenAiApiKey = PreserveSecretIfBlank(settingsModel.AzureOpenAiApiKey, currentAiInterviewSettings.AzureOpenAiApiKey);
             currentAiInterviewSettings.AzureOpenAiDeploymentOrModel = settingsModel.AzureOpenAiDeploymentOrModel;
+            currentAiInterviewSettings.StrengthsSummaryMaxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(settingsModel.StrengthsSummaryMaxCompletionTokens);
             currentAiInterviewSettings.AzureSpeechKey = PreserveSecretIfBlank(settingsModel.AzureSpeechKey, currentAiInterviewSettings.AzureSpeechKey);
             currentAiInterviewSettings.AzureSpeechRegion = settingsModel.AzureSpeechRegion;
             currentAiInterviewSettings.AzureDocumentIntelligenceEndpointUrl = settingsModel.AzureDocumentIntelligenceEndpointUrl;
@@ -230,6 +231,12 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.AzureUsageCurrencyCode = settingsModel.AzureUsageCurrencyCode;
             currentAiInterviewSettings.AzureBlobStorageContainerUrl = settingsModel.AzureBlobStorageContainerUrl;
             currentAiInterviewSettings.AzureBlobStorageSasToken = PreserveSecretIfBlank(settingsModel.AzureBlobStorageSasToken, currentAiInterviewSettings.AzureBlobStorageSasToken);
+            currentAiInterviewSettings.RecordingUploadMaxMb = NormalizeRecordingUploadMaxMb(settingsModel.RecordingUploadMaxMb);
+            currentAiInterviewSettings.RecordingVideoBitsPerSecond = NormalizeRecordingVideoBitsPerSecond(settingsModel.RecordingVideoBitsPerSecond);
+            currentAiInterviewSettings.RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(settingsModel.RecordingAudioBitsPerSecond);
+            currentAiInterviewSettings.RecordingSourceMode = NormalizeRecordingSourceMode(settingsModel.RecordingSourceMode);
+            currentAiInterviewSettings.RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(settingsModel.RecordingUploadTimeoutMs);
+            currentAiInterviewSettings.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(settingsModel.FinalizationWaitTimeoutMs);
             await _settingService.SaveSettingAsync(currentAiInterviewSettings);
         }
         catch (Exception exception)
@@ -941,6 +948,62 @@ public class AIInterviewAdminController : BasePluginController
             : AIInterviewDefaults.DefaultAzureDocumentIntelligenceTimeoutSeconds;
     }
 
+    protected virtual int NormalizeStrengthsSummaryMaxCompletionTokens(int maxCompletionTokens)
+    {
+        return Math.Clamp(
+            maxCompletionTokens <= 0 ? AIInterviewDefaults.DefaultStrengthsSummaryMaxCompletionTokens : maxCompletionTokens,
+            AIInterviewDefaults.MinStrengthsSummaryMaxCompletionTokens,
+            AIInterviewDefaults.MaxStrengthsSummaryMaxCompletionTokens);
+    }
+
+    protected virtual int NormalizeRecordingUploadMaxMb(int maxMb)
+    {
+        return Math.Clamp(
+            maxMb <= 0 ? AIInterviewDefaults.DefaultRecordingUploadMaxMb : maxMb,
+            AIInterviewDefaults.MinRecordingUploadMaxMb,
+            AIInterviewDefaults.MaxRecordingUploadMaxMb);
+    }
+
+    protected virtual int NormalizeRecordingVideoBitsPerSecond(int bitsPerSecond)
+    {
+        return Math.Clamp(
+            bitsPerSecond <= 0 ? AIInterviewDefaults.DefaultRecordingVideoBitsPerSecond : bitsPerSecond,
+            AIInterviewDefaults.MinRecordingVideoBitsPerSecond,
+            AIInterviewDefaults.MaxRecordingVideoBitsPerSecond);
+    }
+
+    protected virtual int NormalizeRecordingAudioBitsPerSecond(int bitsPerSecond)
+    {
+        return Math.Clamp(
+            bitsPerSecond <= 0 ? AIInterviewDefaults.DefaultRecordingAudioBitsPerSecond : bitsPerSecond,
+            AIInterviewDefaults.MinRecordingAudioBitsPerSecond,
+            AIInterviewDefaults.MaxRecordingAudioBitsPerSecond);
+    }
+
+    protected virtual string NormalizeRecordingSourceMode(string sourceMode)
+    {
+        var normalized = sourceMode?.Trim();
+        return GetRecordingSourceModeValues().Contains(normalized, StringComparer.OrdinalIgnoreCase)
+            ? GetRecordingSourceModeValues().First(value => string.Equals(value, normalized, StringComparison.OrdinalIgnoreCase))
+            : AIInterviewDefaults.DefaultRecordingSourceMode;
+    }
+
+    protected virtual int NormalizeRecordingUploadTimeoutMs(int timeoutMs)
+    {
+        return Math.Clamp(
+            timeoutMs <= 0 ? AIInterviewDefaults.DefaultRecordingUploadTimeoutMs : timeoutMs,
+            AIInterviewDefaults.MinRecordingUploadTimeoutMs,
+            AIInterviewDefaults.MaxRecordingUploadTimeoutMs);
+    }
+
+    protected virtual int NormalizeFinalizationWaitTimeoutMs(int timeoutMs)
+    {
+        return Math.Clamp(
+            timeoutMs <= 0 ? AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs : timeoutMs,
+            AIInterviewDefaults.MinFinalizationWaitTimeoutMs,
+            AIInterviewDefaults.MaxFinalizationWaitTimeoutMs);
+    }
+
     protected virtual string NormalizeSupportPhoneNumber(string phoneNumber)
     {
         return string.IsNullOrWhiteSpace(phoneNumber)
@@ -1619,6 +1682,7 @@ public class AIInterviewAdminController : BasePluginController
             AzureOpenAiEndpointUrl = aiInterviewSettings.AzureOpenAiEndpointUrl,
             AzureOpenAiApiKey = aiInterviewSettings.AzureOpenAiApiKey,
             AzureOpenAiDeploymentOrModel = aiInterviewSettings.AzureOpenAiDeploymentOrModel,
+            StrengthsSummaryMaxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(aiInterviewSettings.StrengthsSummaryMaxCompletionTokens),
             AzureSpeechKey = aiInterviewSettings.AzureSpeechKey,
             AzureSpeechRegion = aiInterviewSettings.AzureSpeechRegion,
             AzureDocumentIntelligenceEndpointUrl = aiInterviewSettings.AzureDocumentIntelligenceEndpointUrl,
@@ -1634,15 +1698,46 @@ public class AIInterviewAdminController : BasePluginController
             AzureSpeechSynthesisPricePerThousandCharacters = aiInterviewSettings.AzureSpeechSynthesisPricePerThousandCharacters,
             AzureUsageCurrencyCode = aiInterviewSettings.AzureUsageCurrencyCode,
             AzureBlobStorageContainerUrl = aiInterviewSettings.AzureBlobStorageContainerUrl,
-            AzureBlobStorageSasToken = aiInterviewSettings.AzureBlobStorageSasToken
+            AzureBlobStorageSasToken = aiInterviewSettings.AzureBlobStorageSasToken,
+            RecordingUploadMaxMb = NormalizeRecordingUploadMaxMb(aiInterviewSettings.RecordingUploadMaxMb),
+            RecordingVideoBitsPerSecond = NormalizeRecordingVideoBitsPerSecond(aiInterviewSettings.RecordingVideoBitsPerSecond),
+            RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(aiInterviewSettings.RecordingAudioBitsPerSecond),
+            RecordingSourceMode = NormalizeRecordingSourceMode(aiInterviewSettings.RecordingSourceMode),
+            RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(aiInterviewSettings.RecordingUploadTimeoutMs),
+            FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(aiInterviewSettings.FinalizationWaitTimeoutMs)
         };
 
         model.Provider = AzureOpenAiProviderValue;
         model.SupportPhoneNumber = NormalizeSupportPhoneNumber(model.SupportPhoneNumber);
         model.AzureDocumentIntelligenceModelId = NormalizeAzureDocumentIntelligenceModelId(model.AzureDocumentIntelligenceModelId);
         model.AzureDocumentIntelligenceTimeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(model.AzureDocumentIntelligenceTimeoutSeconds);
+        model.StrengthsSummaryMaxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(model.StrengthsSummaryMaxCompletionTokens);
+        model.RecordingUploadMaxMb = NormalizeRecordingUploadMaxMb(model.RecordingUploadMaxMb);
+        model.RecordingVideoBitsPerSecond = NormalizeRecordingVideoBitsPerSecond(model.RecordingVideoBitsPerSecond);
+        model.RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(model.RecordingAudioBitsPerSecond);
+        model.RecordingSourceMode = NormalizeRecordingSourceMode(model.RecordingSourceMode);
+        model.RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(model.RecordingUploadTimeoutMs);
+        model.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(model.FinalizationWaitTimeoutMs);
         model.AvailableProviders = BuildProviderSelectList(model.Provider);
+        model.AvailableRecordingSourceModes = BuildRecordingSourceModeSelectList(model.RecordingSourceMode);
         return model;
+    }
+
+    protected virtual IList<string> GetRecordingSourceModeValues()
+    {
+        return new List<string> { "ScreenPreferred", "CameraOnly", "ScreenOnly", "ScreenAndCamera" };
+    }
+
+    protected virtual IList<SelectListItem> BuildRecordingSourceModeSelectList(string selectedSourceMode)
+    {
+        return GetRecordingSourceModeValues()
+            .Select(value => new SelectListItem
+            {
+                Text = value,
+                Value = value,
+                Selected = string.Equals(value, selectedSourceMode, StringComparison.OrdinalIgnoreCase)
+            })
+            .ToList();
     }
 
     protected virtual IList<SelectListItem> BuildProviderSelectList(string selectedProvider)

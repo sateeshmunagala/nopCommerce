@@ -59,6 +59,20 @@ public class AIInterviewSettings : ISettings
 
     public string SupportPhoneNumber { get; set; } = AIInterviewDefaults.DefaultSupportPhoneNumber;
 
+    public int StrengthsSummaryMaxCompletionTokens { get; set; } = AIInterviewDefaults.DefaultStrengthsSummaryMaxCompletionTokens;
+
+    public int RecordingUploadMaxMb { get; set; } = AIInterviewDefaults.DefaultRecordingUploadMaxMb;
+
+    public int RecordingVideoBitsPerSecond { get; set; } = AIInterviewDefaults.DefaultRecordingVideoBitsPerSecond;
+
+    public int RecordingAudioBitsPerSecond { get; set; } = AIInterviewDefaults.DefaultRecordingAudioBitsPerSecond;
+
+    public string RecordingSourceMode { get; set; } = AIInterviewDefaults.DefaultRecordingSourceMode;
+
+    public int RecordingUploadTimeoutMs { get; set; } = AIInterviewDefaults.DefaultRecordingUploadTimeoutMs;
+
+    public int FinalizationWaitTimeoutMs { get; set; } = AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs;
+
     /// <summary>
     /// Gets or sets the minimum score required in an interview to apply
     /// </summary>

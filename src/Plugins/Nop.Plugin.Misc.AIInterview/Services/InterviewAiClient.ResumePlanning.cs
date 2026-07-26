@@ -133,11 +133,29 @@ public partial class InterviewAiClient
         if (_mockSettings?.UseMockResponses != false)
             return BuildMockStrengthsSummary(request);
 
+        var prompt = BuildStrengthsSummaryPrompt(request);
+        var maxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(_settings?.StrengthsSummaryMaxCompletionTokens ?? 0);
         var result = await CallAzureContentAsync(
             "strengths-summary",
             "Return JSON only. Strengths summary mode contract: strengthsText string, optional confidence string, optional evidenceTurnNumbers integer array. strengthsText must be 200 to 300 characters, plain text, no markdown, no bullets, and grounded only in the submitted answered turns.",
-            BuildStrengthsSummaryPrompt(request),
-            500);
+            prompt,
+            maxCompletionTokens,
+            allowEmptySuccessfulContent: true);
+
+        if (ShouldRetryTruncatedEmptyStrengthsSummary(result))
+        {
+            var retryMaxCompletionTokens = Math.Min(maxCompletionTokens + 600, AIInterviewDefaults.MaxStrengthsSummaryMaxCompletionTokens);
+            await LogAiClientIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview strengths summary truncation retry initiated",
+                $"Mode=strengths-summary; Reason=empty truncated response; InitialMaxCompletionTokens={maxCompletionTokens}; RetryMaxCompletionTokens={retryMaxCompletionTokens}; FinishReason={BuildSafeValue(result.FinishReason)}.");
+
+            result = await CallAzureContentAsync(
+                "strengths-summary",
+                "Return JSON only. Strengths summary mode contract: strengthsText string, optional confidence string, optional evidenceTurnNumbers integer array. strengthsText must be 200 to 300 characters, plain text, no markdown, no bullets, and grounded only in the submitted answered turns. Strict JSON-first retry: start the response with { and output only one complete JSON object. No markdown fences, preface, trailing prose, or partial JSON.",
+                prompt,
+                retryMaxCompletionTokens);
+        }
 
         if (!result.Success)
         {
@@ -164,7 +182,7 @@ public partial class InterviewAiClient
         };
     }
 
-    private async Task<AzureContentCallResult> CallAzureContentAsync(string mode, string systemPrompt, string prompt, int maxTokens)
+    private async Task<AzureContentCallResult> CallAzureContentAsync(string mode, string systemPrompt, string prompt, int maxTokens, bool allowEmptySuccessfulContent = false)
     {
         var endpointConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiEndpointUrl);
         var apiKeyConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiApiKey);
@@ -200,12 +218,15 @@ public partial class InterviewAiClient
             var usageInfo = result.UsageInfo;
             if (string.IsNullOrWhiteSpace(result.Content))
             {
+                if (allowEmptySuccessfulContent && result.IsLengthTruncated)
+                    return new AzureContentCallResult(true, string.Empty, string.Empty, usageInfo, result.IsLengthTruncated, result.FinishReason);
+
                 var detail = BuildAzureContractFailureLog(mode, result.Endpoint, "empty response content", result.ResponseBody);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
-                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", usageInfo);
+                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", usageInfo, result.IsLengthTruncated, result.FinishReason);
             }
 
-            return new AzureContentCallResult(true, result.Content, string.Empty, usageInfo);
+            return new AzureContentCallResult(true, result.Content, string.Empty, usageInfo, result.IsLengthTruncated, result.FinishReason);
         }
         catch (JsonException ex)
         {
@@ -383,6 +404,21 @@ public partial class InterviewAiClient
 }
 """);
         return builder.ToString();
+    }
+
+    private static int NormalizeStrengthsSummaryMaxCompletionTokens(int maxCompletionTokens)
+    {
+        return Math.Clamp(
+            maxCompletionTokens <= 0 ? AIInterviewDefaults.DefaultStrengthsSummaryMaxCompletionTokens : maxCompletionTokens,
+            AIInterviewDefaults.MinStrengthsSummaryMaxCompletionTokens,
+            AIInterviewDefaults.MaxStrengthsSummaryMaxCompletionTokens);
+    }
+
+    private static bool ShouldRetryTruncatedEmptyStrengthsSummary(AzureContentCallResult result)
+    {
+        return result?.Success == true &&
+            string.IsNullOrWhiteSpace(result.Content) &&
+            result.IsLengthTruncated;
     }
 
     private static AIResumeProfileResponse ParseResumeProfileResponse(string content)

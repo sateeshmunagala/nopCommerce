@@ -492,6 +492,14 @@
         const config = @Html.Raw(clientSettings);
         const turns = @Html.Raw(turns);
         const totalQuestions = Math.max(1, Number(config.questionCount || @Model.QuestionCount || 0));
+        const clampNumber = (value, fallback, min, max) => Math.min(max, Math.max(min, Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback));
+        const recordingUploadMaxBytes = clampNumber(config.recordingUploadMaxMb, 100, 80, 250) * 1024 * 1024;
+        const recordingVideoBitsPerSecond = clampNumber(config.recordingVideoBitsPerSecond, 650000, 350000, 1200000);
+        const recordingAudioBitsPerSecond = clampNumber(config.recordingAudioBitsPerSecond, 64000, 32000, 128000);
+        const recordingUploadTimeoutMs = clampNumber(config.recordingUploadTimeoutMs, 15000, 5000, 60000);
+        const finalizationWaitTimeoutMs = clampNumber(config.finalizationWaitTimeoutMs, 10000, 5000, 45000);
+        const recordingSourceModeValues = ['ScreenPreferred', 'CameraOnly', 'ScreenOnly', 'ScreenAndCamera'];
+        const recordingSourceMode = recordingSourceModeValues.includes(config.recordingSourceMode) ? config.recordingSourceMode : 'ScreenPreferred';
         const debugRuntime = new URLSearchParams(window.location.search).get('debugRuntime') === '1';
         const voiceUnavailableMessage = 'Voice mode is unavailable. Please type your answer below.';
         const voiceInputUnavailableMessage = 'Voice input is unavailable. Please continue by typing your answer.';
@@ -668,7 +676,6 @@
         const autoSubmitDelaySeconds = 15;
         const completionWaitSeconds = 120;
         const completedRedirectDelaySeconds = 3;
-        const finalRecordingUploadTimeoutMs = 10000;
         const slowSubmitStatusDelayMs = 5000;
         const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';
         const reportGenerationMessage = 'Report is being generated. Please wait and also you will receive an email shortly once report is generated.';
@@ -975,13 +982,28 @@
             recordingScreenAudioSource = null;
         };
 
-        const getRecordingSignature = () => [
-            ...getLiveTracks(screenShareStream, 'video').map(track => `screen-video:${track.id}`),
-            ...getLiveTracks(cameraStream, 'video').map(track => `camera-video:${track.id}`),
-            ...getLiveTracks(micStream, 'audio').map(track => `mic-audio:${track.id}`),
-            ...getLiveTracks(screenShareStream, 'audio').map(track => `screen-audio:${track.id}`),
-            ...getLiveTracks(getSpeechAudioCaptureStream(), 'audio').map(track => `bot-audio:${track.id}`)
-        ].join('|');
+        const getRecordingVideoTracks = () => {
+            const screenTracks = getLiveTracks(screenShareStream, 'video');
+            const cameraTracks = getLiveTracks(cameraStream, 'video');
+            if (recordingSourceMode === 'CameraOnly')
+                return cameraTracks;
+            if (recordingSourceMode === 'ScreenOnly')
+                return screenTracks;
+            if (recordingSourceMode === 'ScreenAndCamera')
+                return [...screenTracks, ...cameraTracks];
+
+            return screenTracks.length ? screenTracks : cameraTracks;
+        };
+
+        const getRecordingSignature = () => {
+            const screenTrackIds = new Set(getLiveTracks(screenShareStream, 'video').map(track => track.id));
+            return [
+                ...getRecordingVideoTracks().map(track => `${screenTrackIds.has(track.id) ? 'screen' : 'camera'}-video:${track.id}`),
+                ...getLiveTracks(micStream, 'audio').map(track => `mic-audio:${track.id}`),
+                ...getLiveTracks(screenShareStream, 'audio').map(track => `screen-audio:${track.id}`),
+                ...getLiveTracks(getSpeechAudioCaptureStream(), 'audio').map(track => `bot-audio:${track.id}`)
+            ].join('|');
+        };
 
         const refreshRecordingAudioMix = () => {
             disconnectRecordingAudioSources();
@@ -1489,7 +1511,7 @@
 
             if (!navigator.mediaDevices?.getUserMedia) {
                 if (precheckCameraStatus)
-                    precheckCameraStatus.textContent = 'Camera is not available. You can continue using text answers.';
+                    precheckCameraStatus.textContent = 'Camera is not available. Please provide permissions.';
                 return;
             }
 
@@ -1503,7 +1525,7 @@
             } catch {
                 stopPrecheckCamera();
                 if (precheckCameraStatus)
-                    precheckCameraStatus.textContent = 'Camera is not available. You can continue using text answers.';
+                    precheckCameraStatus.textContent = 'Camera is not available. Please provide permissions.';
             }
         };
 
@@ -2713,7 +2735,7 @@
             try {
                 const recordingUploaded = await withTimeout(
                     finalizeRecordingBeforeCompletion(),
-                    finalRecordingUploadTimeoutMs,
+                    finalizationWaitTimeoutMs,
                     'Recording upload timed out.');
 
                 if (!recordingUploaded && config.recordingAvailable && recordingEnabled)
@@ -3056,14 +3078,19 @@
             }
         };
 
-        const postMultipart = async (url, formData) => {
+        const postMultipart = async (url, formData, timeoutMs = 0) => {
             logActivity('Multipart request started.');
             const requestName = getRuntimeRequestName(url);
             const requestStartedAt = performance.now();
+            const abortController = timeoutMs > 0 && window.AbortController ? new AbortController() : null;
+            const abortTimer = abortController
+                ? setTimeout(() => abortController.abort(), timeoutMs)
+                : null;
             try {
                 const response = await fetch(url, {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    signal: abortController?.signal
                 });
 
                 if (!response.ok) {
@@ -3123,17 +3150,22 @@
                     return { success: false, message: 'Invalid response from server.' };
                 }
             } catch (e) {
-                logActivity(`Multipart request error: ${e.message}`);
+                const timedOut = e?.name === 'AbortError';
+                const message = timedOut ? 'Recording upload timed out.' : e?.message;
+                logActivity(`Multipart request error: ${message}`);
                 reportRuntimeClientRequestFailure({
                     requestName,
                     failureKind: 'fetch-exception',
-                    message: e?.message || 'Network request failed.',
+                    message: message || 'Network request failed.',
                     elapsedMilliseconds: performance.now() - requestStartedAt
                 });
                 if (shouldIgnoreCompletedAsyncFailure(requestName))
                     return { success: false, ignored: true, message: '' };
 
-                return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
+                return { success: false, message: timedOut ? 'Recording upload timed out.' : 'Unable to reach the interview service. Please check your network and try again.' };
+            } finally {
+                if (abortTimer)
+                    clearTimeout(abortTimer);
             }
         };
 
@@ -3144,10 +3176,7 @@
             if (!mediaRecorder && signature !== recordingStreamSignature)
                 refreshRecordingAudioMix();
 
-            if (screenShareStream?.getTracks)
-                tracks.push(...screenShareStream.getTracks().filter(track => track.kind === 'video' && track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
-            if (cameraStream?.getTracks)
-                tracks.push(...cameraStream.getTracks().filter(track => track.kind === 'video' && track.readyState === 'live' && !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
+            tracks.push(...getRecordingVideoTracks().filter(track => !seenTrackIds.has(track.id) && seenTrackIds.add(track.id)));
 
             const mixedAudioTracks = recordingAudioDestination?.stream?.getAudioTracks?.().filter(track => track.readyState === 'live') || [];
             if (mixedAudioTracks.length) {
@@ -3241,6 +3270,13 @@
             if (!config.recordingUploadUrl || !blob || recordingUploadInFlight)
                 return false;
 
+            if ((blob.size || 0) > recordingUploadMaxBytes) {
+                const maxMb = Math.round(recordingUploadMaxBytes / 1024 / 1024);
+                logActivity(`Recording upload blocked before request. blobBytes=${blob.size || 0}; maxBytes=${recordingUploadMaxBytes}`);
+                setRecordingStatus(`Recording is larger than the ${maxMb} MB upload limit.`, true);
+                return false;
+            }
+
             recordingUploadInFlight = true;
             logActivity(`Recording upload request start. blobBytes=${blob.size || 0}`);
             try {
@@ -3248,7 +3284,7 @@
                 formData.append('token', sessionToken);
                 formData.append('recording', blob, `interview-${Date.now()}.webm`);
 
-                const result = await postMultipart(config.recordingUploadUrl, formData);
+                const result = await postMultipart(config.recordingUploadUrl, formData, recordingUploadTimeoutMs);
                 const recordingUrl = getValue(result, 'recordingUrl', 'RecordingUrl');
                 if (isSuccess(result) && recordingUrl) {
                     logActivity(`Recording upload response success. url=${recordingUrl}`);
@@ -3359,6 +3395,8 @@
                 const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
                     ? { mimeType: 'video/webm;codecs=vp9,opus' }
                     : (MediaRecorder.isTypeSupported('video/webm') ? { mimeType: 'video/webm' } : {});
+                options.videoBitsPerSecond = recordingVideoBitsPerSecond;
+                options.audioBitsPerSecond = recordingAudioBitsPerSecond;
                 logActivity(`MediaRecorder support confirmed. requestedMimeType=${options.mimeType || 'browser-default'}`);
                 mediaRecorder = new MediaRecorder(stream, options);
                 activeRecordingSignature = recordingStreamSignature || getRecordingSignature();

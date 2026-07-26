@@ -89,6 +89,13 @@
                         </div>
                     </div>
                     <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="StrengthsSummaryMaxCompletionTokens" /></div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="StrengthsSummaryMaxCompletionTokens" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
                         <div class="col-md-3"></div>
                         <div class="col-md-9">
                             <button type="button" class="btn btn-secondary" id="test-azure-openai-connection">
@@ -189,6 +196,50 @@
                         <div class="col-md-9">
                             <input asp-for="AzureBlobStorageSasToken" class="form-control" type="text" autocomplete="off" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint")</small>
+                        </div>
+                    </div>
+                    <hr />
+                    <h4>Runtime recording</h4>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="RecordingUploadMaxMb" /></div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="RecordingUploadMaxMb" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="RecordingVideoBitsPerSecond" /></div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="RecordingVideoBitsPerSecond" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="RecordingAudioBitsPerSecond" /></div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="RecordingAudioBitsPerSecond" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RecordingAudioBitsPerSecond.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="RecordingSourceMode" /></div>
+                        <div class="col-md-9">
+                            <nop-select asp-for="RecordingSourceMode" asp-items="Model.AvailableRecordingSourceModes" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RecordingSourceMode.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="RecordingUploadTimeoutMs" /></div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="RecordingUploadTimeoutMs" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadTimeoutMs.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3"><nop-label asp-for="FinalizationWaitTimeoutMs" /></div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="FinalizationWaitTimeoutMs" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.FinalizationWaitTimeoutMs.Hint")</small>
                         </div>
                     </div>
                     <hr />

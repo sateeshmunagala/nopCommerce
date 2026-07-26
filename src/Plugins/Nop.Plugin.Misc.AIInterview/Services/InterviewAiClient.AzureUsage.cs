@@ -4,7 +4,7 @@ namespace Nop.Plugin.Misc.AIInterview.Services;
 
 public partial class InterviewAiClient
 {
-    private sealed record AzureContentCallResult(bool Success, string Content, string ErrorMessage, AzureOpenAiUsageInfo UsageInfo);
+    private sealed record AzureContentCallResult(bool Success, string Content, string ErrorMessage, AzureOpenAiUsageInfo UsageInfo, bool IsLengthTruncated = false, string FinishReason = null);
 
     protected virtual AzureOpenAiUsageInfo BuildAzureOpenAiUsageInfo(JsonElement rootElement, string mode, string endpoint)
     {

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Nop.Plugin.Misc.AIInterview;
 using Nop.Web.Framework.Models;
 using Nop.Web.Framework.Mvc.ModelBinding;
 
@@ -63,6 +64,9 @@ public record AiServiceSettingsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel")]
     public string AzureOpenAiDeploymentOrModel { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens")]
+    public int StrengthsSummaryMaxCompletionTokens { get; set; } = AIInterviewDefaults.DefaultStrengthsSummaryMaxCompletionTokens;
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechKey")]
     public string AzureSpeechKey { get; set; }
 
@@ -110,6 +114,26 @@ public record AiServiceSettingsModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken")]
     public string AzureBlobStorageSasToken { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb")]
+    public int RecordingUploadMaxMb { get; set; } = AIInterviewDefaults.DefaultRecordingUploadMaxMb;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond")]
+    public int RecordingVideoBitsPerSecond { get; set; } = AIInterviewDefaults.DefaultRecordingVideoBitsPerSecond;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RecordingAudioBitsPerSecond")]
+    public int RecordingAudioBitsPerSecond { get; set; } = AIInterviewDefaults.DefaultRecordingAudioBitsPerSecond;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RecordingSourceMode")]
+    public string RecordingSourceMode { get; set; } = AIInterviewDefaults.DefaultRecordingSourceMode;
+
+    public IList<SelectListItem> AvailableRecordingSourceModes { get; set; } = new List<SelectListItem>();
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadTimeoutMs")]
+    public int RecordingUploadTimeoutMs { get; set; } = AIInterviewDefaults.DefaultRecordingUploadTimeoutMs;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.FinalizationWaitTimeoutMs")]
+    public int FinalizationWaitTimeoutMs { get; set; } = AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs;
 }
 
 public record SponsorInviteAdminModel : BaseNopModel

@@ -33,7 +33,7 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
 public class MockAiInterviewController : BasePluginController
 {
-    public const long MaxRecordingUploadBytes = 100L * 1024L * 1024L;
+    public const long MaxRecordingUploadBytes = 250L * 1024L * 1024L;
 
     private const string VoiceUnavailableMessage = "Voice mode is unavailable. Please type your answer below.";
     private const string FeedbackIssueSupport = "Talk to support team";
@@ -283,7 +283,7 @@ public class MockAiInterviewController : BasePluginController
     protected static string BuildRuntimeClientFailureMessage(string failureKind, int? statusCode, string requestName = null)
     {
         if (NormalizeRuntimeClientRequestName(requestName) == "upload-recording" && statusCode == 413)
-            return "Recording upload exceeded the 100 MB request limit or an upstream host/proxy size limit.";
+            return "Recording upload exceeded the configured request limit or an upstream host/proxy size limit.";
 
         return NormalizeRuntimeClientFailureKind(failureKind) switch
         {

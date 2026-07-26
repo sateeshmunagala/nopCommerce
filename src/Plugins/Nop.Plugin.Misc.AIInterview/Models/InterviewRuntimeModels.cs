@@ -1,4 +1,5 @@
 using Nop.Web.Framework.Models;
+using Nop.Plugin.Misc.AIInterview;
 
 namespace Nop.Plugin.Misc.AIInterview.Models;
 
@@ -65,6 +66,12 @@ public record RuntimeClientSettingsModel
     public DateTime? TokenExpiryUtc { get; set; }
     public bool SpeechAvailable { get; set; }
     public bool RecordingAvailable { get; set; }
+    public int RecordingUploadMaxMb { get; set; } = AIInterviewDefaults.DefaultRecordingUploadMaxMb;
+    public int RecordingVideoBitsPerSecond { get; set; } = AIInterviewDefaults.DefaultRecordingVideoBitsPerSecond;
+    public int RecordingAudioBitsPerSecond { get; set; } = AIInterviewDefaults.DefaultRecordingAudioBitsPerSecond;
+    public string RecordingSourceMode { get; set; } = AIInterviewDefaults.DefaultRecordingSourceMode;
+    public int RecordingUploadTimeoutMs { get; set; } = AIInterviewDefaults.DefaultRecordingUploadTimeoutMs;
+    public int FinalizationWaitTimeoutMs { get; set; } = AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs;
 }
 
 public record StartInterviewResponseModel

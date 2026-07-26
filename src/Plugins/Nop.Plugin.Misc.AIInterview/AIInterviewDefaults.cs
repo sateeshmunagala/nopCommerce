@@ -109,6 +109,25 @@ public static class AIInterviewDefaults
     public static string DefaultAzureDocumentIntelligenceModelId => "prebuilt-read";
     public const int DefaultAzureDocumentIntelligenceTimeoutSeconds = 60;
     public static string DefaultSupportPhoneNumber => "+91 72073 33883";
+    public const int DefaultStrengthsSummaryMaxCompletionTokens = 1500;
+    public const int MinStrengthsSummaryMaxCompletionTokens = 500;
+    public const int MaxStrengthsSummaryMaxCompletionTokens = 3000;
+    public const int DefaultRecordingUploadMaxMb = 100;
+    public const int MinRecordingUploadMaxMb = 80;
+    public const int MaxRecordingUploadMaxMb = 250;
+    public const int DefaultRecordingVideoBitsPerSecond = 650000;
+    public const int MinRecordingVideoBitsPerSecond = 350000;
+    public const int MaxRecordingVideoBitsPerSecond = 1200000;
+    public const int DefaultRecordingAudioBitsPerSecond = 64000;
+    public const int MinRecordingAudioBitsPerSecond = 32000;
+    public const int MaxRecordingAudioBitsPerSecond = 128000;
+    public const string DefaultRecordingSourceMode = "ScreenPreferred";
+    public const int DefaultRecordingUploadTimeoutMs = 15000;
+    public const int MinRecordingUploadTimeoutMs = 5000;
+    public const int MaxRecordingUploadTimeoutMs = 60000;
+    public const int DefaultFinalizationWaitTimeoutMs = 10000;
+    public const int MinFinalizationWaitTimeoutMs = 5000;
+    public const int MaxFinalizationWaitTimeoutMs = 45000;
 
     public static string InterviewDifficultyAttributeName => "Interview Difficulty";
 

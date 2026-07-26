@@ -221,6 +221,14 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (string.IsNullOrWhiteSpace(settings.SupportPhoneNumber))
             settings.SupportPhoneNumber = AIInterviewDefaults.DefaultSupportPhoneNumber;
 
+        settings.StrengthsSummaryMaxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(settings.StrengthsSummaryMaxCompletionTokens);
+        settings.RecordingUploadMaxMb = NormalizeRecordingUploadMaxMb(settings.RecordingUploadMaxMb);
+        settings.RecordingVideoBitsPerSecond = NormalizeRecordingVideoBitsPerSecond(settings.RecordingVideoBitsPerSecond);
+        settings.RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(settings.RecordingAudioBitsPerSecond);
+        settings.RecordingSourceMode = NormalizeRecordingSourceMode(settings.RecordingSourceMode);
+        settings.RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(settings.RecordingUploadTimeoutMs);
+        settings.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(settings.FinalizationWaitTimeoutMs);
+
         await _settingService.SaveSettingAsync(settings);
         await EnsureJobProductTemplateAsync();
         await EnsureMockPracticeProductTemplateAsync();
@@ -602,6 +610,20 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"] = "Paste the SAS token string exactly as issued. It is stored only in admin settings.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens"] = "Strengths Summary Max Completion Tokens",
+            ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens.Hint"] = "Allowed range: 500 to 3000. Recommended range: 1200 to 1800.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb"] = "Recording Upload Max MB",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb.Hint"] = "Allowed range: 80 to 250 MB. Uploads larger than this are blocked before submit and rejected server-side.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond"] = "Recording Video Bits Per Second",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond.Hint"] = "Allowed range: 350000 to 1200000.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingAudioBitsPerSecond"] = "Recording Audio Bits Per Second",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingAudioBitsPerSecond.Hint"] = "Allowed range: 32000 to 128000.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingSourceMode"] = "Recording Source Mode",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingSourceMode.Hint"] = "ScreenPreferred records screen video when available and falls back to camera video.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadTimeoutMs"] = "Recording Upload Timeout MS",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadTimeoutMs.Hint"] = "Allowed range: 5000 to 60000 milliseconds.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.FinalizationWaitTimeoutMs"] = "Finalization Wait Timeout MS",
+            ["Plugins.Misc.AIInterview.Admin.AiService.FinalizationWaitTimeoutMs.Hint"] = "Allowed range: 5000 to 45000 milliseconds.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Menu.FeedbackReports"] = "Feedback Reports",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Title"] = "Feedback Reports",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Search"] = "Search",
@@ -868,6 +890,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiApiKey"] = "Azure OpenAI API Key",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel"] = "Azure OpenAI Deployment / Model",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel.Hint"] = "Enter the Azure OpenAI deployment name configured for the resource. The SDK resolves the deployment path.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens"] = "Strengths Summary Max Completion Tokens",
+            ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens.Hint"] = "Allowed range: 500 to 3000. Recommended range: 1200 to 1800.",
             ["Plugins.Misc.AIInterview.Admin.AiService.TestConnection"] = "Test Azure OpenAI connection",
             ["Plugins.Misc.AIInterview.Admin.AiService.TestConnection.Progress"] = "Testing Azure OpenAI connection...",
             ["Plugins.Misc.AIInterview.Admin.AiService.TestConnection.Success"] = "Azure OpenAI connection succeeded.",
@@ -899,6 +923,18 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"] = "Paste the SAS token string exactly as issued. It is stored only in admin settings.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb"] = "Recording Upload Max MB",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb.Hint"] = "Allowed range: 80 to 250 MB. Uploads larger than this are blocked before submit and rejected server-side.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond"] = "Recording Video Bits Per Second",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond.Hint"] = "Allowed range: 350000 to 1200000.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingAudioBitsPerSecond"] = "Recording Audio Bits Per Second",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingAudioBitsPerSecond.Hint"] = "Allowed range: 32000 to 128000.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingSourceMode"] = "Recording Source Mode",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingSourceMode.Hint"] = "ScreenPreferred records screen video when available and falls back to camera video.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadTimeoutMs"] = "Recording Upload Timeout MS",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadTimeoutMs.Hint"] = "Allowed range: 5000 to 60000 milliseconds.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.FinalizationWaitTimeoutMs"] = "Finalization Wait Timeout MS",
+            ["Plugins.Misc.AIInterview.Admin.AiService.FinalizationWaitTimeoutMs.Hint"] = "Allowed range: 5000 to 45000 milliseconds.",
             ["Plugins.Misc.AIInterview.Admin.AiService.CreditProductSkuMappingsJson"] = "Credit Product SKU Mappings (JSON)",
             ["Plugins.Misc.AIInterview.Admin.AiService.CreditProductSkuMappingsJson.Hint"] = "Map product SKUs to credits granted per unit. Example: {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10,\"AI-CREDIT-20\":20}. Create normal Pricing-category products with those SKUs and prices. Credits are granted only after successful payment for registered customers.",
             ["Plugins.Misc.AIInterview.Admin.AiService.CreditProductSkuMappingsJson.Invalid"] = "The credit product SKU mappings JSON is invalid. Use a JSON object such as {\"AI-CREDIT-1\":1,\"AI-CREDIT-10\":10}.",
@@ -1024,6 +1060,20 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken"] = "Azure Blob Storage SAS Token",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint"] = "Used for server-side recording uploads and other media persistence.",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"] = "Paste the SAS token string exactly as issued. It is stored only in admin settings.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens"] = "Strengths Summary Max Completion Tokens",
+            ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens.Hint"] = "Allowed range: 500 to 3000. Recommended range: 1200 to 1800.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb"] = "Recording Upload Max MB",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb.Hint"] = "Allowed range: 80 to 250 MB. Uploads larger than this are blocked before submit and rejected server-side.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond"] = "Recording Video Bits Per Second",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond.Hint"] = "Allowed range: 350000 to 1200000.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingAudioBitsPerSecond"] = "Recording Audio Bits Per Second",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingAudioBitsPerSecond.Hint"] = "Allowed range: 32000 to 128000.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingSourceMode"] = "Recording Source Mode",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingSourceMode.Hint"] = "ScreenPreferred records screen video when available and falls back to camera video.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadTimeoutMs"] = "Recording Upload Timeout MS",
+            ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadTimeoutMs.Hint"] = "Allowed range: 5000 to 60000 milliseconds.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.FinalizationWaitTimeoutMs"] = "Finalization Wait Timeout MS",
+            ["Plugins.Misc.AIInterview.Admin.AiService.FinalizationWaitTimeoutMs.Hint"] = "Allowed range: 5000 to 45000 milliseconds.",
             ["Plugins.Misc.AIInterview.Admin.MockMode.Warning"] = "Development AI mode is enabled. Azure OpenAI is bypassed.",
             ["Plugins.Misc.AIInterview.Runtime.MockMode.Warning"] = "Development AI mode is enabled. Azure OpenAI is bypassed.",
             ["Plugins.Misc.AIInterview.Runtime.StopInterview"] = "Stop Interview",
@@ -1095,6 +1145,63 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         };
     }
 
+    protected static int NormalizeStrengthsSummaryMaxCompletionTokens(int maxCompletionTokens)
+    {
+        return Math.Clamp(
+            maxCompletionTokens <= 0 ? AIInterviewDefaults.DefaultStrengthsSummaryMaxCompletionTokens : maxCompletionTokens,
+            AIInterviewDefaults.MinStrengthsSummaryMaxCompletionTokens,
+            AIInterviewDefaults.MaxStrengthsSummaryMaxCompletionTokens);
+    }
+
+    protected static int NormalizeRecordingUploadMaxMb(int maxMb)
+    {
+        return Math.Clamp(
+            maxMb <= 0 ? AIInterviewDefaults.DefaultRecordingUploadMaxMb : maxMb,
+            AIInterviewDefaults.MinRecordingUploadMaxMb,
+            AIInterviewDefaults.MaxRecordingUploadMaxMb);
+    }
+
+    protected static int NormalizeRecordingVideoBitsPerSecond(int bitsPerSecond)
+    {
+        return Math.Clamp(
+            bitsPerSecond <= 0 ? AIInterviewDefaults.DefaultRecordingVideoBitsPerSecond : bitsPerSecond,
+            AIInterviewDefaults.MinRecordingVideoBitsPerSecond,
+            AIInterviewDefaults.MaxRecordingVideoBitsPerSecond);
+    }
+
+    protected static int NormalizeRecordingAudioBitsPerSecond(int bitsPerSecond)
+    {
+        return Math.Clamp(
+            bitsPerSecond <= 0 ? AIInterviewDefaults.DefaultRecordingAudioBitsPerSecond : bitsPerSecond,
+            AIInterviewDefaults.MinRecordingAudioBitsPerSecond,
+            AIInterviewDefaults.MaxRecordingAudioBitsPerSecond);
+    }
+
+    protected static string NormalizeRecordingSourceMode(string sourceMode)
+    {
+        var normalized = sourceMode?.Trim();
+        var sourceModes = new[] { "ScreenPreferred", "CameraOnly", "ScreenOnly", "ScreenAndCamera" };
+        return sourceModes.Contains(normalized, StringComparer.OrdinalIgnoreCase)
+            ? sourceModes.First(value => string.Equals(value, normalized, StringComparison.OrdinalIgnoreCase))
+            : AIInterviewDefaults.DefaultRecordingSourceMode;
+    }
+
+    protected static int NormalizeRecordingUploadTimeoutMs(int timeoutMs)
+    {
+        return Math.Clamp(
+            timeoutMs <= 0 ? AIInterviewDefaults.DefaultRecordingUploadTimeoutMs : timeoutMs,
+            AIInterviewDefaults.MinRecordingUploadTimeoutMs,
+            AIInterviewDefaults.MaxRecordingUploadTimeoutMs);
+    }
+
+    protected static int NormalizeFinalizationWaitTimeoutMs(int timeoutMs)
+    {
+        return Math.Clamp(
+            timeoutMs <= 0 ? AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs : timeoutMs,
+            AIInterviewDefaults.MinFinalizationWaitTimeoutMs,
+            AIInterviewDefaults.MaxFinalizationWaitTimeoutMs);
+    }
+
     public override async Task InstallAsync()
     {
         //settings
@@ -1109,6 +1216,13 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             EnableFinalScoringAtCompletion = true,
             AzureUsageCurrencyCode = "USD",
             SupportPhoneNumber = AIInterviewDefaults.DefaultSupportPhoneNumber,
+            StrengthsSummaryMaxCompletionTokens = AIInterviewDefaults.DefaultStrengthsSummaryMaxCompletionTokens,
+            RecordingUploadMaxMb = AIInterviewDefaults.DefaultRecordingUploadMaxMb,
+            RecordingVideoBitsPerSecond = AIInterviewDefaults.DefaultRecordingVideoBitsPerSecond,
+            RecordingAudioBitsPerSecond = AIInterviewDefaults.DefaultRecordingAudioBitsPerSecond,
+            RecordingSourceMode = AIInterviewDefaults.DefaultRecordingSourceMode,
+            RecordingUploadTimeoutMs = AIInterviewDefaults.DefaultRecordingUploadTimeoutMs,
+            FinalizationWaitTimeoutMs = AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs,
             AzureDocumentIntelligenceModelId = AIInterviewDefaults.DefaultAzureDocumentIntelligenceModelId,
             AzureDocumentIntelligenceTimeoutSeconds = AIInterviewDefaults.DefaultAzureDocumentIntelligenceTimeoutSeconds,
             CreditProductSkuMappingsJson = AIInterviewDefaults.DefaultCreditProductSkuMappingsJson,

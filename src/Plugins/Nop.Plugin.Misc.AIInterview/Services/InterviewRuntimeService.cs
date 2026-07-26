@@ -2707,7 +2707,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             return RecordingFailure("Recording file is empty.");
         }
 
-        const long maxRecordingBytes = 100L * 1024L * 1024L;
+        var maxRecordingBytes = (long)NormalizeRecordingUploadMaxMb(_settings?.RecordingUploadMaxMb ?? 0) * 1024L * 1024L;
         if (recording.Length > maxRecordingBytes)
         {
             await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is too large.", "recording too large", normalizedContentType: normalizedContentType);
@@ -2796,6 +2796,55 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         return false;
     }
 
+    protected static int NormalizeRecordingUploadMaxMb(int maxMb)
+    {
+        return Math.Clamp(
+            maxMb <= 0 ? AIInterviewDefaults.DefaultRecordingUploadMaxMb : maxMb,
+            AIInterviewDefaults.MinRecordingUploadMaxMb,
+            AIInterviewDefaults.MaxRecordingUploadMaxMb);
+    }
+
+    protected static int NormalizeRecordingVideoBitsPerSecond(int bitsPerSecond)
+    {
+        return Math.Clamp(
+            bitsPerSecond <= 0 ? AIInterviewDefaults.DefaultRecordingVideoBitsPerSecond : bitsPerSecond,
+            AIInterviewDefaults.MinRecordingVideoBitsPerSecond,
+            AIInterviewDefaults.MaxRecordingVideoBitsPerSecond);
+    }
+
+    protected static int NormalizeRecordingAudioBitsPerSecond(int bitsPerSecond)
+    {
+        return Math.Clamp(
+            bitsPerSecond <= 0 ? AIInterviewDefaults.DefaultRecordingAudioBitsPerSecond : bitsPerSecond,
+            AIInterviewDefaults.MinRecordingAudioBitsPerSecond,
+            AIInterviewDefaults.MaxRecordingAudioBitsPerSecond);
+    }
+
+    protected static string NormalizeRecordingSourceMode(string sourceMode)
+    {
+        var normalized = sourceMode?.Trim();
+        var sourceModes = new[] { "ScreenPreferred", "CameraOnly", "ScreenOnly", "ScreenAndCamera" };
+        return sourceModes.Contains(normalized, StringComparer.OrdinalIgnoreCase)
+            ? sourceModes.First(value => string.Equals(value, normalized, StringComparison.OrdinalIgnoreCase))
+            : AIInterviewDefaults.DefaultRecordingSourceMode;
+    }
+
+    protected static int NormalizeRecordingUploadTimeoutMs(int timeoutMs)
+    {
+        return Math.Clamp(
+            timeoutMs <= 0 ? AIInterviewDefaults.DefaultRecordingUploadTimeoutMs : timeoutMs,
+            AIInterviewDefaults.MinRecordingUploadTimeoutMs,
+            AIInterviewDefaults.MaxRecordingUploadTimeoutMs);
+    }
+
+    protected static int NormalizeFinalizationWaitTimeoutMs(int timeoutMs)
+    {
+        return Math.Clamp(
+            timeoutMs <= 0 ? AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs : timeoutMs,
+            AIInterviewDefaults.MinFinalizationWaitTimeoutMs,
+            AIInterviewDefaults.MaxFinalizationWaitTimeoutMs);
+    }
+
     protected virtual async Task<InterviewRuntimeModel> BuildRuntimeModelAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null)
     {
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
@@ -2848,7 +2897,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 Token = session.Token,
                 SpeechAvailable = !string.IsNullOrWhiteSpace(_settings.AzureSpeechKey) && !string.IsNullOrWhiteSpace(_settings.AzureSpeechRegion),
                 RecordingUploadUrl = string.Empty,
-                RecordingAvailable = !string.IsNullOrWhiteSpace(_settings.AzureBlobStorageContainerUrl) && !string.IsNullOrWhiteSpace(_settings.AzureBlobStorageSasToken)
+                RecordingAvailable = !string.IsNullOrWhiteSpace(_settings.AzureBlobStorageContainerUrl) && !string.IsNullOrWhiteSpace(_settings.AzureBlobStorageSasToken),
+                RecordingUploadMaxMb = NormalizeRecordingUploadMaxMb(_settings.RecordingUploadMaxMb),
+                RecordingVideoBitsPerSecond = NormalizeRecordingVideoBitsPerSecond(_settings.RecordingVideoBitsPerSecond),
+                RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(_settings.RecordingAudioBitsPerSecond),
+                RecordingSourceMode = NormalizeRecordingSourceMode(_settings.RecordingSourceMode),
+                RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(_settings.RecordingUploadTimeoutMs),
+                FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(_settings.FinalizationWaitTimeoutMs)
             }
         };
     }
