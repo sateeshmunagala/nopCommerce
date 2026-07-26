@@ -3164,6 +3164,258 @@ body.ai-job-preview-open .item-box {
     z-index: 1;
 }
 
+.runtime-permissions-card {
+    display: grid;
+    gap: 18px;
+    width: min(920px, 100%);
+    border-color: var(--jb-border, #dedede);
+    border-radius: 8px;
+    color: var(--jb-ink, #2c2c2c);
+}
+
+.runtime-permissions-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.runtime-permissions-head h3 {
+    margin: 0;
+}
+
+.runtime-permissions-head p {
+    margin: 4px 0 0;
+    color: var(--jb-muted, #909090);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.runtime-permissions-stepper {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(92px, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-x: auto;
+}
+
+.runtime-permissions-stepper button {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 48px;
+    padding: 8px 10px;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 6px;
+    background: var(--jb-white, #ffffff);
+    color: var(--jb-muted, #909090);
+    text-align: left;
+    cursor: pointer;
+}
+
+.runtime-permissions-stepper button:disabled {
+    cursor: not-allowed;
+    opacity: 0.64;
+}
+
+.runtime-permissions-stepper button span {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 999px;
+    color: var(--jb-muted, #909090);
+    font-size: 12px;
+}
+
+.runtime-permissions-stepper button strong {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.runtime-permissions-stepper button.is-active,
+.runtime-permissions-stepper button.is-completed {
+    border-color: var(--jb-accent, #35d6b4);
+    color: var(--jb-ink, #2c2c2c);
+}
+
+.runtime-permissions-stepper button.is-active {
+    background: color-mix(in srgb, var(--jb-accent, #35d6b4) 10%, var(--jb-white, #ffffff));
+}
+
+.runtime-permissions-stepper button.is-active span,
+.runtime-permissions-stepper button.is-completed span {
+    border-color: var(--jb-accent, #35d6b4);
+    background: var(--jb-accent, #35d6b4);
+    color: var(--jb-white, #ffffff);
+}
+
+.runtime-permissions-body {
+    min-height: 330px;
+}
+
+.runtime-permissions-step {
+    display: grid;
+    gap: 14px;
+}
+
+.runtime-permissions-step[hidden] {
+    display: none;
+}
+
+.runtime-permissions-step h4 {
+    margin: 0;
+    color: var(--jb-ink, #2c2c2c);
+    font-size: 20px;
+    line-height: 1.25;
+}
+
+.runtime-permissions-intro,
+.runtime-permissions-note,
+.runtime-permissions-status {
+    margin: 0;
+    color: var(--jb-muted, #909090);
+    line-height: 1.6;
+}
+
+.runtime-permissions-status.is-warning,
+.runtime-permissions-summary-list strong.is-warning {
+    color: #b45309;
+}
+
+.runtime-permissions-video-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 8px;
+    background: #111827;
+}
+
+.runtime-permissions-video-frame video,
+.runtime-permissions-placeholder {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.runtime-permissions-video-frame video {
+    object-fit: cover;
+}
+
+.runtime-permissions-placeholder {
+    display: grid;
+    place-items: center;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 46px;
+}
+
+.runtime-permissions-choice-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.runtime-permissions-choice-row .button-2.is-selected {
+    border-color: var(--jb-accent, #35d6b4);
+    background: color-mix(in srgb, var(--jb-accent, #35d6b4) 16%, var(--jb-white, #ffffff));
+    color: var(--jb-accent-dark, #24b99a);
+}
+
+.runtime-permissions-meter {
+    display: inline-flex;
+    align-items: end;
+    gap: 6px;
+    min-height: 52px;
+    padding: 10px 12px;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 8px;
+    background: var(--jb-white, #ffffff);
+}
+
+.runtime-permissions-meter span {
+    display: block;
+    width: 12px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--jb-accent, #35d6b4);
+    transition: height 0.08s linear;
+}
+
+.runtime-permissions-phrase {
+    margin: 0;
+    padding: 12px 14px;
+    border-left: 3px solid var(--jb-accent, #35d6b4);
+    background: color-mix(in srgb, var(--jb-accent, #35d6b4) 8%, var(--jb-white, #ffffff));
+    color: var(--jb-ink, #2c2c2c);
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.runtime-permissions-speech-result {
+    min-height: 74px;
+    padding: 12px;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 8px;
+    background: var(--jb-white, #ffffff);
+    color: var(--jb-ink, #2c2c2c);
+    line-height: 1.5;
+}
+
+.runtime-permissions-summary-list {
+    display: grid;
+    gap: 8px;
+}
+
+.runtime-permissions-summary-list div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--jb-border, #dedede);
+}
+
+.runtime-permissions-summary-list span {
+    color: var(--jb-muted, #909090);
+}
+
+.runtime-permissions-summary-list strong.is-working {
+    color: #166534;
+}
+
+.runtime-permissions-summary-list strong.is-not-working {
+    color: #b42318;
+}
+
+.runtime-permissions-consent {
+    align-items: flex-start;
+    margin-top: 8px;
+    padding: 12px;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 8px;
+    background: var(--jb-white, #ffffff);
+}
+
+.runtime-permissions-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
 .runtime-modal-head {
     display: flex;
     justify-content: space-between;
@@ -3905,6 +4157,47 @@ body.ai-job-preview-open .item-box {
         max-width: none;
         max-height: calc(100% - var(--runtime-caption-bottom) - 14px);
         transform: none;
+    }
+
+    .runtime-modal {
+        padding: 10px;
+    }
+
+    .runtime-permissions-card {
+        max-height: 92vh;
+        padding: 16px;
+    }
+
+    .runtime-permissions-head {
+        align-items: flex-start;
+    }
+
+    .runtime-permissions-stepper {
+        grid-template-columns: repeat(7, 122px);
+        margin: 0 -2px;
+        padding-bottom: 4px;
+    }
+
+    .runtime-permissions-body {
+        min-height: 0;
+    }
+
+    .runtime-permissions-choice-row,
+    .runtime-permissions-actions,
+    .runtime-permissions-summary-list div {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .runtime-permissions-choice-row .button-2,
+    .runtime-permissions-actions .button-1,
+    .runtime-permissions-actions .button-2 {
+        width: 100%;
+    }
+
+    .runtime-permissions-summary-list div {
+        display: grid;
+        gap: 4px;
     }
 }
 

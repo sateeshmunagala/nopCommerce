@@ -242,56 +242,117 @@
 </div>
 
 <div id="guidelines-modal" class="runtime-modal" aria-hidden="true">
-    <div class="runtime-modal-card" role="dialog" aria-modal="true" aria-labelledby="guidelines-title">
-        <h3 id="guidelines-title">@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Title")</h3>
-        <p>@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Intro")</p>
-        <ul class="runtime-guidelines">
-            <li>Please be in a quiet place with stable internet.</li>
-            <li>Mobile phones and tablets are not allowed by policy, but they are not blocked technically.</li>
-            <li>Camera and microphone access are required for this interview.</li>
-            <li>Entire screen sharing is required for this interview.</li>
-            <li>When your browser asks what to share, choose Entire screen or Your entire screen. Do not select a browser tab or a single window.</li>
-            <li>Use full screen and keep the interview tab visible.</li>
-            <li>Do not use outside help, another person, unauthorized notes, or AI tools during the interview.</li>
-            <li>Keep this interview tab open until the interview is completed.</li>
-        </ul>
-        <div class="runtime-screen-share-guide" aria-label="Screen sharing selection guide">
-            <div class="runtime-screen-share-guide-title">Share picker guide</div>
-            <ol class="runtime-screen-share-guide-steps">
-                <li>When your browser opens the sharing window, choose <strong>Entire screen</strong> or <strong>Your entire screen</strong>.</li>
-                <li>Select the screen thumbnail.</li>
-                <li>Click <strong>Share</strong>.</li>
-            </ol>
-            <p class="runtime-screen-share-guide-note">Do not choose <strong>Window</strong> or <strong>Browser tab</strong>.</p>
-            <div class="runtime-screen-share-picker">
-                <div class="runtime-share-option is-selected" aria-current="true">
-                    <span class="runtime-share-option-icon"><i class="fa-solid fa-display" aria-hidden="true"></i></span>
-                    <span>Entire screen</span>
-                    <span class="runtime-share-system-audio" aria-hidden="true">
-                        <span class="runtime-share-system-audio-toggle is-on"></span>
-                        <span>Also share system audio</span>
-                    </span>
-                    <strong>Select this</strong>
-                </div>
-                <div class="runtime-share-option is-rejected">
-                    <span class="runtime-share-option-icon"><i class="fa-regular fa-window-maximize" aria-hidden="true"></i></span>
-                    <span>Window</span>
-                    <strong>Do not select</strong>
-                </div>
-                <div class="runtime-share-option is-rejected">
-                    <span class="runtime-share-option-icon"><i class="fa-regular fa-file-lines" aria-hidden="true"></i></span>
-                    <span>Browser tab</span>
-                    <strong>Do not select</strong>
-                </div>
+    <div class="runtime-modal-card runtime-permissions-card" role="dialog" aria-modal="true" aria-labelledby="guidelines-title">
+        <div class="runtime-permissions-head">
+            <div>
+                <h3 id="guidelines-title">Media &amp; Permissions Test</h3>
+                <p id="runtime-permissions-step-caption">Guidelines</p>
             </div>
+            <button type="button" id="guidelines-cancel" class="runtime-feedback-close" aria-label="@T("Plugins.Misc.AIInterview.Runtime.Close")">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
         </div>
-        <label class="runtime-guidelines-ack" for="guidelines-acknowledge">
-            <input type="checkbox" id="guidelines-acknowledge" />
-            <span>@T("Plugins.Misc.AIInterview.Runtime.Guidelines.Acknowledge")</span>
-        </label>
-        <div class="runtime-modal-actions">
-            <button type="button" id="guidelines-agree" class="button-1" disabled>@T("Plugins.Misc.AIInterview.Runtime.IAgree")</button>
-            <button type="button" id="guidelines-cancel" class="button-2">@T("Plugins.Misc.AIInterview.Runtime.Cancel")</button>
+
+        <ol id="runtime-permissions-stepper" class="runtime-permissions-stepper" aria-label="Media and permissions steps">
+            <li><button type="button" data-permission-step-jump="0"><span>1</span><strong>Guidelines</strong></button></li>
+            <li><button type="button" data-permission-step-jump="1"><span>2</span><strong>Camera</strong></button></li>
+            <li><button type="button" data-permission-step-jump="2"><span>3</span><strong>Internet</strong></button></li>
+            <li><button type="button" data-permission-step-jump="3"><span>4</span><strong>Microphone</strong></button></li>
+            <li><button type="button" data-permission-step-jump="4"><span>5</span><strong>Speaker</strong></button></li>
+            <li><button type="button" data-permission-step-jump="5"><span>6</span><strong>Speech Recognition</strong></button></li>
+            <li><button type="button" data-permission-step-jump="6"><span>7</span><strong>Summary</strong></button></li>
+        </ol>
+
+        <div class="runtime-permissions-body">
+            <section class="runtime-permissions-step" data-permission-step="0">
+                <p class="runtime-permissions-intro">Before starting the interview, we need to test your system to ensure optimal performance.</p>
+                <ul class="runtime-guidelines">
+                    <li>Camera and microphone access for video communication</li>
+                    <li>Speaker functionality for audio feedback</li>
+                    <li>Internet connection speed for stable interview experience</li>
+                    <li>Speech recognition readiness for voice interaction</li>
+                </ul>
+                <p class="runtime-permissions-note">This process should take 2-3 minutes. All tests are optional but recommended.</p>
+            </section>
+
+            <section class="runtime-permissions-step" data-permission-step="1" hidden>
+                <h4>Camera check</h4>
+                <div class="runtime-permissions-video-frame">
+                    <video id="runtime-precheck-camera-preview" autoplay muted playsinline></video>
+                    <div id="runtime-precheck-camera-placeholder" class="runtime-permissions-placeholder">
+                        <i class="fa-solid fa-video" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <p id="runtime-precheck-camera-status" class="runtime-permissions-status">Camera preview will appear here.</p>
+                <div class="runtime-permissions-choice-row" role="group" aria-label="Camera result">
+                    <button type="button" class="button-2" data-permission-result="camera" data-permission-value="working">Yes, I can see myself</button>
+                    <button type="button" class="button-2" data-permission-result="camera" data-permission-value="not-working">No, it is not working</button>
+                </div>
+            </section>
+
+            <section class="runtime-permissions-step" data-permission-step="2" hidden>
+                <h4>Test your internet connection speed</h4>
+                <button type="button" id="runtime-precheck-internet-test" class="button-2">Test Internet Speed</button>
+                <p id="runtime-precheck-internet-status" class="runtime-permissions-status">Run the speed test to continue.</p>
+            </section>
+
+            <section class="runtime-permissions-step" data-permission-step="3" hidden>
+                <h4>Request microphone permission to proceed</h4>
+                <button type="button" id="runtime-precheck-mic-request" class="button-2">Request Microphone Access</button>
+                <div class="runtime-permissions-meter" id="runtime-precheck-audio-meter" aria-label="microphone level">
+                    <span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <p id="runtime-precheck-mic-status" class="runtime-permissions-status">Microphone level will appear after permission is granted.</p>
+                <div class="runtime-permissions-choice-row" role="group" aria-label="Microphone result">
+                    <button type="button" class="button-2" data-permission-result="microphone" data-permission-value="working">Yes, I can see the level bar moving</button>
+                    <button type="button" class="button-2" data-permission-result="microphone" data-permission-value="not-working">No, it is not working</button>
+                </div>
+            </section>
+
+            <section class="runtime-permissions-step" data-permission-step="4" hidden>
+                <h4>Click the button below to test your speakers</h4>
+                <button type="button" id="runtime-precheck-speaker-test" class="button-2">Play Test Sound</button>
+                <p class="runtime-permissions-status">Did you hear the test tone?</p>
+                <div class="runtime-permissions-choice-row" role="group" aria-label="Speaker result">
+                    <button type="button" class="button-2" data-permission-result="speaker" data-permission-value="working">Yes</button>
+                    <button type="button" class="button-2" data-permission-result="speaker" data-permission-value="not-working">No</button>
+                </div>
+            </section>
+
+            <section class="runtime-permissions-step" data-permission-step="5" hidden>
+                <h4>Speech Recognition</h4>
+                <p class="runtime-permissions-phrase">"The quick brown fox jumps over the lazy dog today"</p>
+                <div class="runtime-permissions-choice-row">
+                    <button type="button" id="runtime-precheck-speech-start" class="button-2">Start Recording</button>
+                    <button type="button" id="runtime-precheck-speech-stop" class="button-2 runtime-js-hidden">Stop Recording</button>
+                </div>
+                <div id="runtime-precheck-speech-result" class="runtime-permissions-speech-result" aria-live="polite"></div>
+                <p class="runtime-permissions-status">Is it working?</p>
+                <div class="runtime-permissions-choice-row" role="group" aria-label="Speech recognition result">
+                    <button type="button" class="button-2" data-permission-result="speechRecognition" data-permission-value="working">Yes, it works</button>
+                    <button type="button" class="button-2" data-permission-result="speechRecognition" data-permission-value="not-working">No, not accurate</button>
+                </div>
+            </section>
+
+            <section class="runtime-permissions-step" data-permission-step="6" hidden>
+                <div class="runtime-permissions-summary-list">
+                    <div><span>Camera</span><strong id="runtime-precheck-summary-camera">Not working</strong></div>
+                    <div><span>Microphone</span><strong id="runtime-precheck-summary-microphone">Not working</strong></div>
+                    <div><span>Speaker</span><strong id="runtime-precheck-summary-speaker">Not working</strong></div>
+                    <div><span>Internet</span><strong id="runtime-precheck-summary-internet">Not tested</strong></div>
+                    <div><span>Speech Recognition</span><strong id="runtime-precheck-summary-speech">Not working</strong></div>
+                </div>
+                <label class="runtime-guidelines-ack runtime-permissions-consent" for="guidelines-acknowledge">
+                    <input type="checkbox" id="guidelines-acknowledge" />
+                    <span>I consent to use my camera, microphone, and other media devices for this interview. I understand that my video and audio will be recorded and shared with the recruiter.</span>
+                </label>
+            </section>
+        </div>
+
+        <div class="runtime-modal-actions runtime-permissions-actions">
+            <button type="button" id="runtime-permissions-back" class="button-2" disabled>Back</button>
+            <button type="button" id="runtime-permissions-next" class="button-1">Next</button>
+            <button type="button" id="guidelines-agree" class="button-1 runtime-js-hidden" disabled>Continue to Interview</button>
         </div>
     </div>
 </div>
@@ -478,6 +539,31 @@
         const guidelinesCheckbox = document.getElementById('guidelines-acknowledge');
         const guidelinesAcknowledgeLabel = guidelinesCheckbox?.closest('.runtime-guidelines-ack');
         const guidelinesAgreeButton = document.getElementById('guidelines-agree');
+        const permissionStepCaption = document.getElementById('runtime-permissions-step-caption');
+        const permissionStepButtons = Array.from(document.querySelectorAll('[data-permission-step-jump]'));
+        const permissionStepPanels = Array.from(document.querySelectorAll('[data-permission-step]'));
+        const permissionBackButton = document.getElementById('runtime-permissions-back');
+        const permissionNextButton = document.getElementById('runtime-permissions-next');
+        const precheckCameraPreview = document.getElementById('runtime-precheck-camera-preview');
+        const precheckCameraPlaceholder = document.getElementById('runtime-precheck-camera-placeholder');
+        const precheckCameraStatus = document.getElementById('runtime-precheck-camera-status');
+        const precheckInternetButton = document.getElementById('runtime-precheck-internet-test');
+        const precheckInternetStatus = document.getElementById('runtime-precheck-internet-status');
+        const precheckMicButton = document.getElementById('runtime-precheck-mic-request');
+        const precheckMicStatus = document.getElementById('runtime-precheck-mic-status');
+        const precheckAudioMeter = Array.from(document.querySelectorAll('#runtime-precheck-audio-meter span'));
+        const precheckSpeakerButton = document.getElementById('runtime-precheck-speaker-test');
+        const precheckSpeechStartButton = document.getElementById('runtime-precheck-speech-start');
+        const precheckSpeechStopButton = document.getElementById('runtime-precheck-speech-stop');
+        const precheckSpeechResult = document.getElementById('runtime-precheck-speech-result');
+        const permissionResultButtons = Array.from(document.querySelectorAll('[data-permission-result]'));
+        const permissionSummaryFields = {
+            camera: document.getElementById('runtime-precheck-summary-camera'),
+            microphone: document.getElementById('runtime-precheck-summary-microphone'),
+            speaker: document.getElementById('runtime-precheck-summary-speaker'),
+            internet: document.getElementById('runtime-precheck-summary-internet'),
+            speechRecognition: document.getElementById('runtime-precheck-summary-speech')
+        };
         const feedbackTrigger = document.getElementById('open-runtime-feedback');
         const feedbackModal = document.getElementById('runtime-feedback-modal');
         const feedbackCloseButton = document.getElementById('runtime-feedback-close');
@@ -546,6 +632,31 @@
         let screenShareInterrupted = false;
         let guidelinesAcknowledged = false;
         let guidelinesAcknowledgedAt = null;
+        let permissionActiveStep = 0;
+        let precheckCameraStream = null;
+        let precheckMicStream = null;
+        let precheckAudioContext = null;
+        let precheckAnalyser = null;
+        let precheckMeterFrame = null;
+        let precheckSpeechRecognition = null;
+        let precheckSpeechRecognizing = false;
+        const permissionSteps = [
+            { key: 'guidelines', label: 'Guidelines' },
+            { key: 'camera', label: 'Camera' },
+            { key: 'internet', label: 'Internet' },
+            { key: 'microphone', label: 'Microphone' },
+            { key: 'speaker', label: 'Speaker' },
+            { key: 'speechRecognition', label: 'Speech Recognition' },
+            { key: 'summary', label: 'Summary' }
+        ];
+        const permissionState = {
+            camera: '',
+            internet: { tested: false, speedMbps: null, passed: false },
+            microphone: '',
+            speaker: '',
+            speechRecognition: '',
+            consent: false
+        };
         let feedbackHelpfulness = '';
         let feedbackSubmitInFlight = false;
         let feedbackLastFocusedElement = null;
@@ -1184,14 +1295,350 @@
 
             guidelinesModal.classList.toggle('is-open', open);
             guidelinesModal.setAttribute('aria-hidden', open ? 'false' : 'true');
+            if (!open)
+                cleanupPermissionPrechecks();
         };
 
         const openGuidelinesModal = () => {
             clearGuidelinesModalTimer();
+            renderPermissionFlow();
             setGuidelinesModalOpen(true);
         };
 
         const closeGuidelinesModal = () => setGuidelinesModalOpen(false);
+
+        const isPermissionStepComplete = (stepIndex) => {
+            switch (stepIndex) {
+                case 0:
+                    return true;
+                case 1:
+                    return !!permissionState.camera;
+                case 2:
+                    return permissionState.internet.tested;
+                case 3:
+                    return !!permissionState.microphone;
+                case 4:
+                    return !!permissionState.speaker;
+                case 5:
+                    return !!permissionState.speechRecognition;
+                case 6:
+                    return permissionState.consent;
+                default:
+                    return false;
+            }
+        };
+
+        const canNavigateToPermissionStep = (targetStep) => {
+            if (targetStep <= permissionActiveStep)
+                return true;
+
+            for (let index = 0; index < targetStep; index++) {
+                if (!isPermissionStepComplete(index))
+                    return false;
+            }
+
+            return true;
+        };
+
+        const resetPrecheckMeter = () => {
+            precheckAudioMeter.forEach(bar => {
+                bar.style.height = '8px';
+                bar.style.background = '';
+            });
+        };
+
+        const stopPrecheckCamera = () => {
+            precheckCameraStream?.getTracks?.().forEach(track => track.stop());
+            precheckCameraStream = null;
+            if (precheckCameraPreview)
+                precheckCameraPreview.srcObject = null;
+            precheckCameraPlaceholder?.classList.remove('runtime-js-hidden');
+        };
+
+        const stopPrecheckMic = async () => {
+            if (precheckMeterFrame) {
+                cancelAnimationFrame(precheckMeterFrame);
+                precheckMeterFrame = null;
+            }
+
+            precheckMicStream?.getTracks?.().forEach(track => track.stop());
+            precheckMicStream = null;
+            try {
+                await precheckAudioContext?.close?.();
+            } catch {}
+            precheckAudioContext = null;
+            precheckAnalyser = null;
+            resetPrecheckMeter();
+        };
+
+        const stopPrecheckSpeech = () => {
+            if (!precheckSpeechRecognition)
+                return;
+
+            try {
+                precheckSpeechRecognition.onresult = null;
+                precheckSpeechRecognition.onerror = null;
+                precheckSpeechRecognition.onend = null;
+                precheckSpeechRecognition.stop();
+            } catch {}
+            precheckSpeechRecognition = null;
+            precheckSpeechRecognizing = false;
+            precheckSpeechStartButton?.classList.remove('runtime-js-hidden');
+            precheckSpeechStopButton?.classList.add('runtime-js-hidden');
+        };
+
+        const cleanupPermissionPrechecks = async () => {
+            stopPrecheckCamera();
+            await stopPrecheckMic();
+            stopPrecheckSpeech();
+        };
+
+        const getWorkingText = (value) => value === 'working' ? 'Working' : 'Not working';
+
+        const setPermissionSummaryValue = (field, text, status) => {
+            if (!field)
+                return;
+
+            field.textContent = text;
+            field.classList.toggle('is-working', status === 'working');
+            field.classList.toggle('is-not-working', status === 'not-working');
+            field.classList.toggle('is-warning', status === 'warning');
+        };
+
+        const renderPermissionSummary = () => {
+            setPermissionSummaryValue(permissionSummaryFields.camera, getWorkingText(permissionState.camera), permissionState.camera || 'not-working');
+            setPermissionSummaryValue(permissionSummaryFields.microphone, getWorkingText(permissionState.microphone), permissionState.microphone || 'not-working');
+            setPermissionSummaryValue(permissionSummaryFields.speaker, getWorkingText(permissionState.speaker), permissionState.speaker || 'not-working');
+            setPermissionSummaryValue(permissionSummaryFields.speechRecognition, getWorkingText(permissionState.speechRecognition), permissionState.speechRecognition || 'not-working');
+
+            if (!permissionState.internet.tested) {
+                setPermissionSummaryValue(permissionSummaryFields.internet, 'Not tested', 'not-working');
+                return;
+            }
+
+            setPermissionSummaryValue(
+                permissionSummaryFields.internet,
+                `${permissionState.internet.speedMbps?.toFixed?.(1) ?? permissionState.internet.speedMbps} Mbps`,
+                permissionState.internet.passed ? 'working' : 'warning'
+            );
+        };
+
+        const renderPermissionFlow = () => {
+            permissionStepPanels.forEach(panel => {
+                const isActive = Number(panel.dataset.permissionStep) === permissionActiveStep;
+                panel.hidden = !isActive;
+                panel.classList.toggle('is-active', isActive);
+            });
+
+            permissionStepButtons.forEach(button => {
+                const stepIndex = Number(button.dataset.permissionStepJump);
+                const completed = isPermissionStepComplete(stepIndex) && stepIndex !== permissionActiveStep;
+                const active = stepIndex === permissionActiveStep;
+                const blocked = !canNavigateToPermissionStep(stepIndex);
+                const marker = button.querySelector('span');
+                button.classList.toggle('is-active', active);
+                button.classList.toggle('is-completed', completed);
+                button.disabled = blocked;
+                button.setAttribute('aria-current', active ? 'step' : 'false');
+                if (marker)
+                    marker.innerHTML = completed ? '<i class="fa-solid fa-check" aria-hidden="true"></i>' : String(stepIndex + 1);
+            });
+
+            if (permissionStepCaption)
+                permissionStepCaption.textContent = permissionSteps[permissionActiveStep]?.label || '';
+
+            permissionResultButtons.forEach(button => {
+                const key = button.dataset.permissionResult;
+                const selected = permissionState[key] === button.dataset.permissionValue;
+                button.classList.toggle('is-selected', selected);
+                button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
+
+            renderPermissionSummary();
+            updateGuidelinesAcknowledgementState();
+        };
+
+        const setPermissionStep = (stepIndex) => {
+            if (stepIndex < 0 || stepIndex >= permissionSteps.length || !canNavigateToPermissionStep(stepIndex))
+                return;
+
+            permissionActiveStep = stepIndex;
+            renderPermissionFlow();
+            if (permissionActiveStep === 1)
+                startPrecheckCamera();
+        };
+
+        const estimateConnectionSpeed = async () => {
+            const connectionDownlink = Number(navigator.connection?.downlink);
+            if (connectionDownlink > 0)
+                return connectionDownlink;
+
+            const startedAt = performance.now();
+            const response = await fetch(`${window.location.href}${window.location.href.includes('?') ? '&' : '?'}precheckSpeed=${Date.now()}`, {
+                cache: 'no-store',
+                credentials: 'same-origin'
+            });
+            const blob = await response.blob();
+            const elapsedSeconds = Math.max((performance.now() - startedAt) / 1000, 0.05);
+            return Number(((blob.size * 8) / elapsedSeconds / 1000000).toFixed(1));
+        };
+
+        const startPrecheckCamera = async () => {
+            if (precheckCameraStream)
+                return;
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                if (precheckCameraStatus)
+                    precheckCameraStatus.textContent = 'Camera is not available. You can continue using text answers.';
+                return;
+            }
+
+            try {
+                precheckCameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                if (precheckCameraPreview)
+                    precheckCameraPreview.srcObject = precheckCameraStream;
+                precheckCameraPlaceholder?.classList.add('runtime-js-hidden');
+                if (precheckCameraStatus)
+                    precheckCameraStatus.textContent = 'Camera is working!';
+            } catch {
+                stopPrecheckCamera();
+                if (precheckCameraStatus)
+                    precheckCameraStatus.textContent = 'Camera is not available. You can continue using text answers.';
+            }
+        };
+
+        const testInternetSpeed = async () => {
+            if (!precheckInternetButton || !precheckInternetStatus)
+                return;
+
+            precheckInternetButton.disabled = true;
+            precheckInternetStatus.textContent = 'Testing internet speed...';
+            try {
+                const speed = await estimateConnectionSpeed();
+                permissionState.internet = {
+                    tested: true,
+                    speedMbps: Number.isFinite(speed) ? speed : 0,
+                    passed: Number.isFinite(speed) && speed >= 5
+                };
+                precheckInternetStatus.textContent = `Speed: ${permissionState.internet.speedMbps.toFixed(1)} Mbps`;
+                precheckInternetStatus.classList.toggle('is-warning', !permissionState.internet.passed);
+            } catch {
+                permissionState.internet = { tested: true, speedMbps: 0, passed: false };
+                precheckInternetStatus.textContent = 'Speed: 0.0 Mbps';
+                precheckInternetStatus.classList.add('is-warning');
+            } finally {
+                precheckInternetButton.disabled = false;
+                renderPermissionFlow();
+            }
+        };
+
+        const requestPrecheckMic = async () => {
+            if (!precheckMicButton || !precheckMicStatus)
+                return;
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                precheckMicStatus.textContent = 'Microphone is not available.';
+                return;
+            }
+
+            precheckMicButton.disabled = true;
+            precheckMicStatus.textContent = 'Requesting microphone access...';
+            try {
+                await stopPrecheckMic();
+                precheckMicStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+                precheckAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = precheckAudioContext.createMediaStreamSource(precheckMicStream);
+                precheckAnalyser = precheckAudioContext.createAnalyser();
+                precheckAnalyser.fftSize = 32;
+                source.connect(precheckAnalyser);
+                const buffer = new Uint8Array(precheckAnalyser.frequencyBinCount);
+                const renderMeter = () => {
+                    if (!precheckAnalyser)
+                        return;
+
+                    precheckAnalyser.getByteFrequencyData(buffer);
+                    const average = buffer.reduce((sum, value) => sum + value, 0) / buffer.length;
+                    precheckAudioMeter.forEach((bar, index) => {
+                        const height = Math.max(8, Math.min(42, average - (index * 2)));
+                        bar.style.height = `${height}px`;
+                    });
+                    precheckMeterFrame = requestAnimationFrame(renderMeter);
+                };
+                renderMeter();
+                precheckMicStatus.textContent = 'Microphone access granted.';
+            } catch {
+                await stopPrecheckMic();
+                precheckMicStatus.textContent = 'Microphone is not available.';
+            } finally {
+                precheckMicButton.disabled = false;
+            }
+        };
+
+        const playSpeakerTone = async () => {
+            if (!precheckSpeakerButton)
+                return;
+
+            precheckSpeakerButton.disabled = true;
+            try {
+                const toneContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = toneContext.createOscillator();
+                const gain = toneContext.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 660;
+                gain.gain.setValueAtTime(0.001, toneContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.18, toneContext.currentTime + 0.03);
+                gain.gain.exponentialRampToValueAtTime(0.001, toneContext.currentTime + 0.75);
+                oscillator.connect(gain);
+                gain.connect(toneContext.destination);
+                oscillator.start();
+                oscillator.stop(toneContext.currentTime + 0.8);
+                setTimeout(() => toneContext.close?.(), 900);
+            } finally {
+                setTimeout(() => {
+                    precheckSpeakerButton.disabled = false;
+                }, 900);
+            }
+        };
+
+        const getBrowserSpeechRecognition = () => window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        const startPrecheckSpeech = () => {
+            const SpeechRecognitionApi = getBrowserSpeechRecognition();
+            if (!SpeechRecognitionApi) {
+                if (precheckSpeechResult)
+                    precheckSpeechResult.textContent = 'Speech recognition is not available in this browser.';
+                return;
+            }
+
+            stopPrecheckSpeech();
+            precheckSpeechRecognition = new SpeechRecognitionApi();
+            precheckSpeechRecognition.lang = 'en-US';
+            precheckSpeechRecognition.interimResults = true;
+            precheckSpeechRecognition.continuous = false;
+            precheckSpeechRecognition.onresult = (event) => {
+                const recognized = Array.from(event.results)
+                    .map(result => result[0]?.transcript || '')
+                    .join(' ')
+                    .trim();
+                if (precheckSpeechResult)
+                    precheckSpeechResult.textContent = recognized;
+            };
+            precheckSpeechRecognition.onerror = () => {
+                if (precheckSpeechResult && !precheckSpeechResult.textContent)
+                    precheckSpeechResult.textContent = 'Speech recognition could not capture audio.';
+            };
+            precheckSpeechRecognition.onend = () => {
+                precheckSpeechRecognizing = false;
+                precheckSpeechStartButton?.classList.remove('runtime-js-hidden');
+                precheckSpeechStopButton?.classList.add('runtime-js-hidden');
+            };
+
+            precheckSpeechRecognizing = true;
+            precheckSpeechResult && (precheckSpeechResult.textContent = '');
+            precheckSpeechStartButton?.classList.add('runtime-js-hidden');
+            precheckSpeechStopButton?.classList.remove('runtime-js-hidden');
+            precheckSpeechRecognition.start();
+        };
 
         const getSelectedFeedbackIssue = () => feedbackIssueSelect?.value || 'AI is not speaking';
 
@@ -1930,10 +2377,23 @@
         };
 
         const updateGuidelinesAcknowledgementState = () => {
-            if (!guidelinesAgreeButton || !guidelinesCheckbox)
-                return;
+            if (guidelinesCheckbox)
+                permissionState.consent = guidelinesCheckbox.checked;
 
-            guidelinesAgreeButton.disabled = !guidelinesCheckbox.checked;
+            if (permissionBackButton)
+                permissionBackButton.disabled = permissionActiveStep === 0;
+
+            if (permissionNextButton) {
+                const isSummaryStep = permissionActiveStep === permissionSteps.length - 1;
+                permissionNextButton.classList.toggle('runtime-js-hidden', isSummaryStep);
+                permissionNextButton.disabled = isSummaryStep || !isPermissionStepComplete(permissionActiveStep);
+            }
+
+            if (guidelinesAgreeButton) {
+                const isSummaryStep = permissionActiveStep === permissionSteps.length - 1;
+                guidelinesAgreeButton.classList.toggle('runtime-js-hidden', !isSummaryStep);
+                guidelinesAgreeButton.disabled = !isSummaryStep || !permissionState.consent;
+            }
         };
 
         const requestScreenShareForInterviewStart = async () => {
@@ -3858,6 +4318,42 @@
 
         if (guidelinesButton)
             guidelinesButton.addEventListener('click', openGuidelinesModal);
+        permissionStepButtons.forEach(button => {
+            button.addEventListener('click', () => setPermissionStep(Number(button.dataset.permissionStepJump)));
+        });
+        if (permissionBackButton) {
+            permissionBackButton.addEventListener('click', () => {
+                setPermissionStep(permissionActiveStep - 1);
+            });
+        }
+        if (permissionNextButton) {
+            permissionNextButton.addEventListener('click', () => {
+                if (!isPermissionStepComplete(permissionActiveStep))
+                    return;
+
+                setPermissionStep(permissionActiveStep + 1);
+            });
+        }
+        permissionResultButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const key = button.dataset.permissionResult;
+                if (!key || !(key in permissionState))
+                    return;
+
+                permissionState[key] = button.dataset.permissionValue || '';
+                renderPermissionFlow();
+            });
+        });
+        if (precheckInternetButton)
+            precheckInternetButton.addEventListener('click', testInternetSpeed);
+        if (precheckMicButton)
+            precheckMicButton.addEventListener('click', requestPrecheckMic);
+        if (precheckSpeakerButton)
+            precheckSpeakerButton.addEventListener('click', playSpeakerTone);
+        if (precheckSpeechStartButton)
+            precheckSpeechStartButton.addEventListener('click', startPrecheckSpeech);
+        if (precheckSpeechStopButton)
+            precheckSpeechStopButton.addEventListener('click', stopPrecheckSpeech);
         if (feedbackTrigger)
             feedbackTrigger.addEventListener('click', () => setFeedbackModalOpen(true));
         if (feedbackCloseButton)
@@ -3921,7 +4417,7 @@
             });
         }
         if (guidelinesCheckbox) {
-            guidelinesCheckbox.addEventListener('change', updateGuidelinesAcknowledgementState);
+            guidelinesCheckbox.addEventListener('change', renderPermissionFlow);
             guidelinesCheckbox.addEventListener('keydown', (event) => {
                 if (event.code !== 'Space' && event.key !== ' ')
                     return;
@@ -3950,6 +4446,16 @@
             updateStartButtonState();
             setStatus('Please acknowledge the interview guidelines before starting.', false);
         });
+        if (guidelinesModal) {
+            guidelinesModal.addEventListener('click', (event) => {
+                if (event.target === guidelinesModal) {
+                    closeGuidelinesModal();
+                    updateStartButtonState();
+                    if (!guidelinesAcknowledged)
+                        setStatus('Please acknowledge the interview guidelines before starting.', false);
+                }
+            });
+        }
         if (audioDeviceToggle) {
             audioDeviceToggle.addEventListener('click', async (event) => {
                 event.stopPropagation();
@@ -4058,6 +4564,7 @@
         });
         window.addEventListener('pagehide', () => {
             stopScreenShare();
+            cleanupPermissionPrechecks();
             clearAllRuntimeTimers();
             closeRecordingAudioMix();
             revokeSpeechAudioObjectUrl();
@@ -4072,7 +4579,7 @@
         setStatus('Click Start Interview to begin.', false);
         setScreenShareStatus('Screen sharing required');
         setScreenShareInterruptionWarning(false);
-        updateGuidelinesAcknowledgementState();
+        renderPermissionFlow();
         updateStartButtonState();
         updateSubmitAvailability();
         updateAuxiliaryControlsState();
