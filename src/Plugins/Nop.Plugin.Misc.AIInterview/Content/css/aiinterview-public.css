@@ -3166,8 +3166,9 @@ body.ai-job-preview-open .item-box {
 
 .runtime-permissions-card {
     display: grid;
-    gap: 18px;
-    width: min(920px, 100%);
+    gap: 12px;
+    width: min(800px, 100%);
+    padding: 16px;
     border-color: var(--jb-border, #dedede);
     border-radius: 8px;
     color: var(--jb-ink, #2c2c2c);
@@ -3177,7 +3178,7 @@ body.ai-job-preview-open .item-box {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 14px;
+    gap: 10px;
 }
 
 .runtime-permissions-head h3 {
@@ -3185,16 +3186,16 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-permissions-head p {
-    margin: 4px 0 0;
+    margin: 2px 0 0;
     color: var(--jb-muted, #909090);
-    font-size: 14px;
-    line-height: 1.4;
+    font-size: 13px;
+    line-height: 1.35;
 }
 
 .runtime-permissions-stepper {
     display: grid;
-    grid-template-columns: repeat(7, minmax(92px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(7, minmax(82px, 1fr));
+    gap: 6px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -3203,12 +3204,12 @@ body.ai-job-preview-open .item-box {
 
 .runtime-permissions-stepper button {
     display: grid;
-    grid-template-columns: 26px minmax(0, 1fr);
+    grid-template-columns: 22px minmax(0, 1fr);
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
-    min-height: 48px;
-    padding: 8px 10px;
+    min-height: 40px;
+    padding: 6px 8px;
     border: 1px solid var(--jb-border, #dedede);
     border-radius: 6px;
     background: var(--jb-white, #ffffff);
@@ -3225,8 +3226,8 @@ body.ai-job-preview-open .item-box {
 .runtime-permissions-stepper button span {
     display: grid;
     place-items: center;
-    width: 26px;
-    height: 26px;
+    width: 22px;
+    height: 22px;
     border: 1px solid var(--jb-border, #dedede);
     border-radius: 999px;
     color: var(--jb-muted, #909090);
@@ -3236,7 +3237,7 @@ body.ai-job-preview-open .item-box {
 .runtime-permissions-stepper button strong {
     min-width: 0;
     overflow: hidden;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     line-height: 1.2;
     text-overflow: ellipsis;
@@ -3261,12 +3262,16 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-permissions-body {
-    min-height: 330px;
+    min-height: 228px;
+    padding: 14px;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 6px;
+    background: var(--jb-white, #ffffff);
 }
 
 .runtime-permissions-step {
     display: grid;
-    gap: 14px;
+    gap: 10px;
 }
 
 .runtime-permissions-step[hidden] {
@@ -3276,8 +3281,8 @@ body.ai-job-preview-open .item-box {
 .runtime-permissions-step h4 {
     margin: 0;
     color: var(--jb-ink, #2c2c2c);
-    font-size: 20px;
-    line-height: 1.25;
+    font-size: 17px;
+    line-height: 1.22;
 }
 
 .runtime-permissions-intro,
@@ -3285,7 +3290,7 @@ body.ai-job-preview-open .item-box {
 .runtime-permissions-status {
     margin: 0;
     color: var(--jb-muted, #909090);
-    line-height: 1.6;
+    line-height: 1.45;
 }
 
 .runtime-permissions-status.is-warning,
@@ -3296,7 +3301,9 @@ body.ai-job-preview-open .item-box {
 .runtime-permissions-video-frame {
     position: relative;
     width: 100%;
+    max-width: 520px;
     aspect-ratio: 16 / 9;
+    margin: 0 auto;
     overflow: hidden;
     border: 1px solid var(--jb-border, #dedede);
     border-radius: 8px;
@@ -3319,14 +3326,20 @@ body.ai-job-preview-open .item-box {
     display: grid;
     place-items: center;
     color: rgba(255, 255, 255, 0.72);
-    font-size: 46px;
+    font-size: 36px;
 }
 
 .runtime-permissions-choice-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
+}
+
+.runtime-permissions-card .button-1,
+.runtime-permissions-card .button-2 {
+    min-height: 38px;
+    padding: 8px 14px;
 }
 
 .runtime-permissions-choice-row .button-2.is-selected {
@@ -3339,8 +3352,8 @@ body.ai-job-preview-open .item-box {
     display: inline-flex;
     align-items: end;
     gap: 6px;
-    min-height: 52px;
-    padding: 10px 12px;
+    min-height: 44px;
+    padding: 8px 10px;
     border: 1px solid var(--jb-border, #dedede);
     border-radius: 8px;
     background: var(--jb-white, #ffffff);
@@ -3357,35 +3370,35 @@ body.ai-job-preview-open .item-box {
 
 .runtime-permissions-phrase {
     margin: 0;
-    padding: 12px 14px;
+    padding: 10px 12px;
     border-left: 3px solid var(--jb-accent, #35d6b4);
     background: color-mix(in srgb, var(--jb-accent, #35d6b4) 8%, var(--jb-white, #ffffff));
     color: var(--jb-ink, #2c2c2c);
     font-weight: 700;
-    line-height: 1.5;
+    line-height: 1.4;
 }
 
 .runtime-permissions-speech-result {
-    min-height: 74px;
-    padding: 12px;
+    min-height: 58px;
+    padding: 10px;
     border: 1px solid var(--jb-border, #dedede);
     border-radius: 8px;
     background: var(--jb-white, #ffffff);
     color: var(--jb-ink, #2c2c2c);
-    line-height: 1.5;
+    line-height: 1.4;
 }
 
 .runtime-permissions-summary-list {
     display: grid;
-    gap: 8px;
+    gap: 4px;
 }
 
 .runtime-permissions-summary-list div {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 10px 0;
+    gap: 10px;
+    padding: 8px 0;
     border-bottom: 1px solid var(--jb-border, #dedede);
 }
 
@@ -3403,8 +3416,8 @@ body.ai-job-preview-open .item-box {
 
 .runtime-permissions-consent {
     align-items: flex-start;
-    margin-top: 8px;
-    padding: 12px;
+    margin-top: 4px;
+    padding: 10px;
     border: 1px solid var(--jb-border, #dedede);
     border-radius: 8px;
     background: var(--jb-white, #ffffff);
@@ -3413,7 +3426,10 @@ body.ai-job-preview-open .item-box {
 .runtime-permissions-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 8px;
+    margin-top: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--jb-border, #dedede);
 }
 
 .runtime-modal-head {
