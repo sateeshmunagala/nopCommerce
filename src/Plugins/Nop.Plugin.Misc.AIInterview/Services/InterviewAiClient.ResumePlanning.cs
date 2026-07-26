@@ -156,7 +156,8 @@ public partial class InterviewAiClient
                 prompt,
                 retryMaxCompletionTokens);
 
-            var retryRecovered = result.Success && !string.IsNullOrWhiteSpace(result.Content);
+            var retryParsed = result.Success ? ParseStrengthsSummaryResponse(result.Content) : null;
+            var retryRecovered = !string.IsNullOrWhiteSpace(retryParsed?.StrengthsText);
             await LogAiClientIssueAsync(
                 retryRecovered ? NopLogLevel.Information : NopLogLevel.Warning,
                 retryRecovered ? "AI Interview strengths summary retry recovered" : "AI Interview strengths summary retry exhausted",

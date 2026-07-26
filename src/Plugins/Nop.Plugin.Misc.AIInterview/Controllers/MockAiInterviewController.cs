@@ -949,9 +949,9 @@ public class MockAiInterviewController : BasePluginController
         return (session, true);
     }
 
-    protected virtual async Task<string> ResolveRuntimeTokenFailureReasonCodeAsync(string token)
+    protected virtual async Task<string> ResolveRuntimeTokenFailureReasonCodeAsync(string token, InterviewSession session = null)
     {
-        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
+        session ??= await _interviewSessionService.GetSessionByTokenAsync(token);
         if (session == null)
             return "session-not-found";
 
@@ -1521,7 +1521,7 @@ public class MockAiInterviewController : BasePluginController
         var session = await _interviewSessionService.GetSessionByTokenAsync(request?.Token);
         if (!IsSessionUsable(session))
         {
-            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"SubmitAnswer rejected invalid session for token {MaskToken(request?.Token)}. ReasonCode={await ResolveRuntimeTokenFailureReasonCodeAsync(request?.Token)}.", await ResolveLogCustomerAsync(session));
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"SubmitAnswer rejected invalid session for token {MaskToken(request?.Token)}. ReasonCode={await ResolveRuntimeTokenFailureReasonCodeAsync(request?.Token, session)}.", await ResolveLogCustomerAsync(session));
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
@@ -1582,7 +1582,7 @@ public class MockAiInterviewController : BasePluginController
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
         if (!IsSessionUsable(session))
         {
-            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"Stop rejected invalid session for token {MaskToken(token)}. ReasonCode={await ResolveRuntimeTokenFailureReasonCodeAsync(token)}.", await ResolveLogCustomerAsync(session));
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"Stop rejected invalid session for token {MaskToken(token)}. ReasonCode={await ResolveRuntimeTokenFailureReasonCodeAsync(token, session)}.", await ResolveLogCustomerAsync(session));
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
@@ -1766,7 +1766,7 @@ public class MockAiInterviewController : BasePluginController
         var session = tokenRenewal.Session;
         if (session == null)
         {
-            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"Token refresh failed for token {MaskToken(token)}. ReasonCode={await ResolveRuntimeTokenFailureReasonCodeAsync(token)}.", await ResolveLogCustomerAsync());
+            await LogRuntimeIssueAsync("AI Interview token renewal failure", $"Token refresh failed for token {MaskToken(token)}. ReasonCode={await ResolveRuntimeTokenFailureReasonCodeAsync(token, session)}.", await ResolveLogCustomerAsync());
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
