@@ -3166,7 +3166,7 @@ body.ai-job-preview-open .item-box {
 
 .runtime-permissions-card {
     display: grid;
-    gap: 10px;
+    gap: 8px;
     width: min(800px, 100%);
     padding: 16px;
     border-color: var(--jb-border, #dedede);
@@ -3195,7 +3195,7 @@ body.ai-job-preview-open .item-box {
 .runtime-permissions-stepper {
     display: grid;
     grid-template-columns: repeat(7, minmax(82px, 1fr));
-    gap: 6px;
+    gap: 5px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -4191,7 +4191,7 @@ body.ai-job-preview-open .item-box {
     .runtime-permissions-stepper {
         grid-template-columns: repeat(7, 106px);
         margin: 0 -2px;
-        padding-bottom: 4px;
+        padding-bottom: 2px;
     }
 
     .runtime-permissions-body {
