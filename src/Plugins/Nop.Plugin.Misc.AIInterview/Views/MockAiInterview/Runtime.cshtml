@@ -2690,9 +2690,7 @@
                     logActivity('Final recording upload before completion started.');
                     const uploaded = await stopRecording(true);
                     logActivity('Final recording upload before completion finished.');
-                    if (uploaded)
-                        setRecordingStatus('Recording uploaded.', false, true);
-                    else if ((recordingStatus?.textContent || '') === 'Uploading interview recording...')
+                    if (uploaded || (recordingStatus?.textContent || '') === 'Uploading interview recording...')
                         setRecordingStatus('', false);
                     return uploaded;
                 } catch (error) {
