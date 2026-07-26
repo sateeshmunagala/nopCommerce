@@ -2341,12 +2341,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             var nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
             var fallbackAttempted = false;
+            var fallbackGeneratedTurn = false;
             if (nextTurn == null)
             {
                 fallbackAttempted = true;
+                var existingTurnIds = turns.Where(turn => turn.Id > 0).Select(turn => turn.Id).ToHashSet();
                 var replenishedTurns = await EnsureSingleActiveTurnAsync(session, turns);
                 turns = replenishedTurns.Turns.ToList();
                 nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
+                fallbackGeneratedTurn = nextTurn?.Id > 0 && !existingTurnIds.Contains(nextTurn.Id);
             }
 
             if (nextTurn == null)
@@ -2370,8 +2373,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             }
 
             await LogSubmitNextTurnMarkerAsync(
-                fallbackAttempted ? NopLogLevel.Warning : NopLogLevel.Information,
-                fallbackAttempted ? "fallback-next-turn-generated" : "planned-next-turn-used",
+                fallbackGeneratedTurn ? NopLogLevel.Warning : NopLogLevel.Information,
+                fallbackAttempted ? fallbackGeneratedTurn ? "fallback-next-turn-generated" : "fallback-next-turn-recovered-existing" : "planned-next-turn-used",
                 session,
                 currentTurn,
                 answeredCount,
@@ -2442,12 +2445,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             var nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
             var fallbackAttempted = false;
+            var fallbackGeneratedTurn = false;
             if (nextTurn == null)
             {
                 fallbackAttempted = true;
+                var existingTurnIds = turns.Where(turn => turn.Id > 0).Select(turn => turn.Id).ToHashSet();
                 var replenishedTurns = await EnsureSingleActiveTurnAsync(session, turns);
                 turns = replenishedTurns.Turns.ToList();
                 nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
+                fallbackGeneratedTurn = nextTurn?.Id > 0 && !existingTurnIds.Contains(nextTurn.Id);
             }
 
             if (nextTurn == null)
@@ -2471,8 +2477,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             }
 
             await LogSubmitNextTurnMarkerAsync(
-                fallbackAttempted ? NopLogLevel.Warning : NopLogLevel.Information,
-                fallbackAttempted ? "fallback-next-turn-generated" : "planned-next-turn-used",
+                fallbackGeneratedTurn ? NopLogLevel.Warning : NopLogLevel.Information,
+                fallbackAttempted ? fallbackGeneratedTurn ? "fallback-next-turn-generated" : "fallback-next-turn-recovered-existing" : "planned-next-turn-used",
                 session,
                 currentTurn,
                 answeredCount,
