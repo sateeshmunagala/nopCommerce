@@ -214,6 +214,52 @@ public class AzureUsageTrackingTests
         Assert.That(response.ErrorMessage, Does.Contain("score every answered turn").Or.Contain("Final scoring is unavailable"));
     }
 
+    [Test]
+    public async Task InterviewAiClient_StrengthsSummary_ParsesValidatedJson()
+    {
+        var strengthsText = "The candidate showed clear ownership of API design and delivery by explaining queue-based architecture, monitoring, rollback planning, testing, and regression prevention. The answers connected implementation details to reliability, team execution, and production outcomes.";
+        var adapter = new FakeAzureOpenAiChatCompletionAdapter(new AzureOpenAiChatCompletionResult
+        {
+            Success = true,
+            Content = JsonSerializer.Serialize(new
+            {
+                strengthsText,
+                confidence = "high",
+                evidenceTurnNumbers = new[] { 1, 2 }
+            }),
+            UsageInfo = new AzureOpenAiUsageInfo { PromptTokens = 80, CompletionTokens = 40, TotalTokens = 120 }
+        });
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-deployment"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            azureOpenAiChatCompletionAdapter: adapter);
+
+        var response = await client.GenerateStrengthsSummaryAsync(new AIInterviewStrengthsSummaryRequest
+        {
+            JobTitle = "Developer",
+            Turns = new List<AIInterviewStrengthsSummaryTurnRequest>
+            {
+                new() { SequenceNumber = 1, Question = "Q1", Answer = "A1", Score = 86, Feedback = "Strong architecture detail." },
+                new() { SequenceNumber = 2, Question = "Q2", Answer = "A2", Score = 82, Feedback = "Clear testing detail." }
+            }
+        });
+
+        Assert.That(response.Success, Is.True);
+        Assert.That(response.StrengthsText, Is.EqualTo(strengthsText));
+        Assert.That(response.StrengthsText.Length, Is.InRange(200, 300));
+        Assert.That(response.EvidenceTurnNumbers, Is.EqualTo(new[] { 1, 2 }));
+        Assert.That(response.UsageInfo.TotalTokens, Is.EqualTo(120));
+        Assert.That(adapter.Requests.Count, Is.EqualTo(1));
+        Assert.That(adapter.Requests[0].Mode, Is.EqualTo("strengths-summary"));
+        Assert.That(adapter.Requests[0].OperationName, Is.EqualTo("llm-strengths-summary"));
+        Assert.That(adapter.Requests[0].UserPrompt, Does.Contain("\"sequenceNumber\":1"));
+    }
+
     [TestCase("api-key=secret-key failed", "api-key=<redacted>", "secret-key")]
     [TestCase("Authorization: BearerTokenValue failed", "Authorization=<redacted>", "BearerTokenValue")]
     [TestCase("refresh_token: refresh-secret failed", "refresh_token=<redacted>", "refresh-secret")]

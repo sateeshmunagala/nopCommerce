@@ -85,6 +85,7 @@ public interface IAIInterviewClient
     Task<AIInterviewQuestionPlanResponse> GenerateQuestionPlanAsync(AIInterviewQuestionPlanRequest request);
     Task<AIInterviewClientResponse> ScoreAnswerAsync(AIInterviewClientRequest request);
     Task<AIInterviewFinalScoringResponse> ScoreInterviewAtCompletionAsync(AIInterviewFinalScoringRequest request);
+    Task<AIInterviewStrengthsSummaryResponse> GenerateStrengthsSummaryAsync(AIInterviewStrengthsSummaryRequest request);
 }
 
 public interface IAzureOpenAiChatCompletionAdapter
@@ -319,6 +320,35 @@ public record AIInterviewFinalScoringResponse
     public IList<AIInterviewFinalScoringTurnResult> Turns { get; init; } = new List<AIInterviewFinalScoringTurnResult>();
     public decimal? Score { get; init; }
     public string Completion { get; init; }
+    public string ErrorMessage { get; init; }
+    public string RawJson { get; init; }
+    public AzureOpenAiUsageInfo UsageInfo { get; init; }
+}
+
+public record AIInterviewStrengthsSummaryRequest
+{
+    public string JobTitle { get; init; }
+    public string JobContext { get; init; }
+    public string Difficulty { get; init; }
+    public string ResumeProfileJson { get; init; }
+    public IList<AIInterviewStrengthsSummaryTurnRequest> Turns { get; init; } = new List<AIInterviewStrengthsSummaryTurnRequest>();
+}
+
+public record AIInterviewStrengthsSummaryTurnRequest
+{
+    public int SequenceNumber { get; init; }
+    public string Question { get; init; }
+    public string Answer { get; init; }
+    public decimal? Score { get; init; }
+    public string Feedback { get; init; }
+}
+
+public record AIInterviewStrengthsSummaryResponse
+{
+    public bool Success { get; init; } = true;
+    public string StrengthsText { get; init; }
+    public string Confidence { get; init; }
+    public IList<int> EvidenceTurnNumbers { get; init; } = new List<int>();
     public string ErrorMessage { get; init; }
     public string RawJson { get; init; }
     public AzureOpenAiUsageInfo UsageInfo { get; init; }

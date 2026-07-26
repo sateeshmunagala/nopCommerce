@@ -128,6 +128,42 @@ public partial class InterviewAiClient
         };
     }
 
+    public async Task<AIInterviewStrengthsSummaryResponse> GenerateStrengthsSummaryAsync(AIInterviewStrengthsSummaryRequest request)
+    {
+        if (_mockSettings?.UseMockResponses != false)
+            return BuildMockStrengthsSummary(request);
+
+        var result = await CallAzureContentAsync(
+            "strengths-summary",
+            "Return JSON only. Strengths summary mode contract: strengthsText string, optional confidence string, optional evidenceTurnNumbers integer array. strengthsText must be 200 to 300 characters, plain text, no markdown, no bullets, and grounded only in the submitted answered turns.",
+            BuildStrengthsSummaryPrompt(request),
+            500);
+
+        if (!result.Success)
+        {
+            return new AIInterviewStrengthsSummaryResponse
+            {
+                Success = false,
+                ErrorMessage = result.ErrorMessage,
+                UsageInfo = result.UsageInfo
+            };
+        }
+
+        var parsed = ParseStrengthsSummaryResponse(result.Content);
+        if (parsed != null)
+            return parsed with { RawJson = TruncateSafe(result.Content, 2000), UsageInfo = result.UsageInfo };
+
+        var contractReason = BuildStructuredResponseFailureLog(result.Content, "strengths-summary");
+        _logger?.LogWarning("Azure OpenAI strengths summary call failed contract validation.");
+        await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview strengths summary contract failure", contractReason);
+        return new AIInterviewStrengthsSummaryResponse
+        {
+            Success = false,
+            ErrorMessage = "Strengths summary generation is unavailable.",
+            UsageInfo = result.UsageInfo
+        };
+    }
+
     private async Task<AzureContentCallResult> CallAzureContentAsync(string mode, string systemPrompt, string prompt, int maxTokens)
     {
         var endpointConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiEndpointUrl);
@@ -314,6 +350,41 @@ public partial class InterviewAiClient
         return builder.ToString();
     }
 
+    private static string BuildStrengthsSummaryPrompt(AIInterviewStrengthsSummaryRequest request)
+    {
+        var turns = (request?.Turns ?? new List<AIInterviewStrengthsSummaryTurnRequest>())
+            .OrderBy(turn => turn.SequenceNumber)
+            .Select(turn => new
+            {
+                turn.SequenceNumber,
+                Question = TruncateSafe(turn.Question, 900),
+                Answer = TruncateSafe(turn.Answer, 1800),
+                Score = turn.Score,
+                Feedback = TruncateSafe(turn.Feedback, 600)
+            })
+            .ToList();
+
+        var builder = new StringBuilder();
+        builder.AppendLine("Interview mode: strengths-summary");
+        builder.AppendLine($"Job title: {request?.JobTitle}");
+        builder.AppendLine($"Job context: {TruncateSafe(request?.JobContext, 1800)}");
+        builder.AppendLine($"Difficulty: {request?.Difficulty}");
+        builder.AppendLine("Resume profile JSON:");
+        builder.AppendLine(TruncateSafe(request?.ResumeProfileJson, 3000));
+        builder.AppendLine("Answered turns to summarize, in order:");
+        builder.AppendLine(JsonSerializer.Serialize(turns, ResumePlanSerializerOptions));
+        builder.AppendLine("Write one concise evidence-based strengths paragraph. Reflect the actual submitted answers and scored feedback. Avoid generic boilerplate.");
+        builder.AppendLine("Response contract:");
+        builder.Append("""
+{
+  "strengthsText": "200 to 300 character evidence-based strengths paragraph",
+  "confidence": "optional string",
+  "evidenceTurnNumbers": [1]
+}
+""");
+        return builder.ToString();
+    }
+
     private static AIResumeProfileResponse ParseResumeProfileResponse(string content)
     {
         try
@@ -402,6 +473,32 @@ public partial class InterviewAiClient
                 Score = Math.Clamp(overallScore, 0, 100),
                 Completion = TruncateSafe(TryGetString(root, "completion"), 2000),
                 RawJson = TruncateSafe(content, 6000)
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static AIInterviewStrengthsSummaryResponse ParseStrengthsSummaryResponse(string content)
+    {
+        try
+        {
+            var normalized = ExtractJsonObjectPayload(content);
+            using var document = JsonDocument.Parse(normalized);
+            var root = document.RootElement;
+            var strengthsText = NormalizeWhitespace(TryGetString(root, "strengthsText"));
+            if (strengthsText.Length < 200 || strengthsText.Length > 300)
+                return null;
+
+            return new AIInterviewStrengthsSummaryResponse
+            {
+                Success = true,
+                StrengthsText = strengthsText,
+                Confidence = TruncateSafe(TryGetString(root, "confidence"), 80),
+                EvidenceTurnNumbers = ParseIntArray(root, "evidenceTurnNumbers", 10),
+                RawJson = TruncateSafe(content, 2000)
             };
         }
         catch
@@ -518,6 +615,26 @@ public partial class InterviewAiClient
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(maxItems)
             .ToList();
+    }
+
+    private static IList<int> ParseIntArray(JsonElement element, string propertyName, int maxItems)
+    {
+        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+            return new List<int>();
+
+        return property.EnumerateArray()
+            .Select(item => item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out var value) ? value : 0)
+            .Where(value => value > 0)
+            .Distinct()
+            .Take(maxItems)
+            .ToList();
+    }
+
+    private static string NormalizeWhitespace(string text)
+    {
+        return string.IsNullOrWhiteSpace(text)
+            ? string.Empty
+            : Regex.Replace(text.Trim(), "\\s+", " ");
     }
 
     private static string TryGetString(JsonElement element, string propertyName)
@@ -719,6 +836,44 @@ public partial class InterviewAiClient
                 turns = scoredTurns,
                 overallScore,
                 completion = "Final scoring completed."
+            }, ResumePlanSerializerOptions)
+        };
+    }
+
+    private AIInterviewStrengthsSummaryResponse BuildMockStrengthsSummary(AIInterviewStrengthsSummaryRequest request)
+    {
+        var answeredTurns = (request?.Turns ?? new List<AIInterviewStrengthsSummaryTurnRequest>())
+            .Where(turn => !string.IsNullOrWhiteSpace(turn.Answer))
+            .OrderByDescending(turn => turn.Score.GetValueOrDefault())
+            .ThenBy(turn => turn.SequenceNumber)
+            .Take(2)
+            .ToList();
+        if (!answeredTurns.Any())
+        {
+            return new AIInterviewStrengthsSummaryResponse
+            {
+                Success = false,
+                ErrorMessage = "No answered turns available."
+            };
+        }
+
+        var evidence = string.Join(" and ", answeredTurns.Select(turn => $"turn {turn.SequenceNumber}"));
+        var strengthsText = $"The candidate showed practical role fit through {evidence}, giving concrete implementation details, clear ownership, and thoughtful tradeoff awareness. Their answers connected project experience to delivery quality, testing, monitoring, and collaborative execution.";
+        strengthsText = NormalizeWhitespace(strengthsText);
+        if (strengthsText.Length > 300)
+            strengthsText = strengthsText[..300].TrimEnd('.', ' ') + ".";
+
+        return new AIInterviewStrengthsSummaryResponse
+        {
+            Success = strengthsText.Length is >= 200 and <= 300,
+            StrengthsText = strengthsText,
+            Confidence = "mock",
+            EvidenceTurnNumbers = answeredTurns.Select(turn => turn.SequenceNumber).ToList(),
+            RawJson = JsonSerializer.Serialize(new
+            {
+                strengthsText,
+                confidence = "mock",
+                evidenceTurnNumbers = answeredTurns.Select(turn => turn.SequenceNumber).ToList()
             }, ResumePlanSerializerOptions)
         };
     }

@@ -1273,6 +1273,14 @@ public class RuntimeAndAdminTests
                     BuildFinalScore(2, 90)
                 }
             });
+        var strengthsText = "The candidate showed clear ownership of API design and delivery by explaining queue-based architecture, monitoring, rollback planning, testing, and regression prevention. The answers connected implementation details to reliability, team execution, and production outcomes.";
+        aiClient.Setup(x => x.GenerateStrengthsSummaryAsync(It.IsAny<AIInterviewStrengthsSummaryRequest>()))
+            .ReturnsAsync(new AIInterviewStrengthsSummaryResponse
+            {
+                Success = true,
+                StrengthsText = strengthsText,
+                EvidenceTurnNumbers = new List<int> { 1, 2 }
+            });
         var service = CreateRuntimeService(turnService, aiClient, new AIInterviewSettings { EnableFinalScoringAtCompletion = true, Prompt = "Be concise" });
 
         var response = await service.CompleteInterviewAsync(session.Token, "Stopped by user");
@@ -1283,13 +1291,65 @@ public class RuntimeAndAdminTests
         Assert.That(response.Turns.Count, Is.EqualTo(2));
         Assert.That(session.IsActive, Is.False);
         Assert.That(session.Score, Is.EqualTo(85));
+        Assert.That(session.ReportData, Does.Contain($"Strengths: {strengthsText}"));
+        Assert.That(session.ReportData, Does.Not.Contain("No scored strengths were identified from the submitted answers."));
         Assert.That(session.ReportData, Does.Contain("Stopped by user"));
         var scores = System.Text.Json.JsonSerializer.Deserialize<List<decimal>>(session.QuestionScores);
         Assert.That(scores, Is.EqualTo(new List<decimal> { 80, 90 }));
         aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.Is<AIInterviewFinalScoringRequest>(request =>
             request.Turns.Count == 2 &&
             request.Turns.All(turn => turn.SequenceNumber == 1 || turn.SequenceNumber == 2))), Times.Once);
+        aiClient.Verify(x => x.GenerateStrengthsSummaryAsync(It.Is<AIInterviewStrengthsSummaryRequest>(request =>
+            request.Turns.Count == 2 &&
+            request.Turns.All(turn => turn.Score.HasValue && !string.IsNullOrWhiteSpace(turn.Feedback)))), Times.Once);
         aiClient.Verify(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task RuntimeService_CompleteInterview_InvalidStrengthsSummary_FallsBackWithoutFailingCompletion()
+    {
+        var session = new InterviewSession
+        {
+            Id = 305,
+            Token = "complete-strengths-fallback",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10),
+            QuestionCount = 1
+        };
+        var turns = new List<InterviewTurn>
+        {
+            new() { Id = 1, InterviewSessionId = session.Id, SequenceNumber = 1, QuestionText = "Q1", AnswerText = "I designed Azure APIs with queues, monitoring, testing, and rollback plans for production reliability.", AskedOnUtc = DateTime.UtcNow, AnsweredOnUtc = DateTime.UtcNow }
+        };
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(turns);
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>())).Returns(Task.CompletedTask);
+        aiClient.Setup(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()))
+            .ReturnsAsync(new AIInterviewFinalScoringResponse
+            {
+                Success = true,
+                Completion = "Final summary.",
+                Turns = new List<AIInterviewFinalScoringTurnResult>
+                {
+                    BuildFinalScore(1, 88) with { Feedback = "Strong answer with clear structure." }
+                }
+            });
+        aiClient.Setup(x => x.GenerateStrengthsSummaryAsync(It.IsAny<AIInterviewStrengthsSummaryRequest>()))
+            .ReturnsAsync(new AIInterviewStrengthsSummaryResponse
+            {
+                Success = true,
+                StrengthsText = "Too short."
+            });
+        var service = CreateRuntimeService(turnService, aiClient, new AIInterviewSettings { EnableFinalScoringAtCompletion = true, Prompt = "Be concise" });
+
+        var response = await service.CompleteInterviewAsync(session.Token, "Stopped by user");
+
+        Assert.That(response.Success, Is.True);
+        Assert.That(session.ReportData, Does.Contain("Strengths: Demonstrated clear structure and communication."));
+        Assert.That(session.ReportData, Does.Not.Contain("Too short."));
+        aiClient.Verify(x => x.GenerateStrengthsSummaryAsync(It.IsAny<AIInterviewStrengthsSummaryRequest>()), Times.Once);
     }
 
     [Test]

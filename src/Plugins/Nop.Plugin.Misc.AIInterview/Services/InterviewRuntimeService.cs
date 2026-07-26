@@ -629,6 +629,7 @@ Scoring distinction: if the answer attempts the question but is generic, weak, v
             "score" => "llm-scoring",
             "resume-profile" => "llm-resume-profile",
             "question-plan" => "llm-question-plan",
+            "strengths-summary" => "llm-strengths-summary",
             _ => "llm-azure-openai"
         };
     }
@@ -1183,17 +1184,18 @@ internal static class InterviewReportSummaryHelper
         ("AWS-based deployment experience", new[] { "aws", "lambda", "s3", "ec2" })
     };
 
-    internal static string BuildReport(IEnumerable<InterviewTurn> turns, decimal score, string reason, string aiCompletion = null)
+    internal static string BuildReport(IEnumerable<InterviewTurn> turns, decimal score, string reason, string aiCompletion = null, string strengthsSummary = null)
     {
         var orderedTurns = (turns ?? Enumerable.Empty<InterviewTurn>())
             .OrderBy(turn => turn.SequenceNumber)
             .ThenBy(turn => turn.Id)
             .ToList();
+        var normalizedStrengthsSummary = NormalizeWhitespace(strengthsSummary);
 
         return string.Join(Environment.NewLine, new[]
         {
             $"Overall score: {score:N0}/100",
-            $"Strengths: {BuildStrengthsSummary(orderedTurns)}",
+            $"Strengths: {(string.IsNullOrWhiteSpace(normalizedStrengthsSummary) ? BuildStrengthsSummary(orderedTurns) : normalizedStrengthsSummary)}",
             $"Improvement areas: {BuildImprovementAreasSummary(orderedTurns)}",
             string.IsNullOrWhiteSpace(aiCompletion) ? string.Empty : $"AI completion: {NormalizeWhitespace(aiCompletion)}",
             string.IsNullOrWhiteSpace(reason) ? string.Empty : $"Completion note: {NormalizeWhitespace(reason)}"
@@ -3282,7 +3284,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         session.CompletedOnUtc = DateTime.UtcNow;
         session.Score = completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
         session.QuestionScores = JsonSerializer.Serialize(completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
-        session.ReportData = BuildReport(completedTurns, session.Score, reason, finalScoringCompletion);
+        var strengthsSummary = await GenerateReportStrengthsSummaryAsync(session, completedTurns);
+        session.ReportData = BuildReport(completedTurns, session.Score, reason, finalScoringCompletion, strengthsSummary);
         await _sessionService.UpdateInterviewSessionAsync(session);
 
         await PublishCompletionAsync(session);
@@ -3314,6 +3317,93 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     protected virtual bool IsFinalScoringAtCompletionEnabled()
     {
         return _settings?.EnableFinalScoringAtCompletion != false;
+    }
+
+    protected virtual async Task<string> GenerateReportStrengthsSummaryAsync(InterviewSession session, IList<InterviewTurn> turns)
+    {
+        var strengthsStopwatch = Stopwatch.StartNew();
+        var answeredTurns = (turns ?? new List<InterviewTurn>())
+            .Where(turn => !string.IsNullOrWhiteSpace(turn.AnswerText))
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+        if (session == null || !answeredTurns.Any())
+            return null;
+
+        await LogRuntimeIssueAsync(
+            NopLogLevel.Information,
+            "AI Interview strengths summary started",
+            $"Mode=strengths-summary; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}.",
+            await ResolveLogCustomerAsync(session));
+
+        try
+        {
+            var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+            var response = await _aiClient.GenerateStrengthsSummaryAsync(new AIInterviewStrengthsSummaryRequest
+            {
+                JobTitle = product?.Name ?? await GetJobTitleAsync(session.SourceProductId > 0 ? session.SourceProductId : session.ProductId),
+                JobContext = BuildInterviewContext(session, product),
+                Difficulty = session.Difficulty,
+                ResumeProfileJson = await GetResumeProfileJsonAsync(session, product),
+                Turns = answeredTurns.Select(turn => new AIInterviewStrengthsSummaryTurnRequest
+                {
+                    SequenceNumber = turn.SequenceNumber,
+                    Question = turn.QuestionText,
+                    Answer = turn.AnswerText,
+                    Score = turn.Score,
+                    Feedback = turn.Feedback
+                }).ToList()
+            });
+
+            await TrackOpenAiUsageAsync(
+                session.Id,
+                null,
+                AzureUsageMetricDefaults.UsageKindOpenAiAnswerScoring,
+                "GenerateStrengthsSummary",
+                response?.UsageInfo,
+                metadataJson: JsonSerializer.Serialize(new
+                {
+                    answeredTurns = answeredTurns.Count,
+                    mode = "strengths-summary"
+                }, StorageSerializerOptions));
+
+            var strengthsText = ValidateStrengthsSummaryText(response?.StrengthsText);
+            if (response?.Success == true && !string.IsNullOrWhiteSpace(strengthsText))
+            {
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Information,
+                    "AI Interview strengths summary completed",
+                    $"Mode=strengths-summary; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}; StrengthsLength={strengthsText.Length}; EvidenceTurns={string.Join(",", response.EvidenceTurnNumbers ?? Array.Empty<int>())}; ElapsedMs={strengthsStopwatch.ElapsedMilliseconds}.",
+                    await ResolveLogCustomerAsync(session));
+                return strengthsText;
+            }
+
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview strengths summary fallback used",
+                $"Mode=strengths-summary; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}; Reason={BuildSafeValue(response?.ErrorMessage ?? "invalid strengths summary")}; StrengthsLength={(response?.StrengthsText ?? string.Empty).Trim().Length}; ElapsedMs={strengthsStopwatch.ElapsedMilliseconds}.",
+                await ResolveLogCustomerAsync(session));
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "AI Interview strengths summary failed for session {SessionId}.", session.Id);
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview strengths summary fallback used",
+                $"Mode=strengths-summary; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}; Reason={BuildSafeValue(ex.Message)}; ElapsedMs={strengthsStopwatch.ElapsedMilliseconds}.",
+                await ResolveLogCustomerAsync(session));
+            return null;
+        }
+    }
+
+    protected static string ValidateStrengthsSummaryText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var normalized = Regex.Replace(value.Trim(), "\\s+", " ");
+        return normalized.Length is >= 200 and <= 300 ? normalized : null;
     }
 
     protected virtual async Task<CompleteInterviewResponse> FinalizeInterviewScoringAsync(InterviewSession session, IList<InterviewTurn> turns, string reason)
@@ -3494,9 +3584,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         await _eventPublisher.PublishAsync(new MockAiInterviewCompletedEvent(session, languageId));
     }
 
-    protected virtual string BuildReport(IEnumerable<InterviewTurn> turns, decimal score, string reason, string aiCompletion = null)
+    protected virtual string BuildReport(IEnumerable<InterviewTurn> turns, decimal score, string reason, string aiCompletion = null, string strengthsSummary = null)
     {
-        return InterviewReportSummaryHelper.BuildReport(turns, score, reason, aiCompletion);
+        return InterviewReportSummaryHelper.BuildReport(turns, score, reason, aiCompletion, strengthsSummary);
     }
 
     protected virtual int GetMaxQuestions(InterviewSession session)
