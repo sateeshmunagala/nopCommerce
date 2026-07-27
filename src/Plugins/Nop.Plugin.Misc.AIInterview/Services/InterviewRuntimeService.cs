@@ -1506,6 +1506,7 @@ internal static class InterviewReportSummaryHelper
 public class InterviewRuntimeService : IInterviewRuntimeService
 {
     private static readonly ConcurrentDictionary<int, SemaphoreSlim> PreparationLocks = new();
+    private static readonly ConcurrentDictionary<int, SemaphoreSlim> FirstTurnLocks = new();
 
     private static readonly string[] PracticeSkillKeywords =
     [
@@ -3041,21 +3042,32 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         turns ??= new List<InterviewTurn>();
         var maxQuestions = GetMaxQuestions(session);
-        var orderedTurns = turns
-            .OrderBy(turn => turn.SequenceNumber)
-            .ThenBy(turn => turn.Id)
-            .ToList();
-        if (orderedTurns.Any(turn => turn.SequenceNumber == 1))
-            return (orderedTurns, null);
+        var firstTurnLock = FirstTurnLocks.GetOrAdd(session.Id, _ => new SemaphoreSlim(1, 1));
+        await firstTurnLock.WaitAsync();
+        try
+        {
+            var orderedTurns = (await _turnService.GetTurnsBySessionIdAsync(session.Id) ?? turns)
+                .OrderBy(turn => turn.SequenceNumber)
+                .ThenBy(turn => turn.Id)
+                .ToList();
+            if (orderedTurns.Any(turn => turn.SequenceNumber == 1))
+                return (orderedTurns, null);
 
-        var firstTurn = BuildIntroductionProjectTurn(session, customer);
-        var inserted = await _turnService.InsertInterviewTurnAsync(firstTurn);
-        orderedTurns.Add(inserted);
-        return (orderedTurns
-            .Where(turn => turn.SequenceNumber <= maxQuestions)
-            .OrderBy(turn => turn.SequenceNumber)
-            .ThenBy(turn => turn.Id)
-            .ToList(), null);
+            var firstTurn = BuildIntroductionProjectTurn(session, customer);
+            var inserted = await _turnService.InsertInterviewTurnAsync(firstTurn);
+            orderedTurns.Add(inserted);
+            return (orderedTurns
+                .Where(turn => turn.SequenceNumber <= maxQuestions)
+                .OrderBy(turn => turn.SequenceNumber)
+                .ThenBy(turn => turn.Id)
+                .ToList(), null);
+        }
+        finally
+        {
+            firstTurnLock.Release();
+            if (firstTurnLock.CurrentCount == 1)
+                FirstTurnLocks.TryRemove(new KeyValuePair<int, SemaphoreSlim>(session.Id, firstTurnLock));
+        }
     }
 
     protected virtual async Task LogPreparationStageAsync(InterviewSession session, string stage, long elapsedMilliseconds, bool success, string failureReason = null)
@@ -3064,6 +3076,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         await LogRuntimeIssueAsync(
             success ? NopLogLevel.Information : NopLogLevel.Warning,
             "AI Interview preparation stage",
+            detail,
+            await ResolveLogCustomerAsync(session));
+    }
+
+    protected virtual async Task LogCompletionStageAsync(InterviewSession session, string stage, long elapsedMilliseconds, bool success, string failureReason = null)
+    {
+        var detail = $"SessionId={session?.Id ?? 0}; ProductId={session?.ProductId ?? 0}; CustomerId={session?.CustomerId ?? 0}; Stage={BuildSafeValue(stage)}; ElapsedMs={elapsedMilliseconds}; Success={success.ToString().ToLowerInvariant()}; Reason={BuildSafeValue(TruncateSafe(failureReason, 180))}.";
+        await LogRuntimeIssueAsync(
+            success ? NopLogLevel.Information : NopLogLevel.Warning,
+            "AI Interview completion stage",
             detail,
             await ResolveLogCustomerAsync(session));
     }
@@ -3481,7 +3503,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var finalScoringCompletion = aiCompletion;
         if (IsFinalScoringAtCompletionEnabled())
         {
+            var finalScoringStageStopwatch = Stopwatch.StartNew();
             var finalScoring = await FinalizeInterviewScoringAsync(session, completedTurns, reason);
+            await LogCompletionStageAsync(session, "final-scoring", finalScoringStageStopwatch.ElapsedMilliseconds, finalScoring.Success, finalScoring.Message);
             if (!finalScoring.Success)
             {
                 await LogRuntimeActivityAsync(
@@ -3499,11 +3523,18 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         session.CompletedOnUtc = DateTime.UtcNow;
         session.Score = completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
         session.QuestionScores = JsonSerializer.Serialize(completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
+        var strengthsStageStopwatch = Stopwatch.StartNew();
         var strengthsSummary = await GenerateReportStrengthsSummaryAsync(session, completedTurns);
+        await LogCompletionStageAsync(session, "strengths-summary", strengthsStageStopwatch.ElapsedMilliseconds, true);
         session.ReportData = BuildReport(completedTurns, session.Score, reason, finalScoringCompletion, strengthsSummary);
+        var persistenceStageStopwatch = Stopwatch.StartNew();
         await _sessionService.UpdateInterviewSessionAsync(session);
+        await LogCompletionStageAsync(session, "report-persistence", persistenceStageStopwatch.ElapsedMilliseconds, true);
 
+        var emailStageStopwatch = Stopwatch.StartNew();
         await PublishCompletionAsync(session);
+        await LogCompletionStageAsync(session, "email-publication", emailStageStopwatch.ElapsedMilliseconds, true);
+        await LogCompletionStageAsync(session, "total-completion", completionStopwatch.ElapsedMilliseconds, true);
         await LogRuntimeActivityAsync(
             session,
             "AIInterview.Runtime.InterviewCompleted",
