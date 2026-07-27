@@ -418,6 +418,10 @@ public class AzureDocumentIntelligenceResumeReader : IAzureDocumentIntelligenceR
 
 public class ResumeProfileService : IResumeProfileService
 {
+    private const string ProfileGenerationFailedErrorCode = "profile_generation_failed";
+    private const string OpenAiContractInvalidErrorCode = "openai_contract_invalid";
+    private const string OpenAiContractFailureMarker = "FailureKind=azure-openai-contract-failure";
+
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -506,12 +510,13 @@ public class ResumeProfileService : IResumeProfileService
         if (response == null || !response.Success)
         {
             var errorMessage = response?.ErrorMessage ?? "Resume profiling is unavailable.";
-            await PersistProfileFailureAsync(application, "profile_generation_failed", errorMessage);
-            await TryLogResumeProfileFailureAsync(application, product, download, "profile_generation_failed", errorMessage);
+            var errorCode = ResolveProfileGenerationErrorCode(errorMessage);
+            await PersistProfileFailureAsync(application, errorCode, errorMessage);
+            await TryLogResumeProfileFailureAsync(application, product, download, errorCode, errorMessage);
             return new ResumeProfileGenerationResult
             {
                 Success = false,
-                ErrorCode = "profile_generation_failed",
+                ErrorCode = errorCode,
                 ErrorMessage = errorMessage
             };
         }
@@ -602,12 +607,13 @@ public class ResumeProfileService : IResumeProfileService
         if (response == null || !response.Success)
         {
             var errorMessage = response?.ErrorMessage ?? "Resume profiling is unavailable.";
-            await PersistProfileFailureAsync(session, "profile_generation_failed", errorMessage);
-            await TryLogResumeProfileFailureAsync(session, product, download, "profile_generation_failed", errorMessage);
+            var errorCode = ResolveProfileGenerationErrorCode(errorMessage);
+            await PersistProfileFailureAsync(session, errorCode, errorMessage);
+            await TryLogResumeProfileFailureAsync(session, product, download, errorCode, errorMessage);
             return new ResumeProfileGenerationResult
             {
                 Success = false,
-                ErrorCode = "profile_generation_failed",
+                ErrorCode = errorCode,
                 ErrorMessage = errorMessage
             };
         }
@@ -658,6 +664,13 @@ public class ResumeProfileService : IResumeProfileService
         session.ResumeProfileGeneratedOnUtc = null;
         session.ResumeProfileError = Truncate($"{errorCode}: {errorMessage}", 1000);
         await _interviewSessionService.UpdateInterviewSessionAsync(session);
+    }
+
+    private static string ResolveProfileGenerationErrorCode(string errorMessage)
+    {
+        return errorMessage?.Contains(OpenAiContractFailureMarker, StringComparison.OrdinalIgnoreCase) == true
+            ? OpenAiContractInvalidErrorCode
+            : ProfileGenerationFailedErrorCode;
     }
 
     private async Task TryLogResumeProfileFailureAsync(JobApplication application, Product product, Download download, string errorCode, string errorMessage, string exceptionType = null, string diagnosticMessage = null)

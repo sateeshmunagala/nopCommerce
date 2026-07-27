@@ -14,6 +14,7 @@ public partial class InterviewAiClient
     private const int ResumeProfileRetryMaxCompletionTokens = 3600;
     private const int ResumeProfileMaxResumeTextLength = 8000;
     private const int ResumeProfileRetryMaxResumeTextLength = 5000;
+    private const string ResumeProfileContractFailureMarker = "FailureKind=azure-openai-contract-failure";
 
     private static readonly JsonSerializerOptions ResumePlanSerializerOptions = new(JsonSerializerDefaults.Web)
     {
@@ -609,7 +610,7 @@ public partial class InterviewAiClient
             ? $"invalid or truncated Azure OpenAI output (finish_reason={BuildSafeValue(result.FinishReason)})"
             : "invalid Azure OpenAI output";
 
-        return $"Resume profiling OpenAI contract/output invalid. FailureKind=azure-openai-contract-failure; Reason={reason}.";
+        return $"Resume profiling OpenAI contract/output invalid. {ResumeProfileContractFailureMarker}; Reason={reason}.";
     }
 
     private static string NormalizeResumeProfileContentPayload(string content)
