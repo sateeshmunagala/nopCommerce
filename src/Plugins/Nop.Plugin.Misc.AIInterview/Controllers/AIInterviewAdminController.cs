@@ -207,6 +207,7 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.ApiKey = PreserveSecretIfBlank(settingsModel.ApiKey, currentAiInterviewSettings.ApiKey);
             currentAiInterviewSettings.Model = settingsModel.Model;
             currentAiInterviewSettings.Prompt = settingsModel.Prompt;
+            currentAiInterviewSettings.MockInterviewQuestionCount = NormalizeMockInterviewQuestionCount(settingsModel.MockInterviewQuestionCount);
             currentAiInterviewSettings.ResumeProfileExtractionSystemPrompt = settingsModel.ResumeProfileExtractionSystemPrompt;
             currentAiInterviewSettings.QuestionPlanSystemPrompt = settingsModel.QuestionPlanSystemPrompt;
             currentAiInterviewSettings.QuestionPlanBuilderInstructionBlock = settingsModel.QuestionPlanBuilderInstructionBlock;
@@ -1686,6 +1687,7 @@ public class AIInterviewAdminController : BasePluginController
             ApiKey = aiInterviewSettings.ApiKey,
             Model = aiInterviewSettings.Model,
             Prompt = aiInterviewSettings.Prompt,
+            MockInterviewQuestionCount = NormalizeMockInterviewQuestionCount(aiInterviewSettings.MockInterviewQuestionCount),
             ResumeProfileExtractionSystemPrompt = ResolvePromptSetting(aiInterviewSettings.ResumeProfileExtractionSystemPrompt, AIInterviewDefaults.DefaultResumeProfileExtractionSystemPrompt),
             QuestionPlanSystemPrompt = ResolvePromptSetting(aiInterviewSettings.QuestionPlanSystemPrompt, AIInterviewDefaults.DefaultQuestionPlanSystemPrompt),
             QuestionPlanBuilderInstructionBlock = ResolvePromptSetting(aiInterviewSettings.QuestionPlanBuilderInstructionBlock, AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock),
@@ -1728,6 +1730,7 @@ public class AIInterviewAdminController : BasePluginController
         };
 
         model.Provider = AzureOpenAiProviderValue;
+        model.MockInterviewQuestionCount = NormalizeMockInterviewQuestionCount(model.MockInterviewQuestionCount);
         model.SupportPhoneNumber = NormalizeSupportPhoneNumber(model.SupportPhoneNumber);
         model.AzureDocumentIntelligenceModelId = NormalizeAzureDocumentIntelligenceModelId(model.AzureDocumentIntelligenceModelId);
         model.AzureDocumentIntelligenceTimeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(model.AzureDocumentIntelligenceTimeoutSeconds);
@@ -1746,6 +1749,11 @@ public class AIInterviewAdminController : BasePluginController
     protected static string ResolvePromptSetting(string prompt, string defaultPrompt)
     {
         return string.IsNullOrWhiteSpace(prompt) ? defaultPrompt : prompt;
+    }
+
+    protected static int NormalizeMockInterviewQuestionCount(int questionCount)
+    {
+        return Math.Clamp(questionCount <= 0 ? 5 : questionCount, 1, 10);
     }
 
     protected virtual IList<string> GetRecordingSourceModeValues()

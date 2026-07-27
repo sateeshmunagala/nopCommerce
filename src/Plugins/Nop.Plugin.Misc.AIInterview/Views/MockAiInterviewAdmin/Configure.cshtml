@@ -9,6 +9,7 @@
 }
 
 <form asp-route="@AIInterviewDefaults.AdminMockConfigureRouteName" method="post">
+    <input asp-for="MockInterviewQuestionCount" type="hidden" />
     <div class="content-header clearfix aiinterview-admin-header">
         <div class="float-left">
             <h1>@T("Plugins.Misc.AIInterview.Admin.Configure.Title")</h1>
@@ -49,16 +50,6 @@
                             <div class="col-md-9">
                                 <nop-editor asp-for="Enabled" />
                                 <span asp-validation-for="Enabled"></span>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <div class="col-md-3">
-                                <nop-label asp-for="MockInterviewQuestionCount" />
-                            </div>
-                            <div class="col-md-9">
-                                <input asp-for="MockInterviewQuestionCount" class="form-control" type="number" min="1" max="10" step="1" />
-                                <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.Configure.MockInterviewQuestionCount.Hint")</small>
-                                <span asp-validation-for="MockInterviewQuestionCount"></span>
                             </div>
                         </div>
                         <p>@T("Plugins.Misc.AIInterview.Admin.MockConfigure.General.Body")</p>

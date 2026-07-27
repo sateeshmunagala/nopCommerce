@@ -40,6 +40,10 @@ public record AiServiceSettingsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.UseMockResponses")]
     public bool UseMockResponses { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Configure.MockInterviewQuestionCount")]
+    [Range(1, 10)]
+    public int MockInterviewQuestionCount { get; set; } = 5;
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Provider")]
     public string Provider { get; set; }
 
