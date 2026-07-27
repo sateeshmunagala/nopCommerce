@@ -3371,11 +3371,20 @@ body.ai-job-preview-open .item-box {
 .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-status,
 .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-choice-row {
     grid-column: 2;
+    grid-row: 2;
 }
 
 .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-choice-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-self: center;
+    margin-top: 72px;
+}
+
+.runtime-permissions-step[data-permission-step="1"] .runtime-permissions-status {
+    align-self: center;
+    margin-bottom: 72px;
+    text-align: center;
 }
 
 .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-choice-row .button-2 {
@@ -4254,10 +4263,17 @@ body.ai-job-preview-open .item-box {
     .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-status,
     .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-choice-row {
         grid-column: 1;
+        grid-row: auto;
     }
 
     .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-choice-row {
         grid-template-columns: 1fr;
+        margin-top: 0;
+    }
+
+    .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-status {
+        margin-bottom: 0;
+        text-align: left;
     }
 
     .runtime-permissions-step[data-permission-step="1"] .runtime-permissions-video-frame {
