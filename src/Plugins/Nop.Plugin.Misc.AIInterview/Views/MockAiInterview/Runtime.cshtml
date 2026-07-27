@@ -48,7 +48,7 @@
                 {
                     <span class="runtime-candidate-chip">@Model.CandidateName</span>
                 }
-                <span class="runtime-timer-chip"><i class="fa-regular fa-clock" aria-hidden="true"></i><span id="runtime-timer">00:00</span></span>
+                <span id="runtime-timer-chip" class="runtime-timer-chip" title="Interview timer"><i class="fa-regular fa-clock" aria-hidden="true"></i><span id="runtime-timer-label">Timer</span><span id="runtime-timer">00:00</span></span>
                 <button type="button" id="stop-interview-top" class="button-2 runtime-stop-button" disabled>@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
             </div>
         </div>
@@ -530,6 +530,9 @@
         const recordingStatus = document.getElementById('recording-status');
         const screenShareStatus = document.getElementById('screen-share-status');
         const screenShareInterruptionWarning = document.getElementById('screen-share-interruption-warning');
+        const timerChip = document.getElementById('runtime-timer-chip');
+        const timerBox = document.getElementById('runtime-timer');
+        const timerLabel = document.getElementById('runtime-timer-label');
         const timerDetails = document.getElementById('runtime-timer-details');
         const cameraStatusDetails = document.getElementById('runtime-camera-status');
         const micStatusDetails = document.getElementById('runtime-mic-status');
@@ -2030,6 +2033,9 @@
             clearGuidelinesModalTimer();
             clearInterval(runtimeTimerHandle);
             runtimeTimerHandle = null;
+            updateRuntimeTimerDisplay();
+            if (runtimeStoppedOrCompleted && timerLabel)
+                timerLabel.textContent = 'Elapsed';
         };
 
         const clearAllRuntimeTimers = () => {
@@ -2039,19 +2045,34 @@
 
         const shouldWarnBeforeUnload = () => interviewStarted && !runtimeStoppedOrCompleted && !stopInProgress;
 
+        const formatElapsedTime = () => {
+            const elapsedSeconds = timerStartedAt
+                ? Math.floor((Date.now() - timerStartedAt) / 1000)
+                : 0;
+            const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+            const seconds = String(elapsedSeconds % 60).padStart(2, '0');
+            return `${minutes}:${seconds}`;
+        };
+
+        const updateRuntimeTimerDisplay = () => {
+            const value = formatElapsedTime();
+            if (timerBox)
+                timerBox.textContent = value;
+            if (timerDetails)
+                timerDetails.textContent = value;
+        };
+
         const startRuntimeTimer = () => {
             if (runtimeTimerHandle)
                 return;
 
             timerStartedAt = Date.now();
-            runtimeTimerHandle = setInterval(() => {
-                const elapsedSeconds = Math.floor((Date.now() - timerStartedAt) / 1000);
-                const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-                const seconds = String(elapsedSeconds % 60).padStart(2, '0');
-                document.getElementById('runtime-timer').textContent = `${minutes}:${seconds}`;
-                if (timerDetails)
-                    timerDetails.textContent = `${minutes}:${seconds}`;
-            }, 1000);
+            if (timerLabel)
+                timerLabel.textContent = 'Live';
+            if (timerChip)
+                timerChip.title = 'Live interview timer';
+            updateRuntimeTimerDisplay();
+            runtimeTimerHandle = setInterval(updateRuntimeTimerDisplay, 1000);
         };
 
         const startAutoSubmitCountdown = () => {
@@ -2702,7 +2723,12 @@
                 } catch (error) {
                     const message = error?.message || 'Recording upload failed.';
                     logActivity(`Final recording upload before completion failed: ${message}`);
-                    setRecordingStatus('Recording upload failed. Continuing to report.', true);
+                    setRecordingStatus(
+                        runtimeStoppedOrCompleted
+                            ? 'Recording upload did not finish. Report generation continues.'
+                            : 'Recording upload failed. Continuing to report.',
+                        !runtimeStoppedOrCompleted,
+                        runtimeStoppedOrCompleted);
                     return false;
                 }
             })();
@@ -2810,7 +2836,7 @@
             } catch (error) {
                 const message = error?.message || 'Completion finalization failed.';
                 logActivity(`Completion finalization failed: ${message}`);
-                setRecordingStatus('Recording upload failed or timed out. Continuing to report.', true);
+                setRecordingStatus('Recording cleanup is still finishing. Report generation continues.', false, true);
             }
             recordingEnabled = false;
             await stopLiveMediaForCompletion();
@@ -2847,7 +2873,7 @@
                 finalizeCompletedState(result)
                     .catch(error => {
                         logActivity(`Completion finalization exception: ${error?.message || 'unknown'}`);
-                        setRecordingStatus('Recording finalization failed. Continuing to report.', true);
+                        setRecordingStatus('Recording cleanup is still finishing. Report generation continues.', false, true);
                     })
                     .finally(() => startReportGenerationTimer(reportUrl));
             }, 0);

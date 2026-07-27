@@ -14,6 +14,7 @@ public partial class InterviewAiClient
     private const int ResumeProfileRetryMaxCompletionTokens = 3600;
     private const int ResumeProfileMaxResumeTextLength = 8000;
     private const int ResumeProfileRetryMaxResumeTextLength = 5000;
+    private const int QuestionPlanMaxQuestionLength = 170;
     private const string ResumeProfileContractFailureMarker = "FailureKind=azure-openai-contract-failure";
 
     private static readonly JsonSerializerOptions ResumePlanSerializerOptions = new(JsonSerializerDefaults.Web)
@@ -345,6 +346,10 @@ public partial class InterviewAiClient
         builder.AppendLine("Resume profile JSON:");
         builder.AppendLine(TruncateSafe(request.ResumeProfileJson, 4000));
         builder.AppendLine(ResolvePromptSetting(instructionBlock, AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock));
+        builder.AppendLine("Question brevity requirements:");
+        builder.AppendLine($"- Each question must be one sentence, end with one question mark, and stay under {QuestionPlanMaxQuestionLength} characters.");
+        builder.AppendLine("- Avoid example lists, parenthetical clarifications, multi-part setup, and trailing explanations.");
+        builder.AppendLine("- Ask only the core interview question the candidate should answer now.");
         if (request.ExistingQuestions?.Any() == true)
         {
             builder.AppendLine("Existing planned questions that must not be duplicated:");
@@ -808,11 +813,32 @@ public partial class InterviewAiClient
                 ? parsedSequence
                 : fallbackSequenceNumber,
             Category = category,
-            Question = TruncateSafe(TryGetString(element, "question"), 240),
+            Question = ShortenQuestionText(TryGetString(element, "question")),
             ResumeEvidence = TruncateSafe(TryGetString(element, "resumeEvidence"), 200),
             ExpectedSignals = ParseStringArray(element, "expectedSignals", 6, 120),
             Rubric = ParseQuestionRubric(element)
         };
+    }
+
+    private static string ShortenQuestionText(string question)
+    {
+        var normalized = NormalizeWhitespace(question);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return string.Empty;
+
+        var firstQuestionMark = normalized.IndexOf('?');
+        if (firstQuestionMark >= 0)
+            normalized = normalized[..(firstQuestionMark + 1)].Trim();
+
+        if (normalized.Length <= QuestionPlanMaxQuestionLength)
+            return normalized.EndsWith('?') ? normalized : normalized.TrimEnd('.', ',', ';', ':', ' ') + "?";
+
+        var clipped = normalized[..QuestionPlanMaxQuestionLength].TrimEnd();
+        var lastSpace = clipped.LastIndexOf(' ');
+        if (lastSpace >= 80)
+            clipped = clipped[..lastSpace].TrimEnd();
+
+        return clipped.TrimEnd('.', ',', ';', ':', '-', ' ') + "?";
     }
 
     private static AIInterviewQuestionRubric ParseQuestionRubric(JsonElement element)
@@ -969,16 +995,16 @@ public partial class InterviewAiClient
             var category = categories[index];
             var skill = primarySkills[index % primarySkills.Count];
             var project = profile.Projects.Any() ? profile.Projects[index % profile.Projects.Count] : null;
-            var questionText = BuildMockPlanQuestionText(request, category, skill, project, index, 0);
+            var questionText = ShortenQuestionText(BuildMockPlanQuestionText(request, category, skill, project, index, 0));
             var variant = 1;
             while (seenQuestions.Contains(questionText) && variant < 6)
             {
-                questionText = BuildMockPlanQuestionText(request, category, skill, project, index, variant);
+                questionText = ShortenQuestionText(BuildMockPlanQuestionText(request, category, skill, project, index, variant));
                 variant++;
             }
 
             if (seenQuestions.Contains(questionText))
-                questionText = $"{questionText} (follow-up {variant})";
+                questionText = ShortenQuestionText($"{questionText.TrimEnd('?')} follow-up {variant}?");
 
             seenQuestions.Add(questionText);
 
@@ -1119,7 +1145,7 @@ public partial class InterviewAiClient
         {
             SequenceNumber = 1,
             Category = "Introduction & Project Experience",
-            Question = "Let's start with you. Please introduce yourself and walk me through one or two projects you are most proud of. I'd like to understand your role, the technologies you used, the main challenges you handled, and the impact of the work.",
+            Question = ShortenQuestionText("Please introduce yourself and share one project that best shows your fit for this role."),
             ResumeEvidence = string.Empty,
             ExpectedSignals = new List<string>
             {
