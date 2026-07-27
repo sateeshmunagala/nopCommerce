@@ -1276,6 +1276,7 @@
             if (!normalizedText) {
                 videoCaption.classList.add('runtime-js-hidden');
                 videoCaption.hidden = true;
+                videoCaption.parentElement?.classList.remove('has-caption');
                 videoCaptionSpeaker.textContent = '';
                 videoCaptionText.textContent = '';
                 return;
@@ -1285,6 +1286,7 @@
             videoCaptionText.textContent = normalizedText;
             videoCaption.classList.remove('runtime-js-hidden');
             videoCaption.hidden = false;
+            videoCaption.parentElement?.classList.add('has-caption');
         };
 
         const syncAnswerCaption = () => {
