@@ -497,9 +497,11 @@
         const recordingVideoBitsPerSecond = clampNumber(config.recordingVideoBitsPerSecond, 650000, 350000, 1200000);
         const recordingAudioBitsPerSecond = clampNumber(config.recordingAudioBitsPerSecond, 64000, 32000, 128000);
         const recordingUploadTimeoutMs = clampNumber(config.recordingUploadTimeoutMs, 15000, 5000, 60000);
-        const receivedFinalizationWaitTimeoutMs = clampNumber(config.finalizationWaitTimeoutMs, 10000, 5000, 45000);
-        const completionUploadTimeoutMismatch = receivedFinalizationWaitTimeoutMs < recordingUploadTimeoutMs + 5000;
-        const finalizationWaitTimeoutMs = Math.max(receivedFinalizationWaitTimeoutMs, recordingUploadTimeoutMs + 5000);
+        const minimumFinalizationWaitMs = recordingUploadTimeoutMs + 5000;
+        const finalizationUpperBoundMs = Math.max(45000, minimumFinalizationWaitMs);
+        const receivedFinalizationWaitTimeoutMs = clampNumber(config.finalizationWaitTimeoutMs, 10000, 5000, finalizationUpperBoundMs);
+        const completionUploadTimeoutMismatch = receivedFinalizationWaitTimeoutMs < minimumFinalizationWaitMs;
+        const finalizationWaitTimeoutMs = Math.max(receivedFinalizationWaitTimeoutMs, minimumFinalizationWaitMs);
         const recordingSourceModeValues = ['ScreenPreferred', 'CameraOnly', 'ScreenOnly', 'ScreenAndCamera'];
         const recordingSourceMode = recordingSourceModeValues.includes(config.recordingSourceMode) ? config.recordingSourceMode : 'ScreenPreferred';
         const debugRuntime = new URLSearchParams(window.location.search).get('debugRuntime') === '1';
@@ -3067,7 +3069,7 @@
             reportRuntimeClientRequestFailure({
                 requestName: 'upload-recording',
                 failureKind: 'completion-upload-timeout-mismatch',
-                message: `Completion finalization timeout ${receivedFinalizationWaitTimeoutMs}ms is less than recording upload timeout ${recordingUploadTimeoutMs}ms plus 5000ms.`,
+                message: `Completion finalization timeout ${receivedFinalizationWaitTimeoutMs}ms is less than required minimum ${minimumFinalizationWaitMs}ms.`,
                 elapsedMilliseconds: 0
             });
         }

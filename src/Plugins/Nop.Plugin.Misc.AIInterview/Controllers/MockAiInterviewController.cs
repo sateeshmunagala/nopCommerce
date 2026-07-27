@@ -294,6 +294,7 @@ public class MockAiInterviewController : BasePluginController
             "invalid-json" => "Runtime request returned invalid JSON.",
             "non-json-response" => "Runtime request returned a non-JSON response.",
             "fetch-exception" or "network-error" => "Unable to reach the interview service.",
+            "completion-upload-timeout-mismatch" => "Completion finalization timeout is lower than recording upload timeout + 5000ms. Check RecordingUploadTimeoutMs and FinalizationWaitTimeoutMs settings.",
             _ => "Runtime request failed."
         };
     }
