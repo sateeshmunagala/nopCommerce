@@ -684,9 +684,10 @@
         const autoSubmitDelaySeconds = 15;
         const completionWaitSeconds = 120;
         const completedRedirectDelaySeconds = 3;
-        const slowSubmitStatusDelayMs = 5000;
+        const slowSubmitStatusDelayMs = 2000;
         const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';
-        const reportGenerationMessage = 'Report is being generated. Please wait and also you will receive an email shortly once report is generated.';
+        const reportGenerationMessage = 'Generating your report...';
+        let reportGenerationStartedAt = 0;
         const audioInputStorageKey = 'aiinterview.runtime.audioInputDeviceId';
         const audioOutputStorageKey = 'aiinterview.runtime.audioOutputDeviceId';
         const supportsAudioOutputSelection = typeof HTMLMediaElement !== 'undefined'
@@ -2045,10 +2046,12 @@
 
         const shouldWarnBeforeUnload = () => interviewStarted && !runtimeStoppedOrCompleted && !stopInProgress;
 
-        const formatElapsedTime = () => {
-            const elapsedSeconds = timerStartedAt
-                ? Math.floor((Date.now() - timerStartedAt) / 1000)
-                : 0;
+        const formatElapsedTime = (secondsValue = null) => {
+            const elapsedSeconds = Number.isFinite(secondsValue)
+                ? Math.max(0, Math.floor(secondsValue))
+                : timerStartedAt
+                    ? Math.floor((Date.now() - timerStartedAt) / 1000)
+                    : 0;
             const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
             const seconds = String(elapsedSeconds % 60).padStart(2, '0');
             return `${minutes}:${seconds}`;
@@ -2656,16 +2659,6 @@
                 return completionLiveMediaStopPromise;
 
             completionLiveMediaStopPromise = (async () => {
-                let preserveRecordingPromise = Promise.resolve(false);
-                try {
-                    if (mediaRecorder) {
-                        logActivity('Completion live recording stop started.');
-                        preserveRecordingPromise = stopRecording(false, { preserveSegment: true, statusMessage: 'Recording captured for final upload.' });
-                    }
-                } catch (error) {
-                    logActivity(`Completion recording preserve failed: ${error?.message || 'unknown'}`);
-                }
-
                 try {
                     stopScreenShare();
                     setScreenShareInterruptionWarning(false);
@@ -2685,12 +2678,6 @@
                     logActivity(`Completion live media stop failed: ${error?.message || 'unknown'}`);
                 }
 
-                try {
-                    await preserveRecordingPromise;
-                } catch (error) {
-                    logActivity(`Completion recording preserve exception: ${error?.message || 'unknown'}`);
-                }
-
                 closeRecordingAudioMix();
             })();
 
@@ -2702,13 +2689,15 @@
                 return completionRecordingCleanupPromise;
 
             completionRecordingCleanupPromise = (async () => {
-                await stopLiveMediaForCompletion();
-
                 if (!config.recordingAvailable || !recordingEnabled)
+                {
+                    await stopLiveMediaForCompletion();
                     return false;
+                }
 
                 if (!mediaRecorder && preservedRecordingSegments.length === 0 && recordingChunks.length === 0) {
                     setRecordingStatus('', false);
+                    await stopLiveMediaForCompletion();
                     return false;
                 }
 
@@ -2719,6 +2708,7 @@
                     logActivity('Final recording upload before completion finished.');
                     if (uploaded || (recordingStatus?.textContent || '') === 'Uploading interview recording...')
                         setRecordingStatus('', false);
+                    await stopLiveMediaForCompletion();
                     return uploaded;
                 } catch (error) {
                     const message = error?.message || 'Recording upload failed.';
@@ -2729,6 +2719,7 @@
                             : 'Recording upload failed. Continuing to report.',
                         !runtimeStoppedOrCompleted,
                         runtimeStoppedOrCompleted);
+                    await stopLiveMediaForCompletion();
                     return false;
                 }
             })();
@@ -2770,7 +2761,10 @@
                 completionBox.append(message, timer);
             }
 
-            timer.textContent = formatCountdown(remainingSeconds);
+            const elapsedSeconds = reportGenerationStartedAt
+                ? Math.max(0, Math.floor((Date.now() - reportGenerationStartedAt) / 1000))
+                : Math.max(0, completionWaitSeconds - remainingSeconds);
+            timer.textContent = `Elapsed ${formatElapsedTime(elapsedSeconds)}`;
             timer.hidden = false;
             timer.style.display = 'block';
 
@@ -2782,6 +2776,7 @@
 
         const startReportGenerationWaitingState = (reportUrl = '') => {
             clearCompletedRedirectState();
+            reportGenerationStartedAt = Date.now();
             const generation = completionWaitGeneration;
             let remaining = completionWaitSeconds;
             const renderRemaining = () => {
@@ -2819,7 +2814,7 @@
             }, completedRedirectDelaySeconds * 1000);
         };
 
-        const finalizeCompletedState = async (result) => {
+        const finalizeCompletedState = async (result, recordingPromise = null) => {
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
             const completionText = reportGenerationMessage;
 
@@ -2827,12 +2822,14 @@
             setHeaderStatus(reportGenerationMessage, false);
             try {
                 const recordingUploaded = await withTimeout(
-                    finalizeRecordingBeforeCompletion(),
+                    recordingPromise || finalizeRecordingBeforeCompletion(),
                     finalizationWaitTimeoutMs,
                     'Recording upload timed out.');
 
-                if (!recordingUploaded && config.recordingAvailable && recordingEnabled)
-                    logActivity('Final recording cleanup completed without an uploaded recording.');
+                if (!recordingUploaded && config.recordingAvailable && recordingEnabled) {
+                    logActivity('recording-upload-failed-before-report-redirect');
+                    setRecordingStatus('Recording upload did not finish. Your report is ready.', false, true);
+                }
             } catch (error) {
                 const message = error?.message || 'Completion finalization failed.';
                 logActivity(`Completion finalization failed: ${message}`);
@@ -2852,10 +2849,16 @@
             updateReportButton(reportUrl);
         };
 
-        const setCompletedState = async (result) => {
+        const setCompletedState = async (result, recordingPromise = null) => {
             runtimeStoppedOrCompleted = true;
             stopInProgress = false;
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
+            if (!reportUrl) {
+                clearCompletedRedirectState();
+                setStatus('The report URL is unavailable. Please refresh your interview history.', true);
+                logActivity('Completion response missing report URL.');
+                return;
+            }
             clearActiveInterviewTimers();
             interviewStarted = false;
             answerNeedsEditAfterFailure = false;
@@ -2865,12 +2868,11 @@
             submitButton.disabled = true;
             updateStartButtonState();
             setHeaderStatus(reportGenerationMessage, false);
-            stopLiveMediaForCompletion().catch(error => logActivity(`Completion live media stop exception: ${error?.message || 'unknown'}`));
             startReportGenerationWaitingState(reportUrl);
             clearTokenRefreshTimer();
             updateAuxiliaryControlsState();
             completedCleanupTimer = setTimeout(() => {
-                finalizeCompletedState(result)
+                finalizeCompletedState(result, recordingPromise)
                     .catch(error => {
                         logActivity(`Completion finalization exception: ${error?.message || 'unknown'}`);
                         setRecordingStatus('Recording cleanup is still finishing. Report generation continues.', false, true);
@@ -3045,6 +3047,7 @@
 
                 if (requestPath.endsWith('/submit-answer')) return 'submit-answer';
                 if (requestPath.endsWith('/begin')) return 'begin';
+                if (requestPath.endsWith('/prepare')) return 'prepare';
                 if (requestPath.endsWith('/speech-token')) return 'speech-token';
                 if (requestPath.endsWith('/speech-usage')) return 'speech-usage';
                 if (requestPath.endsWith('/upload-recording')) return 'upload-recording';
@@ -3164,6 +3167,29 @@
 
                 return { success: false, message: 'Unable to reach the interview service. Please check your network and try again.' };
             }
+        };
+
+        let prepareInterviewPromise = null;
+        const startPrepareInterview = () => {
+            if (!config.prepareInterviewUrl || prepareInterviewPromise)
+                return prepareInterviewPromise;
+
+            prepareInterviewPromise = (async () => {
+                if (!(await ensureRuntimeTokenFresh()))
+                    return null;
+
+                logActivity('Runtime preparation started.');
+                const result = await postForm(config.prepareInterviewUrl, new URLSearchParams({ token: sessionToken }));
+                const ready = !!getValue(result, 'ready', 'Ready');
+                const expected = getValue(result, 'expectedQuestionCount', 'ExpectedQuestionCount');
+                const persisted = getValue(result, 'persistedQuestionCount', 'PersistedQuestionCount');
+                logActivity(`Runtime preparation finished. ready=${ready}; persisted=${persisted}; expected=${expected}`);
+                return result;
+            })().finally(() => {
+                prepareInterviewPromise = null;
+            });
+
+            return prepareInterviewPromise;
         };
 
         const postMultipart = async (url, formData, timeoutMs = 0) => {
@@ -4123,6 +4149,7 @@
 
             const submitStartedAt = performance.now();
             let slowSubmitTimer = null;
+            let slowerSubmitTimer = null;
             logActivity('Submitting answer...');
             isSpeakingOrSubmitting = true;
             isSubmittingAnswer = true;
@@ -4136,9 +4163,13 @@
             else
                 setHeaderStatus(auto ? 'Auto submitting answer...' : 'Submitting answer...', false);
             slowSubmitTimer = setTimeout(() => {
-                setHeaderStatus(willCompleteOnSubmit ? reportGenerationMessage : 'Still submitting your answer. Please keep this page open.', false);
+                setHeaderStatus(willCompleteOnSubmit ? reportGenerationMessage : 'Saving your answer and loading the next question...', false);
                 logActivity('Answer submission is still pending.');
             }, slowSubmitStatusDelayMs);
+            slowerSubmitTimer = setTimeout(() => {
+                if (!willCompleteOnSubmit)
+                    setHeaderStatus('Still preparing the next question. Please keep this page open.', false);
+            }, 8000);
             submitBtn.disabled = true;
             submitBtn.classList.add('is-loading');
             const originalText = submitBtn.textContent;
@@ -4160,9 +4191,13 @@
                 body.append('speechRecognitionDurationMs', String(speechRecognitionDurationMs));
             if (pendingRecognitionClientEventId)
                 body.append('speechRecognitionClientEventId', pendingRecognitionClientEventId);
+            const finalRecordingUploadPromise = willCompleteOnSubmit
+                ? finalizeRecordingBeforeCompletion()
+                : null;
             const result = await postForm(config.submitAnswerUrl, body);
             const submitElapsedMs = Math.round(performance.now() - submitStartedAt);
             clearTimeout(slowSubmitTimer);
+            clearTimeout(slowerSubmitTimer);
             logActivity(`Answer submission finished. elapsedMs=${submitElapsedMs}`);
 
             submitBtn.classList.remove('is-loading');
@@ -4219,7 +4254,7 @@
                     speakText(getFinalCompletionSpeechText(result), 'completion')
                         .catch(() => logActivity('Final completion speech failed.'));
                 }
-                await setCompletedState(result);
+                await setCompletedState(result, finalRecordingUploadPromise);
                 return;
             }
 
@@ -4380,6 +4415,7 @@
             }
 
             const beginResult = await postForm(config.beginInterviewUrl, new URLSearchParams({ token: sessionToken }));
+            logActivity('Begin response received.');
             if (!isSuccess(beginResult)) {
                 stopScreenShare();
                 interviewStarted = false;
@@ -4425,21 +4461,36 @@
             setRuntimeCaption('Interviewer', firstQuestion);
             renderTranscript();
             updateStartButtonState();
-            if (config.recordingAvailable && recordingEnabled)
-                await requestRecordingMediaForStart();
-            await syncRecording();
             if (questionBox.textContent) logActivity('Question shown: ' + questionBox.textContent);
+            logActivity('First question rendered.');
             updateSubmitAvailability();
             updateAuxiliaryControlsState();
+            const recordingStartPromise = (async () => {
+                try {
+                    if (config.recordingAvailable && recordingEnabled)
+                        await requestRecordingMediaForStart();
+                    await syncRecording();
+                    logActivity('Recording started.');
+                } catch (error) {
+                    logActivity(`Recording start failed independently: ${error?.message || 'unknown'}`);
+                    setRecordingStatus('Recording could not start. You can continue with typed answers.', true, true);
+                }
+            })();
             if (config.speechAvailable && hasActiveQuestion()) {
-                await speakText(questionBox.textContent, 'question');
-                await resumeSpeechRecognitionForActiveQuestion();
-                resetRecognitionTracking(!!speechRecognizer);
+                setStatus('Preparing interviewer voice...', false);
+                speakText(questionBox.textContent, 'question')
+                    .then(() => logActivity('First question TTS completed.'))
+                    .catch(() => logActivity('First question TTS failed.'))
+                    .finally(async () => {
+                        await resumeSpeechRecognitionForActiveQuestion();
+                        resetRecognitionTracking(!!speechRecognizer);
+                    });
             } else {
                 await resumeSpeechRecognitionForActiveQuestion();
                 resetRecognitionTracking(!!speechRecognizer);
                 resetTimers();
             }
+            recordingStartPromise.catch(error => logActivity(`Recording start promise failed: ${error?.message || 'unknown'}`));
         };
 
         if (guidelinesButton)
@@ -4654,6 +4705,7 @@
                 updateAuxiliaryControlsState();
             });
         }
+        startPrepareInterview();
         submitButton.addEventListener('click', submitAnswer);
         primaryActionButton.addEventListener('click', beginInterview);
         document.getElementById('stop-interview').addEventListener('click', stopInterview);

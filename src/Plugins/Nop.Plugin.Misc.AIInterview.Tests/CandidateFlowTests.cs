@@ -1819,14 +1819,16 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("const normalizeTurn = (turn, index = 0) =>"));
         Assert.That(runtimeText, Does.Contain("getValue(turn, 'questionText', 'QuestionText')"));
         Assert.That(runtimeText, Does.Contain("messageBox.textContent = isTerminated ? '' : 'Please answer the next question.';"));
-        Assert.That(runtimeText, Does.Contain("setHeaderStatus(reportUrl ? 'Finalizing report. Preparing recording...' : 'Finalizing report...', false);"));
+        Assert.That(runtimeText, Does.Contain("prepareInterviewUrl"));
+        Assert.That(runtimeText, Does.Contain("startPrepareInterview();"));
+        Assert.That(runtimeText, Does.Contain("Preparing interviewer voice..."));
+        Assert.That(runtimeText, Does.Contain("Recording start failed independently"));
+        Assert.That(runtimeText, Does.Contain("Generating your report..."));
         Assert.That(runtimeText, Does.Contain("const finalizeRecordingBeforeCompletion = async () =>"));
-        Assert.That(runtimeText, Does.Contain("finalRecordingUploadTimeoutMs"));
         Assert.That(runtimeText, Does.Contain("finalizeRecordingBeforeCompletion()"));
-        Assert.That(runtimeText, Does.Contain("const startCompletedRedirectCountdown = (reportUrl) =>"));
-        Assert.That(runtimeText, Does.Contain(".finally(() => startCompletedRedirectCountdown(reportUrl));"));
+        Assert.That(runtimeText, Does.Contain("const startReportGenerationTimer = (reportUrl) =>"));
+        Assert.That(runtimeText, Does.Contain(".finally(() => startReportGenerationTimer(reportUrl));"));
         Assert.That(runtimeText, Does.Not.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
-        Assert.That(runtimeText, Does.Contain("if (mediaRecorder && recordingEnabled)"));
         Assert.That(runtimeText, Does.Contain("await stopRecording(true);"));
         Assert.That(runtimeText, Does.Not.Contain("setRecordingStatus('Recording ready.', false);"));
         Assert.That(runtimeText, Does.Not.Contain("setRecordingStatus('Recording waiting for screen share, camera, or microphone.', false);"));
@@ -1868,6 +1870,21 @@ public class CandidateFlowTests
         Assert.That(drawerText, Does.Contain("navigator.share"));
         Assert.That(drawerText, Does.Contain("Escape"));
         Assert.That(reportContentText, Does.Not.Contain(">Technical Score<"));
+    }
+
+    [Test]
+    public void MockPracticeProductTemplate_ShowsStartProgressAndElapsedTimer()
+    {
+        var productTemplateText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "ProductTemplate.MockPractice.cshtml"));
+
+        Assert.That(productTemplateText, Does.Contain("data-practice-start-progress=\"true\""));
+        Assert.That(productTemplateText, Does.Contain("role=\"status\""));
+        Assert.That(productTemplateText, Does.Contain("aria-live=\"polite\""));
+        Assert.That(productTemplateText, Does.Contain("Starting interview..."));
+        Assert.That(productTemplateText, Does.Contain("Uploading your resume and preparing your interview..."));
+        Assert.That(productTemplateText, Does.Contain("Your resume is ready. We are preparing your interview questions..."));
+        Assert.That(productTemplateText, Does.Contain("This is taking a little longer than usual. Please keep this page open."));
+        Assert.That(productTemplateText, Does.Contain("formatElapsed"));
     }
 
     [Test]

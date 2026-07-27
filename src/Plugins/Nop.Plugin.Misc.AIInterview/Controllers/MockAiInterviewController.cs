@@ -904,10 +904,7 @@ public class MockAiInterviewController : BasePluginController
                 session.ResumeProfileJson = null;
                 session.ResumeProfileGeneratedOnUtc = null;
                 session.ResumeProfileError = null;
-                if (_resumeProfileService != null)
-                    await _resumeProfileService.EnsureResumeProfileAsync(session, product, forceRegenerate: true);
-                else
-                    await _interviewSessionService.UpdateInterviewSessionAsync(session);
+                await _interviewSessionService.UpdateInterviewSessionAsync(session);
             }
 
             return (storedResume.DownloadId, null, true);
@@ -922,17 +919,11 @@ public class MockAiInterviewController : BasePluginController
                 session.ResumeProfileJson = null;
                 session.ResumeProfileGeneratedOnUtc = null;
                 session.ResumeProfileError = null;
-                if (_resumeProfileService != null)
-                    await _resumeProfileService.EnsureResumeProfileAsync(session, product, forceRegenerate: true);
-                else
-                    await _interviewSessionService.UpdateInterviewSessionAsync(session);
+                await _interviewSessionService.UpdateInterviewSessionAsync(session);
             }
 
             return (selectedResumeDownloadId, null, resumeChanged);
         }
-
-        if (session != null && session.ResumeDownloadId > 0 && string.IsNullOrWhiteSpace(session.ResumeProfileJson) && _resumeProfileService != null)
-            await _resumeProfileService.EnsureResumeProfileAsync(session, product);
 
         return (session?.ResumeDownloadId ?? 0, null, false);
     }
@@ -1079,7 +1070,12 @@ public class MockAiInterviewController : BasePluginController
             if (isMockPracticeProduct)
             {
                 var mockQuestionCount = ResolveMockQuestionCount();
+                var resumeStorageStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var resumeResolution = await ResolvePracticeResumeForStartAsync(product, resumeFile, selectedResumeDownloadId, reusableSession);
+                await LogRuntimeIssueAsync(
+                    "AI Interview preparation stage",
+                    $"SessionId={reusableSession.Id}; ProductId={productId}; CustomerId={customer.Id}; Stage=resume-storage; ElapsedMs={resumeStorageStopwatch.ElapsedMilliseconds}; Success={string.IsNullOrWhiteSpace(resumeResolution.ErrorMessage).ToString().ToLowerInvariant()}; Reason={SanitizeRuntimeClientMessage(resumeResolution.ErrorMessage)}.",
+                    customer);
                 if (!string.IsNullOrWhiteSpace(resumeResolution.ErrorMessage))
                     return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", resumeResolution.ErrorMessage);
 
@@ -1189,7 +1185,12 @@ public class MockAiInterviewController : BasePluginController
         var sessionResumeDownloadId = 0;
         if (isMockPracticeProduct)
         {
+            var resumeStorageStopwatch = System.Diagnostics.Stopwatch.StartNew();
             var newSessionResumeResolution = await ResolvePracticeResumeForStartAsync(product, resumeFile, selectedResumeDownloadId);
+            await LogRuntimeIssueAsync(
+                "AI Interview preparation stage",
+                $"SessionId=0; ProductId={productId}; CustomerId={customer.Id}; Stage=resume-storage; ElapsedMs={resumeStorageStopwatch.ElapsedMilliseconds}; Success={string.IsNullOrWhiteSpace(newSessionResumeResolution.ErrorMessage).ToString().ToLowerInvariant()}; Reason={SanitizeRuntimeClientMessage(newSessionResumeResolution.ErrorMessage)}.",
+                customer);
             if (!string.IsNullOrWhiteSpace(newSessionResumeResolution.ErrorMessage))
             {
                 await LogRuntimeIssueAsync("AI Interview start resume persistence failure",
@@ -1234,8 +1235,6 @@ public class MockAiInterviewController : BasePluginController
             CreatedOnUtc = DateTime.UtcNow
         };
         await _interviewSessionService.InsertInterviewSessionAsync(session);
-        if (isMockPracticeProduct && session.ResumeDownloadId > 0 && _resumeProfileService != null)
-            await _resumeProfileService.EnsureResumeProfileAsync(session, product, forceRegenerate: true);
         _logger?.LogInformation("AIInterview new session created for customer {CustomerId}, product {ProductId}, session {SessionId}.",
             customer.Id, productId, session.Id);
 
@@ -1299,6 +1298,7 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.QuestionCount = model.QuestionCount;
         model.ClientSettings.SubmitAnswerUrl = Url?.RouteUrl(AIInterviewDefaults.MockSubmitAnswerRouteName);
         model.ClientSettings.BeginInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockBeginRouteName);
+        model.ClientSettings.PrepareInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockPrepareRouteName);
         model.ClientSettings.CompleteInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
         model.ClientSettings.RefreshTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockRefreshTokenRouteName);
         model.ClientSettings.StopInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
@@ -1315,6 +1315,34 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.SpeechAvailable = model.ClientSettings.SpeechAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.SpeechTokenUrl);
         model.ClientSettings.RecordingUploadUrl = Url?.RouteUrl(AIInterviewDefaults.MockRecordingUploadRouteName);
         model.ClientSettings.RecordingAvailable = model.ClientSettings.RecordingAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.RecordingUploadUrl);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Prepare(string token)
+    {
+        if (_interviewRuntimeService == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Interview preparation is unavailable.");
+
+        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
+        if (tokenRenewal.Session != null && tokenRenewal.Renewed)
+            token = tokenRenewal.Session.Token;
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        var result = await _interviewRuntimeService.PrepareInterviewAsync(token, customer);
+        if (result == null)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+
+        return Json(new
+        {
+            success = result.Success,
+            ready = result.Ready,
+            message = result.Message,
+            elapsedMilliseconds = result.ElapsedMilliseconds,
+            expectedQuestionCount = result.ExpectedQuestionCount,
+            persistedQuestionCount = result.PersistedQuestionCount,
+            newToken = tokenRenewal.Renewed ? tokenRenewal.Session.Token : null,
+            tokenExpiryUtc = tokenRenewal.Renewed ? tokenRenewal.Session.TokenExpiryUtc : null
+        });
     }
 
     [HttpPost]

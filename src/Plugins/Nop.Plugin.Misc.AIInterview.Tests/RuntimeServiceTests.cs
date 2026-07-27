@@ -348,6 +348,108 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task BeginInterviewAsync_WithoutTurns_ReturnsLocalFirstTurn_WithoutQuestionPlanGeneration()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+
+        var session = new InterviewSession
+        {
+            Id = 33,
+            ProductId = 10,
+            CustomerId = 99,
+            SessionKey = "key33",
+            Token = "token33",
+            Difficulty = "Medium",
+            QuestionCount = 5,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
+        InterviewTurn insertedTurn = null;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token33")).ReturnsAsync(session);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(33))
+            .ReturnsAsync(() => insertedTurn == null ? new List<InterviewTurn>() : new List<InterviewTurn> { insertedTurn });
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn turn) =>
+            {
+                insertedTurn = turn;
+                insertedTurn.Id = 1001;
+                return insertedTurn;
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var model = await service.BeginInterviewAsync("token33", new Customer { Id = 99, FirstName = "Ada" });
+
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model.CurrentQuestion, Does.Contain("Hello Ada"));
+        Assert.That(model.Turns.Count(), Is.EqualTo(1));
+        Assert.That(model.Turns.Single().SequenceNumber, Is.EqualTo(1));
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task PrepareInterviewAsync_IsIdempotent_AndDoesNotDuplicateTurns()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var turns = new List<InterviewTurn>();
+        var nextId = 1;
+        var session = new InterviewSession
+        {
+            Id = 34,
+            ProductId = 10,
+            CustomerId = 99,
+            SessionKey = "key34",
+            Token = "token34",
+            Difficulty = "Medium",
+            QuestionCount = 3,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token34")).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(34)).ReturnsAsync(() => turns.OrderBy(turn => turn.SequenceNumber).ToList());
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn turn) =>
+            {
+                turn.Id = nextId++;
+                turns.Add(turn);
+                return turn;
+            });
+        aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
+            .ReturnsAsync(new AIInterviewQuestionPlanResponse
+            {
+                Success = true,
+                Questions = new List<AIInterviewQuestionPlanItem>
+                {
+                    new() { SequenceNumber = 2, Category = "skill", Question = "How do you troubleshoot APIs?" },
+                    new() { SequenceNumber = 3, Category = "behavioral", Question = "How do you communicate delivery risk?" }
+                }
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var first = await service.PrepareInterviewAsync("token34", new Customer { Id = 99 });
+        var second = await service.PrepareInterviewAsync("token34", new Customer { Id = 99 });
+
+        Assert.That(first.Success, Is.True);
+        Assert.That(second.Success, Is.True);
+        Assert.That(turns.Select(turn => turn.SequenceNumber).OrderBy(value => value), Is.EqualTo(new[] { 1, 2, 3 }));
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Once);
+    }
+
+    [Test]
     public async Task EnsureInterviewStartedAsync_RealMode_Failure_StillCreatesLocalIntroTurn()
     {
         var sessionService = new Mock<IInterviewSessionService>();

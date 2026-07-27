@@ -172,6 +172,7 @@ Allowed categories: skill, project_scenario, job_fit, behavioral
     public static string MockStartRouteName => "Plugin.Misc.AIInterview.Mock.Start";
     public static string MockRuntimeRouteName => "Plugin.Misc.AIInterview.Mock.Runtime";
     public static string MockBeginRouteName => "Plugin.Misc.AIInterview.Mock.Begin";
+    public static string MockPrepareRouteName => "Plugin.Misc.AIInterview.Mock.Prepare";
     public static string MockSubmitAnswerRouteName => "Plugin.Misc.AIInterview.Mock.SubmitAnswer";
     public static string MockStopRouteName => "Plugin.Misc.AIInterview.Mock.Stop";
     public static string MockFeedbackRouteName => "Plugin.Misc.AIInterview.Mock.Feedback";

@@ -139,6 +139,10 @@ public class RouteProvider : IRouteProvider
             pattern: "mockaiinterview/begin",
             defaults: new { controller = "MockAiInterview", action = "Begin" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockPrepareRouteName,
+            pattern: "mockaiinterview/prepare",
+            defaults: new { controller = "MockAiInterview", action = "Prepare" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockSubmitAnswerRouteName,
             pattern: "mockaiinterview/submit-answer",
             defaults: new { controller = "MockAiInterview", action = "SubmitAnswer" });

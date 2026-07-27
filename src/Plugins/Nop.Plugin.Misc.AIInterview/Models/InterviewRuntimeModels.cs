@@ -56,6 +56,7 @@ public record RuntimeClientSettingsModel
     public string SpeechUsageUrl { get; set; }
     public string RecordingUploadUrl { get; set; }
     public string BeginInterviewUrl { get; set; }
+    public string PrepareInterviewUrl { get; set; }
     public string AcknowledgeGuidelinesUrl { get; set; }
     public string RuntimeClientEventUrl { get; set; }
     public string SpeechRegion { get; set; }
@@ -81,6 +82,16 @@ public record StartInterviewResponseModel
     public string RuntimeUrl { get; init; }
     public string SessionKey { get; init; }
     public string Token { get; init; }
+}
+
+public record PrepareInterviewResponseModel
+{
+    public bool Success { get; init; }
+    public bool Ready { get; init; }
+    public string Message { get; init; }
+    public long ElapsedMilliseconds { get; init; }
+    public int ExpectedQuestionCount { get; init; }
+    public int PersistedQuestionCount { get; init; }
 }
 
 public record SubmitInterviewAnswerRequest

@@ -172,6 +172,10 @@
                                     <div class="job-ai-actions">
                                         <button type="submit" class="button-1" data-practice-start-submit="true">Start AI Interview</button>
                                     </div>
+                                    <div class="practice-start-progress aiinterview-hidden" data-practice-start-progress="true" role="status" aria-live="polite" style="min-height: 48px; margin-top: 12px;">
+                                        <div data-practice-start-progress-message="true"></div>
+                                        <strong data-practice-start-progress-elapsed="true">00:00</strong>
+                                    </div>
                                 </form>
                             </div>
                         }
@@ -202,11 +206,55 @@
 
         const button = form.querySelector('[data-practice-start-submit="true"]');
         const errorContainer = form.querySelector('[data-practice-start-error="true"]');
+        const progressContainer = form.querySelector('[data-practice-start-progress="true"]');
+        const progressMessage = form.querySelector('[data-practice-start-progress-message="true"]');
+        const progressElapsed = form.querySelector('[data-practice-start-progress-elapsed="true"]');
         const safeRequestError = 'Unable to start the practice interview. Please try again.';
+        const originalButtonText = button?.textContent || 'Start AI Interview';
+        let progressTimer = null;
+        let progressStartedAt = 0;
 
         const setBusy = (isBusy) => {
-            if (button)
+            if (button) {
                 button.disabled = !!isBusy;
+                button.textContent = isBusy ? 'Starting interview...' : originalButtonText;
+            }
+        };
+
+        const formatElapsed = (seconds) => {
+            const minutes = Math.floor(seconds / 60);
+            const remainder = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+        };
+
+        const updateProgress = () => {
+            if (!progressContainer)
+                return;
+
+            const elapsedSeconds = Math.max(0, Math.floor((Date.now() - progressStartedAt) / 1000));
+            if (progressElapsed)
+                progressElapsed.textContent = formatElapsed(elapsedSeconds);
+            if (progressMessage) {
+                progressMessage.textContent = elapsedSeconds >= 25
+                    ? 'This is taking a little longer than usual. Please keep this page open.'
+                    : elapsedSeconds >= 8
+                        ? 'Your resume is ready. We are preparing your interview questions...'
+                        : 'Uploading your resume and preparing your interview...';
+            }
+        };
+
+        const startProgress = () => {
+            progressStartedAt = Date.now();
+            progressContainer?.classList.remove('aiinterview-hidden');
+            updateProgress();
+            progressTimer = window.setInterval(updateProgress, 1000);
+        };
+
+        const stopProgress = () => {
+            if (progressTimer)
+                window.clearInterval(progressTimer);
+            progressTimer = null;
+            progressContainer?.classList.add('aiinterview-hidden');
         };
 
         const showError = (message) => {
@@ -232,6 +280,7 @@
 
             clearError();
             setBusy(true);
+            startProgress();
 
             try {
                 const response = await fetch(form.action, {
@@ -281,8 +330,10 @@
             } catch {
                 showError(safeRequestError);
             } finally {
-                if (!window.location.href.includes('/mockaiinterview/runtime'))
+                if (!window.location.href.includes('/mockaiinterview/runtime')) {
+                    stopProgress();
                     setBusy(false);
+                }
             }
         });
     })();

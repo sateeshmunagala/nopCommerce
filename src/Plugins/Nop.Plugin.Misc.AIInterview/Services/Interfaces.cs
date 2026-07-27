@@ -53,6 +53,7 @@ public interface IInterviewRuntimeService
     Task<InterviewRuntimeModel> GetRuntimeModelAsync(string token);
     Task<InterviewRuntimeModel> BeginInterviewAsync(string token, Customer customer = null);
     Task<InterviewRuntimeModel> EnsureInterviewStartedAsync(InterviewSession session, Customer customer = null);
+    Task<PrepareInterviewResponseModel> PrepareInterviewAsync(string token, Customer customer = null);
     Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(SubmitInterviewAnswerRequest request);
     Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null);
     Task<SpeechTokenResponseModel> GetSpeechTokenAsync(string token);
