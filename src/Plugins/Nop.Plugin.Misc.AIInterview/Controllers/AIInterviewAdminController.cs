@@ -212,6 +212,7 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.QuestionPlanBuilderInstructionBlock = settingsModel.QuestionPlanBuilderInstructionBlock;
             currentAiInterviewSettings.RuntimeQuestionGenerationSystemPrompt = settingsModel.RuntimeQuestionGenerationSystemPrompt;
             currentAiInterviewSettings.RuntimeScoringSystemPrompt = settingsModel.RuntimeScoringSystemPrompt;
+            currentAiInterviewSettings.RuntimeScoringRetryAddendumPrompt = settingsModel.RuntimeScoringRetryAddendumPrompt;
             currentAiInterviewSettings.FinalScoringSystemPrompt = settingsModel.FinalScoringSystemPrompt;
             currentAiInterviewSettings.StrengthsSummarySystemPrompt = settingsModel.StrengthsSummarySystemPrompt;
             currentAiInterviewSettings.StrengthsSummaryRetryStrictJsonSystemPrompt = settingsModel.StrengthsSummaryRetryStrictJsonSystemPrompt;
@@ -1690,6 +1691,7 @@ public class AIInterviewAdminController : BasePluginController
             QuestionPlanBuilderInstructionBlock = ResolvePromptSetting(aiInterviewSettings.QuestionPlanBuilderInstructionBlock, AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock),
             RuntimeQuestionGenerationSystemPrompt = ResolvePromptSetting(aiInterviewSettings.RuntimeQuestionGenerationSystemPrompt, AIInterviewDefaults.DefaultRuntimeQuestionGenerationSystemPrompt),
             RuntimeScoringSystemPrompt = ResolvePromptSetting(aiInterviewSettings.RuntimeScoringSystemPrompt, AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt),
+            RuntimeScoringRetryAddendumPrompt = ResolvePromptSetting(aiInterviewSettings.RuntimeScoringRetryAddendumPrompt, AIInterviewDefaults.DefaultRuntimeScoringRetryAddendumPrompt),
             FinalScoringSystemPrompt = ResolvePromptSetting(aiInterviewSettings.FinalScoringSystemPrompt, AIInterviewDefaults.DefaultFinalScoringSystemPrompt),
             StrengthsSummarySystemPrompt = ResolvePromptSetting(aiInterviewSettings.StrengthsSummarySystemPrompt, AIInterviewDefaults.DefaultStrengthsSummarySystemPrompt),
             StrengthsSummaryRetryStrictJsonSystemPrompt = ResolvePromptSetting(aiInterviewSettings.StrengthsSummaryRetryStrictJsonSystemPrompt, AIInterviewDefaults.DefaultStrengthsSummaryRetryStrictJsonSystemPrompt),

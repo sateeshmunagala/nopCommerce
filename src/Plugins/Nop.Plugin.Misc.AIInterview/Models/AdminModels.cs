@@ -58,6 +58,9 @@ public record AiServiceSettingsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RuntimeScoringSystemPrompt")]
     public string RuntimeScoringSystemPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt;
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RuntimeScoringRetryAddendumPrompt")]
+    public string RuntimeScoringRetryAddendumPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeScoringRetryAddendumPrompt;
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.FinalScoringSystemPrompt")]
     public string FinalScoringSystemPrompt { get; set; } = AIInterviewDefaults.DefaultFinalScoringSystemPrompt;
 

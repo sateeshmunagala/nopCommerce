@@ -138,7 +138,7 @@ public partial class InterviewAiClient : IAIInterviewClient
             var retryPrompt = string.Join(" ", new[]
             {
                 request?.Prompt?.Trim(),
-                ResolvePromptSetting(_settings?.RuntimeScoringSystemPrompt, AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt)
+                ResolvePromptSetting(_settings?.RuntimeScoringRetryAddendumPrompt, AIInterviewDefaults.DefaultRuntimeScoringRetryAddendumPrompt)
             }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
             var retriedResponse = await CallAzureAsync(request with { Prompt = retryPrompt }, "score");

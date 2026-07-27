@@ -103,6 +103,8 @@ public class AIInterviewSettings : ISettings
 
     public string RuntimeScoringSystemPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt;
 
+    public string RuntimeScoringRetryAddendumPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeScoringRetryAddendumPrompt;
+
     public string FinalScoringSystemPrompt { get; set; } = AIInterviewDefaults.DefaultFinalScoringSystemPrompt;
 
     public string StrengthsSummarySystemPrompt { get; set; } = AIInterviewDefaults.DefaultStrengthsSummarySystemPrompt;
