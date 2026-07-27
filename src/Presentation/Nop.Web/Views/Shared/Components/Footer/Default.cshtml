@@ -3,8 +3,10 @@
 @using Nop.Core
 @using Nop.Core.Domain.Tax
 @using Nop.Core.Domain.Topics
+@using Nop.Services.Customers
 
 @inject IWorkContext workContext
+@inject ICustomerService customerService
 
 <footer class="footer">
     <section class="footer-upper">
@@ -30,7 +32,11 @@
                 </span>
             }
         </div>
-        @if (!Model.HidePoweredByNopCommerce)
+        @{
+            var currentCustomer = await workContext.GetCurrentCustomerAsync();
+            var isRegisteredCustomer = await customerService.IsRegisteredAsync(currentCustomer);
+        }
+        @if (!Model.HidePoweredByNopCommerce && !isRegisteredCustomer)
         {
             <div class="footer-powered-by">
                 @*Would you like to remove the "Powered by nopCommerce" link in the bottom of the footer?

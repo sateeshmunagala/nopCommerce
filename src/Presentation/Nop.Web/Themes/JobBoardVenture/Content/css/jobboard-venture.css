@@ -2575,9 +2575,16 @@ body.jb-search-open .jb-drawer-overlay {
 }
 
 .footer-info,
-.footer-powered-by,
 .footer-meta {
     color: #8a8a8a;
+}
+
+.footer-powered-by {
+    font-size: 0.84rem;
+    font-weight: 400;
+    color: #9a9a9a;
+    margin-top: 4px;
+    line-height: 1.25;
 }
 
 .footer-info {
@@ -2588,9 +2595,20 @@ body.jb-search-open .jb-drawer-overlay {
 }
 
 .footer-tax-shipping a,
-.footer-powered-by a,
 .footer-meta a {
     color: var(--jb-accent-dark);
+}
+
+.footer-powered-by a {
+    color: #9a9a9a;
+    font-weight: 400;
+    text-decoration: none;
+}
+
+.footer-powered-by a:hover,
+.footer-powered-by a:focus-visible {
+    color: #7f7f7f;
+    text-decoration: underline;
 }
 
 .theme-selector select {
