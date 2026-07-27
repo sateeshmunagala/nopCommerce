@@ -138,7 +138,7 @@
                     </div>
                 </div>
                 <div id="screen-share-status" class="runtime-screen-share-status runtime-js-hidden" aria-live="polite"></div>
-                <div class="runtime-status runtime-js-hidden" id="recording-status"></div>
+                <div class="runtime-status runtime-js-hidden" id="recording-status" role="status" aria-live="polite"></div>
                 @if (Model.IsMockMode)
                 {
                     <div class="runtime-status message-info runtime-mock-warning">
@@ -629,6 +629,8 @@
         let speechRecognizer = null;
         let speechSdkLoading = null;
         let speechSdkLoaded = false;
+        let speechTokenCache = null;
+        let speechTokenRequestPromise = null;
         let mediaRecorder = null;
         let recordingChunks = [];
         let recordingMimeType = 'video/webm';
@@ -678,6 +680,7 @@
         let completedRedirectTimer = null;
         let completedCountdown = null;
         let completedCleanupTimer = null;
+        let reportNavigationStarted = false;
         let completionRecordingCleanupPromise = null;
         let completionLiveMediaStopPromise = null;
         let finalCompletionSpoken = false;
@@ -2013,7 +2016,7 @@
             updateAuxiliaryControlsState();
         };
 
-        const clearCompletedRedirectState = () => {
+        const clearCompletedRedirectState = (resetReportStart = false) => {
             completionWaitGeneration += 1;
             clearInterval(completedCountdown);
             clearTimeout(completedRedirectTimer);
@@ -2021,6 +2024,10 @@
             completedCountdown = null;
             completedRedirectTimer = null;
             completedCleanupTimer = null;
+            if (resetReportStart)
+                reportGenerationStartedAt = 0;
+            if (!runtimeStoppedOrCompleted)
+                reportNavigationStarted = false;
             if (completionBox) {
                 completionBox.replaceChildren();
                 completionBox.classList.add('runtime-js-hidden');
@@ -2734,13 +2741,21 @@
             if (reportUrl) {
                 actionsPanel?.classList.remove('runtime-js-hidden');
                 reportButton.style.display = 'inline-flex';
-                reportButton.onclick = () => window.location.href = reportUrl;
+                reportButton.onclick = () => navigateToReport(reportUrl);
                 return;
             }
 
             actionsPanel?.classList.add('runtime-js-hidden');
             reportButton.style.display = 'none';
             reportButton.onclick = null;
+        };
+
+        const navigateToReport = (reportUrl) => {
+            if (!reportUrl || reportNavigationStarted)
+                return;
+
+            reportNavigationStarted = true;
+            window.location.href = reportUrl;
         };
 
         const renderCompletionWaitState = (remainingSeconds, reportUrl = '') => {
@@ -2776,7 +2791,7 @@
 
         const startReportGenerationWaitingState = (reportUrl = '') => {
             clearCompletedRedirectState();
-            reportGenerationStartedAt = Date.now();
+            reportGenerationStartedAt ||= Date.now();
             const generation = completionWaitGeneration;
             let remaining = completionWaitSeconds;
             const renderRemaining = () => {
@@ -2810,7 +2825,7 @@
                 if (generation !== completionWaitGeneration || !runtimeStoppedOrCompleted)
                     return;
 
-                window.location.href = reportUrl;
+                navigateToReport(reportUrl);
             }, completedRedirectDelaySeconds * 1000);
         };
 
@@ -2854,7 +2869,7 @@
             stopInProgress = false;
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
             if (!reportUrl) {
-                clearCompletedRedirectState();
+                clearCompletedRedirectState(true);
                 setStatus('The report URL is unavailable. Please refresh your interview history.', true);
                 logActivity('Completion response missing report URL.');
                 return;
@@ -3094,6 +3109,28 @@
             }
         };
 
+        const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds) => {
+            if (!config.runtimeClientEventUrl || !stageName)
+                return;
+
+            try {
+                const payload = new URLSearchParams({
+                    token: sessionToken,
+                    eventType: 'stage-timing',
+                    requestName: stageName,
+                    elapsedMilliseconds: String(Math.max(0, Math.round(elapsedMilliseconds || 0)))
+                });
+
+                fetch(config.runtimeClientEventUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: payload
+                }).catch(error => logActivity(`Runtime client-stage log failed: ${error?.message || 'unknown'}`));
+            } catch (error) {
+                logActivity(`Runtime client-stage log skipped: ${error?.message || 'unknown'}`);
+            }
+        };
+
         if (completionUploadTimeoutMismatch) {
             reportRuntimeClientRequestFailure({
                 requestName: 'upload-recording',
@@ -3179,7 +3216,10 @@
                     return null;
 
                 logActivity('Runtime preparation started.');
+                preloadSpeechResources();
+                const prepareStartedAt = performance.now();
                 const result = await postForm(config.prepareInterviewUrl, new URLSearchParams({ token: sessionToken }));
+                reportRuntimeClientStageTiming('prepare-response', performance.now() - prepareStartedAt);
                 const ready = !!getValue(result, 'ready', 'Ready');
                 const expected = getValue(result, 'expectedQuestionCount', 'ExpectedQuestionCount');
                 const persisted = getValue(result, 'persistedQuestionCount', 'PersistedQuestionCount');
@@ -3641,19 +3681,54 @@
             if (!await ensureRuntimeTokenFresh())
                 return null;
 
-            const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
-            if (runtimeStoppedOrCompleted)
+            if (speechTokenCache?.token && speechTokenCache.expiresAt > Date.now())
+                return { success: true, token: speechTokenCache.token, region: speechTokenCache.region };
+
+            if (speechTokenRequestPromise)
+                return speechTokenRequestPromise;
+
+            speechTokenRequestPromise = (async () => {
+                const tokenStartedAt = performance.now();
+                const tokenResult = await postForm(config.speechTokenUrl, new URLSearchParams({ token: sessionToken }));
+                if (runtimeStoppedOrCompleted)
+                    return null;
+
+                const speechToken = getValue(tokenResult, 'token', 'Token');
+                const region = getValue(tokenResult, 'region', 'Region');
+                if (!tokenResult || !isSuccess(tokenResult) || !speechToken) {
+                    const message = getRuntimeMessage(tokenResult, voiceUnavailableMessage);
+                    speechTokenCache = null;
+                    await disableSpeechForRuntime(message);
+                    return { success: false, message: message };
+                }
+
+                const expiresInSeconds = Math.max(60, Number(getValue(tokenResult, 'expiresInSeconds', 'ExpiresInSeconds')) || 600);
+                speechTokenCache = {
+                    token: speechToken,
+                    region,
+                    expiresAt: Date.now() + Math.max(30000, (expiresInSeconds - 60) * 1000)
+                };
+                reportRuntimeClientStageTiming('speech-token-ready', performance.now() - tokenStartedAt);
+                return { success: true, token: speechToken, region: region };
+            })().finally(() => {
+                speechTokenRequestPromise = null;
+            });
+
+            return speechTokenRequestPromise;
+        };
+
+        const preloadSpeechResources = () => {
+            if (!config.speechAvailable || speechUnavailable || runtimeStoppedOrCompleted)
                 return null;
 
-            const speechToken = getValue(tokenResult, 'token', 'Token');
-            const region = getValue(tokenResult, 'region', 'Region');
-            if (!tokenResult || !isSuccess(tokenResult) || !speechToken) {
-                const message = getRuntimeMessage(tokenResult, voiceUnavailableMessage);
-                await disableSpeechForRuntime(message);
-                return { success: false, message: message };
-            }
+            const preload = ensureSpeechSdk()
+                .then(loaded => loaded ? requestSpeechToken() : null)
+                .catch(error => {
+                    logActivity(`Speech preload failed: ${error?.message || 'unknown'}`);
+                    return null;
+                });
 
-            return { success: true, token: speechToken, region: region };
+            return preload;
         };
 
         const startSpeechRecognition = async () => {
@@ -3899,6 +3974,8 @@
             if (!(await ensureSpeechSdk()))
                 return;
 
+            const ttsStartedAt = performance.now();
+            reportRuntimeClientStageTiming('tts-started', 0);
             if (purpose === 'question')
                 logActivity('Speaking question.');
             else if (purpose === 'reminder')
@@ -3947,6 +4024,7 @@
                     logActivity('Reminder spoken.');
                 else if (purpose === 'completion')
                     logActivity('Final completion message spoken.');
+                reportRuntimeClientStageTiming('tts-completed', performance.now() - ttsStartedAt);
                 if (purpose === 'repeat')
                     setHeaderStatus('Question replayed in voice.', false);
                 const activeTurn = getActiveTurn();
@@ -4150,6 +4228,7 @@
             const submitStartedAt = performance.now();
             let slowSubmitTimer = null;
             let slowerSubmitTimer = null;
+            let nextTurnWaitTimer = null;
             logActivity('Submitting answer...');
             isSpeakingOrSubmitting = true;
             isSubmittingAnswer = true;
@@ -4162,13 +4241,25 @@
                 startReportGenerationWaitingState();
             else
                 setHeaderStatus(auto ? 'Auto submitting answer...' : 'Submitting answer...', false);
+            const setNextTurnWaitStatus = (message = 'Preparing your next question...') => {
+                const elapsedSeconds = Math.max(0, Math.floor((performance.now() - submitStartedAt) / 1000));
+                setHeaderStatus(`${message} Elapsed ${formatElapsedTime(elapsedSeconds)}`, false);
+            };
             slowSubmitTimer = setTimeout(() => {
-                setHeaderStatus(willCompleteOnSubmit ? reportGenerationMessage : 'Saving your answer and loading the next question...', false);
+                if (willCompleteOnSubmit) {
+                    setHeaderStatus(reportGenerationMessage, false);
+                } else {
+                    setNextTurnWaitStatus();
+                    nextTurnWaitTimer = setInterval(() => setNextTurnWaitStatus(), 1000);
+                }
                 logActivity('Answer submission is still pending.');
             }, slowSubmitStatusDelayMs);
             slowerSubmitTimer = setTimeout(() => {
-                if (!willCompleteOnSubmit)
-                    setHeaderStatus('Still preparing the next question. Please keep this page open.', false);
+                if (!willCompleteOnSubmit) {
+                    clearInterval(nextTurnWaitTimer);
+                    nextTurnWaitTimer = setInterval(() => setNextTurnWaitStatus('Still preparing the next question. Please keep this page open.'), 1000);
+                    setNextTurnWaitStatus('Still preparing the next question. Please keep this page open.');
+                }
             }, 8000);
             submitBtn.disabled = true;
             submitBtn.classList.add('is-loading');
@@ -4198,6 +4289,7 @@
             const submitElapsedMs = Math.round(performance.now() - submitStartedAt);
             clearTimeout(slowSubmitTimer);
             clearTimeout(slowerSubmitTimer);
+            clearInterval(nextTurnWaitTimer);
             logActivity(`Answer submission finished. elapsedMs=${submitElapsedMs}`);
 
             submitBtn.classList.remove('is-loading');
@@ -4414,8 +4506,11 @@
                 return;
             }
 
+            preloadSpeechResources();
+            const beginStartedAt = performance.now();
             const beginResult = await postForm(config.beginInterviewUrl, new URLSearchParams({ token: sessionToken }));
             logActivity('Begin response received.');
+            reportRuntimeClientStageTiming('begin-response', performance.now() - beginStartedAt);
             if (!isSuccess(beginResult)) {
                 stopScreenShare();
                 interviewStarted = false;
@@ -4463,14 +4558,17 @@
             updateStartButtonState();
             if (questionBox.textContent) logActivity('Question shown: ' + questionBox.textContent);
             logActivity('First question rendered.');
+            reportRuntimeClientStageTiming('first-question-rendered', performance.now() - beginStartedAt);
             updateSubmitAvailability();
             updateAuxiliaryControlsState();
             const recordingStartPromise = (async () => {
+                const recordingStartedAt = performance.now();
                 try {
                     if (config.recordingAvailable && recordingEnabled)
                         await requestRecordingMediaForStart();
                     await syncRecording();
                     logActivity('Recording started.');
+                    reportRuntimeClientStageTiming('recording-started', performance.now() - recordingStartedAt);
                 } catch (error) {
                     logActivity(`Recording start failed independently: ${error?.message || 'unknown'}`);
                     setRecordingStatus('Recording could not start. You can continue with typed answers.', true, true);

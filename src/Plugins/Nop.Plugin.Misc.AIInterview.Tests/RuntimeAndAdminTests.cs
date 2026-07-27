@@ -141,6 +141,63 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_Prepare_ValidOwner_InvokesPreparation()
+    {
+        var customer = new Customer { Id = 7, Email = "owner@example.com" };
+        var session = new InterviewSession
+        {
+            Id = 70,
+            CustomerId = 7,
+            ProductId = 12,
+            Token = "owner-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(20)
+        };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("owner-token")).ReturnsAsync(session);
+        _interviewRuntimeService.Setup(x => x.PrepareInterviewAsync("owner-token", customer))
+            .ReturnsAsync(new PrepareInterviewResponseModel
+            {
+                Success = true,
+                Ready = true,
+                Message = "Ready",
+                ExpectedQuestionCount = 5,
+                PersistedQuestionCount = 5
+            });
+        var controller = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, _interviewRuntimeService.Object, null, _nopLogger.Object);
+
+        var result = await controller.Prepare("owner-token");
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        Assert.That(GetJsonValue<bool>((JsonResult)result, "success"), Is.True);
+        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync("owner-token", customer), Times.Once);
+    }
+
+    [TestCase(true, "other-token")]
+    [TestCase(false, "guest-token")]
+    [TestCase(true, "invalid-token")]
+    [TestCase(true, "")]
+    public async Task Runtime_Prepare_NonOwnerOrInvalid_DoesNotInvokePreparation(bool registeredCustomer, string token)
+    {
+        var customer = registeredCustomer ? new Customer { Id = 8, Email = "caller@example.com" } : null;
+        var session = token switch
+        {
+            "other-token" => new InterviewSession { Id = 71, CustomerId = 7, Token = token, IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddMinutes(20) },
+            "guest-token" => new InterviewSession { Id = 72, CustomerId = 8, Token = token, IsActive = true, TokenExpiryUtc = DateTime.UtcNow.AddMinutes(20) },
+            _ => null
+        };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(token)).ReturnsAsync(session);
+        var controller = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, _interviewRuntimeService.Object, null, _nopLogger.Object);
+
+        var result = await controller.Prepare(token);
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        Assert.That(GetJsonValue<bool>((JsonResult)result, "success"), Is.False);
+        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync(It.IsAny<string>(), It.IsAny<Customer>()), Times.Never);
+    }
+
+    [Test]
     public async Task Runtime_RefreshToken_ExpiredActiveSession_RenewsAndUpdatesToken()
     {
         var session = new InterviewSession
@@ -591,7 +648,7 @@ public class RuntimeAndAdminTests
         _aiInterviewSettings.Prompt = "keep";
         _aiInterviewSettings.ServiceSettings = "keep";
 
-        var model = new ConfigurationModel
+        var model = new AIInterviewConfigureModel
         {
             Enabled = false
         };
@@ -1523,8 +1580,14 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("Final recording upload before completion started."));
         Assert.That(runtimeViewText, Does.Contain("finalRecordingUploadTimeoutMs"));
         Assert.That(runtimeViewText, Does.Contain("finalizeRecordingBeforeCompletion()"));
-        Assert.That(runtimeViewText, Does.Contain("const startCompletedRedirectCountdown = (reportUrl) =>"));
-        Assert.That(runtimeViewText, Does.Contain(".finally(() => startCompletedRedirectCountdown(reportUrl));"));
+        Assert.That(runtimeViewText, Does.Contain("const startReportGenerationTimer = (reportUrl) =>"));
+        Assert.That(runtimeViewText, Does.Contain(".finally(() => startReportGenerationTimer(reportUrl));"));
+        Assert.That(runtimeViewText, Does.Contain("const navigateToReport = (reportUrl) =>"));
+        Assert.That(runtimeViewText, Does.Contain("let reportNavigationStarted = false;"));
+        Assert.That(runtimeViewText, Does.Contain("let speechTokenCache = null;"));
+        Assert.That(runtimeViewText, Does.Contain("let speechTokenRequestPromise = null;"));
+        Assert.That(runtimeViewText, Does.Contain("const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds) =>"));
+        Assert.That(runtimeViewText, Does.Contain("Preparing your next question..."));
         Assert.That(runtimeViewText, Does.Not.Contain("clearAllRuntimeTimers();\r\n            let originalText = ''").And.Not.Contain("clearAllRuntimeTimers();\n            let originalText = ''"));
         Assert.That(runtimeViewText, Does.Contain("clearAnswerTimers();"));
         Assert.That(runtimeViewText, Does.Contain("if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)\r\n                    resetTimers();").Or.Contain("if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)\n                    resetTimers();"));
@@ -1655,7 +1718,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("runtime-back"));
         Assert.That(runtimeViewText, Does.Contain("id=\"runtime-message\" class=\"runtime-message is-info runtime-js-hidden\""));
         Assert.That(runtimeViewText, Does.Contain("id=\"runtime-status\" class=\"runtime-status runtime-js-hidden\""));
-        Assert.That(runtimeViewText, Does.Contain("id=\"recording-status\""));
+        Assert.That(runtimeViewText, Does.Contain("id=\"recording-status\" role=\"status\" aria-live=\"polite\""));
     }
 
     [Test]
@@ -2897,7 +2960,7 @@ public class RuntimeAndAdminTests
     [Test]
     public void AdminController_Has_ConfigureAction()
     {
-        var method = typeof(MockAiInterviewAdminController).GetMethod("Configure", new[] { typeof(ConfigurationModel) });
+        var method = typeof(MockAiInterviewAdminController).GetMethod("Configure", new[] { typeof(AIInterviewConfigureModel) });
         Assert.That(method, Is.Not.Null);
     }
 

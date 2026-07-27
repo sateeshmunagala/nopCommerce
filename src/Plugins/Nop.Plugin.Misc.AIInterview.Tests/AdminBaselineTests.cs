@@ -233,7 +233,7 @@ public class AdminBaselineTests
         var parent = root.ChildNodes.FirstOrDefault(item => item.SystemName == AIInterviewDefaults.AdminMenuSystemName);
         Assert.That(parent, Is.Not.Null);
         Assert.That(string.IsNullOrWhiteSpace(parent.Url), Is.True);
-        Assert.That(parent.ChildNodes.Count, Is.EqualTo(7));
+        Assert.That(parent.ChildNodes.Count, Is.EqualTo(8));
         Assert.That(parent.ChildNodes.Select(x => x.SystemName), Is.EquivalentTo(new[]
         {
             AIInterviewDefaults.AdminConfigureMenuSystemName,
@@ -242,14 +242,15 @@ public class AdminBaselineTests
             AIInterviewDefaults.AdminVendorCreditsMenuSystemName,
             AIInterviewDefaults.AdminApplicantCreditsMenuSystemName,
             AIInterviewDefaults.AdminScoreboardMenuSystemName,
-            AIInterviewDefaults.AdminMockPracticeSessionsMenuSystemName
+            AIInterviewDefaults.AdminMockPracticeSessionsMenuSystemName,
+            AIInterviewDefaults.AdminFeedbackReportsMenuSystemName
         }));
     }
 
     [Test]
     public async Task Configure_Saves_Enabled_Only()
     {
-        var model = new ConfigurationModel { Enabled = false };
+        var model = new AIInterviewConfigureModel { Enabled = false };
 
         await _legacyController.Configure(model);
 
@@ -749,7 +750,7 @@ public class AdminBaselineTests
         var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "AiService.cshtml"));
 
         Assert.That(text, Does.Contain("asp-route=\"@AIInterviewDefaults.AdminAiServiceRouteName\""));
-        Assert.That(text, Does.Contain("Development mock mode is enabled. Azure OpenAI is bypassed."));
+        Assert.That(text, Does.Contain("Development AI mode is enabled. Azure OpenAI is bypassed."));
     }
 
     [Test]
@@ -763,7 +764,7 @@ public class AdminBaselineTests
     [Test]
     public async Task Configure_Post_Returns_Redirect_To_Configuration_Route()
     {
-        var result = await _legacyController.Configure(new ConfigurationModel { Enabled = true });
+        var result = await _legacyController.Configure(new AIInterviewConfigureModel { Enabled = true });
 
         Assert.That(result, Is.InstanceOf<RedirectToRouteResult>());
         Assert.That(((RedirectToRouteResult)result).RouteName, Is.EqualTo(AIInterviewDefaults.ConfigurationRouteName));

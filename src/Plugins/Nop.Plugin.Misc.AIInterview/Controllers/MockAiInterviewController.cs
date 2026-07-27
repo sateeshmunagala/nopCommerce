@@ -241,6 +241,14 @@ public class MockAiInterviewController : BasePluginController
         {
             "submit-answer" => "submit-answer",
             "begin" => "begin",
+            "prepare" => "prepare",
+            "prepare-response" => "prepare-response",
+            "begin-response" => "begin-response",
+            "first-question-rendered" => "first-question-rendered",
+            "speech-token-ready" => "speech-token-ready",
+            "tts-started" => "tts-started",
+            "tts-completed" => "tts-completed",
+            "recording-started" => "recording-started",
             "speech-token" => "speech-token",
             "speech-usage" => "speech-usage",
             "upload-recording" => "upload-recording",
@@ -1323,11 +1331,18 @@ public class MockAiInterviewController : BasePluginController
         if (_interviewRuntimeService == null)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unavailable", "Interview preparation is unavailable.");
 
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null || !await _customerService.IsRegisteredAsync(customer))
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request.", 401);
+
+        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
+        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue || session.CustomerId != customer.Id)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+
         var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
         if (tokenRenewal.Session != null && tokenRenewal.Renewed)
             token = tokenRenewal.Session.Token;
 
-        var customer = await _workContext.GetCurrentCustomerAsync();
         var result = await _interviewRuntimeService.PrepareInterviewAsync(token, customer);
         if (result == null)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
@@ -1465,6 +1480,7 @@ public class MockAiInterviewController : BasePluginController
         var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
         var session = tokenRenewal.Session;
         var safeRequestName = NormalizeRuntimeClientRequestName(requestName);
+        var safeEventType = (eventType ?? string.Empty).Trim().ToLowerInvariant();
         var safeFailureKind = NormalizeRuntimeClientFailureKind(failureKind);
         var safeMessage = BuildRuntimeClientFailureMessage(safeFailureKind, statusCode, safeRequestName);
 
@@ -1479,6 +1495,25 @@ public class MockAiInterviewController : BasePluginController
                 await ResolveLogCustomerAsync());
 
             return Json(new { success = false, message = "Runtime client event ignored for invalid session." });
+        }
+
+        if (string.Equals(safeEventType, "stage-timing", StringComparison.OrdinalIgnoreCase))
+        {
+            var elapsed = Math.Max(0, elapsedMilliseconds ?? 0);
+            var stageComment = $"SessionId={session.Id}; CustomerId={session.CustomerId}; ProductId={session.ProductId}; Stage={safeRequestName}; ElapsedMs={elapsed}; Success=true";
+            await LogRuntimeActivityAsync(session, "AIInterview.Runtime.ClientStageTiming", stageComment);
+
+            if (tokenRenewal.Renewed)
+            {
+                return Json(new
+                {
+                    success = true,
+                    newToken = tokenRenewal.Session.Token,
+                    tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
+                });
+            }
+
+            return Json(new { success = true });
         }
 
         var comment = BuildRuntimeClientFailureActivityComment(session, safeRequestName, statusCode, safeMessage, safeFailureKind, elapsedMilliseconds);

@@ -1505,8 +1505,41 @@ internal static class InterviewReportSummaryHelper
 
 public class InterviewRuntimeService : IInterviewRuntimeService
 {
-    private static readonly ConcurrentDictionary<int, SemaphoreSlim> PreparationLocks = new();
-    private static readonly ConcurrentDictionary<int, SemaphoreSlim> FirstTurnLocks = new();
+    private static readonly ConcurrentDictionary<int, SessionMutationLock> SessionMutationLocks = new();
+
+    private sealed class SessionMutationLock
+    {
+        public SemaphoreSlim Semaphore { get; } = new(1, 1);
+        public int ReferenceCount { get; set; }
+    }
+
+    private sealed class SessionMutationLockLease : IDisposable
+    {
+        private readonly int _sessionId;
+        private readonly SessionMutationLock _sessionLock;
+        private bool _disposed;
+
+        public SessionMutationLockLease(int sessionId, SessionMutationLock sessionLock)
+        {
+            _sessionId = sessionId;
+            _sessionLock = sessionLock;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            _sessionLock.Semaphore.Release();
+            lock (_sessionLock)
+            {
+                _sessionLock.ReferenceCount--;
+                if (_sessionLock.ReferenceCount == 0)
+                    SessionMutationLocks.TryRemove(new KeyValuePair<int, SessionMutationLock>(_sessionId, _sessionLock));
+            }
+        }
+    }
 
     private static readonly string[] PracticeSkillKeywords =
     [
@@ -1543,6 +1576,32 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         "(\\b(?<name>key|token|secret|signature|password|authorization)\\b\\s*[=:]\\s*)(?<quote>[\"']?)(?<value>[^\"'\\s;,&]+)(?<quote2>[\"']?)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex WhitespaceCollapseRegex = new(@"\s+", RegexOptions.Compiled);
+
+    private static async Task<IDisposable> AcquireSessionMutationLockAsync(int sessionId)
+    {
+        while (true)
+        {
+            var sessionLock = SessionMutationLocks.GetOrAdd(sessionId, _ => new SessionMutationLock());
+            var acquiredReference = false;
+            lock (sessionLock)
+            {
+                if (SessionMutationLocks.TryGetValue(sessionId, out var current) && ReferenceEquals(current, sessionLock))
+                {
+                    sessionLock.ReferenceCount++;
+                    acquiredReference = true;
+                }
+            }
+
+            if (acquiredReference)
+                return await WaitForSessionMutationLockAsync(sessionId, sessionLock);
+        }
+    }
+
+    private static async Task<IDisposable> WaitForSessionMutationLockAsync(int sessionId, SessionMutationLock sessionLock)
+    {
+        await sessionLock.Semaphore.WaitAsync();
+        return new SessionMutationLockLease(sessionId, sessionLock);
+    }
 
     private readonly IInterviewSessionService _sessionService;
     private readonly IInterviewTurnService _turnService;
@@ -2129,7 +2188,24 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (session == null)
             return null;
 
-        var ensuredTurns = await EnsureFirstQuestionTurnAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer);
+        var initialTurns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
+        var hasFirstTurn = (initialTurns ?? new List<InterviewTurn>()).Any(turn => turn.SequenceNumber == 1);
+        if (!hasFirstTurn)
+        {
+            using var sessionLock = await AcquireSessionMutationLockAsync(session.Id);
+            session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? session;
+            if (!IsSessionUsable(session, DateTime.UtcNow))
+                return null;
+
+            return await EnsureInterviewStartedCoreAsync(session, customer, sessionLockHeld: true);
+        }
+
+        return await EnsureInterviewStartedCoreAsync(session, customer);
+    }
+
+    private async Task<InterviewRuntimeModel> EnsureInterviewStartedCoreAsync(InterviewSession session, Customer customer = null, bool sessionLockHeld = false)
+    {
+        var ensuredTurns = await EnsureFirstQuestionTurnAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer, sessionLockHeld);
         var turns = ensuredTurns.Turns.ToList();
         if (!turns.Any())
         {
@@ -2170,11 +2246,37 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (!IsSessionUsable(session, DateTime.UtcNow))
             return null;
 
+        var firstTurnResult = await EnsureFirstQuestionTurnAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer);
+        if (!string.IsNullOrWhiteSpace(firstTurnResult.FailureReason))
+            return null;
+
         var maxQuestions = GetMaxQuestions(session);
-        var prepareLock = PreparationLocks.GetOrAdd(session.Id, _ => new SemaphoreSlim(1, 1));
-        await prepareLock.WaitAsync();
-        try
+        using (await AcquireSessionMutationLockAsync(session.Id))
         {
+            session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? await _sessionService.GetSessionByTokenAsync(token);
+            if (!IsSessionUsable(session, DateTime.UtcNow))
+                return null;
+
+            maxQuestions = GetMaxQuestions(session);
+            var readyTurns = (await _turnService.GetTurnsBySessionIdAsync(session.Id))
+                .OrderBy(turn => turn.SequenceNumber)
+                .ThenBy(turn => turn.Id)
+                .ToList();
+            var readyPersistedCount = readyTurns.Select(turn => turn.SequenceNumber).Distinct().Count(sequenceNumber => sequenceNumber >= 1 && sequenceNumber <= maxQuestions);
+            if (Enumerable.Range(1, maxQuestions).All(sequenceNumber => readyTurns.Any(turn => turn.SequenceNumber == sequenceNumber)))
+            {
+                await LogPreparationStageAsync(session, "total-preparation", totalStopwatch.ElapsedMilliseconds, true);
+                return new PrepareInterviewResponseModel
+                {
+                    Success = true,
+                    Ready = true,
+                    Message = "Interview questions are ready.",
+                    ElapsedMilliseconds = totalStopwatch.ElapsedMilliseconds,
+                    ExpectedQuestionCount = maxQuestions,
+                    PersistedQuestionCount = readyPersistedCount
+                };
+            }
+
             var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
             var profileStopwatch = Stopwatch.StartNew();
             var profileSuccess = true;
@@ -2198,7 +2300,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
             var planStopwatch = Stopwatch.StartNew();
             var existingTurns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
-            var firstTurnResult = await EnsureFirstQuestionTurnAsync(session, existingTurns, customer);
+            firstTurnResult = await EnsureFirstQuestionTurnAsync(session, existingTurns, customer, sessionLockHeld: true);
             var planResult = await EnsureQuestionPlanAsync(session, firstTurnResult.Turns, customer, skipAnsweredPlanReset: true);
             var persistedTurns = (await _turnService.GetTurnsBySessionIdAsync(session.Id))
                 .OrderBy(turn => turn.SequenceNumber)
@@ -2219,12 +2321,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 ExpectedQuestionCount = maxQuestions,
                 PersistedQuestionCount = persistedCount
             };
-        }
-        finally
-        {
-            prepareLock.Release();
-            if (prepareLock.CurrentCount == 1)
-                PreparationLocks.TryRemove(new KeyValuePair<int, SemaphoreSlim>(session.Id, prepareLock));
         }
     }
 
@@ -2263,6 +2359,21 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             {
                 Success = false,
                 Message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer", "Answer cannot be empty.")
+            };
+        }
+
+        using (await AcquireSessionMutationLockAsync(session.Id))
+        {
+        session = await _sessionService.GetSessionByTokenAsync(token);
+        if (session?.CompletedOnUtc.HasValue == true)
+            return await BuildCompletedSubmitResponseAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), answer);
+
+        if (!IsSessionUsable(session, DateTime.UtcNow))
+        {
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = false,
+                Message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.")
             };
         }
 
@@ -2416,7 +2527,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             {
                 fallbackAttempted = true;
                 var existingTurnIds = turns.Where(turn => turn.Id > 0).Select(turn => turn.Id).ToHashSet();
-                await PrepareInterviewAsync(session.Token, null);
+                await EnsureQuestionPlanAsync(session, turns, null, skipAnsweredPlanReset: true);
                 turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
                 nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
                 fallbackGeneratedTurn = nextTurn?.Id > 0 && !existingTurnIds.Contains(nextTurn.Id);
@@ -2480,6 +2591,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Turn = MapTurn(currentTurn),
             Turns = completion.Turns
         };
+        }
     }
 
     protected virtual async Task<SubmitInterviewAnswerResponse> SubmitAnswerWithoutImmediateScoringAsync(
@@ -2520,7 +2632,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             {
                 fallbackAttempted = true;
                 var existingTurnIds = turns.Where(turn => turn.Id > 0).Select(turn => turn.Id).ToHashSet();
-                await PrepareInterviewAsync(session.Token, null);
+                await EnsureQuestionPlanAsync(session, turns, null, skipAnsweredPlanReset: true);
                 turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id)).ToList();
                 nextTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(turns, maxQuestions);
                 fallbackGeneratedTurn = nextTurn?.Id > 0 && !existingTurnIds.Contains(nextTurn.Id);
@@ -2601,6 +2713,17 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
+        using var sessionLock = await AcquireSessionMutationLockAsync(session.Id);
+        session = await _sessionService.GetSessionByTokenAsync(token) ?? session;
+        if (session == null || (!IsSessionUsable(session, DateTime.UtcNow) && !session.CompletedOnUtc.HasValue))
+        {
+            return new CompleteInterviewResponse
+            {
+                Success = false,
+                Message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.")
+            };
+        }
+
         var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
         if (turns == null || !turns.Any())
         {
@@ -2612,6 +2735,27 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
 
         return await CompleteInterviewInternalAsync(session, turns, reason);
+    }
+
+    private async Task<SubmitInterviewAnswerResponse> BuildCompletedSubmitResponseAsync(InterviewSession session, IList<InterviewTurn> turns, string fallbackFeedback = null)
+    {
+        var completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns ?? new List<InterviewTurn>(), GetMaxQuestions(session)).ToList();
+        return new SubmitInterviewAnswerResponse
+        {
+            Success = true,
+            IsTerminated = true,
+            Score = session.Score,
+            Feedback = completedTurns.LastOrDefault()?.Feedback ?? fallbackFeedback ?? string.Empty,
+            Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
+            Completion = session.ReportData,
+            ReportUrl = string.Empty,
+            Interrupted = false,
+            Question = string.Empty,
+            Turn = MapTurn(completedTurns.LastOrDefault()),
+            Turns = MapTurns(completedTurns),
+            ReportGenerationInProgress = false,
+            EstimatedWaitSeconds = 0
+        };
     }
 
     public async Task<SpeechTokenResponseModel> GetSpeechTokenAsync(string token)
@@ -3038,36 +3182,46 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         };
     }
 
-    protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> EnsureFirstQuestionTurnAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null)
+    protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> EnsureFirstQuestionTurnAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null, bool sessionLockHeld = false)
     {
         turns ??= new List<InterviewTurn>();
         var maxQuestions = GetMaxQuestions(session);
-        var firstTurnLock = FirstTurnLocks.GetOrAdd(session.Id, _ => new SemaphoreSlim(1, 1));
-        await firstTurnLock.WaitAsync();
-        try
-        {
-            var orderedTurns = (await _turnService.GetTurnsBySessionIdAsync(session.Id) ?? turns)
-                .OrderBy(turn => turn.SequenceNumber)
-                .ThenBy(turn => turn.Id)
-                .ToList();
-            if (orderedTurns.Any(turn => turn.SequenceNumber == 1))
-                return (orderedTurns, null);
+        var orderedTurns = (turns ?? new List<InterviewTurn>())
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+        if (orderedTurns.Any(turn => turn.SequenceNumber == 1))
+            return (orderedTurns, null);
 
-            var firstTurn = BuildIntroductionProjectTurn(session, customer);
-            var inserted = await _turnService.InsertInterviewTurnAsync(firstTurn);
-            orderedTurns.Add(inserted);
-            return (orderedTurns
+        if (!sessionLockHeld)
+        {
+            using var sessionLock = await AcquireSessionMutationLockAsync(session.Id);
+            return await EnsureFirstQuestionTurnAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer, sessionLockHeld: true);
+        }
+
+        orderedTurns = (await _turnService.GetTurnsBySessionIdAsync(session.Id) ?? orderedTurns)
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+        if (orderedTurns.Any(turn => turn.SequenceNumber == 1))
+            return (orderedTurns, null);
+
+        var firstTurn = BuildIntroductionProjectTurn(session, customer);
+        var latestTurns = await _turnService.GetTurnsBySessionIdAsync(session.Id) ?? orderedTurns;
+        if (latestTurns.Any(turn => turn.SequenceNumber == 1))
+            return (latestTurns
                 .Where(turn => turn.SequenceNumber <= maxQuestions)
                 .OrderBy(turn => turn.SequenceNumber)
                 .ThenBy(turn => turn.Id)
                 .ToList(), null);
-        }
-        finally
-        {
-            firstTurnLock.Release();
-            if (firstTurnLock.CurrentCount == 1)
-                FirstTurnLocks.TryRemove(new KeyValuePair<int, SemaphoreSlim>(session.Id, firstTurnLock));
-        }
+
+        var inserted = await _turnService.InsertInterviewTurnAsync(firstTurn);
+        orderedTurns.Add(inserted);
+        return (orderedTurns
+            .Where(turn => turn.SequenceNumber <= maxQuestions)
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList(), null);
     }
 
     protected virtual async Task LogPreparationStageAsync(InterviewSession session, string stage, long elapsedMilliseconds, bool success, string failureReason = null)
@@ -3121,8 +3275,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         existingSequenceNumbers = new HashSet<int>(orderedTurns.Select(turn => turn.SequenceNumber));
         foreach (var turn in generatedPlan.Turns.Where(turn => !existingSequenceNumbers.Contains(turn.SequenceNumber)))
         {
+            var latestSequenceNumbers = new HashSet<int>((await _turnService.GetTurnsBySessionIdAsync(session.Id) ?? orderedTurns).Select(existingTurn => existingTurn.SequenceNumber));
+            if (latestSequenceNumbers.Contains(turn.SequenceNumber))
+                continue;
+
             var inserted = await _turnService.InsertInterviewTurnAsync(turn);
             orderedTurns.Add(inserted);
+            existingSequenceNumbers.Add(inserted.SequenceNumber);
         }
 
         return (orderedTurns
@@ -3477,6 +3636,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var completionStopwatch = Stopwatch.StartNew();
         _logger?.LogInformation("Stop called with session id {SessionId}", session.Id);
+        session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? session;
+        turns = (await _turnService.GetTurnsBySessionIdAsync(session.Id) ?? turns)
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
 
         if (session.CompletedOnUtc.HasValue || !session.IsActive)
         {
