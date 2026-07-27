@@ -14,6 +14,8 @@ public partial class InterviewAiClient
     private const int ResumeProfileRetryMaxCompletionTokens = 3600;
     private const int ResumeProfileMaxResumeTextLength = 8000;
     private const int ResumeProfileRetryMaxResumeTextLength = 5000;
+    private const int QuestionPlanMaxCompletionTokens = 2200;
+    private const int QuestionPlanRetryMaxCompletionTokens = 3000;
     private const int QuestionPlanMaxQuestionLength = 170;
     private const string ResumeProfileContractFailureMarker = "FailureKind=azure-openai-contract-failure";
 
@@ -110,13 +112,16 @@ public partial class InterviewAiClient
         if (_mockSettings?.UseMockResponses != false)
             return BuildMockQuestionPlan(request);
 
+        var systemPrompt = ResolvePromptSetting(_settings?.QuestionPlanSystemPrompt, AIInterviewDefaults.DefaultQuestionPlanSystemPrompt);
+        var prompt = BuildQuestionPlanPrompt(
+            request,
+            ResolvePromptSetting(_settings?.QuestionPlanBuilderInstructionBlock, AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock));
         var result = await CallAzureContentAsync(
             "question-plan",
-            ResolvePromptSetting(_settings?.QuestionPlanSystemPrompt, AIInterviewDefaults.DefaultQuestionPlanSystemPrompt),
-            BuildQuestionPlanPrompt(
-                request,
-                ResolvePromptSetting(_settings?.QuestionPlanBuilderInstructionBlock, AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock)),
-            2200);
+            systemPrompt,
+            prompt,
+            QuestionPlanMaxCompletionTokens,
+            allowEmptySuccessfulContent: true);
 
         if (!result.Success)
         {
@@ -132,13 +137,43 @@ public partial class InterviewAiClient
         if (parsed != null)
             return parsed with { RawJson = TruncateSafe(result.Content, 4000), UsageInfo = result.UsageInfo };
 
-        var contractReason = BuildStructuredResponseFailureLog(result.Content, "question-plan");
+        if (ShouldRetryTruncatedEmptyQuestionPlan(result))
+        {
+            await LogAiClientIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview question plan truncation retry initiated",
+                BuildQuestionPlanLengthRetryLog(result, "retry initiated due to truncation", QuestionPlanMaxCompletionTokens, QuestionPlanRetryMaxCompletionTokens));
+
+            result = await CallAzureContentAsync(
+                "question-plan",
+                systemPrompt,
+                prompt,
+                QuestionPlanRetryMaxCompletionTokens,
+                allowEmptySuccessfulContent: true);
+
+            var retryParsed = result.Success ? ParseQuestionPlanResponse(result.Content, request.QuestionCount) : null;
+            if (retryParsed?.Success == true)
+            {
+                await LogAiClientIssueAsync(
+                    NopLogLevel.Information,
+                    "AI Interview question plan truncation retry recovered",
+                    BuildQuestionPlanLengthRetryLog(result, "retry recovered", QuestionPlanMaxCompletionTokens, QuestionPlanRetryMaxCompletionTokens));
+                return retryParsed with { RawJson = TruncateSafe(result.Content, 4000), UsageInfo = result.UsageInfo };
+            }
+
+            await LogAiClientIssueAsync(
+                NopLogLevel.Warning,
+                "AI Interview question plan truncation retry exhausted",
+                BuildQuestionPlanLengthRetryLog(result, "retry exhausted", QuestionPlanMaxCompletionTokens, QuestionPlanRetryMaxCompletionTokens));
+        }
+
+        var contractReason = BuildQuestionPlanContractFailureLog(result);
         _logger?.LogWarning("Azure OpenAI question plan call failed contract validation.");
         await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview question plan contract failure", contractReason);
         return new AIInterviewQuestionPlanResponse
         {
             Success = false,
-            ErrorMessage = "Question plan generation is unavailable.",
+            ErrorMessage = $"Question plan generation is unavailable. {BuildQuestionPlanFailureReason(result)}.",
             UsageInfo = result.UsageInfo
         };
     }
@@ -274,18 +309,18 @@ public partial class InterviewAiClient
                 return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", null);
             }
 
-            var usageInfo = result.UsageInfo;
+            var usageInfo = result.UsageInfo ?? BuildAzureUsageInfoFromAdapterResult(result);
             if (string.IsNullOrWhiteSpace(result.Content))
             {
                 if (allowEmptySuccessfulContent && result.IsLengthTruncated)
-                    return new AzureContentCallResult(true, string.Empty, string.Empty, usageInfo, result.IsLengthTruncated, result.FinishReason);
+                    return new AzureContentCallResult(true, string.Empty, string.Empty, usageInfo, result.IsLengthTruncated, result.FinishReason, result.Endpoint, result.DeploymentOrModel, result.ModelName, result.ResponseBody);
 
-                var detail = BuildAzureContractFailureLog(mode, result.Endpoint, "empty response content", result.ResponseBody);
+                var detail = BuildAzureContractFailureLog(mode, result.Endpoint, result.DeploymentOrModel, BuildEmptyContentReason(result), result.ResponseBody);
                 await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview Azure OpenAI contract failure", detail);
-                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", usageInfo, result.IsLengthTruncated, result.FinishReason);
+                return new AzureContentCallResult(false, string.Empty, $"AI service unavailable. {detail}", usageInfo, result.IsLengthTruncated, result.FinishReason, result.Endpoint, result.DeploymentOrModel, result.ModelName, result.ResponseBody);
             }
 
-            return new AzureContentCallResult(true, result.Content, string.Empty, usageInfo, result.IsLengthTruncated, result.FinishReason);
+            return new AzureContentCallResult(true, result.Content, string.Empty, usageInfo, result.IsLengthTruncated, result.FinishReason, result.Endpoint, result.DeploymentOrModel, result.ModelName, result.ResponseBody);
         }
         catch (JsonException ex)
         {
@@ -477,6 +512,75 @@ public partial class InterviewAiClient
         return result?.Success == true &&
             string.IsNullOrWhiteSpace(result.Content) &&
             result.IsLengthTruncated;
+    }
+
+    private static bool ShouldRetryTruncatedEmptyQuestionPlan(AzureContentCallResult result)
+    {
+        return result?.Success == true &&
+            string.IsNullOrWhiteSpace(result.Content) &&
+            result.IsLengthTruncated;
+    }
+
+    private static string BuildQuestionPlanLengthRetryLog(AzureContentCallResult result, string outcome, int initialMaxCompletionTokens, int retryMaxCompletionTokens)
+    {
+        var usageInfo = result?.UsageInfo;
+        var details = new List<string>
+        {
+            "Mode=question-plan",
+            $"Operation={BuildAzureOperationName("question-plan")}",
+            "FailureKind=azure-openai-length-truncation",
+            $"Reason={BuildSafeValue(BuildQuestionPlanFailureReason(result))}",
+            $"Outcome={BuildSafeValue(outcome)}",
+            $"FinishReason={BuildSafeValue(result?.FinishReason)}",
+            $"Deployment={BuildSafeValue(usageInfo?.DeploymentOrModel ?? result?.DeploymentOrModel)}",
+            $"Model={BuildSafeValue(usageInfo?.ModelName ?? result?.ModelName)}",
+            $"InitialMaxCompletionTokens={initialMaxCompletionTokens}",
+            $"RetryMaxCompletionTokens={retryMaxCompletionTokens}",
+            $"ResponseLength={(result?.ResponseBody ?? result?.Content ?? string.Empty).Length}"
+        };
+
+        return string.Join("; ", details) + ".";
+    }
+
+    private string BuildQuestionPlanContractFailureLog(AzureContentCallResult result)
+    {
+        var detail = string.IsNullOrWhiteSpace(result?.Content) && result?.IsLengthTruncated == true
+            ? BuildAzureContractFailureLog("question-plan", result?.Endpoint ?? _settings?.AzureOpenAiEndpointUrl, result?.DeploymentOrModel ?? result?.UsageInfo?.DeploymentOrModel ?? _settings?.AzureOpenAiDeploymentOrModel, BuildQuestionPlanFailureReason(result), result?.ResponseBody ?? result?.Content)
+            : BuildStructuredResponseFailureLog(result?.Content, "question-plan");
+        var parts = new List<string> { detail.TrimEnd('.') };
+        var deploymentOrModel = result?.DeploymentOrModel ?? result?.UsageInfo?.DeploymentOrModel ?? _settings?.AzureOpenAiDeploymentOrModel;
+        if (!string.IsNullOrWhiteSpace(deploymentOrModel) && !detail.Contains("Deployment=", StringComparison.OrdinalIgnoreCase))
+            parts.Add($"Deployment={BuildSafeValue(deploymentOrModel)}");
+        var modelName = result?.ModelName ?? result?.UsageInfo?.ModelName;
+        if (!string.IsNullOrWhiteSpace(modelName))
+            parts.Add($"Model={BuildSafeValue(modelName)}");
+        if (!string.IsNullOrWhiteSpace(result?.FinishReason) && !detail.Contains("FinishReason=", StringComparison.OrdinalIgnoreCase))
+            parts.Add($"FinishReason={BuildSafeValue(result.FinishReason)}");
+
+        return string.Join("; ", parts) + ".";
+    }
+
+    private static string BuildQuestionPlanFailureReason(AzureContentCallResult result)
+    {
+        return result?.IsLengthTruncated == true
+            ? $"empty response content (finish_reason={BuildSafeValue(result.FinishReason)})"
+            : "invalid JSON or failed contract parsing";
+    }
+
+    private static AzureOpenAiUsageInfo BuildAzureUsageInfoFromAdapterResult(AzureOpenAiChatCompletionResult result)
+    {
+        if (result == null ||
+            string.IsNullOrWhiteSpace(result.DeploymentOrModel) &&
+            string.IsNullOrWhiteSpace(result.ModelName))
+        {
+            return null;
+        }
+
+        return new AzureOpenAiUsageInfo
+        {
+            DeploymentOrModel = result.DeploymentOrModel,
+            ModelName = result.ModelName
+        };
     }
 
     private static AIResumeProfileResponse ParseResumeProfileResponse(string content)

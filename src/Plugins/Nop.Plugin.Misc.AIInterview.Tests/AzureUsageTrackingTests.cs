@@ -494,6 +494,25 @@ public class AzureUsageTrackingTests
     }
 
     [Test]
+    public async Task AzureOpenAiChatCompletionAdapter_ParsesResponsesOutputMaxOutputTokensFinishReason()
+    {
+        var adapter = CreateAdapterForSuccessResponse("{\"id\":\"resp_output_length\",\"model\":\"gpt-5\",\"output\":[{\"type\":\"message\",\"finish_reason\":\"max_output_tokens\",\"content\":[]}]}");
+
+        var result = await adapter.CompleteChatAsync(new AzureOpenAiChatCompletionRequest
+        {
+            Mode = "question-plan",
+            SystemPrompt = "System prompt",
+            UserPrompt = "User prompt",
+            MaxCompletionTokens = 2200
+        });
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Content, Is.Empty);
+        Assert.That(result.FinishReason, Is.EqualTo("max_output_tokens"));
+        Assert.That(result.IsLengthTruncated, Is.True);
+    }
+
+    [Test]
     public async Task AzureOpenAiChatCompletionAdapter_ExtractsChatCompletionMultipartTextContent()
     {
         var adapter = CreateAdapterForSuccessResponse("{\"id\":\"resp_parts\",\"model\":\"gpt-5\",\"choices\":[{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"question\\\":\\\"Multipart \"},{\"type\":\"text\",\"text\":\"content\\\",\\\"complete\\\":false}\"}]}}]}");

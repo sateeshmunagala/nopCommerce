@@ -494,6 +494,7 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
     {
         return string.Equals(finishReason, "length", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(finishReason, "max_tokens", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(finishReason, "max_output_tokens", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(finishReason, "max_completion_tokens", StringComparison.OrdinalIgnoreCase);
     }
 

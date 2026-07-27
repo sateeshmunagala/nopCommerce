@@ -2662,6 +2662,171 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task InterviewAiClient_QuestionPlan_LengthTruncatedEmptyContent_RetriesWithHigherTokenBudgetAndSucceeds()
+    {
+        var nopLogger = new Mock<ILogger>();
+        nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+        var adapter = new SequenceAzureOpenAiChatCompletionAdapter(
+            new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = string.Empty,
+                ResponseBody = "{\"id\":\"resp_length\",\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"\"}}]}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "gpt-5-mini",
+                FinishReason = "length",
+                IsLengthTruncated = true
+            },
+            new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = """
+{
+  "questions": [
+    {"sequenceNumber":1,"category":"skill","question":"How do you design resilient APIs?","resumeEvidence":"API work","expectedSignals":["resilience"],"rubric":{"technical":"Depth","communication":"Clear","professionalism":"Practical","positiveAttitude":"Constructive"}},
+    {"sequenceNumber":2,"category":"behavioral","question":"How did you handle a production incident?","resumeEvidence":"Incident work","expectedSignals":["ownership"],"rubric":{"technical":"Diagnosis","communication":"Coordination","professionalism":"Accountability","positiveAttitude":"Calm"}}
+  ]
+}
+""",
+                ResponseBody = "{\"id\":\"resp_retry\",\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"content\":\"valid\"}}]}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "gpt-5-mini",
+                FinishReason = "stop"
+            });
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-mini"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            nopLogger: nopLogger.Object,
+            azureOpenAiChatCompletionAdapter: adapter);
+
+        var response = await client.GenerateQuestionPlanAsync(new AIInterviewQuestionPlanRequest
+        {
+            JobTitle = "Engineer",
+            Difficulty = "Medium",
+            QuestionCount = 2,
+            TotalQuestionCount = 2,
+            Prompt = "Ask practical questions"
+        });
+
+        Assert.That(response.Success, Is.True);
+        Assert.That(response.Questions.Count, Is.EqualTo(2));
+        Assert.That(adapter.Requests.Count, Is.EqualTo(2));
+        Assert.That(adapter.Requests[0].Mode, Is.EqualTo("question-plan"));
+        Assert.That(adapter.Requests[0].MaxCompletionTokens, Is.EqualTo(2200));
+        Assert.That(adapter.Requests[1].MaxCompletionTokens, Is.EqualTo(3000));
+        Assert.That(adapter.Requests[1].SystemPrompt, Is.EqualTo(adapter.Requests[0].SystemPrompt));
+        Assert.That(adapter.Requests[1].UserPrompt, Is.EqualTo(adapter.Requests[0].UserPrompt));
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Information,
+            "AI Interview question plan truncation retry initiated",
+            It.Is<string>(message =>
+                message.Contains("Mode=question-plan") &&
+                message.Contains("Operation=llm-question-plan") &&
+                message.Contains("InitialMaxCompletionTokens=2200") &&
+                message.Contains("RetryMaxCompletionTokens=3000") &&
+                message.Contains("FinishReason=length") &&
+                message.Contains("Deployment=gpt-5-mini")),
+            null), Times.Once);
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Information,
+            "AI Interview question plan truncation retry recovered",
+            It.Is<string>(message =>
+                message.Contains("Mode=question-plan") &&
+                message.Contains("Operation=llm-question-plan") &&
+                message.Contains("InitialMaxCompletionTokens=2200") &&
+                message.Contains("RetryMaxCompletionTokens=3000") &&
+                message.Contains("Deployment=gpt-5-mini")),
+            null), Times.Once);
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            It.IsAny<LogLevel>(),
+            "AI Interview question plan contract failure",
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Never);
+    }
+
+    [Test]
+    public async Task InterviewAiClient_QuestionPlan_LengthTruncatedRetryExhausted_LogsFinishReasonAndDeployment()
+    {
+        var nopLogger = new Mock<ILogger>();
+        nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+        var adapter = new SequenceAzureOpenAiChatCompletionAdapter(
+            new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = string.Empty,
+                ResponseBody = "{\"id\":\"resp_length_1\",\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"\"}}]}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "gpt-5-mini",
+                FinishReason = "length",
+                IsLengthTruncated = true
+            },
+            new AzureOpenAiChatCompletionResult
+            {
+                Success = true,
+                Content = string.Empty,
+                ResponseBody = "{\"id\":\"resp_length_2\",\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"\"}}]}",
+                Endpoint = "https://example.openai.azure.com/",
+                EndpointHost = "example.openai.azure.com",
+                DeploymentOrModel = "gpt-5-mini",
+                FinishReason = "length",
+                IsLengthTruncated = true
+            });
+        var client = new InterviewAiClient(
+            new AIInterviewSettings
+            {
+                AzureOpenAiEndpointUrl = "https://example.openai.azure.com",
+                AzureOpenAiApiKey = "secret-key",
+                AzureOpenAiDeploymentOrModel = "gpt-5-mini"
+            },
+            new MockAIInterviewSettings { UseMockResponses = false },
+            nopLogger: nopLogger.Object,
+            azureOpenAiChatCompletionAdapter: adapter);
+
+        var response = await client.GenerateQuestionPlanAsync(new AIInterviewQuestionPlanRequest
+        {
+            JobTitle = "Engineer",
+            Difficulty = "Medium",
+            QuestionCount = 2,
+            TotalQuestionCount = 2,
+            Prompt = "Ask practical questions"
+        });
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ErrorMessage, Does.Contain("empty response content (finish_reason=length)"));
+        Assert.That(adapter.Requests.Count, Is.EqualTo(2));
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview question plan truncation retry exhausted",
+            It.Is<string>(message =>
+                message.Contains("Mode=question-plan") &&
+                message.Contains("Operation=llm-question-plan") &&
+                message.Contains("InitialMaxCompletionTokens=2200") &&
+                message.Contains("RetryMaxCompletionTokens=3000") &&
+                message.Contains("FinishReason=length") &&
+                message.Contains("Deployment=gpt-5-mini")),
+            null), Times.Once);
+        nopLogger.Verify(logger => logger.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview question plan contract failure",
+            It.Is<string>(message =>
+                message.Contains("Reason=empty response content (finish_reason=length)") &&
+                message.Contains("Deployment=gpt-5-mini") &&
+                !message.Contains("Deployment=<empty>") &&
+                message.Contains("resp_length_2")),
+            null), Times.Once);
+    }
+
+    [Test]
     public async Task InterviewAiClient_ScoreAnswer_AdapterFailure_ReturnsUnavailableAndDoesNotLeakSecret()
     {
         var client = new InterviewAiClient(
