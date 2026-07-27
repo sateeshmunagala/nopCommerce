@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Plugin.Misc.AIInterview;
 using Nop.Web.Framework.Models;
@@ -30,6 +31,7 @@ public record AIInterviewConfigureModel : BaseNopModel
     public bool Enabled { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Configure.MockInterviewQuestionCount")]
+    [Range(1, 10)]
     public int MockInterviewQuestionCount { get; set; } = 5;
 }
 
