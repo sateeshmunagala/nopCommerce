@@ -10,6 +10,11 @@ namespace Nop.Plugin.Misc.AIInterview.Services;
 
 public partial class InterviewAiClient
 {
+    private const int ResumeProfileMaxCompletionTokens = 2400;
+    private const int ResumeProfileRetryMaxCompletionTokens = 3600;
+    private const int ResumeProfileMaxResumeTextLength = 8000;
+    private const int ResumeProfileRetryMaxResumeTextLength = 5000;
+
     private static readonly JsonSerializerOptions ResumePlanSerializerOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -36,23 +41,66 @@ public partial class InterviewAiClient
         if (_mockSettings?.UseMockResponses != false)
             return BuildMockResumeProfile(request);
 
+        var systemPrompt = ResolvePromptSetting(_settings?.ResumeProfileExtractionSystemPrompt, AIInterviewDefaults.DefaultResumeProfileExtractionSystemPrompt);
         var result = await CallAzureContentAsync(
             "resume-profile",
-            ResolvePromptSetting(_settings?.ResumeProfileExtractionSystemPrompt, AIInterviewDefaults.DefaultResumeProfileExtractionSystemPrompt),
-            BuildResumeProfilePrompt(request),
-            1400);
+            systemPrompt,
+            BuildResumeProfilePrompt(request, ResumeProfileMaxResumeTextLength),
+            ResumeProfileMaxCompletionTokens);
 
-        if (!result.Success)
+        if (!result.Success && !ShouldRetryResumeProfileContractInvalid(result, null))
             return new AIResumeProfileResponse { Success = false, ErrorMessage = result.ErrorMessage, UsageInfo = result.UsageInfo };
 
-        var parsed = ParseResumeProfileResponse(result.Content);
+        var parsed = result.Success ? ParseResumeProfileResponse(result.Content) : null;
         if (parsed != null)
             return parsed with { RawJson = TruncateSafe(result.Content, 4000), UsageInfo = result.UsageInfo };
 
-        var contractReason = BuildStructuredResponseFailureLog(result.Content, "resume-profile");
+        if (ShouldRetryResumeProfileContractInvalid(result, parsed))
+        {
+            var initialContractReason = BuildResumeProfileContractFailureLog(result);
+            await LogAiClientIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview resume profile contract retry initiated",
+                $"{initialContractReason}; RetryMaxCompletionTokens={ResumeProfileRetryMaxCompletionTokens}; RetryResumeTextMaxLength={ResumeProfileRetryMaxResumeTextLength}.");
+
+            var retryResult = await CallAzureContentAsync(
+                "resume-profile",
+                systemPrompt,
+                BuildResumeProfilePrompt(request, ResumeProfileRetryMaxResumeTextLength),
+                ResumeProfileRetryMaxCompletionTokens);
+
+            if (!retryResult.Success)
+            {
+                var retryFailureMessage = ShouldRetryResumeProfileContractInvalid(retryResult, null)
+                    ? BuildResumeProfileContractFailureMessage(retryResult)
+                    : $"{BuildResumeProfileContractFailureMessage(result)} RetryFailure={BuildSafeValue(TruncateSafe(retryResult.ErrorMessage, 300))}.";
+                return new AIResumeProfileResponse
+                {
+                    Success = false,
+                    ErrorMessage = retryFailureMessage,
+                    UsageInfo = retryResult.UsageInfo ?? result.UsageInfo
+                };
+            }
+
+            var retryParsed = ParseResumeProfileResponse(retryResult.Content);
+            if (retryParsed != null)
+                return retryParsed with { RawJson = TruncateSafe(retryResult.Content, 4000), UsageInfo = retryResult.UsageInfo };
+
+            var retryContractReason = BuildResumeProfileContractFailureLog(retryResult);
+            _logger?.LogWarning("Azure OpenAI resume profile call failed contract validation after retry.");
+            await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview resume profile contract failure", retryContractReason);
+            return new AIResumeProfileResponse
+            {
+                Success = false,
+                ErrorMessage = BuildResumeProfileContractFailureMessage(retryResult),
+                UsageInfo = retryResult.UsageInfo ?? result.UsageInfo
+            };
+        }
+
+        var contractReason = BuildResumeProfileContractFailureLog(result);
         _logger?.LogWarning("Azure OpenAI resume profile call failed contract validation.");
         await LogAiClientIssueAsync(NopLogLevel.Warning, "AI Interview resume profile contract failure", contractReason);
-        return new AIResumeProfileResponse { Success = false, ErrorMessage = "Resume profiling is unavailable.", UsageInfo = result.UsageInfo };
+        return new AIResumeProfileResponse { Success = false, ErrorMessage = BuildResumeProfileContractFailureMessage(result), UsageInfo = result.UsageInfo };
     }
 
     public async Task<AIInterviewQuestionPlanResponse> GenerateQuestionPlanAsync(AIInterviewQuestionPlanRequest request)
@@ -251,14 +299,14 @@ public partial class InterviewAiClient
         }
     }
 
-    private static string BuildResumeProfilePrompt(AIResumeProfileRequest request)
+    private static string BuildResumeProfilePrompt(AIResumeProfileRequest request, int maxResumeTextLength)
     {
         var builder = new StringBuilder();
         builder.AppendLine("Resume analysis mode: resume-profile");
         builder.AppendLine($"Job title: {request.JobTitle}");
         builder.AppendLine($"Job context: {TruncateSafe(request.JobContext, 2000)}");
         builder.AppendLine("Resume text:");
-        builder.AppendLine(TruncateSafe(request.ResumeText, 12000));
+        builder.AppendLine(TruncateSafe(request.ResumeText, maxResumeTextLength));
         builder.AppendLine("Response contract:");
         builder.Append("""
 {
@@ -429,9 +477,11 @@ public partial class InterviewAiClient
     {
         try
         {
-            var normalized = ExtractJsonObjectPayload(content);
+            var normalized = NormalizeResumeProfileContentPayload(content);
             using var document = JsonDocument.Parse(normalized);
             var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object || !HasResumeProfileContractShape(root))
+                return null;
 
             return new AIResumeProfileResponse
             {
@@ -519,6 +569,141 @@ public partial class InterviewAiClient
         {
             return null;
         }
+    }
+
+    private static bool ShouldRetryResumeProfileContractInvalid(AzureContentCallResult result, AIResumeProfileResponse parsed)
+    {
+        if (parsed != null)
+            return false;
+
+        if (result == null)
+            return false;
+
+        if (result.Success)
+            return true;
+
+        if (result.IsLengthTruncated)
+            return true;
+
+        return result.ErrorMessage?.Contains("azure-openai-contract-failure", StringComparison.OrdinalIgnoreCase) == true ||
+            result.ErrorMessage?.Contains("empty response content", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static string BuildResumeProfileContractFailureLog(AzureContentCallResult result)
+    {
+        var detail = BuildStructuredResponseFailureLog(result?.Content, "resume-profile");
+        var parts = new List<string> { detail };
+        if (result?.IsLengthTruncated == true)
+            parts.Add("IsLengthTruncated=true");
+        if (!string.IsNullOrWhiteSpace(result?.FinishReason))
+            parts.Add($"FinishReason={BuildSafeValue(result.FinishReason)}");
+        if (!string.IsNullOrWhiteSpace(result?.ErrorMessage))
+            parts.Add($"AdapterError={BuildSafeValue(TruncateSafe(result.ErrorMessage, 300))}");
+
+        return string.Join("; ", parts);
+    }
+
+    private static string BuildResumeProfileContractFailureMessage(AzureContentCallResult result)
+    {
+        var reason = result?.IsLengthTruncated == true
+            ? $"invalid or truncated Azure OpenAI output (finish_reason={BuildSafeValue(result.FinishReason)})"
+            : "invalid Azure OpenAI output";
+
+        return $"Resume profiling OpenAI contract/output invalid. FailureKind=azure-openai-contract-failure; Reason={reason}.";
+    }
+
+    private static string NormalizeResumeProfileContentPayload(string content)
+    {
+        var normalized = content?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalized))
+            return string.Empty;
+
+        var textPartPayload = TryExtractTextPartPayload(normalized);
+        if (!string.IsNullOrWhiteSpace(textPartPayload))
+            normalized = textPartPayload.Trim();
+
+        return ExtractJsonObjectPayload(normalized);
+    }
+
+    private static string TryExtractTextPartPayload(string content)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(content);
+            var root = document.RootElement;
+            if (root.ValueKind == JsonValueKind.String)
+                return root.GetString();
+
+            if (root.ValueKind == JsonValueKind.Object && HasResumeProfileContractShape(root))
+                return root.GetRawText();
+
+            var builder = new StringBuilder();
+            AppendTextPartPayload(root, builder);
+            return builder.ToString();
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static void AppendTextPartPayload(JsonElement element, StringBuilder builder)
+    {
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            builder.Append(element.GetString());
+            return;
+        }
+
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+                AppendTextPartPayload(item, builder);
+            return;
+        }
+
+        if (element.ValueKind != JsonValueKind.Object)
+            return;
+
+        foreach (var propertyName in new[] { "output_text", "text" })
+        {
+            if (element.TryGetProperty(propertyName, out var textElement) && textElement.ValueKind == JsonValueKind.String)
+            {
+                builder.Append(textElement.GetString());
+                return;
+            }
+        }
+
+        foreach (var propertyName in new[] { "content", "message", "choices", "output" })
+        {
+            if (element.TryGetProperty(propertyName, out var childElement))
+                AppendTextPartPayload(childElement, builder);
+        }
+    }
+
+    private static bool HasResumeProfileContractShape(JsonElement root)
+    {
+        return HasArrayProperty(root, "skills") &&
+            HasArrayProperty(root, "primarySkills") &&
+            HasArrayProperty(root, "tools") &&
+            HasArrayProperty(root, "projects") &&
+            HasStringProperty(root, "experienceSummary") &&
+            HasArrayProperty(root, "senioritySignals") &&
+            HasArrayProperty(root, "missingOrUnclearAreas");
+    }
+
+    private static bool HasArrayProperty(JsonElement element, string propertyName)
+    {
+        return element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty(propertyName, out var property) &&
+            property.ValueKind == JsonValueKind.Array;
+    }
+
+    private static bool HasStringProperty(JsonElement element, string propertyName)
+    {
+        return element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty(propertyName, out var property) &&
+            property.ValueKind == JsonValueKind.String;
     }
 
     private static AIInterviewStrengthsSummaryResponse ParseStrengthsSummaryResponse(string content)

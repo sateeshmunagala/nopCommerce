@@ -494,6 +494,8 @@ public class ResumeProfileService : IResumeProfileService
             };
         }
 
+        await TryLogResumeProfileExtractionSuccessAsync(application, product, download, extraction.Text);
+
         var response = await _aiInterviewClient.AnalyzeResumeAsync(new AIResumeProfileRequest
         {
             JobTitle = ResolveJobTitle(product, application),
@@ -572,6 +574,8 @@ public class ResumeProfileService : IResumeProfileService
                 ErrorMessage = extraction.ErrorMessage
             };
         }
+
+        await TryLogResumeProfileExtractionSuccessAsync(session, product, download, extraction.Text);
 
         var response = await _aiInterviewClient.AnalyzeResumeAsync(new AIResumeProfileRequest
         {
@@ -689,6 +693,71 @@ public class ResumeProfileService : IResumeProfileService
             await _nopLogger.InsertLogAsync(
                 level,
                 "AI Interview resume extraction failed",
+                string.Join("; ", metadata) + ".",
+                null);
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task TryLogResumeProfileExtractionSuccessAsync(JobApplication application, Product product, Download download, string extractedText)
+    {
+        if (_nopLogger == null)
+            return;
+
+        try
+        {
+            var metadata = new List<string>
+            {
+                "Stage=extraction-completed",
+                "SuccessMessage=Resume extraction completed successfully.",
+                $"ApplicationId={application?.Id ?? 0}",
+                $"CustomerId={application?.CustomerId ?? 0}",
+                $"ProductId={application?.ProductId ?? product?.Id ?? 0}",
+                $"ResumeDownloadId={application?.ResumeDownloadId ?? download?.Id ?? 0}",
+                $"FileExtension={Truncate(ResolveExtension(download), 20)}",
+                $"ContentType={Truncate(download?.ContentType, 120)}",
+                $"FileSizeBytes={download?.DownloadBinary?.LongLength ?? 0}",
+                $"ExtractedTextLength={(extractedText ?? string.Empty).Length}"
+            };
+
+            await _nopLogger.InsertLogAsync(
+                LogLevel.Information,
+                "AI Interview resume extraction completed",
+                string.Join("; ", metadata) + ".",
+                null);
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task TryLogResumeProfileExtractionSuccessAsync(InterviewSession session, Product product, Download download, string extractedText)
+    {
+        if (_nopLogger == null)
+            return;
+
+        try
+        {
+            var metadata = new List<string>
+            {
+                "Stage=extraction-completed",
+                "SuccessMessage=Resume extraction completed successfully.",
+                $"SessionId={session?.Id ?? 0}",
+                $"CustomerId={session?.CustomerId ?? 0}",
+                $"ProductId={session?.ProductId ?? product?.Id ?? 0}",
+                $"SourceProductId={session?.SourceProductId ?? 0}",
+                $"ResumeDownloadId={session?.ResumeDownloadId ?? download?.Id ?? 0}",
+                $"FileExtension={Truncate(ResolveExtension(download), 20)}",
+                $"ContentType={Truncate(download?.ContentType, 120)}",
+                $"FileSizeBytes={download?.DownloadBinary?.LongLength ?? 0}",
+                $"ExtractedTextLength={(extractedText ?? string.Empty).Length}"
+            };
+
+            await _nopLogger.InsertLogAsync(
+                LogLevel.Information,
+                "AI Interview practice resume extraction completed",
                 string.Join("; ", metadata) + ".",
                 null);
         }
