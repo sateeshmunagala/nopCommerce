@@ -38,7 +38,7 @@ public partial class InterviewAiClient
 
         var result = await CallAzureContentAsync(
             "resume-profile",
-            "Return JSON only. Extract only facts supported by the resume text. Do not invent companies, projects, dates, skills, tools, metrics, or responsibilities. If project names are unclear, use a short descriptive label based on the resume text. If no projects are present, return an empty projects array. Keep each string concise.",
+            ResolvePromptSetting(_settings?.ResumeProfileExtractionSystemPrompt, AIInterviewDefaults.DefaultResumeProfileExtractionSystemPrompt),
             BuildResumeProfilePrompt(request),
             1400);
 
@@ -62,8 +62,10 @@ public partial class InterviewAiClient
 
         var result = await CallAzureContentAsync(
             "question-plan",
-            "Return JSON only. Return exactly the requested number of questions. Ask one clear question per item. Do not include answers. Do not ask duplicate questions. Do not invent resume facts. Use resumeEvidence only for facts present in the resume profile. Project-scenario questions must be tied to a real project or responsibility from the resume profile when available. Skill questions must prioritize resume profile primary skills and job-required skills. Keep questions concise enough to read aloud in an interview runtime.",
-            BuildQuestionPlanPrompt(request),
+            ResolvePromptSetting(_settings?.QuestionPlanSystemPrompt, AIInterviewDefaults.DefaultQuestionPlanSystemPrompt),
+            BuildQuestionPlanPrompt(
+                request,
+                ResolvePromptSetting(_settings?.QuestionPlanBuilderInstructionBlock, AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock)),
             2200);
 
         if (!result.Success)
@@ -99,7 +101,7 @@ public partial class InterviewAiClient
         var answeredCount = request?.Turns?.Count ?? 0;
         var result = await CallAzureContentAsync(
             "final-score",
-            "Return JSON only. Final scoring mode contract: turns array with sequenceNumber, technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, optional answerQuality, optional nonSubstantiveReason, optional rubricJson; plus overallScore and completion. Score every supplied answered turn exactly once. Do not add, remove, or renumber turns. All scores must be numeric 0-100. score must be the average of the four category scores. Reserve score 0 only for empty, copied, refusal, AI-persona, or unrelated answers.",
+            ResolvePromptSetting(_settings?.FinalScoringSystemPrompt, AIInterviewDefaults.DefaultFinalScoringSystemPrompt),
             BuildFinalScoringPrompt(request),
             Math.Clamp(1200 + answeredCount * 650, 2000, 8000));
 
@@ -137,7 +139,7 @@ public partial class InterviewAiClient
         var maxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(_settings?.StrengthsSummaryMaxCompletionTokens ?? 0);
         var result = await CallAzureContentAsync(
             "strengths-summary",
-            "Return JSON only. Strengths summary mode contract: strengthsText string, optional confidence string, optional evidenceTurnNumbers integer array. strengthsText must be 200 to 300 characters, plain text, no markdown, no bullets, and grounded only in the submitted answered turns.",
+            ResolvePromptSetting(_settings?.StrengthsSummarySystemPrompt, AIInterviewDefaults.DefaultStrengthsSummarySystemPrompt),
             prompt,
             maxCompletionTokens,
             allowEmptySuccessfulContent: true);
@@ -152,7 +154,7 @@ public partial class InterviewAiClient
 
             result = await CallAzureContentAsync(
                 "strengths-summary",
-                "Return JSON only. Strengths summary mode contract: strengthsText string, optional confidence string, optional evidenceTurnNumbers integer array. strengthsText must be 200 to 300 characters, plain text, no markdown, no bullets, and grounded only in the submitted answered turns. Strict JSON-first retry: start the response with { and output only one complete JSON object. No markdown fences, preface, trailing prose, or partial JSON.",
+                ResolvePromptSetting(_settings?.StrengthsSummaryRetryStrictJsonSystemPrompt, AIInterviewDefaults.DefaultStrengthsSummaryRetryStrictJsonSystemPrompt),
                 prompt,
                 retryMaxCompletionTokens);
 
@@ -280,7 +282,7 @@ public partial class InterviewAiClient
         return builder.ToString();
     }
 
-    private static string BuildQuestionPlanPrompt(AIInterviewQuestionPlanRequest request)
+    private static string BuildQuestionPlanPrompt(AIInterviewQuestionPlanRequest request, string instructionBlock)
     {
         var totalQuestionCount = request.TotalQuestionCount > 0 ? request.TotalQuestionCount : request.QuestionCount;
         var builder = new StringBuilder();
@@ -293,11 +295,7 @@ public partial class InterviewAiClient
         builder.AppendLine($"Global prompt: {request.Prompt}");
         builder.AppendLine("Resume profile JSON:");
         builder.AppendLine(TruncateSafe(request.ResumeProfileJson, 4000));
-        builder.AppendLine("Sequence 1 is reserved by the runtime for the candidate introduction and project-experience question.");
-        builder.AppendLine("Generate exactly the requested remaining questions for this call; do not duplicate the introduction/project-experience question.");
-        builder.AppendLine("Use remaining sequence numbers only. If sequence 1 already exists, begin generated questions at sequence 2 and continue from there.");
-        builder.AppendLine("Remaining questions should build on resume and job context, cover role-relevant technical depth, feel natural and conversational, and ask one clear question at a time.");
-        builder.AppendLine("Allowed categories: skill, project_scenario, job_fit, behavioral");
+        builder.AppendLine(ResolvePromptSetting(instructionBlock, AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock));
         if (request.ExistingQuestions?.Any() == true)
         {
             builder.AppendLine("Existing planned questions that must not be duplicated:");
@@ -401,7 +399,6 @@ public partial class InterviewAiClient
         builder.AppendLine(TruncateSafe(request?.ResumeProfileJson, 3000));
         builder.AppendLine("Answered turns to summarize, in order:");
         builder.AppendLine(JsonSerializer.Serialize(turns, ResumePlanSerializerOptions));
-        builder.AppendLine("Write one concise evidence-based strengths paragraph. Reflect the actual submitted answers and scored feedback. Avoid generic boilerplate.");
         builder.AppendLine("Response contract:");
         builder.Append("""
 {

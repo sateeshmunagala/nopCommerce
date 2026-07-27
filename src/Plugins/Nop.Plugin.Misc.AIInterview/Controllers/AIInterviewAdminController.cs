@@ -207,6 +207,14 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.ApiKey = PreserveSecretIfBlank(settingsModel.ApiKey, currentAiInterviewSettings.ApiKey);
             currentAiInterviewSettings.Model = settingsModel.Model;
             currentAiInterviewSettings.Prompt = settingsModel.Prompt;
+            currentAiInterviewSettings.ResumeProfileExtractionSystemPrompt = settingsModel.ResumeProfileExtractionSystemPrompt;
+            currentAiInterviewSettings.QuestionPlanSystemPrompt = settingsModel.QuestionPlanSystemPrompt;
+            currentAiInterviewSettings.QuestionPlanBuilderInstructionBlock = settingsModel.QuestionPlanBuilderInstructionBlock;
+            currentAiInterviewSettings.RuntimeQuestionGenerationSystemPrompt = settingsModel.RuntimeQuestionGenerationSystemPrompt;
+            currentAiInterviewSettings.RuntimeScoringSystemPrompt = settingsModel.RuntimeScoringSystemPrompt;
+            currentAiInterviewSettings.FinalScoringSystemPrompt = settingsModel.FinalScoringSystemPrompt;
+            currentAiInterviewSettings.StrengthsSummarySystemPrompt = settingsModel.StrengthsSummarySystemPrompt;
+            currentAiInterviewSettings.StrengthsSummaryRetryStrictJsonSystemPrompt = settingsModel.StrengthsSummaryRetryStrictJsonSystemPrompt;
             currentAiInterviewSettings.ServiceSettings = settingsModel.ServiceSettings;
             currentAiInterviewSettings.CreditProductSkuMappingsJson = settingsModel.CreditProductSkuMappingsJson;
             currentAiInterviewSettings.CreditPurchasePageUrl = settingsModel.CreditPurchasePageUrl;
@@ -1677,6 +1685,14 @@ public class AIInterviewAdminController : BasePluginController
             ApiKey = aiInterviewSettings.ApiKey,
             Model = aiInterviewSettings.Model,
             Prompt = aiInterviewSettings.Prompt,
+            ResumeProfileExtractionSystemPrompt = ResolvePromptSetting(aiInterviewSettings.ResumeProfileExtractionSystemPrompt, AIInterviewDefaults.DefaultResumeProfileExtractionSystemPrompt),
+            QuestionPlanSystemPrompt = ResolvePromptSetting(aiInterviewSettings.QuestionPlanSystemPrompt, AIInterviewDefaults.DefaultQuestionPlanSystemPrompt),
+            QuestionPlanBuilderInstructionBlock = ResolvePromptSetting(aiInterviewSettings.QuestionPlanBuilderInstructionBlock, AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock),
+            RuntimeQuestionGenerationSystemPrompt = ResolvePromptSetting(aiInterviewSettings.RuntimeQuestionGenerationSystemPrompt, AIInterviewDefaults.DefaultRuntimeQuestionGenerationSystemPrompt),
+            RuntimeScoringSystemPrompt = ResolvePromptSetting(aiInterviewSettings.RuntimeScoringSystemPrompt, AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt),
+            FinalScoringSystemPrompt = ResolvePromptSetting(aiInterviewSettings.FinalScoringSystemPrompt, AIInterviewDefaults.DefaultFinalScoringSystemPrompt),
+            StrengthsSummarySystemPrompt = ResolvePromptSetting(aiInterviewSettings.StrengthsSummarySystemPrompt, AIInterviewDefaults.DefaultStrengthsSummarySystemPrompt),
+            StrengthsSummaryRetryStrictJsonSystemPrompt = ResolvePromptSetting(aiInterviewSettings.StrengthsSummaryRetryStrictJsonSystemPrompt, AIInterviewDefaults.DefaultStrengthsSummaryRetryStrictJsonSystemPrompt),
             ServiceSettings = aiInterviewSettings.ServiceSettings,
             CreditProductSkuMappingsJson = aiInterviewSettings.CreditProductSkuMappingsJson,
             CreditPurchasePageUrl = aiInterviewSettings.CreditPurchasePageUrl,
@@ -1723,6 +1739,11 @@ public class AIInterviewAdminController : BasePluginController
         model.AvailableProviders = BuildProviderSelectList(model.Provider);
         model.AvailableRecordingSourceModes = BuildRecordingSourceModeSelectList(model.RecordingSourceMode);
         return model;
+    }
+
+    protected static string ResolvePromptSetting(string prompt, string defaultPrompt)
+    {
+        return string.IsNullOrWhiteSpace(prompt) ? defaultPrompt : prompt;
     }
 
     protected virtual IList<string> GetRecordingSourceModeValues()

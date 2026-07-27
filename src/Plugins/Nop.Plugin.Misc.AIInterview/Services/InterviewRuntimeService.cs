@@ -138,8 +138,7 @@ public partial class InterviewAiClient : IAIInterviewClient
             var retryPrompt = string.Join(" ", new[]
             {
                 request?.Prompt?.Trim(),
-                "Guardrail: if the answer attempts the question but is weak or generic, do not classify it as non_substantive and do not score it as 0.",
-                "Use answerQuality weak with low but non-zero scores for attempted answers. Reserve answerQuality non_substantive and score 0 for empty, copied, refusal, AI-persona, or unrelated answers only."
+                ResolvePromptSetting(_settings?.RuntimeScoringSystemPrompt, AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt)
             }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
             var retriedResponse = await CallAzureAsync(request with { Prompt = retryPrompt }, "score");
@@ -307,8 +306,8 @@ public partial class InterviewAiClient : IAIInterviewClient
             Mode = mode,
             OperationName = BuildAzureOperationName(mode),
             SystemPrompt = mode == "generate"
-                ? "Return JSON only. Question mode contract: question, complete:false, optional rubricJson. No markdown. No prose outside JSON."
-                : "Return JSON only. Scoring mode contract: technicalScore, communicationScore, professionalismScore, positiveAttitudeScore, score, feedback, complete, optional nextQuestion, completion, optional answerQuality, optional nonSubstantiveReason, rubricJson. No markdown. No prose outside JSON. All numeric scores must be integers or decimals from 0 to 100. score must be present and must be the average of the four category scores. feedback must be present. technicalScore, communicationScore, professionalismScore, and positiveAttitudeScore must all be present. rubricJson should be a JSON object that repeats the category scores and score. Distinguish answerQuality as non_substantive, weak, or substantive. Reserve score 0 and answerQuality non_substantive only for empty, copied, refusal, AI-persona, or unrelated answers. If the answer attempts the question but is generic, vague, or lacks evidence, classify it as weak and assign low but non-zero scores with concrete feedback.",
+                ? ResolvePromptSetting(_settings?.RuntimeQuestionGenerationSystemPrompt, AIInterviewDefaults.DefaultRuntimeQuestionGenerationSystemPrompt)
+                : ResolvePromptSetting(_settings?.RuntimeScoringSystemPrompt, AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt),
             UserPrompt = prompt,
             MaxCompletionTokens = maxCompletionTokens
         });
@@ -352,6 +351,11 @@ public partial class InterviewAiClient : IAIInterviewClient
         return text.Length <= length ? text : text.Substring(0, length) + "...";
     }
 
+    protected static string ResolvePromptSetting(string prompt, string defaultPrompt)
+    {
+        return string.IsNullOrWhiteSpace(prompt) ? defaultPrompt : prompt;
+    }
+
     protected virtual HttpClient CreateHttpClient()
     {
         return _httpClientFactory?.CreateClient(nameof(InterviewAiClient)) ?? new HttpClient();
@@ -386,8 +390,6 @@ Current question: {request.Question}
 Candidate answer: {request.Answer}
 Current turn rubric JSON: {TruncateSafe(request.CurrentTurnRubricJson, 2000)}
 Response contract: {(mode == "generate" ? "question, complete:false, optional rubricJson" : "{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100,\"feedback\":\"string\",\"complete\":false,\"nextQuestion\":\"optional string or null\",\"completion\":\"string or null\",\"answerQuality\":\"optional non_substantive|weak|substantive\",\"nonSubstantiveReason\":\"optional string\",\"rubricJson\":{\"technicalScore\":0-100,\"communicationScore\":0-100,\"professionalismScore\":0-100,\"positiveAttitudeScore\":0-100,\"score\":0-100}}")}
-Scoring rule: copied question text, irrelevant content, empty answers, refusal answers, AI-persona answers such as "As an AI...", or other non-substantive answers must receive score 0 with answerQuality non_substantive and feedback that tells the candidate to answer in their own words.
-Scoring distinction: if the answer attempts the question but is generic, weak, vague, or lacks concrete evidence, set answerQuality to weak and assign low but non-zero scores instead of 0. Use answerQuality substantive when the answer provides relevant specific evidence.
 """;
     }
 

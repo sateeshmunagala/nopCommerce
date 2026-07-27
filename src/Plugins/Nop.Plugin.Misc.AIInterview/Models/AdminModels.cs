@@ -43,6 +43,30 @@ public record AiServiceSettingsModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Prompt")]
     public string Prompt { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.ResumeProfileExtractionSystemPrompt")]
+    public string ResumeProfileExtractionSystemPrompt { get; set; } = AIInterviewDefaults.DefaultResumeProfileExtractionSystemPrompt;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanSystemPrompt")]
+    public string QuestionPlanSystemPrompt { get; set; } = AIInterviewDefaults.DefaultQuestionPlanSystemPrompt;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanBuilderInstructionBlock")]
+    public string QuestionPlanBuilderInstructionBlock { get; set; } = AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RuntimeQuestionGenerationSystemPrompt")]
+    public string RuntimeQuestionGenerationSystemPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeQuestionGenerationSystemPrompt;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RuntimeScoringSystemPrompt")]
+    public string RuntimeScoringSystemPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.FinalScoringSystemPrompt")]
+    public string FinalScoringSystemPrompt { get; set; } = AIInterviewDefaults.DefaultFinalScoringSystemPrompt;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummarySystemPrompt")]
+    public string StrengthsSummarySystemPrompt { get; set; } = AIInterviewDefaults.DefaultStrengthsSummarySystemPrompt;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryRetryStrictJsonSystemPrompt")]
+    public string StrengthsSummaryRetryStrictJsonSystemPrompt { get; set; } = AIInterviewDefaults.DefaultStrengthsSummaryRetryStrictJsonSystemPrompt;
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.ServiceSettings")]
     public string ServiceSettings { get; set; }
 

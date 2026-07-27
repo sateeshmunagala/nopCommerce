@@ -93,6 +93,22 @@ public class AIInterviewSettings : ISettings
     /// </summary>
     public string Prompt { get; set; }
 
+    public string ResumeProfileExtractionSystemPrompt { get; set; } = AIInterviewDefaults.DefaultResumeProfileExtractionSystemPrompt;
+
+    public string QuestionPlanSystemPrompt { get; set; } = AIInterviewDefaults.DefaultQuestionPlanSystemPrompt;
+
+    public string QuestionPlanBuilderInstructionBlock { get; set; } = AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock;
+
+    public string RuntimeQuestionGenerationSystemPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeQuestionGenerationSystemPrompt;
+
+    public string RuntimeScoringSystemPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt;
+
+    public string FinalScoringSystemPrompt { get; set; } = AIInterviewDefaults.DefaultFinalScoringSystemPrompt;
+
+    public string StrengthsSummarySystemPrompt { get; set; } = AIInterviewDefaults.DefaultStrengthsSummarySystemPrompt;
+
+    public string StrengthsSummaryRetryStrictJsonSystemPrompt { get; set; } = AIInterviewDefaults.DefaultStrengthsSummaryRetryStrictJsonSystemPrompt;
+
     /// <summary>
     /// Gets or sets additional service settings
     /// </summary>
