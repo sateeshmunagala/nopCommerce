@@ -62,23 +62,33 @@ public class MockAiInterviewAdminController : BasePluginController
         };
     }
 
+    protected static int NormalizeMockInterviewQuestionCount(int questionCount)
+    {
+        return Math.Clamp(questionCount <= 0 ? 5 : questionCount, 1, 10);
+    }
+
+    protected AIInterviewConfigureModel PrepareConfigureModel()
+    {
+        return new AIInterviewConfigureModel
+        {
+            Enabled = _aiInterviewSettings.Enabled,
+            MockInterviewQuestionCount = NormalizeMockInterviewQuestionCount(_aiInterviewSettings.MockInterviewQuestionCount)
+        };
+    }
+
     public IActionResult Configure()
     {
-        var model = new ConfigurationModel
-        {
-            Enabled = _aiInterviewSettings.Enabled
-        };
-
-        return View("~/Plugins/Misc.AIInterview/Views/Configure.cshtml", model);
+        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml", PrepareConfigureModel());
     }
 
     [HttpPost]
-    public async Task<IActionResult> Configure(ConfigurationModel model)
+    public async Task<IActionResult> Configure(AIInterviewConfigureModel model)
     {
         if (!ModelState.IsValid)
-            return View("~/Plugins/Misc.AIInterview/Views/Configure.cshtml", model);
+            return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml", model);
 
         _aiInterviewSettings.Enabled = model.Enabled;
+        _aiInterviewSettings.MockInterviewQuestionCount = NormalizeMockInterviewQuestionCount(model.MockInterviewQuestionCount);
         await _settingService.SaveSettingAsync(_aiInterviewSettings);
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
@@ -88,7 +98,22 @@ public class MockAiInterviewAdminController : BasePluginController
 
     public IActionResult MockConfigure()
     {
-        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml");
+        return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml", PrepareConfigureModel());
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> MockConfigure(AIInterviewConfigureModel model)
+    {
+        if (!ModelState.IsValid)
+            return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml", model);
+
+        _aiInterviewSettings.Enabled = model.Enabled;
+        _aiInterviewSettings.MockInterviewQuestionCount = NormalizeMockInterviewQuestionCount(model.MockInterviewQuestionCount);
+        await _settingService.SaveSettingAsync(_aiInterviewSettings);
+
+        _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
+
+        return RedirectToRoute(AIInterviewDefaults.AdminMockConfigureRouteName);
     }
 
     [HttpPost]

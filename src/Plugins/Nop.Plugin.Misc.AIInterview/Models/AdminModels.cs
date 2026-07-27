@@ -24,6 +24,15 @@ public record JobRequirementsModel : BaseNopModel
     public bool IsJobProduct { get; set; }
 }
 
+public record AIInterviewConfigureModel : BaseNopModel
+{
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Enabled")]
+    public bool Enabled { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Configure.MockInterviewQuestionCount")]
+    public int MockInterviewQuestionCount { get; set; } = 5;
+}
+
 public record AiServiceSettingsModel : BaseNopModel
 {
     [NopResourceDisplayName("Plugins.Misc.AIInterview.UseMockResponses")]

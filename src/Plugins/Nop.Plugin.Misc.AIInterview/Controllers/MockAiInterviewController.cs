@@ -112,6 +112,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IJobProductAccessService _jobProductAccessService;
     private readonly ICustomerActivityService _customerActivityService;
     private readonly IDownloadService _downloadService;
+    private readonly AIInterviewSettings _aiInterviewSettings;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -138,7 +139,8 @@ public class MockAiInterviewController : BasePluginController
         IProductAttributeService productAttributeService = null,
         IJobProductAccessService jobProductAccessService = null,
         ICustomerActivityService customerActivityService = null,
-        IDownloadService downloadService = null)
+        IDownloadService downloadService = null,
+        AIInterviewSettings aiInterviewSettings = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -166,6 +168,7 @@ public class MockAiInterviewController : BasePluginController
         _jobProductAccessService = jobProductAccessService;
         _customerActivityService = customerActivityService;
         _downloadService = downloadService;
+        _aiInterviewSettings = aiInterviewSettings ?? new AIInterviewSettings();
     }
 
     protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
@@ -453,6 +456,11 @@ public class MockAiInterviewController : BasePluginController
     protected virtual int NormalizeQuestionCount(int questionCount)
     {
         return Math.Clamp(questionCount <= 0 ? 5 : questionCount, 1, 10);
+    }
+
+    protected virtual int ResolveMockQuestionCount()
+    {
+        return NormalizeQuestionCount(_aiInterviewSettings?.MockInterviewQuestionCount ?? 5);
     }
 
     protected virtual async Task<int> ResolveQuestionCountAsync(int productId)
@@ -1070,9 +1078,16 @@ public class MockAiInterviewController : BasePluginController
             var sessionUpdated = false;
             if (isMockPracticeProduct)
             {
+                var mockQuestionCount = ResolveMockQuestionCount();
                 var resumeResolution = await ResolvePracticeResumeForStartAsync(product, resumeFile, selectedResumeDownloadId, reusableSession);
                 if (!string.IsNullOrWhiteSpace(resumeResolution.ErrorMessage))
                     return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", resumeResolution.ErrorMessage);
+
+                if (reusableSession.QuestionCount != mockQuestionCount)
+                {
+                    reusableSession.QuestionCount = mockQuestionCount;
+                    sessionUpdated = true;
+                }
 
                 if (!string.Equals(reusableSession.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.Ordinal))
                 {
@@ -1213,7 +1228,7 @@ public class MockAiInterviewController : BasePluginController
             Token = Guid.NewGuid().ToString("N"),
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(30),
             IsActive = true,
-            QuestionCount = await ResolveQuestionCountAsync(productId),
+            QuestionCount = isMockPracticeProduct ? ResolveMockQuestionCount() : await ResolveQuestionCountAsync(productId),
             SponsorInviteId = sponsorInviteId,
             StartedOnUtc = DateTime.UtcNow,
             CreatedOnUtc = DateTime.UtcNow

@@ -47,6 +47,8 @@ public class AIInterviewSettings : ISettings
 
     public bool EnableFinalScoringAtCompletion { get; set; } = true;
 
+    public int MockInterviewQuestionCount { get; set; } = 5;
+
     public decimal AzureOpenAiPromptTokenPricePerThousand { get; set; }
 
     public decimal AzureOpenAiCompletionTokenPricePerThousand { get; set; }
