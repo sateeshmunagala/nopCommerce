@@ -88,7 +88,6 @@ public class MockAiInterviewAdminController : BasePluginController
             return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml", model);
 
         _aiInterviewSettings.Enabled = model.Enabled;
-        _aiInterviewSettings.MockInterviewQuestionCount = NormalizeMockInterviewQuestionCount(model.MockInterviewQuestionCount);
         await _settingService.SaveSettingAsync(_aiInterviewSettings);
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
@@ -108,7 +107,6 @@ public class MockAiInterviewAdminController : BasePluginController
             return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml", model);
 
         _aiInterviewSettings.Enabled = model.Enabled;
-        _aiInterviewSettings.MockInterviewQuestionCount = NormalizeMockInterviewQuestionCount(model.MockInterviewQuestionCount);
         await _settingService.SaveSettingAsync(_aiInterviewSettings);
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
