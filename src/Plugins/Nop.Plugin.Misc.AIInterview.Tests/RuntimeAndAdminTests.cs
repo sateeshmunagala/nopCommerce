@@ -2661,8 +2661,9 @@ public class RuntimeAndAdminTests
             null), Times.Once);
     }
 
-    [Test]
-    public async Task InterviewAiClient_QuestionPlan_LengthTruncatedEmptyContent_RetriesWithHigherTokenBudgetAndSucceeds()
+    [TestCase("length")]
+    [TestCase("max_output_tokens")]
+    public async Task InterviewAiClient_QuestionPlan_TruncatedEmptyContent_RetriesWithHigherTokenBudgetAndSucceeds(string finishReason)
     {
         var nopLogger = new Mock<ILogger>();
         nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
@@ -2672,11 +2673,11 @@ public class RuntimeAndAdminTests
             {
                 Success = true,
                 Content = string.Empty,
-                ResponseBody = "{\"id\":\"resp_length\",\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"\"}}]}",
+                ResponseBody = $"{{\"id\":\"resp_{finishReason}\",\"choices\":[{{\"finish_reason\":\"{finishReason}\",\"message\":{{\"content\":\"\"}}}}]}}",
                 Endpoint = "https://example.openai.azure.com/",
                 EndpointHost = "example.openai.azure.com",
                 DeploymentOrModel = "gpt-5-mini",
-                FinishReason = "length",
+                FinishReason = finishReason,
                 IsLengthTruncated = true
             },
             new AzureOpenAiChatCompletionResult
@@ -2732,7 +2733,7 @@ public class RuntimeAndAdminTests
                 message.Contains("Operation=llm-question-plan") &&
                 message.Contains("InitialMaxCompletionTokens=2200") &&
                 message.Contains("RetryMaxCompletionTokens=3000") &&
-                message.Contains("FinishReason=length") &&
+                message.Contains($"FinishReason={finishReason}") &&
                 message.Contains("Deployment=gpt-5-mini")),
             null), Times.Once);
         nopLogger.Verify(logger => logger.InsertLogAsync(
@@ -2752,8 +2753,9 @@ public class RuntimeAndAdminTests
             It.IsAny<Customer>()), Times.Never);
     }
 
-    [Test]
-    public async Task InterviewAiClient_QuestionPlan_LengthTruncatedRetryExhausted_LogsFinishReasonAndDeployment()
+    [TestCase("length")]
+    [TestCase("max_output_tokens")]
+    public async Task InterviewAiClient_QuestionPlan_TruncatedRetryExhausted_LogsFinishReasonAndDeployment(string finishReason)
     {
         var nopLogger = new Mock<ILogger>();
         nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
@@ -2763,22 +2765,22 @@ public class RuntimeAndAdminTests
             {
                 Success = true,
                 Content = string.Empty,
-                ResponseBody = "{\"id\":\"resp_length_1\",\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"\"}}]}",
+                ResponseBody = $"{{\"id\":\"resp_{finishReason}_1\",\"choices\":[{{\"finish_reason\":\"{finishReason}\",\"message\":{{\"content\":\"\"}}}}]}}",
                 Endpoint = "https://example.openai.azure.com/",
                 EndpointHost = "example.openai.azure.com",
                 DeploymentOrModel = "gpt-5-mini",
-                FinishReason = "length",
+                FinishReason = finishReason,
                 IsLengthTruncated = true
             },
             new AzureOpenAiChatCompletionResult
             {
                 Success = true,
                 Content = string.Empty,
-                ResponseBody = "{\"id\":\"resp_length_2\",\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"\"}}]}",
+                ResponseBody = $"{{\"id\":\"resp_{finishReason}_2\",\"choices\":[{{\"finish_reason\":\"{finishReason}\",\"message\":{{\"content\":\"\"}}}}]}}",
                 Endpoint = "https://example.openai.azure.com/",
                 EndpointHost = "example.openai.azure.com",
                 DeploymentOrModel = "gpt-5-mini",
-                FinishReason = "length",
+                FinishReason = finishReason,
                 IsLengthTruncated = true
             });
         var client = new InterviewAiClient(
@@ -2802,7 +2804,7 @@ public class RuntimeAndAdminTests
         });
 
         Assert.That(response.Success, Is.False);
-        Assert.That(response.ErrorMessage, Does.Contain("empty response content (finish_reason=length)"));
+        Assert.That(response.ErrorMessage, Does.Contain($"empty response content (finish_reason={finishReason})"));
         Assert.That(adapter.Requests.Count, Is.EqualTo(2));
         nopLogger.Verify(logger => logger.InsertLogAsync(
             LogLevel.Warning,
@@ -2812,17 +2814,17 @@ public class RuntimeAndAdminTests
                 message.Contains("Operation=llm-question-plan") &&
                 message.Contains("InitialMaxCompletionTokens=2200") &&
                 message.Contains("RetryMaxCompletionTokens=3000") &&
-                message.Contains("FinishReason=length") &&
+                message.Contains($"FinishReason={finishReason}") &&
                 message.Contains("Deployment=gpt-5-mini")),
             null), Times.Once);
         nopLogger.Verify(logger => logger.InsertLogAsync(
             LogLevel.Warning,
             "AI Interview question plan contract failure",
             It.Is<string>(message =>
-                message.Contains("Reason=empty response content (finish_reason=length)") &&
+                message.Contains($"Reason=empty response content (finish_reason={finishReason})") &&
                 message.Contains("Deployment=gpt-5-mini") &&
                 !message.Contains("Deployment=<empty>") &&
-                message.Contains("resp_length_2")),
+                message.Contains($"resp_{finishReason}_2")),
             null), Times.Once);
     }
 
