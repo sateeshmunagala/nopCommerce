@@ -186,6 +186,8 @@ Allowed categories: skill, project_scenario, job_fit, behavioral
     public static string MockReportRouteName => "Plugin.Misc.AIInterview.Mock.Report";
     public static string MockEmployerManageRouteName => "Plugin.Misc.AIInterview.Mock.EmployerManage";
 
+    public const int RuntimeTokenLifetimeMinutes = 120;
+
     /// <summary>
     /// Admin Mock routes
     /// </summary>

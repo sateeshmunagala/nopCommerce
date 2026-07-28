@@ -964,7 +964,7 @@ public class MockAiInterviewController : BasePluginController
             return (session, false);
 
         session.Token = Guid.NewGuid().ToString("N");
-        session.TokenExpiryUtc = now.AddMinutes(30);
+        session.TokenExpiryUtc = now.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes);
         await _interviewSessionService.UpdateInterviewSessionAsync(session);
 
         _logger?.LogInformation("AIInterview runtime token renewed for session {SessionId}, customer {CustomerId}, product {ProductId}.",
@@ -1251,7 +1251,7 @@ public class MockAiInterviewController : BasePluginController
             ResumeDownloadId = sessionResumeDownloadId,
             SelectedProductAttributesJson = selectedProductAttributesJson,
             Token = Guid.NewGuid().ToString("N"),
-            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(30),
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes),
             IsActive = true,
             QuestionCount = isMockPracticeProduct ? ResolveMockQuestionCount() : await ResolveQuestionCountAsync(productId),
             SponsorInviteId = sponsorInviteId,
@@ -1356,8 +1356,7 @@ public class MockAiInterviewController : BasePluginController
         if (session == null ||
             !session.IsActive ||
             session.CompletedOnUtc.HasValue ||
-            session.CustomerId != customer.Id ||
-            IsSessionExpired(session))
+            session.CustomerId != customer.Id)
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
 
         var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
@@ -1498,8 +1497,10 @@ public class MockAiInterviewController : BasePluginController
     [HttpPost]
     public async Task<IActionResult> RuntimeClientEvent(string token, string eventType, string requestName, int? statusCode, string message, string failureKind, long? elapsedMilliseconds, bool? success = null)
     {
-        var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
-        var session = tokenRenewal.Session;
+        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
+        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue)
+            session = null;
+
         var safeRequestName = NormalizeRuntimeClientRequestName(requestName);
         var safeEventType = (eventType ?? string.Empty).Trim().ToLowerInvariant();
         var safeFailureKind = NormalizeRuntimeClientFailureKind(failureKind);
@@ -1526,32 +1527,12 @@ public class MockAiInterviewController : BasePluginController
             var stageComment = $"SessionId={session.Id}; CustomerId={session.CustomerId}; ProductId={session.ProductId}; Stage={safeStageName}; ElapsedMs={elapsed}; Success={stageSucceeded.ToString().ToLowerInvariant()}";
             await LogRuntimeActivityAsync(session, "AIInterview.Runtime.ClientStageTiming", stageComment);
 
-            if (tokenRenewal.Renewed)
-            {
-                return Json(new
-                {
-                    success = true,
-                    newToken = tokenRenewal.Session.Token,
-                    tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
-                });
-            }
-
             return Json(new { success = true });
         }
 
         var comment = BuildRuntimeClientFailureActivityComment(session, safeRequestName, statusCode, safeMessage, safeFailureKind, elapsedMilliseconds);
         await LogRuntimeActivityAsync(session, "AIInterview.Runtime.NetworkRequestFailed", comment);
         await LogRuntimeIssueAsync("AI Interview runtime client request failure", comment, await ResolveLogCustomerAsync(session));
-
-        if (tokenRenewal.Renewed)
-        {
-            return Json(new
-            {
-                success = true,
-                newToken = tokenRenewal.Session.Token,
-                tokenExpiryUtc = tokenRenewal.Session.TokenExpiryUtc
-            });
-        }
 
         return Json(new { success = true });
     }
