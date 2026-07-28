@@ -4390,7 +4390,7 @@
             }
             if (!(await ensureRuntimeTokenFresh())) {
                 stopScreenShare();
-                setStatus('Interview token refresh failed.', true);
+                interviewStarted = false;
                 updateStartButtonState();
                 updateSubmitAvailability();
                 return;

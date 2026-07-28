@@ -179,6 +179,41 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task RuntimeClientSettings_NormalizesTokenExpiryUtc_ForBrowserJson()
+    {
+        var unspecifiedDatabaseUtc = new DateTime(2026, 7, 28, 12, 34, 56, DateTimeKind.Unspecified);
+        var utcExpiry = new DateTime(2026, 7, 28, 12, 34, 56, DateTimeKind.Utc);
+        var localExpiry = new DateTime(2026, 7, 28, 12, 34, 56, DateTimeKind.Local);
+
+        var unspecifiedSettings = await ApplyRuntimeClientSettingsForExpiryAsync(unspecifiedDatabaseUtc);
+        var utcSettings = await ApplyRuntimeClientSettingsForExpiryAsync(utcExpiry);
+        var localSettings = await ApplyRuntimeClientSettingsForExpiryAsync(localExpiry);
+        var nullSettings = await ApplyRuntimeClientSettingsForExpiryAsync(null);
+
+        Assert.That(unspecifiedSettings.TokenExpiryUtc, Is.Not.Null);
+        Assert.That(unspecifiedSettings.TokenExpiryUtc.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
+        Assert.That(unspecifiedSettings.TokenExpiryUtc.Value.Ticks, Is.EqualTo(unspecifiedDatabaseUtc.Ticks));
+        Assert.That(utcSettings.TokenExpiryUtc.Value, Is.EqualTo(utcExpiry));
+        Assert.That(utcSettings.TokenExpiryUtc.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
+        Assert.That(localSettings.TokenExpiryUtc.Value, Is.EqualTo(localExpiry.ToUniversalTime()));
+        Assert.That(localSettings.TokenExpiryUtc.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
+        Assert.That(nullSettings.TokenExpiryUtc, Is.Null);
+    }
+
+    [Test]
+    public async Task RuntimeClientSettings_SerializesUnspecifiedDatabaseUtcExpiry_WithUtcSuffix()
+    {
+        var settings = await ApplyRuntimeClientSettingsForExpiryAsync(new DateTime(2026, 7, 28, 12, 34, 56, DateTimeKind.Unspecified));
+        var json = System.Text.Json.JsonSerializer.Serialize(settings, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        });
+
+        Assert.That(json, Does.Contain("\"tokenExpiryUtc\":\"2026-07-28T12:34:56Z\""));
+    }
+
+    [Test]
     public async Task Runtime_Start_Unauthorized_ReturnsError()
     {
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync((Customer)null);
@@ -1872,7 +1907,12 @@ public class RuntimeAndAdminTests
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
         var beginInterviewStart = runtimeViewText.IndexOf("const beginInterview = async () =>", StringComparison.Ordinal);
         var beginInterviewScreenShareIndex = runtimeViewText.IndexOf("if (!(await requestScreenShareForInterviewStart()))", beginInterviewStart, StringComparison.Ordinal);
-        var beginInterviewTokenRefreshIndex = runtimeViewText.IndexOf("if (!(await ensureRuntimeTokenFresh()))", beginInterviewStart, StringComparison.Ordinal);
+        var beginInterviewFixedExpiryGateIndex = runtimeViewText.IndexOf("if (!(await ensureRuntimeTokenFresh()))", beginInterviewStart, StringComparison.Ordinal);
+        var beginInterviewEndpointGateIndex = runtimeViewText.IndexOf("if (!config.beginInterviewUrl)", beginInterviewFixedExpiryGateIndex, StringComparison.Ordinal);
+        var beginInterviewPostIndex = runtimeViewText.IndexOf("postForm(config.beginInterviewUrl", beginInterviewEndpointGateIndex, StringComparison.Ordinal);
+        var beginInterviewFixedExpiryGateBlock = beginInterviewEndpointGateIndex > beginInterviewFixedExpiryGateIndex && beginInterviewFixedExpiryGateIndex >= 0
+            ? runtimeViewText.Substring(beginInterviewFixedExpiryGateIndex, beginInterviewEndpointGateIndex - beginInterviewFixedExpiryGateIndex)
+            : string.Empty;
         var onScreenShareInterruptedStart = runtimeViewText.IndexOf("const onScreenShareInterrupted = async () =>", StringComparison.Ordinal);
         var onScreenShareInterruptedEnd = runtimeViewText.IndexOf("const updateGuidelinesAcknowledgementState = () =>", onScreenShareInterruptedStart, StringComparison.Ordinal);
         var onScreenShareInterruptedBlock = runtimeViewText.Substring(onScreenShareInterruptedStart, onScreenShareInterruptedEnd - onScreenShareInterruptedStart);
@@ -1922,6 +1962,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Not.Contain("Body: ${text}"));
         Assert.That(runtimeViewText, Does.Contain("const ensureRuntimeTokenFresh = async () =>"));
         Assert.That(runtimeViewText, Does.Contain("Interview session token expired."));
+        Assert.That(runtimeViewText, Does.Not.Contain("Interview token refresh failed."));
         Assert.That(runtimeViewText, Does.Not.Contain("refreshTokenWithRetry"));
         Assert.That(runtimeViewText, Does.Not.Contain("scheduleTokenRefresh"));
         Assert.That(runtimeViewText, Does.Not.Contain("tokenRefreshPromise"));
@@ -2049,11 +2090,18 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("await stopSpeechRecognition();"));
         Assert.That(runtimeViewText, Does.Contain("logActivity(`${auto ? 'Auto-submit' : 'Manual submit'} blocked; screen sharing is inactive.`);"));
         Assert.That(runtimeViewText, Does.Contain("Resume screen sharing to continue the interview."));
-        Assert.That(runtimeViewText, Does.Contain("stopScreenShare();\r\n                setStatus('Interview token refresh failed.', true);").Or.Contain("stopScreenShare();\n                setStatus('Interview token refresh failed.', true);"));
         Assert.That(beginInterviewStart, Is.GreaterThanOrEqualTo(0));
         Assert.That(beginInterviewScreenShareIndex, Is.GreaterThan(beginInterviewStart));
-        Assert.That(beginInterviewTokenRefreshIndex, Is.GreaterThan(beginInterviewStart));
-        Assert.That(beginInterviewScreenShareIndex, Is.LessThan(beginInterviewTokenRefreshIndex));
+        Assert.That(beginInterviewFixedExpiryGateIndex, Is.GreaterThan(beginInterviewStart));
+        Assert.That(beginInterviewScreenShareIndex, Is.LessThan(beginInterviewFixedExpiryGateIndex));
+        Assert.That(beginInterviewEndpointGateIndex, Is.GreaterThan(beginInterviewFixedExpiryGateIndex));
+        Assert.That(beginInterviewPostIndex, Is.GreaterThan(beginInterviewEndpointGateIndex));
+        Assert.That(beginInterviewFixedExpiryGateBlock, Does.Contain("stopScreenShare();"));
+        Assert.That(beginInterviewFixedExpiryGateBlock, Does.Contain("interviewStarted = false;"));
+        Assert.That(beginInterviewFixedExpiryGateBlock, Does.Contain("updateStartButtonState();"));
+        Assert.That(beginInterviewFixedExpiryGateBlock, Does.Contain("updateSubmitAvailability();"));
+        Assert.That(beginInterviewFixedExpiryGateBlock, Does.Contain("return;"));
+        Assert.That(beginInterviewFixedExpiryGateBlock, Does.Not.Contain("setStatus("));
         Assert.That(runtimeViewText, Does.Contain("tracks.push(...screenShareStream.getTracks().filter("));
         Assert.That(runtimeViewText, Does.Contain("let preservedRecordingSegments = [];"));
         Assert.That(runtimeViewText, Does.Contain("await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording paused until screen sharing resumes.' });"));
@@ -2518,6 +2566,7 @@ public class RuntimeAndAdminTests
             It.Is<string>(message =>
                 message.Contains("Event=RuntimeGuidelinesAcknowledged") &&
                 message.Contains("Token=guidel...") &&
+                message.Contains("ReasonCode=valid") &&
                 message.Contains("SessionId=77") &&
                 message.Contains("CustomerId=12") &&
                 message.Contains("ProductId=34") &&
@@ -2526,6 +2575,33 @@ public class RuntimeAndAdminTests
                 message.Contains("ScreenSize=1920x1080") &&
                 message.Contains("ViewportSize=1280x720")),
             It.IsAny<Customer>()), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_AcknowledgeGuidelines_MissingSession_LogsSafeReasonWithoutRawToken()
+    {
+        var rawToken = "raw-guidelines-token-secret";
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(rawToken)).ReturnsAsync((InterviewSession)null);
+
+        var result = await _runtimeController.AcknowledgeGuidelines(rawToken, "2026-06-14T10:15:00Z", "test-agent", "1920x1080", "1280x720");
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var json = (JsonResult)result;
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Invalid or expired session token."));
+        _nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Information,
+            "AI Interview runtime guidelines acknowledged",
+            It.Is<string>(message =>
+                message.Contains("Event=RuntimeGuidelinesAcknowledged") &&
+                message.Contains("Token=raw-gu...") &&
+                message.Contains("ReasonCode=session-not-found") &&
+                message.Contains("SessionId=0") &&
+                message.Contains("CustomerId=0") &&
+                message.Contains("ProductId=0") &&
+                !message.Contains(rawToken)),
+            It.IsAny<Customer>()), Times.Once);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]
@@ -2664,6 +2740,7 @@ public class RuntimeAndAdminTests
             It.Is<string>(message =>
                 message.Contains("Event=RuntimeClientRequestFailed") &&
                 message.Contains("Token=expire...") &&
+                message.Contains("ReasonCode=token-expired") &&
                 message.Contains("Request=prepare") &&
                 message.Contains("StatusCode=400") &&
                 message.Contains("FailureKind=http-status") &&
@@ -3905,10 +3982,46 @@ public class RuntimeAndAdminTests
         public TestRuntimeController(IInterviewSessionService sessionService, ILocalizationService localizationService, IWorkContext workContext, ISponsorInviteService inviteService, ICreditService creditService, ICustomerService customerService, IProductService productService, global::Nop.Services.Vendors.IVendorService vendorService, IApplicationService applicationService)
             : base(sessionService, localizationService, workContext, inviteService, creditService, customerService, productService, vendorService, applicationService) { }
 
+        public Task TestApplyRuntimeClientSettingsAsync(InterviewRuntimeModel model, InterviewSession session)
+        {
+            return ApplyRuntimeClientSettingsAsync(model, session);
+        }
+
         public async Task<IActionResult> TestFallback()
         {
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Missing", "Fallback text");
         }
+    }
+
+    private async Task<RuntimeClientSettingsModel> ApplyRuntimeClientSettingsForExpiryAsync(DateTime? tokenExpiryUtc)
+    {
+        var controller = new TestRuntimeController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object);
+        var model = new InterviewRuntimeModel
+        {
+            ProductName = "Runtime Product",
+            ClientSettings = new RuntimeClientSettingsModel()
+        };
+        var session = new InterviewSession
+        {
+            Id = 90,
+            Token = "runtime-expiry-token",
+            IsActive = true,
+            TokenExpiryUtc = tokenExpiryUtc,
+            QuestionCount = 5
+        };
+
+        await controller.TestApplyRuntimeClientSettingsAsync(model, session);
+
+        return model.ClientSettings;
     }
 
     private static T GetJsonValue<T>(JsonResult json, string propertyName)

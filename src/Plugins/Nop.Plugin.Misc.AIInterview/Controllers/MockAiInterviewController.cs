@@ -985,6 +985,20 @@ public class MockAiInterviewController : BasePluginController
         return "session-not-found";
     }
 
+    protected virtual DateTime? NormalizeRuntimeTokenExpiryForClient(DateTime? tokenExpiryUtc)
+    {
+        if (!tokenExpiryUtc.HasValue)
+            return null;
+
+        var value = tokenExpiryUtc.Value;
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+    }
+
     public async Task<IActionResult> Start(int productId = 0, string sponsorToken = null)
     {
         if (productId > 0)
@@ -1317,7 +1331,7 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.Token = session?.Token;
         model.ReportUrl = GetMockReportUrl(session?.Id ?? model.SessionId);
         model.ClientSettings.ReportUrl = model.ReportUrl;
-        model.ClientSettings.TokenExpiryUtc = session?.TokenExpiryUtc;
+        model.ClientSettings.TokenExpiryUtc = NormalizeRuntimeTokenExpiryForClient(session?.TokenExpiryUtc);
         model.ClientSettings.SpeechAvailable = model.ClientSettings.SpeechAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.SpeechTokenUrl);
         model.ClientSettings.RecordingUploadUrl = Url?.RouteUrl(AIInterviewDefaults.MockRecordingUploadRouteName);
         model.ClientSettings.RecordingAvailable = model.ClientSettings.RecordingAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.RecordingUploadUrl);
@@ -1443,8 +1457,9 @@ public class MockAiInterviewController : BasePluginController
     {
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
         var isValidSession = IsSessionUsable(session);
+        var reasonCode = isValidSession ? "valid" : await ResolveRuntimeTokenFailureReasonCodeAsync(token, session);
         var maskedToken = MaskToken(token);
-        var fullMessage = $"Event=RuntimeGuidelinesAcknowledged; Token={maskedToken}; SessionId={session?.Id ?? 0}; CustomerId={session?.CustomerId ?? 0}; ProductId={session?.ProductId ?? 0}; AcknowledgedTimestamp={acknowledgedTimestamp ?? string.Empty}; UserAgent={userAgent ?? string.Empty}; ScreenSize={screenSize ?? string.Empty}; ViewportSize={viewportSize ?? string.Empty};";
+        var fullMessage = $"Event=RuntimeGuidelinesAcknowledged; Token={maskedToken}; ReasonCode={reasonCode}; SessionId={session?.Id ?? 0}; CustomerId={session?.CustomerId ?? 0}; ProductId={session?.ProductId ?? 0}; AcknowledgedTimestamp={acknowledgedTimestamp ?? string.Empty}; UserAgent={userAgent ?? string.Empty}; ScreenSize={screenSize ?? string.Empty}; ViewportSize={viewportSize ?? string.Empty};";
 
         var logCustomer = await ResolveLogCustomerAsync(session);
         if (_nopLogger != null)
@@ -1466,9 +1481,10 @@ public class MockAiInterviewController : BasePluginController
     [HttpPost]
     public async Task<IActionResult> RuntimeClientEvent(string token, string eventType, string requestName, int? statusCode, string message, string failureKind, long? elapsedMilliseconds, bool? success = null)
     {
-        var session = await _interviewSessionService.GetSessionByTokenAsync(token);
-        if (!IsSessionUsable(session))
-            session = null;
+        var resolvedSession = await _interviewSessionService.GetSessionByTokenAsync(token);
+        var isValidSession = IsSessionUsable(resolvedSession);
+        var reasonCode = isValidSession ? "valid" : await ResolveRuntimeTokenFailureReasonCodeAsync(token, resolvedSession);
+        var session = isValidSession ? resolvedSession : null;
 
         var safeRequestName = NormalizeRuntimeClientRequestName(requestName);
         var safeEventType = (eventType ?? string.Empty).Trim().ToLowerInvariant();
@@ -1483,7 +1499,6 @@ public class MockAiInterviewController : BasePluginController
             if (string.Equals(safeEventType, "stage-timing", StringComparison.OrdinalIgnoreCase))
             {
                 var safeStageName = NormalizeRuntimeClientStageName(requestName);
-                var reasonCode = await ResolveRuntimeTokenFailureReasonCodeAsync(token);
                 if (_nopLogger != null)
                 {
                     await _nopLogger.InsertLogAsync(
@@ -1498,7 +1513,7 @@ public class MockAiInterviewController : BasePluginController
 
             await LogRuntimeIssueAsync(
                 "AI Interview runtime client request failure",
-                $"Event=RuntimeClientRequestFailed; Token={MaskToken(token)}; Request={safeRequestName}; StatusCode={statusCode?.ToString(CultureInfo.InvariantCulture) ?? string.Empty}; FailureKind={safeFailureKind}; ElapsedMs={Math.Max(0, elapsedMilliseconds ?? 0)}; Message={safeMessage};",
+                $"Event=RuntimeClientRequestFailed; Token={MaskToken(token)}; ReasonCode={reasonCode}; Request={safeRequestName}; StatusCode={statusCode?.ToString(CultureInfo.InvariantCulture) ?? string.Empty}; FailureKind={safeFailureKind}; ElapsedMs={Math.Max(0, elapsedMilliseconds ?? 0)}; Message={safeMessage};",
                 await ResolveLogCustomerAsync());
 
             return Json(new { success = false, message = "Runtime client event ignored for invalid session." });
