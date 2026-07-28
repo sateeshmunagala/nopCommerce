@@ -259,10 +259,10 @@ WHERE [CustomerId] = @customerId
   });
 }
 
-async function createRenewalSession(state: FixtureState): Promise<string> {
+async function createFixedTokenSession(state: FixtureState): Promise<string> {
   return withPool(state.dbConnectionString, async (pool) => {
-    const token = `e2e-renew-${Date.now()}`;
-    const sessionKey = `e2e-renew-${Date.now()}`;
+    const token = `e2e-fixed-${Date.now()}`;
+    const sessionKey = `e2e-fixed-${Date.now()}`;
     const request = pool.request();
     request.input('customerId', sql.Int, state.customerId);
     request.input('productId', sql.Int, state.productId);
@@ -277,7 +277,7 @@ INSERT INTO [InterviewSession]
 )
 VALUES
 (
-    @customerId, 0, @sessionKey, @productId, @difficulty, @token, DATEADD(MINUTE, -1, SYSUTCDATETIME()), 1,
+    @customerId, 0, @sessionKey, @productId, @difficulty, @token, DATEADD(MINUTE, 120, SYSUTCDATETIME()), 1,
     NULL, NULL, NULL, 0, 0, SYSUTCDATETIME(), SYSUTCDATETIME(), NULL
 );`);
 
@@ -350,30 +350,27 @@ test.describe('AIInterview candidate runtime', () => {
       await expect(page.getByRole('link', { name: /Open recording/i })).toBeVisible();
   });
 
-  test('runtime renews active token and continues safely', async ({ page }) => {
+  test('runtime keeps fixed token and continues without refresh', async ({ page }) => {
     const state = await resolveFixtureState();
     await deactivateUnfinishedSessions(state);
-    const runtimeRenewUrl = await createRenewalSession(state);
+    const runtimeUrl = await createFixedTokenSession(state);
+    let refreshRequested = false;
+    page.on('request', (request) => {
+      if (request.url().includes('/mockaiinterview/refresh-token') && request.method() === 'POST')
+        refreshRequested = true;
+    });
 
     await ensureSignedIn(page);
 
-    const refreshResponsePromise = page.waitForResponse((response) =>
-      response.url().includes('/mockaiinterview/refresh-token') &&
-      response.request().method() === 'POST', { timeout: 15_000 }).catch(() => null);
-
-    await page.goto(runtimeRenewUrl);
+    await page.goto(runtimeUrl);
     await waitForActiveQuestion(page);
+    expect(refreshRequested).toBe(false);
 
-    const refreshResponse = await refreshResponsePromise;
-    if (refreshResponse) {
-      const json = await refreshResponse.json();
-      expect(json.newToken || json.NewToken).toBeTruthy();
-    }
-
-    await page.locator('#runtime-answer').fill('Token renewal verification answer.');
+    await page.locator('#runtime-answer').fill('Fixed token verification answer.');
     await page.locator('#submit-answer').click();
 
     await expect(page.locator('#runtime-status')).not.toContainText(/Invalid or expired session token/i);
     await expect(page.locator('#runtime-question')).not.toContainText(unavailableMessage);
+    expect(refreshRequested).toBe(false);
   });
 });

@@ -1066,10 +1066,12 @@ public class CandidateFlowTests
 
         var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
         var newToken = json.Value.GetType().GetProperty("newToken").GetValue(json.Value, null);
+        var tokenExpiryUtc = json.Value.GetType().GetProperty("tokenExpiryUtc").GetValue(json.Value, null);
         Assert.That(success, Is.EqualTo(true));
         Assert.That(newToken, Is.Not.Null);
-        Assert.That(newToken, Is.Not.EqualTo("old"));
-        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Token == newToken.ToString())), Times.Once);
+        Assert.That(newToken, Is.EqualTo("old"));
+        Assert.That(tokenExpiryUtc, Is.EqualTo(session.TokenExpiryUtc.Value));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]
@@ -1747,10 +1749,14 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("requestRecordingMediaForStart"));
         Assert.That(runtimeText, Does.Contain("await setCamera(true, true);"));
         Assert.That(runtimeText, Does.Contain("await setMic(true, true);"));
-        Assert.That(runtimeText, Does.Contain("refreshAt <= 0"));
-        Assert.That(runtimeText, Does.Contain("tokenRefreshPromise"));
-        Assert.That(runtimeText, Does.Contain("if (tokenRefreshPromise)"));
+        Assert.That(runtimeText, Does.Contain("const ensureRuntimeTokenFresh = async () =>"));
+        Assert.That(runtimeText, Does.Contain("Interview session token expired."));
+        Assert.That(runtimeText, Does.Not.Contain("refreshTokenWithRetry"));
+        Assert.That(runtimeText, Does.Not.Contain("scheduleTokenRefresh"));
+        Assert.That(runtimeText, Does.Not.Contain("tokenRefreshPromise"));
         Assert.That(runtimeText, Does.Not.Contain("tokenRefreshInFlight"));
+        Assert.That(runtimeText, Does.Not.Contain("applyTokenUpdate"));
+        Assert.That(runtimeText, Does.Not.Contain("updateRuntimeUrlToken"));
         Assert.That(runtimeText, Does.Contain("showUnavailableQuestionState"));
         Assert.That(runtimeText, Does.Contain("const beginResult = await postForm(config.beginInterviewUrl"));
         Assert.That(runtimeText, Does.Contain("let interviewUnavailable = false;"));
@@ -1767,7 +1773,7 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("interviewUnavailable = true;"));
         Assert.That(runtimeText, Does.Contain("const autoSubmitDelaySeconds = 15;"));
         Assert.That(runtimeText, Does.Contain("const clearAnswerTimers = () =>"));
-        Assert.That(runtimeText, Does.Contain("const clearTokenRefreshTimer = () =>"));
+        Assert.That(runtimeText, Does.Not.Contain("const clearTokenRefreshTimer = () =>"));
         Assert.That(runtimeText, Does.Contain("const clearAllRuntimeTimers = () =>"));
         Assert.That(runtimeText, Does.Contain("id=\"screen-share-status\""));
         Assert.That(runtimeText, Does.Contain("id=\"screen-share-interruption-warning\""));

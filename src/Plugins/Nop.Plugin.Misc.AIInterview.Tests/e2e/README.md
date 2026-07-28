@@ -17,7 +17,7 @@ The Playwright config and setup script now fail fast when:
 - Non-empty answer auto-submit flow
 - Stop Interview navigation to `/mockaiinterview/report/{sessionId}`
 - Report page display of saved turns, score, feedback, report data, and optional recording link
-- Runtime token renewal using a seeded active unfinished session with expired `TokenExpiryUtc`
+- Fixed runtime-token usage using a seeded active unfinished session with future `TokenExpiryUtc`
 
 ## Clean-checkout local workflow
 
@@ -118,9 +118,9 @@ At runtime, the spec now:
 - re-enables mock mode if needed
 - ensures the applicant wallet has enough test credits
 - deactivates unfinished sessions before the product-page candidate flow
-- creates a dedicated active unfinished renewal session with expired `TokenExpiryUtc` before the renewal test
+- creates a dedicated active unfinished fixed-token session with future `TokenExpiryUtc` before the fixed-token test
 
-That means the renewal scenario no longer depends on a hand-built `AIINTERVIEW_RUNTIME_RENEW_URL`.
+That means the fixed-token scenario no longer depends on a hand-built runtime URL.
 
 ## Environment files produced locally
 
@@ -156,4 +156,4 @@ The E2E harness does not require production Azure resources.
 5. Non-empty answer triggers `Auto submitting...` and advances to the next question.
 6. Stop Interview routes to `/mockaiinterview/report/{sessionId}`.
 7. Report page shows saved questions, answers, scores, feedback, report data, and the recording link when present.
-8. The renewal scenario does not show `Invalid or expired session token.` during an active unfinished interview.
+8. The fixed-token scenario does not call `/mockaiinterview/refresh-token` and does not show `Invalid or expired session token.` during an active unfinished interview.

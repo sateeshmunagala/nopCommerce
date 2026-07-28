@@ -273,7 +273,7 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task Runtime_Prepare_ExpiredActiveOwnerToken_RenewsAndPrepares()
+    public async Task Runtime_Prepare_ExpiredActiveOwnerToken_ReturnsInvalidToken_WithoutPreparation()
     {
         var customer = new Customer { Id = 7, Email = "owner@example.com" };
         var originalToken = "expired-owner-token";
@@ -287,53 +287,24 @@ public class RuntimeAndAdminTests
             IsActive = true,
             TokenExpiryUtc = originalExpiry
         };
-        InterviewSession updatedSession = null;
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _customerService.Setup(x => x.IsRegisteredAsync(customer, true)).ReturnsAsync(true);
         _sessionService.Setup(x => x.GetSessionByTokenAsync(originalToken)).ReturnsAsync(session);
-        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
-            .Callback<InterviewSession>(value => updatedSession = value)
-            .Returns(Task.CompletedTask);
-        _interviewRuntimeService.Setup(x => x.PrepareInterviewAsync(It.Is<string>(value => value != originalToken), customer))
-            .ReturnsAsync(new PrepareInterviewResponseModel
-            {
-                Success = true,
-                Ready = true,
-                Message = "Ready",
-                ExpectedQuestionCount = 5,
-                PersistedQuestionCount = 5,
-                ElapsedMilliseconds = 25
-            });
         var controller = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, _interviewRuntimeService.Object, null, _nopLogger.Object);
 
-        var beforeRenewalUtc = DateTime.UtcNow;
         var result = await controller.Prepare(originalToken);
-        var afterRenewalUtc = DateTime.UtcNow;
 
         Assert.That(result, Is.TypeOf<JsonResult>());
         var json = (JsonResult)result;
-        var responseToken = GetJsonValue<string>(json, "newToken");
-        var responseExpiry = (DateTime)json.Value.GetType().GetProperty("tokenExpiryUtc").GetValue(json.Value, null);
 
         Assert.That(AIInterviewDefaults.RuntimeTokenLifetimeMinutes, Is.EqualTo(120));
-        Assert.That(GetJsonValue<bool>(json, "success"), Is.True);
-        Assert.That(session.Token, Is.Not.EqualTo(originalToken));
-        Assert.That(session.TokenExpiryUtc, Is.Not.Null);
-        Assert.That(session.TokenExpiryUtc.Value, Is.GreaterThanOrEqualTo(beforeRenewalUtc.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes).AddSeconds(-5)));
-        Assert.That(session.TokenExpiryUtc.Value, Is.LessThanOrEqualTo(afterRenewalUtc.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes).AddSeconds(5)));
-        Assert.That(updatedSession, Is.SameAs(session));
-        Assert.That(responseToken, Is.EqualTo(session.Token));
-        Assert.That(responseExpiry, Is.EqualTo(session.TokenExpiryUtc.Value));
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Invalid or expired session token."));
+        Assert.That(session.Token, Is.EqualTo(originalToken));
+        Assert.That(session.TokenExpiryUtc, Is.EqualTo(originalExpiry));
         _customerService.Verify(x => x.IsRegisteredAsync(customer, true), Times.AtLeastOnce);
-        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(value =>
-            value.Id == 73 &&
-            value.Token == session.Token &&
-            value.Token != originalToken &&
-            value.TokenExpiryUtc == session.TokenExpiryUtc &&
-            value.IsActive &&
-            value.CompletedOnUtc == null)), Times.Once);
-        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync(session.Token, customer), Times.Once);
-        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync(originalToken, It.IsAny<Customer>()), Times.Never);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync(It.IsAny<string>(), It.IsAny<Customer>()), Times.Never);
     }
 
     [Test]
@@ -402,7 +373,7 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task Runtime_RefreshToken_ExpiredActiveSession_RenewsAndUpdatesToken()
+    public async Task Runtime_RefreshToken_ExpiredActiveSession_ReturnsErrorWithoutUpdatingToken()
     {
         var session = new InterviewSession
         {
@@ -413,29 +384,18 @@ public class RuntimeAndAdminTests
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-5)
         };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("expired-active")).ReturnsAsync(session);
-        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
 
-        var beforeRenewalUtc = DateTime.UtcNow;
         var result = await _runtimeController.RefreshToken("expired-active");
-        var afterRenewalUtc = DateTime.UtcNow;
 
         Assert.That(result, Is.TypeOf<JsonResult>());
         var json = (JsonResult)result;
         var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
-        var newToken = json.Value.GetType().GetProperty("newToken").GetValue(json.Value, null)?.ToString();
-        var renewedExpiry = (DateTime)json.Value.GetType().GetProperty("tokenExpiryUtc").GetValue(json.Value, null);
 
-        Assert.That(success, Is.EqualTo(true));
-        Assert.That(newToken, Is.Not.Null);
-        Assert.That(newToken, Is.Not.EqualTo("expired-active"));
-        Assert.That(renewedExpiry, Is.GreaterThanOrEqualTo(beforeRenewalUtc.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes).AddSeconds(-5)));
-        Assert.That(renewedExpiry, Is.LessThanOrEqualTo(afterRenewalUtc.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes).AddSeconds(5)));
-        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
-            s.Id == 91 &&
-            s.Token == newToken &&
-            s.TokenExpiryUtc == renewedExpiry &&
-            s.IsActive &&
-            s.CompletedOnUtc == null)), Times.Once);
+        Assert.That(success, Is.EqualTo(false));
+        Assert.That(json.Value.GetType().GetProperty("newToken"), Is.Null);
+        Assert.That(json.Value.GetType().GetProperty("tokenExpiryUtc"), Is.Null);
+        Assert.That(session.Token, Is.EqualTo("expired-active"));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]
@@ -461,6 +421,8 @@ public class RuntimeAndAdminTests
         Assert.That(insertedSession.TokenExpiryUtc, Is.Not.Null);
         Assert.That(insertedSession.TokenExpiryUtc.Value, Is.GreaterThanOrEqualTo(beforeStartUtc.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes).AddSeconds(-5)));
         Assert.That(insertedSession.TokenExpiryUtc.Value, Is.LessThanOrEqualTo(afterStartUtc.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes).AddSeconds(5)));
+        Assert.That(insertedSession.StartedOnUtc, Is.EqualTo(insertedSession.CreatedOnUtc));
+        Assert.That(insertedSession.TokenExpiryUtc.Value, Is.EqualTo(insertedSession.CreatedOnUtc.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes)));
         Assert.That(insertedSession.CustomerId, Is.EqualTo(customer.Id));
         Assert.That(insertedSession.ProductId, Is.EqualTo(1));
         Assert.That(insertedSession.IsActive, Is.True);
@@ -966,10 +928,12 @@ public class RuntimeAndAdminTests
         var json = (JsonResult)result;
         var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
         var newToken = json.Value.GetType().GetProperty("newToken").GetValue(json.Value, null);
+        var tokenExpiryUtc = json.Value.GetType().GetProperty("tokenExpiryUtc").GetValue(json.Value, null);
 
         Assert.That(success, Is.EqualTo(true));
-        Assert.That(newToken, Is.Not.EqualTo("old-token"));
-        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Token == (string)newToken)), Times.Once);
+        Assert.That(newToken, Is.EqualTo("old-token"));
+        Assert.That(tokenExpiryUtc, Is.EqualTo(session.TokenExpiryUtc.Value));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]
@@ -1001,7 +965,23 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task Runtime_RefreshToken_ExpiredActiveSession_Renews()
+    public async Task Runtime_RefreshToken_ActiveSessionWithoutExpiry_ReturnsError()
+    {
+        var session = new InterviewSession { Token = "missing-expiry", IsActive = true };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("missing-expiry")).ReturnsAsync(session);
+
+        var result = await _runtimeController.RefreshToken("missing-expiry");
+        var json = (JsonResult)result;
+
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Invalid or expired session token."));
+        Assert.That(json.Value.GetType().GetProperty("newToken"), Is.Null);
+        Assert.That(json.Value.GetType().GetProperty("tokenExpiryUtc"), Is.Null);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_RefreshToken_ExpiredActiveSession_ReturnsError()
     {
         var session = new InterviewSession
         {
@@ -1013,22 +993,20 @@ public class RuntimeAndAdminTests
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
         };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("expired-active")).ReturnsAsync(session);
-        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
 
         var result = await _runtimeController.RefreshToken("expired-active");
         var json = (JsonResult)result;
         var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
-        var newToken = json.Value.GetType().GetProperty("newToken").GetValue(json.Value, null)?.ToString();
 
-        Assert.That(success, Is.EqualTo(true));
-        Assert.That(newToken, Is.Not.Null);
-        Assert.That(newToken, Is.Not.EqualTo("expired-active"));
-        Assert.That(json.Value.GetType().GetProperty("tokenExpiryUtc").GetValue(json.Value, null), Is.Not.Null);
-        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Token == newToken && s.IsActive)), Times.Once);
+        Assert.That(success, Is.EqualTo(false));
+        Assert.That(json.Value.GetType().GetProperty("newToken"), Is.Null);
+        Assert.That(json.Value.GetType().GetProperty("tokenExpiryUtc"), Is.Null);
+        Assert.That(session.Token, Is.EqualTo("expired-active"));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]
-    public async Task Runtime_SubmitAnswer_ExpiredActiveSession_ReturnsRenewedToken()
+    public async Task Runtime_SubmitAnswer_ExpiredActiveSession_ReturnsInvalidTokenWithoutRuntimeCall()
     {
         var session = new InterviewSession
         {
@@ -1039,13 +1017,6 @@ public class RuntimeAndAdminTests
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
         };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("expired-submit")).ReturnsAsync(session);
-        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
-        _interviewRuntimeService.Setup(x => x.SubmitAnswerAsync(It.IsAny<SubmitInterviewAnswerRequest>()))
-            .ReturnsAsync(new SubmitInterviewAnswerResponse
-            {
-                Success = true,
-                Question = "Next question"
-            });
 
         var controller = new MockAiInterviewController(
             _sessionService.Object,
@@ -1067,24 +1038,17 @@ public class RuntimeAndAdminTests
 
         Assert.That(result, Is.TypeOf<JsonResult>());
         var json = (JsonResult)result;
-        var successProperty = json.Value.GetType().GetProperty("success");
-        var duplicateSuccessProperty = json.Value.GetType().GetProperty("Success");
-        var newTokenProperty = json.Value.GetType().GetProperty("newToken");
-        var duplicateReportUrlProperty = json.Value.GetType().GetProperty("ReportUrl");
-        Assert.That(successProperty, Is.Not.Null);
-        Assert.That(duplicateSuccessProperty, Is.Null);
-        Assert.That(newTokenProperty, Is.Not.Null, "Expected renewed submit-answer response to include a token update.");
-        Assert.That(duplicateReportUrlProperty, Is.Null);
-        var success = successProperty.GetValue(json.Value, null);
-        Assert.That(success, Is.EqualTo(true));
-        var newToken = newTokenProperty.GetValue(json.Value, null)?.ToString();
-        Assert.That(newToken, Is.Not.Null);
-        Assert.That(newToken, Is.Not.EqualTo("expired-submit"));
-        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.Token == newToken)), Times.Once);
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Invalid or expired session token."));
+        Assert.That(json.Value.GetType().GetProperty("newToken"), Is.Null);
+        Assert.That(json.Value.GetType().GetProperty("tokenExpiryUtc"), Is.Null);
+        Assert.That(session.Token, Is.EqualTo("expired-submit"));
+        _interviewRuntimeService.Verify(x => x.SubmitAnswerAsync(It.IsAny<SubmitInterviewAnswerRequest>()), Times.Never);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]
-    public async Task Runtime_Stop_ExpiredActiveSession_ReturnsRenewedToken_WithSuccess()
+    public async Task Runtime_Stop_ExpiredActiveSession_ReturnsInvalidTokenWithoutRuntimeCall()
     {
         var session = new InterviewSession
         {
@@ -1095,9 +1059,6 @@ public class RuntimeAndAdminTests
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
         };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("expired-stop")).ReturnsAsync(session);
-        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
-        _interviewRuntimeService.Setup(x => x.CompleteInterviewAsync(It.IsAny<string>(), "Stopped by user"))
-            .ReturnsAsync(new CompleteInterviewResponse { Success = true, IsTerminated = true, Completion = "done" });
 
         var controller = new MockAiInterviewController(
             _sessionService.Object,
@@ -1118,24 +1079,17 @@ public class RuntimeAndAdminTests
         var result = await controller.Stop("expired-stop");
 
         var json = (JsonResult)result;
-        var successProperty = json.Value.GetType().GetProperty("success");
-        var duplicateSuccessProperty = json.Value.GetType().GetProperty("Success");
-        var duplicateReportUrlProperty = json.Value.GetType().GetProperty("ReportUrl");
-        var newTokenProperty = json.Value.GetType().GetProperty("newToken");
-        Assert.That(successProperty, Is.Not.Null);
-        Assert.That(duplicateSuccessProperty, Is.Null);
-        Assert.That(duplicateReportUrlProperty, Is.Null);
-        Assert.That(newTokenProperty, Is.Not.Null);
-
-        var success = successProperty.GetValue(json.Value, null);
-        var newToken = newTokenProperty.GetValue(json.Value, null)?.ToString();
-
-        Assert.That(success, Is.EqualTo(true));
-        Assert.That(newToken, Is.Not.Null.And.Not.EqualTo("expired-stop"));
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Invalid or expired session token."));
+        Assert.That(json.Value.GetType().GetProperty("newToken"), Is.Null);
+        Assert.That(json.Value.GetType().GetProperty("tokenExpiryUtc"), Is.Null);
+        Assert.That(session.Token, Is.EqualTo("expired-stop"));
+        _interviewRuntimeService.Verify(x => x.CompleteInterviewAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]
-    public async Task Runtime_Get_With_Expired_Active_Token_Renews_And_Redirects()
+    public async Task Runtime_Get_With_Expired_Active_Token_RedirectsToRestartWithoutTokenUpdate()
     {
         var session = new InterviewSession
         {
@@ -1148,15 +1102,14 @@ public class RuntimeAndAdminTests
             TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
         };
         _sessionService.Setup(x => x.GetSessionByTokenAsync("expired-runtime")).ReturnsAsync(session);
-        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
 
         var result = await _runtimeController.Runtime("expired-runtime");
 
-        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
-        var redirect = (RedirectToActionResult)result;
-        Assert.That(redirect.ActionName, Is.EqualTo(nameof(MockAiInterviewController.Runtime)));
-        Assert.That(redirect.RouteValues["token"], Is.Not.EqualTo("expired-runtime"));
-        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Once);
+        Assert.That(result, Is.TypeOf<RedirectResult>());
+        var redirect = (RedirectResult)result;
+        Assert.That(redirect.Url, Is.EqualTo("/"));
+        Assert.That(session.Token, Is.EqualTo("expired-runtime"));
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]
@@ -1814,14 +1767,14 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Not.Contain("console.log(config)"));
         Assert.That(runtimeViewText, Does.Not.Contain("Settings Config"));
         Assert.That(runtimeViewText, Does.Not.Contain("Body: ${text}"));
-        Assert.That(runtimeViewText, Does.Contain("tokenRefreshPromise"));
-        Assert.That(runtimeViewText, Does.Contain("if (tokenRefreshPromise)"));
+        Assert.That(runtimeViewText, Does.Contain("const ensureRuntimeTokenFresh = async () =>"));
+        Assert.That(runtimeViewText, Does.Contain("Interview session token expired."));
+        Assert.That(runtimeViewText, Does.Not.Contain("refreshTokenWithRetry"));
+        Assert.That(runtimeViewText, Does.Not.Contain("scheduleTokenRefresh"));
+        Assert.That(runtimeViewText, Does.Not.Contain("tokenRefreshPromise"));
         Assert.That(runtimeViewText, Does.Not.Contain("tokenRefreshInFlight"));
-        Assert.That(runtimeViewText, Does.Contain("const updateRuntimeUrlToken = (newToken) =>"));
-        Assert.That(runtimeViewText, Does.Contain("if (!newToken || !window.history?.replaceState)"));
-        Assert.That(runtimeViewText, Does.Contain("url.searchParams.set('token', newToken);"));
-        Assert.That(runtimeViewText, Does.Contain("window.history.replaceState(window.history.state, document.title, url.toString());"));
-        Assert.That(runtimeViewText, Does.Contain("updateRuntimeUrlToken(newToken);"));
+        Assert.That(runtimeViewText, Does.Not.Contain("applyTokenUpdate"));
+        Assert.That(runtimeViewText, Does.Not.Contain("updateRuntimeUrlToken"));
         Assert.That(runtimeViewText, Does.Contain("showUnavailableQuestionState"));
         Assert.That(runtimeViewText, Does.Contain("normalized === 'AI service unavailable. Please try again later.'"));
         Assert.That(runtimeViewText, Does.Contain("const hasActiveQuestion = () => !interviewUnavailable && !isPlaceholderSpeechText(currentQuestionText());"));
@@ -1841,7 +1794,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("if (runtimeStoppedOrCompleted || stopInProgress)"));
         Assert.That(runtimeViewText, Does.Contain("const autoSubmitDelaySeconds = 15;"));
         Assert.That(runtimeViewText, Does.Contain("const clearAnswerTimers = () =>"));
-        Assert.That(runtimeViewText, Does.Contain("const clearTokenRefreshTimer = () =>"));
+        Assert.That(runtimeViewText, Does.Not.Contain("const clearTokenRefreshTimer = () =>"));
         Assert.That(runtimeViewText, Does.Contain("const clearAllRuntimeTimers = () =>"));
         Assert.That(runtimeViewText, Does.Contain("Submit Answer (${countdownValue})"));
         Assert.That(runtimeViewText, Does.Contain("answerBox.addEventListener('input', () => {"));
@@ -1851,7 +1804,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("Please speak or type something."));
         Assert.That(runtimeViewText, Does.Contain("stopInProgress = true;"));
         Assert.That(runtimeViewText, Does.Contain("runtimeStoppedOrCompleted = true;"));
-        Assert.That(runtimeViewText, Does.Contain("clearTokenRefreshTimer();"));
+        Assert.That(runtimeViewText, Does.Not.Contain("clearTokenRefreshTimer();"));
         Assert.That(runtimeViewText, Does.Contain("if (!config.recordingUploadUrl || !blob || recordingUploadInFlight)"));
         Assert.That(runtimeViewText, Does.Contain("if (!interviewStarted) {"));
         Assert.That(runtimeViewText, Does.Contain("<div class=\"runtime-conversation\" id=\"conversation\">"));
@@ -2131,8 +2084,8 @@ public class RuntimeAndAdminTests
         var postFormStart = runtimeViewText.IndexOf("const postForm = async", StringComparison.Ordinal);
         var postFormEnd = runtimeViewText.IndexOf("let prepareInterviewPromise = null;", postFormStart, StringComparison.Ordinal);
         var postFormBlock = runtimeViewText.Substring(postFormStart, postFormEnd - postFormStart);
-        Assert.That(postFormBlock.IndexOf("applyTokenUpdate(result);", StringComparison.Ordinal),
-            Is.LessThan(postFormBlock.IndexOf("return result;", StringComparison.Ordinal)));
+        Assert.That(postFormBlock, Does.Not.Contain("applyTokenUpdate(result);"));
+        Assert.That(postFormBlock, Does.Contain("return result;"));
 
         var stageTimingStart = runtimeViewText.IndexOf("const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds, success = true, token = null)", StringComparison.Ordinal);
         var stageTimingEnd = runtimeViewText.IndexOf("if (completionUploadTimeoutMismatch)", stageTimingStart, StringComparison.Ordinal);
@@ -2496,7 +2449,7 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task RuntimeClientEvent_ExpiredActiveSession_DoesNotRotateToken()
+    public async Task RuntimeClientEvent_ExpiredActiveSession_IgnoresEventWithoutRotatingToken()
     {
         var originalToken = "expired-client-event-token";
         var originalExpiry = DateTime.UtcNow.AddMinutes(-3);
@@ -2511,17 +2464,9 @@ public class RuntimeAndAdminTests
         };
         var customer = new Customer { Id = session.CustomerId, Email = "candidate@example.com" };
         var activityService = new Mock<ICustomerActivityService>();
-        string activityComment = null;
 
         _sessionService.Setup(x => x.GetSessionByTokenAsync(originalToken)).ReturnsAsync(session);
         _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(customer);
-        activityService.Setup(x => x.InsertActivityAsync(
-                customer,
-                "AIInterview.Runtime.NetworkRequestFailed",
-                It.IsAny<string>(),
-                It.IsAny<BaseEntity>()))
-            .Callback<Customer, string, string, BaseEntity>((_, _, comment, _) => activityComment = comment)
-            .ReturnsAsync(new ActivityLog());
 
         var controller = new MockAiInterviewController(
             _sessionService.Object,
@@ -2548,28 +2493,30 @@ public class RuntimeAndAdminTests
 
         Assert.That(result, Is.TypeOf<JsonResult>());
         var json = (JsonResult)result;
-        Assert.That(GetJsonValue<bool>(json, "success"), Is.True);
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Runtime client event ignored for invalid session."));
         Assert.That(json.Value.GetType().GetProperty("newToken"), Is.Null);
         Assert.That(json.Value.GetType().GetProperty("tokenExpiryUtc"), Is.Null);
         Assert.That(session.Token, Is.EqualTo(originalToken));
         Assert.That(session.TokenExpiryUtc, Is.EqualTo(originalExpiry));
-        Assert.That(activityComment, Does.Contain("SessionId=83"));
-        Assert.That(activityComment, Does.Contain("Request=prepare"));
-        Assert.That(activityComment, Does.Contain("StatusCode=400"));
-        Assert.That(activityComment, Does.Contain("FailureKind=http-status"));
-        Assert.That(activityComment, Does.Contain("Message=Runtime request returned HTTP 400."));
-        Assert.That(activityComment, Does.Not.Contain(originalToken));
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
         activityService.Verify(x => x.InsertActivityAsync(
-            customer,
-            "AIInterview.Runtime.NetworkRequestFailed",
+            It.IsAny<Customer>(),
             It.IsAny<string>(),
-            It.IsAny<BaseEntity>()), Times.Once);
+            It.IsAny<string>(),
+            It.IsAny<BaseEntity>()), Times.Never);
         _nopLogger.Verify(x => x.InsertLogAsync(
             LogLevel.Warning,
             "AI Interview runtime client request failure",
-            It.Is<string>(message => message == activityComment && !message.Contains(originalToken)),
-            customer), Times.Once);
+            It.Is<string>(message =>
+                message.Contains("Event=RuntimeClientRequestFailed") &&
+                message.Contains("Token=expire...") &&
+                message.Contains("Request=prepare") &&
+                message.Contains("StatusCode=400") &&
+                message.Contains("FailureKind=http-status") &&
+                message.Contains("Message=Runtime request returned HTTP 400.") &&
+                !message.Contains(originalToken)),
+            It.IsAny<Customer>()), Times.Once);
     }
 
     [Test]
@@ -2893,19 +2840,17 @@ public class RuntimeAndAdminTests
     [Test]
     public async Task Runtime_SpeechToken_ExpiredOrInactive_ReturnsSafeJson()
     {
-        _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync("expired")).ReturnsAsync(new SpeechTokenResponseModel
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("expired")).ReturnsAsync(new InterviewSession
         {
-            Success = false,
-            Message = "Voice mode is unavailable. Please type your answer below.",
-            FailureKind = "invalid-session",
-            DiagnosticMessage = "Mode=speech-token; FailureKind=invalid-session; AzureResponseBody={\"error\":\"do-not-leak\"}; StackTrace=hidden;"
+            Token = "expired",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
         });
-        _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync("inactive")).ReturnsAsync(new SpeechTokenResponseModel
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("inactive")).ReturnsAsync(new InterviewSession
         {
-            Success = false,
-            Message = "Voice mode is unavailable. Please type your answer below.",
-            FailureKind = "invalid-session",
-            DiagnosticMessage = "Mode=speech-token; FailureKind=invalid-session; EndpointHost=secret.example;"
+            Token = "inactive",
+            IsActive = false,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
         });
 
         var controller = new MockAiInterviewController(
@@ -2934,13 +2879,14 @@ public class RuntimeAndAdminTests
         var expiredMessage = expiredValue.GetType().GetProperty("message").GetValue(expiredValue, null)?.ToString();
         var serializedExpired = System.Text.Json.JsonSerializer.Serialize(expiredValue);
 
-        Assert.That(expiredError, Is.EqualTo("Voice mode is unavailable. Please type your answer below."));
-        Assert.That(expiredMessage, Is.EqualTo("Voice mode is unavailable. Please type your answer below."));
+        Assert.That(expiredError, Is.EqualTo("Invalid or expired session token."));
+        Assert.That(expiredMessage, Is.EqualTo("Invalid or expired session token."));
         Assert.That(serializedExpired, Does.Not.Contain("do-not-leak"));
         Assert.That(serializedExpired, Does.Not.Contain("secret.example"));
         Assert.That(serializedExpired, Does.Not.Contain("StackTrace"));
 
-        Assert.That(((JsonResult)inactive).Value.GetType().GetProperty("error").GetValue(((JsonResult)inactive).Value, null), Is.EqualTo("Voice mode is unavailable. Please type your answer below."));
+        Assert.That(((JsonResult)inactive).Value.GetType().GetProperty("error").GetValue(((JsonResult)inactive).Value, null), Is.EqualTo("Invalid or expired session token."));
+        _interviewRuntimeService.Verify(x => x.GetSpeechTokenAsync(It.IsAny<string>()), Times.Never);
         _nopLogger.Verify(x => x.InsertLogAsync(
             It.IsAny<LogLevel>(),
             "AI Interview speech token failure",

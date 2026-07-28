@@ -624,7 +624,6 @@
         let recordingScreenAudioSource = null;
         let recordingStreamSignature = '';
         let activeRecordingSignature = '';
-        let tokenRefreshTimer = null;
         let guidelinesModalTimer = null;
         let speechRecognizer = null;
         let speechSdkLoading = null;
@@ -637,7 +636,6 @@
         let preservedRecordingSegments = [];
         let recordingEnabled = false;
         let recordingUploadInFlight = false;
-        let tokenRefreshPromise = null;
         let interviewStarted = false;
         let interviewUnavailable = false;
         let speechUnavailable = !config.speechAvailable;
@@ -1992,11 +1990,6 @@
                 logActivity('Screen sharing started without a system or tab audio track.');
         };
 
-        const clearTokenRefreshTimer = () => {
-            clearTimeout(tokenRefreshTimer);
-            tokenRefreshTimer = null;
-        };
-
         const stopScreenShare = () => {
             screenShareStream?.getTracks().forEach(track => track.stop());
             screenShareStream = null;
@@ -2031,7 +2024,6 @@
 
         const clearActiveInterviewTimers = () => {
             clearAnswerTimers();
-            clearTokenRefreshTimer();
             clearGuidelinesModalTimer();
             clearInterval(runtimeTimerHandle);
             runtimeTimerHandle = null;
@@ -2521,36 +2513,23 @@
             updateSubmitAvailability();
         };
 
-        const applyTokenUpdate = (result) => {
-            if (runtimeStoppedOrCompleted || stopInProgress)
-                return;
-
-            const newToken = getValue(result, 'newToken', 'NewToken');
-            if (!newToken)
-                return;
-
-            sessionToken = newToken;
-            config.token = newToken;
-            updateRuntimeUrlToken(newToken);
-            const expiry = getValue(result, 'tokenExpiryUtc', 'TokenExpiryUtc');
-            tokenExpiryUtc = expiry ? new Date(expiry) : tokenExpiryUtc;
-            scheduleTokenRefresh();
-        };
-
-        const isTokenRefreshNeeded = () => {
+        const ensureRuntimeTokenFresh = async () => {
             if (runtimeStoppedOrCompleted || stopInProgress)
                 return false;
 
-            if (!config.refreshTokenUrl || !sessionToken)
+            if (!tokenExpiryUtc || isNaN(tokenExpiryUtc.getTime())) {
+                logActivity('Interview session token expiry is unavailable.');
+                setStatus('Unable to continue the interview because the interview session deadline is unavailable. Please reload and try again.', true);
                 return false;
+            }
 
-            if (!tokenExpiryUtc || isNaN(tokenExpiryUtc.getTime()))
+            if (tokenExpiryUtc.getTime() > Date.now())
                 return true;
 
-            return (tokenExpiryUtc.getTime() - Date.now()) <= 120000;
+            logActivity('Interview session token expired.');
+            setStatus('Unable to continue the interview because the interview session has expired. Please reload and try again.', true);
+            return false;
         };
-
-        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         const withTimeout = (promise, timeoutMs, timeoutMessage) => {
             let timeoutHandle = null;
@@ -2559,81 +2538,6 @@
             });
 
             return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutHandle));
-        };
-
-        const updateRuntimeUrlToken = (newToken) => {
-            if (!newToken || !window.history?.replaceState)
-                return;
-
-            const url = new URL(window.location.href);
-            if (url.searchParams.get('token') === newToken)
-                return;
-
-            url.searchParams.set('token', newToken);
-            window.history.replaceState(window.history.state, document.title, url.toString());
-        };
-
-        const refreshTokenWithRetry = (attempt = 0) => {
-            if (runtimeStoppedOrCompleted || stopInProgress)
-                return Promise.resolve(false);
-
-            if (!config.refreshTokenUrl || !sessionToken)
-                return Promise.resolve(false);
-
-            if (tokenRefreshPromise)
-                return tokenRefreshPromise;
-
-            tokenRefreshPromise = (async () => {
-                let currentAttempt = attempt;
-                try {
-                    while (true) {
-                        if (runtimeStoppedOrCompleted || stopInProgress)
-                            return false;
-
-                        const result = await postForm(config.refreshTokenUrl, new URLSearchParams({ token: sessionToken }));
-                        const newToken = getValue(result, 'newToken', 'NewToken');
-                        if (result && isSuccess(result) && newToken) {
-                            logActivity('Session token refreshed.');
-                            applyTokenUpdate(result);
-                            return true;
-                        }
-
-                        if (currentAttempt < 2 && isTokenRefreshNeeded()) {
-                            const backoff = (currentAttempt + 1) * 1500;
-                            logActivity(`Token refresh retry scheduled in ${backoff / 1000}s.`);
-                            currentAttempt += 1;
-                            await delay(backoff);
-                            if (runtimeStoppedOrCompleted || stopInProgress)
-                                return false;
-                            continue;
-                        }
-
-                        return false;
-                    }
-                } finally {
-                    tokenRefreshPromise = null;
-                }
-            })();
-
-            return tokenRefreshPromise;
-        };
-
-        const ensureRuntimeTokenFresh = async () => {
-            if (runtimeStoppedOrCompleted || stopInProgress)
-                return false;
-
-            if (!isTokenRefreshNeeded())
-                return true;
-
-            const expired = tokenExpiryUtc && !isNaN(tokenExpiryUtc.getTime()) && tokenExpiryUtc.getTime() <= Date.now();
-            const refreshed = await refreshTokenWithRetry();
-            if (!refreshed && expired) {
-                logActivity('Token refresh failed for expired session token.');
-                setStatus('Unable to continue the interview right now. Please reload and try again.', true);
-                return false;
-            }
-
-            return true;
         };
 
         const showReminder = async () => {
@@ -2878,7 +2782,6 @@
             updateStartButtonState();
             setHeaderStatus(reportGenerationMessage, false);
             startReportGenerationWaitingState(reportUrl);
-            clearTokenRefreshTimer();
             updateAuxiliaryControlsState();
             completedCleanupTimer = setTimeout(() => {
                 finalizeCompletedState(result, recordingPromise)
@@ -3170,7 +3073,6 @@
                 try {
                     const result = await response.json();
                     logActivity('Request success.');
-                    applyTokenUpdate(result);
                     return result;
                 } catch {
                     logActivity(`Request failed: Invalid JSON response.`);
@@ -3286,7 +3188,6 @@
                 try {
                     const result = await response.json();
                     logActivity('Multipart request success.');
-                    applyTokenUpdate(result);
                     return result;
                 } catch {
                     logActivity(`Multipart request failed: Invalid JSON response.`);
@@ -3598,22 +3499,6 @@
             } else if (!getActiveRecordingStream() && recordingEnabled) {
                 logActivity('Recording waiting for screen share, camera, or microphone.');
             }
-        };
-
-        const scheduleTokenRefresh = () => {
-            clearTokenRefreshTimer();
-            if (runtimeStoppedOrCompleted || stopInProgress)
-                return;
-            if (!config.refreshTokenUrl || !tokenExpiryUtc || isNaN(tokenExpiryUtc.getTime()))
-                return;
-
-            const refreshAt = tokenExpiryUtc.getTime() - Date.now() - 120000;
-            if (refreshAt <= 0) {
-                refreshTokenWithRetry();
-                return;
-            }
-
-            tokenRefreshTimer = setTimeout(() => refreshTokenWithRetry(), refreshAt);
         };
 
         const ensureSpeechSdk = async () => {
@@ -4393,7 +4278,6 @@
             logActivity('Stopping interview...');
             stopInProgress = true;
             clearAnswerTimers();
-            clearTokenRefreshTimer();
             let originalText = '';
             if (stopBtn) {
                 originalText = stopBtn.textContent;
@@ -4434,7 +4318,6 @@
                 updateSubmitAvailability();
                 if (interviewStarted && hasActiveQuestion() && !answerNeedsEditAfterFailure)
                     resetTimers();
-                scheduleTokenRefresh();
                 return;
             }
 
@@ -4875,6 +4758,5 @@
         refreshAudioDevices().catch(error => logActivity(`Audio device refresh failed. reason=${error?.message || 'unknown'}`));
         syncAnswerCaption();
         guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);
-        scheduleTokenRefresh();
     })();
 </script>

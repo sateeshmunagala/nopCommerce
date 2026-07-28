@@ -3098,7 +3098,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         return session != null &&
             session.IsActive &&
             !session.CompletedOnUtc.HasValue &&
-            (!session.TokenExpiryUtc.HasValue || session.TokenExpiryUtc > utcNow);
+            session.TokenExpiryUtc.HasValue &&
+            session.TokenExpiryUtc > utcNow;
     }
 
     protected virtual bool CanUploadRecording(InterviewSession session, string token, DateTime utcNow)
@@ -3109,10 +3110,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (!string.IsNullOrWhiteSpace(session.RecordingUrl))
             return false;
 
-        if (session.IsActive && !session.CompletedOnUtc.HasValue && (!session.TokenExpiryUtc.HasValue || session.TokenExpiryUtc > utcNow))
+        if (session.IsActive && !session.CompletedOnUtc.HasValue && session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc > utcNow)
             return true;
 
-        if (session.CompletedOnUtc.HasValue && session.CompletedOnUtc.Value >= utcNow.AddMinutes(-10))
+        if (session.CompletedOnUtc.HasValue &&
+            session.CompletedOnUtc.Value >= utcNow.AddMinutes(-10) &&
+            session.TokenExpiryUtc.HasValue &&
+            session.TokenExpiryUtc > utcNow)
             return true;
 
         return false;
