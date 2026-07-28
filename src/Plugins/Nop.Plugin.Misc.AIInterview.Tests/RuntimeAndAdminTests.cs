@@ -363,6 +363,45 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_Begin_InvalidSession_ReturnsGenericErrorAndLogsSafeReason()
+    {
+        var customer = new Customer { Id = 7, Email = "owner@example.com" };
+        var token = "begin-known-token-secret";
+        var session = new InterviewSession
+        {
+            Id = 77,
+            CustomerId = customer.Id,
+            ProductId = 12,
+            Token = token,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(20)
+        };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(token)).ReturnsAsync(session);
+        _interviewRuntimeService.Setup(x => x.BeginInterviewAsync(token, customer)).ReturnsAsync((InterviewRuntimeModel)null);
+        var controller = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, _interviewRuntimeService.Object, null, _nopLogger.Object);
+
+        var result = await controller.Begin(token);
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var json = (JsonResult)result;
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Invalid or expired session token."));
+        _nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview begin rejected invalid session",
+            It.Is<string>(message =>
+                message.Contains("Endpoint=begin") &&
+                message.Contains("Token=begin-...") &&
+                message.Contains("ReasonCode=runtime-model-not-found") &&
+                message.Contains("SessionId=77") &&
+                message.Contains("CustomerId=7") &&
+                message.Contains("ProductId=12") &&
+                !message.Contains(token)),
+            customer), Times.Once);
+    }
+
+    [Test]
     public async Task Runtime_RefreshToken_ExpiredActiveSession_RenewsAndUpdatesToken()
     {
         var session = new InterviewSession
@@ -1847,7 +1886,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("let reportNavigationStarted = false;"));
         Assert.That(runtimeViewText, Does.Contain("let speechTokenCache = null;"));
         Assert.That(runtimeViewText, Does.Contain("let speechTokenRequestPromise = null;"));
-        Assert.That(runtimeViewText, Does.Contain("const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds, success = true) =>"));
+        Assert.That(runtimeViewText, Does.Contain("const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds, success = true, token = null) =>"));
         Assert.That(runtimeViewText, Does.Contain("success: success === true ? 'true' : 'false'"));
         Assert.That(runtimeViewText, Does.Contain("Preparing your next question..."));
         Assert.That(runtimeViewText, Does.Not.Contain("clearAllRuntimeTimers();\r\n            let originalText = ''").And.Not.Contain("clearAllRuntimeTimers();\n            let originalText = ''"));
@@ -2059,6 +2098,46 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("if (ttsStartedReported)"));
         Assert.That(runtimeViewText, Does.Contain("await synthesizeSpeechAudioData(speechConfig, text, reportTtsStartedOnce);"));
         Assert.That(runtimeViewText, Does.Contain("await speakTextWithDefaultOutput(speechConfig, text, reportTtsStartedOnce);"));
+    }
+
+    [Test]
+    public void RuntimeView_PrepareCompletesBeforeInitialSpeechPreloadAndStageTimingUsesPostResponseToken()
+    {
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+        var prepareStart = runtimeViewText.IndexOf("const startPrepareInterview = () =>", StringComparison.Ordinal);
+        var prepareEnd = runtimeViewText.IndexOf("const postMultipart = async", prepareStart, StringComparison.Ordinal);
+        Assert.That(prepareStart, Is.GreaterThanOrEqualTo(0));
+        Assert.That(prepareEnd, Is.GreaterThan(prepareStart));
+
+        var prepareBlock = runtimeViewText.Substring(prepareStart, prepareEnd - prepareStart);
+        var ensureFresh = prepareBlock.IndexOf("if (!(await ensureRuntimeTokenFresh()))", StringComparison.Ordinal);
+        var tokenSnapshot = prepareBlock.IndexOf("const prepareToken = sessionToken;", StringComparison.Ordinal);
+        var preparePost = prepareBlock.IndexOf("const result = await postForm(config.prepareInterviewUrl, new URLSearchParams({ token: prepareToken }));", StringComparison.Ordinal);
+        var readyBranch = prepareBlock.IndexOf("if (isSuccess(result) && ready) {", StringComparison.Ordinal);
+        var telemetryTokenSnapshot = prepareBlock.IndexOf("const prepareTelemetryToken = sessionToken;", readyBranch, StringComparison.Ordinal);
+        var speechPreload = prepareBlock.IndexOf("preloadSpeechResources();", readyBranch, StringComparison.Ordinal);
+        var prepareTiming = prepareBlock.IndexOf("reportRuntimeClientStageTiming('prepare-response'", readyBranch, StringComparison.Ordinal);
+
+        Assert.That(ensureFresh, Is.GreaterThanOrEqualTo(0));
+        Assert.That(tokenSnapshot, Is.GreaterThan(ensureFresh));
+        Assert.That(preparePost, Is.GreaterThan(tokenSnapshot));
+        Assert.That(readyBranch, Is.GreaterThan(preparePost));
+        Assert.That(telemetryTokenSnapshot, Is.GreaterThan(readyBranch));
+        Assert.That(speechPreload, Is.GreaterThan(telemetryTokenSnapshot));
+        Assert.That(prepareTiming, Is.GreaterThan(speechPreload));
+        Assert.That(prepareBlock.Split("preloadSpeechResources();", StringSplitOptions.None).Length - 1, Is.EqualTo(1));
+        Assert.That(prepareBlock, Does.Contain("reportRuntimeClientStageTiming('prepare-response', performance.now() - prepareStartedAt, true, prepareTelemetryToken);"));
+
+        var postFormStart = runtimeViewText.IndexOf("const postForm = async", StringComparison.Ordinal);
+        var postFormEnd = runtimeViewText.IndexOf("let prepareInterviewPromise = null;", postFormStart, StringComparison.Ordinal);
+        var postFormBlock = runtimeViewText.Substring(postFormStart, postFormEnd - postFormStart);
+        Assert.That(postFormBlock.IndexOf("applyTokenUpdate(result);", StringComparison.Ordinal),
+            Is.LessThan(postFormBlock.IndexOf("return result;", StringComparison.Ordinal)));
+
+        var stageTimingStart = runtimeViewText.IndexOf("const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds, success = true, token = null)", StringComparison.Ordinal);
+        var stageTimingEnd = runtimeViewText.IndexOf("if (completionUploadTimeoutMismatch)", stageTimingStart, StringComparison.Ordinal);
+        var stageTimingBlock = runtimeViewText.Substring(stageTimingStart, stageTimingEnd - stageTimingStart);
+        Assert.That(stageTimingBlock, Does.Contain("token: token || sessionToken"));
     }
 
     [Test]
@@ -2491,6 +2570,64 @@ public class RuntimeAndAdminTests
             "AI Interview runtime client request failure",
             It.Is<string>(message => message == activityComment && !message.Contains(originalToken)),
             customer), Times.Once);
+    }
+
+    [Test]
+    public async Task RuntimeClientEvent_InvalidStageTiming_UsesIgnoredDiagnosticWithoutNetworkFailureLog()
+    {
+        var token = "raw-stage-token-secret";
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(token)).ReturnsAsync((InterviewSession)null);
+        var activityService = new Mock<ICustomerActivityService>();
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            nopLogger: _nopLogger.Object,
+            customerActivityService: activityService.Object);
+
+        var result = await controller.RuntimeClientEvent(
+            token,
+            "stage-timing",
+            "prepare-response",
+            null,
+            "Candidate answer must not be logged",
+            "http-status",
+            88,
+            true);
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        var json = (JsonResult)result;
+        Assert.That(GetJsonValue<bool>(json, "success"), Is.False);
+        Assert.That(GetJsonValue<string>(json, "message"), Is.EqualTo("Runtime client event ignored for invalid session."));
+        activityService.Verify(x => x.InsertActivityAsync(It.IsAny<Customer>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<BaseEntity>()), Times.Never);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        _nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Information,
+            "AI Interview runtime client stage timing ignored",
+            It.Is<string>(message =>
+                message.Contains("Token=raw-st...") &&
+                message.Contains("Stage=prepare-response") &&
+                message.Contains("ElapsedMs=88") &&
+                message.Contains("ReasonCode=session-not-found") &&
+                !message.Contains("Request=") &&
+                !message.Contains("StatusCode=") &&
+                !message.Contains("FailureKind=") &&
+                !message.Contains(token) &&
+                !message.Contains("Candidate answer")),
+            It.IsAny<Customer>()), Times.Once);
+        _nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview runtime client request failure",
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Never);
     }
 
     [Test]

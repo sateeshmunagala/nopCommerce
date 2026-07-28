@@ -1393,7 +1393,18 @@ public class MockAiInterviewController : BasePluginController
         var customer = await _workContext.GetCurrentCustomerAsync();
         var model = await _interviewRuntimeService.BeginInterviewAsync(token, customer);
         if (model == null)
+        {
+            var session = tokenRenewal.Session;
+            var reasonCode = session == null
+                ? await ResolveRuntimeTokenFailureReasonCodeAsync(token)
+                : "runtime-model-not-found";
+            await LogRuntimeIssueAsync(
+                "AI Interview begin rejected invalid session",
+                $"Endpoint=begin; Token={MaskToken(token)}; ReasonCode={reasonCode}; SessionId={session?.Id ?? 0}; CustomerId={session?.CustomerId ?? 0}; ProductId={session?.ProductId ?? 0};",
+                await ResolveLogCustomerAsync(session, customer));
+
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+        }
 
         var currentQuestion = model.CurrentQuestion?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(currentQuestion) ||
@@ -1511,6 +1522,22 @@ public class MockAiInterviewController : BasePluginController
 
         if (session == null)
         {
+            if (string.Equals(safeEventType, "stage-timing", StringComparison.OrdinalIgnoreCase))
+            {
+                var safeStageName = NormalizeRuntimeClientStageName(requestName);
+                var reasonCode = await ResolveRuntimeTokenFailureReasonCodeAsync(token);
+                if (_nopLogger != null)
+                {
+                    await _nopLogger.InsertLogAsync(
+                        NopLogLevel.Information,
+                        "AI Interview runtime client stage timing ignored",
+                        $"Token={MaskToken(token)}; Stage={safeStageName}; ElapsedMs={Math.Max(0, elapsedMilliseconds ?? 0)}; ReasonCode={reasonCode};",
+                        await ResolveLogCustomerAsync());
+                }
+
+                return Json(new { success = false, message = "Runtime client event ignored for invalid session." });
+            }
+
             await LogRuntimeIssueAsync(
                 "AI Interview runtime client request failure",
                 $"Event=RuntimeClientRequestFailed; Token={MaskToken(token)}; Request={safeRequestName}; StatusCode={statusCode?.ToString(CultureInfo.InvariantCulture) ?? string.Empty}; FailureKind={safeFailureKind}; ElapsedMs={Math.Max(0, elapsedMilliseconds ?? 0)}; Message={safeMessage};",

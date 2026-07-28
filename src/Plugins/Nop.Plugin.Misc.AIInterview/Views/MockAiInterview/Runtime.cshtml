@@ -3103,13 +3103,13 @@
             }
         };
 
-        const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds, success = true) => {
+        const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds, success = true, token = null) => {
             if (!config.runtimeClientEventUrl || !stageName)
                 return;
 
             try {
                 const payload = new URLSearchParams({
-                    token: sessionToken,
+                    token: token || sessionToken,
                     eventType: 'stage-timing',
                     requestName: stageName,
                     elapsedMilliseconds: String(Math.max(0, Math.round(elapsedMilliseconds || 0))),
@@ -3211,12 +3211,15 @@
                     return null;
 
                 logActivity('Runtime preparation started.');
-                preloadSpeechResources();
                 const prepareStartedAt = performance.now();
-                const result = await postForm(config.prepareInterviewUrl, new URLSearchParams({ token: sessionToken }));
+                const prepareToken = sessionToken;
+                const result = await postForm(config.prepareInterviewUrl, new URLSearchParams({ token: prepareToken }));
                 const ready = !!getValue(result, 'ready', 'Ready');
-                if (isSuccess(result) && ready)
-                    reportRuntimeClientStageTiming('prepare-response', performance.now() - prepareStartedAt, true);
+                if (isSuccess(result) && ready) {
+                    const prepareTelemetryToken = sessionToken;
+                    preloadSpeechResources();
+                    reportRuntimeClientStageTiming('prepare-response', performance.now() - prepareStartedAt, true, prepareTelemetryToken);
+                }
                 const expected = getValue(result, 'expectedQuestionCount', 'ExpectedQuestionCount');
                 const persisted = getValue(result, 'persistedQuestionCount', 'PersistedQuestionCount');
                 logActivity(`Runtime preparation finished. ready=${ready}; persisted=${persisted}; expected=${expected}`);
