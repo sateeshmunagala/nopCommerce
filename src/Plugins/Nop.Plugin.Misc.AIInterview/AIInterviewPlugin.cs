@@ -536,6 +536,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.StartAgain"] = "Start Again",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.ExpiredLink"] = "Your previous interview link expired. Start the interview again from this page.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.Unavailable"] = "The interview service is temporarily unavailable. Please try again.",
+            [FinalCompletionSpeechResourceKey] = DefaultFinalCompletionSpeech,
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.Questions"] = "Questions",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.Recording"] = "Recording",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.OpenRecording"] = "Open recording",

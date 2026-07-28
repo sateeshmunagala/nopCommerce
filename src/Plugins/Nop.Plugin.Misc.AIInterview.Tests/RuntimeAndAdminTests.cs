@@ -141,11 +141,18 @@ public class RuntimeAndAdminTests
 
         var upgradeResources = (Dictionary<string, string>)upgradeMethod.Invoke(null, null);
         var pluginText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("AIInterviewPlugin.cs"));
+        var installLocaleStart = pluginText.IndexOf("//locales", StringComparison.Ordinal);
+        var installLocaleEnd = pluginText.IndexOf("await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());", installLocaleStart, StringComparison.Ordinal);
+        Assert.That(installLocaleStart, Is.GreaterThanOrEqualTo(0));
+        Assert.That(installLocaleEnd, Is.GreaterThan(installLocaleStart));
+        var installLocaleBlock = pluginText.Substring(installLocaleStart, installLocaleEnd - installLocaleStart);
 
         Assert.That(AIInterviewPlugin.FinalCompletionSpeechResourceKey, Is.EqualTo(FinalCompletionSpeechResourceKey));
         Assert.That(AIInterviewPlugin.DefaultFinalCompletionSpeech, Is.EqualTo(ApprovedFinalCompletionSpeech));
-        Assert.That(upgradeResources[FinalCompletionSpeechResourceKey], Is.EqualTo(ApprovedFinalCompletionSpeech));
-        Assert.That(pluginText.Split("[FinalCompletionSpeechResourceKey] = DefaultFinalCompletionSpeech", StringSplitOptions.None).Length - 1, Is.GreaterThanOrEqualTo(2));
+        Assert.That(upgradeResources.ContainsKey(FinalCompletionSpeechResourceKey), Is.True);
+        Assert.That(upgradeResources[AIInterviewPlugin.FinalCompletionSpeechResourceKey], Is.EqualTo(AIInterviewPlugin.DefaultFinalCompletionSpeech));
+        Assert.That(upgradeResources[AIInterviewPlugin.FinalCompletionSpeechResourceKey], Is.EqualTo(ApprovedFinalCompletionSpeech));
+        Assert.That(installLocaleBlock, Does.Contain("[FinalCompletionSpeechResourceKey] = DefaultFinalCompletionSpeech,"));
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("score").IgnoreCase);
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("selected").IgnoreCase);
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("rejected").IgnoreCase);
