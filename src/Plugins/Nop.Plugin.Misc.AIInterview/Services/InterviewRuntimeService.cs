@@ -1506,6 +1506,7 @@ internal static class InterviewReportSummaryHelper
 public class InterviewRuntimeService : IInterviewRuntimeService
 {
     private static readonly ConcurrentDictionary<int, SessionMutationLock> SessionMutationLocks = new();
+    private static readonly ConcurrentDictionary<int, Lazy<Task<PrepareInterviewResponseModel>>> PreparationTasks = new();
 
     private sealed class SessionMutationLock
     {
@@ -2234,25 +2235,53 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     public async Task<PrepareInterviewResponseModel> PrepareInterviewAsync(string token, Customer customer = null)
     {
+        var session = await _sessionService.GetSessionByTokenAsync(token);
+        if (!IsSessionUsable(session, DateTime.UtcNow))
+            return null;
+
+        var lazyTask = PreparationTasks.GetOrAdd(session.Id, _ => new Lazy<Task<PrepareInterviewResponseModel>>(
+            () => PrepareInterviewCoreAsync(token, customer),
+            LazyThreadSafetyMode.ExecutionAndPublication));
+
+        try
+        {
+            return await lazyTask.Value;
+        }
+        finally
+        {
+            if (lazyTask.IsValueCreated && lazyTask.Value.IsCompleted)
+                PreparationTasks.TryRemove(new KeyValuePair<int, Lazy<Task<PrepareInterviewResponseModel>>>(session.Id, lazyTask));
+        }
+    }
+
+    private async Task<PrepareInterviewResponseModel> PrepareInterviewCoreAsync(string token, Customer customer = null)
+    {
         var totalStopwatch = Stopwatch.StartNew();
         var session = await _sessionService.GetSessionByTokenAsync(token);
         if (!IsSessionUsable(session, DateTime.UtcNow))
             return null;
 
-        var maxQuestions = GetMaxQuestions(session);
-        using (await AcquireSessionMutationLockAsync(session.Id))
+        var sessionId = session.Id;
+        int maxQuestions;
+        IList<InterviewTurn> preparedTurns;
+
+        using (await AcquireSessionMutationLockAsync(sessionId))
         {
-            session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? await _sessionService.GetSessionByTokenAsync(token);
+            session = await _sessionService.GetInterviewSessionByIdAsync(sessionId) ?? await _sessionService.GetSessionByTokenAsync(token);
             if (!IsSessionUsable(session, DateTime.UtcNow))
                 return null;
 
             maxQuestions = GetMaxQuestions(session);
-            var readyTurns = (await _turnService.GetTurnsBySessionIdAsync(session.Id))
+            var firstTurnResult = await EnsureFirstQuestionTurnAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer, sessionLockHeld: true);
+            if (!string.IsNullOrWhiteSpace(firstTurnResult.FailureReason))
+                return null;
+
+            preparedTurns = firstTurnResult.Turns
                 .OrderBy(turn => turn.SequenceNumber)
                 .ThenBy(turn => turn.Id)
                 .ToList();
-            var readyPersistedCount = readyTurns.Select(turn => turn.SequenceNumber).Distinct().Count(sequenceNumber => sequenceNumber >= 1 && sequenceNumber <= maxQuestions);
-            if (Enumerable.Range(1, maxQuestions).All(sequenceNumber => readyTurns.Any(turn => turn.SequenceNumber == sequenceNumber)))
+            var readyPersistedCount = preparedTurns.Select(turn => turn.SequenceNumber).Distinct().Count(sequenceNumber => sequenceNumber >= 1 && sequenceNumber <= maxQuestions);
+            if (Enumerable.Range(1, maxQuestions).All(sequenceNumber => preparedTurns.Any(turn => turn.SequenceNumber == sequenceNumber)))
             {
                 await LogPreparationStageAsync(session, "total-preparation", totalStopwatch.ElapsedMilliseconds, true);
                 return new PrepareInterviewResponseModel
@@ -2265,44 +2294,74 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     PersistedQuestionCount = readyPersistedCount
                 };
             }
+        }
 
-            var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
-            var profileStopwatch = Stopwatch.StartNew();
-            var profileSuccess = true;
-            var profileFailure = string.Empty;
-            if (session.ResumeDownloadId > 0 && _resumeProfileService != null)
+        var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+        var profileStopwatch = Stopwatch.StartNew();
+        var profileSuccess = true;
+        var profileFailure = string.Empty;
+        if (session.ResumeDownloadId > 0 && _resumeProfileService != null)
+        {
+            try
             {
-                try
+                var profileResult = await _resumeProfileService.EnsureResumeProfileAsync(session, product);
+                profileSuccess = profileResult?.Success != false;
+                profileFailure = profileResult?.ErrorMessage;
+            }
+            catch (Exception ex)
+            {
+                profileSuccess = false;
+                profileFailure = ex.GetType().Name;
+            }
+        }
+
+        await LogPreparationStageAsync(session, "resume-profile", profileStopwatch.ElapsedMilliseconds, profileSuccess, profileFailure);
+
+        var planStopwatch = Stopwatch.StartNew();
+        var missingSequences = Enumerable.Range(1, maxQuestions)
+            .Where(sequenceNumber => !preparedTurns.Any(turn => turn.SequenceNumber == sequenceNumber))
+            .ToList();
+        var generatedPlan = await GenerateQuestionPlanTurnsAsync(session, customer, preparedTurns, missingSequences);
+
+        using (await AcquireSessionMutationLockAsync(session.Id))
+        {
+            session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? await _sessionService.GetSessionByTokenAsync(token);
+            if (!IsSessionUsable(session, DateTime.UtcNow))
+                return null;
+
+            maxQuestions = GetMaxQuestions(session);
+            var latestTurns = (await _turnService.GetTurnsBySessionIdAsync(session.Id))
+                .OrderBy(turn => turn.SequenceNumber)
+                .ThenBy(turn => turn.Id)
+                .ToList();
+            var existingSequenceNumbers = latestTurns.Select(turn => turn.SequenceNumber).ToHashSet();
+            if (generatedPlan.Turns.Any())
+            {
+                foreach (var turn in generatedPlan.Turns
+                    .Where(turn => turn.SequenceNumber >= 1 && turn.SequenceNumber <= maxQuestions)
+                    .OrderBy(turn => turn.SequenceNumber))
                 {
-                    var profileResult = await _resumeProfileService.EnsureResumeProfileAsync(session, product);
-                    profileSuccess = profileResult?.Success != false;
-                    profileFailure = profileResult?.ErrorMessage;
-                }
-                catch (Exception ex)
-                {
-                    profileSuccess = false;
-                    profileFailure = ex.GetType().Name;
+                    if (existingSequenceNumbers.Contains(turn.SequenceNumber))
+                        continue;
+
+                    if (!IsSessionUsable(session, DateTime.UtcNow))
+                        return null;
+
+                    var inserted = await _turnService.InsertInterviewTurnAsync(turn);
+                    latestTurns.Add(inserted);
+                    existingSequenceNumbers.Add(inserted.SequenceNumber);
                 }
             }
 
-            await LogPreparationStageAsync(session, "resume-profile", profileStopwatch.ElapsedMilliseconds, profileSuccess, profileFailure);
-
-            var planStopwatch = Stopwatch.StartNew();
-            var existingTurns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
-            var firstTurnResult = await EnsureFirstQuestionTurnAsync(session, existingTurns, customer, sessionLockHeld: true);
-            if (!string.IsNullOrWhiteSpace(firstTurnResult.FailureReason))
-                return null;
-
-            var planResult = await EnsureQuestionPlanAsync(session, firstTurnResult.Turns, customer, skipAnsweredPlanReset: true);
             var persistedTurns = (await _turnService.GetTurnsBySessionIdAsync(session.Id))
                 .OrderBy(turn => turn.SequenceNumber)
                 .ThenBy(turn => turn.Id)
                 .ToList();
             var persistedCount = persistedTurns.Select(turn => turn.SequenceNumber).Distinct().Count(sequenceNumber => sequenceNumber >= 1 && sequenceNumber <= maxQuestions);
             var ready = Enumerable.Range(1, maxQuestions).All(sequenceNumber => persistedTurns.Any(turn => turn.SequenceNumber == sequenceNumber));
-            var success = ready && string.IsNullOrWhiteSpace(planResult.FailureReason);
-            await LogPreparationStageAsync(session, "question-planning", planStopwatch.ElapsedMilliseconds, success, planResult.FailureReason);
-            await LogPreparationStageAsync(session, "total-preparation", totalStopwatch.ElapsedMilliseconds, success, planResult.FailureReason);
+            var success = ready && string.IsNullOrWhiteSpace(generatedPlan.FailureReason);
+            await LogPreparationStageAsync(session, "question-planning", planStopwatch.ElapsedMilliseconds, success, generatedPlan.FailureReason);
+            await LogPreparationStageAsync(session, "total-preparation", totalStopwatch.ElapsedMilliseconds, success, generatedPlan.FailureReason);
 
             return new PrepareInterviewResponseModel
             {

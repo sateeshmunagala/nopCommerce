@@ -1791,6 +1791,59 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void RuntimeView_StageTimingAndLatencyMarkers_AreOrderedByActualSuccess()
+    {
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+
+        var beginStart = runtimeViewText.IndexOf("const beginResult = await postForm(config.beginInterviewUrl", StringComparison.Ordinal);
+        var beginSuccessGuard = runtimeViewText.IndexOf("if (!isSuccess(beginResult))", beginStart, StringComparison.Ordinal);
+        var firstQuestionRead = runtimeViewText.IndexOf("const firstQuestion = getValue(beginResult", beginSuccessGuard, StringComparison.Ordinal);
+        var firstQuestionGuard = runtimeViewText.IndexOf("if (!firstQuestion)", firstQuestionRead, StringComparison.Ordinal);
+        var beginTiming = runtimeViewText.IndexOf("reportRuntimeClientStageTiming('begin-response'", firstQuestionGuard, StringComparison.Ordinal);
+        Assert.That(beginTiming, Is.GreaterThan(firstQuestionGuard));
+
+        var controlledTts = runtimeViewText.Substring(
+            runtimeViewText.IndexOf("const synthesizeSpeechAudioData = async", StringComparison.Ordinal),
+            runtimeViewText.IndexOf("const playControlledSpeechAudio = async", StringComparison.Ordinal) - runtimeViewText.IndexOf("const synthesizeSpeechAudioData = async", StringComparison.Ordinal));
+        Assert.That(controlledTts.IndexOf("onSynthesisStarted?.();", StringComparison.Ordinal), Is.LessThan(controlledTts.IndexOf("synthesizer.speakTextAsync(text", StringComparison.Ordinal)));
+
+        var defaultTts = runtimeViewText.Substring(
+            runtimeViewText.IndexOf("const speakTextWithDefaultOutput = async", StringComparison.Ordinal),
+            runtimeViewText.IndexOf("const speakText = async", StringComparison.Ordinal) - runtimeViewText.IndexOf("const speakTextWithDefaultOutput = async", StringComparison.Ordinal));
+        Assert.That(defaultTts.IndexOf("onSynthesisStarted?.();", StringComparison.Ordinal), Is.LessThan(defaultTts.IndexOf("synthesizer.speakTextAsync(text", StringComparison.Ordinal)));
+
+        Assert.That(runtimeViewText, Does.Contain("let ttsStartedReported = false;"));
+        Assert.That(runtimeViewText, Does.Contain("const reportTtsStartedOnce = () =>"));
+        Assert.That(runtimeViewText, Does.Contain("if (ttsStartedReported)"));
+        Assert.That(runtimeViewText, Does.Contain("await synthesizeSpeechAudioData(speechConfig, text, reportTtsStartedOnce);"));
+        Assert.That(runtimeViewText, Does.Contain("await speakTextWithDefaultOutput(speechConfig, text, reportTtsStartedOnce);"));
+    }
+
+    [Test]
+    public void RuntimeView_RetainsLatencyRecordingAndNavigationRegressions()
+    {
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+
+        Assert.That(runtimeViewText, Does.Contain("if (speechTokenRequestPromise)\r\n                return speechTokenRequestPromise;").Or.Contain("if (speechTokenRequestPromise)\n                return speechTokenRequestPromise;"));
+        Assert.That(runtimeViewText, Does.Contain("expiresAt: Date.now() + Math.max(30000, (expiresInSeconds - 60) * 1000)"));
+        Assert.That(runtimeViewText, Does.Contain("})().finally(() => {\r\n                speechTokenRequestPromise = null;").Or.Contain("})().finally(() => {\n                speechTokenRequestPromise = null;"));
+        Assert.That(runtimeViewText, Does.Contain("reportGenerationStartedAt ||= Date.now();"));
+        Assert.That(runtimeViewText.IndexOf("reportGenerationStartedAt ||= Date.now();", StringComparison.Ordinal),
+            Is.LessThan(runtimeViewText.IndexOf("const finalizeCompletedState = async", StringComparison.Ordinal)));
+
+        var finalizationStart = runtimeViewText.IndexOf("logActivity('Final recording upload before completion started.')", StringComparison.Ordinal);
+        Assert.That(finalizationStart, Is.LessThan(runtimeViewText.IndexOf("await stopLiveMediaForCompletion();", finalizationStart, StringComparison.Ordinal)));
+        Assert.That(runtimeViewText, Does.Contain("const finalRecordingUploadPromise = willCompleteOnSubmit\r\n                ? finalizeRecordingBeforeCompletion()\r\n                : null;").Or.Contain("const finalRecordingUploadPromise = willCompleteOnSubmit\n                ? finalizeRecordingBeforeCompletion()\n                : null;"));
+        Assert.That(runtimeViewText, Does.Contain("await setCompletedState(result, finalRecordingUploadPromise);"));
+
+        Assert.That(runtimeViewText, Does.Contain("reportButton.onclick = () => navigateToReport(reportUrl);"));
+        Assert.That(runtimeViewText, Does.Contain("if (!reportUrl || reportNavigationStarted)"));
+        Assert.That(runtimeViewText, Does.Contain("navigateToReport(reportUrl);"));
+        Assert.That(runtimeViewText, Does.Contain("setHeaderStatus(`${message} Elapsed ${formatElapsedTime(elapsedSeconds)}`, false);"));
+        Assert.That(runtimeViewText, Does.Contain("id=\"recording-status\" role=\"status\" aria-live=\"polite\""));
+    }
+
+    [Test]
     public void RuntimeView_Uses_Contextual_Title_And_Separates_Candidate_Details()
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
@@ -2229,6 +2282,110 @@ public class RuntimeAndAdminTests
         Assert.That(activityComments[1], Does.Contain("ElapsedMs=99"));
         Assert.That(activityComments[1], Does.Contain("Success=false"));
         Assert.That(activityComments[1], Does.Not.Contain("resume-text-secret"));
+    }
+
+    [TestCase("prepare-response")]
+    [TestCase("begin-response")]
+    [TestCase("first-question-rendered")]
+    [TestCase("speech-token-ready")]
+    [TestCase("tts-started")]
+    [TestCase("tts-completed")]
+    [TestCase("recording-started")]
+    public async Task RuntimeClientEvent_StageTiming_AcceptsOnlyRuntimeStages(string stageName)
+    {
+        var session = new InterviewSession
+        {
+            Id = 81,
+            CustomerId = 16,
+            ProductId = 38,
+            Token = "stage-allow-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        var customer = new Customer { Id = session.CustomerId, Email = "candidate@example.com" };
+        var activityService = new Mock<ICustomerActivityService>();
+        string activityComment = null;
+
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("stage-allow-token")).ReturnsAsync(session);
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(customer);
+        activityService.Setup(x => x.InsertActivityAsync(
+                customer,
+                "AIInterview.Runtime.ClientStageTiming",
+                It.IsAny<string>(),
+                It.IsAny<BaseEntity>()))
+            .Callback<Customer, string, string, BaseEntity>((_, _, comment, _) => activityComment = comment)
+            .ReturnsAsync(new ActivityLog());
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            nopLogger: _nopLogger.Object,
+            customerActivityService: activityService.Object);
+
+        await controller.RuntimeClientEvent("stage-allow-token", "stage-timing", stageName, null, null, null, 10, true);
+
+        Assert.That(activityComment, Does.Contain($"Stage={stageName}"));
+        Assert.That(activityComment, Does.Contain("Success=true"));
+    }
+
+    [TestCase("feedback")]
+    [TestCase("submit-answer")]
+    [TestCase("upload-recording")]
+    [TestCase("arbitrary-stage")]
+    [TestCase("token=super-secret-stage")]
+    public async Task RuntimeClientEvent_StageTiming_RejectsNonStageNamesWithoutRawValue(string rawStageName)
+    {
+        var session = new InterviewSession
+        {
+            Id = 82,
+            CustomerId = 17,
+            ProductId = 39,
+            Token = "stage-deny-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        var customer = new Customer { Id = session.CustomerId, Email = "candidate@example.com" };
+        var activityService = new Mock<ICustomerActivityService>();
+        string activityComment = null;
+
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("stage-deny-token")).ReturnsAsync(session);
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(customer);
+        activityService.Setup(x => x.InsertActivityAsync(
+                customer,
+                "AIInterview.Runtime.ClientStageTiming",
+                It.IsAny<string>(),
+                It.IsAny<BaseEntity>()))
+            .Callback<Customer, string, string, BaseEntity>((_, _, comment, _) => activityComment = comment)
+            .ReturnsAsync(new ActivityLog());
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            nopLogger: _nopLogger.Object,
+            customerActivityService: activityService.Object);
+
+        await controller.RuntimeClientEvent("stage-deny-token", "stage-timing", rawStageName, null, null, null, 11, false);
+
+        Assert.That(activityComment, Does.Contain("Stage=unknown"));
+        Assert.That(activityComment, Does.Contain("Success=false"));
+        Assert.That(activityComment, Does.Not.Contain(rawStageName));
+        Assert.That(activityComment, Does.Not.Contain("super-secret-stage"));
     }
 
     [Test]

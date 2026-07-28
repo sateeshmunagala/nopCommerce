@@ -602,21 +602,105 @@ public class RuntimeServiceTests
 
         var beginTask = service.BeginInterviewAsync("token342", new Customer { Id = 99 });
         var prepareTask = service.PrepareInterviewAsync("token342", new Customer { Id = 99 });
-        var submitTask = Task.Run(async () =>
-        {
-            await Task.Delay(5);
-            return await service.SubmitAnswerAsync("token342", "A concrete answer with enough detail to validate.");
-        });
-        await Task.WhenAll(prepareTask, beginTask, submitTask);
+        await Task.WhenAll(prepareTask, beginTask);
+        var submitResult = await service.SubmitAnswerAsync("token342", "A concrete answer with enough detail to validate.");
 
         Assert.That(beginTask.Result.CurrentQuestion, Does.Contain("start with you"));
         Assert.That(beginTask.Result.Turns.Single().SequenceNumber, Is.EqualTo(1));
-        Assert.That(submitTask.Result.Success, Is.True);
+        Assert.That(submitResult.Success, Is.True);
         Assert.That(turns.Select(turn => turn.SequenceNumber).OrderBy(value => value), Is.EqualTo(new[] { 1, 2, 3 }));
         Assert.That(session.StartedOnUtc, Is.Not.Null);
         resumeProfileService.Verify(x => x.EnsureResumeProfileAsync(session, It.IsAny<Product>()), Times.Once);
         aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Once);
         aiClient.Verify(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()), Times.Once);
+    }
+
+    [Test]
+    public async Task PrepareThenBeginInterviewAsync_PrepareRemoteWorkBlocked_BeginReturnsLocalFirstTurn()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var resumeProfileService = new Mock<IResumeProfileService>();
+        var turns = new List<InterviewTurn>();
+        var gate = new object();
+        var nextId = 1;
+        var profileStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseProfile = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var session = new InterviewSession
+        {
+            Id = 345,
+            ProductId = 10,
+            CustomerId = 99,
+            SessionKey = "key345",
+            Token = "token345",
+            Difficulty = "Medium",
+            QuestionCount = 3,
+            ResumeDownloadId = 5,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token345")).ReturnsAsync(session);
+        sessionService.Setup(x => x.GetInterviewSessionByIdAsync(345)).ReturnsAsync(session);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(345)).ReturnsAsync(() =>
+        {
+            lock (gate)
+                return turns.OrderBy(turn => turn.SequenceNumber).ThenBy(turn => turn.Id).ToList();
+        });
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .ReturnsAsync((InterviewTurn turn) =>
+            {
+                lock (gate)
+                {
+                    turn.Id = nextId++;
+                    turns.Add(turn);
+                    return turn;
+                }
+            });
+        resumeProfileService.Setup(x => x.EnsureResumeProfileAsync(session, It.IsAny<Product>()))
+            .Returns(async () =>
+            {
+                profileStarted.SetResult();
+                await releaseProfile.Task;
+                return new ResumeProfileGenerationResult { Success = true, ProfileJson = "{}" };
+            });
+        aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
+            .ReturnsAsync((AIInterviewQuestionPlanRequest request) => new AIInterviewQuestionPlanResponse
+            {
+                Success = true,
+                Questions = Enumerable.Range(2, request.QuestionCount).Select(sequence => new AIInterviewQuestionPlanItem
+                {
+                    SequenceNumber = sequence,
+                    Category = "skill",
+                    Question = $"Question {sequence}"
+                }).ToList()
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, resumeProfileService: resumeProfileService);
+
+        var prepareTask = service.PrepareInterviewAsync("token345", new Customer { Id = 99 });
+        await profileStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        var beginTask = service.BeginInterviewAsync("token345", new Customer { Id = 99 });
+        var completed = await Task.WhenAny(beginTask, Task.Delay(500));
+        Assert.That(completed, Is.EqualTo(beginTask));
+        Assert.That(beginTask.Result.CurrentQuestion, Does.Contain("start with you"));
+        Assert.That(beginTask.Result.Turns.Single().SequenceNumber, Is.EqualTo(1));
+
+        releaseProfile.SetResult();
+        var prepareResult = await prepareTask;
+
+        Assert.That(prepareResult.Success, Is.True);
+        Assert.That(session.StartedOnUtc, Is.Not.Null);
+        Assert.That(turns.Select(turn => turn.SequenceNumber).OrderBy(value => value), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(turns.Select(turn => turn.SequenceNumber).Distinct().Count(), Is.EqualTo(3));
+        resumeProfileService.Verify(x => x.EnsureResumeProfileAsync(session, It.IsAny<Product>()), Times.Once);
+        aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Once);
     }
 
     [Test]

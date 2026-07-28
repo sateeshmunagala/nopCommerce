@@ -261,6 +261,22 @@ public class MockAiInterviewController : BasePluginController
         };
     }
 
+    protected static string NormalizeRuntimeClientStageName(string stageName)
+    {
+        var normalized = (stageName ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "prepare-response" => "prepare-response",
+            "begin-response" => "begin-response",
+            "first-question-rendered" => "first-question-rendered",
+            "speech-token-ready" => "speech-token-ready",
+            "tts-started" => "tts-started",
+            "tts-completed" => "tts-completed",
+            "recording-started" => "recording-started",
+            _ => "unknown"
+        };
+    }
+
     protected static string NormalizeRuntimeClientFailureKind(string failureKind)
     {
         var normalized = (failureKind ?? string.Empty).Trim().ToLowerInvariant();
@@ -1505,7 +1521,8 @@ public class MockAiInterviewController : BasePluginController
         {
             var elapsed = Math.Max(0, elapsedMilliseconds ?? 0);
             var stageSucceeded = success == true;
-            var stageComment = $"SessionId={session.Id}; CustomerId={session.CustomerId}; ProductId={session.ProductId}; Stage={safeRequestName}; ElapsedMs={elapsed}; Success={stageSucceeded.ToString().ToLowerInvariant()}";
+            var safeStageName = NormalizeRuntimeClientStageName(requestName);
+            var stageComment = $"SessionId={session.Id}; CustomerId={session.CustomerId}; ProductId={session.ProductId}; Stage={safeStageName}; ElapsedMs={elapsed}; Success={stageSucceeded.ToString().ToLowerInvariant()}";
             await LogRuntimeActivityAsync(session, "AIInterview.Runtime.ClientStageTiming", stageComment);
 
             if (tokenRenewal.Renewed)

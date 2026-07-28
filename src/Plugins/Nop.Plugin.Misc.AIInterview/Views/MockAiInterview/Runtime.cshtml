@@ -3867,13 +3867,14 @@
                 await startSpeechRecognition();
         };
 
-        const synthesizeSpeechAudioData = async (speechConfig, text) => {
+        const synthesizeSpeechAudioData = async (speechConfig, text, onSynthesisStarted = null) => {
             if (SpeechSDK.SpeechSynthesisOutputFormat?.Audio24Khz48KBitRateMonoMp3)
                 speechConfig.speechSynthesisOutputFormat = SpeechSDK.SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3;
 
             const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, null);
             try {
                 return await new Promise((resolve, reject) => {
+                    onSynthesisStarted?.();
                     synthesizer.speakTextAsync(text, (result) => {
                         if (result?.audioData?.byteLength) {
                             resolve(result.audioData);
@@ -3946,7 +3947,7 @@
             });
         };
 
-        const speakTextWithDefaultOutput = async (speechConfig, text) => {
+        const speakTextWithDefaultOutput = async (speechConfig, text, onSynthesisStarted = null) => {
             const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
             const handleSynthesisCanceled = async (_, eventArgs) => {
                 const cancellationDetails = (eventArgs?.errorDetails || '').trim();
@@ -3957,6 +3958,7 @@
             synthesizer.SynthesisCanceled = handleSynthesisCanceled;
             synthesizer.synthesisCanceled = handleSynthesisCanceled;
             await new Promise((resolve, reject) => {
+                onSynthesisStarted?.();
                 synthesizer.speakTextAsync(text, () => {
                     synthesizer.close();
                     resolve();
@@ -3980,6 +3982,15 @@
                 return;
 
             let ttsStartedAt = 0;
+            let ttsStartedReported = false;
+            const reportTtsStartedOnce = () => {
+                if (ttsStartedReported)
+                    return;
+
+                ttsStartedReported = true;
+                ttsStartedAt = performance.now();
+                reportRuntimeClientStageTiming('tts-started', 0, true);
+            };
             if (purpose === 'question')
                 logActivity('Speaking question.');
             else if (purpose === 'reminder')
@@ -4005,20 +4016,18 @@
 
             try {
                 const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
-                ttsStartedAt = performance.now();
-                reportRuntimeClientStageTiming('tts-started', 0, true);
                 if (purpose === 'question')
                     setHeaderStatus('Playing interviewer audio.', false);
                 botAudioCapturedForCurrentSpeech = false;
                 botAudioRecordingFallbackNotifiedForCurrentSpeech = false;
 
                 try {
-                    const audioData = await synthesizeSpeechAudioData(speechConfig, text);
+                    const audioData = await synthesizeSpeechAudioData(speechConfig, text, reportTtsStartedOnce);
                     await playControlledSpeechAudio(audioData);
                 } catch (controlledPlaybackError) {
                     logActivity(`Controlled speech playback unavailable. reason=${controlledPlaybackError?.message || controlledPlaybackError?.name || 'unknown'}`);
                     noteBotAudioRecordingFallback();
-                    await speakTextWithDefaultOutput(speechConfig, text);
+                    await speakTextWithDefaultOutput(speechConfig, text, reportTtsStartedOnce);
                 } finally {
                     if (purpose === 'question')
                         setHeaderStatus('', false);
@@ -4525,8 +4534,6 @@
                 updateStartButtonState();
                 return;
             }
-            reportRuntimeClientStageTiming('begin-response', performance.now() - beginStartedAt, true);
-
             const firstQuestion = getValue(beginResult, "question", "Question");
             const firstTurn = normalizeTurn(getValue(beginResult, "turn", "Turn"), turns.length);
             const returnedTurns = getValue(beginResult, 'turns', 'Turns');
@@ -4537,6 +4544,7 @@
                 updateStartButtonState();
                 return;
             }
+            reportRuntimeClientStageTiming('begin-response', performance.now() - beginStartedAt, true);
 
             if (Array.isArray(returnedTurns)) {
                 replaceTurns(returnedTurns);
