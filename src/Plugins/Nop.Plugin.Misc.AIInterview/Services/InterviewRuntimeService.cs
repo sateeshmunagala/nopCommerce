@@ -3053,7 +3053,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         try
         {
             var customer = session.CustomerId > 0 ? await _customerService.GetCustomerByIdAsync(session.CustomerId) : null;
-            blobName = BuildRecordingBlobName(customer, GetRecordingBlobNameUtcNow());
+            blobName = BuildRecordingBlobName(customer, DateTime.UtcNow);
             var uploadUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}{sasToken}";
 
             await LogRecordingUploadStartAsync(session, recording, blobName, normalizedContentType);
@@ -4262,17 +4262,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         };
     }
 
-    protected virtual DateTime GetRecordingBlobNameUtcNow()
-    {
-        return DateTime.UtcNow;
-    }
-
     protected virtual string BuildRecordingBlobName(Customer customer, DateTime utcNow)
     {
         var firstName = SanitizeRecordingBlobNameComponent(customer?.FirstName);
         var lastName = SanitizeRecordingBlobNameComponent(customer?.LastName);
+        var normalizedUtcNow = utcNow.ToUniversalTime();
 
-        return $"{firstName}_{lastName}_{utcNow:yyyyMMddHHmmss}.webm";
+        return $"{firstName}_{lastName}_{normalizedUtcNow:yyyyMMddHHmmss}.webm";
     }
 
     protected static string SanitizeRecordingBlobNameComponent(string value)
