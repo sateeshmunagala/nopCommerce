@@ -62,6 +62,7 @@ public record RuntimeClientSettingsModel
     public string SpeechRegion { get; set; }
     public string SpeechVoiceName { get; set; }
     public string ProductName { get; set; }
+    public string FinalCompletionSpeech { get; set; }
     public string Token { get; set; }
     public string ReportUrl { get; set; }
     public DateTime? TokenExpiryUtc { get; set; }

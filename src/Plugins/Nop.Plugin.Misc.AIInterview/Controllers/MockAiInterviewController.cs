@@ -1307,12 +1307,12 @@ public class MockAiInterviewController : BasePluginController
             model = await _interviewRuntimeService.GetRuntimeModelAsync(token);
         }
 
-        ApplyRuntimeClientSettings(model, session);
+        await ApplyRuntimeClientSettingsAsync(model, session);
 
         return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Runtime.cshtml", model);
     }
 
-    protected virtual void ApplyRuntimeClientSettings(Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel model, InterviewSession session)
+    protected virtual async Task ApplyRuntimeClientSettingsAsync(Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel model, InterviewSession session)
     {
         if (model == null)
             return;
@@ -1332,6 +1332,7 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.AcknowledgeGuidelinesUrl = Url?.RouteUrl(AIInterviewDefaults.MockAcknowledgeGuidelinesRouteName);
         model.ClientSettings.RuntimeClientEventUrl = Url?.RouteUrl(AIInterviewDefaults.MockRuntimeClientEventRouteName);
         model.ClientSettings.ProductName = model.ProductName;
+        model.ClientSettings.FinalCompletionSpeech = await GetLocalizedTextAsync(AIInterviewPlugin.FinalCompletionSpeechResourceKey, AIInterviewPlugin.DefaultFinalCompletionSpeech);
         model.ClientSettings.Token = session?.Token;
         model.ReportUrl = GetMockReportUrl(session?.Id ?? model.SessionId);
         model.ClientSettings.ReportUrl = model.ReportUrl;

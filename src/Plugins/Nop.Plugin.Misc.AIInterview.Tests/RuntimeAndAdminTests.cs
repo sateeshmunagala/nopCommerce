@@ -27,6 +27,9 @@ namespace Nop.Plugin.Misc.AIInterview.Tests;
 [TestFixture]
 public class RuntimeAndAdminTests
 {
+    private const string FinalCompletionSpeechResourceKey = "Plugins.Misc.AIInterview.Runtime.FinalCompletionSpeech";
+    private const string ApprovedFinalCompletionSpeech = "Thank you for completing your interview. Your responses have been submitted successfully. We are now preparing your interview report. Best wishes.";
+
     private Mock<IInterviewSessionService> _sessionService;
     private Mock<ILocalizationService> _localizationService;
     private Mock<IWorkContext> _workContext;
@@ -128,6 +131,44 @@ public class RuntimeAndAdminTests
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
             .ReturnsAsync((string key) => key == "Plugins.Misc.AIInterview.Missing" ? "" : key);
+    }
+
+    [Test]
+    public void FinalCompletionSpeech_LocaleResources_AreRegisteredForInstallAndUpgrade()
+    {
+        var upgradeMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.That(upgradeMethod, Is.Not.Null);
+
+        var upgradeResources = (Dictionary<string, string>)upgradeMethod.Invoke(null, null);
+        var pluginText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("AIInterviewPlugin.cs"));
+
+        Assert.That(AIInterviewPlugin.FinalCompletionSpeechResourceKey, Is.EqualTo(FinalCompletionSpeechResourceKey));
+        Assert.That(AIInterviewPlugin.DefaultFinalCompletionSpeech, Is.EqualTo(ApprovedFinalCompletionSpeech));
+        Assert.That(upgradeResources[FinalCompletionSpeechResourceKey], Is.EqualTo(ApprovedFinalCompletionSpeech));
+        Assert.That(pluginText.Split("[FinalCompletionSpeechResourceKey] = DefaultFinalCompletionSpeech", StringSplitOptions.None).Length - 1, Is.GreaterThanOrEqualTo(2));
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("score").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("selected").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("rejected").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("recruiter").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("contact").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("congratulations").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("passed").IgnoreCase);
+    }
+
+    [Test]
+    public void RuntimeClientSettingsModel_Exposes_FinalCompletionSpeech_AsCamelCaseJson()
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new RuntimeClientSettingsModel
+        {
+            FinalCompletionSpeech = ApprovedFinalCompletionSpeech
+        }, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        });
+
+        Assert.That(typeof(RuntimeClientSettingsModel).GetProperty(nameof(RuntimeClientSettingsModel.FinalCompletionSpeech)), Is.Not.Null);
+        Assert.That(json, Does.Contain("\"finalCompletionSpeech\""));
+        Assert.That(json, Does.Contain(ApprovedFinalCompletionSpeech));
     }
 
     [Test]
@@ -974,6 +1015,7 @@ public class RuntimeAndAdminTests
     [Test]
     public async Task Runtime_Preserves_Service_Level_MediaFlags()
     {
+        var tokenExpiryUtc = DateTime.UtcNow.AddHours(1);
         var runtimeModel = new InterviewRuntimeModel
         {
             SessionId = 1,
@@ -981,6 +1023,7 @@ public class RuntimeAndAdminTests
             QuestionCount = 5,
             SessionKey = "session-key",
             Token = "token",
+            ProductName = "Runtime Product",
             CurrentQuestion = "Q1",
             ClientSettings = new RuntimeClientSettingsModel
             {
@@ -995,10 +1038,12 @@ public class RuntimeAndAdminTests
             CustomerId = 1,
             IsActive = true,
             Token = "token",
-            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+            TokenExpiryUtc = tokenExpiryUtc
         });
         _interviewRuntimeService.Setup(x => x.GetRuntimeModelAsync("token"))
             .ReturnsAsync(runtimeModel);
+        _localizationService.Setup(x => x.GetResourceAsync(FinalCompletionSpeechResourceKey))
+            .ReturnsAsync(ApprovedFinalCompletionSpeech);
 
         var controller = new MockAiInterviewController(
             _sessionService.Object,
@@ -1022,9 +1067,14 @@ public class RuntimeAndAdminTests
             {
                 var name when name == AIInterviewDefaults.MockReportRouteName => "/mockaiinterview/report/1",
                 var name when name == AIInterviewDefaults.MockSubmitAnswerRouteName => "/mockaiinterview/submit-answer",
+                var name when name == AIInterviewDefaults.MockBeginRouteName => "/mockaiinterview/begin",
+                var name when name == AIInterviewDefaults.MockPrepareRouteName => "/mockaiinterview/prepare",
                 var name when name == AIInterviewDefaults.MockStopRouteName => "/mockaiinterview/stop",
                 var name when name == AIInterviewDefaults.MockRefreshTokenRouteName => "/mockaiinterview/refresh-token",
+                var name when name == AIInterviewDefaults.MockFeedbackRouteName => "/mockaiinterview/feedback",
                 var name when name == AIInterviewDefaults.MockSpeechTokenRouteName => "/mockaiinterview/speech-token",
+                var name when name == AIInterviewDefaults.MockSpeechUsageRouteName => "/mockaiinterview/speech-usage",
+                var name when name == AIInterviewDefaults.MockAcknowledgeGuidelinesRouteName => "/mockaiinterview/acknowledge-guidelines",
                 var name when name == AIInterviewDefaults.MockRecordingUploadRouteName => "/mockaiinterview/upload-recording",
                 var name when name == AIInterviewDefaults.MockRuntimeClientEventRouteName => "/mockaiinterview/runtime-client-event",
                 _ => string.Empty
@@ -1039,9 +1089,61 @@ public class RuntimeAndAdminTests
         Assert.That(model.ClientSettings.RecordingAvailable, Is.False);
         Assert.That(model.QuestionCount, Is.EqualTo(5));
         Assert.That(model.ClientSettings.QuestionCount, Is.EqualTo(5));
+        Assert.That(model.ClientSettings.SubmitAnswerUrl, Is.EqualTo("/mockaiinterview/submit-answer"));
+        Assert.That(model.ClientSettings.BeginInterviewUrl, Is.EqualTo("/mockaiinterview/begin"));
+        Assert.That(model.ClientSettings.PrepareInterviewUrl, Is.EqualTo("/mockaiinterview/prepare"));
+        Assert.That(model.ClientSettings.CompleteInterviewUrl, Is.EqualTo("/mockaiinterview/stop"));
+        Assert.That(model.ClientSettings.RefreshTokenUrl, Is.EqualTo("/mockaiinterview/refresh-token"));
+        Assert.That(model.ClientSettings.StopInterviewUrl, Is.EqualTo("/mockaiinterview/stop"));
+        Assert.That(model.ClientSettings.FeedbackUrl, Is.EqualTo("/mockaiinterview/feedback"));
+        Assert.That(model.ClientSettings.SpeechTokenUrl, Is.EqualTo("/mockaiinterview/speech-token"));
+        Assert.That(model.ClientSettings.SpeechUsageUrl, Is.EqualTo("/mockaiinterview/speech-usage"));
+        Assert.That(model.ClientSettings.AcknowledgeGuidelinesUrl, Is.EqualTo("/mockaiinterview/acknowledge-guidelines"));
+        Assert.That(model.ClientSettings.RecordingUploadUrl, Is.EqualTo("/mockaiinterview/upload-recording"));
+        Assert.That(model.ClientSettings.ProductName, Is.EqualTo("Runtime Product"));
+        Assert.That(model.ClientSettings.Token, Is.EqualTo("token"));
+        Assert.That(model.ClientSettings.TokenExpiryUtc, Is.EqualTo(tokenExpiryUtc));
+        Assert.That(model.ClientSettings.FinalCompletionSpeech, Is.EqualTo(ApprovedFinalCompletionSpeech));
         Assert.That(model.ReportUrl, Is.EqualTo("/mockaiinterview/report/1"));
         Assert.That(model.ClientSettings.ReportUrl, Is.EqualTo("/mockaiinterview/report/1"));
         Assert.That(model.ClientSettings.RuntimeClientEventUrl, Is.EqualTo("/mockaiinterview/runtime-client-event"));
+    }
+
+    [Test]
+    public async Task Runtime_Blank_FinalCompletionSpeech_Localization_UsesApprovedFallback()
+    {
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("blank-final-speech")).ReturnsAsync(new InterviewSession
+        {
+            Id = 42,
+            CustomerId = 1,
+            ProductId = 9,
+            SessionKey = "fallback-session",
+            Token = "blank-final-speech",
+            Difficulty = "Medium",
+            QuestionCount = 5,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        });
+        _localizationService.Setup(x => x.GetResourceAsync(FinalCompletionSpeechResourceKey))
+            .ReturnsAsync("   ");
+        _productService.Setup(x => x.GetProductByIdAsync(9)).ReturnsAsync(new Product { Id = 9, Name = "Practice Product" });
+
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
+            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext ctx) => ctx.RouteName switch
+            {
+                var name when name == AIInterviewDefaults.MockReportRouteName => "/mockaiinterview/report/42",
+                var name when name == AIInterviewDefaults.MockSpeechTokenRouteName => "/mockaiinterview/speech-token",
+                var name when name == AIInterviewDefaults.MockRecordingUploadRouteName => "/mockaiinterview/upload-recording",
+                _ => string.Empty
+            });
+        _runtimeController.Url = urlHelper.Object;
+
+        var result = await _runtimeController.Runtime("blank-final-speech");
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (InterviewRuntimeModel)((ViewResult)result).Model;
+        Assert.That(model.ClientSettings.FinalCompletionSpeech, Is.EqualTo(ApprovedFinalCompletionSpeech));
     }
 
     [Test]
@@ -1775,19 +1877,51 @@ public class RuntimeAndAdminTests
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
 
+        var speechFunctionStart = runtimeViewText.IndexOf("const getFinalCompletionSpeechText = () =>", StringComparison.Ordinal);
+        var speechFunctionEnd = runtimeViewText.IndexOf("const hasAnswerText", speechFunctionStart, StringComparison.Ordinal);
+        var speechFunction = runtimeViewText.Substring(speechFunctionStart, speechFunctionEnd - speechFunctionStart);
+        var terminalBranchStart = runtimeViewText.IndexOf("if (isTerminated) {", StringComparison.Ordinal);
+        var terminalBranchEnd = runtimeViewText.IndexOf("updateStartButtonState();", terminalBranchStart, StringComparison.Ordinal);
+        var terminalBranch = runtimeViewText.Substring(terminalBranchStart, terminalBranchEnd - terminalBranchStart);
+        var submitPost = runtimeViewText.IndexOf("const result = await postForm(config.submitAnswerUrl", StringComparison.Ordinal);
+        var submitSuccessGuard = runtimeViewText.IndexOf("if (!isSuccess(result))", submitPost, StringComparison.Ordinal);
+        var latchCheck = terminalBranch.IndexOf("if (!finalCompletionSpoken)", StringComparison.Ordinal);
+        var latchSet = terminalBranch.IndexOf("finalCompletionSpoken = true;", latchCheck, StringComparison.Ordinal);
+        var speechCall = terminalBranch.IndexOf("speakText(getFinalCompletionSpeechText(), 'completion')", latchSet, StringComparison.Ordinal);
+        var speechCatch = terminalBranch.IndexOf(".catch(() => logActivity('Final completion speech failed.'));", speechCall, StringComparison.Ordinal);
+        var completedState = terminalBranch.IndexOf("await setCompletedState(result, finalRecordingUploadPromise);", speechCall, StringComparison.Ordinal);
+
         Assert.That(runtimeViewText, Does.Contain("let finalCompletionSpoken = false;"));
-        Assert.That(runtimeViewText, Does.Contain("const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';"));
-        Assert.That(runtimeViewText, Does.Contain("const getFinalCompletionSpeechText = (result) =>"));
-        Assert.That(runtimeViewText, Does.Contain("getValue(result, 'completion', 'Completion')"));
+        Assert.That(runtimeViewText, Does.Contain($"const fallbackFinalCompletionSpeech = '{ApprovedFinalCompletionSpeech}';"));
+        Assert.That(runtimeViewText, Does.Contain("const finalCompletionSpeech = (config.finalCompletionSpeech || '').trim() || fallbackFinalCompletionSpeech;"));
+        Assert.That(runtimeViewText, Does.Contain("const getFinalCompletionSpeechText = () => finalCompletionSpeech;"));
+        Assert.That(speechFunction, Does.Not.Contain("result"));
+        Assert.That(speechFunction, Does.Not.Contain("getValue("));
+        Assert.That(speechFunction, Does.Not.Contain("'Completion'"));
+        Assert.That(runtimeViewText, Does.Not.Contain("defaultFinalCompletionMessage"));
+        Assert.That(runtimeViewText, Does.Not.Contain("getValue(result, 'completion', 'Completion')"));
+        Assert.That(runtimeViewText, Does.Not.Contain("getValue(result, \"completion\", \"Completion\")"));
+        Assert.That(runtimeViewText.Split("speakText(getFinalCompletionSpeechText()", StringSplitOptions.None).Length - 1, Is.EqualTo(1));
         Assert.That(runtimeViewText, Does.Contain("const shouldResumeRecognition = purpose !== 'completion' && shouldStopRecognitionForPlayback;"));
         Assert.That(runtimeViewText, Does.Contain("if (shouldResumeRecognition && !runtimeStoppedOrCompleted && !speechUnavailable && isMicActive())"));
-        Assert.That(runtimeViewText, Does.Contain("if (!finalCompletionSpoken)"));
-        Assert.That(runtimeViewText, Does.Contain("finalCompletionSpoken = true;"));
-        Assert.That(runtimeViewText, Does.Contain("speakText(getFinalCompletionSpeechText(result), 'completion')"));
-        Assert.That(runtimeViewText, Does.Contain(".catch(() => logActivity('Final completion speech failed.'));"));
-        Assert.That(
-            runtimeViewText.IndexOf("speakText(getFinalCompletionSpeechText(result), 'completion')", StringComparison.Ordinal),
-            Is.LessThan(runtimeViewText.IndexOf("await setCompletedState(result, finalRecordingUploadPromise);", StringComparison.Ordinal)));
+        Assert.That(submitPost, Is.GreaterThanOrEqualTo(0));
+        Assert.That(submitSuccessGuard, Is.GreaterThan(submitPost));
+        Assert.That(terminalBranchStart, Is.GreaterThan(submitSuccessGuard));
+        Assert.That(latchCheck, Is.GreaterThanOrEqualTo(0));
+        Assert.That(latchSet, Is.GreaterThan(latchCheck));
+        Assert.That(speechCall, Is.GreaterThan(latchSet));
+        Assert.That(speechCatch, Is.GreaterThan(speechCall));
+        Assert.That(completedState, Is.GreaterThan(speechCall));
+        Assert.That(terminalBranch, Does.Not.Contain("await speakText(getFinalCompletionSpeechText()"));
+        Assert.That(speechCall, Is.LessThan(completedState));
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("score").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("strengths").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("improvement areas").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("selection").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("rejection").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("recruiter").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("contact").IgnoreCase);
+        Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("guaranteed").IgnoreCase);
     }
 
     [Test]

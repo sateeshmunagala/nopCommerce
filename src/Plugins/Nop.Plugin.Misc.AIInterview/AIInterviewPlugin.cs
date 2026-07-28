@@ -19,6 +19,10 @@ namespace Nop.Plugin.Misc.AIInterview;
 /// </summary>
 public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 {
+    public static string FinalCompletionSpeechResourceKey => $"{AIInterviewDefaults.LocalizationPrefix}.Runtime.FinalCompletionSpeech";
+
+    public const string DefaultFinalCompletionSpeech = "Thank you for completing your interview. Your responses have been submitted successfully. We are now preparing your interview report. Best wishes.";
+
     #region Fields
 
     private readonly ILocalizationService _localizationService;
@@ -1097,6 +1101,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.MockMode.Warning"] = "Development AI mode is enabled. Azure OpenAI is bypassed.",
             ["Plugins.Misc.AIInterview.Runtime.MockMode.Warning"] = "Development AI mode is enabled. Azure OpenAI is bypassed.",
             ["Plugins.Misc.AIInterview.Runtime.StopInterview"] = "Stop Interview",
+            [FinalCompletionSpeechResourceKey] = DefaultFinalCompletionSpeech,
             ["Plugins.Misc.AIInterview.Runtime.Transcript"] = "Transcript",
             ["Plugins.Misc.AIInterview.Runtime.Log"] = "Runtime Log",
             ["Plugins.Misc.AIInterview.Runtime.CameraOff"] = "Camera Off",
@@ -1395,6 +1400,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.NextQuestionMock"] = "Next AI question?",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.ReportContentMock"] = "AI report content",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.StopInterview"] = "Stop Interview",
+            [FinalCompletionSpeechResourceKey] = DefaultFinalCompletionSpeech,
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Transcript"] = "Transcript",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Log"] = "Runtime Log",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.CameraOff"] = "Camera Off",

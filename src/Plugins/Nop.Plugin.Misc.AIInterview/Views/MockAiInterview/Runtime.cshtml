@@ -688,7 +688,8 @@
         const completionWaitSeconds = 120;
         const completedRedirectDelaySeconds = 3;
         const slowSubmitStatusDelayMs = 2000;
-        const defaultFinalCompletionMessage = 'Thank you. Your interview is complete.';
+        const fallbackFinalCompletionSpeech = 'Thank you for completing your interview. Your responses have been submitted successfully. We are now preparing your interview report. Best wishes.';
+        const finalCompletionSpeech = (config.finalCompletionSpeech || '').trim() || fallbackFinalCompletionSpeech;
         const reportGenerationMessage = 'Generating your report...';
         let reportGenerationStartedAt = 0;
         const audioInputStorageKey = 'aiinterview.runtime.audioInputDeviceId';
@@ -1122,14 +1123,7 @@
             recognitionActiveSinceMs = restartActiveTimer && speechRecognizer ? Date.now() : null;
         };
 
-        const getFinalCompletionSpeechText = (result) => {
-            const completion = (getValue(result, 'completion', 'Completion') || '').trim();
-            const looksReportOrScoreOriented = /[\r\n]|overall score|question-level|strengths|improvement areas|completion note|ai completion|report|score\s*:|\b\d{1,3}\s*\/\s*100\b/i.test(completion);
-
-            return completion && completion.length <= 180 && !looksReportOrScoreOriented
-                ? completion
-                : defaultFinalCompletionMessage;
-        };
+        const getFinalCompletionSpeechText = () => finalCompletionSpeech;
 
         const hasAnswerText = (value) => !!(value || '').trim();
 
@@ -4360,7 +4354,7 @@
             if (isTerminated) {
                 if (!finalCompletionSpoken) {
                     finalCompletionSpoken = true;
-                    speakText(getFinalCompletionSpeechText(result), 'completion')
+                    speakText(getFinalCompletionSpeechText(), 'completion')
                         .catch(() => logActivity('Final completion speech failed.'));
                 }
                 await setCompletedState(result, finalRecordingUploadPromise);
