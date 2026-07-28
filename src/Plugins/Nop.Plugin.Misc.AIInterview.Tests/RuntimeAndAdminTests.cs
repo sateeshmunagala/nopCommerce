@@ -179,25 +179,48 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task RuntimeClientSettings_NormalizesTokenExpiryUtc_ForBrowserJson()
+    public async Task RuntimeClientSettings_UnspecifiedTokenExpiry_IsTreatedAsUtcWithoutTickShift()
     {
-        var unspecifiedDatabaseUtc = new DateTime(2026, 7, 28, 12, 34, 56, DateTimeKind.Unspecified);
-        var utcExpiry = new DateTime(2026, 7, 28, 12, 34, 56, DateTimeKind.Utc);
+        var databaseUtc = new DateTime(2026, 7, 28, 12, 34, 56, DateTimeKind.Unspecified);
+
+        var settings = await ApplyRuntimeClientSettingsForExpiryAsync(databaseUtc);
+
+        Assert.That(settings.TokenExpiryUtc, Is.Not.Null);
+        Assert.That(settings.TokenExpiryUtc.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
+        Assert.That(settings.TokenExpiryUtc.Value.Ticks, Is.EqualTo(databaseUtc.Ticks));
+    }
+
+    [Test]
+    public async Task RuntimeClientSettings_LocalTokenExpiry_IsConvertedToUtc()
+    {
         var localExpiry = new DateTime(2026, 7, 28, 12, 34, 56, DateTimeKind.Local);
+        var expectedUtc = localExpiry.ToUniversalTime();
 
-        var unspecifiedSettings = await ApplyRuntimeClientSettingsForExpiryAsync(unspecifiedDatabaseUtc);
-        var utcSettings = await ApplyRuntimeClientSettingsForExpiryAsync(utcExpiry);
-        var localSettings = await ApplyRuntimeClientSettingsForExpiryAsync(localExpiry);
-        var nullSettings = await ApplyRuntimeClientSettingsForExpiryAsync(null);
+        var settings = await ApplyRuntimeClientSettingsForExpiryAsync(localExpiry);
 
-        Assert.That(unspecifiedSettings.TokenExpiryUtc, Is.Not.Null);
-        Assert.That(unspecifiedSettings.TokenExpiryUtc.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
-        Assert.That(unspecifiedSettings.TokenExpiryUtc.Value.Ticks, Is.EqualTo(unspecifiedDatabaseUtc.Ticks));
-        Assert.That(utcSettings.TokenExpiryUtc.Value, Is.EqualTo(utcExpiry));
-        Assert.That(utcSettings.TokenExpiryUtc.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
-        Assert.That(localSettings.TokenExpiryUtc.Value, Is.EqualTo(localExpiry.ToUniversalTime()));
-        Assert.That(localSettings.TokenExpiryUtc.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
-        Assert.That(nullSettings.TokenExpiryUtc, Is.Null);
+        Assert.That(settings.TokenExpiryUtc, Is.Not.Null);
+        Assert.That(settings.TokenExpiryUtc.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
+        Assert.That(settings.TokenExpiryUtc.Value, Is.EqualTo(expectedUtc));
+    }
+
+    [Test]
+    public async Task RuntimeClientSettings_UtcTokenExpiry_RemainsUnchanged()
+    {
+        var utcExpiry = new DateTime(2026, 7, 28, 12, 34, 56, DateTimeKind.Utc);
+
+        var settings = await ApplyRuntimeClientSettingsForExpiryAsync(utcExpiry);
+
+        Assert.That(settings.TokenExpiryUtc, Is.Not.Null);
+        Assert.That(settings.TokenExpiryUtc.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
+        Assert.That(settings.TokenExpiryUtc.Value, Is.EqualTo(utcExpiry));
+    }
+
+    [Test]
+    public async Task RuntimeClientSettings_NullTokenExpiry_RemainsNull()
+    {
+        var settings = await ApplyRuntimeClientSettingsForExpiryAsync(null);
+
+        Assert.That(settings.TokenExpiryUtc, Is.Null);
     }
 
     [Test]
