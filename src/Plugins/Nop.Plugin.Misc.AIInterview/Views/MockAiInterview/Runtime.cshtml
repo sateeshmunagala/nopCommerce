@@ -675,7 +675,6 @@
         let feedbackHelpfulness = '';
         let feedbackSubmitInFlight = false;
         let feedbackLastFocusedElement = null;
-        let completedRedirectTimer = null;
         let completedCountdown = null;
         let completedCleanupTimer = null;
         let reportNavigationStarted = false;
@@ -684,12 +683,10 @@
         let finalCompletionSpoken = false;
         const autoSubmitDelaySeconds = 15;
         const completionWaitSeconds = 120;
-        const completedRedirectDelaySeconds = 3;
         const slowSubmitStatusDelayMs = 2000;
         const fallbackFinalCompletionSpeech = 'Thank you for completing your interview. Your responses have been submitted successfully. We are now preparing your interview report. Best wishes.';
         const finalCompletionSpeech = (config.finalCompletionSpeech || '').trim() || fallbackFinalCompletionSpeech;
         const reportGenerationMessage = 'Generating your report...';
-        let reportGenerationStartedAt = 0;
         const audioInputStorageKey = 'aiinterview.runtime.audioInputDeviceId';
         const audioOutputStorageKey = 'aiinterview.runtime.audioOutputDeviceId';
         const supportsAudioOutputSelection = typeof HTMLMediaElement !== 'undefined'
@@ -2003,16 +2000,12 @@
             updateAuxiliaryControlsState();
         };
 
-        const clearCompletedRedirectState = (resetReportStart = false) => {
+        const clearCompletedRedirectState = () => {
             completionWaitGeneration += 1;
             clearInterval(completedCountdown);
-            clearTimeout(completedRedirectTimer);
             clearTimeout(completedCleanupTimer);
             completedCountdown = null;
-            completedRedirectTimer = null;
             completedCleanupTimer = null;
-            if (resetReportStart)
-                reportGenerationStartedAt = 0;
             if (!runtimeStoppedOrCompleted)
                 reportNavigationStarted = false;
             if (completionBox) {
@@ -2674,10 +2667,7 @@
                 completionBox.append(message, timer);
             }
 
-            const elapsedSeconds = reportGenerationStartedAt
-                ? Math.max(0, Math.floor((Date.now() - reportGenerationStartedAt) / 1000))
-                : Math.max(0, completionWaitSeconds - remainingSeconds);
-            timer.textContent = `Elapsed ${formatElapsedTime(elapsedSeconds)}`;
+            timer.textContent = `Time remaining: ${formatCountdown(remainingSeconds)}`;
             timer.hidden = false;
             timer.style.display = 'block';
 
@@ -2689,7 +2679,6 @@
 
         const startReportGenerationWaitingState = (reportUrl = '') => {
             clearCompletedRedirectState();
-            reportGenerationStartedAt ||= Date.now();
             const generation = completionWaitGeneration;
             let remaining = completionWaitSeconds;
             const renderRemaining = () => {
@@ -2710,21 +2699,6 @@
                     completedCountdown = null;
                 }
             }, 1000);
-        };
-
-        const startReportGenerationTimer = (reportUrl) => {
-            updateReportButton(reportUrl);
-            if (!reportUrl)
-                return;
-
-            clearTimeout(completedRedirectTimer);
-            const generation = completionWaitGeneration;
-            completedRedirectTimer = setTimeout(() => {
-                if (generation !== completionWaitGeneration || !runtimeStoppedOrCompleted)
-                    return;
-
-                navigateToReport(reportUrl);
-            }, completedRedirectDelaySeconds * 1000);
         };
 
         const finalizeCompletedState = async (result, recordingPromise = null) => {
@@ -2767,7 +2741,7 @@
             stopInProgress = false;
             const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
             if (!reportUrl) {
-                clearCompletedRedirectState(true);
+                clearCompletedRedirectState();
                 setStatus('The report URL is unavailable. Please refresh your interview history.', true);
                 logActivity('Completion response missing report URL.');
                 return;
@@ -2789,7 +2763,7 @@
                         logActivity(`Completion finalization exception: ${error?.message || 'unknown'}`);
                         setRecordingStatus('Recording cleanup is still finishing. Report generation continues.', false, true);
                     })
-                    .finally(() => startReportGenerationTimer(reportUrl));
+                    .finally(() => updateReportButton(reportUrl));
             }, 0);
         };
 
@@ -3546,7 +3520,7 @@
             });
         };
 
-        const disableSpeechForRuntime = async (message = voiceUnavailableMessage) => {
+        const disableSpeechForRuntime = async (message = voiceUnavailableMessage, options = {}) => {
             speechUnavailable = true;
             config.speechAvailable = false;
             await stopSpeechRecognition();
@@ -3554,12 +3528,12 @@
             updateAuxiliaryControlsState();
             updateStartButtonState();
             updateSubmitAvailability();
-            if (canAcceptTypedAnswer())
+            if (!options.suppressCandidateMessage && canAcceptTypedAnswer())
                 setHeaderStatus(message || voiceUnavailableMessage, true);
             logActivity(`Speech disabled for this page: ${message || voiceUnavailableMessage}`);
         };
 
-        const requestSpeechToken = async () => {
+        const requestSpeechToken = async (options = {}) => {
             if (runtimeStoppedOrCompleted)
                 return null;
             if (speechUnavailable || !config.speechAvailable)
@@ -3584,7 +3558,7 @@
                 if (!tokenResult || !isSuccess(tokenResult) || !speechToken) {
                     const message = getRuntimeMessage(tokenResult, voiceUnavailableMessage);
                     speechTokenCache = null;
-                    await disableSpeechForRuntime(message);
+                    await disableSpeechForRuntime(message, options);
                     return { success: false, message: message };
                 }
 
@@ -3602,6 +3576,21 @@
             });
 
             return speechTokenRequestPromise;
+        };
+
+        const prefetchFinalCompletionSpeechToken = async () => {
+            if (!config.speechAvailable || speechUnavailable)
+                return null;
+
+            try {
+                const tokenResult = await requestSpeechToken({ suppressCandidateMessage: true });
+                if (!tokenResult || !tokenResult.success)
+                    logActivity(`Final completion speech prefetch failed: ${tokenResult?.message || voiceUnavailableMessage}`);
+                return tokenResult;
+            } catch (error) {
+                logActivity(`Final completion speech prefetch failed: ${error?.message || 'unknown'}`);
+                return null;
+            }
         };
 
         const preloadSpeechResources = () => {
@@ -3829,13 +3818,14 @@
             });
         };
 
-        const speakTextWithDefaultOutput = async (speechConfig, text, onSynthesisStarted = null) => {
+        const speakTextWithDefaultOutput = async (speechConfig, text, onSynthesisStarted = null, options = {}) => {
             const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig);
             const handleSynthesisCanceled = async (_, eventArgs) => {
                 const cancellationDetails = (eventArgs?.errorDetails || '').trim();
                 logActivity(`Speech synthesis canceled. ${cancellationDetails || 'No additional details.'}`);
-                await disableSpeechForRuntime(voicePlaybackUnavailableMessage);
-                setHeaderStatus(voicePlaybackUnavailableMessage, true);
+                await disableSpeechForRuntime(voicePlaybackUnavailableMessage, options);
+                if (!options.suppressCandidateMessage)
+                    setHeaderStatus(voicePlaybackUnavailableMessage, true);
             };
             synthesizer.SynthesisCanceled = handleSynthesisCanceled;
             synthesizer.synthesisCanceled = handleSynthesisCanceled;
@@ -3853,7 +3843,7 @@
             }
         };
 
-        const speakText = async (text, purpose = 'question') => {
+        const speakText = async (text, purpose = 'question', prefetchedTokenResult = undefined) => {
             if (!config.speechAvailable || !text || isPlaceholderSpeechText(text))
                 return;
 
@@ -3862,8 +3852,11 @@
             if (shouldStopRecognitionForPlayback)
                 await stopSpeechRecognition();
 
-            if (!(await ensureSpeechSdk()))
+            if (!(await ensureSpeechSdk())) {
+                if (purpose === 'completion')
+                    logActivity('Final completion speech failed: Speech SDK unavailable.');
                 return;
+            }
 
             let ttsStartedAt = 0;
             let ttsStartedReported = false;
@@ -3885,11 +3878,16 @@
             isSpeakingOrSubmitting = true;
             clearAnswerTimers();
 
-            const tokenResult = await requestSpeechToken();
+            const tokenResult = prefetchedTokenResult !== undefined
+                ? prefetchedTokenResult
+                : await requestSpeechToken();
             if (!tokenResult || !tokenResult.success) {
                 const failureReason = tokenResult?.message || voiceUnavailableMessage;
-                logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${failureReason}`);
-                if (!runtimeStoppedOrCompleted)
+                if (purpose === 'completion')
+                    logActivity(`Final completion speech failed: ${failureReason}`);
+                else
+                    logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${failureReason}`);
+                if (purpose !== 'completion' && !runtimeStoppedOrCompleted)
                     setHeaderStatus(failureReason, true);
                 isSpeakingOrSubmitting = false;
                 if (shouldResumeRecognition && !speechUnavailable && isMicActive())
@@ -3911,7 +3909,7 @@
                 } catch (controlledPlaybackError) {
                     logActivity(`Controlled speech playback unavailable. reason=${controlledPlaybackError?.message || controlledPlaybackError?.name || 'unknown'}`);
                     noteBotAudioRecordingFallback();
-                    await speakTextWithDefaultOutput(speechConfig, text, reportTtsStartedOnce);
+                    await speakTextWithDefaultOutput(speechConfig, text, reportTtsStartedOnce, { suppressCandidateMessage: purpose === 'completion' });
                 } finally {
                     if (purpose === 'question')
                         setHeaderStatus('', false);
@@ -3936,9 +3934,13 @@
                 });
             } catch (error) {
                 const reason = error?.message || 'Speech synthesis failed.';
-                logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${reason}`);
-                await disableSpeechForRuntime(voicePlaybackUnavailableMessage);
-                if (!runtimeStoppedOrCompleted)
+                if (purpose === 'completion') {
+                    logActivity(`Final completion speech failed: ${reason}`);
+                } else {
+                    logActivity(`${purpose === 'reminder' ? 'Reminder' : 'Question'} speech failed: ${reason}`);
+                    await disableSpeechForRuntime(voicePlaybackUnavailableMessage);
+                }
+                if (purpose !== 'completion' && !runtimeStoppedOrCompleted)
                     setHeaderStatus(voicePlaybackUnavailableMessage, true);
             } finally {
                 isSpeakingOrSubmitting = false;
@@ -4136,10 +4138,10 @@
             const activeTurn = turnStateBeforeSubmit.activePendingTurn;
             const willCompleteOnSubmit = (turnStateBeforeSubmit.answeredCount + 1) >= totalQuestions ||
                 (activeTurn?.sequenceNumber || 0) >= totalQuestions;
-            if (willCompleteOnSubmit)
-                startReportGenerationWaitingState();
-            else
-                setHeaderStatus(auto ? 'Auto submitting answer...' : 'Submitting answer...', false);
+            let finalCompletionSpeechTokenResult = null;
+            if (willCompleteOnSubmit && config.speechAvailable && !speechUnavailable)
+                finalCompletionSpeechTokenResult = await prefetchFinalCompletionSpeechToken();
+            setHeaderStatus(auto ? 'Auto submitting answer...' : 'Submitting answer...', false);
             const setNextTurnWaitStatus = (message = 'Preparing your next question...') => {
                 const elapsedSeconds = Math.max(0, Math.floor((performance.now() - submitStartedAt) / 1000));
                 setHeaderStatus(`${message} Elapsed ${formatElapsedTime(elapsedSeconds)}`, false);
@@ -4242,7 +4244,7 @@
             if (isTerminated) {
                 if (!finalCompletionSpoken) {
                     finalCompletionSpoken = true;
-                    speakText(getFinalCompletionSpeechText(), 'completion')
+                    await speakText(getFinalCompletionSpeechText(), 'completion', finalCompletionSpeechTokenResult)
                         .catch(() => logActivity('Final completion speech failed.'));
                 }
                 await setCompletedState(result, finalRecordingUploadPromise);
@@ -4290,8 +4292,6 @@
                 stopTopBtn.classList.add('is-loading');
                 stopTopBtn.textContent = 'Stopping...';
             }
-            startReportGenerationWaitingState();
-
             if (mediaRecorder && recordingEnabled)
                 await stopRecording(true);
 

@@ -1832,8 +1832,10 @@ public class CandidateFlowTests
         Assert.That(runtimeText, Does.Contain("Generating your report..."));
         Assert.That(runtimeText, Does.Contain("const finalizeRecordingBeforeCompletion = async () =>"));
         Assert.That(runtimeText, Does.Contain("finalizeRecordingBeforeCompletion()"));
-        Assert.That(runtimeText, Does.Contain("const startReportGenerationTimer = (reportUrl) =>"));
-        Assert.That(runtimeText, Does.Contain(".finally(() => startReportGenerationTimer(reportUrl));"));
+        Assert.That(runtimeText, Does.Not.Contain("const startReportGenerationTimer = (reportUrl) =>"));
+        Assert.That(runtimeText, Does.Not.Contain(".finally(() => startReportGenerationTimer(reportUrl));"));
+        Assert.That(runtimeText, Does.Contain(".finally(() => updateReportButton(reportUrl));"));
+        Assert.That(runtimeText, Does.Contain("timer.textContent = `Time remaining: ${formatCountdown(remainingSeconds)}`;"));
         Assert.That(runtimeText, Does.Not.Contain("messageBox.textContent = getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
         Assert.That(runtimeText, Does.Contain("await stopRecording(true);"));
         Assert.That(runtimeText, Does.Not.Contain("setRecordingStatus('Recording ready.', false);"));

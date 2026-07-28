@@ -3048,11 +3048,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (!sasToken.StartsWith("?", StringComparison.Ordinal))
             sasToken = sasToken.StartsWith("&", StringComparison.Ordinal) ? "?" + sasToken[1..] : "?" + sasToken;
 
-        var blobName = $"recordings-{session.SessionKey}-{DateTime.UtcNow:yyyyMMddHHmmss}.webm";
-        var uploadUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}{sasToken}";
+        string blobName = null;
 
         try
         {
+            var customer = session.CustomerId > 0 ? await _customerService.GetCustomerByIdAsync(session.CustomerId) : null;
+            blobName = BuildRecordingBlobName(customer, GetRecordingBlobNameUtcNow());
+            var uploadUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}{sasToken}";
+
             await LogRecordingUploadStartAsync(session, recording, blobName, normalizedContentType);
             using var httpClient = CreateHttpClient();
             using var content = new StreamContent(recording.OpenReadStream());
@@ -4257,6 +4260,53 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Success = false,
             Message = message
         };
+    }
+
+    protected virtual DateTime GetRecordingBlobNameUtcNow()
+    {
+        return DateTime.UtcNow;
+    }
+
+    protected virtual string BuildRecordingBlobName(Customer customer, DateTime utcNow)
+    {
+        var firstName = SanitizeRecordingBlobNameComponent(customer?.FirstName);
+        var lastName = SanitizeRecordingBlobNameComponent(customer?.LastName);
+
+        return $"{firstName}_{lastName}_{utcNow:yyyyMMddHHmmss}.webm";
+    }
+
+    protected static string SanitizeRecordingBlobNameComponent(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Applicant";
+
+        var invalidFileNameChars = System.IO.Path.GetInvalidFileNameChars();
+        var builder = new StringBuilder(value.Trim().Length);
+        var previousWasSeparator = false;
+
+        foreach (var character in value.Trim())
+        {
+            var shouldReplace = char.IsWhiteSpace(character) ||
+                char.IsControl(character) ||
+                Array.IndexOf(invalidFileNameChars, character) >= 0 ||
+                character is '/' or '\\' or '?' or '#' or '&' or '=' or '%';
+
+            if (!shouldReplace && (char.IsLetterOrDigit(character) || character is '_' or '-'))
+            {
+                builder.Append(character);
+                previousWasSeparator = false;
+                continue;
+            }
+
+            if (previousWasSeparator)
+                continue;
+
+            builder.Append('_');
+            previousWasSeparator = true;
+        }
+
+        var sanitized = builder.ToString().Trim('_', '-');
+        return string.IsNullOrWhiteSpace(sanitized) ? "Applicant" : sanitized;
     }
 
     protected virtual async Task<string> GetJobTitleAsync(int productId)

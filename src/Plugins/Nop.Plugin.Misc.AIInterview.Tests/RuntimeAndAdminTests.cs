@@ -1918,7 +1918,8 @@ public class RuntimeAndAdminTests
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
 
         Assert.That(runtimeViewText, Does.Contain("const reportGenerationMessage = 'Generating your report...';"));
-        Assert.That(runtimeViewText, Does.Contain("startReportGenerationWaitingState();"));
+        Assert.That(runtimeViewText, Does.Contain("startReportGenerationWaitingState(reportUrl);"));
+        Assert.That(runtimeViewText, Does.Not.Contain("startReportGenerationWaitingState();"));
         Assert.That(runtimeViewText, Does.Contain("clearCompletedRedirectState();"));
         Assert.That(runtimeViewText, Does.Contain("Unable to stop interview."));
         Assert.That(runtimeViewText, Does.Contain("Unable to submit answer."));
@@ -2050,8 +2051,9 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const minimumFinalizationWaitMs = recordingUploadTimeoutMs + 5000;"));
         Assert.That(runtimeViewText, Does.Contain("const finalizationWaitTimeoutMs = Math.max(receivedFinalizationWaitTimeoutMs, minimumFinalizationWaitMs);"));
         Assert.That(runtimeViewText, Does.Contain("finalizeRecordingBeforeCompletion()"));
-        Assert.That(runtimeViewText, Does.Contain("const startReportGenerationTimer = (reportUrl) =>"));
-        Assert.That(runtimeViewText, Does.Contain(".finally(() => startReportGenerationTimer(reportUrl));"));
+        Assert.That(runtimeViewText, Does.Not.Contain("const startReportGenerationTimer = (reportUrl) =>"));
+        Assert.That(runtimeViewText, Does.Not.Contain(".finally(() => startReportGenerationTimer(reportUrl));"));
+        Assert.That(runtimeViewText, Does.Contain(".finally(() => updateReportButton(reportUrl));"));
         Assert.That(runtimeViewText, Does.Contain("const navigateToReport = (reportUrl) =>"));
         Assert.That(runtimeViewText, Does.Contain("let reportNavigationStarted = false;"));
         Assert.That(runtimeViewText, Does.Contain("let speechTokenCache = null;"));
@@ -2172,8 +2174,10 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("showUnavailableQuestionState(beginMessage);"));
         Assert.That(runtimeViewText, Does.Contain("questionBox.textContent = firstQuestion;"));
         Assert.That(runtimeViewText, Does.Contain("const reportGenerationMessage = 'Generating your report...';"));
+        Assert.That(runtimeViewText, Does.Contain("const completionWaitSeconds = 120;"));
         Assert.That(runtimeViewText, Does.Contain("const formatCountdown = (remainingSeconds) =>"));
-        Assert.That(runtimeViewText, Does.Contain("completedRedirectTimer = setTimeout(() =>"));
+        Assert.That(runtimeViewText, Does.Contain("timer.textContent = `Time remaining: ${formatCountdown(remainingSeconds)}`;"));
+        Assert.That(runtimeViewText, Does.Not.Contain("completedRedirectTimer = setTimeout(() =>"));
         Assert.That(runtimeViewText, Does.Not.Contain("getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
 
         Assert.That(runtimeViewText, Does.Not.Contain("AgoraRTC"));
@@ -2204,14 +2208,24 @@ public class RuntimeAndAdminTests
         var speechFunctionStart = runtimeViewText.IndexOf("const getFinalCompletionSpeechText = () =>", StringComparison.Ordinal);
         var speechFunctionEnd = runtimeViewText.IndexOf("const hasAnswerText", speechFunctionStart, StringComparison.Ordinal);
         var speechFunction = runtimeViewText.Substring(speechFunctionStart, speechFunctionEnd - speechFunctionStart);
-        var terminalBranchStart = runtimeViewText.IndexOf("if (isTerminated) {", StringComparison.Ordinal);
-        var terminalBranchEnd = runtimeViewText.IndexOf("updateStartButtonState();", terminalBranchStart, StringComparison.Ordinal);
-        var terminalBranch = runtimeViewText.Substring(terminalBranchStart, terminalBranchEnd - terminalBranchStart);
-        var submitPost = runtimeViewText.IndexOf("const result = await postForm(config.submitAnswerUrl", StringComparison.Ordinal);
-        var submitSuccessGuard = runtimeViewText.IndexOf("if (!isSuccess(result))", submitPost, StringComparison.Ordinal);
+        var prefetchFunctionStart = runtimeViewText.IndexOf("const prefetchFinalCompletionSpeechToken = async () =>", StringComparison.Ordinal);
+        var prefetchFunctionEnd = runtimeViewText.IndexOf("const preloadSpeechResources = () =>", prefetchFunctionStart, StringComparison.Ordinal);
+        var prefetchFunction = runtimeViewText.Substring(prefetchFunctionStart, prefetchFunctionEnd - prefetchFunctionStart);
+        var speakTextStart = runtimeViewText.IndexOf("const speakText = async", StringComparison.Ordinal);
+        var speakTextEnd = runtimeViewText.IndexOf("const setCamera = async", speakTextStart, StringComparison.Ordinal);
+        var speakTextBlock = runtimeViewText.Substring(speakTextStart, speakTextEnd - speakTextStart);
+        var submitAnswerStart = runtimeViewText.IndexOf("const submitAnswer = async", StringComparison.Ordinal);
+        var submitAnswerEnd = runtimeViewText.IndexOf("const stopInterview = async", submitAnswerStart, StringComparison.Ordinal);
+        var submitAnswerBlock = runtimeViewText.Substring(submitAnswerStart, submitAnswerEnd - submitAnswerStart);
+        var terminalBranchStart = submitAnswerBlock.IndexOf("if (isTerminated) {", StringComparison.Ordinal);
+        var terminalBranchEnd = submitAnswerBlock.IndexOf("updateStartButtonState();", terminalBranchStart, StringComparison.Ordinal);
+        var terminalBranch = submitAnswerBlock.Substring(terminalBranchStart, terminalBranchEnd - terminalBranchStart);
+        var prefetchCall = submitAnswerBlock.IndexOf("finalCompletionSpeechTokenResult = await prefetchFinalCompletionSpeechToken();", StringComparison.Ordinal);
+        var submitPost = submitAnswerBlock.IndexOf("const result = await postForm(config.submitAnswerUrl", StringComparison.Ordinal);
+        var submitSuccessGuard = submitAnswerBlock.IndexOf("if (!isSuccess(result))", submitPost, StringComparison.Ordinal);
         var latchCheck = terminalBranch.IndexOf("if (!finalCompletionSpoken)", StringComparison.Ordinal);
         var latchSet = terminalBranch.IndexOf("finalCompletionSpoken = true;", latchCheck, StringComparison.Ordinal);
-        var speechCall = terminalBranch.IndexOf("speakText(getFinalCompletionSpeechText(), 'completion')", latchSet, StringComparison.Ordinal);
+        var speechCall = terminalBranch.IndexOf("await speakText(getFinalCompletionSpeechText(), 'completion', finalCompletionSpeechTokenResult)", latchSet, StringComparison.Ordinal);
         var speechCatch = terminalBranch.IndexOf(".catch(() => logActivity('Final completion speech failed.'));", speechCall, StringComparison.Ordinal);
         var completedState = terminalBranch.IndexOf("await setCompletedState(result, finalRecordingUploadPromise);", speechCall, StringComparison.Ordinal);
 
@@ -2228,15 +2242,28 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText.Split("speakText(getFinalCompletionSpeechText()", StringSplitOptions.None).Length - 1, Is.EqualTo(1));
         Assert.That(runtimeViewText, Does.Contain("const shouldResumeRecognition = purpose !== 'completion' && shouldStopRecognitionForPlayback;"));
         Assert.That(runtimeViewText, Does.Contain("if (shouldResumeRecognition && !runtimeStoppedOrCompleted && !speechUnavailable && isMicActive())"));
+        Assert.That(runtimeViewText, Does.Contain("const speakText = async (text, purpose = 'question', prefetchedTokenResult = undefined) =>"));
+        Assert.That(speakTextBlock, Does.Contain("const tokenResult = prefetchedTokenResult !== undefined"));
+        Assert.That(speakTextBlock, Does.Contain(": await requestSpeechToken();"));
+        Assert.That(speakTextBlock, Does.Contain("logActivity('Final completion speech failed: Speech SDK unavailable.');"));
+        Assert.That(speakTextBlock, Does.Contain("logActivity(`Final completion speech failed: ${failureReason}`);"));
+        Assert.That(speakTextBlock, Does.Contain("logActivity(`Final completion speech failed: ${reason}`);"));
+        Assert.That(speakTextBlock, Does.Contain("await speakTextWithDefaultOutput(speechConfig, text, reportTtsStartedOnce, { suppressCandidateMessage: purpose === 'completion' });"));
+        Assert.That(prefetchFunction, Does.Contain("await requestSpeechToken({ suppressCandidateMessage: true });"));
+        Assert.That(prefetchFunction, Does.Contain("logActivity(`Final completion speech prefetch failed:"));
+        Assert.That(prefetchFunction, Does.Contain("return null;"));
+        Assert.That(prefetchCall, Is.GreaterThanOrEqualTo(0));
         Assert.That(submitPost, Is.GreaterThanOrEqualTo(0));
+        Assert.That(prefetchCall, Is.LessThan(submitPost));
         Assert.That(submitSuccessGuard, Is.GreaterThan(submitPost));
         Assert.That(terminalBranchStart, Is.GreaterThan(submitSuccessGuard));
         Assert.That(latchCheck, Is.GreaterThanOrEqualTo(0));
         Assert.That(latchSet, Is.GreaterThan(latchCheck));
         Assert.That(speechCall, Is.GreaterThan(latchSet));
         Assert.That(speechCatch, Is.GreaterThan(speechCall));
-        Assert.That(completedState, Is.GreaterThan(speechCall));
-        Assert.That(terminalBranch, Does.Not.Contain("await speakText(getFinalCompletionSpeechText()"));
+        Assert.That(completedState, Is.GreaterThan(speechCatch));
+        Assert.That(terminalBranch, Does.Contain("await speakText(getFinalCompletionSpeechText(), 'completion', finalCompletionSpeechTokenResult)"));
+        Assert.That(terminalBranch, Does.Not.Contain("requestSpeechToken("));
         Assert.That(speechCall, Is.LessThan(completedState));
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("score").IgnoreCase);
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("strengths").IgnoreCase);
@@ -2274,7 +2301,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const reportTtsStartedOnce = () =>"));
         Assert.That(runtimeViewText, Does.Contain("if (ttsStartedReported)"));
         Assert.That(runtimeViewText, Does.Contain("await synthesizeSpeechAudioData(speechConfig, text, reportTtsStartedOnce);"));
-        Assert.That(runtimeViewText, Does.Contain("await speakTextWithDefaultOutput(speechConfig, text, reportTtsStartedOnce);"));
+        Assert.That(runtimeViewText, Does.Contain("await speakTextWithDefaultOutput(speechConfig, text, reportTtsStartedOnce, { suppressCandidateMessage: purpose === 'completion' });"));
     }
 
     [Test]
@@ -2325,9 +2352,26 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("if (speechTokenRequestPromise)\r\n                return speechTokenRequestPromise;").Or.Contain("if (speechTokenRequestPromise)\n                return speechTokenRequestPromise;"));
         Assert.That(runtimeViewText, Does.Contain("expiresAt: Date.now() + Math.max(30000, (expiresInSeconds - 60) * 1000)"));
         Assert.That(runtimeViewText, Does.Contain("})().finally(() => {\r\n                speechTokenRequestPromise = null;").Or.Contain("})().finally(() => {\n                speechTokenRequestPromise = null;"));
-        Assert.That(runtimeViewText, Does.Contain("reportGenerationStartedAt ||= Date.now();"));
-        Assert.That(runtimeViewText.IndexOf("reportGenerationStartedAt ||= Date.now();", StringComparison.Ordinal),
-            Is.LessThan(runtimeViewText.IndexOf("const finalizeCompletedState = async", StringComparison.Ordinal)));
+        var renderCompletionStart = runtimeViewText.IndexOf("const renderCompletionWaitState = (remainingSeconds, reportUrl = '') =>", StringComparison.Ordinal);
+        var renderCompletionEnd = runtimeViewText.IndexOf("const startReportGenerationWaitingState", renderCompletionStart, StringComparison.Ordinal);
+        var renderCompletionBlock = runtimeViewText.Substring(renderCompletionStart, renderCompletionEnd - renderCompletionStart);
+        var completionWaitStart = runtimeViewText.IndexOf("const startReportGenerationWaitingState = (reportUrl = '') =>", StringComparison.Ordinal);
+        var completionWaitEnd = runtimeViewText.IndexOf("const finalizeCompletedState = async", completionWaitStart, StringComparison.Ordinal);
+        var completionWaitBlock = runtimeViewText.Substring(completionWaitStart, completionWaitEnd - completionWaitStart);
+
+        Assert.That(runtimeViewText, Does.Contain("const completionWaitSeconds = 120;"));
+        Assert.That(renderCompletionBlock, Does.Contain("timer.textContent = `Time remaining: ${formatCountdown(remainingSeconds)}`;"));
+        Assert.That(renderCompletionBlock, Does.Not.Contain("Elapsed"));
+        Assert.That(completionWaitBlock, Does.Contain("let remaining = completionWaitSeconds;"));
+        Assert.That(completionWaitBlock, Does.Contain("renderCompletionWaitState(remaining, reportUrl);"));
+        Assert.That(completionWaitBlock, Does.Contain("if (remaining <= 0)"));
+        Assert.That(completionWaitBlock, Does.Contain("clearInterval(completedCountdown);"));
+        Assert.That(completionWaitBlock, Does.Not.Contain("navigateToReport"));
+        Assert.That(runtimeViewText, Does.Not.Contain("reportGenerationStartedAt"));
+        Assert.That(runtimeViewText, Does.Not.Contain("completedRedirectDelaySeconds"));
+        Assert.That(runtimeViewText, Does.Not.Contain("completedRedirectTimer"));
+        Assert.That(runtimeViewText, Does.Not.Contain("startReportGenerationTimer"));
+        Assert.That(runtimeViewText, Does.Contain(".finally(() => updateReportButton(reportUrl));"));
 
         var finalizationStart = runtimeViewText.IndexOf("logActivity('Final recording upload before completion started.')", StringComparison.Ordinal);
         Assert.That(finalizationStart, Is.LessThan(runtimeViewText.IndexOf("await stopLiveMediaForCompletion();", finalizationStart, StringComparison.Ordinal)));

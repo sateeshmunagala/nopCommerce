@@ -101,6 +101,24 @@ public class RuntimeServiceTests
         };
     }
 
+    private static InterviewRuntimeService CreateDefaultServiceForRecordingName()
+    {
+        return CreateService(
+            new Mock<IInterviewSessionService>(),
+            new Mock<IInterviewTurnService>(),
+            new Mock<IAIInterviewClient>(),
+            new Mock<IProductService>(),
+            new Mock<ICustomerService>(),
+            new Mock<ILocalizationService>());
+    }
+
+    private static string BuildRecordingBlobNameForTest(InterviewRuntimeService service, Customer customer, DateTime utcNow)
+    {
+        var method = typeof(InterviewRuntimeService).GetMethod("BuildRecordingBlobName", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        return (string)method.Invoke(service, new object[] { customer, utcNow });
+    }
+
     [Test]
     public async Task EnsureInterviewStartedAsync_Creates_Only_First_Active_Turn()
     {
@@ -3284,6 +3302,7 @@ public class RuntimeServiceTests
 
         sessionService.Setup(x => x.GetSessionByTokenAsync("recent")).ReturnsAsync(session);
         sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        customerService.Setup(x => x.GetCustomerByIdAsync(7)).ReturnsAsync(new Customer { Id = 7, FirstName = "Recent", LastName = "Candidate" });
 
         var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
             settings: new AIInterviewSettings
@@ -3387,6 +3406,45 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public void RecordingBlobName_UsesApplicantNameAndUtcTimestamp()
+    {
+        var service = CreateDefaultServiceForRecordingName();
+        var blobName = BuildRecordingBlobNameForTest(
+            service,
+            new Customer { FirstName = "Jane", LastName = "Doe" },
+            new DateTime(2026, 7, 28, 12, 24, 43, DateTimeKind.Utc));
+
+        Assert.That(blobName, Is.EqualTo("Jane_Doe_20260728122443.webm"));
+    }
+
+    [Test]
+    public void RecordingBlobName_SanitizesUnsafeAndWhitespaceNameComponents()
+    {
+        var service = CreateDefaultServiceForRecordingName();
+        var blobName = BuildRecordingBlobNameForTest(
+            service,
+            new Customer { FirstName = "  Jane \t /? Smith  ", LastName = "  Do\\e#&=Jr\u0001 " },
+            new DateTime(2026, 7, 28, 12, 24, 43, DateTimeKind.Utc));
+
+        Assert.That(blobName, Is.EqualTo("Jane_Smith_Do_e_Jr_20260728122443.webm"));
+    }
+
+    [TestCase(null, "Doe", "Applicant_Doe_20260728122443.webm")]
+    [TestCase("Jane", "", "Jane_Applicant_20260728122443.webm")]
+    [TestCase("   ", "   ", "Applicant_Applicant_20260728122443.webm")]
+    [TestCase("/?#", "\\", "Applicant_Applicant_20260728122443.webm")]
+    public void RecordingBlobName_UsesApplicantFallbacksForMissingComponents(string firstName, string lastName, string expectedBlobName)
+    {
+        var service = CreateDefaultServiceForRecordingName();
+        var blobName = BuildRecordingBlobNameForTest(
+            service,
+            new Customer { FirstName = firstName, LastName = lastName },
+            new DateTime(2026, 7, 28, 12, 24, 43, DateTimeKind.Utc));
+
+        Assert.That(blobName, Is.EqualTo(expectedBlobName));
+    }
+
+    [Test]
     public async Task UploadRecordingAsync_SavesRecordingUrl_OnSuccess()
     {
         var sessionService = new Mock<IInterviewSessionService>();
@@ -3409,6 +3467,7 @@ public class RuntimeServiceTests
         };
         sessionService.Setup(x => x.GetSessionByTokenAsync("upload-success")).ReturnsAsync(session);
         sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        customerService.Setup(x => x.GetCustomerByIdAsync(7)).ReturnsAsync(new Customer { Id = 7, FirstName = "Jane", LastName = "Doe" });
         sessionService.Setup(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>()))
             .Callback<InterviewSession>(s =>
             {
@@ -3428,12 +3487,17 @@ public class RuntimeServiceTests
         var result = await service.UploadRecordingAsync("upload-success", CreateRecordingFile("webm-data"));
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.RecordingUrl, Does.Contain("https://storage.blob.core.windows.net/container/recordings-session-success-"));
+        Assert.That(result.RecordingUrl, Does.Match(@"^https://storage\.blob\.core\.windows\.net/container/Jane_Doe_\d{14}\.webm$"));
+        Assert.That(result.RecordingUrl, Does.Not.Contain("recordings-"));
+        Assert.That(result.RecordingUrl, Does.Not.Contain("session-success"));
         Assert.That(session.RecordingUrl, Is.EqualTo(result.RecordingUrl));
         Assert.That(session.CompletedOnUtc, Is.Null);
         Assert.That(session.IsActive, Is.True);
         Assert.That(httpHandler.Requests.Count, Is.EqualTo(1));
         Assert.That(httpHandler.Requests[0].Method, Is.EqualTo(HttpMethod.Put));
+        Assert.That(httpHandler.Requests[0].RequestUri.AbsoluteUri, Does.Match(@"^https://storage\.blob\.core\.windows\.net/container/Jane_Doe_\d{14}\.webm\?sig=token$"));
+        Assert.That(httpHandler.Requests[0].RequestUri.AbsoluteUri, Does.Not.Contain("recordings-"));
+        Assert.That(httpHandler.Requests[0].RequestUri.AbsoluteUri, Does.Not.Contain("session-success"));
         Assert.That(httpHandler.Requests[0].Headers.Contains("x-ms-blob-type"), Is.True);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.RecordingUrl == result.RecordingUrl)), Times.Once);
         sessionService.Verify(x => x.EnsureRecordingShareTokenAsync(It.Is<InterviewSession>(s => s.RecordingUrl == result.RecordingUrl)), Times.Once);
@@ -3465,6 +3529,7 @@ public class RuntimeServiceTests
         sessionService.Setup(x => x.GetSessionByTokenAsync("upload-codec")).ReturnsAsync(session);
         sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
         sessionService.Setup(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>())).ReturnsAsync("share-token");
+        customerService.Setup(x => x.GetCustomerByIdAsync(1)).ReturnsAsync(new Customer { Id = 1, FirstName = "Codec", LastName = "Candidate" });
 
         var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
             settings: new AIInterviewSettings
@@ -3507,6 +3572,7 @@ public class RuntimeServiceTests
         sessionService.Setup(x => x.GetSessionByTokenAsync("upload-invalid-type")).ReturnsAsync(session);
         sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
         sessionService.Setup(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>())).ReturnsAsync("share-token");
+        customerService.Setup(x => x.GetCustomerByIdAsync(7)).ReturnsAsync(new Customer { Id = 7, FirstName = "Invalid", LastName = "Type" });
 
         var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
             settings: new AIInterviewSettings
@@ -3545,6 +3611,7 @@ public class RuntimeServiceTests
             ProductId = 5
         };
         sessionService.Setup(x => x.GetSessionByTokenAsync("upload-log-failure")).ReturnsAsync(session);
+        customerService.Setup(x => x.GetCustomerByIdAsync(7)).ReturnsAsync(new Customer { Id = 7, FirstName = "Log", LastName = "Failure" });
         nopLogger.Setup(x => x.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
             .Returns(Task.CompletedTask);
 
