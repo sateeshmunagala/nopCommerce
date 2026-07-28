@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import sql from 'mssql';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Request, type Response } from '@playwright/test';
 
 const expiredMessage = 'Your previous interview link expired. Start the interview again from this page.';
 const unavailableMessage = 'AI service unavailable. Please try again later.';
@@ -12,7 +12,7 @@ const loginEmail = process.env.AIINTERVIEW_LOGIN_EMAIL;
 const loginPassword = process.env.AIINTERVIEW_LOGIN_PASSWORD;
 const expectRecording = process.env.AIINTERVIEW_EXPECT_RECORDING === '1';
 const targetCredits = Number(process.env.AIINTERVIEW_MIN_CREDITS || '5');
-const targetDifficulty = process.env.AIINTERVIEW_RENEW_DIFFICULTY || 'Medium';
+const targetDifficulty = process.env.AIINTERVIEW_FIXED_TOKEN_DIFFICULTY || 'Medium';
 
 type FixtureState = {
   baseUrl: URL;
@@ -21,6 +21,11 @@ type FixtureState = {
   customerId: number;
   expiredProductUrl: string;
   dbConnectionString: string;
+};
+
+type FixedTokenSession = {
+  token: string;
+  runtimeUrl: string;
 };
 
 let fixtureState: FixtureState | null = null;
@@ -130,6 +135,132 @@ async function waitForActiveQuestion(page: Page) {
     timeout: 20_000,
     message: 'Expected runtime question to move off placeholder or unavailable text.'
   }).not.toMatch(/^$|^Welcome! Click Start Interview to begin\.$|^AI service unavailable\./);
+}
+
+function getFormToken(request: Request): string {
+  return new URLSearchParams(request.postData() || '').get('token') || '';
+}
+
+async function installRuntimeMediaStubs(page: Page) {
+  await page.addInitScript(() => {
+    const createVideoStream = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 360;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.fillStyle = '#0b5cab';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      return canvas.captureStream(5);
+    };
+
+    const createAudioStream = () => {
+      const audioWindow = window as Window & { webkitAudioContext?: typeof AudioContext };
+      const AudioContextCtor = window.AudioContext || audioWindow.webkitAudioContext;
+      if (!AudioContextCtor)
+        return new MediaStream();
+
+      const audioContext = new AudioContextCtor();
+      const oscillator = audioContext.createOscillator();
+      const destination = audioContext.createMediaStreamDestination();
+      oscillator.connect(destination);
+      oscillator.start();
+      return destination.stream;
+    };
+
+    const mergeStreams = (...streams: MediaStream[]) => new MediaStream(streams.flatMap(stream => stream.getTracks()));
+    type MutableMediaDevices = MediaDevices & {
+      getDisplayMedia?: (constraints?: MediaStreamConstraints) => Promise<MediaStream>;
+    };
+    const mediaDevices = (() => {
+      if (navigator.mediaDevices)
+        return navigator.mediaDevices as MutableMediaDevices;
+
+      const stubDevices = {} as MutableMediaDevices;
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: stubDevices
+      });
+      return stubDevices;
+    })();
+
+    mediaDevices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
+      const wantsVideo = constraints?.video !== false && !!constraints?.video;
+      const wantsAudio = constraints?.audio !== false && !!constraints?.audio;
+      const streams: MediaStream[] = [];
+      if (wantsVideo)
+        streams.push(createVideoStream());
+      if (wantsAudio)
+        streams.push(createAudioStream());
+      return mergeStreams(...streams);
+    };
+
+    mediaDevices.getDisplayMedia = async () => mergeStreams(createVideoStream(), createAudioStream());
+    mediaDevices.enumerateDevices = async () => [
+      { deviceId: 'stub-camera', groupId: 'stub', kind: 'videoinput', label: 'Stub Camera', toJSON: () => ({}) },
+      { deviceId: 'stub-mic', groupId: 'stub', kind: 'audioinput', label: 'Stub Microphone', toJSON: () => ({}) },
+      { deviceId: 'stub-speaker', groupId: 'stub', kind: 'audiooutput', label: 'Stub Speaker', toJSON: () => ({}) }
+    ] as MediaDeviceInfo[];
+  });
+}
+
+async function completeGuidelinesAndPermissions(page: Page) {
+  const modal = page.locator('#guidelines-modal');
+  const nextButton = page.locator('#runtime-permissions-next');
+
+  await page.locator('#view-guidelines').click();
+  await expect(modal).toHaveClass(/is-open/);
+
+  await expect(nextButton).toBeEnabled();
+  await nextButton.click();
+
+  await page.locator('[data-permission-result="camera"][data-permission-value="working"]').click();
+  await expect(nextButton).toBeEnabled();
+  await nextButton.click();
+
+  await page.locator('#runtime-precheck-internet-test').click();
+  await expect(page.locator('#runtime-precheck-internet-status')).toContainText(/Speed:/, { timeout: 10_000 });
+  await expect(nextButton).toBeEnabled();
+  await nextButton.click();
+
+  await page.locator('[data-permission-result="microphone"][data-permission-value="working"]').click();
+  await expect(nextButton).toBeEnabled();
+  await nextButton.click();
+
+  await page.locator('[data-permission-result="speaker"][data-permission-value="working"]').click();
+  await expect(nextButton).toBeEnabled();
+  await nextButton.click();
+
+  await page.locator('[data-permission-result="speechRecognition"][data-permission-value="working"]').click();
+  await expect(nextButton).toBeEnabled();
+  await nextButton.click();
+
+  await page.locator('#guidelines-acknowledge').check();
+  await expect(page.locator('#guidelines-agree')).toBeEnabled();
+  await page.locator('#guidelines-agree').click();
+  await expect(modal).not.toHaveClass(/is-open/);
+}
+
+async function beginRuntimeWithFixedToken(page: Page, originalToken: string): Promise<Response> {
+  await completeGuidelinesAndPermissions(page);
+  const beginResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/mockaiinterview/begin') &&
+    response.request().method() === 'POST', { timeout: 20_000 });
+
+  await expect(page.locator('#start-or-next')).toBeEnabled();
+  await page.locator('#start-or-next').click();
+  const beginResponse = await beginResponsePromise;
+  expect(beginResponse.ok()).toBe(true);
+  expect(getFormToken(beginResponse.request())).toBe(originalToken);
+  const beginJson = await beginResponse.json();
+  expect(beginJson.success ?? beginJson.Success).toBeTruthy();
+  await waitForActiveQuestion(page);
+  expect(new URL(page.url()).searchParams.get('token')).toBe(originalToken);
+  await expect(page.locator('#runtime-status')).not.toContainText(/Invalid or expired session token/i);
+  await expect(page.locator('#runtime-question')).not.toContainText(unavailableMessage);
+  return beginResponse;
 }
 
 async function withPool<T>(connectionString: string, work: (pool: sql.ConnectionPool) => Promise<T>): Promise<T> {
@@ -259,7 +390,7 @@ WHERE [CustomerId] = @customerId
   });
 }
 
-async function createFixedTokenSession(state: FixtureState): Promise<string> {
+async function createFixedTokenSession(state: FixtureState): Promise<FixedTokenSession> {
   return withPool(state.dbConnectionString, async (pool) => {
     const token = `e2e-fixed-${Date.now()}`;
     const sessionKey = `e2e-fixed-${Date.now()}`;
@@ -281,7 +412,10 @@ VALUES
     NULL, NULL, NULL, 0, 0, SYSUTCDATETIME(), SYSUTCDATETIME(), NULL
 );`);
 
-    return `${state.baseUrl.origin}/mockaiinterview/runtime?token=${token}`;
+    return {
+      token,
+      runtimeUrl: `${state.baseUrl.origin}/mockaiinterview/runtime?token=${token}`
+    };
   });
 }
 
@@ -353,24 +487,48 @@ test.describe('AIInterview candidate runtime', () => {
   test('runtime keeps fixed token and continues without refresh', async ({ page }) => {
     const state = await resolveFixtureState();
     await deactivateUnfinishedSessions(state);
-    const runtimeUrl = await createFixedTokenSession(state);
+    const fixedSession = await createFixedTokenSession(state);
     let refreshRequested = false;
-    page.on('request', (request) => {
+    const trackRefresh = (request: Request) => {
       if (request.url().includes('/mockaiinterview/refresh-token') && request.method() === 'POST')
         refreshRequested = true;
-    });
+    };
+    page.on('request', trackRefresh);
 
     await ensureSignedIn(page);
-
-    await page.goto(runtimeUrl);
-    await waitForActiveQuestion(page);
+    await installRuntimeMediaStubs(page);
+    await page.goto(fixedSession.runtimeUrl);
+    await beginRuntimeWithFixedToken(page, fixedSession.token);
     expect(refreshRequested).toBe(false);
 
+    const submitResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('/mockaiinterview/submit-answer') &&
+      response.request().method() === 'POST', { timeout: 20_000 });
     await page.locator('#runtime-answer').fill('Fixed token verification answer.');
+    await expect(page.locator('#submit-answer')).toBeEnabled();
     await page.locator('#submit-answer').click();
+    const submitResponse = await submitResponsePromise;
+    expect(submitResponse.ok()).toBe(true);
+    expect(getFormToken(submitResponse.request())).toBe(fixedSession.token);
+    expect(new URL(page.url()).searchParams.get('token')).toBe(fixedSession.token);
 
     await expect(page.locator('#runtime-status')).not.toContainText(/Invalid or expired session token/i);
     await expect(page.locator('#runtime-question')).not.toContainText(unavailableMessage);
+    expect(refreshRequested).toBe(false);
+
+    const secondPage = await page.context().newPage();
+    try {
+      secondPage.on('request', trackRefresh);
+      await installRuntimeMediaStubs(secondPage);
+      await secondPage.goto(fixedSession.runtimeUrl);
+      await beginRuntimeWithFixedToken(secondPage, fixedSession.token);
+      expect(new URL(secondPage.url()).searchParams.get('token')).toBe(fixedSession.token);
+      await expect(secondPage.locator('#runtime-status')).not.toContainText(/Invalid or expired session token/i);
+      await expect(secondPage.locator('#runtime-question')).not.toContainText(unavailableMessage);
+    } finally {
+      await secondPage.close();
+    }
+
     expect(refreshRequested).toBe(false);
   });
 });

@@ -373,6 +373,159 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_SameTokenInterleavedCallers_PrepareSpeechAndBegin_DoNotMutateToken()
+    {
+        var customer = new Customer { Id = 7, Email = "owner@example.com" };
+        var token = "shared-runtime-token";
+        var tokenExpiryUtc = DateTime.UtcNow.AddMinutes(30);
+        var session = new InterviewSession
+        {
+            Id = 79,
+            CustomerId = customer.Id,
+            ProductId = 12,
+            Token = token,
+            IsActive = true,
+            TokenExpiryUtc = tokenExpiryUtc
+        };
+        var firstBeginModel = new InterviewRuntimeModel
+        {
+            CurrentQuestion = "First shared-token question?",
+            Turns = new List<InterviewTurnViewModel>
+            {
+                new InterviewTurnViewModel { TurnId = 1, SequenceNumber = 1, QuestionText = "First shared-token question?" }
+            }
+        };
+        var secondBeginModel = new InterviewRuntimeModel
+        {
+            CurrentQuestion = "Second shared-token question?",
+            Turns = new List<InterviewTurnViewModel>
+            {
+                new InterviewTurnViewModel { TurnId = 1, SequenceNumber = 1, QuestionText = "Second shared-token question?" }
+            }
+        };
+        var beginModels = new Queue<InterviewRuntimeModel>(new[] { firstBeginModel, secondBeginModel });
+        var azureSpeechToken = "azure-speech-token";
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _customerService.Setup(x => x.IsRegisteredAsync(customer, true)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(token)).ReturnsAsync(session);
+        _interviewRuntimeService.Setup(x => x.PrepareInterviewAsync(token, customer))
+            .ReturnsAsync(new PrepareInterviewResponseModel
+            {
+                Success = true,
+                Ready = true,
+                Message = "Ready",
+                ExpectedQuestionCount = 5,
+                PersistedQuestionCount = 5
+            });
+        _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync(token))
+            .ReturnsAsync(new SpeechTokenResponseModel
+            {
+                Success = true,
+                Token = azureSpeechToken,
+                Region = "eastus",
+                ExpiresInSeconds = 540
+            });
+        _interviewRuntimeService.Setup(x => x.BeginInterviewAsync(token, customer))
+            .ReturnsAsync(() => beginModels.Dequeue());
+        var controller = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, _interviewRuntimeService.Object, null, _nopLogger.Object);
+
+        var callerAPrepare = (JsonResult)await controller.Prepare(token);
+        var callerBSpeech = (JsonResult)await controller.SpeechToken(token);
+        var callerABegin = (JsonResult)await controller.Begin(token);
+        var callerBPrepare = (JsonResult)await controller.Prepare(token);
+        var callerBBegin = (JsonResult)await controller.Begin(token);
+
+        Assert.That(GetJsonValue<bool>(callerAPrepare, "success"), Is.True);
+        Assert.That(GetJsonValue<bool>(callerBSpeech, "success"), Is.True);
+        Assert.That(GetJsonValue<string>(callerBSpeech, "token"), Is.EqualTo(azureSpeechToken));
+        Assert.That(GetJsonValue<string>(callerBSpeech, "token"), Is.Not.EqualTo(token));
+        Assert.That(GetJsonValue<bool>(callerABegin, "success"), Is.True);
+        Assert.That(GetJsonValue<bool>(callerBPrepare, "success"), Is.True);
+        Assert.That(GetJsonValue<bool>(callerBBegin, "success"), Is.True);
+        Assert.That(GetJsonValue<string>(callerABegin, "question"), Is.EqualTo(firstBeginModel.CurrentQuestion));
+        Assert.That(GetJsonValue<string>(callerBBegin, "question"), Is.EqualTo(secondBeginModel.CurrentQuestion));
+        Assert.That(session.Token, Is.EqualTo(token));
+        Assert.That(session.TokenExpiryUtc, Is.EqualTo(tokenExpiryUtc));
+        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync(token, customer), Times.Exactly(2));
+        _interviewRuntimeService.Verify(x => x.GetSpeechTokenAsync(token), Times.Once);
+        _interviewRuntimeService.Verify(x => x.BeginInterviewAsync(token, customer), Times.Exactly(2));
+        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync(It.Is<string>(value => value != token), It.IsAny<Customer>()), Times.Never);
+        _interviewRuntimeService.Verify(x => x.GetSpeechTokenAsync(It.Is<string>(value => value != token)), Times.Never);
+        _interviewRuntimeService.Verify(x => x.BeginInterviewAsync(It.Is<string>(value => value != token), It.IsAny<Customer>()), Times.Never);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_ParallelValidTokenValidation_DoesNotPersistTokenOrExpiry()
+    {
+        var customer = new Customer { Id = 7, Email = "owner@example.com" };
+        var token = "parallel-runtime-token";
+        var tokenExpiryUtc = DateTime.UtcNow.AddMinutes(30);
+        var session = new InterviewSession
+        {
+            Id = 80,
+            CustomerId = customer.Id,
+            ProductId = 12,
+            Token = token,
+            IsActive = true,
+            TokenExpiryUtc = tokenExpiryUtc
+        };
+        var twoValidationsReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseValidations = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var validationCount = 0;
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _customerService.Setup(x => x.IsRegisteredAsync(customer, true)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(token)).Returns(async () =>
+        {
+            if (System.Threading.Interlocked.Increment(ref validationCount) == 2)
+                twoValidationsReached.SetResult();
+
+            await releaseValidations.Task;
+            return session;
+        });
+        _interviewRuntimeService.Setup(x => x.PrepareInterviewAsync(token, customer))
+            .ReturnsAsync(new PrepareInterviewResponseModel
+            {
+                Success = true,
+                Ready = true,
+                Message = "Ready",
+                ExpectedQuestionCount = 5,
+                PersistedQuestionCount = 5
+            });
+        _interviewRuntimeService.Setup(x => x.GetSpeechTokenAsync(token))
+            .ReturnsAsync(new SpeechTokenResponseModel
+            {
+                Success = true,
+                Token = "parallel-azure-speech-token",
+                Region = "eastus",
+                ExpiresInSeconds = 540
+            });
+        var controller = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, _interviewRuntimeService.Object, null, _nopLogger.Object);
+
+        var prepareTask = controller.Prepare(token);
+        var speechTask = controller.SpeechToken(token);
+        await twoValidationsReached.Task;
+        releaseValidations.SetResult();
+        var results = await Task.WhenAll(prepareTask, speechTask);
+
+        Assert.That(results, Has.All.TypeOf<JsonResult>());
+        Assert.That(GetJsonValue<bool>((JsonResult)results[0], "success"), Is.True);
+        Assert.That(GetJsonValue<bool>((JsonResult)results[1], "success"), Is.True);
+        Assert.That(GetJsonValue<string>((JsonResult)results[1], "token"), Is.EqualTo("parallel-azure-speech-token"));
+        Assert.That(GetJsonValue<string>((JsonResult)results[1], "token"), Is.Not.EqualTo(token));
+        Assert.That(session.Token, Is.EqualTo(token));
+        Assert.That(session.TokenExpiryUtc, Is.EqualTo(tokenExpiryUtc));
+        Assert.That(validationCount, Is.EqualTo(2));
+        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync(token, customer), Times.Once);
+        _interviewRuntimeService.Verify(x => x.GetSpeechTokenAsync(token), Times.Once);
+        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync(It.Is<string>(value => value != token), It.IsAny<Customer>()), Times.Never);
+        _interviewRuntimeService.Verify(x => x.GetSpeechTokenAsync(It.Is<string>(value => value != token)), Times.Never);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
     public async Task Runtime_RefreshToken_ExpiredActiveSession_ReturnsErrorWithoutUpdatingToken()
     {
         var session = new InterviewSession

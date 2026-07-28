@@ -3137,11 +3137,20 @@ public class RuntimeServiceTests
             CompletedOnUtc = DateTime.UtcNow.AddMinutes(-11),
             TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
         });
+        sessionService.Setup(x => x.GetSessionByTokenAsync("recent-completed-expired")).ReturnsAsync(new InterviewSession
+        {
+            Token = "recent-completed-expired",
+            IsActive = false,
+            CompletedOnUtc = DateTime.UtcNow.AddMinutes(-2),
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
+        });
 
         Assert.That((await service.UploadRecordingAsync("invalid", CreateRecordingFile())).Success, Is.False);
         Assert.That((await service.UploadRecordingAsync("expired", CreateRecordingFile())).Success, Is.False);
         Assert.That((await service.UploadRecordingAsync("completed", CreateRecordingFile())).Success, Is.False);
+        Assert.That((await service.UploadRecordingAsync("recent-completed-expired", CreateRecordingFile())).Success, Is.False);
         Assert.That(httpHandler.Requests, Is.Empty);
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]
@@ -3156,13 +3165,14 @@ public class RuntimeServiceTests
         var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Created));
         var httpFactory = CreateHttpClientFactory(httpHandler);
         var completedAt = DateTime.UtcNow.AddMinutes(-2);
+        var tokenExpiryUtc = DateTime.UtcNow.AddMinutes(30);
         var session = new InterviewSession
         {
             Id = 22,
             Token = "recent",
             IsActive = false,
             CompletedOnUtc = completedAt,
-            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1),
+            TokenExpiryUtc = tokenExpiryUtc,
             SessionKey = "session-recent",
             CustomerId = 7,
             ProductId = 5
@@ -3182,10 +3192,15 @@ public class RuntimeServiceTests
 
         Assert.That(result.Success, Is.True);
         Assert.That(session.RecordingUrl, Is.EqualTo(result.RecordingUrl));
+        Assert.That(session.Token, Is.EqualTo("recent"));
+        Assert.That(session.TokenExpiryUtc, Is.EqualTo(tokenExpiryUtc));
+        Assert.That(httpHandler.Requests, Has.Count.EqualTo(1));
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
             s.Id == 22 &&
             s.RecordingUrl == result.RecordingUrl &&
             s.CompletedOnUtc == completedAt &&
+            s.Token == "recent" &&
+            s.TokenExpiryUtc == tokenExpiryUtc &&
             s.IsActive == false)), Times.Once);
     }
 
