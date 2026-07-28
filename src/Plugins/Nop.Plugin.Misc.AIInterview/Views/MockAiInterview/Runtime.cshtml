@@ -3109,7 +3109,7 @@
             }
         };
 
-        const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds) => {
+        const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds, success = true) => {
             if (!config.runtimeClientEventUrl || !stageName)
                 return;
 
@@ -3118,7 +3118,8 @@
                     token: sessionToken,
                     eventType: 'stage-timing',
                     requestName: stageName,
-                    elapsedMilliseconds: String(Math.max(0, Math.round(elapsedMilliseconds || 0)))
+                    elapsedMilliseconds: String(Math.max(0, Math.round(elapsedMilliseconds || 0))),
+                    success: success === true ? 'true' : 'false'
                 });
 
                 fetch(config.runtimeClientEventUrl, {
@@ -3219,8 +3220,9 @@
                 preloadSpeechResources();
                 const prepareStartedAt = performance.now();
                 const result = await postForm(config.prepareInterviewUrl, new URLSearchParams({ token: sessionToken }));
-                reportRuntimeClientStageTiming('prepare-response', performance.now() - prepareStartedAt);
                 const ready = !!getValue(result, 'ready', 'Ready');
+                if (isSuccess(result) && ready)
+                    reportRuntimeClientStageTiming('prepare-response', performance.now() - prepareStartedAt, true);
                 const expected = getValue(result, 'expectedQuestionCount', 'ExpectedQuestionCount');
                 const persisted = getValue(result, 'persistedQuestionCount', 'PersistedQuestionCount');
                 logActivity(`Runtime preparation finished. ready=${ready}; persisted=${persisted}; expected=${expected}`);
@@ -3565,6 +3567,8 @@
                 mediaRecorder.start(1000);
                 logActivity(`Recording start success. mimeType=${recordingMimeType}`);
                 setRecordingStatus('Recording live.', false);
+                if (mediaRecorder.state === 'recording')
+                    reportRuntimeClientStageTiming('recording-started', 0, true);
                 const toggleRecording = document.getElementById('toggle-recording');
                 if (toggleRecording)
                     updateAuxiliaryControlsState();
@@ -3708,7 +3712,8 @@
                     region,
                     expiresAt: Date.now() + Math.max(30000, (expiresInSeconds - 60) * 1000)
                 };
-                reportRuntimeClientStageTiming('speech-token-ready', performance.now() - tokenStartedAt);
+                if (region)
+                    reportRuntimeClientStageTiming('speech-token-ready', performance.now() - tokenStartedAt, true);
                 return { success: true, token: speechToken, region: region };
             })().finally(() => {
                 speechTokenRequestPromise = null;
@@ -3974,8 +3979,7 @@
             if (!(await ensureSpeechSdk()))
                 return;
 
-            const ttsStartedAt = performance.now();
-            reportRuntimeClientStageTiming('tts-started', 0);
+            let ttsStartedAt = 0;
             if (purpose === 'question')
                 logActivity('Speaking question.');
             else if (purpose === 'reminder')
@@ -4001,6 +4005,8 @@
 
             try {
                 const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
+                ttsStartedAt = performance.now();
+                reportRuntimeClientStageTiming('tts-started', 0, true);
                 if (purpose === 'question')
                     setHeaderStatus('Playing interviewer audio.', false);
                 botAudioCapturedForCurrentSpeech = false;
@@ -4024,7 +4030,7 @@
                     logActivity('Reminder spoken.');
                 else if (purpose === 'completion')
                     logActivity('Final completion message spoken.');
-                reportRuntimeClientStageTiming('tts-completed', performance.now() - ttsStartedAt);
+                reportRuntimeClientStageTiming('tts-completed', performance.now() - ttsStartedAt, true);
                 if (purpose === 'repeat')
                     setHeaderStatus('Question replayed in voice.', false);
                 const activeTurn = getActiveTurn();
@@ -4510,7 +4516,6 @@
             const beginStartedAt = performance.now();
             const beginResult = await postForm(config.beginInterviewUrl, new URLSearchParams({ token: sessionToken }));
             logActivity('Begin response received.');
-            reportRuntimeClientStageTiming('begin-response', performance.now() - beginStartedAt);
             if (!isSuccess(beginResult)) {
                 stopScreenShare();
                 interviewStarted = false;
@@ -4520,6 +4525,7 @@
                 updateStartButtonState();
                 return;
             }
+            reportRuntimeClientStageTiming('begin-response', performance.now() - beginStartedAt, true);
 
             const firstQuestion = getValue(beginResult, "question", "Question");
             const firstTurn = normalizeTurn(getValue(beginResult, "turn", "Turn"), turns.length);
@@ -4558,17 +4564,16 @@
             updateStartButtonState();
             if (questionBox.textContent) logActivity('Question shown: ' + questionBox.textContent);
             logActivity('First question rendered.');
-            reportRuntimeClientStageTiming('first-question-rendered', performance.now() - beginStartedAt);
+            reportRuntimeClientStageTiming('first-question-rendered', performance.now() - beginStartedAt, true);
             updateSubmitAvailability();
             updateAuxiliaryControlsState();
             const recordingStartPromise = (async () => {
-                const recordingStartedAt = performance.now();
                 try {
                     if (config.recordingAvailable && recordingEnabled)
                         await requestRecordingMediaForStart();
                     await syncRecording();
-                    logActivity('Recording started.');
-                    reportRuntimeClientStageTiming('recording-started', performance.now() - recordingStartedAt);
+                    if (mediaRecorder?.state === 'recording')
+                        logActivity('Recording started.');
                 } catch (error) {
                     logActivity(`Recording start failed independently: ${error?.message || 'unknown'}`);
                     setRecordingStatus('Recording could not start. You can continue with typed answers.', true, true);

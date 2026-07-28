@@ -574,28 +574,135 @@ public class RuntimeServiceTests
         resumeProfileService.Setup(x => x.EnsureResumeProfileAsync(session, It.IsAny<Product>()))
             .ReturnsAsync(new ResumeProfileGenerationResult { Success = true, ProfileJson = "{}" });
         aiClient.Setup(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()))
-            .ReturnsAsync((AIInterviewQuestionPlanRequest request) => new AIInterviewQuestionPlanResponse
+            .Returns(async (AIInterviewQuestionPlanRequest request) =>
+            {
+                await Task.Delay(25);
+                return new AIInterviewQuestionPlanResponse
+                {
+                    Success = true,
+                    Questions = Enumerable.Range(2, request.QuestionCount).Select(sequence => new AIInterviewQuestionPlanItem
+                    {
+                        SequenceNumber = sequence,
+                        Category = "skill",
+                        Question = $"Question {sequence}"
+                    }).ToList()
+                };
+            });
+        aiClient.Setup(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()))
+            .ReturnsAsync(new AIInterviewClientResponse
             {
                 Success = true,
-                Questions = Enumerable.Range(2, request.QuestionCount).Select(sequence => new AIInterviewQuestionPlanItem
-                {
-                    SequenceNumber = sequence,
-                    Category = "skill",
-                    Question = $"Question {sequence}"
-                }).ToList()
+                Score = 88,
+                Feedback = "Good answer.",
+                RawJson = "{\"score\":88}",
+                RubricJson = "{\"score\":88}"
             });
 
         var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, resumeProfileService: resumeProfileService);
 
-        var prepareTask = service.PrepareInterviewAsync("token342", new Customer { Id = 99 });
         var beginTask = service.BeginInterviewAsync("token342", new Customer { Id = 99 });
-        await Task.WhenAll(prepareTask, beginTask);
+        var prepareTask = service.PrepareInterviewAsync("token342", new Customer { Id = 99 });
+        var submitTask = Task.Run(async () =>
+        {
+            await Task.Delay(5);
+            return await service.SubmitAnswerAsync("token342", "A concrete answer with enough detail to validate.");
+        });
+        await Task.WhenAll(prepareTask, beginTask, submitTask);
 
         Assert.That(beginTask.Result.CurrentQuestion, Does.Contain("start with you"));
         Assert.That(beginTask.Result.Turns.Single().SequenceNumber, Is.EqualTo(1));
+        Assert.That(submitTask.Result.Success, Is.True);
         Assert.That(turns.Select(turn => turn.SequenceNumber).OrderBy(value => value), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(session.StartedOnUtc, Is.Not.Null);
         resumeProfileService.Verify(x => x.EnsureResumeProfileAsync(session, It.IsAny<Product>()), Times.Once);
         aiClient.Verify(x => x.GenerateQuestionPlanAsync(It.IsAny<AIInterviewQuestionPlanRequest>()), Times.Once);
+        aiClient.Verify(x => x.ScoreAnswerAsync(It.IsAny<AIInterviewClientRequest>()), Times.Once);
+    }
+
+    [Test]
+    public async Task BeginInterviewAsync_DifferentSessions_DoNotShareGlobalMutationLock()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var sessionOne = new InterviewSession
+        {
+            Id = 343,
+            ProductId = 10,
+            CustomerId = 99,
+            SessionKey = "key343",
+            Token = "token343",
+            Difficulty = "Medium",
+            QuestionCount = 1,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
+        var sessionTwo = new InterviewSession
+        {
+            Id = 344,
+            ProductId = 10,
+            CustomerId = 100,
+            SessionKey = "key344",
+            Token = "token344",
+            Difficulty = "Medium",
+            QuestionCount = 1,
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1)
+        };
+        var turns = new Dictionary<int, List<InterviewTurn>>
+        {
+            [343] = new(),
+            [344] = new()
+        };
+        var gate = new object();
+        var firstInsertStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseFirstInsert = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var nextId = 1;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token343")).ReturnsAsync(sessionOne);
+        sessionService.Setup(x => x.GetSessionByTokenAsync("token344")).ReturnsAsync(sessionTwo);
+        sessionService.Setup(x => x.GetInterviewSessionByIdAsync(343)).ReturnsAsync(sessionOne);
+        sessionService.Setup(x => x.GetInterviewSessionByIdAsync(344)).ReturnsAsync(sessionTwo);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(It.IsAny<int>())).ReturnsAsync((int sessionId) =>
+        {
+            lock (gate)
+                return turns[sessionId].OrderBy(turn => turn.SequenceNumber).ToList();
+        });
+        turnService.Setup(x => x.InsertInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Returns(async (InterviewTurn turn) =>
+            {
+                if (turn.InterviewSessionId == sessionOne.Id)
+                {
+                    firstInsertStarted.TrySetResult();
+                    await releaseFirstInsert.Task;
+                }
+
+                lock (gate)
+                {
+                    turn.Id = nextId++;
+                    turns[turn.InterviewSessionId].Add(turn);
+                    return turn;
+                }
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService);
+
+        var sessionOneTask = service.BeginInterviewAsync("token343", new Customer { Id = 99 });
+        await firstInsertStarted.Task;
+        var sessionTwoTask = service.BeginInterviewAsync("token344", new Customer { Id = 100 });
+        var completedFirst = await Task.WhenAny(sessionTwoTask, Task.Delay(500));
+        releaseFirstInsert.SetResult();
+        await Task.WhenAll(sessionOneTask, sessionTwoTask);
+
+        Assert.That(completedFirst, Is.EqualTo(sessionTwoTask));
+        Assert.That(sessionOneTask.Result.CurrentQuestion, Does.Contain("start with you"));
+        Assert.That(sessionTwoTask.Result.CurrentQuestion, Does.Contain("start with you"));
+        Assert.That(turns[sessionOne.Id].Single().SequenceNumber, Is.EqualTo(1));
+        Assert.That(turns[sessionTwo.Id].Single().SequenceNumber, Is.EqualTo(1));
     }
 
     [Test]
@@ -2297,9 +2404,17 @@ public class RuntimeServiceTests
 
         Assert.That(results.All(result => result.Success && result.IsTerminated), Is.True);
         Assert.That(results.Select(result => result.Score), Is.All.EqualTo(91));
+        Assert.That(results.All(result => result.Completion.Contains("Completed once.")), Is.True);
         Assert.That(session.CompletedOnUtc.HasValue, Is.True);
         Assert.That(session.IsActive, Is.False);
         Assert.That(session.ReportData, Does.Contain("Completed once."));
+        var persistedAnswer = turn.AnswerText;
+        var completedRetry = await service.SubmitAnswerAsync(session.Token, "");
+        Assert.That(completedRetry.Success, Is.True);
+        Assert.That(completedRetry.IsTerminated, Is.True);
+        Assert.That(completedRetry.Score, Is.EqualTo(91));
+        Assert.That(completedRetry.Completion, Does.Contain("Completed once."));
+        Assert.That(turn.AnswerText, Is.EqualTo(persistedAnswer));
         aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Once);
         aiClient.Verify(x => x.GenerateStrengthsSummaryAsync(It.IsAny<AIInterviewStrengthsSummaryRequest>()), Times.Once);
         eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Once);

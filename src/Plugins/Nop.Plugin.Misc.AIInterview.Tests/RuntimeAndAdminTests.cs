@@ -198,6 +198,56 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_Prepare_ExpiredActiveOwnerToken_ReturnsInvalidToken_WithoutRenewalOrPreparation()
+    {
+        var customer = new Customer { Id = 7, Email = "owner@example.com" };
+        var session = new InterviewSession
+        {
+            Id = 73,
+            CustomerId = 7,
+            Token = "expired-owner-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(-1)
+        };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _customerService.Setup(x => x.IsRegisteredAsync(customer)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("expired-owner-token")).ReturnsAsync(session);
+        var controller = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, _interviewRuntimeService.Object, null, _nopLogger.Object);
+
+        var result = await controller.Prepare("expired-owner-token");
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        Assert.That(GetJsonValue<bool>((JsonResult)result, "success"), Is.False);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync(It.IsAny<string>(), It.IsAny<Customer>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Prepare_CompletedOwnerToken_ReturnsInvalidToken_WithoutPreparation()
+    {
+        var customer = new Customer { Id = 7, Email = "owner@example.com" };
+        var session = new InterviewSession
+        {
+            Id = 74,
+            CustomerId = 7,
+            Token = "completed-owner-token",
+            IsActive = true,
+            CompletedOnUtc = DateTime.UtcNow.AddMinutes(-1),
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(20)
+        };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _customerService.Setup(x => x.IsRegisteredAsync(customer)).ReturnsAsync(true);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("completed-owner-token")).ReturnsAsync(session);
+        var controller = new MockAiInterviewController(_sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object, _creditService.Object, _customerService.Object, _productService.Object, new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object, _eventPublisher.Object, null, null, null, _interviewRuntimeService.Object, null, _nopLogger.Object);
+
+        var result = await controller.Prepare("completed-owner-token");
+
+        Assert.That(result, Is.TypeOf<JsonResult>());
+        Assert.That(GetJsonValue<bool>((JsonResult)result, "success"), Is.False);
+        _interviewRuntimeService.Verify(x => x.PrepareInterviewAsync(It.IsAny<string>(), It.IsAny<Customer>()), Times.Never);
+    }
+
+    [Test]
     public async Task Runtime_RefreshToken_ExpiredActiveSession_RenewsAndUpdatesToken()
     {
         var session = new InterviewSession
@@ -1454,7 +1504,7 @@ public class RuntimeAndAdminTests
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
 
-        Assert.That(runtimeViewText, Does.Contain("Report is being generated. Please wait and also you will receive an email shortly once report is generated."));
+        Assert.That(runtimeViewText, Does.Contain("const reportGenerationMessage = 'Generating your report...';"));
         Assert.That(runtimeViewText, Does.Contain("startReportGenerationWaitingState();"));
         Assert.That(runtimeViewText, Does.Contain("clearCompletedRedirectState();"));
         Assert.That(runtimeViewText, Does.Contain("Unable to stop interview."));
@@ -1578,7 +1628,8 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const finalizeRecordingBeforeCompletion = async () =>"));
         Assert.That(runtimeViewText, Does.Contain("if (completionRecordingCleanupPromise)"));
         Assert.That(runtimeViewText, Does.Contain("Final recording upload before completion started."));
-        Assert.That(runtimeViewText, Does.Contain("finalRecordingUploadTimeoutMs"));
+        Assert.That(runtimeViewText, Does.Contain("const minimumFinalizationWaitMs = recordingUploadTimeoutMs + 5000;"));
+        Assert.That(runtimeViewText, Does.Contain("const finalizationWaitTimeoutMs = Math.max(receivedFinalizationWaitTimeoutMs, minimumFinalizationWaitMs);"));
         Assert.That(runtimeViewText, Does.Contain("finalizeRecordingBeforeCompletion()"));
         Assert.That(runtimeViewText, Does.Contain("const startReportGenerationTimer = (reportUrl) =>"));
         Assert.That(runtimeViewText, Does.Contain(".finally(() => startReportGenerationTimer(reportUrl));"));
@@ -1586,7 +1637,8 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("let reportNavigationStarted = false;"));
         Assert.That(runtimeViewText, Does.Contain("let speechTokenCache = null;"));
         Assert.That(runtimeViewText, Does.Contain("let speechTokenRequestPromise = null;"));
-        Assert.That(runtimeViewText, Does.Contain("const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds) =>"));
+        Assert.That(runtimeViewText, Does.Contain("const reportRuntimeClientStageTiming = (stageName, elapsedMilliseconds, success = true) =>"));
+        Assert.That(runtimeViewText, Does.Contain("success: success === true ? 'true' : 'false'"));
         Assert.That(runtimeViewText, Does.Contain("Preparing your next question..."));
         Assert.That(runtimeViewText, Does.Not.Contain("clearAllRuntimeTimers();\r\n            let originalText = ''").And.Not.Contain("clearAllRuntimeTimers();\n            let originalText = ''"));
         Assert.That(runtimeViewText, Does.Contain("clearAnswerTimers();"));
@@ -1609,16 +1661,12 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("setScreenShareInterruptionWarning(false);"));
         Assert.That(runtimeViewText, Does.Not.Contain("Plugins.Misc.AIInterview.Runtime.ScreenSharingOptional"));
         Assert.That(runtimeViewText, Does.Contain("Plugins.Misc.AIInterview.Runtime.Guidelines.Title"));
-        Assert.That(runtimeViewText, Does.Contain("Plugins.Misc.AIInterview.Runtime.Guidelines.Acknowledge"));
-        Assert.That(runtimeViewText, Does.Contain("Mobile phones and tablets are not allowed by policy, but they are not blocked technically."));
-        Assert.That(runtimeViewText, Does.Contain("Entire screen sharing is required for this interview."));
-        Assert.That(runtimeViewText, Does.Contain("When your browser asks what to share, choose Entire screen or Your entire screen. Do not select a browser tab or a single window."));
-        Assert.That(runtimeViewText, Does.Contain("Use full screen and keep the interview tab visible."));
-        Assert.That(runtimeViewText, Does.Contain("runtime-screen-share-guide"));
-        Assert.That(runtimeViewText, Does.Contain("Share picker guide"));
-        Assert.That(runtimeViewText, Does.Contain("runtime-share-system-audio"));
-        Assert.That(runtimeViewText, Does.Contain("Also share system audio"));
-        Assert.That(runtimeViewText, Does.Contain("Select this"));
+        Assert.That(runtimeViewText, Does.Contain("id=\"guidelines-acknowledge\""));
+        Assert.That(runtimeViewText, Does.Contain("I consent to use my camera, microphone, and other media devices for this interview."));
+        Assert.That(runtimeViewText, Does.Contain("Before starting the interview, we need to test your system to ensure optimal performance."));
+        Assert.That(runtimeViewText, Does.Contain("Camera and microphone access for video communication"));
+        Assert.That(runtimeViewText, Does.Contain("Internet connection speed for stable interview experience"));
+        Assert.That(runtimeViewText, Does.Contain("Speech recognition readiness for voice interaction"));
         Assert.That(runtimeViewText, Does.Contain("let guidelinesAcknowledged = false;"));
         Assert.That(runtimeViewText, Does.Contain("primaryActionButton.disabled = !guidelinesAcknowledged;"));
         Assert.That(runtimeViewText, Does.Contain("setButtonLabel(primaryActionButton, 'Start Interview');"));
@@ -1697,8 +1745,9 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const beginResult = await postForm(config.beginInterviewUrl"));
         Assert.That(runtimeViewText, Does.Contain("showUnavailableQuestionState(beginMessage);"));
         Assert.That(runtimeViewText, Does.Contain("questionBox.textContent = firstQuestion;"));
-        Assert.That(runtimeViewText, Does.Contain("Interview completed. Please wait, creating the report."));
-        Assert.That(runtimeViewText, Does.Contain("Redirecting to report in ${remainingSeconds}s."));
+        Assert.That(runtimeViewText, Does.Contain("const reportGenerationMessage = 'Generating your report...';"));
+        Assert.That(runtimeViewText, Does.Contain("const formatCountdown = (remainingSeconds) =>"));
+        Assert.That(runtimeViewText, Does.Contain("completedRedirectTimer = setTimeout(() =>"));
         Assert.That(runtimeViewText, Does.Not.Contain("getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
 
         Assert.That(runtimeViewText, Does.Not.Contain("AgoraRTC"));
@@ -1738,7 +1787,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain(".catch(() => logActivity('Final completion speech failed.'));"));
         Assert.That(
             runtimeViewText.IndexOf("speakText(getFinalCompletionSpeechText(result), 'completion')", StringComparison.Ordinal),
-            Is.LessThan(runtimeViewText.IndexOf("await setCompletedState(result);", StringComparison.Ordinal)));
+            Is.LessThan(runtimeViewText.IndexOf("await setCompletedState(result, finalRecordingUploadPromise);", StringComparison.Ordinal)));
     }
 
     [Test]
@@ -1763,7 +1812,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeCssText, Does.Contain(".runtime-question-counter[hidden],"));
         Assert.That(runtimeCssText, Does.Contain(".runtime-video-caption[hidden] {"));
         Assert.That(runtimeCssText, Does.Contain("@media (min-width: 1025px)"));
-        Assert.That(runtimeCssText, Does.Contain(".runtime-video {\r\n        min-height: min(450px, 53vh);").Or.Contain(".runtime-video {\n        min-height: min(450px, 53vh);"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-video {\r\n        min-height: min(560px, 64vh);").Or.Contain(".runtime-video {\n        min-height: min(560px, 64vh);"));
         Assert.That(runtimeCssText, Does.Contain(".runtime-modal-card {\r\n    width: min(720px, 100%);\r\n    pointer-events: auto;\r\n    position: relative;\r\n    z-index: 1;").Or.Contain(".runtime-modal-card {\n    width: min(720px, 100%);\n    pointer-events: auto;\n    position: relative;\n    z-index: 1;"));
         Assert.That(runtimeCssText, Does.Contain(".runtime-guidelines-ack {\r\n    display: flex;").Or.Contain(".runtime-guidelines-ack {\n    display: flex;"));
         Assert.That(runtimeCssText, Does.Contain("pointer-events: auto;"));
@@ -2124,7 +2173,62 @@ public class RuntimeAndAdminTests
         Assert.That(result, Is.TypeOf<JsonResult>());
         Assert.That(activityComment, Does.Contain("Request=upload-recording"));
         Assert.That(activityComment, Does.Contain("StatusCode=413"));
-        Assert.That(activityComment, Does.Contain("Recording upload exceeded the 100 MB request limit or an upstream host proxy size limit."));
+        Assert.That(activityComment, Does.Contain("Recording upload exceeded the configured request limit or an upstream host proxy size limit."));
+    }
+
+    [Test]
+    public async Task RuntimeClientEvent_StageTiming_NormalizesStageAndPersistsTrueSuccess()
+    {
+        var session = new InterviewSession
+        {
+            Id = 80,
+            CustomerId = 15,
+            ProductId = 37,
+            Token = "stage-event-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        var customer = new Customer { Id = session.CustomerId, Email = "candidate@example.com" };
+        var activityService = new Mock<ICustomerActivityService>();
+        var activityComments = new List<string>();
+
+        _sessionService.Setup(x => x.GetSessionByTokenAsync("stage-event-token")).ReturnsAsync(session);
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(customer);
+        activityService.Setup(x => x.InsertActivityAsync(
+                customer,
+                "AIInterview.Runtime.ClientStageTiming",
+                It.IsAny<string>(),
+                It.IsAny<BaseEntity>()))
+            .Callback<Customer, string, string, BaseEntity>((_, _, comment, _) => activityComments.Add(comment))
+            .ReturnsAsync(new ActivityLog());
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            nopLogger: _nopLogger.Object,
+            customerActivityService: activityService.Object);
+
+        var accepted = await controller.RuntimeClientEvent("stage-event-token", "stage-timing", "begin-response", null, null, null, 1234, true);
+        var unknown = await controller.RuntimeClientEvent("stage-event-token", "stage-timing", "resume-text-secret", null, null, null, 99, false);
+
+        Assert.That(accepted, Is.TypeOf<JsonResult>());
+        Assert.That(unknown, Is.TypeOf<JsonResult>());
+        Assert.That(activityComments, Has.Count.EqualTo(2));
+        Assert.That(activityComments[0], Does.Contain("Stage=begin-response"));
+        Assert.That(activityComments[0], Does.Contain("ElapsedMs=1234"));
+        Assert.That(activityComments[0], Does.Contain("Success=true"));
+        Assert.That(activityComments[1], Does.Contain("Stage=unknown"));
+        Assert.That(activityComments[1], Does.Contain("ElapsedMs=99"));
+        Assert.That(activityComments[1], Does.Contain("Success=false"));
+        Assert.That(activityComments[1], Does.Not.Contain("resume-text-secret"));
     }
 
     [Test]

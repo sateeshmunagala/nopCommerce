@@ -2188,19 +2188,12 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (session == null)
             return null;
 
-        var initialTurns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
-        var hasFirstTurn = (initialTurns ?? new List<InterviewTurn>()).Any(turn => turn.SequenceNumber == 1);
-        if (!hasFirstTurn)
-        {
-            using var sessionLock = await AcquireSessionMutationLockAsync(session.Id);
-            session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? session;
-            if (!IsSessionUsable(session, DateTime.UtcNow))
-                return null;
+        using var sessionLock = await AcquireSessionMutationLockAsync(session.Id);
+        session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? session;
+        if (!IsSessionUsable(session, DateTime.UtcNow))
+            return null;
 
-            return await EnsureInterviewStartedCoreAsync(session, customer, sessionLockHeld: true);
-        }
-
-        return await EnsureInterviewStartedCoreAsync(session, customer);
+        return await EnsureInterviewStartedCoreAsync(session, customer, sessionLockHeld: true);
     }
 
     private async Task<InterviewRuntimeModel> EnsureInterviewStartedCoreAsync(InterviewSession session, Customer customer = null, bool sessionLockHeld = false)
@@ -2244,10 +2237,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var totalStopwatch = Stopwatch.StartNew();
         var session = await _sessionService.GetSessionByTokenAsync(token);
         if (!IsSessionUsable(session, DateTime.UtcNow))
-            return null;
-
-        var firstTurnResult = await EnsureFirstQuestionTurnAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer);
-        if (!string.IsNullOrWhiteSpace(firstTurnResult.FailureReason))
             return null;
 
         var maxQuestions = GetMaxQuestions(session);
@@ -2300,7 +2289,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
             var planStopwatch = Stopwatch.StartNew();
             var existingTurns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
-            firstTurnResult = await EnsureFirstQuestionTurnAsync(session, existingTurns, customer, sessionLockHeld: true);
+            var firstTurnResult = await EnsureFirstQuestionTurnAsync(session, existingTurns, customer, sessionLockHeld: true);
+            if (!string.IsNullOrWhiteSpace(firstTurnResult.FailureReason))
+                return null;
+
             var planResult = await EnsureQuestionPlanAsync(session, firstTurnResult.Turns, customer, skipAnsweredPlanReset: true);
             var persistedTurns = (await _turnService.GetTurnsBySessionIdAsync(session.Id))
                 .OrderBy(turn => turn.SequenceNumber)
@@ -2339,8 +2331,22 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var token = request?.Token;
         var answer = request?.Answer;
         var session = await _sessionService.GetSessionByTokenAsync(token);
-        var now = DateTime.UtcNow;
-        if (!IsSessionUsable(session, now))
+        if (session == null)
+        {
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = false,
+                Message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.")
+            };
+        }
+
+        using (await AcquireSessionMutationLockAsync(session.Id))
+        {
+        session = await _sessionService.GetSessionByTokenAsync(token);
+        if (session?.CompletedOnUtc.HasValue == true)
+            return await BuildCompletedSubmitResponseAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id));
+
+        if (!IsSessionUsable(session, DateTime.UtcNow))
         {
             return new SubmitInterviewAnswerResponse
             {
@@ -2359,21 +2365,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             {
                 Success = false,
                 Message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidAnswer", "Answer cannot be empty.")
-            };
-        }
-
-        using (await AcquireSessionMutationLockAsync(session.Id))
-        {
-        session = await _sessionService.GetSessionByTokenAsync(token);
-        if (session?.CompletedOnUtc.HasValue == true)
-            return await BuildCompletedSubmitResponseAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), answer);
-
-        if (!IsSessionUsable(session, DateTime.UtcNow))
-        {
-            return new SubmitInterviewAnswerResponse
-            {
-                Success = false,
-                Message = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.")
             };
         }
 

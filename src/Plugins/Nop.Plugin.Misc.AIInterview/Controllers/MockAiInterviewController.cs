@@ -1336,7 +1336,11 @@ public class MockAiInterviewController : BasePluginController
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request.", 401);
 
         var session = await _interviewSessionService.GetSessionByTokenAsync(token);
-        if (session == null || !session.IsActive || session.CompletedOnUtc.HasValue || session.CustomerId != customer.Id)
+        if (session == null ||
+            !session.IsActive ||
+            session.CompletedOnUtc.HasValue ||
+            session.CustomerId != customer.Id ||
+            IsSessionExpired(session))
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
 
         var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
@@ -1475,7 +1479,7 @@ public class MockAiInterviewController : BasePluginController
     }
 
     [HttpPost]
-    public async Task<IActionResult> RuntimeClientEvent(string token, string eventType, string requestName, int? statusCode, string message, string failureKind, long? elapsedMilliseconds)
+    public async Task<IActionResult> RuntimeClientEvent(string token, string eventType, string requestName, int? statusCode, string message, string failureKind, long? elapsedMilliseconds, bool? success = null)
     {
         var tokenRenewal = await RenewActiveRuntimeTokenAsync(token);
         var session = tokenRenewal.Session;
@@ -1500,7 +1504,8 @@ public class MockAiInterviewController : BasePluginController
         if (string.Equals(safeEventType, "stage-timing", StringComparison.OrdinalIgnoreCase))
         {
             var elapsed = Math.Max(0, elapsedMilliseconds ?? 0);
-            var stageComment = $"SessionId={session.Id}; CustomerId={session.CustomerId}; ProductId={session.ProductId}; Stage={safeRequestName}; ElapsedMs={elapsed}; Success=true";
+            var stageSucceeded = success == true;
+            var stageComment = $"SessionId={session.Id}; CustomerId={session.CustomerId}; ProductId={session.ProductId}; Stage={safeRequestName}; ElapsedMs={elapsed}; Success={stageSucceeded.ToString().ToLowerInvariant()}";
             await LogRuntimeActivityAsync(session, "AIInterview.Runtime.ClientStageTiming", stageComment);
 
             if (tokenRenewal.Renewed)
