@@ -1196,6 +1196,110 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task CompleteInterviewAsync_PreservesRecordingFieldsPersistedDuringCompletion()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+
+        var sessionId = 1164;
+        var token = "completion-recording-token";
+        var staleCompletionSession = new InterviewSession
+        {
+            Id = sessionId,
+            ProductId = 30,
+            CustomerId = 8,
+            SessionKey = "session-1164",
+            Token = token,
+            Difficulty = "Medium",
+            IsActive = true,
+            StartedOnUtc = DateTime.UtcNow.AddMinutes(-6),
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            QuestionCount = 1
+        };
+        var latestRecordingShareCreatedOnUtc = DateTime.UtcNow.AddMinutes(-1);
+        var latestPersistedSession = new InterviewSession
+        {
+            Id = sessionId,
+            ProductId = 30,
+            CustomerId = 8,
+            SessionKey = "session-1164",
+            Token = token,
+            Difficulty = "Medium",
+            IsActive = true,
+            StartedOnUtc = staleCompletionSession.StartedOnUtc,
+            TokenExpiryUtc = staleCompletionSession.TokenExpiryUtc,
+            QuestionCount = 1,
+            RecordingUrl = "https://storage.blob.core.windows.net/container/recordings-ac83454ac9e049bdbaee4118d4fffa17-20260728122443.webm",
+            RecordingShareToken = "recording-share-token-1164",
+            RecordingShareEnabled = true,
+            RecordingShareCreatedOnUtc = latestRecordingShareCreatedOnUtc
+        };
+        var completedTurn = new InterviewTurn
+        {
+            Id = 1,
+            InterviewSessionId = sessionId,
+            SequenceNumber = 1,
+            QuestionText = "Describe the release risk you managed.",
+            AnswerText = "I isolated the release risk, added rollback checks, and coordinated the deployment plan.",
+            Score = 88,
+            Feedback = "Strong operational judgment.",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-5),
+            AnsweredOnUtc = DateTime.UtcNow.AddMinutes(-4),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-5)
+        };
+        InterviewSession finalPersistedSession = null;
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync(token)).ReturnsAsync(staleCompletionSession);
+        sessionService.SetupSequence(x => x.GetInterviewSessionByIdAsync(sessionId))
+            .ReturnsAsync(staleCompletionSession)
+            .ReturnsAsync(latestPersistedSession);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(updated => finalPersistedSession = updated)
+            .Returns(Task.CompletedTask);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(sessionId)).ReturnsAsync(new List<InterviewTurn> { completedTurn });
+        productService.Setup(x => x.GetProductByIdAsync(30)).ReturnsAsync(new Product { Id = 30, Name = "Architect" });
+        customerService.Setup(x => x.GetCustomerByIdAsync(8)).ReturnsAsync(new Customer { Id = 8, FirstName = "John", LastName = "Doe" });
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        aiClient.Setup(x => x.GenerateStrengthsSummaryAsync(It.IsAny<AIInterviewStrengthsSummaryRequest>()))
+            .ReturnsAsync(new AIInterviewStrengthsSummaryResponse
+            {
+                Success = false,
+                ErrorMessage = "Strengths summary skipped for preservation regression."
+            });
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
+
+        var result = await service.CompleteInterviewAsync(token, "Stopped by candidate.");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(finalPersistedSession, Is.Not.Null);
+        Assert.That(finalPersistedSession.CompletedOnUtc, Is.Not.Null);
+        Assert.That(finalPersistedSession.IsActive, Is.False);
+        Assert.That(finalPersistedSession.RecordingUrl, Is.EqualTo(latestPersistedSession.RecordingUrl));
+        Assert.That(finalPersistedSession.RecordingShareToken, Is.EqualTo(latestPersistedSession.RecordingShareToken));
+        Assert.That(finalPersistedSession.RecordingShareEnabled, Is.True);
+        Assert.That(finalPersistedSession.RecordingShareCreatedOnUtc, Is.EqualTo(latestRecordingShareCreatedOnUtc));
+        Assert.That(finalPersistedSession.Score, Is.EqualTo(88));
+        Assert.That(finalPersistedSession.QuestionScores, Does.Contain("88"));
+        Assert.That(finalPersistedSession.ReportData, Is.Not.Null.And.Not.Empty);
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s =>
+            s.CompletedOnUtc.HasValue &&
+            !s.IsActive &&
+            s.RecordingUrl == latestPersistedSession.RecordingUrl &&
+            s.RecordingShareToken == latestPersistedSession.RecordingShareToken &&
+            s.RecordingShareEnabled &&
+            s.RecordingShareCreatedOnUtc == latestRecordingShareCreatedOnUtc &&
+            !string.IsNullOrWhiteSpace(s.ReportData))), Times.Once);
+        sessionService.Verify(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
     public async Task SubmitAnswerAsync_Persists_CategoryRubric_And_SessionAverage()
     {
         var sessionService = new Mock<IInterviewSessionService>();

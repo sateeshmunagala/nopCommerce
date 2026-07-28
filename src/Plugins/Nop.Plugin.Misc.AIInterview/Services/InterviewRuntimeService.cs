@@ -3746,6 +3746,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         await LogCompletionStageAsync(session, "strengths-summary", strengthsStageStopwatch.ElapsedMilliseconds, true);
         session.ReportData = BuildReport(completedTurns, session.Score, reason, finalScoringCompletion, strengthsSummary);
         var persistenceStageStopwatch = Stopwatch.StartNew();
+        await PreserveLatestRecordingFieldsAsync(session);
         await _sessionService.UpdateInterviewSessionAsync(session);
         await LogCompletionStageAsync(session, "report-persistence", persistenceStageStopwatch.ElapsedMilliseconds, true);
 
@@ -3776,6 +3777,21 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             session.Id, session.CustomerId, session.ProductId);
 
         return completion;
+    }
+
+    protected virtual async Task PreserveLatestRecordingFieldsAsync(InterviewSession session)
+    {
+        if (session == null)
+            return;
+
+        var latestSession = await _sessionService.GetInterviewSessionByIdAsync(session.Id);
+        if (string.IsNullOrWhiteSpace(latestSession?.RecordingUrl))
+            return;
+
+        session.RecordingUrl = latestSession.RecordingUrl;
+        session.RecordingShareToken = latestSession.RecordingShareToken;
+        session.RecordingShareEnabled = latestSession.RecordingShareEnabled;
+        session.RecordingShareCreatedOnUtc = latestSession.RecordingShareCreatedOnUtc;
     }
 
     protected virtual bool IsFinalScoringAtCompletionEnabled()
