@@ -3874,7 +3874,6 @@
             const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, null);
             try {
                 return await new Promise((resolve, reject) => {
-                    onSynthesisStarted?.();
                     synthesizer.speakTextAsync(text, (result) => {
                         if (result?.audioData?.byteLength) {
                             resolve(result.audioData);
@@ -3885,6 +3884,7 @@
                     }, (result) => {
                         reject(new Error(result?.errorDetails || result?.error || 'Speech synthesis failed.'));
                     });
+                    onSynthesisStarted?.();
                 });
             } finally {
                 synthesizer.close();
@@ -3957,16 +3957,18 @@
             };
             synthesizer.SynthesisCanceled = handleSynthesisCanceled;
             synthesizer.synthesisCanceled = handleSynthesisCanceled;
-            await new Promise((resolve, reject) => {
-                onSynthesisStarted?.();
-                synthesizer.speakTextAsync(text, () => {
-                    synthesizer.close();
-                    resolve();
-                }, (result) => {
-                    synthesizer.close();
-                    reject(new Error(result?.errorDetails || result?.error || 'Speech synthesis failed.'));
+            try {
+                await new Promise((resolve, reject) => {
+                    synthesizer.speakTextAsync(text, () => {
+                        resolve();
+                    }, (result) => {
+                        reject(new Error(result?.errorDetails || result?.error || 'Speech synthesis failed.'));
+                    });
+                    onSynthesisStarted?.();
                 });
-            });
+            } finally {
+                synthesizer.close();
+            }
         };
 
         const speakText = async (text, purpose = 'question') => {

@@ -1805,12 +1805,12 @@ public class RuntimeAndAdminTests
         var controlledTts = runtimeViewText.Substring(
             runtimeViewText.IndexOf("const synthesizeSpeechAudioData = async", StringComparison.Ordinal),
             runtimeViewText.IndexOf("const playControlledSpeechAudio = async", StringComparison.Ordinal) - runtimeViewText.IndexOf("const synthesizeSpeechAudioData = async", StringComparison.Ordinal));
-        Assert.That(controlledTts.IndexOf("onSynthesisStarted?.();", StringComparison.Ordinal), Is.LessThan(controlledTts.IndexOf("synthesizer.speakTextAsync(text", StringComparison.Ordinal)));
+        Assert.That(controlledTts.IndexOf("onSynthesisStarted?.();", StringComparison.Ordinal), Is.GreaterThan(controlledTts.IndexOf("synthesizer.speakTextAsync(text", StringComparison.Ordinal)));
 
         var defaultTts = runtimeViewText.Substring(
             runtimeViewText.IndexOf("const speakTextWithDefaultOutput = async", StringComparison.Ordinal),
             runtimeViewText.IndexOf("const speakText = async", StringComparison.Ordinal) - runtimeViewText.IndexOf("const speakTextWithDefaultOutput = async", StringComparison.Ordinal));
-        Assert.That(defaultTts.IndexOf("onSynthesisStarted?.();", StringComparison.Ordinal), Is.LessThan(defaultTts.IndexOf("synthesizer.speakTextAsync(text", StringComparison.Ordinal)));
+        Assert.That(defaultTts.IndexOf("onSynthesisStarted?.();", StringComparison.Ordinal), Is.GreaterThan(defaultTts.IndexOf("synthesizer.speakTextAsync(text", StringComparison.Ordinal)));
 
         Assert.That(runtimeViewText, Does.Contain("let ttsStartedReported = false;"));
         Assert.That(runtimeViewText, Does.Contain("const reportTtsStartedOnce = () =>"));

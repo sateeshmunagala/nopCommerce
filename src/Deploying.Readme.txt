@@ -5,4 +5,4 @@
 P.S. When publishing, ensure that the configuration is set to "Release"
 
 AI Interview runtime completion idempotency note:
-The AI Interview plugin's final-submit scoring and completion publication are serialized by process-local keyed locks. Run the runtime on a single application instance, or use routing that guarantees all requests for one interview session reach the same instance. The current plugin does not claim durable cross-instance exactly-once scoring/publication; enabling platform load balancers, proxies, or distributed cache does not make the AI Interview completion lock distributed.
+The AI Interview plugin's final-submit scoring and completion publication are serialized by process-local keyed locks. The AI Interview runtime is supported only on one active application instance. Multi-instance, failover-active, rolling-overlap, and concurrent blue/green runtime deployments are unsupported for exactly-once scoring/publication until a database-backed completion claim or transactional outbox exists. Enabling platform load balancers, proxy configuration, or distributed cache does not make the AI Interview completion lock distributed.
