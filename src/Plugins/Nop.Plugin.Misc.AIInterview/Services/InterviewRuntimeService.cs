@@ -4754,13 +4754,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             if (!IsCompletionReady(session) || session.CompletionPublishedOnUtc.HasValue)
                 return;
 
-            using var transaction = _dataProvider?.CreateTransactionScope();
             var publicationStopwatch = Stopwatch.StartNew();
-            await PublishCompletionAsync(session);
-            session.CompletionPublishedOnUtc = DateTime.UtcNow;
-            await PreserveLatestRecordingFieldsAsync(session);
-            await _sessionService.UpdateInterviewSessionAsync(session);
-            transaction?.Complete();
+            using (var transaction = _dataProvider?.CreateTransactionScope())
+            {
+                await PublishCompletionAsync(session);
+                session.CompletionPublishedOnUtc = DateTime.UtcNow;
+                await PreserveLatestRecordingFieldsAsync(session);
+                await _sessionService.UpdateInterviewSessionAsync(session);
+                transaction?.Complete();
+            }
+
             await LogCompletionStageAsync(session, "email-publication", publicationStopwatch.ElapsedMilliseconds, true);
         }
         catch (Exception ex)

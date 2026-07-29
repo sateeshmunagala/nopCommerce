@@ -3041,6 +3041,126 @@ public class RuntimeServiceTests
     }
 
     [Test]
+    public async Task ProcessCompletionWorkAsync_PublicationDisposesTransactionBeforeStageLoggingAndPublishesOnce()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+        var nopLogger = new Mock<NopLogger>();
+        var dataProvider = new Mock<INopDataProvider>();
+        var session = new InterviewSession
+        {
+            Id = 4142,
+            ProductId = 41,
+            CustomerId = 9,
+            Token = "publication-scope-token",
+            IsActive = false,
+            CompletedOnUtc = DateTime.UtcNow.AddMinutes(-1),
+            ReportData = "Completed interview report.",
+            CompletionState = InterviewCompletionStates.Ready,
+            CompletionFinishedOnUtc = DateTime.UtcNow.AddMinutes(-1),
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10),
+            QuestionCount = 1
+        };
+        var customer = new Customer { Id = session.CustomerId };
+        var publicationPersistenceCount = 0;
+        var publicationTransactionId = string.Empty;
+        var databaseWorkAttemptedInsideCompletedScope = false;
+        var customerResolutionTransactionIds = new List<string>();
+
+        sessionService.Setup(x => x.GetInterviewSessionByIdAsync(session.Id)).ReturnsAsync(session);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(updated =>
+            {
+                if (!updated.CompletionPublishedOnUtc.HasValue)
+                    return;
+
+                publicationPersistenceCount++;
+                publicationTransactionId = Transaction.Current?.TransactionInformation.LocalIdentifier ?? string.Empty;
+            })
+            .Returns(Task.CompletedTask);
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        workContext.Setup(x => x.GetWorkingLanguageAsync())
+            .ReturnsAsync(new Nop.Core.Domain.Localization.Language { Id = 1 });
+        eventPublisher.Setup(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()))
+            .Returns(Task.CompletedTask);
+        dataProvider.Setup(x => x.CreateTransactionScope())
+            .Returns(() => new TransactionScope(TransactionScopeOption.RequiresNew, TransactionScopeAsyncFlowOption.Enabled));
+        customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId))
+            .Returns(() =>
+            {
+                var currentTransactionId = Transaction.Current?.TransactionInformation.LocalIdentifier ?? string.Empty;
+                customerResolutionTransactionIds.Add(currentTransactionId);
+                if (!string.IsNullOrWhiteSpace(publicationTransactionId) &&
+                    string.Equals(currentTransactionId, publicationTransactionId, StringComparison.Ordinal))
+                {
+                    databaseWorkAttemptedInsideCompletedScope = true;
+                    throw new InvalidOperationException("The current TransactionScope is already complete.");
+                }
+
+                return Task.FromResult(customer);
+            });
+        nopLogger.Setup(x => x.InsertLogAsync(
+                It.IsAny<LogLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService(
+            sessionService,
+            turnService,
+            aiClient,
+            productService,
+            customerService,
+            localizationService,
+            settings: new AIInterviewSettings { Prompt = "Be concise", EnableFinalScoringAtCompletion = true },
+            workContext: workContext,
+            eventPublisher: eventPublisher,
+            nopLogger: nopLogger,
+            dataProvider: dataProvider.Object);
+
+        var firstResponse = await service.ProcessCompletionWorkAsync(session.Id);
+        var publishedOnUtc = session.CompletionPublishedOnUtc;
+        var secondResponse = await service.ProcessCompletionWorkAsync(session.Id);
+
+        Assert.That(firstResponse.Success, Is.True);
+        Assert.That(firstResponse.ReportReady, Is.True);
+        Assert.That(secondResponse.Success, Is.True);
+        Assert.That(secondResponse.ReportReady, Is.True);
+        Assert.That(publishedOnUtc, Is.Not.Null);
+        Assert.That(session.CompletionPublishedOnUtc, Is.EqualTo(publishedOnUtc));
+        Assert.That(publicationPersistenceCount, Is.EqualTo(1));
+        Assert.That(publicationTransactionId, Is.Not.Empty);
+        Assert.That(databaseWorkAttemptedInsideCompletedScope, Is.False);
+        Assert.That(customerResolutionTransactionIds, Has.Count.EqualTo(1));
+        Assert.That(customerResolutionTransactionIds, Has.None.EqualTo(publicationTransactionId));
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Information,
+            "AI Interview completion stage",
+            It.Is<string>(message =>
+                message.Contains($"SessionId={session.Id}") &&
+                message.Contains("Stage=email-publication") &&
+                message.Contains("Success=true")),
+            customer), Times.Once);
+        nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview completion publication failed",
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Never);
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(
+            It.Is<InterviewSession>(updated => updated.CompletionPublishedOnUtc.HasValue)), Times.Once);
+        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Once);
+        dataProvider.Verify(x => x.CreateTransactionScope(), Times.Once);
+        aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Never);
+    }
+
+    [Test]
     public async Task ScheduledRecovery_ReclaimsStaleProcessingOnce_AcrossConcurrentRuns()
     {
         var sessionService = new Mock<IInterviewSessionService>();
