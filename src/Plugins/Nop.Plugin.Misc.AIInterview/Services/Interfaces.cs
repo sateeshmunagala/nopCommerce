@@ -34,6 +34,7 @@ public interface IInterviewSessionService
     Task<InterviewSession> GetSessionByTokenAsync(string token);
     Task<InterviewSession> GetSessionByRecordingShareTokenAsync(string token);
     Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId);
+    Task<IList<InterviewSession>> GetPreviousResumeSourceSessionsAsync(int customerId);
     Task<IList<InterviewSession>> GetCompletionWorkSessionsAsync(DateTime staleProcessingBeforeUtc, int maxCount = 20);
     Task<string> EnsureRecordingShareTokenAsync(InterviewSession session);
     Task UpdateInterviewSessionAsync(InterviewSession session);

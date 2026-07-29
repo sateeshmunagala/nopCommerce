@@ -39,7 +39,7 @@
     var customer = await workContext.GetCurrentCustomerAsync();
     var isAuthenticated = customer != null && !await customerService.IsGuestAsync(customer);
     var applications = isAuthenticated ? await applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<Nop.Plugin.Misc.AIInterview.Domain.JobApplication>() : new List<Nop.Plugin.Misc.AIInterview.Domain.JobApplication>();
-    var sessions = isAuthenticated ? await interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id) ?? new List<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>() : new List<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>();
+    var sessions = isAuthenticated ? await interviewSessionService.GetPreviousResumeSourceSessionsAsync(customer.Id) ?? new List<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>() : new List<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>();
     var availableResumes = new List<SelectListItem>();
     if (isAuthenticated)
     {

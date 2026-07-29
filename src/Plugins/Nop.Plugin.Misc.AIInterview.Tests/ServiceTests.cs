@@ -465,6 +465,64 @@ public class ServiceTests
     }
 
     [Test]
+    public async Task InterviewSessionService_GetPreviousResumeSourceSessions_FiltersProjectsAndLimitsDistinctDownloads()
+    {
+        var createdUtc = new DateTime(2026, 7, 29, 8, 0, 0, DateTimeKind.Utc);
+        var sessions = new List<InterviewSession>
+        {
+            new() { Id = 1, CustomerId = 7, ResumeDownloadId = 10, CreatedOnUtc = createdUtc.AddDays(-5), ReportData = "heavy-old-report" },
+            new() { Id = 2, CustomerId = 7, ResumeDownloadId = 10, CreatedOnUtc = createdUtc.AddDays(-4), CompletionAiResponse = "heavy-new-response" },
+            new() { Id = 3, CustomerId = 7, ResumeDownloadId = 20, CreatedOnUtc = createdUtc.AddDays(-3) },
+            new() { Id = 4, CustomerId = 7, ResumeDownloadId = 30, CreatedOnUtc = createdUtc.AddDays(-2) },
+            new() { Id = 8, CustomerId = 7, ResumeDownloadId = 30, CreatedOnUtc = createdUtc.AddDays(-2), ReportData = "heavy-tie-report" },
+            new() { Id = 5, CustomerId = 7, ResumeDownloadId = 40, CreatedOnUtc = createdUtc.AddDays(-1) },
+            new() { Id = 6, CustomerId = 8, ResumeDownloadId = 50, CreatedOnUtc = createdUtc },
+            new() { Id = 7, CustomerId = 7, ResumeDownloadId = 0, CreatedOnUtc = createdUtc.AddHours(1) }
+        };
+        _sessionRepository
+            .Setup(repository => repository.GetAllAsync(
+                It.IsAny<Func<IQueryable<InterviewSession>, IQueryable<InterviewSession>>>(),
+                It.IsAny<Func<ICacheKeyService, CacheKey>>(),
+                It.IsAny<bool>()))
+            .ReturnsAsync((
+                Func<IQueryable<InterviewSession>, IQueryable<InterviewSession>> query,
+                Func<ICacheKeyService, CacheKey> cacheKeyFactory,
+                bool includeDeleted) => query(sessions.AsQueryable()).ToList());
+        var service = new InterviewSessionService(
+            _sessionRepository.Object,
+            new Mock<Nop.Services.Customers.ICustomerService>().Object,
+            new Mock<IApplicationService>().Object,
+            new Mock<Nop.Services.Catalog.IProductService>().Object,
+            _workflowMessageService.Object,
+            _messageTemplateService.Object,
+            _emailAccountService.Object,
+            _messageTokenProvider.Object,
+            _emailAccountSettings,
+            _storeContext.Object,
+            _webHelper.Object,
+            new Mock<Nop.Services.Vendors.IVendorService>().Object,
+            _dateTimeHelper.Object);
+
+        var result = await service.GetPreviousResumeSourceSessionsAsync(7);
+
+        Assert.That(result.Select(session => session.Id), Is.EqualTo(new[] { 5, 8, 3 }));
+        Assert.That(result.Select(session => session.ResumeDownloadId), Is.EqualTo(new[] { 40, 30, 20 }));
+        Assert.That(result.All(session =>
+            session.CustomerId == 0 &&
+            session.ReportData == null &&
+            session.CompletionAiResponse == null), Is.True);
+    }
+
+    [Test]
+    public void MockPracticeProductTemplate_UsesProjectedPreviousResumeSourceLookup()
+    {
+        var template = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "ProductTemplate.MockPractice.cshtml"));
+
+        Assert.That(template, Does.Contain("GetPreviousResumeSourceSessionsAsync(customer.Id)"));
+        Assert.That(template, Does.Not.Contain("GetSessionsByCustomerIdAsync(customer.Id)"));
+    }
+
+    [Test]
     public async Task CreditService_AddCreditAsync_CreatesWalletAndLedger()
     {
         var walletRepository = new Mock<IRepository<CreditWallet>>();

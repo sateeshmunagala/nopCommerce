@@ -488,6 +488,32 @@ public class InterviewSessionService : IInterviewSessionService
             .OrderByDescending(s => s.CreatedOnUtc));
     }
 
+    public async Task<IList<InterviewSession>> GetPreviousResumeSourceSessionsAsync(int customerId)
+    {
+        return await _sessionRepository.GetAllAsync(query =>
+        {
+            var eligibleSessions = query.Where(session =>
+                session.CustomerId == customerId &&
+                session.ResumeDownloadId > 0);
+
+            // Keep only the newest row for each resume without materializing customer history.
+            return eligibleSessions
+                .Where(session => !eligibleSessions.Any(newerSession =>
+                    newerSession.ResumeDownloadId == session.ResumeDownloadId &&
+                    (newerSession.CreatedOnUtc > session.CreatedOnUtc ||
+                     (newerSession.CreatedOnUtc == session.CreatedOnUtc && newerSession.Id > session.Id))))
+                .OrderByDescending(session => session.CreatedOnUtc)
+                .ThenByDescending(session => session.Id)
+                .Select(session => new InterviewSession
+                {
+                    Id = session.Id,
+                    ResumeDownloadId = session.ResumeDownloadId,
+                    CreatedOnUtc = session.CreatedOnUtc
+                })
+                .Take(3);
+        });
+    }
+
     public async Task<IList<InterviewSession>> GetCompletionWorkSessionsAsync(DateTime staleProcessingBeforeUtc, int maxCount = 20)
     {
         maxCount = Math.Clamp(maxCount, 1, 100);
