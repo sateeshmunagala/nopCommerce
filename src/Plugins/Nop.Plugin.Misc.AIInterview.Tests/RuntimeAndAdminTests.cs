@@ -2316,7 +2316,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const reportGenerationMessage = 'Generating your report...';"));
         Assert.That(runtimeViewText, Does.Contain("const completionWaitSeconds = 120;"));
         Assert.That(runtimeViewText, Does.Contain("const formatCountdown = (remainingSeconds) =>"));
-        Assert.That(runtimeViewText, Does.Contain("timer.textContent = `Time remaining: ${formatCountdown(remainingSeconds)}`;"));
+        Assert.That(runtimeViewText, Does.Contain("setHeaderStatus(`${reportGenerationMessage} Time remaining: ${formatCountdown(remainingSeconds)}`, false);"));
         Assert.That(runtimeViewText, Does.Not.Contain("completedRedirectTimer = setTimeout(() =>"));
         Assert.That(runtimeViewText, Does.Not.Contain("getValue(result, 'feedback', 'Feedback') || getRuntimeMessage(result, '') || '';"));
 

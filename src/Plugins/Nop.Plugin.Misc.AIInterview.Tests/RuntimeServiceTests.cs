@@ -1890,9 +1890,10 @@ public class RuntimeServiceTests
         Assert.That(result.Turns.Any(turn => turn.SequenceNumber == 5), Is.False);
         Assert.That(store.Select(turn => turn.SequenceNumber).OrderBy(sequence => sequence), Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
         Assert.That(planRequest, Is.Not.Null);
-        Assert.That(planRequest.QuestionCount, Is.EqualTo(2));
+        Assert.That(planRequest.QuestionCount, Is.EqualTo(3));
         Assert.That(planRequest.TotalQuestionCount, Is.EqualTo(5));
-        turnService.Verify(x => x.DeleteInterviewTurnsAsync(It.IsAny<IList<InterviewTurn>>()), Times.Never);
+        turnService.Verify(x => x.DeleteInterviewTurnsAsync(
+            It.Is<IList<InterviewTurn>>(turns => turns.Count == 1 && turns[0].Id == staleFutureTurn.Id)), Times.Once);
         Assert.That(updatedSession, Is.Not.Null);
         var parsedScores = JsonSerializer.Deserialize<List<decimal>>(updatedSession.QuestionScores);
         Assert.That(parsedScores, Is.Not.Null);
@@ -2314,7 +2315,7 @@ public class RuntimeServiceTests
                 message.Contains("Mode=generate") &&
                 message.Contains("Operation=llm-question-generation") &&
                 message.Contains("FailureKind=azure-openai-exception") &&
-                message.Contains("ExceptionType=HttpRequestException") &&
+                message.Contains("Reason=HttpRequestException") &&
                 message.Contains("ExceptionMessage=DNS failure for Azure OpenAI endpoint") &&
                 message.Contains("ExceptionDetail=") &&
                 !message.Contains("super-secret-key") &&
@@ -2457,7 +2458,7 @@ public class RuntimeServiceTests
                 message.Contains("Mode=generate") &&
                 message.Contains("Operation=llm-question-generation") &&
                 message.Contains("FailureKind=azure-openai-contract-failure") &&
-                message.Contains("Reason=empty response choices") &&
+                message.Contains("Reason=empty response content") &&
                 message.Contains("ResponseLength=") &&
                 message.Contains("AzureResponseBody={\"choices\":[]}") &&
                 !message.Contains("super-secret-key")),
@@ -4646,7 +4647,7 @@ public class RuntimeServiceTests
         Assert.That(requestBody, Does.Contain("professionalismScore"));
         Assert.That(requestBody, Does.Contain("positiveAttitudeScore"));
         Assert.That(requestBody, Does.Contain("rubricJson should be a JSON object"));
-        Assert.That(requestBody, Does.Contain("must receive score 0"));
+        Assert.That(requestBody, Does.Contain("Reserve score 0 and answerQuality non_substantive only for empty, copied, refusal, AI-persona, or unrelated answers."));
     }
 
     [Test]
@@ -4961,6 +4962,7 @@ public class RuntimeServiceTests
     {
         var client = new InterviewAiClient(new AIInterviewSettings(), new MockAIInterviewSettings { UseMockResponses = false });
         var method = typeof(InterviewAiClient).GetMethod("BuildPrompt", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var systemPrompt = AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt;
 
         var prompt = (string)method.Invoke(client, new object[]
         {
@@ -4981,8 +4983,8 @@ public class RuntimeServiceTests
         Assert.That(prompt, Does.Contain("non_substantive"));
         Assert.That(prompt, Does.Contain("weak"));
         Assert.That(prompt, Does.Contain("substantive"));
-        Assert.That(prompt, Does.Contain("AI-persona answers"));
-        Assert.That(prompt, Does.Contain("low but non-zero scores"));
+        Assert.That(systemPrompt, Does.Contain("Reserve score 0 and answerQuality non_substantive only for empty, copied, refusal, AI-persona, or unrelated answers."));
+        Assert.That(systemPrompt, Does.Contain("classify it as weak and assign low but non-zero scores with concrete feedback."));
     }
 
     [Test]
