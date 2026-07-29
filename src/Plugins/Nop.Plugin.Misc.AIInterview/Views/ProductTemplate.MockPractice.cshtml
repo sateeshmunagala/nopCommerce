@@ -70,6 +70,28 @@
     var summary = !string.IsNullOrWhiteSpace(Model.ShortDescription)
         ? Model.ShortDescription
         : "Choose a difficulty level and either select a skill or upload a resume. The AI interview will use those selections to create practice questions without connecting you to any company, job post, or application.";
+    var difficultyAttributes = Model.ProductAttributes
+        .Where(attribute =>
+            (attribute.Name?.Contains("difficulty", StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (attribute.TextPrompt?.Contains("difficulty", StringComparison.OrdinalIgnoreCase) ?? false))
+        .ToList();
+    var skillAttributes = Model.ProductAttributes
+        .Where(attribute => !difficultyAttributes.Contains(attribute))
+        .ToList();
+    var difficultyModel = new Nop.Web.Models.Catalog.ProductDetailsModel
+    {
+        Id = Model.Id,
+        AllowAddingOnlyExistingAttributeCombinations = Model.AllowAddingOnlyExistingAttributeCombinations,
+        DisplayAttributeCombinationImagesOnly = Model.DisplayAttributeCombinationImagesOnly,
+        ProductAttributes = difficultyAttributes
+    };
+    var skillModel = new Nop.Web.Models.Catalog.ProductDetailsModel
+    {
+        Id = Model.Id,
+        AllowAddingOnlyExistingAttributeCombinations = Model.AllowAddingOnlyExistingAttributeCombinations,
+        DisplayAttributeCombinationImagesOnly = Model.DisplayAttributeCombinationImagesOnly,
+        ProductAttributes = skillAttributes
+    };
 }
 
 @section Breadcrumb
@@ -124,27 +146,73 @@
                                 <form asp-route="@AIInterviewDefaults.MockStartRouteName" method="post" enctype="multipart/form-data" class="practice-start-form" id="product-details-form">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="productId" value="@Model.Id" />
-                                    @{
-                                        var dataDictAttributes = new ViewDataDictionary(ViewData);
-                                        dataDictAttributes.TemplateInfo.HtmlFieldPrefix = $"attributes_{Model.Id}";
-                                        @await Html.PartialAsync("_ProductAttributes", Model, dataDictAttributes)
-                                    }
-
-                                    @if (availableResumes.Any())
-                                    {
-                                        <label for="practice-existing-resume">Previous resume</label>
-                                        <select id="practice-existing-resume" name="SelectedResumeDownloadId">
-                                            <option value="0">Select a previous resume</option>
-                                            @foreach (var option in availableResumes)
-                                            {
-                                                <option value="@option.Value">@option.Text</option>
+                                    <section class="practice-difficulty-section" aria-labelledby="practice-difficulty-heading">
+                                        <div class="practice-field-heading" id="practice-difficulty-heading">
+                                            <span>Difficulty</span><span class="practice-required-marker" aria-hidden="true">*</span>
+                                            <span class="practice-required-text">Required</span>
+                                        </div>
+                                        <p class="practice-field-help">Select the difficulty level for this practice interview.</p>
+                                        <div class="practice-pathway practice-difficulty-pathway">
+                                            @{
+                                                var difficultyViewData = new ViewDataDictionary(ViewData);
+                                                difficultyViewData.TemplateInfo.HtmlFieldPrefix = $"attributes_{Model.Id}";
+                                                @await Html.PartialAsync("_ProductAttributes", difficultyModel, difficultyViewData)
                                             }
-                                        </select>
-                                    }
+                                        </div>
+                                    </section>
 
-                                    <label for="practice-resume-upload">Upload new resume</label>
-                                    <input id="practice-resume-upload" name="ResumeFile" type="file" accept=".pdf,.docx" />
-                                    <p class="job-ai-note">Upload a resume only when you want the AI interview to pull questions from your actual experience.</p>
+                                    <fieldset class="practice-alternative-inputs" aria-describedby="practice-alternative-guidance">
+                                        <legend>Choose a Skill or Resume</legend>
+                                        <p class="practice-alternative-guidance" id="practice-alternative-guidance">
+                                            At least one is required: select a Skill, or select or upload a Resume.
+                                        </p>
+
+                                        <div class="practice-pathway practice-skill-pathway">
+                                            <div class="practice-field-heading">
+                                                <span>Skill</span>
+                                                <span class="practice-optional-badge">Optional if you upload or select a resume</span>
+                                            </div>
+                                            <p class="practice-field-help">Choose a skill when you want questions focused on a specific topic.</p>
+                                            @{
+                                                var skillViewData = new ViewDataDictionary(ViewData);
+                                                skillViewData.TemplateInfo.HtmlFieldPrefix = $"attributes_{Model.Id}";
+                                                @await Html.PartialAsync("_ProductAttributes", skillModel, skillViewData)
+                                            }
+                                        </div>
+
+                                        <div class="practice-or-divider" role="separator" aria-label="or">
+                                            <span>OR</span>
+                                        </div>
+
+                                        <div class="practice-pathway practice-resume-pathway">
+                                            <div class="practice-field-heading">
+                                                <span>Resume</span>
+                                                <span class="practice-optional-badge">Optional if you select a skill</span>
+                                            </div>
+                                            <p class="practice-field-help">Use a previous resume or upload a new one to tailor questions to your experience.</p>
+
+                                            @if (availableResumes.Any())
+                                            {
+                                                <div class="practice-resume-choice">
+                                                    <label for="practice-existing-resume">Previous resume</label>
+                                                    <select id="practice-existing-resume" name="SelectedResumeDownloadId">
+                                                        <option value="0">Select a previous resume</option>
+                                                        @foreach (var option in availableResumes)
+                                                        {
+                                                            <option value="@option.Value">@option.Text</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            }
+
+                                            <div class="practice-resume-choice">
+                                                <label for="practice-resume-upload">Upload new resume</label>
+                                                <input id="practice-resume-upload" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                                            </div>
+                                            <p class="job-ai-note">Upload a resume only when you want the AI interview to pull questions from your actual experience.</p>
+                                        </div>
+                                    </fieldset>
+
                                     <div class="message-error practice-start-error aiinterview-hidden" data-practice-start-error="true" role="alert" aria-live="polite"></div>
 
                                     <div class="job-ai-actions">

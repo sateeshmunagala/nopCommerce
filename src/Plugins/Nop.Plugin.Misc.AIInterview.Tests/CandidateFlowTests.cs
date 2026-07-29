@@ -10,9 +10,11 @@ using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Plugin.Misc.AIInterview.Controllers;
+using Nop.Plugin.Misc.AIInterview.Data;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
+using Nop.Data;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
@@ -493,6 +495,7 @@ public class CandidateFlowTests
             session.JobApplicationId == 0 &&
             session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice &&
             session.Difficulty == "Medium" &&
+            session.ResumeDownloadId == 0 &&
             !string.IsNullOrWhiteSpace(session.SelectedProductAttributesJson))), Times.Once);
     }
 
@@ -699,7 +702,166 @@ public class CandidateFlowTests
             session.ProductId == product.Id &&
             session.ResumeDownloadId == 555 &&
             session.JobApplicationId == 0 &&
-            session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice)), Times.Once);
+            session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice &&
+            session.Difficulty == "Low" &&
+            !session.SelectedProductAttributesJson.Contains("skill", StringComparison.OrdinalIgnoreCase))), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_Start_MockPractice_WithUploadedResume_AllowsResumeOnlyStart_AndPersistsDownload()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        var product = new Product { Id = 20, Name = "Generic AI Interview Practice", ProductTemplateId = 8 };
+        var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeParser = new Mock<IProductAttributeParser>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+        var resumeFileService = new Mock<IResumeFileService>();
+        var resumeBytes = new byte[] { 1, 2, 3, 4 };
+        var resumeFile = new FormFile(new MemoryStream(resumeBytes), 0, resumeBytes.Length, "ResumeFile", "candidate.pdf")
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "application/pdf"
+        };
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
+        _productService.Setup(x => x.GetProductByIdAsync(product.Id)).ReturnsAsync(product);
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(product.ProductTemplateId))
+            .ReturnsAsync(new ProductTemplate
+            {
+                Id = product.ProductTemplateId,
+                Name = AIInterviewDefaults.MockPracticeProductTemplateName,
+                ViewPath = AIInterviewDefaults.MockPracticeProductTemplateViewPath
+            });
+        productAttributeParser.Setup(x => x.ParseProductAttributesAsync(product, It.IsAny<IFormCollection>(), It.IsAny<List<string>>()))
+            .ReturnsAsync("<attributes />");
+        productAttributeParser.Setup(x => x.ParseProductAttributeValuesAsync("<attributes />", 0))
+            .ReturnsAsync(new List<ProductAttributeValue>
+            {
+                new() { Id = 601, Name = "Hard", ProductAttributeMappingId = 121 }
+            });
+        productAttributeService.Setup(x => x.GetProductAttributeMappingByIdAsync(121))
+            .ReturnsAsync(new ProductAttributeMapping { Id = 121, ProductAttributeId = 131 });
+        productAttributeService.Setup(x => x.GetProductAttributeByIdAsync(131))
+            .ReturnsAsync(new ProductAttribute { Id = 131, Name = "Practice Difficulty" });
+        resumeFileService.Setup(x => x.ValidateResumeFile(resumeFile))
+            .Returns(new ResumeFileValidationResult { Success = true });
+        resumeFileService.Setup(x => x.StoreResumeAsync(resumeFile))
+            .ReturnsAsync(new ResumeFileStoreResult { Success = true, DownloadId = 777 });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            _applicationService.Object,
+            null,
+            _jobInterviewExperienceService.Object,
+            null,
+            _turnService.Object,
+            null,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null,
+            resumeFileService.Object,
+            null,
+            productTemplateService.Object,
+            productAttributeParser.Object,
+            productAttributeService.Object);
+        var files = new FormFileCollection { resumeFile };
+        var form = new FormCollection(new Dictionary<string, StringValues>(), files);
+
+        var result = await controller.StartPost(form, product.Id, "Hard");
+
+        Assert.That(result, Is.InstanceOf<JsonResult>());
+        resumeFileService.Verify(x => x.StoreResumeAsync(resumeFile), Times.Once);
+        _applicationService.Verify(x => x.InsertJobApplicationAsync(It.IsAny<JobApplication>()), Times.Never);
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session =>
+            session.CustomerId == customer.Id &&
+            session.ProductId == product.Id &&
+            session.ResumeDownloadId == 777 &&
+            session.JobApplicationId == 0 &&
+            session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice &&
+            session.Difficulty == "Hard" &&
+            !session.SelectedProductAttributesJson.Contains("skill", StringComparison.OrdinalIgnoreCase))), Times.Once);
+    }
+
+    [Test]
+    public async Task Runtime_Start_MockPractice_WithDifficultyOnly_ReturnsAlternativeGuidance_WithoutChargeOrSession()
+    {
+        var customer = new Customer { Id = 1, Email = "candidate@example.com" };
+        var product = new Product { Id = 21, Name = "Generic AI Interview Practice", ProductTemplateId = 8 };
+        var productTemplateService = new Mock<IProductTemplateService>();
+        var productAttributeParser = new Mock<IProductAttributeParser>();
+        var productAttributeService = new Mock<IProductAttributeService>();
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(customer.Id)).ReturnsAsync(new List<InterviewSession>());
+        _productService.Setup(x => x.GetProductByIdAsync(product.Id)).ReturnsAsync(product);
+        productTemplateService.Setup(x => x.GetProductTemplateByIdAsync(product.ProductTemplateId))
+            .ReturnsAsync(new ProductTemplate
+            {
+                Id = product.ProductTemplateId,
+                Name = AIInterviewDefaults.MockPracticeProductTemplateName,
+                ViewPath = AIInterviewDefaults.MockPracticeProductTemplateViewPath
+            });
+        productAttributeParser.Setup(x => x.ParseProductAttributesAsync(product, It.IsAny<IFormCollection>(), It.IsAny<List<string>>()))
+            .ReturnsAsync("<attributes />");
+        productAttributeParser.Setup(x => x.ParseProductAttributeValuesAsync("<attributes />", 0))
+            .ReturnsAsync(new List<ProductAttributeValue>
+            {
+                new() { Id = 701, Name = "Medium", ProductAttributeMappingId = 141 }
+            });
+        productAttributeService.Setup(x => x.GetProductAttributeMappingByIdAsync(141))
+            .ReturnsAsync(new ProductAttributeMapping { Id = 141, ProductAttributeId = 151 });
+        productAttributeService.Setup(x => x.GetProductAttributeByIdAsync(151))
+            .ReturnsAsync(new ProductAttribute { Id = 151, Name = "Practice Difficulty" });
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            _applicationService.Object,
+            null,
+            _jobInterviewExperienceService.Object,
+            null,
+            _turnService.Object,
+            null,
+            _jobRequirementService.Object,
+            null,
+            null,
+            null,
+            null,
+            null,
+            productTemplateService.Object,
+            productAttributeParser.Object,
+            productAttributeService.Object);
+
+        var result = (JsonResult)await controller.StartPost(
+            new FormCollection(new Dictionary<string, StringValues>()),
+            product.Id,
+            "Medium");
+        var error = result.Value?.GetType().GetProperty("error")?.GetValue(result.Value) as string;
+
+        Assert.That(error, Does.Contain("Select a practice skill or provide a resume"));
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(
+            It.IsAny<int>(),
+            It.IsAny<decimal>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()), Times.Never);
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
     [Test]
@@ -1893,6 +2055,153 @@ public class CandidateFlowTests
         Assert.That(productTemplateText, Does.Contain("Your resume is ready. We are preparing your interview questions..."));
         Assert.That(productTemplateText, Does.Contain("This is taking a little longer than usual. Please keep this page open."));
         Assert.That(productTemplateText, Does.Contain("formatElapsed"));
+    }
+
+    [Test]
+    public void MockPracticeMappingRepair_ChangesOnlyRequiredSkillMappings_AndIsIdempotent()
+    {
+        var templates = new List<ProductTemplate>
+        {
+            new() { Id = 8, Name = "Practice Template", ViewPath = AIInterviewDefaults.MockPracticeProductTemplateViewPath },
+            new() { Id = 9, Name = AIInterviewDefaults.JobProductTemplateName, ViewPath = AIInterviewDefaults.JobProductTemplateViewPath }
+        };
+        var products = new List<Product>
+        {
+            new() { Id = 100, ProductTemplateId = 8, Name = "Backend Engineer" },
+            new() { Id = 200, ProductTemplateId = 9, Name = "Generic AI Interview Practice" }
+        };
+        var attributes = new List<ProductAttribute>
+        {
+            new() { Id = 1, Name = "Core Technical Skills" },
+            new() { Id = 2, Name = AIInterviewDefaults.InterviewDifficultyAttributeName },
+            new() { Id = 3, Name = "Practice Format" }
+        };
+        var mockSkill = new ProductAttributeMapping
+        {
+            Id = 11,
+            ProductId = 100,
+            ProductAttributeId = 1,
+            TextPrompt = "Practice focus",
+            IsRequired = true,
+            DisplayOrder = 4
+        };
+        var mockDifficulty = new ProductAttributeMapping
+        {
+            Id = 12,
+            ProductId = 100,
+            ProductAttributeId = 2,
+            TextPrompt = "Difficulty",
+            IsRequired = true,
+            DisplayOrder = 1
+        };
+        var compliantMockSkill = new ProductAttributeMapping
+        {
+            Id = 13,
+            ProductId = 100,
+            ProductAttributeId = 1,
+            TextPrompt = "Practice Skill",
+            IsRequired = false,
+            DisplayOrder = 5
+        };
+        var unrelatedMockMapping = new ProductAttributeMapping
+        {
+            Id = 14,
+            ProductId = 100,
+            ProductAttributeId = 3,
+            TextPrompt = "Format",
+            IsRequired = true,
+            DisplayOrder = 6
+        };
+        var jobSkill = new ProductAttributeMapping
+        {
+            Id = 15,
+            ProductId = 200,
+            ProductAttributeId = 1,
+            TextPrompt = "Skill",
+            IsRequired = true,
+            DisplayOrder = 2
+        };
+        var mappings = new List<ProductAttributeMapping>
+        {
+            mockSkill,
+            mockDifficulty,
+            compliantMockSkill,
+            unrelatedMockMapping,
+            jobSkill
+        };
+        var dataProvider = new Mock<INopDataProvider>();
+        dataProvider.Setup(provider => provider.GetTable<ProductTemplate>()).Returns(templates.AsQueryable());
+        dataProvider.Setup(provider => provider.GetTable<Product>()).Returns(products.AsQueryable());
+        dataProvider.Setup(provider => provider.GetTable<ProductAttribute>()).Returns(attributes.AsQueryable());
+        dataProvider.Setup(provider => provider.GetTable<ProductAttributeMapping>()).Returns(mappings.AsQueryable());
+        var migration = new MockPracticeSkillMappingOptionalMigration(dataProvider.Object);
+
+        migration.Up();
+        migration.Up();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(mockSkill.IsRequired, Is.False);
+            Assert.That(mockSkill.DisplayOrder, Is.EqualTo(4));
+            Assert.That(mockDifficulty.IsRequired, Is.True);
+            Assert.That(mockDifficulty.DisplayOrder, Is.EqualTo(1));
+            Assert.That(compliantMockSkill.IsRequired, Is.False);
+            Assert.That(unrelatedMockMapping.IsRequired, Is.True);
+            Assert.That(jobSkill.IsRequired, Is.True);
+            Assert.That(mappings, Has.Count.EqualTo(5));
+            Assert.That(attributes, Has.Count.EqualTo(3));
+        });
+        dataProvider.Verify(provider => provider.UpdateEntity(mockSkill), Times.Once);
+        dataProvider.Verify(provider => provider.UpdateEntity(It.IsAny<ProductAttributeMapping>()), Times.Once);
+        dataProvider.Verify(provider => provider.InsertEntity(It.IsAny<ProductAttributeMapping>()), Times.Never);
+        dataProvider.Verify(provider => provider.InsertEntity(It.IsAny<ProductAttribute>()), Times.Never);
+    }
+
+    [Test]
+    public void MockPracticeProductTemplate_ExplainsRequiredAndAlternativeInputs_WithoutIndividualRequiredControls()
+    {
+        var productTemplateText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "ProductTemplate.MockPractice.cshtml"));
+        var productAttributesText = File.ReadAllText(
+            Path.GetFullPath(Path.Combine(
+                TestFilePathHelper.GetPluginRootPath(),
+                "..",
+                "..",
+                "Presentation",
+                "Nop.Web",
+                "Views",
+                "Product",
+                "_ProductAttributes.cshtml")));
+        var publicCssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
+        var renderedControlSources = productTemplateText + Environment.NewLine + productAttributesText;
+        var individualRequiredControl = System.Text.RegularExpressions.Regex.IsMatch(
+            renderedControlSources,
+            @"<(input|select|textarea)\b[^>]*\srequired(?:\s|=|/?>)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(productTemplateText, Does.Contain("practice-difficulty-section"));
+            Assert.That(productTemplateText, Does.Contain("<span>Difficulty</span><span class=\"practice-required-marker\" aria-hidden=\"true\">*</span>"));
+            Assert.That(productTemplateText, Does.Contain("<span class=\"practice-required-text\">Required</span>"));
+            Assert.That(productTemplateText, Does.Contain("<fieldset class=\"practice-alternative-inputs\""));
+            Assert.That(productTemplateText, Does.Contain("<legend>Choose a Skill or Resume</legend>"));
+            Assert.That(productTemplateText, Does.Contain("At least one is required: select a Skill, or select or upload a Resume."));
+            Assert.That(productTemplateText, Does.Contain("Optional if you upload or select a resume"));
+            Assert.That(productTemplateText, Does.Contain("Optional if you select a skill"));
+            Assert.That(productTemplateText, Does.Contain("class=\"practice-or-divider\" role=\"separator\""));
+            Assert.That(productTemplateText, Does.Contain("<span>OR</span>"));
+            Assert.That(productTemplateText, Does.Contain("@Html.AntiForgeryToken()"));
+            Assert.That(productTemplateText, Does.Contain("HtmlFieldPrefix = $\"attributes_{Model.Id}\""));
+            Assert.That(productAttributesText, Does.Contain("name=\"@(controlId)\""));
+            Assert.That(productTemplateText, Does.Contain("name=\"SelectedResumeDownloadId\""));
+            Assert.That(productTemplateText, Does.Contain("name=\"ResumeFile\""));
+            Assert.That(individualRequiredControl, Is.False);
+            Assert.That(publicCssText, Does.Contain(".html-aiinterview-mock-practice-product-page .practice-required-marker"));
+            Assert.That(publicCssText, Does.Contain("color: #c62828;"));
+            Assert.That(publicCssText, Does.Contain(".html-aiinterview-mock-practice-product-page .practice-optional-badge"));
+            Assert.That(publicCssText, Does.Contain(".html-aiinterview-mock-practice-product-page .practice-or-divider"));
+            Assert.That(publicCssText, Does.Contain("@media (max-width: 420px)"));
+        });
     }
 
     [Test]

@@ -4669,7 +4669,8 @@ body.ai-job-preview-open .item-box {
 
 .practice-start-form {
     display: grid;
-    gap: 8px;
+    gap: 14px;
+    min-width: 0;
 }
 
 .practice-start-form label {
@@ -4684,6 +4685,174 @@ body.ai-job-preview-open .item-box {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-difficulty-section,
+.html-aiinterview-mock-practice-product-page .practice-alternative-inputs,
+.html-aiinterview-mock-practice-product-page .practice-pathway,
+.html-aiinterview-mock-practice-product-page .practice-resume-choice {
+    min-width: 0;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-difficulty-section,
+.html-aiinterview-mock-practice-product-page .practice-pathway {
+    display: grid;
+    gap: 8px;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-difficulty-section {
+    padding: 14px;
+    border: 1px solid #cfdad6;
+    border-radius: 10px;
+    background: #f8fcfa;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-field-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 8px;
+    min-width: 0;
+    color: var(--job-text);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-required-marker {
+    color: #c62828;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-required-text {
+    color: #8f1d1d;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-optional-badge {
+    display: inline-flex;
+    max-width: 100%;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #e8f5f0;
+    color: #145b49;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.35;
+    text-transform: none;
+    white-space: normal;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-field-help,
+.html-aiinterview-mock-practice-product-page .practice-alternative-guidance {
+    margin: 0;
+    color: var(--job-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-alternative-inputs {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid #b9d8cd;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-alternative-inputs > legend {
+    max-width: calc(100% - 16px);
+    padding: 0 7px;
+    color: var(--job-text);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-alternative-guidance {
+    padding: 9px 10px;
+    border-left: 3px solid #20b486;
+    border-radius: 0 6px 6px 0;
+    background: #eefaf5;
+    color: #23483e;
+    font-weight: 700;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-resume-choice {
+    display: grid;
+    gap: 5px;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-resume-pathway {
+    gap: 10px;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-or-divider {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    color: #4c5b66;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-align: center;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-or-divider::before,
+.html-aiinterview-mock-practice-product-page .practice-or-divider::after {
+    height: 1px;
+    min-width: 0;
+    background: #ccd8d4;
+    content: "";
+}
+
+.html-aiinterview-mock-practice-product-page .practice-or-divider span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #b9d8cd;
+    border-radius: 50%;
+    background: #f3faf7;
+}
+
+/* The visible pathway headings replace the generic prompts while retaining them as accessible control names. */
+.html-aiinterview-mock-practice-product-page .practice-pathway .attributes dt {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    border: 0 !important;
+    white-space: nowrap !important;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-start-form .attributes select,
+.html-aiinterview-mock-practice-product-page .practice-start-form select,
+.html-aiinterview-mock-practice-product-page .practice-start-form input[type="file"] {
+    min-height: 42px;
+    height: auto;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-start-form .option-list input:focus-visible {
+    outline: 3px solid rgba(32, 180, 134, 0.32);
+    outline-offset: 3px;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-start-error {
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .practice-detail-list {
@@ -5017,6 +5186,37 @@ body.ai-job-preview-open .item-box {
     .practice-start-panel .job-ai-card,
     .practice-content-grid .job-card {
         padding: 18px;
+    }
+
+    .html-aiinterview-mock-practice-product-page .practice-difficulty-section,
+    .html-aiinterview-mock-practice-product-page .practice-alternative-inputs {
+        padding: 12px;
+    }
+
+    .html-aiinterview-mock-practice-product-page .practice-field-heading {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .html-aiinterview-mock-practice-product-page .practice-optional-badge {
+        grid-column: 1 / -1;
+        justify-self: start;
+    }
+}
+
+@media (max-width: 420px) {
+    .html-aiinterview-mock-practice-product-page .practice-start-panel,
+    .html-aiinterview-mock-practice-product-page .practice-start-panel .job-ai-card {
+        padding: 12px;
+    }
+
+    .html-aiinterview-mock-practice-product-page .practice-alternative-inputs > legend {
+        font-size: 14px;
+    }
+
+    .html-aiinterview-mock-practice-product-page .practice-start-form .option-list li {
+        align-items: flex-start;
+        padding: 10px;
     }
 }
 
