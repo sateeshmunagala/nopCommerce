@@ -2908,28 +2908,30 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var acceptedNow = !IsCompletionPending(session);
         if (acceptedNow)
         {
-            using var transaction = _dataProvider?.CreateTransactionScope();
-            if (persistCurrentTurn && currentTurn != null)
-                await _turnService.UpdateInterviewTurnAsync(currentTurn);
+            using (var transaction = _dataProvider?.CreateTransactionScope())
+            {
+                if (persistCurrentTurn && currentTurn != null)
+                    await _turnService.UpdateInterviewTurnAsync(currentTurn);
 
-            var queuedOnUtc = DateTime.UtcNow;
-            session.IsActive = false;
-            session.CompletedOnUtc = null;
-            session.ReportData = string.Empty;
-            session.CompletionState = InterviewCompletionStates.Queued;
-            session.CompletionAttemptCount = 0;
-            session.CompletionNextAttemptOnUtc = null;
-            session.CompletionQueuedOnUtc = queuedOnUtc;
-            session.CompletionProcessingStartedOnUtc = null;
-            session.CompletionFinishedOnUtc = null;
-            session.CompletionPublishedOnUtc = null;
-            session.CompletionFailureMessage = null;
-            session.CompletionFailureDiagnostic = null;
-            session.CompletionReason = NormalizeCompletionReason(reason);
-            session.CompletionAiResponse = aiCompletion;
-            await PreserveLatestRecordingFieldsAsync(session);
-            await _sessionService.UpdateInterviewSessionAsync(session);
-            transaction?.Complete();
+                var queuedOnUtc = DateTime.UtcNow;
+                session.IsActive = false;
+                session.CompletedOnUtc = null;
+                session.ReportData = string.Empty;
+                session.CompletionState = InterviewCompletionStates.Queued;
+                session.CompletionAttemptCount = 0;
+                session.CompletionNextAttemptOnUtc = null;
+                session.CompletionQueuedOnUtc = queuedOnUtc;
+                session.CompletionProcessingStartedOnUtc = null;
+                session.CompletionFinishedOnUtc = null;
+                session.CompletionPublishedOnUtc = null;
+                session.CompletionFailureMessage = null;
+                session.CompletionFailureDiagnostic = null;
+                session.CompletionReason = NormalizeCompletionReason(reason);
+                session.CompletionAiResponse = aiCompletion;
+                await PreserveLatestRecordingFieldsAsync(session);
+                await _sessionService.UpdateInterviewSessionAsync(session);
+                transaction?.Complete();
+            }
 
             await LogRuntimeIssueAsync(
                 NopLogLevel.Information,
