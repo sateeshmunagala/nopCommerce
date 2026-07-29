@@ -70,13 +70,60 @@
     var summary = !string.IsNullOrWhiteSpace(Model.ShortDescription)
         ? Model.ShortDescription
         : "Choose a difficulty level and either select a skill or upload a resume. The AI interview will use those selections to create practice questions without connecting you to any company, job post, or application.";
+    string[] practiceDifficultyKeywords =
+    [
+        "practice difficulty",
+        "difficulty",
+        "interview difficulty"
+    ];
+    string[] practiceSkillKeywords =
+    [
+        "practice skill",
+        "skill",
+        "skills",
+        "interview skill"
+    ];
+    string NormalizeAttributeLabel(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var sanitized = new string(value
+            .Trim()
+            .Select(character => char.IsLetterOrDigit(character) ? char.ToLowerInvariant(character) : ' ')
+            .ToArray());
+
+        return string.Join(" ", sanitized
+            .Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+            .ToLowerInvariant();
+    }
+    bool MatchesAttributeKeyword(Nop.Web.Models.Catalog.ProductDetailsModel.ProductAttributeModel attribute, IEnumerable<string> keywords)
+    {
+        var normalizedCandidates = new[] { attribute?.Name, attribute?.TextPrompt }
+            .Select(NormalizeAttributeLabel)
+            .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        return normalizedCandidates.Any(candidate => keywords.Any(keyword =>
+        {
+            var normalizedKeyword = NormalizeAttributeLabel(keyword);
+            return string.Equals(candidate, normalizedKeyword, StringComparison.Ordinal) ||
+                candidate.Contains(normalizedKeyword, StringComparison.Ordinal);
+        }));
+    }
     var difficultyAttributes = Model.ProductAttributes
-        .Where(attribute =>
-            (attribute.Name?.Contains("difficulty", StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (attribute.TextPrompt?.Contains("difficulty", StringComparison.OrdinalIgnoreCase) ?? false))
+        .Where(attribute => MatchesAttributeKeyword(attribute, practiceDifficultyKeywords))
         .ToList();
     var skillAttributes = Model.ProductAttributes
-        .Where(attribute => !difficultyAttributes.Contains(attribute))
+        .Where(attribute =>
+            !difficultyAttributes.Contains(attribute) &&
+            MatchesAttributeKeyword(attribute, practiceSkillKeywords))
+        .ToList();
+    var additionalAttributes = Model.ProductAttributes
+        .Where(attribute =>
+            !difficultyAttributes.Contains(attribute) &&
+            !skillAttributes.Contains(attribute))
         .ToList();
     var difficultyModel = new Nop.Web.Models.Catalog.ProductDetailsModel
     {
@@ -91,6 +138,13 @@
         AllowAddingOnlyExistingAttributeCombinations = Model.AllowAddingOnlyExistingAttributeCombinations,
         DisplayAttributeCombinationImagesOnly = Model.DisplayAttributeCombinationImagesOnly,
         ProductAttributes = skillAttributes
+    };
+    var additionalModel = new Nop.Web.Models.Catalog.ProductDetailsModel
+    {
+        Id = Model.Id,
+        AllowAddingOnlyExistingAttributeCombinations = Model.AllowAddingOnlyExistingAttributeCombinations,
+        DisplayAttributeCombinationImagesOnly = Model.DisplayAttributeCombinationImagesOnly,
+        ProductAttributes = additionalAttributes
     };
 }
 
@@ -212,6 +266,23 @@
                                             <p class="job-ai-note">Upload a resume only when you want the AI interview to pull questions from your actual experience.</p>
                                         </div>
                                     </fieldset>
+
+                                    @if (additionalAttributes.Any())
+                                    {
+                                        <section class="practice-additional-section" aria-labelledby="practice-additional-heading">
+                                            <div class="practice-field-heading" id="practice-additional-heading">
+                                                <span>Additional practice preferences</span>
+                                            </div>
+                                            <p class="practice-field-help">Complete any additional practice fields below. Required fields are marked with an asterisk.</p>
+                                            <div class="practice-additional-inputs">
+                                                @{
+                                                    var additionalViewData = new ViewDataDictionary(ViewData);
+                                                    additionalViewData.TemplateInfo.HtmlFieldPrefix = $"attributes_{Model.Id}";
+                                                    @await Html.PartialAsync("_ProductAttributes", additionalModel, additionalViewData)
+                                                }
+                                            </div>
+                                        </section>
+                                    }
 
                                     <div class="message-error practice-start-error aiinterview-hidden" data-practice-start-error="true" role="alert" aria-live="polite"></div>
 

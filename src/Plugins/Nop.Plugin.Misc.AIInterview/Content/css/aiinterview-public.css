@@ -4690,12 +4690,15 @@ body.ai-job-preview-open .item-box {
 .html-aiinterview-mock-practice-product-page .practice-difficulty-section,
 .html-aiinterview-mock-practice-product-page .practice-alternative-inputs,
 .html-aiinterview-mock-practice-product-page .practice-pathway,
+.html-aiinterview-mock-practice-product-page .practice-additional-section,
+.html-aiinterview-mock-practice-product-page .practice-additional-inputs,
 .html-aiinterview-mock-practice-product-page .practice-resume-choice {
     min-width: 0;
 }
 
 .html-aiinterview-mock-practice-product-page .practice-difficulty-section,
-.html-aiinterview-mock-practice-product-page .practice-pathway {
+.html-aiinterview-mock-practice-product-page .practice-pathway,
+.html-aiinterview-mock-practice-product-page .practice-additional-section {
     display: grid;
     gap: 8px;
 }
@@ -4705,6 +4708,27 @@ body.ai-job-preview-open .item-box {
     border: 1px solid #cfdad6;
     border-radius: 10px;
     background: #f8fcfa;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-additional-section {
+    padding: 14px;
+    border: 1px solid #d6dde4;
+    border-radius: 10px;
+    background: #f8f9fb;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-additional-section .attributes dt {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+}
+
+.html-aiinterview-mock-practice-product-page .practice-additional-section .attributes .required {
+    width: auto;
+    color: #c62828;
+    font-size: 16px;
+    line-height: 1;
 }
 
 .html-aiinterview-mock-practice-product-page .practice-field-heading {
@@ -5189,7 +5213,8 @@ body.ai-job-preview-open .item-box {
     }
 
     .html-aiinterview-mock-practice-product-page .practice-difficulty-section,
-    .html-aiinterview-mock-practice-product-page .practice-alternative-inputs {
+    .html-aiinterview-mock-practice-product-page .practice-alternative-inputs,
+    .html-aiinterview-mock-practice-product-page .practice-additional-section {
         padding: 12px;
     }
 

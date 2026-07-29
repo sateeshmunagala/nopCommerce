@@ -2205,6 +2205,160 @@ public class CandidateFlowTests
     }
 
     [Test]
+    public void MockPracticeProductTemplate_ClassifiesDifficultySkillAndAdditionalAttributesIntoDistinctSections()
+    {
+        var productTemplateText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "ProductTemplate.MockPractice.cshtml"));
+        var controllerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "MockAiInterviewController.cs"));
+        var productAttributesText = File.ReadAllText(
+            Path.GetFullPath(Path.Combine(
+                TestFilePathHelper.GetPluginRootPath(),
+                "..",
+                "..",
+                "Presentation",
+                "Nop.Web",
+                "Views",
+                "Product",
+                "_ProductAttributes.cshtml")));
+        var publicCssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
+
+        static IList<string> ExtractKeywords(string source, string declaration)
+        {
+            var declarationIndex = source.IndexOf(declaration, StringComparison.Ordinal);
+            Assert.That(declarationIndex, Is.GreaterThanOrEqualTo(0), $"Missing keyword declaration: {declaration}");
+            var initializerStart = source.IndexOf('[', declarationIndex);
+            var initializerEnd = source.IndexOf("];", initializerStart, StringComparison.Ordinal);
+            Assert.That(initializerStart, Is.GreaterThan(declarationIndex));
+            Assert.That(initializerEnd, Is.GreaterThan(initializerStart));
+
+            return System.Text.RegularExpressions.Regex
+                .Matches(source[(initializerStart + 1)..initializerEnd], "\"([^\"]+)\"")
+                .Select(match => match.Groups[1].Value)
+                .ToList();
+        }
+
+        static string NormalizeAttributeLabel(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var sanitized = new string(value
+                .Trim()
+                .Select(character => char.IsLetterOrDigit(character) ? char.ToLowerInvariant(character) : ' ')
+                .ToArray());
+            return string.Join(" ", sanitized
+                .Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+                .ToLowerInvariant();
+        }
+
+        static bool MatchesAttributeKeyword(
+            (string Name, string TextPrompt, bool IsRequired) attribute,
+            IEnumerable<string> keywords)
+        {
+            var normalizedCandidates = new[] { attribute.Name, attribute.TextPrompt }
+                .Select(NormalizeAttributeLabel)
+                .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            return normalizedCandidates.Any(candidate => keywords.Any(keyword =>
+            {
+                var normalizedKeyword = NormalizeAttributeLabel(keyword);
+                return string.Equals(candidate, normalizedKeyword, StringComparison.Ordinal) ||
+                    candidate.Contains(normalizedKeyword, StringComparison.Ordinal);
+            }));
+        }
+
+        var razorDifficultyKeywords = ExtractKeywords(productTemplateText, "string[] practiceDifficultyKeywords");
+        var razorSkillKeywords = ExtractKeywords(productTemplateText, "string[] practiceSkillKeywords");
+        var controllerDifficultyKeywords = ExtractKeywords(controllerText, "PracticeDifficultyKeywords =");
+        var controllerSkillKeywords = ExtractKeywords(controllerText, "PracticeSkillKeywords =");
+        var sourceAttributes = new[]
+        {
+            (Name: "Practice setup", TextPrompt: "Interview Difficulty", IsRequired: true),
+            (Name: "Core technical skills", TextPrompt: "Practice focus", IsRequired: false),
+            (Name: "Practice format", TextPrompt: "Question format", IsRequired: true)
+        };
+        var difficultyAttributes = sourceAttributes
+            .Where(attribute => MatchesAttributeKeyword(attribute, razorDifficultyKeywords))
+            .ToList();
+        var skillAttributes = sourceAttributes
+            .Where(attribute =>
+                !difficultyAttributes.Contains(attribute) &&
+                MatchesAttributeKeyword(attribute, razorSkillKeywords))
+            .ToList();
+        var additionalAttributes = sourceAttributes
+            .Where(attribute =>
+                !difficultyAttributes.Contains(attribute) &&
+                !skillAttributes.Contains(attribute))
+            .ToList();
+
+        var difficultyPartialIndex = productTemplateText.IndexOf(
+            "Html.PartialAsync(\"_ProductAttributes\", difficultyModel",
+            StringComparison.Ordinal);
+        var alternativeStartIndex = productTemplateText.IndexOf(
+            "<fieldset class=\"practice-alternative-inputs\"",
+            StringComparison.Ordinal);
+        var guidanceIndex = productTemplateText.IndexOf(
+            "class=\"practice-alternative-guidance\"",
+            alternativeStartIndex,
+            StringComparison.Ordinal);
+        var skillPartialIndex = productTemplateText.IndexOf(
+            "Html.PartialAsync(\"_ProductAttributes\", skillModel",
+            alternativeStartIndex,
+            StringComparison.Ordinal);
+        var orDividerIndex = productTemplateText.IndexOf(
+            "class=\"practice-or-divider\"",
+            skillPartialIndex,
+            StringComparison.Ordinal);
+        var alternativeEndIndex = productTemplateText.IndexOf(
+            "</fieldset>",
+            alternativeStartIndex,
+            StringComparison.Ordinal);
+        var additionalSectionIndex = productTemplateText.IndexOf(
+            "<section class=\"practice-additional-section\"",
+            StringComparison.Ordinal);
+        var additionalPartialIndex = productTemplateText.IndexOf(
+            "Html.PartialAsync(\"_ProductAttributes\", additionalModel",
+            additionalSectionIndex,
+            StringComparison.Ordinal);
+        var additionalSectionEndIndex = productTemplateText.IndexOf(
+            "</section>",
+            additionalSectionIndex,
+            StringComparison.Ordinal);
+        var additionalSectionText = productTemplateText[additionalSectionIndex..additionalSectionEndIndex];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(razorDifficultyKeywords, Is.EqualTo(controllerDifficultyKeywords));
+            Assert.That(razorSkillKeywords, Is.EqualTo(controllerSkillKeywords));
+            Assert.That(difficultyAttributes.Select(attribute => attribute.Name), Is.EqualTo(new[] { "Practice setup" }));
+            Assert.That(skillAttributes.Select(attribute => attribute.Name), Is.EqualTo(new[] { "Core technical skills" }));
+            Assert.That(additionalAttributes.Select(attribute => attribute.Name), Is.EqualTo(new[] { "Practice format" }));
+            Assert.That(additionalAttributes.Single().IsRequired, Is.True);
+            Assert.That(productTemplateText, Does.Contain("MatchesAttributeKeyword(attribute, practiceDifficultyKeywords)"));
+            Assert.That(productTemplateText, Does.Contain("MatchesAttributeKeyword(attribute, practiceSkillKeywords)"));
+            Assert.That(productTemplateText, Does.Contain("!skillAttributes.Contains(attribute)"));
+            Assert.That(productTemplateText, Does.Contain("ProductAttributes = difficultyAttributes"));
+            Assert.That(productTemplateText, Does.Contain("ProductAttributes = skillAttributes"));
+            Assert.That(productTemplateText, Does.Contain("ProductAttributes = additionalAttributes"));
+            Assert.That(difficultyPartialIndex, Is.GreaterThanOrEqualTo(0));
+            Assert.That(difficultyPartialIndex, Is.LessThan(alternativeStartIndex));
+            Assert.That(guidanceIndex, Is.GreaterThan(alternativeStartIndex));
+            Assert.That(skillPartialIndex, Is.GreaterThan(guidanceIndex));
+            Assert.That(skillPartialIndex, Is.LessThan(orDividerIndex));
+            Assert.That(orDividerIndex, Is.LessThan(alternativeEndIndex));
+            Assert.That(additionalSectionIndex, Is.GreaterThan(alternativeEndIndex));
+            Assert.That(additionalPartialIndex, Is.GreaterThan(additionalSectionIndex));
+            Assert.That(additionalSectionText, Does.Not.Contain("practice-optional-badge"));
+            Assert.That(additionalSectionText, Does.Not.Contain("practice-alternative-guidance"));
+            Assert.That(additionalSectionText, Does.Contain("HtmlFieldPrefix = $\"attributes_{Model.Id}\""));
+            Assert.That(productAttributesText, Does.Contain("@if (attribute.IsRequired)"));
+            Assert.That(productAttributesText, Does.Contain("<span class=\"required\">*</span>"));
+            Assert.That(publicCssText, Does.Contain(".html-aiinterview-mock-practice-product-page .practice-additional-section"));
+            Assert.That(publicCssText, Does.Contain(".practice-additional-section .attributes .required"));
+        });
+    }
+
+    [Test]
     public async Task WidgetView_Rendering_Works()
     {
         var productTemplateService = new Mock<IProductTemplateService>();
