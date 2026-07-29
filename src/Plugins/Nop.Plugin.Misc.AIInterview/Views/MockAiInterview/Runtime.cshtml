@@ -677,6 +677,8 @@
         let feedbackLastFocusedElement = null;
         let completedCountdown = null;
         let completedCleanupTimer = null;
+        let completionStatusTimer = null;
+        let completionStatusRequestInFlight = false;
         let reportNavigationStarted = false;
         let completionRecordingCleanupPromise = null;
         let completionLiveMediaStopPromise = null;
@@ -741,6 +743,9 @@
                     window.localStorage.removeItem(key);
             } catch {}
         };
+
+        const finalCompletionSpeechStorageKey = 'aiinterview.runtime.finalCompletionSpeech.@Model.SessionId';
+        finalCompletionSpoken = readLocalStorageValue(finalCompletionSpeechStorageKey) === '1';
 
         const isPseudoAudioDeviceId = (deviceId) => {
             const normalized = (deviceId || '').toLowerCase();
@@ -1190,6 +1195,9 @@
         };
 
         const reportSpeechSynthesisUsage = async ({ turnId, sequenceNumber, purpose, speechSynthesisCharacters, clientEventId }) => {
+            if (purpose === 'completion')
+                return;
+
             if (!config.speechUsageUrl || !speechSynthesisCharacters)
                 return;
 
@@ -2004,8 +2012,11 @@
             completionWaitGeneration += 1;
             clearInterval(completedCountdown);
             clearTimeout(completedCleanupTimer);
+            clearInterval(completionStatusTimer);
             completedCountdown = null;
             completedCleanupTimer = null;
+            completionStatusTimer = null;
+            completionStatusRequestInFlight = false;
             if (!runtimeStoppedOrCompleted)
                 reportNavigationStarted = false;
             if (completionBox) {
@@ -2649,45 +2660,80 @@
             window.location.href = reportUrl;
         };
 
-        const renderCompletionWaitState = (remainingSeconds, reportUrl = '') => {
-            if (!completionBox)
-                return;
-
-            let timer = document.getElementById('runtime-completion-countdown');
-            if (!timer) {
+        const renderCompletionWaitState = (remainingSeconds) => {
+            setHeaderStatus(`${reportGenerationMessage} Time remaining: ${formatCountdown(remainingSeconds)}`, false);
+            if (completionBox) {
                 completionBox.replaceChildren();
-
-                const message = document.createElement('strong');
-                message.textContent = reportGenerationMessage;
-
-                timer = document.createElement('div');
-                timer.id = 'runtime-completion-countdown';
-                timer.style.marginTop = '6px';
-                timer.style.fontWeight = '700';
-                completionBox.append(message, timer);
+                completionBox.classList.add('runtime-js-hidden');
+                completionBox.hidden = true;
+                completionBox.style.display = 'none';
             }
-
-            timer.textContent = `Time remaining: ${formatCountdown(remainingSeconds)}`;
-            timer.hidden = false;
-            timer.style.display = 'block';
-
-            completionBox.classList.remove('runtime-js-hidden');
-            completionBox.hidden = false;
-            completionBox.style.display = 'block';
-            updateReportButton(reportUrl);
+            updateReportButton('');
         };
 
-        const startReportGenerationWaitingState = (reportUrl = '') => {
+        const stopCompletionStatusPolling = () => {
+            clearInterval(completionStatusTimer);
+            completionStatusTimer = null;
+            completionStatusRequestInFlight = false;
+        };
+
+        const pollCompletionStatusOnce = async (generation) => {
+            if (!config.completionStatusUrl || completionStatusRequestInFlight || generation !== completionWaitGeneration)
+                return;
+
+            completionStatusRequestInFlight = true;
+            try {
+                const result = await postForm(config.completionStatusUrl, new URLSearchParams({ token: sessionToken }));
+                if (generation !== completionWaitGeneration)
+                    return;
+
+                const reportReady = getValue(result, 'reportReady', 'ReportReady') === true;
+                const reportFailed = getValue(result, 'reportGenerationFailed', 'ReportGenerationFailed') === true;
+                const reportInProgress = getValue(result, 'reportGenerationInProgress', 'ReportGenerationInProgress') === true;
+                const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || '';
+                if (reportReady && reportUrl) {
+                    stopCompletionStatusPolling();
+                    clearInterval(completedCountdown);
+                    completedCountdown = null;
+                    setHeaderStatus('Your report is ready.', false);
+                    updateReportButton(reportUrl);
+                    return;
+                }
+
+                if (reportFailed || (!reportInProgress && !reportReady)) {
+                    stopCompletionStatusPolling();
+                    clearInterval(completedCountdown);
+                    completedCountdown = null;
+                    setHeaderStatus(getRuntimeMessage(result, 'Report generation failed. Please contact support if the report is not available from your interview history.'), true);
+                    updateReportButton('');
+                }
+            } catch (error) {
+                logActivity(`Completion status polling failed: ${error?.message || 'unknown'}`);
+            } finally {
+                completionStatusRequestInFlight = false;
+            }
+        };
+
+        const startCompletionStatusPolling = (generation) => {
+            stopCompletionStatusPolling();
+            if (!config.completionStatusUrl)
+                return;
+
+            pollCompletionStatusOnce(generation);
+            completionStatusTimer = setInterval(() => pollCompletionStatusOnce(generation), 3000);
+        };
+
+        const startReportGenerationWaitingState = (estimatedWaitSeconds = completionWaitSeconds) => {
             clearCompletedRedirectState();
             const generation = completionWaitGeneration;
-            let remaining = completionWaitSeconds;
+            let remaining = Math.max(0, Number(estimatedWaitSeconds || completionWaitSeconds));
             const renderRemaining = () => {
-                renderCompletionWaitState(remaining, reportUrl);
+                renderCompletionWaitState(remaining);
             };
 
-            setHeaderStatus(reportGenerationMessage, false);
             setStatus('', false);
             renderRemaining();
+            startCompletionStatusPolling(generation);
             completedCountdown = setInterval(() => {
                 if (generation !== completionWaitGeneration)
                     return;
@@ -2702,11 +2748,7 @@
         };
 
         const finalizeCompletedState = async (result, recordingPromise = null) => {
-            const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
-            const completionText = reportGenerationMessage;
-
             isSpeakingOrSubmitting = true;
-            setHeaderStatus(reportGenerationMessage, false);
             try {
                 const recordingUploaded = await withTimeout(
                     recordingPromise || finalizeRecordingBeforeCompletion(),
@@ -2724,28 +2766,18 @@
             }
             recordingEnabled = false;
             await stopLiveMediaForCompletion();
-            questionBox.textContent = completionText;
-            messageBox.textContent = completionText;
+            questionBox.textContent = reportGenerationMessage;
+            messageBox.textContent = reportGenerationMessage;
             messageBox.classList.add('runtime-js-hidden');
-            setRuntimeCaption('Interviewer', completionText);
-            completionBox.classList.remove('runtime-js-hidden');
-            completionBox.style.display = 'block';
+            setRuntimeCaption('Interviewer', reportGenerationMessage);
             updateAnswerInputState();
             updateStartButtonState();
             updateAuxiliaryControlsState();
-            updateReportButton(reportUrl);
         };
 
         const setCompletedState = async (result, recordingPromise = null) => {
             runtimeStoppedOrCompleted = true;
             stopInProgress = false;
-            const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || config.reportUrl || '';
-            if (!reportUrl) {
-                clearCompletedRedirectState();
-                setStatus('The report URL is unavailable. Please refresh your interview history.', true);
-                logActivity('Completion response missing report URL.');
-                return;
-            }
             clearActiveInterviewTimers();
             interviewStarted = false;
             answerNeedsEditAfterFailure = false;
@@ -2754,16 +2786,14 @@
             updateAnswerInputState();
             submitButton.disabled = true;
             updateStartButtonState();
-            setHeaderStatus(reportGenerationMessage, false);
-            startReportGenerationWaitingState(reportUrl);
+            startReportGenerationWaitingState(getValue(result, 'estimatedWaitSeconds', 'EstimatedWaitSeconds') || completionWaitSeconds);
             updateAuxiliaryControlsState();
             completedCleanupTimer = setTimeout(() => {
                 finalizeCompletedState(result, recordingPromise)
                     .catch(error => {
                         logActivity(`Completion finalization exception: ${error?.message || 'unknown'}`);
                         setRecordingStatus('Recording cleanup is still finishing. Report generation continues.', false, true);
-                    })
-                    .finally(() => updateReportButton(reportUrl));
+                    });
             }, 0);
         };
 
@@ -3861,6 +3891,9 @@
             let ttsStartedAt = 0;
             let ttsStartedReported = false;
             const reportTtsStartedOnce = () => {
+                if (purpose === 'completion')
+                    return;
+
                 if (ttsStartedReported)
                     return;
 
@@ -3921,7 +3954,8 @@
                     logActivity('Reminder spoken.');
                 else if (purpose === 'completion')
                     logActivity('Final completion message spoken.');
-                reportRuntimeClientStageTiming('tts-completed', performance.now() - ttsStartedAt, true);
+                if (purpose !== 'completion')
+                    reportRuntimeClientStageTiming('tts-completed', performance.now() - ttsStartedAt, true);
                 if (purpose === 'repeat')
                     setHeaderStatus('Question replayed in voice.', false);
                 const activeTurn = getActiveTurn();
@@ -4242,12 +4276,13 @@
             resetSubmitButtonText();
 
             if (isTerminated) {
+                await setCompletedState(result, finalRecordingUploadPromise);
                 if (!finalCompletionSpoken) {
                     finalCompletionSpoken = true;
+                    writeLocalStorageValue(finalCompletionSpeechStorageKey, '1');
                     await speakText(getFinalCompletionSpeechText(), 'completion', finalCompletionSpeechTokenResult)
                         .catch(() => logActivity('Final completion speech failed.'));
                 }
-                await setCompletedState(result, finalRecordingUploadPromise);
                 return;
             }
 

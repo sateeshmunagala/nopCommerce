@@ -1505,8 +1505,13 @@ internal static class InterviewReportSummaryHelper
 
 public class InterviewRuntimeService : IInterviewRuntimeService
 {
+    private const int CompletionEstimatedWaitSeconds = 120;
+    private const string CompletionPendingMessage = "Your answer was submitted. Generating your report.";
+    private const string CompletionFailedMessage = "Report generation failed. Please contact support if the report is not available from your interview history.";
     private static readonly ConcurrentDictionary<int, SessionMutationLock> SessionMutationLocks = new();
     private static readonly ConcurrentDictionary<int, Lazy<Task<PrepareInterviewResponseModel>>> PreparationTasks = new();
+    private static readonly ConcurrentDictionary<int, Lazy<Task<CompleteInterviewResponse>>> CompletionTasks = new();
+    private static readonly ConcurrentDictionary<int, string> CompletionFailures = new();
 
     private sealed class SessionMutationLock
     {
@@ -2402,6 +2407,12 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         using (await AcquireSessionMutationLockAsync(session.Id))
         {
         session = await _sessionService.GetSessionByTokenAsync(token);
+        if (IsCompletionPending(session))
+        {
+            QueueCompletionProcessing(session.Id, "Interview completed.");
+            return await BuildPendingCompletionSubmitResponseAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id));
+        }
+
         if (session?.CompletedOnUtc.HasValue == true)
             return await BuildCompletedSubmitResponseAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id));
 
@@ -2627,7 +2638,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
-        var completion = await CompleteInterviewInternalAsync(session, turns, evaluation.Completion ?? evaluation.Feedback ?? evaluation.ErrorMessage, evaluation.Completion);
+        var completion = await AcceptTerminalAnswerAndQueueCompletionAsync(session, turns, currentTurn, evaluation.Completion ?? evaluation.Feedback ?? evaluation.ErrorMessage, evaluation.Completion);
         return new SubmitInterviewAnswerResponse
         {
             Success = true,
@@ -2639,7 +2650,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Interrupted = false,
             Question = string.Empty,
             Turn = MapTurn(currentTurn),
-            Turns = completion.Turns
+            Turns = completion.Turns,
+            ReportReady = completion.ReportReady,
+            ReportGenerationInProgress = completion.ReportGenerationInProgress,
+            ReportGenerationFailed = completion.ReportGenerationFailed,
+            EstimatedWaitSeconds = completion.EstimatedWaitSeconds
         };
         }
     }
@@ -2732,7 +2747,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
-        var completion = await CompleteInterviewInternalAsync(session, turns, "Interview completed.");
+        var completion = await AcceptTerminalAnswerAndQueueCompletionAsync(session, turns, currentTurn, "Interview completed.");
         return new SubmitInterviewAnswerResponse
         {
             Success = completion.Success,
@@ -2745,9 +2760,280 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Question = string.Empty,
             Turn = MapTurn(currentTurn),
             Turns = completion.Turns,
+            ReportReady = completion.ReportReady,
             ReportGenerationInProgress = completion.ReportGenerationInProgress,
+            ReportGenerationFailed = completion.ReportGenerationFailed,
             EstimatedWaitSeconds = completion.EstimatedWaitSeconds
         };
+    }
+
+    protected virtual async Task<CompleteInterviewResponse> AcceptTerminalAnswerAndQueueCompletionAsync(
+        InterviewSession session,
+        IList<InterviewTurn> turns,
+        InterviewTurn currentTurn,
+        string reason,
+        string aiCompletion = null)
+    {
+        turns = (turns ?? new List<InterviewTurn>())
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+        var maxQuestions = GetMaxQuestions(session);
+        var completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, maxQuestions).ToList();
+
+        if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
+        {
+            return new CompleteInterviewResponse
+            {
+                Success = true,
+                IsTerminated = true,
+                Score = session.Score,
+                Feedback = completedTurns.LastOrDefault()?.Feedback ?? reason ?? string.Empty,
+                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
+                Completion = session.ReportData,
+                ReportUrl = string.Empty,
+                ReportReady = true,
+                ReportGenerationInProgress = false,
+                EstimatedWaitSeconds = 0,
+                Turns = MapTurns(completedTurns)
+            };
+        }
+
+        if (!IsCompletionPending(session))
+        {
+            session.IsActive = false;
+            session.CompletedOnUtc = null;
+            session.ReportData = string.Empty;
+            await PreserveLatestRecordingFieldsAsync(session);
+            await _sessionService.UpdateInterviewSessionAsync(session);
+            CompletionFailures.TryRemove(session.Id, out _);
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview completion accepted",
+                $"Mode=completion-pending; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; TurnId={currentTurn?.Id ?? 0}; SequenceNumber={currentTurn?.SequenceNumber ?? 0}; ExpectedQuestions={maxQuestions}; AnsweredTurns={completedTurns.Count}.",
+                await ResolveLogCustomerAsync(session));
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.CompletionAccepted",
+                BuildRuntimeActivityComment(session, currentTurn, CompletionPendingMessage),
+                entity: currentTurn);
+        }
+        else
+        {
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview completion duplicate suppressed",
+                $"Mode=completion-pending; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; ExpectedQuestions={maxQuestions}; AnsweredTurns={completedTurns.Count}.",
+                await ResolveLogCustomerAsync(session));
+        }
+
+        QueueCompletionProcessing(session.Id, reason ?? "Interview completed.", aiCompletion);
+
+        return new CompleteInterviewResponse
+        {
+            Success = true,
+            IsTerminated = true,
+            Score = session.Score,
+            Feedback = completedTurns.LastOrDefault()?.Feedback ?? reason ?? string.Empty,
+            Message = CompletionPendingMessage,
+            Completion = string.Empty,
+            ReportUrl = string.Empty,
+            ReportReady = false,
+            ReportGenerationInProgress = true,
+            ReportGenerationFailed = false,
+            EstimatedWaitSeconds = CompletionEstimatedWaitSeconds,
+            Turns = MapTurns(completedTurns)
+        };
+    }
+
+    private async Task<SubmitInterviewAnswerResponse> BuildPendingCompletionSubmitResponseAsync(InterviewSession session, IList<InterviewTurn> turns)
+    {
+        var completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns ?? new List<InterviewTurn>(), GetMaxQuestions(session)).ToList();
+        await LogRuntimeIssueAsync(
+            NopLogLevel.Information,
+            "AI Interview completion duplicate suppressed",
+            $"Mode=submit-after-pending; SessionId={session?.Id ?? 0}; ProductId={session?.ProductId ?? 0}; CustomerId={session?.CustomerId ?? 0}; AnsweredTurns={completedTurns.Count}.",
+            await ResolveLogCustomerAsync(session));
+
+        return new SubmitInterviewAnswerResponse
+        {
+            Success = true,
+            IsTerminated = true,
+            Score = session?.Score ?? 0,
+            Feedback = completedTurns.LastOrDefault()?.Feedback ?? string.Empty,
+            Message = CompletionPendingMessage,
+            Completion = string.Empty,
+            ReportUrl = string.Empty,
+            ReportReady = false,
+            ReportGenerationInProgress = true,
+            ReportGenerationFailed = false,
+            EstimatedWaitSeconds = CompletionEstimatedWaitSeconds,
+            Question = string.Empty,
+            Turn = MapTurn(completedTurns.LastOrDefault()),
+            Turns = MapTurns(completedTurns)
+        };
+    }
+
+    public static bool IsCompletionPending(InterviewSession session)
+    {
+        return session != null
+            && !session.IsActive
+            && !session.CompletedOnUtc.HasValue
+            && string.IsNullOrWhiteSpace(session.ReportData);
+    }
+
+    public static bool TryGetCompletionFailure(int sessionId, out string safeMessage)
+    {
+        return CompletionFailures.TryGetValue(sessionId, out safeMessage);
+    }
+
+    public Task QueuePendingCompletionAsync(int sessionId)
+    {
+        QueueCompletionProcessing(sessionId, "Interview completed.");
+        return Task.CompletedTask;
+    }
+
+    protected virtual void QueueCompletionProcessing(int sessionId, string reason, string aiCompletion = null)
+    {
+        if (sessionId <= 0)
+            return;
+
+        var newLazyTask = new Lazy<Task<CompleteInterviewResponse>>(
+            () => RunQueuedCompletionProcessingAsync(sessionId, reason, aiCompletion),
+            LazyThreadSafetyMode.ExecutionAndPublication);
+        var lazyTask = CompletionTasks.GetOrAdd(sessionId, newLazyTask);
+
+        if (!ReferenceEquals(lazyTask, newLazyTask))
+        {
+            _logger?.LogInformation("AI Interview completion duplicate suppressed for session {SessionId}.", sessionId);
+            return;
+        }
+
+        _logger?.LogInformation("AI Interview completion queued for session {SessionId}.", sessionId);
+        _ = ObserveQueuedCompletionAsync(sessionId, lazyTask);
+    }
+
+    private async Task ObserveQueuedCompletionAsync(int sessionId, Lazy<Task<CompleteInterviewResponse>> lazyTask)
+    {
+        try
+        {
+            await lazyTask.Value;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "AI Interview queued completion failed for session {SessionId}.", sessionId);
+            CompletionFailures[sessionId] = CompletionFailedMessage;
+        }
+        finally
+        {
+            if (lazyTask.IsValueCreated && lazyTask.Value.IsCompleted)
+                CompletionTasks.TryRemove(new KeyValuePair<int, Lazy<Task<CompleteInterviewResponse>>>(sessionId, lazyTask));
+        }
+    }
+
+    private async Task<CompleteInterviewResponse> RunQueuedCompletionProcessingAsync(int sessionId, string reason, string aiCompletion)
+    {
+        using var sessionLock = await AcquireSessionMutationLockAsync(sessionId);
+        var session = await _sessionService.GetInterviewSessionByIdAsync(sessionId);
+        if (session == null)
+        {
+            CompletionFailures[sessionId] = CompletionFailedMessage;
+            return new CompleteInterviewResponse
+            {
+                Success = false,
+                IsTerminated = true,
+                Message = CompletionFailedMessage,
+                ReportGenerationFailed = true
+            };
+        }
+
+        if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
+        {
+            CompletionFailures.TryRemove(sessionId, out _);
+            return new CompleteInterviewResponse
+            {
+                Success = true,
+                IsTerminated = true,
+                Score = session.Score,
+                Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
+                Completion = session.ReportData,
+                ReportReady = true,
+                ReportGenerationInProgress = false,
+                EstimatedWaitSeconds = 0
+            };
+        }
+
+        if (!IsCompletionPending(session))
+        {
+            CompletionFailures[sessionId] = CompletionFailedMessage;
+            return new CompleteInterviewResponse
+            {
+                Success = false,
+                IsTerminated = true,
+                Message = CompletionFailedMessage,
+                ReportGenerationFailed = true
+            };
+        }
+
+        try
+        {
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview completion processing started",
+                $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}.",
+                await ResolveLogCustomerAsync(session));
+            var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
+            var response = await CompleteInterviewInternalAsync(session, turns, reason, aiCompletion);
+            if (response.Success)
+            {
+                CompletionFailures.TryRemove(sessionId, out _);
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Information,
+                    "AI Interview completion processing completed",
+                    $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}.",
+                    await ResolveLogCustomerAsync(session));
+                return response with
+                {
+                    ReportReady = true,
+                    ReportGenerationInProgress = false,
+                    ReportGenerationFailed = false,
+                    EstimatedWaitSeconds = 0
+                };
+            }
+
+            CompletionFailures[sessionId] = CompletionFailedMessage;
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Warning,
+                "AI Interview completion processing failed",
+                $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason={BuildSafeValue(response.Message)}.",
+                await ResolveLogCustomerAsync(session));
+            return response with
+            {
+                Message = CompletionFailedMessage,
+                ReportGenerationInProgress = false,
+                ReportGenerationFailed = true,
+                EstimatedWaitSeconds = 0
+            };
+        }
+        catch (Exception ex)
+        {
+            CompletionFailures[sessionId] = CompletionFailedMessage;
+            _logger?.LogError(ex, "AI Interview completion processing failed for session {SessionId}.", session.Id);
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Warning,
+                "AI Interview completion processing failed",
+                $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason={BuildSafeValue(ex.Message)}.",
+                await ResolveLogCustomerAsync(session));
+            return new CompleteInterviewResponse
+            {
+                Success = false,
+                IsTerminated = true,
+                Message = CompletionFailedMessage,
+                ReportGenerationInProgress = false,
+                ReportGenerationFailed = true,
+                EstimatedWaitSeconds = 0
+            };
+        }
     }
 
     public async Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null)
@@ -2799,6 +3085,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
             Completion = session.ReportData,
             ReportUrl = string.Empty,
+            ReportReady = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData),
             Interrupted = false,
             Question = string.Empty,
             Turn = MapTurn(completedTurns.LastOrDefault()),
@@ -3699,7 +3986,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             .ThenBy(turn => turn.Id)
             .ToList();
 
-        if (session.CompletedOnUtc.HasValue || !session.IsActive)
+        if (session.CompletedOnUtc.HasValue || (!session.IsActive && !IsCompletionPending(session)))
         {
             await LogRuntimeActivityAsync(
                 session,
@@ -3716,6 +4003,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"),
                 Completion = session.ReportData,
                 ReportUrl = string.Empty,
+                ReportReady = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData),
+                ReportGenerationInProgress = IsCompletionPending(session),
                 Turns = MapTurns(InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, GetMaxQuestions(session)))
             };
         }
@@ -3771,6 +4060,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
             Completion = session.ReportData,
             ReportUrl = string.Empty,
+            ReportReady = true,
             ReportGenerationInProgress = false,
             EstimatedWaitSeconds = 0,
             Turns = MapTurns(completedTurns)

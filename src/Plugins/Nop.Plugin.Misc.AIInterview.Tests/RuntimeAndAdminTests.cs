@@ -1415,8 +1415,8 @@ public class RuntimeAndAdminTests
         Assert.That(model.ClientSettings.Token, Is.EqualTo("token"));
         Assert.That(model.ClientSettings.TokenExpiryUtc, Is.EqualTo(tokenExpiryUtc));
         Assert.That(model.ClientSettings.FinalCompletionSpeech, Is.EqualTo(ApprovedFinalCompletionSpeech));
-        Assert.That(model.ReportUrl, Is.EqualTo("/mockaiinterview/report/1"));
-        Assert.That(model.ClientSettings.ReportUrl, Is.EqualTo("/mockaiinterview/report/1"));
+        Assert.That(model.ReportUrl, Is.Empty);
+        Assert.That(model.ClientSettings.ReportUrl, Is.Empty);
         Assert.That(model.ClientSettings.RuntimeClientEventUrl, Is.EqualTo("/mockaiinterview/runtime-client-event"));
     }
 
@@ -1499,7 +1499,25 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task Runtime_SubmitAnswer_CompletedResponse_UsesMockReportRoute()
+    public void RuntimeSource_StartedSessionsKeepPersistedQuestionCount()
+    {
+        var controllerText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "MockAiInterviewController.cs"));
+        var runtimeServiceText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Services", "InterviewRuntimeService.cs"));
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+
+        Assert.That(controllerText, Does.Contain("if (!reusableSession.StartedOnUtc.HasValue && reusableSession.QuestionCount != mockQuestionCount)"));
+        Assert.That(controllerText, Does.Contain("QuestionCount = isMockPracticeProduct ? ResolveMockQuestionCount() : await ResolveQuestionCountAsync(productId),"));
+        Assert.That(controllerText, Does.Contain("model.QuestionCount = session != null ? NormalizeRuntimeQuestionCount(session)"));
+        Assert.That(runtimeServiceText, Does.Contain("var questionCount = GetMaxQuestions(session);"));
+        Assert.That(runtimeServiceText, Does.Contain("QuestionCount = questionCount,"));
+        Assert.That(runtimeServiceText, Does.Contain("var totalQuestionCount = GetMaxQuestions(session);"));
+        Assert.That(runtimeViewText, Does.Contain("const totalQuestions = Math.max(1, Number(config.questionCount || @Model.QuestionCount || 0));"));
+        Assert.That(runtimeViewText, Does.Contain("(answered / totalQuestions) * 100"));
+        Assert.That(runtimeViewText, Does.Contain("(turnStateBeforeSubmit.answeredCount + 1) >= totalQuestions"));
+    }
+
+    [Test]
+    public async Task Runtime_SubmitAnswer_PendingCompletion_DoesNotReturnReportRoute()
     {
         var session = new InterviewSession
         {
@@ -1516,7 +1534,8 @@ public class RuntimeAndAdminTests
                 Success = true,
                 IsTerminated = true,
                 ReportUrl = string.Empty,
-                Completion = "done"
+                ReportGenerationInProgress = true,
+                EstimatedWaitSeconds = 120
             });
 
         var controller = new MockAiInterviewController(
@@ -1544,11 +1563,12 @@ public class RuntimeAndAdminTests
         var json = (JsonResult)result;
         var reportUrl = json.Value.GetType().GetProperty("ReportUrl")?.GetValue(json.Value, null)?.ToString();
 
-        Assert.That(reportUrl, Is.EqualTo("/mockaiinterview/report/71"));
+        Assert.That(reportUrl, Is.Empty);
+        Assert.That(json.Value.GetType().GetProperty("ReportGenerationInProgress")?.GetValue(json.Value, null), Is.EqualTo(true));
     }
 
     [Test]
-    public async Task Runtime_Stop_CompletedResponse_UsesMockReportRoute()
+    public async Task Runtime_Stop_ResponseWithoutReportReady_DoesNotReturnReportRoute()
     {
         var session = new InterviewSession
         {
@@ -1564,7 +1584,8 @@ public class RuntimeAndAdminTests
             {
                 Success = true,
                 IsTerminated = true,
-                ReportUrl = string.Empty
+                ReportUrl = string.Empty,
+                ReportReady = false
             });
 
         var controller = new MockAiInterviewController(
@@ -1592,7 +1613,56 @@ public class RuntimeAndAdminTests
         var json = (JsonResult)result;
         var reportUrl = json.Value.GetType().GetProperty("ReportUrl")?.GetValue(json.Value, null)?.ToString();
 
-        Assert.That(reportUrl, Is.EqualTo("/mockaiinterview/report/72"));
+        Assert.That(reportUrl, Is.Empty);
+    }
+
+    [Test]
+    public async Task Runtime_CompletionStatus_ReturnsPendingReadyFailedAndRejectsWrongOwner()
+    {
+        var customer = new Customer { Id = 7, Email = "owner@example.com" };
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _customerService.Setup(x => x.IsRegisteredAsync(customer, true)).ReturnsAsync(true);
+
+        var pending = new InterviewSession { Id = 701, CustomerId = 7, Token = "pending-token", IsActive = false, ReportData = string.Empty };
+        var ready = new InterviewSession { Id = 702, CustomerId = 7, Token = "ready-token", IsActive = false, CompletedOnUtc = DateTime.UtcNow, ReportData = "Report persisted." };
+        var failed = new InterviewSession { Id = 703, CustomerId = 7, Token = "failed-token", IsActive = false, ReportData = string.Empty };
+        var wrongOwner = new InterviewSession { Id = 704, CustomerId = 8, Token = "wrong-owner", IsActive = false, ReportData = string.Empty };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync((string token) => token switch
+            {
+                "pending-token" => pending,
+                "ready-token" => ready,
+                "failed-token" => failed,
+                "wrong-owner" => wrongOwner,
+                _ => null
+            });
+
+        var failuresField = typeof(InterviewRuntimeService).GetField("CompletionFailures", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+        Assert.That(failuresField, Is.Not.Null);
+        var failures = (System.Collections.Concurrent.ConcurrentDictionary<int, string>)failuresField.GetValue(null);
+        failures[failed.Id] = "Safe failure message.";
+
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
+            .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext ctx) => ctx.RouteName == AIInterviewDefaults.MockReportRouteName ? "/mockaiinterview/report/702" : string.Empty);
+        _runtimeController.Url = urlHelper.Object;
+
+        var pendingJson = (JsonResult)await _runtimeController.CompletionStatus("pending-token");
+        Assert.That(GetJsonValue<bool>(pendingJson, nameof(CompletionStatusResponseModel.ReportGenerationInProgress)), Is.True);
+        Assert.That(GetJsonValue<bool>(pendingJson, nameof(CompletionStatusResponseModel.ReportReady)), Is.False);
+        Assert.That(GetJsonValue<string>(pendingJson, nameof(CompletionStatusResponseModel.ReportUrl)), Is.Empty);
+
+        var readyJson = (JsonResult)await _runtimeController.CompletionStatus("ready-token");
+        Assert.That(GetJsonValue<bool>(readyJson, nameof(CompletionStatusResponseModel.ReportReady)), Is.True);
+        Assert.That(GetJsonValue<string>(readyJson, nameof(CompletionStatusResponseModel.ReportUrl)), Is.EqualTo("/mockaiinterview/report/702"));
+
+        var failedJson = (JsonResult)await _runtimeController.CompletionStatus("failed-token");
+        Assert.That(GetJsonValue<bool>(failedJson, nameof(CompletionStatusResponseModel.ReportGenerationFailed)), Is.True);
+        Assert.That(GetJsonValue<string>(failedJson, nameof(CompletionStatusResponseModel.Message)), Is.EqualTo("Safe failure message."));
+        failures.TryRemove(failed.Id, out _);
+
+        var wrongOwnerJson = (JsonResult)await _runtimeController.CompletionStatus("wrong-owner");
+        Assert.That(GetJsonValue<bool>(wrongOwnerJson, "success"), Is.False);
     }
 
     [Test]
@@ -1918,8 +1988,8 @@ public class RuntimeAndAdminTests
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
 
         Assert.That(runtimeViewText, Does.Contain("const reportGenerationMessage = 'Generating your report...';"));
-        Assert.That(runtimeViewText, Does.Contain("startReportGenerationWaitingState(reportUrl);"));
-        Assert.That(runtimeViewText, Does.Not.Contain("startReportGenerationWaitingState();"));
+        Assert.That(runtimeViewText, Does.Contain("startReportGenerationWaitingState(getValue(result, 'estimatedWaitSeconds', 'EstimatedWaitSeconds') || completionWaitSeconds);"));
+        Assert.That(runtimeViewText, Does.Contain("setHeaderStatus(`${reportGenerationMessage} Time remaining: ${formatCountdown(remainingSeconds)}`, false);"));
         Assert.That(runtimeViewText, Does.Contain("clearCompletedRedirectState();"));
         Assert.That(runtimeViewText, Does.Contain("Unable to stop interview."));
         Assert.That(runtimeViewText, Does.Contain("Unable to submit answer."));
@@ -2053,7 +2123,8 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("finalizeRecordingBeforeCompletion()"));
         Assert.That(runtimeViewText, Does.Not.Contain("const startReportGenerationTimer = (reportUrl) =>"));
         Assert.That(runtimeViewText, Does.Not.Contain(".finally(() => startReportGenerationTimer(reportUrl));"));
-        Assert.That(runtimeViewText, Does.Contain(".finally(() => updateReportButton(reportUrl));"));
+        Assert.That(runtimeViewText, Does.Contain("updateReportButton(reportUrl);"));
+        Assert.That(runtimeViewText, Does.Contain("updateReportButton('');"));
         Assert.That(runtimeViewText, Does.Contain("const navigateToReport = (reportUrl) =>"));
         Assert.That(runtimeViewText, Does.Contain("let reportNavigationStarted = false;"));
         Assert.That(runtimeViewText, Does.Contain("let speechTokenCache = null;"));
@@ -2225,11 +2296,14 @@ public class RuntimeAndAdminTests
         var submitSuccessGuard = submitAnswerBlock.IndexOf("if (!isSuccess(result))", submitPost, StringComparison.Ordinal);
         var latchCheck = terminalBranch.IndexOf("if (!finalCompletionSpoken)", StringComparison.Ordinal);
         var latchSet = terminalBranch.IndexOf("finalCompletionSpoken = true;", latchCheck, StringComparison.Ordinal);
+        var completedState = terminalBranch.IndexOf("await setCompletedState(result, finalRecordingUploadPromise);", StringComparison.Ordinal);
         var speechCall = terminalBranch.IndexOf("await speakText(getFinalCompletionSpeechText(), 'completion', finalCompletionSpeechTokenResult)", latchSet, StringComparison.Ordinal);
         var speechCatch = terminalBranch.IndexOf(".catch(() => logActivity('Final completion speech failed.'));", speechCall, StringComparison.Ordinal);
-        var completedState = terminalBranch.IndexOf("await setCompletedState(result, finalRecordingUploadPromise);", speechCall, StringComparison.Ordinal);
 
         Assert.That(runtimeViewText, Does.Contain("let finalCompletionSpoken = false;"));
+        Assert.That(runtimeViewText, Does.Contain("const finalCompletionSpeechStorageKey = 'aiinterview.runtime.finalCompletionSpeech.@Model.SessionId';"));
+        Assert.That(runtimeViewText, Does.Contain("finalCompletionSpoken = readLocalStorageValue(finalCompletionSpeechStorageKey) === '1';"));
+        Assert.That(runtimeViewText, Does.Contain("writeLocalStorageValue(finalCompletionSpeechStorageKey, '1');"));
         Assert.That(runtimeViewText, Does.Contain($"const fallbackFinalCompletionSpeech = '{ApprovedFinalCompletionSpeech}';"));
         Assert.That(runtimeViewText, Does.Contain("const finalCompletionSpeech = (config.finalCompletionSpeech || '').trim() || fallbackFinalCompletionSpeech;"));
         Assert.That(runtimeViewText, Does.Contain("const getFinalCompletionSpeechText = () => finalCompletionSpeech;"));
@@ -2261,10 +2335,13 @@ public class RuntimeAndAdminTests
         Assert.That(latchSet, Is.GreaterThan(latchCheck));
         Assert.That(speechCall, Is.GreaterThan(latchSet));
         Assert.That(speechCatch, Is.GreaterThan(speechCall));
-        Assert.That(completedState, Is.GreaterThan(speechCatch));
+        Assert.That(completedState, Is.GreaterThanOrEqualTo(0));
+        Assert.That(completedState, Is.LessThan(latchCheck));
         Assert.That(terminalBranch, Does.Contain("await speakText(getFinalCompletionSpeechText(), 'completion', finalCompletionSpeechTokenResult)"));
         Assert.That(terminalBranch, Does.Not.Contain("requestSpeechToken("));
-        Assert.That(speechCall, Is.LessThan(completedState));
+        Assert.That(completedState, Is.LessThan(speechCall));
+        Assert.That(speakTextBlock, Does.Contain("if (purpose === 'completion')\r\n                    return;").Or.Contain("if (purpose === 'completion')\n                    return;"));
+        Assert.That(speakTextBlock, Does.Contain("if (purpose !== 'completion')\r\n                    reportRuntimeClientStageTiming('tts-completed'").Or.Contain("if (purpose !== 'completion')\n                    reportRuntimeClientStageTiming('tts-completed'"));
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("score").IgnoreCase);
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("strengths").IgnoreCase);
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("improvement areas").IgnoreCase);
@@ -2352,18 +2429,21 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("if (speechTokenRequestPromise)\r\n                return speechTokenRequestPromise;").Or.Contain("if (speechTokenRequestPromise)\n                return speechTokenRequestPromise;"));
         Assert.That(runtimeViewText, Does.Contain("expiresAt: Date.now() + Math.max(30000, (expiresInSeconds - 60) * 1000)"));
         Assert.That(runtimeViewText, Does.Contain("})().finally(() => {\r\n                speechTokenRequestPromise = null;").Or.Contain("})().finally(() => {\n                speechTokenRequestPromise = null;"));
-        var renderCompletionStart = runtimeViewText.IndexOf("const renderCompletionWaitState = (remainingSeconds, reportUrl = '') =>", StringComparison.Ordinal);
-        var renderCompletionEnd = runtimeViewText.IndexOf("const startReportGenerationWaitingState", renderCompletionStart, StringComparison.Ordinal);
+        var renderCompletionStart = runtimeViewText.IndexOf("const renderCompletionWaitState = (remainingSeconds) =>", StringComparison.Ordinal);
+        var renderCompletionEnd = runtimeViewText.IndexOf("const stopCompletionStatusPolling", renderCompletionStart, StringComparison.Ordinal);
         var renderCompletionBlock = runtimeViewText.Substring(renderCompletionStart, renderCompletionEnd - renderCompletionStart);
-        var completionWaitStart = runtimeViewText.IndexOf("const startReportGenerationWaitingState = (reportUrl = '') =>", StringComparison.Ordinal);
+        var completionWaitStart = runtimeViewText.IndexOf("const startReportGenerationWaitingState = (estimatedWaitSeconds = completionWaitSeconds) =>", StringComparison.Ordinal);
         var completionWaitEnd = runtimeViewText.IndexOf("const finalizeCompletedState = async", completionWaitStart, StringComparison.Ordinal);
         var completionWaitBlock = runtimeViewText.Substring(completionWaitStart, completionWaitEnd - completionWaitStart);
 
         Assert.That(runtimeViewText, Does.Contain("const completionWaitSeconds = 120;"));
-        Assert.That(renderCompletionBlock, Does.Contain("timer.textContent = `Time remaining: ${formatCountdown(remainingSeconds)}`;"));
+        Assert.That(renderCompletionBlock, Does.Contain("setHeaderStatus(`${reportGenerationMessage} Time remaining: ${formatCountdown(remainingSeconds)}`, false);"));
+        Assert.That(renderCompletionBlock, Does.Contain("completionBox.replaceChildren();"));
+        Assert.That(renderCompletionBlock, Does.Contain("updateReportButton('');"));
         Assert.That(renderCompletionBlock, Does.Not.Contain("Elapsed"));
-        Assert.That(completionWaitBlock, Does.Contain("let remaining = completionWaitSeconds;"));
-        Assert.That(completionWaitBlock, Does.Contain("renderCompletionWaitState(remaining, reportUrl);"));
+        Assert.That(completionWaitBlock, Does.Contain("let remaining = Math.max(0, Number(estimatedWaitSeconds || completionWaitSeconds));"));
+        Assert.That(completionWaitBlock, Does.Contain("renderCompletionWaitState(remaining);"));
+        Assert.That(completionWaitBlock, Does.Contain("startCompletionStatusPolling(generation);"));
         Assert.That(completionWaitBlock, Does.Contain("if (remaining <= 0)"));
         Assert.That(completionWaitBlock, Does.Contain("clearInterval(completedCountdown);"));
         Assert.That(completionWaitBlock, Does.Not.Contain("navigateToReport"));
@@ -2371,7 +2451,9 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Not.Contain("completedRedirectDelaySeconds"));
         Assert.That(runtimeViewText, Does.Not.Contain("completedRedirectTimer"));
         Assert.That(runtimeViewText, Does.Not.Contain("startReportGenerationTimer"));
-        Assert.That(runtimeViewText, Does.Contain(".finally(() => updateReportButton(reportUrl));"));
+        Assert.That(runtimeViewText, Does.Contain("const reportReady = getValue(result, 'reportReady', 'ReportReady') === true;"));
+        Assert.That(runtimeViewText, Does.Contain("if (reportReady && reportUrl)"));
+        Assert.That(runtimeViewText, Does.Contain("updateReportButton(reportUrl);"));
 
         var finalizationStart = runtimeViewText.IndexOf("logActivity('Final recording upload before completion started.')", StringComparison.Ordinal);
         Assert.That(finalizationStart, Is.LessThan(runtimeViewText.IndexOf("await stopLiveMediaForCompletion();", finalizationStart, StringComparison.Ordinal)));

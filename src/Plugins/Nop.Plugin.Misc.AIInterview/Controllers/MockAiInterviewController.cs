@@ -1104,7 +1104,7 @@ public class MockAiInterviewController : BasePluginController
                 if (!string.IsNullOrWhiteSpace(resumeResolution.ErrorMessage))
                     return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Apply.ResumeFile.Invalid", resumeResolution.ErrorMessage);
 
-                if (reusableSession.QuestionCount != mockQuestionCount)
+                if (!reusableSession.StartedOnUtc.HasValue && reusableSession.QuestionCount != mockQuestionCount)
                 {
                     reusableSession.QuestionCount = mockQuestionCount;
                     sessionUpdated = true;
@@ -1313,11 +1313,12 @@ public class MockAiInterviewController : BasePluginController
             return;
 
         model.ClientSettings ??= new Nop.Plugin.Misc.AIInterview.Models.RuntimeClientSettingsModel();
-        model.QuestionCount = model.QuestionCount > 0 ? Math.Clamp(model.QuestionCount, 1, 10) : NormalizeRuntimeQuestionCount(session);
+        model.QuestionCount = session != null ? NormalizeRuntimeQuestionCount(session) : model.QuestionCount > 0 ? Math.Clamp(model.QuestionCount, 1, 10) : 5;
         model.ClientSettings.QuestionCount = model.QuestionCount;
         model.ClientSettings.SubmitAnswerUrl = Url?.RouteUrl(AIInterviewDefaults.MockSubmitAnswerRouteName);
         model.ClientSettings.BeginInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockBeginRouteName);
         model.ClientSettings.PrepareInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockPrepareRouteName);
+        model.ClientSettings.CompletionStatusUrl = Url?.Action("CompletionStatus", "MockAiInterview");
         model.ClientSettings.CompleteInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
         model.ClientSettings.RefreshTokenUrl = Url?.RouteUrl(AIInterviewDefaults.MockRefreshTokenRouteName);
         model.ClientSettings.StopInterviewUrl = Url?.RouteUrl(AIInterviewDefaults.MockStopRouteName);
@@ -1329,7 +1330,8 @@ public class MockAiInterviewController : BasePluginController
         model.ClientSettings.ProductName = model.ProductName;
         model.ClientSettings.FinalCompletionSpeech = await GetLocalizedTextAsync(AIInterviewPlugin.FinalCompletionSpeechResourceKey, AIInterviewPlugin.DefaultFinalCompletionSpeech);
         model.ClientSettings.Token = session?.Token;
-        model.ReportUrl = GetMockReportUrl(session?.Id ?? model.SessionId);
+        var reportReady = session?.CompletedOnUtc.HasValue == true && !string.IsNullOrWhiteSpace(session.ReportData);
+        model.ReportUrl = reportReady ? GetMockReportUrl(session?.Id ?? model.SessionId) : string.Empty;
         model.ClientSettings.ReportUrl = model.ReportUrl;
         model.ClientSettings.TokenExpiryUtc = NormalizeRuntimeTokenExpiryForClient(session?.TokenExpiryUtc);
         model.ClientSettings.SpeechAvailable = model.ClientSettings.SpeechAvailable && !string.IsNullOrWhiteSpace(model.ClientSettings.SpeechTokenUrl);
@@ -1553,8 +1555,16 @@ public class MockAiInterviewController : BasePluginController
         var token = request?.Token;
         _logger?.LogInformation("SubmitAnswer called with session token {Token}", MaskToken(token));
 
-        var session = await ValidateActiveRuntimeTokenAsync(token);
-        if (session == null)
+        var session = string.IsNullOrWhiteSpace(token)
+            ? null
+            : await _interviewSessionService.GetSessionByTokenAsync(token);
+        if (session?.CompletedOnUtc.HasValue == true)
+        {
+            await LogRuntimeIssueAsync("AI Interview token validation failure", $"SubmitAnswer rejected completed session for token {MaskToken(token)}. ReasonCode=session-completed.", await ResolveLogCustomerAsync(session));
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+        }
+
+        if (session == null || (!IsSessionUsable(session) && !InterviewRuntimeService.IsCompletionPending(session)))
         {
             await LogRuntimeIssueAsync("AI Interview token validation failure", $"SubmitAnswer rejected invalid session for token {MaskToken(token)}. ReasonCode={await ResolveRuntimeTokenFailureReasonCodeAsync(token)}.", await ResolveLogCustomerAsync());
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
@@ -1563,7 +1573,9 @@ public class MockAiInterviewController : BasePluginController
         if (_interviewRuntimeService != null)
         {
             var runtimeResponse = await _interviewRuntimeService.SubmitAnswerAsync(request);
-            var reportUrl = runtimeResponse?.IsTerminated == true ? GetMockReportUrl(session.Id) : runtimeResponse?.ReportUrl;
+            var reportUrl = runtimeResponse?.ReportReady == true && session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
+                ? GetMockReportUrl(session.Id)
+                : string.Empty;
             if (runtimeResponse != null && !runtimeResponse.Success)
             {
                 _logger?.LogWarning("SubmitAnswer failed for session {SessionId}, customer {CustomerId}, product {ProductId}: {Message}",
@@ -1580,7 +1592,9 @@ public class MockAiInterviewController : BasePluginController
                 runtimeResponse.Turns,
                 runtimeResponse.Interrupted,
                 runtimeResponse.Message,
+                runtimeResponse.ReportReady,
                 runtimeResponse.ReportGenerationInProgress,
+                runtimeResponse.ReportGenerationFailed,
                 runtimeResponse.EstimatedWaitSeconds
             });
         }
@@ -1590,6 +1604,81 @@ public class MockAiInterviewController : BasePluginController
 
         // Mock answer processing
         return Json(new { success = true, nextQuestion = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.NextQuestionMock") });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CompletionStatus(string token)
+    {
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null || !await _customerService.IsRegisteredAsync(customer))
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request.", 401);
+
+        var session = string.IsNullOrWhiteSpace(token)
+            ? null
+            : await _interviewSessionService.GetSessionByTokenAsync(token);
+        if (session == null || session.CustomerId != customer.Id || !string.Equals(session.Token, token, StringComparison.Ordinal))
+        {
+            await LogRuntimeIssueAsync("AI Interview token validation failure", $"CompletionStatus rejected invalid session for token {MaskToken(token)}. ReasonCode={await ResolveRuntimeTokenFailureReasonCodeAsync(token, session)}.", await ResolveLogCustomerAsync(session, customer));
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
+        }
+
+        var reportReady = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData);
+        if (reportReady)
+        {
+            var reportUrl = GetMockReportUrl(session.Id);
+            return Json(new CompletionStatusResponseModel
+            {
+                Success = true,
+                Message = "Your report is ready.",
+                ReportReady = !string.IsNullOrWhiteSpace(reportUrl),
+                ReportGenerationInProgress = false,
+                ReportGenerationFailed = string.IsNullOrWhiteSpace(reportUrl),
+                ReportUrl = reportUrl,
+                EstimatedWaitSeconds = 0
+            });
+        }
+
+        if (InterviewRuntimeService.TryGetCompletionFailure(session.Id, out var failureMessage))
+        {
+            return Json(new CompletionStatusResponseModel
+            {
+                Success = true,
+                Message = string.IsNullOrWhiteSpace(failureMessage) ? "Report generation failed. Please contact support if the report is not available from your interview history." : failureMessage,
+                ReportReady = false,
+                ReportGenerationInProgress = false,
+                ReportGenerationFailed = true,
+                ReportUrl = string.Empty,
+                EstimatedWaitSeconds = 0
+            });
+        }
+
+        if (InterviewRuntimeService.IsCompletionPending(session))
+        {
+            if (_interviewRuntimeService is InterviewRuntimeService concreteRuntimeService)
+                await concreteRuntimeService.QueuePendingCompletionAsync(session.Id);
+
+            return Json(new CompletionStatusResponseModel
+            {
+                Success = true,
+                Message = "Generating your report...",
+                ReportReady = false,
+                ReportGenerationInProgress = true,
+                ReportGenerationFailed = false,
+                ReportUrl = string.Empty,
+                EstimatedWaitSeconds = 120
+            });
+        }
+
+        return Json(new CompletionStatusResponseModel
+        {
+            Success = true,
+            Message = "Report generation has not started.",
+            ReportReady = false,
+            ReportGenerationInProgress = false,
+            ReportGenerationFailed = false,
+            ReportUrl = string.Empty,
+            EstimatedWaitSeconds = 0
+        });
     }
 
     [HttpPost]
@@ -1607,7 +1696,10 @@ public class MockAiInterviewController : BasePluginController
         if (_interviewRuntimeService != null)
         {
             var response = await _interviewRuntimeService.CompleteInterviewAsync(token, "Stopped by user");
-            var reportUrl = response?.Success == true ? GetMockReportUrl(session.Id) : response?.ReportUrl;
+            session = await _interviewSessionService.GetSessionByTokenAsync(token) ?? session;
+            var reportUrl = response?.ReportReady == true && session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
+                ? GetMockReportUrl(session.Id)
+                : string.Empty;
             if (response != null && !response.Success)
             {
                 _logger?.LogWarning("Stop failed for session {SessionId}, customer {CustomerId}, product {ProductId}: {Message}",
@@ -1620,7 +1712,9 @@ public class MockAiInterviewController : BasePluginController
                 response.IsTerminated,
                 response.Message,
                 ReportUrl = reportUrl,
+                response.ReportReady,
                 response.ReportGenerationInProgress,
+                response.ReportGenerationFailed,
                 response.EstimatedWaitSeconds,
                 response.Turns
             });

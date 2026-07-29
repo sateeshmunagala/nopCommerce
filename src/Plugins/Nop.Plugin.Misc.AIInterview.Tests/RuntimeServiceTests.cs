@@ -2461,6 +2461,7 @@ public class RuntimeServiceTests
         turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
             .Callback<InterviewTurn>(updated => updatedTurn = updated)
             .Returns(Task.CompletedTask);
+        var strengthsGate = new TaskCompletionSource<AIInterviewStrengthsSummaryResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
         productService.Setup(x => x.GetProductByIdAsync(30)).ReturnsAsync(new Product { Id = 30, Name = "Architect" });
         customerService.Setup(x => x.GetCustomerByIdAsync(8)).ReturnsAsync(new Customer { Id = 8, FirstName = "John", LastName = "Doe" });
         localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
@@ -2474,6 +2475,8 @@ public class RuntimeServiceTests
                 RawJson = "{\"score\":91,\"complete\":true}",
                 RubricJson = "{\"score\":91,\"feedback\":\"Strong\"}"
             });
+        aiClient.Setup(x => x.GenerateStrengthsSummaryAsync(It.IsAny<AIInterviewStrengthsSummaryRequest>()))
+            .Returns(strengthsGate.Task);
 
         var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, workContext: workContext, eventPublisher: eventPublisher);
 
@@ -2482,10 +2485,13 @@ public class RuntimeServiceTests
         Assert.That(result.IsTerminated, Is.True);
         Assert.That(result.Success, Is.True);
         Assert.That(result.ReportUrl, Is.Empty);
+        Assert.That(result.ReportReady, Is.False);
+        Assert.That(result.ReportGenerationInProgress, Is.True);
+        Assert.That(result.EstimatedWaitSeconds, Is.EqualTo(120));
         Assert.That(updatedSession, Is.Not.Null);
         Assert.That(updatedSession.Score, Is.EqualTo(91));
         Assert.That(updatedSession.QuestionScores, Does.Contain("91"));
-        Assert.That(updatedSession.ReportData, Does.Contain("AI completion: Interview completed"));
+        Assert.That(result.Completion, Is.Empty);
         Assert.That(updatedTurn, Is.Not.Null);
         Assert.That(updatedTurn.AnswerText, Is.EqualTo("Answer that should complete"));
         Assert.That(updatedTurn.Score, Is.EqualTo(91));
@@ -2497,8 +2503,9 @@ public class RuntimeServiceTests
             Assert.That(rubricDocument.RootElement.GetProperty("score").GetDecimal(), Is.EqualTo(91));
             Assert.That(rubricDocument.RootElement.GetProperty("scoring").GetProperty("feedback").GetString(), Is.EqualTo("Strong"));
         }
-        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Once);
-        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => s.CompletedOnUtc.HasValue && !s.IsActive)), Times.Once);
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(s => !s.CompletedOnUtc.HasValue && !s.IsActive && string.IsNullOrWhiteSpace(s.ReportData))), Times.AtLeastOnce);
+        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Never);
+        strengthsGate.SetResult(new AIInterviewStrengthsSummaryResponse { Success = false });
     }
 
     [Test]
@@ -2560,10 +2567,13 @@ public class RuntimeServiceTests
             })
             .Returns(Task.CompletedTask);
         localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        var finalScoringStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseFinalScoring = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         aiClient.Setup(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()))
             .Returns(async () =>
             {
-                await Task.Delay(25);
+                finalScoringStarted.TrySetResult();
+                await releaseFinalScoring.Task;
                 return new AIInterviewFinalScoringResponse
                 {
                     Success = true,
@@ -2609,21 +2619,22 @@ public class RuntimeServiceTests
             service.SubmitAnswerAsync(session.Token, "Final answer retry with concrete implementation detail."));
 
         Assert.That(results.All(result => result.Success && result.IsTerminated), Is.True);
-        Assert.That(results.Select(result => result.Score), Is.All.EqualTo(91));
-        Assert.That(results.All(result => result.Completion.Contains("Completed once.")), Is.True);
-        Assert.That(session.CompletedOnUtc.HasValue, Is.True);
+        Assert.That(results.All(result => result.ReportGenerationInProgress), Is.True);
+        Assert.That(results.All(result => !result.ReportReady && string.IsNullOrWhiteSpace(result.ReportUrl)), Is.True);
+        Assert.That(results.Select(result => result.EstimatedWaitSeconds), Is.All.EqualTo(120));
+        Assert.That(session.CompletedOnUtc.HasValue, Is.False);
         Assert.That(session.IsActive, Is.False);
-        Assert.That(session.ReportData, Does.Contain("Completed once."));
+        Assert.That(session.ReportData, Is.Empty);
         var persistedAnswer = turn.AnswerText;
-        var completedRetry = await service.SubmitAnswerAsync(session.Token, "");
-        Assert.That(completedRetry.Success, Is.True);
-        Assert.That(completedRetry.IsTerminated, Is.True);
-        Assert.That(completedRetry.Score, Is.EqualTo(91));
-        Assert.That(completedRetry.Completion, Does.Contain("Completed once."));
+        var pendingRetry = await service.SubmitAnswerAsync(session.Token, "Final answer retry with concrete implementation detail.");
+        Assert.That(pendingRetry.Success, Is.True);
+        Assert.That(pendingRetry.IsTerminated, Is.True);
+        Assert.That(pendingRetry.ReportGenerationInProgress, Is.True);
         Assert.That(turn.AnswerText, Is.EqualTo(persistedAnswer));
+        await finalScoringStarted.Task;
+        releaseFinalScoring.SetResult();
         aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Once);
-        aiClient.Verify(x => x.GenerateStrengthsSummaryAsync(It.IsAny<AIInterviewStrengthsSummaryRequest>()), Times.Once);
-        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Once);
+        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Never);
     }
 
     [Test]

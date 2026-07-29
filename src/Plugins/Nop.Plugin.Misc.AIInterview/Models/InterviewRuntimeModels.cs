@@ -57,6 +57,7 @@ public record RuntimeClientSettingsModel
     public string RecordingUploadUrl { get; set; }
     public string BeginInterviewUrl { get; set; }
     public string PrepareInterviewUrl { get; set; }
+    public string CompletionStatusUrl { get; set; }
     public string AcknowledgeGuidelinesUrl { get; set; }
     public string RuntimeClientEventUrl { get; set; }
     public string SpeechRegion { get; set; }
@@ -112,6 +113,7 @@ public record SubmitInterviewAnswerResponse
     public bool IsTerminated { get; init; }
     public string Completion { get; init; }
     public string ReportUrl { get; init; }
+    public bool ReportReady { get; init; }
     public string Question { get; init; }
     public InterviewTurnViewModel Turn { get; init; }
     public bool Interrupted { get; init; }
@@ -119,6 +121,7 @@ public record SubmitInterviewAnswerResponse
     public string Feedback { get; init; }
     public string Message { get; init; }
     public bool ReportGenerationInProgress { get; init; }
+    public bool ReportGenerationFailed { get; init; }
     public int EstimatedWaitSeconds { get; init; }
     public IList<InterviewTurnViewModel> Turns { get; init; } = new List<InterviewTurnViewModel>();
 }
@@ -138,9 +141,22 @@ public record CompleteInterviewResponse
     public string Message { get; init; }
     public string Completion { get; init; }
     public string ReportUrl { get; init; }
+    public bool ReportReady { get; init; }
     public bool ReportGenerationInProgress { get; init; }
+    public bool ReportGenerationFailed { get; init; }
     public int EstimatedWaitSeconds { get; init; }
     public IList<InterviewTurnViewModel> Turns { get; init; } = new List<InterviewTurnViewModel>();
+}
+
+public record CompletionStatusResponseModel
+{
+    public bool Success { get; init; }
+    public string Message { get; init; }
+    public bool ReportReady { get; init; }
+    public bool ReportGenerationInProgress { get; init; }
+    public bool ReportGenerationFailed { get; init; }
+    public string ReportUrl { get; init; }
+    public int EstimatedWaitSeconds { get; init; }
 }
 
 public record RecordingUploadResponseModel
