@@ -2597,23 +2597,29 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public void RuntimeView_ReportReadyAction_IsAboveCameraAndHiddenWithoutReadyUrl()
+    public void RuntimeView_ReportReadyStatusAndAction_ShareResponsiveRowAboveCamera()
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
         var runtimeCssText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
 
+        var reportRowIndex = runtimeViewText.IndexOf("id=\"runtime-report-ready-row\"", StringComparison.Ordinal);
         var headerStatusIndex = runtimeViewText.IndexOf("id=\"runtime-header-status\"", StringComparison.Ordinal);
         var reportActionIndex = runtimeViewText.IndexOf("id=\"runtime-report-ready-action\"", StringComparison.Ordinal);
         var reportButtonIndex = runtimeViewText.IndexOf("id=\"view-report\"", StringComparison.Ordinal);
         var progressIndex = runtimeViewText.IndexOf("class=\"runtime-progress\"", StringComparison.Ordinal);
         var runtimeLayoutIndex = runtimeViewText.IndexOf("class=\"runtime-layout\"", StringComparison.Ordinal);
 
-        Assert.That(headerStatusIndex, Is.GreaterThanOrEqualTo(0));
+        Assert.That(reportRowIndex, Is.GreaterThanOrEqualTo(0));
+        Assert.That(headerStatusIndex, Is.GreaterThan(reportRowIndex));
         Assert.That(reportActionIndex, Is.GreaterThan(headerStatusIndex));
         Assert.That(reportButtonIndex, Is.GreaterThan(reportActionIndex));
         Assert.That(progressIndex, Is.GreaterThan(reportButtonIndex));
         Assert.That(runtimeLayoutIndex, Is.GreaterThan(progressIndex));
+        Assert.That(runtimeViewText.Split("id=\"runtime-report-ready-row\"", StringSplitOptions.None).Length - 1, Is.EqualTo(1));
+        Assert.That(runtimeViewText.Split("id=\"runtime-header-status\"", StringSplitOptions.None).Length - 1, Is.EqualTo(1));
+        Assert.That(runtimeViewText.Split("id=\"runtime-report-ready-action\"", StringSplitOptions.None).Length - 1, Is.EqualTo(1));
         Assert.That(runtimeViewText.Split("id=\"view-report\"", StringSplitOptions.None).Length - 1, Is.EqualTo(1));
+        Assert.That(runtimeViewText, Does.Contain("id=\"runtime-report-ready-row\" class=\"runtime-report-ready-row\""));
         Assert.That(runtimeViewText, Does.Contain("id=\"runtime-report-ready-action\" class=\"runtime-report-ready-action runtime-js-hidden\""));
 
         var updateStart = runtimeViewText.IndexOf("const updateReportButton = (reportUrl) =>", StringComparison.Ordinal);
@@ -2645,20 +2651,52 @@ public class RuntimeAndAdminTests
         Assert.That(navigationBlock, Does.Contain("reportNavigationStarted = true;"));
         Assert.That(navigationBlock, Does.Contain("window.location.href = reportUrl;"));
 
+        var rowCssStart = runtimeCssText.IndexOf(".runtime-report-ready-row {", StringComparison.Ordinal);
+        var rowCssEnd = runtimeCssText.IndexOf('}', rowCssStart);
+        var rowCssBlock = runtimeCssText.Substring(rowCssStart, rowCssEnd - rowCssStart);
+        Assert.That(rowCssBlock, Does.Contain("display: flex;"));
+        Assert.That(rowCssBlock, Does.Contain("align-items: center;"));
+        Assert.That(rowCssBlock, Does.Contain("flex-wrap: nowrap;"));
+        Assert.That(rowCssBlock, Does.Contain("gap: 8px;"));
+        Assert.That(rowCssBlock, Does.Contain("min-width: 0;"));
+        Assert.That(rowCssBlock, Does.Contain("background: #f0fdf4;"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-report-ready-row:has(> .runtime-header-status.runtime-js-hidden):has(> .runtime-report-ready-action.runtime-js-hidden)"));
+
+        var headerCssStart = runtimeCssText.IndexOf(".runtime-report-ready-row > .runtime-header-status {", StringComparison.Ordinal);
+        var headerCssEnd = runtimeCssText.IndexOf('}', headerCssStart);
+        var headerCssBlock = runtimeCssText.Substring(headerCssStart, headerCssEnd - headerCssStart);
+        Assert.That(headerCssBlock, Does.Contain("min-width: 0;"));
+        Assert.That(headerCssBlock, Does.Contain("padding: 0;"));
+        Assert.That(headerCssBlock, Does.Contain("border: 0;"));
+        Assert.That(headerCssBlock, Does.Contain("background: transparent;"));
+
         var actionCssStart = runtimeCssText.IndexOf(".runtime-report-ready-action {", StringComparison.Ordinal);
         var actionCssEnd = runtimeCssText.IndexOf('}', actionCssStart);
         var actionCssBlock = runtimeCssText.Substring(actionCssStart, actionCssEnd - actionCssStart);
         Assert.That(actionCssBlock, Does.Contain("display: flex;"));
         Assert.That(actionCssBlock, Does.Contain("align-items: center;"));
-        Assert.That(actionCssBlock, Does.Contain("flex-wrap: wrap;"));
-        Assert.That(actionCssBlock, Does.Contain("gap: 8px;"));
+        Assert.That(actionCssBlock, Does.Contain("flex: 0 0 auto;"));
         Assert.That(actionCssBlock, Does.Contain("min-width: 0;"));
+        Assert.That(actionCssBlock, Does.Contain("padding: 0;"));
+        Assert.That(actionCssBlock, Does.Contain("border: 0;"));
+        Assert.That(actionCssBlock, Does.Contain("background: transparent;"));
 
         var buttonCssStart = runtimeCssText.IndexOf(".runtime-report-ready-action #view-report {", StringComparison.Ordinal);
         var buttonCssEnd = runtimeCssText.IndexOf('}', buttonCssStart);
         var buttonCssBlock = runtimeCssText.Substring(buttonCssStart, buttonCssEnd - buttonCssStart);
         Assert.That(buttonCssBlock, Does.Contain("max-width: 100%;"));
+        Assert.That(buttonCssBlock, Does.Contain("min-height: 36px;"));
+        Assert.That(buttonCssBlock, Does.Contain("border: 1px solid var(--jb-accent-dark, #24b99a);"));
+        Assert.That(buttonCssBlock, Does.Contain("background: var(--jb-accent, #35d6b4);"));
+        Assert.That(buttonCssBlock, Does.Contain("font-family: \"Fjalla One\", Arial, sans-serif;"));
         Assert.That(buttonCssBlock, Does.Contain("white-space: normal;"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-report-ready-action #view-report:hover:not(:disabled)"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-report-ready-action #view-report:focus-visible"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-report-ready-action #view-report:active:not(:disabled)"));
+        Assert.That(runtimeCssText, Does.Contain("box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.3);"));
+        Assert.That(runtimeCssText, Does.Contain("@media (max-width: 520px)"));
+        Assert.That(runtimeCssText, Does.Contain(".runtime-report-ready-row {\r\n        flex-wrap: wrap;\r\n    }")
+            .Or.Contain(".runtime-report-ready-row {\n        flex-wrap: wrap;\n    }"));
     }
 
     [Test]
