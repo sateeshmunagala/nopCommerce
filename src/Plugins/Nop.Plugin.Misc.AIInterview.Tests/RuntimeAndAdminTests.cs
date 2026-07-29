@@ -2700,6 +2700,42 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void RuntimeView_MediaControls_AreSeparatedFromCameraFeed()
+    {
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+        var runtimeCssText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
+
+        var videoIndex = runtimeViewText.IndexOf("<div class=\"runtime-video\">", StringComparison.Ordinal);
+        var captionIndex = runtimeViewText.IndexOf("id=\"runtime-video-caption\"", videoIndex, StringComparison.Ordinal);
+        var controlsIndex = runtimeViewText.IndexOf("<div class=\"runtime-controls\">", captionIndex, StringComparison.Ordinal);
+        var screenShareStatusIndex = runtimeViewText.IndexOf("id=\"screen-share-status\"", controlsIndex, StringComparison.Ordinal);
+
+        Assert.That(videoIndex, Is.GreaterThanOrEqualTo(0));
+        Assert.That(captionIndex, Is.GreaterThan(videoIndex));
+        Assert.That(controlsIndex, Is.GreaterThan(captionIndex));
+        Assert.That(screenShareStatusIndex, Is.GreaterThan(controlsIndex));
+
+        var stageCssStart = runtimeCssText.IndexOf(".runtime-stage {", StringComparison.Ordinal);
+        var stageCssEnd = runtimeCssText.IndexOf('}', stageCssStart);
+        var stageCssBlock = runtimeCssText.Substring(stageCssStart, stageCssEnd - stageCssStart);
+        Assert.That(stageCssBlock, Does.Contain("grid-template-rows: minmax(0, 1fr) auto auto auto;"));
+        Assert.That(stageCssBlock, Does.Contain("gap: 14px;"));
+
+        var controlsCssStart = runtimeCssText.IndexOf(".runtime-controls {", StringComparison.Ordinal);
+        var controlsCssEnd = runtimeCssText.IndexOf('}', controlsCssStart);
+        var controlsCssBlock = runtimeCssText.Substring(controlsCssStart, controlsCssEnd - controlsCssStart);
+        Assert.That(controlsCssBlock, Does.Contain("position: relative;"));
+        Assert.That(controlsCssBlock, Does.Contain("bottom: auto;"));
+        Assert.That(controlsCssBlock, Does.Not.Contain("position: sticky;"));
+        Assert.That(controlsCssBlock, Does.Contain("margin-top: 0;"));
+        Assert.That(controlsCssBlock, Does.Contain("border-top: 3px solid var(--jb-accent-dark, #24b99a);"));
+        Assert.That(controlsCssBlock, Does.Contain("background: #f8fafc;"));
+        Assert.That(controlsCssBlock, Does.Contain("isolation: isolate;"));
+        Assert.That(controlsCssBlock, Does.Contain("box-shadow: 0 8px 20px rgba(15, 23, 42, 0.09);"));
+        Assert.That(controlsCssBlock, Does.Not.Contain("rgba(255, 255, 255, 0.96)"));
+    }
+
+    [Test]
     public void RuntimeView_Uses_Contextual_Title_And_Separates_Candidate_Details()
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));

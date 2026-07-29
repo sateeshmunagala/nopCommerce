@@ -1679,21 +1679,58 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
         await EnsureRuntimeActivityLogTypesAsync();
 
-        if (_scheduleTaskService != null &&
-            await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.CompletionRecoveryTaskType) == null)
-        {
-            await _scheduleTaskService.InsertTaskAsync(new ScheduleTask
-            {
-                Enabled = true,
-                StopOnError = false,
-                LastEnabledUtc = DateTime.UtcNow,
-                Seconds = AIInterviewDefaults.CompletionRecoveryTaskPeriodSeconds,
-                Name = AIInterviewDefaults.CompletionRecoveryTaskName,
-                Type = AIInterviewDefaults.CompletionRecoveryTaskType
-            });
-        }
+        await EnsureCompletionRecoveryTaskAsync();
 
         await base.InstallAsync();
+    }
+
+    private async Task EnsureCompletionRecoveryTaskAsync()
+    {
+        if (_scheduleTaskService == null)
+            return;
+
+        var completionTask = await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.CompletionRecoveryTaskType);
+        var legacyCompletionTask = await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.LegacyCompletionRecoveryTaskType);
+
+        if (completionTask != null)
+        {
+            if (legacyCompletionTask != null && !ReferenceEquals(legacyCompletionTask, completionTask))
+                await _scheduleTaskService.DeleteTaskAsync(legacyCompletionTask);
+
+            return;
+        }
+
+        if (legacyCompletionTask != null)
+        {
+            legacyCompletionTask.Type = AIInterviewDefaults.CompletionRecoveryTaskType;
+            await _scheduleTaskService.UpdateTaskAsync(legacyCompletionTask);
+            return;
+        }
+
+        await _scheduleTaskService.InsertTaskAsync(new ScheduleTask
+        {
+            Enabled = true,
+            StopOnError = false,
+            LastEnabledUtc = DateTime.UtcNow,
+            Seconds = AIInterviewDefaults.CompletionRecoveryTaskPeriodSeconds,
+            Name = AIInterviewDefaults.CompletionRecoveryTaskName,
+            Type = AIInterviewDefaults.CompletionRecoveryTaskType
+        });
+    }
+
+    private async Task DeleteCompletionRecoveryTasksAsync()
+    {
+        if (_scheduleTaskService == null)
+            return;
+
+        var completionTask = await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.CompletionRecoveryTaskType);
+        var legacyCompletionTask = await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.LegacyCompletionRecoveryTaskType);
+
+        if (completionTask != null)
+            await _scheduleTaskService.DeleteTaskAsync(completionTask);
+
+        if (legacyCompletionTask != null && !ReferenceEquals(legacyCompletionTask, completionTask))
+            await _scheduleTaskService.DeleteTaskAsync(legacyCompletionTask);
     }
 
     /// <summary>
@@ -1716,12 +1753,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.DeleteLocaleResourcesAsync(AIInterviewDefaults.LocalizationPrefix);
         await DeleteRuntimeActivityLogTypesAsync();
 
-        if (_scheduleTaskService != null)
-        {
-            var completionTask = await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.CompletionRecoveryTaskType);
-            if (completionTask != null)
-                await _scheduleTaskService.DeleteTaskAsync(completionTask);
-        }
+        await DeleteCompletionRecoveryTasksAsync();
 
         await base.UninstallAsync();
     }
