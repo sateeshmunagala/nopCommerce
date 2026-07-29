@@ -132,6 +132,31 @@ public class ApplicationService : IApplicationService
         return await _applicationRepository.GetAllAsync(query => query.Where(a => a.CustomerId == customerId && a.JobTitle == jobTitle));
     }
 
+    public async Task<IList<JobApplication>> GetPreviousResumeSourceApplicationsAsync(int customerId)
+    {
+        return await _applicationRepository.GetAllAsync(query =>
+        {
+            var eligibleApplications = query.Where(application =>
+                application.CustomerId == customerId &&
+                application.ResumeDownloadId > 0);
+
+            return eligibleApplications
+                .Where(application => !eligibleApplications.Any(newerApplication =>
+                    newerApplication.ResumeDownloadId == application.ResumeDownloadId &&
+                    (newerApplication.CreatedOnUtc > application.CreatedOnUtc ||
+                     (newerApplication.CreatedOnUtc == application.CreatedOnUtc && newerApplication.Id > application.Id))))
+                .OrderByDescending(application => application.CreatedOnUtc)
+                .ThenByDescending(application => application.Id)
+                .Select(application => new JobApplication
+                {
+                    Id = application.Id,
+                    ResumeDownloadId = application.ResumeDownloadId,
+                    CreatedOnUtc = application.CreatedOnUtc
+                })
+                .Take(3);
+        });
+    }
+
     public async Task<IPagedList<JobApplication>> GetApplicationsAsync(string candidateNameOrEmail = null, string status = null, decimal? minScore = null, decimal? maxScore = null, DateTime? startDate = null, DateTime? endDate = null, int productId = 0, int vendorId = 0, int pageIndex = 0, int pageSize = int.MaxValue, bool sortByScore = false)
     {
         var query = _applicationRepository.Table;
@@ -512,6 +537,36 @@ public class InterviewSessionService : IInterviewSessionService
                 })
                 .Take(3);
         });
+    }
+
+    public async Task<IList<PreviousResumeSource>> GetPreviousResumeSourcesAsync(int customerId)
+    {
+        var applications = await _applicationService.GetPreviousResumeSourceApplicationsAsync(customerId) ?? new List<JobApplication>();
+        var sessions = await GetPreviousResumeSourceSessionsAsync(customerId) ?? new List<InterviewSession>();
+
+        return applications
+            .Select(application => new PreviousResumeSource
+            {
+                SourceId = application.Id,
+                ResumeDownloadId = application.ResumeDownloadId,
+                CreatedOnUtc = application.CreatedOnUtc,
+                DefaultLabel = "Application resume"
+            })
+            .Concat(sessions.Select(session => new PreviousResumeSource
+            {
+                SourceId = session.Id,
+                ResumeDownloadId = session.ResumeDownloadId,
+                CreatedOnUtc = session.CreatedOnUtc,
+                DefaultLabel = "Practice resume"
+            }))
+            .OrderByDescending(source => source.CreatedOnUtc)
+            .ThenByDescending(source => source.SourceId)
+            .ThenBy(source => source.DefaultLabel, StringComparer.Ordinal)
+            .ThenByDescending(source => source.ResumeDownloadId)
+            .GroupBy(source => source.ResumeDownloadId)
+            .Select(group => group.First())
+            .Take(3)
+            .ToList();
     }
 
     public async Task<IList<InterviewSession>> GetCompletionWorkSessionsAsync(DateTime staleProcessingBeforeUtc, int maxCount = 20)

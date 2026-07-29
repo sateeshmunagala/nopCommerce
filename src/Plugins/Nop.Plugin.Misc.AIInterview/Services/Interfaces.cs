@@ -8,6 +8,14 @@ using Nop.Web.Models.Catalog;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
+public class PreviousResumeSource
+{
+    public int SourceId { get; set; }
+    public int ResumeDownloadId { get; set; }
+    public DateTime CreatedOnUtc { get; set; }
+    public string DefaultLabel { get; set; }
+}
+
 public interface IApplicationService
 {
     Task SendApplicationSubmittedNotificationAsync(JobApplication application, int languageId);
@@ -16,6 +24,7 @@ public interface IApplicationService
     Task<JobApplication> GetJobApplicationByIdAsync(int applicationId);
     Task<IList<JobApplication>> GetJobApplicationsByCustomerIdAsync(int customerId);
     Task<IList<JobApplication>> GetJobApplicationsByCustomerIdAndJobTitleAsync(int customerId, string jobTitle);
+    Task<IList<JobApplication>> GetPreviousResumeSourceApplicationsAsync(int customerId);
     Task<IPagedList<JobApplication>> GetApplicationsAsync(string candidateNameOrEmail = null, string status = null, decimal? minScore = null, decimal? maxScore = null, DateTime? startDate = null, DateTime? endDate = null, int productId = 0, int vendorId = 0, int pageIndex = 0, int pageSize = int.MaxValue, bool sortByScore = false);
     Task<int> GetApplicationCountAsync(int productId = 0, int vendorId = 0, string status = null);
     Task UpdateJobApplicationAsync(JobApplication application);
@@ -35,6 +44,7 @@ public interface IInterviewSessionService
     Task<InterviewSession> GetSessionByRecordingShareTokenAsync(string token);
     Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId);
     Task<IList<InterviewSession>> GetPreviousResumeSourceSessionsAsync(int customerId);
+    Task<IList<PreviousResumeSource>> GetPreviousResumeSourcesAsync(int customerId);
     Task<IList<InterviewSession>> GetCompletionWorkSessionsAsync(DateTime staleProcessingBeforeUtc, int maxCount = 20);
     Task<string> EnsureRecordingShareTokenAsync(InterviewSession session);
     Task UpdateInterviewSessionAsync(InterviewSession session);

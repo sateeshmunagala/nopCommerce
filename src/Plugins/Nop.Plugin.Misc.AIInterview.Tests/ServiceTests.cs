@@ -64,6 +64,38 @@ public class ServiceTests
             _dateTimeHelper.Object);
     }
 
+    private static void SetupRepositoryQuery<TEntity>(Mock<IRepository<TEntity>> repository, IList<TEntity> entities)
+        where TEntity : Nop.Core.BaseEntity
+    {
+        repository
+            .Setup(instance => instance.GetAllAsync(
+                It.IsAny<Func<IQueryable<TEntity>, IQueryable<TEntity>>>(),
+                It.IsAny<Func<ICacheKeyService, CacheKey>>(),
+                It.IsAny<bool>()))
+            .ReturnsAsync((
+                Func<IQueryable<TEntity>, IQueryable<TEntity>> query,
+                Func<ICacheKeyService, CacheKey> cacheKeyFactory,
+                bool includeDeleted) => query(entities.AsQueryable()).ToList());
+    }
+
+    private InterviewSessionService CreateInterviewSessionService(IApplicationService applicationService)
+    {
+        return new InterviewSessionService(
+            _sessionRepository.Object,
+            new Mock<Nop.Services.Customers.ICustomerService>().Object,
+            applicationService,
+            new Mock<Nop.Services.Catalog.IProductService>().Object,
+            _workflowMessageService.Object,
+            _messageTemplateService.Object,
+            _emailAccountService.Object,
+            _messageTokenProvider.Object,
+            _emailAccountSettings,
+            _storeContext.Object,
+            _webHelper.Object,
+            new Mock<Nop.Services.Vendors.IVendorService>().Object,
+            _dateTimeHelper.Object);
+    }
+
     [Test]
     public async Task CanInsertJobApplication()
     {
@@ -479,29 +511,8 @@ public class ServiceTests
             new() { Id = 6, CustomerId = 8, ResumeDownloadId = 50, CreatedOnUtc = createdUtc },
             new() { Id = 7, CustomerId = 7, ResumeDownloadId = 0, CreatedOnUtc = createdUtc.AddHours(1) }
         };
-        _sessionRepository
-            .Setup(repository => repository.GetAllAsync(
-                It.IsAny<Func<IQueryable<InterviewSession>, IQueryable<InterviewSession>>>(),
-                It.IsAny<Func<ICacheKeyService, CacheKey>>(),
-                It.IsAny<bool>()))
-            .ReturnsAsync((
-                Func<IQueryable<InterviewSession>, IQueryable<InterviewSession>> query,
-                Func<ICacheKeyService, CacheKey> cacheKeyFactory,
-                bool includeDeleted) => query(sessions.AsQueryable()).ToList());
-        var service = new InterviewSessionService(
-            _sessionRepository.Object,
-            new Mock<Nop.Services.Customers.ICustomerService>().Object,
-            new Mock<IApplicationService>().Object,
-            new Mock<Nop.Services.Catalog.IProductService>().Object,
-            _workflowMessageService.Object,
-            _messageTemplateService.Object,
-            _emailAccountService.Object,
-            _messageTokenProvider.Object,
-            _emailAccountSettings,
-            _storeContext.Object,
-            _webHelper.Object,
-            new Mock<Nop.Services.Vendors.IVendorService>().Object,
-            _dateTimeHelper.Object);
+        SetupRepositoryQuery(_sessionRepository, sessions);
+        var service = CreateInterviewSessionService(new Mock<IApplicationService>().Object);
 
         var result = await service.GetPreviousResumeSourceSessionsAsync(7);
 
@@ -514,11 +525,109 @@ public class ServiceTests
     }
 
     [Test]
-    public void MockPracticeProductTemplate_UsesProjectedPreviousResumeSourceLookup()
+    public async Task ApplicationService_GetPreviousResumeSourceApplications_FiltersProjectsAndLimitsDistinctDownloads()
+    {
+        var createdUtc = new DateTime(2026, 7, 29, 8, 0, 0, DateTimeKind.Utc);
+        var applications = new List<JobApplication>
+        {
+            new() { Id = 1, CustomerId = 7, ResumeDownloadId = 10, CreatedOnUtc = createdUtc.AddDays(-5), ResumeProfileJson = "heavy-old-profile" },
+            new() { Id = 2, CustomerId = 7, ResumeDownloadId = 10, CreatedOnUtc = createdUtc.AddDays(-4), ResumeProfileError = "heavy-new-error" },
+            new() { Id = 3, CustomerId = 7, ResumeDownloadId = 20, CreatedOnUtc = createdUtc.AddDays(-3) },
+            new() { Id = 4, CustomerId = 7, ResumeDownloadId = 30, CreatedOnUtc = createdUtc.AddDays(-2) },
+            new() { Id = 8, CustomerId = 7, ResumeDownloadId = 30, CreatedOnUtc = createdUtc.AddDays(-2), StatusComment = "heavy-tie-comment" },
+            new() { Id = 5, CustomerId = 7, ResumeDownloadId = 40, CreatedOnUtc = createdUtc.AddDays(-1) },
+            new() { Id = 6, CustomerId = 8, ResumeDownloadId = 50, CreatedOnUtc = createdUtc },
+            new() { Id = 7, CustomerId = 7, ResumeDownloadId = 0, CreatedOnUtc = createdUtc.AddHours(1) }
+        };
+        SetupRepositoryQuery(_applicationRepository, applications);
+
+        var result = await _applicationService.GetPreviousResumeSourceApplicationsAsync(7);
+
+        Assert.That(result.Select(application => application.Id), Is.EqualTo(new[] { 5, 8, 3 }));
+        Assert.That(result.Select(application => application.ResumeDownloadId), Is.EqualTo(new[] { 40, 30, 20 }));
+        Assert.That(result.All(application =>
+            application.CustomerId == 0 &&
+            application.ResumeProfileJson == null &&
+            application.ResumeProfileError == null &&
+            application.StatusComment == null), Is.True);
+    }
+
+    [Test]
+    public async Task InterviewSessionService_GetPreviousResumeSources_ReturnsApplicationOnlySources()
+    {
+        var applicationService = new Mock<IApplicationService>();
+        applicationService.Setup(service => service.GetPreviousResumeSourceApplicationsAsync(7))
+            .ReturnsAsync(new List<JobApplication>
+            {
+                new() { Id = 3, ResumeDownloadId = 30, CreatedOnUtc = new DateTime(2026, 7, 29, 10, 0, 0, DateTimeKind.Utc) },
+                new() { Id = 2, ResumeDownloadId = 20, CreatedOnUtc = new DateTime(2026, 7, 28, 10, 0, 0, DateTimeKind.Utc) }
+            });
+        SetupRepositoryQuery(_sessionRepository, new List<InterviewSession>());
+        var service = CreateInterviewSessionService(applicationService.Object);
+
+        var result = await service.GetPreviousResumeSourcesAsync(7);
+
+        Assert.That(result.Select(source => source.ResumeDownloadId), Is.EqualTo(new[] { 30, 20 }));
+        Assert.That(result.All(source => source.DefaultLabel == "Application resume"), Is.True);
+    }
+
+    [Test]
+    public async Task InterviewSessionService_GetPreviousResumeSources_ReturnsSessionOnlySources()
+    {
+        var applicationService = new Mock<IApplicationService>();
+        applicationService.Setup(service => service.GetPreviousResumeSourceApplicationsAsync(7))
+            .ReturnsAsync(new List<JobApplication>());
+        SetupRepositoryQuery(_sessionRepository, new List<InterviewSession>
+        {
+            new() { Id = 4, CustomerId = 7, ResumeDownloadId = 40, CreatedOnUtc = new DateTime(2026, 7, 29, 10, 0, 0, DateTimeKind.Utc) },
+            new() { Id = 3, CustomerId = 7, ResumeDownloadId = 30, CreatedOnUtc = new DateTime(2026, 7, 28, 10, 0, 0, DateTimeKind.Utc) }
+        });
+        var service = CreateInterviewSessionService(applicationService.Object);
+
+        var result = await service.GetPreviousResumeSourcesAsync(7);
+
+        Assert.That(result.Select(source => source.ResumeDownloadId), Is.EqualTo(new[] { 40, 30 }));
+        Assert.That(result.All(source => source.DefaultLabel == "Practice resume"), Is.True);
+    }
+
+    [Test]
+    public async Task InterviewSessionService_GetPreviousResumeSources_DeduplicatesOrdersAndLimitsCombinedSources()
+    {
+        var tiedUtc = new DateTime(2026, 7, 28, 10, 0, 0, DateTimeKind.Utc);
+        var applicationService = new Mock<IApplicationService>();
+        applicationService.Setup(service => service.GetPreviousResumeSourceApplicationsAsync(7))
+            .ReturnsAsync(new List<JobApplication>
+            {
+                new() { Id = 101, ResumeDownloadId = 10, CreatedOnUtc = tiedUtc.AddDays(1) },
+                new() { Id = 102, ResumeDownloadId = 20, CreatedOnUtc = tiedUtc },
+                new() { Id = 103, ResumeDownloadId = 30, CreatedOnUtc = tiedUtc.AddDays(-1) }
+            });
+        SetupRepositoryQuery(_sessionRepository, new List<InterviewSession>
+        {
+            new() { Id = 201, CustomerId = 7, ResumeDownloadId = 10, CreatedOnUtc = tiedUtc },
+            new() { Id = 202, CustomerId = 7, ResumeDownloadId = 40, CreatedOnUtc = tiedUtc },
+            new() { Id = 104, CustomerId = 7, ResumeDownloadId = 50, CreatedOnUtc = tiedUtc.AddDays(-1) }
+        });
+        var service = CreateInterviewSessionService(applicationService.Object);
+
+        var result = await service.GetPreviousResumeSourcesAsync(7);
+
+        Assert.That(result, Has.Count.EqualTo(3));
+        Assert.That(result.Select(source => source.ResumeDownloadId), Is.EqualTo(new[] { 10, 40, 20 }));
+        Assert.That(result.Select(source => source.ResumeDownloadId).Distinct().Count(), Is.EqualTo(result.Count));
+        Assert.That(result[0].DefaultLabel, Is.EqualTo("Application resume"));
+        Assert.That(result[1].SourceId, Is.EqualTo(202));
+        Assert.That(result[2].SourceId, Is.EqualTo(102));
+    }
+
+    [Test]
+    public void MockPracticeProductTemplate_UsesCombinedPreviousResumeSourceLookup()
     {
         var template = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "ProductTemplate.MockPractice.cshtml"));
 
-        Assert.That(template, Does.Contain("GetPreviousResumeSourceSessionsAsync(customer.Id)"));
+        Assert.That(template, Does.Contain("GetPreviousResumeSourcesAsync(customer.Id)"));
+        Assert.That(template, Does.Not.Contain("GetPreviousResumeSourceSessionsAsync(customer.Id)"));
+        Assert.That(template, Does.Not.Contain("GetJobApplicationsByCustomerIdAsync(customer.Id)"));
         Assert.That(template, Does.Not.Contain("GetSessionsByCustomerIdAsync(customer.Id)"));
     }
 

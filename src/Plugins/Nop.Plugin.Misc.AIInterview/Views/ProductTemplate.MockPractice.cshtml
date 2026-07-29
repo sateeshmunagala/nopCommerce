@@ -11,7 +11,6 @@
 @using Nop.Services.Media
 @inject IWorkContext workContext
 @inject ICustomerService customerService
-@inject IApplicationService applicationService
 @inject IInterviewSessionService interviewSessionService
 @inject IDateTimeHelper dateTimeHelper
 @inject IDownloadService downloadService
@@ -38,41 +37,20 @@
 
     var customer = await workContext.GetCurrentCustomerAsync();
     var isAuthenticated = customer != null && !await customerService.IsGuestAsync(customer);
-    var applications = isAuthenticated ? await applicationService.GetJobApplicationsByCustomerIdAsync(customer.Id) ?? new List<Nop.Plugin.Misc.AIInterview.Domain.JobApplication>() : new List<Nop.Plugin.Misc.AIInterview.Domain.JobApplication>();
-    var sessions = isAuthenticated ? await interviewSessionService.GetPreviousResumeSourceSessionsAsync(customer.Id) ?? new List<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>() : new List<Nop.Plugin.Misc.AIInterview.Domain.InterviewSession>();
+    var resumeEntries = isAuthenticated
+        ? await interviewSessionService.GetPreviousResumeSourcesAsync(customer.Id) ?? new List<PreviousResumeSource>()
+        : new List<PreviousResumeSource>();
     var availableResumes = new List<SelectListItem>();
     if (isAuthenticated)
     {
-        var resumeEntries = applications
-            .Where(application => application.ResumeDownloadId > 0)
-            .Select(application => new
-            {
-                DownloadId = application.ResumeDownloadId,
-                application.CreatedOnUtc,
-                DefaultLabel = "Application resume"
-            })
-            .Concat(sessions
-                .Where(session => session.ResumeDownloadId > 0)
-                .Select(session => new
-                {
-                    DownloadId = session.ResumeDownloadId,
-                    session.CreatedOnUtc,
-                    DefaultLabel = "Practice resume"
-                }))
-            .OrderByDescending(entry => entry.CreatedOnUtc)
-            .ThenByDescending(entry => entry.DownloadId)
-            .GroupBy(entry => entry.DownloadId)
-            .Select(group => group.First())
-            .ToList();
-
         foreach (var entry in resumeEntries)
         {
-            var download = await downloadService.GetDownloadByIdAsync(entry.DownloadId);
+            var download = await downloadService.GetDownloadByIdAsync(entry.ResumeDownloadId);
             if (download == null)
                 continue;
 
             var fileName = string.IsNullOrWhiteSpace(download.Filename)
-                ? $"{entry.DefaultLabel} #{entry.DownloadId}"
+                ? $"{entry.DefaultLabel} #{entry.ResumeDownloadId}"
                 : download.Filename;
             var createdLabel = entry.CreatedOnUtc == default
                 ? string.Empty
@@ -83,7 +61,7 @@
 
             availableResumes.Add(new SelectListItem
             {
-                Value = entry.DownloadId.ToString(),
+                Value = entry.ResumeDownloadId.ToString(),
                 Text = optionText
             });
         }
