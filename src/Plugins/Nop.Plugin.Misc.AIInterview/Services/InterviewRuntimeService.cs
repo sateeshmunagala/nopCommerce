@@ -2206,6 +2206,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (session == null)
             return null;
 
+        if (PreparationTasks.TryGetValue(session.Id, out var activePreparation))
+            await activePreparation.Value;
+
         using var sessionLock = await AcquireSessionMutationLockAsync(session.Id);
         session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? session;
         if (!IsSessionUsable(session, DateTime.UtcNow))
@@ -2216,24 +2219,21 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     private async Task<InterviewRuntimeModel> EnsureInterviewStartedCoreAsync(InterviewSession session, Customer customer = null, bool sessionLockHeld = false)
     {
-        var ensuredTurns = await EnsureFirstQuestionTurnAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer, sessionLockHeld);
+        var ensuredTurns = await EnsureRequiredQuestionPlanAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer, sessionLockHeld);
         var turns = ensuredTurns.Turns.ToList();
-        if (!turns.Any())
+        if (!string.IsNullOrWhiteSpace(ensuredTurns.FailureReason))
         {
-            if (!string.IsNullOrWhiteSpace(ensuredTurns.FailureReason))
-            {
-                var unavailableModel = await BuildRuntimeModelAsync(session, turns, customer);
-                unavailableModel.CurrentQuestion = "AI service unavailable. Please try again later.";
-                unavailableModel.ClientSettings ??= new RuntimeClientSettingsModel();
-                unavailableModel.ClientSettings.SpeechAvailable = false;
-                var logCustomer = await ResolveLogCustomerAsync(session, customer);
-                await LogRuntimeIssueAsync(
-                    NopLogLevel.Warning,
-                    "AI Interview question plan unavailable",
-                    $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=question plan generation failed; Detail={BuildSafeValue(ensuredTurns.FailureReason ?? "AI service unavailable.")}.",
-                    logCustomer);
-                return unavailableModel;
-            }
+            var unavailableModel = await BuildRuntimeModelAsync(session, turns, customer);
+            unavailableModel.CurrentQuestion = "AI service unavailable. Please try again later.";
+            unavailableModel.ClientSettings ??= new RuntimeClientSettingsModel();
+            unavailableModel.ClientSettings.SpeechAvailable = false;
+            var logCustomer = await ResolveLogCustomerAsync(session, customer);
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Warning,
+                "AI Interview question plan unavailable",
+                $"Mode=plan; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason=question plan generation failed; Detail={BuildSafeValue(ensuredTurns.FailureReason ?? "AI service unavailable.")}.",
+                logCustomer);
+            return unavailableModel;
         }
 
         if (!session.StartedOnUtc.HasValue && InterviewTurnNormalizationHelper.GetVisibleRuntimeTurns(turns, GetMaxQuestions(session)).Any())
@@ -2293,12 +2293,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             if (!string.IsNullOrWhiteSpace(firstTurnResult.FailureReason))
                 return null;
 
-            preparedTurns = firstTurnResult.Turns
+            var normalizedTurns = await EnsureSingleActiveTurnAsync(session, firstTurnResult.Turns, customer);
+            preparedTurns = normalizedTurns.Turns
                 .OrderBy(turn => turn.SequenceNumber)
                 .ThenBy(turn => turn.Id)
                 .ToList();
             var readyPersistedCount = preparedTurns.Select(turn => turn.SequenceNumber).Distinct().Count(sequenceNumber => sequenceNumber >= 1 && sequenceNumber <= maxQuestions);
-            if (Enumerable.Range(1, maxQuestions).All(sequenceNumber => preparedTurns.Any(turn => turn.SequenceNumber == sequenceNumber)))
+            if (string.IsNullOrWhiteSpace(ValidatePersistedQuestionPlan(preparedTurns, maxQuestions)))
             {
                 await LogPreparationStageAsync(session, "total-preparation", totalStopwatch.ElapsedMilliseconds, true);
                 return new PrepareInterviewResponseModel
@@ -2374,11 +2375,17 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 .OrderBy(turn => turn.SequenceNumber)
                 .ThenBy(turn => turn.Id)
                 .ToList();
+            persistedTurns = (await EnsureSingleActiveTurnAsync(session, persistedTurns, customer)).Turns
+                .OrderBy(turn => turn.SequenceNumber)
+                .ThenBy(turn => turn.Id)
+                .ToList();
             var persistedCount = persistedTurns.Select(turn => turn.SequenceNumber).Distinct().Count(sequenceNumber => sequenceNumber >= 1 && sequenceNumber <= maxQuestions);
-            var ready = Enumerable.Range(1, maxQuestions).All(sequenceNumber => persistedTurns.Any(turn => turn.SequenceNumber == sequenceNumber));
+            var validationFailure = ValidatePersistedQuestionPlan(persistedTurns, maxQuestions);
+            var failureReason = generatedPlan.FailureReason ?? validationFailure;
+            var ready = string.IsNullOrWhiteSpace(validationFailure);
             var success = ready && string.IsNullOrWhiteSpace(generatedPlan.FailureReason);
-            await LogPreparationStageAsync(session, "question-planning", planStopwatch.ElapsedMilliseconds, success, generatedPlan.FailureReason);
-            await LogPreparationStageAsync(session, "total-preparation", totalStopwatch.ElapsedMilliseconds, success, generatedPlan.FailureReason);
+            await LogPreparationStageAsync(session, "question-planning", planStopwatch.ElapsedMilliseconds, success, failureReason);
+            await LogPreparationStageAsync(session, "total-preparation", totalStopwatch.ElapsedMilliseconds, success, failureReason);
 
             return new PrepareInterviewResponseModel
             {
@@ -2635,6 +2642,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             var fallbackGeneratedTurn = false;
             if (nextTurn == null)
             {
+                // Legacy repair only; current start and preparation flows persist the complete plan.
                 fallbackAttempted = true;
                 var existingTurnIds = turns.Where(turn => turn.Id > 0).Select(turn => turn.Id).ToHashSet();
                 await EnsureQuestionPlanAsync(session, turns, null, skipAnsweredPlanReset: true);
@@ -2784,6 +2792,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             var fallbackGeneratedTurn = false;
             if (nextTurn == null)
             {
+                // Legacy repair only; current start and preparation flows persist the complete plan.
                 fallbackAttempted = true;
                 var existingTurnIds = turns.Where(turn => turn.Id > 0).Select(turn => turn.Id).ToHashSet();
                 await EnsureQuestionPlanAsync(session, turns, null, skipAnsweredPlanReset: true);
@@ -3950,6 +3959,82 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             .OrderBy(turn => turn.SequenceNumber)
             .ThenBy(turn => turn.Id)
             .ToList(), null);
+    }
+
+    protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> EnsureRequiredQuestionPlanAsync(
+        InterviewSession session,
+        IList<InterviewTurn> turns,
+        Customer customer = null,
+        bool sessionLockHeld = false)
+    {
+        if (!sessionLockHeld)
+        {
+            using var sessionLock = await AcquireSessionMutationLockAsync(session.Id);
+            return await EnsureRequiredQuestionPlanAsync(
+                session,
+                await _turnService.GetTurnsBySessionIdAsync(session.Id),
+                customer,
+                sessionLockHeld: true);
+        }
+
+        var latestTurns = await _turnService.GetTurnsBySessionIdAsync(session.Id) ?? turns ?? new List<InterviewTurn>();
+        var ensuredPlan = await EnsureQuestionPlanAsync(session, latestTurns, customer, skipAnsweredPlanReset: true);
+        if (!string.IsNullOrWhiteSpace(ensuredPlan.FailureReason))
+            return ensuredPlan;
+
+        var normalizedPlan = await EnsureSingleActiveTurnAsync(session, ensuredPlan.Turns, customer);
+        var orderedTurns = normalizedPlan.Turns
+            .OrderBy(turn => turn.SequenceNumber)
+            .ThenBy(turn => turn.Id)
+            .ToList();
+        return (orderedTurns, ValidatePersistedQuestionPlan(orderedTurns, GetMaxQuestions(session)));
+    }
+
+    protected static string ValidatePersistedQuestionPlan(IList<InterviewTurn> turns, int maxQuestions)
+    {
+        var persistedTurns = (turns ?? new List<InterviewTurn>())
+            .Where(turn => turn != null &&
+                turn.SequenceNumber >= 1 &&
+                turn.SequenceNumber <= maxQuestions &&
+                !string.IsNullOrWhiteSpace(turn.QuestionText))
+            .ToList();
+        var canonicalTurns = InterviewTurnNormalizationHelper.GetCanonicalTurns(persistedTurns, maxQuestions);
+        var missingSequenceNumbers = Enumerable.Range(1, maxQuestions)
+            .Where(sequenceNumber => canonicalTurns.All(turn => turn.SequenceNumber != sequenceNumber))
+            .ToList();
+        if (missingSequenceNumbers.Any())
+            return $"Question plan is missing persisted sequence numbers: {string.Join(",", missingSequenceNumbers)}.";
+
+        var answeredTurns = canonicalTurns
+            .Where(InterviewTurnNormalizationHelper.HasAnswer)
+            .OrderBy(turn => turn.SequenceNumber)
+            .ToList();
+        if (!answeredTurns.Select(turn => turn.SequenceNumber).SequenceEqual(Enumerable.Range(1, answeredTurns.Count)))
+            return "Question plan contains non-contiguous answered turns.";
+
+        if (answeredTurns.Count >= maxQuestions)
+            return null;
+
+        var nextSequenceNumber = answeredTurns.Count + 1;
+        var activePendingCount = persistedTurns.Count(turn =>
+            turn.SequenceNumber == nextSequenceNumber &&
+            !InterviewTurnNormalizationHelper.HasAnswer(turn));
+        if (activePendingCount != 1)
+            return "Question plan does not contain exactly one active pending turn.";
+
+        var invalidFutureTurn = persistedTurns.Any(turn =>
+            turn.SequenceNumber > nextSequenceNumber &&
+            InterviewTurnNormalizationHelper.HasAnswer(turn));
+        if (invalidFutureTurn)
+            return "Question plan contains an answered future turn.";
+
+        var duplicateFutureSequence = persistedTurns
+            .Where(turn => turn.SequenceNumber > nextSequenceNumber)
+            .GroupBy(turn => turn.SequenceNumber)
+            .Any(group => group.Count() != 1 || group.Any(InterviewTurnNormalizationHelper.HasAnswer));
+        return duplicateFutureSequence
+            ? "Question plan does not contain exactly one persisted pending turn for each future sequence."
+            : null;
     }
 
     protected virtual async Task LogPreparationStageAsync(InterviewSession session, string stage, long elapsedMilliseconds, bool success, string failureReason = null)
@@ -5153,41 +5238,23 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             .ThenBy(turn => turn.Id)
             .ToList();
 
-        var stalePendingTurns = InterviewTurnNormalizationHelper.GetStalePendingTurns(orderedTurns, maxQuestions)
+        var duplicatePendingTurns = InterviewTurnNormalizationHelper.GetDuplicatePendingTurns(orderedTurns, maxQuestions)
             .Where(turn => turn.Id > 0)
             .ToList();
-        if (stalePendingTurns.Any())
+        if (duplicatePendingTurns.Any())
         {
-            await _turnService.DeleteInterviewTurnsAsync(stalePendingTurns);
-            var staleIds = stalePendingTurns.Select(turn => turn.Id).ToHashSet();
-            orderedTurns = orderedTurns.Where(turn => !staleIds.Contains(turn.Id)).ToList();
+            await _turnService.DeleteInterviewTurnsAsync(duplicatePendingTurns);
+            var duplicateIds = duplicatePendingTurns.Select(turn => turn.Id).ToHashSet();
+            orderedTurns = orderedTurns.Where(turn => !duplicateIds.Contains(turn.Id)).ToList();
         }
 
         if (InterviewTurnNormalizationHelper.GetAnsweredCount(orderedTurns, maxQuestions) >= maxQuestions)
             return (orderedTurns, null);
 
         var activePendingTurn = InterviewTurnNormalizationHelper.GetActivePendingTurn(orderedTurns, maxQuestions);
-        if (activePendingTurn != null)
-            return (orderedTurns, null);
-
-        var nextSequenceNumber = InterviewTurnNormalizationHelper.GetNextSequenceNumber(orderedTurns, maxQuestions);
-        var generationContext = InterviewTurnNormalizationHelper.GetCompletedReportTurns(orderedTurns, maxQuestions).ToList();
-        var generatedPlan = await GenerateQuestionPlanTurnsAsync(session, customer, generationContext, new List<int> { nextSequenceNumber });
-        if (!generatedPlan.Turns.Any())
-            return (orderedTurns, generatedPlan.FailureReason);
-
-        var nextTurn = generatedPlan.Turns
-            .OrderBy(turn => turn.SequenceNumber)
-            .ThenBy(turn => turn.Id)
-            .FirstOrDefault(turn => turn.SequenceNumber == nextSequenceNumber);
-        if (nextTurn == null)
-            return (orderedTurns, generatedPlan.FailureReason ?? "Question generation did not return the next active turn.");
-
-        orderedTurns.Add(await _turnService.InsertInterviewTurnAsync(nextTurn));
-        return (orderedTurns
-            .OrderBy(turn => turn.SequenceNumber)
-            .ThenBy(turn => turn.Id)
-            .ToList(), null);
+        return activePendingTurn != null
+            ? (orderedTurns, null)
+            : (orderedTurns, "Question plan is missing the active pending turn.");
     }
 
     protected static bool IsPracticeDifficultyValue(string value)

@@ -55,15 +55,18 @@ internal static class InterviewTurnNormalizationHelper
             : answeredCount + 1;
     }
 
-    internal static IReadOnlyList<InterviewTurn> GetStalePendingTurns(IEnumerable<InterviewTurn> turns, int maxQuestions)
+    internal static IReadOnlyList<InterviewTurn> GetDuplicatePendingTurns(IEnumerable<InterviewTurn> turns, int maxQuestions)
     {
         var orderedTurns = GetOrderedTurns(turns, maxQuestions);
         if (!orderedTurns.Any())
             return Array.Empty<InterviewTurn>();
 
-        var activePendingTurn = GetActivePendingTurn(orderedTurns, maxQuestions);
+        var canonicalTurns = GetCanonicalTurns(orderedTurns, maxQuestions)
+            .ToDictionary(turn => turn.SequenceNumber);
         return orderedTurns
-            .Where(turn => !HasAnswer(turn) && turn.Id != activePendingTurn?.Id)
+            .Where(turn => !HasAnswer(turn) &&
+                canonicalTurns.TryGetValue(turn.SequenceNumber, out var canonicalTurn) &&
+                turn.Id != canonicalTurn.Id)
             .ToList();
     }
 
