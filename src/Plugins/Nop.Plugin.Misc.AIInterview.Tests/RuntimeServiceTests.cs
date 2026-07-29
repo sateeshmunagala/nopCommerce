@@ -6,6 +6,7 @@ using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Logging;
 using Nop.Core.Events;
+using Nop.Data;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Events;
 using Nop.Plugin.Misc.AIInterview.Models;
@@ -43,7 +44,8 @@ public class RuntimeServiceTests
         Mock<IWorkContext> workContext = null,
         Mock<IEventPublisher> eventPublisher = null,
         Mock<NopLogger> nopLogger = null,
-        Mock<Microsoft.Extensions.Logging.ILogger<InterviewRuntimeService>> logger = null)
+        Mock<Microsoft.Extensions.Logging.ILogger<InterviewRuntimeService>> logger = null,
+        INopDataProvider dataProvider = null)
     {
         return new InterviewRuntimeService(
             sessionService.Object,
@@ -61,7 +63,8 @@ public class RuntimeServiceTests
             workContext?.Object ?? new Mock<IWorkContext>().Object,
             eventPublisher?.Object ?? new Mock<IEventPublisher>().Object,
             nopLogger?.Object,
-            logger?.Object);
+            logger?.Object,
+            dataProvider: dataProvider);
     }
 
     private sealed class TestHttpMessageHandler : HttpMessageHandler
@@ -1274,9 +1277,15 @@ public class RuntimeServiceTests
         InterviewSession finalPersistedSession = null;
 
         sessionService.Setup(x => x.GetSessionByTokenAsync(token)).ReturnsAsync(staleCompletionSession);
-        sessionService.SetupSequence(x => x.GetInterviewSessionByIdAsync(sessionId))
-            .ReturnsAsync(staleCompletionSession)
-            .ReturnsAsync(latestPersistedSession);
+        sessionService.Setup(x => x.GetInterviewSessionByIdAsync(sessionId))
+            .ReturnsAsync(() =>
+            {
+                staleCompletionSession.RecordingUrl = latestPersistedSession.RecordingUrl;
+                staleCompletionSession.RecordingShareToken = latestPersistedSession.RecordingShareToken;
+                staleCompletionSession.RecordingShareEnabled = latestPersistedSession.RecordingShareEnabled;
+                staleCompletionSession.RecordingShareCreatedOnUtc = latestPersistedSession.RecordingShareCreatedOnUtc;
+                return staleCompletionSession;
+            });
         sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
             .Callback<InterviewSession>(updated => finalPersistedSession = updated)
             .Returns(Task.CompletedTask);
@@ -1296,6 +1305,10 @@ public class RuntimeServiceTests
         var result = await service.CompleteInterviewAsync(token, "Stopped by candidate.");
 
         Assert.That(result.Success, Is.True);
+        Assert.That(result.ReportGenerationInProgress, Is.True);
+        Assert.That(staleCompletionSession.CompletionState, Is.EqualTo(InterviewCompletionStates.Queued));
+        await service.ProcessCompletionWorkAsync(sessionId);
+
         Assert.That(finalPersistedSession, Is.Not.Null);
         Assert.That(finalPersistedSession.CompletedOnUtc, Is.Not.Null);
         Assert.That(finalPersistedSession.IsActive, Is.False);
@@ -1313,7 +1326,7 @@ public class RuntimeServiceTests
             s.RecordingShareToken == latestPersistedSession.RecordingShareToken &&
             s.RecordingShareEnabled &&
             s.RecordingShareCreatedOnUtc == latestRecordingShareCreatedOnUtc &&
-            !string.IsNullOrWhiteSpace(s.ReportData))), Times.Once);
+            !string.IsNullOrWhiteSpace(s.ReportData))), Times.AtLeastOnce);
         sessionService.Verify(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>()), Times.Never);
     }
 
@@ -2418,7 +2431,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task SubmitAnswerAsync_WhenAiRequestsCompletion_PublishesOnce()
+    public async Task SubmitAnswerAsync_WhenAiRequestsCompletion_QueuesDurablyWithoutPublishingInRequest()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -2491,6 +2504,8 @@ public class RuntimeServiceTests
         Assert.That(updatedSession, Is.Not.Null);
         Assert.That(updatedSession.Score, Is.EqualTo(91));
         Assert.That(updatedSession.QuestionScores, Does.Contain("91"));
+        Assert.That(updatedSession.CompletionState, Is.EqualTo(InterviewCompletionStates.Queued));
+        Assert.That(updatedSession.CompletionQueuedOnUtc, Is.Not.Null);
         Assert.That(result.Completion, Is.Empty);
         Assert.That(updatedTurn, Is.Not.Null);
         Assert.That(updatedTurn.AnswerText, Is.EqualTo("Answer that should complete"));
@@ -2509,7 +2524,7 @@ public class RuntimeServiceTests
     }
 
     [Test]
-    public async Task SubmitAnswerAsync_ConcurrentFinalSubmits_RunCompletionWorkflowOnce()
+    public async Task SubmitAnswerAsync_ConcurrentFinalSubmits_QueueDurablyAndScheduledCompletionRunsOnce()
     {
         var sessionService = new Mock<IInterviewSessionService>();
         var turnService = new Mock<IInterviewTurnService>();
@@ -2542,10 +2557,17 @@ public class RuntimeServiceTests
         };
         var turns = new List<InterviewTurn> { turn };
         var gate = new object();
+        var reportPersisted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
         sessionService.Setup(x => x.GetInterviewSessionByIdAsync(session.Id)).ReturnsAsync(session);
-        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(updated =>
+            {
+                if (updated.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(updated.ReportData))
+                    reportPersisted.TrySetResult();
+            })
+            .Returns(Task.CompletedTask);
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(() =>
         {
             lock (gate)
@@ -2625,15 +2647,342 @@ public class RuntimeServiceTests
         Assert.That(session.CompletedOnUtc.HasValue, Is.False);
         Assert.That(session.IsActive, Is.False);
         Assert.That(session.ReportData, Is.Empty);
+        Assert.That(session.CompletionState, Is.EqualTo(InterviewCompletionStates.Queued));
+        Assert.That(session.CompletionAttemptCount, Is.Zero);
+        Assert.That(session.CompletionQueuedOnUtc, Is.Not.Null);
+        aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Never);
+        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Never);
         var persistedAnswer = turn.AnswerText;
         var pendingRetry = await service.SubmitAnswerAsync(session.Token, "Final answer retry with concrete implementation detail.");
         Assert.That(pendingRetry.Success, Is.True);
         Assert.That(pendingRetry.IsTerminated, Is.True);
         Assert.That(pendingRetry.ReportGenerationInProgress, Is.True);
         Assert.That(turn.AnswerText, Is.EqualTo(persistedAnswer));
+
+        var scheduledRuns = Task.WhenAll(
+            service.ProcessCompletionWorkAsync(session.Id),
+            service.ProcessCompletionWorkAsync(session.Id));
         await finalScoringStarted.Task;
-        releaseFinalScoring.SetResult();
+        Assert.That(session.CompletionState, Is.EqualTo(InterviewCompletionStates.Processing));
+        Assert.That(session.CompletionAttemptCount, Is.EqualTo(1));
         aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Once);
+        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Never);
+        releaseFinalScoring.SetResult();
+        await scheduledRuns;
+        await reportPersisted.Task;
+        Assert.That(session.ReportData, Does.Contain("Completed once."));
+        Assert.That(session.CompletionState, Is.EqualTo(InterviewCompletionStates.Ready));
+        Assert.That(session.CompletionPublishedOnUtc, Is.Not.Null);
+        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Once);
+    }
+
+    [Test]
+    public async Task ScheduledRecovery_CompletesQueuedSession_WithoutCompletionStatusOrBrowser()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var terminalAiClient = new Mock<IAIInterviewClient>();
+        var workerAiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+        var session = new InterviewSession
+        {
+            Id = 4141,
+            ProductId = 41,
+            CustomerId = 9,
+            SessionKey = "session-4141",
+            Token = "scoped-worker-token",
+            Difficulty = "Medium",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            QuestionCount = 1
+        };
+        var turn = new InterviewTurn
+        {
+            Id = 1,
+            InterviewSessionId = session.Id,
+            SequenceNumber = 1,
+            QuestionText = "Q1",
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-1),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1)
+        };
+        var turns = new List<InterviewTurn> { turn };
+        var workerFinalScoringStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reportPersisted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        sessionService.Setup(x => x.GetInterviewSessionByIdAsync(session.Id)).ReturnsAsync(session);
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(updated =>
+            {
+                if (updated.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(updated.ReportData))
+                    reportPersisted.TrySetResult();
+            })
+            .Returns(Task.CompletedTask);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(() => turns.ToList());
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>()))
+            .Callback<InterviewTurn>(updated =>
+            {
+                turn.AnswerText = updated.AnswerText;
+                turn.AnsweredOnUtc = updated.AnsweredOnUtc;
+                turn.Score = updated.Score;
+                turn.Feedback = updated.Feedback;
+                turn.RubricJson = updated.RubricJson;
+                turn.RawAIResponseJson = updated.RawAIResponseJson;
+            })
+            .Returns(Task.CompletedTask);
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        workerAiClient.Setup(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()))
+            .ReturnsAsync(() =>
+            {
+                workerFinalScoringStarted.TrySetResult();
+                return new AIInterviewFinalScoringResponse
+                {
+                    Success = true,
+                    Completion = "Worker scoped completion.",
+                    RawJson = "{\"complete\":true}",
+                    Turns = new List<AIInterviewFinalScoringTurnResult>
+                    {
+                        new()
+                        {
+                            SequenceNumber = 1,
+                            TechnicalScore = 92,
+                            CommunicationScore = 92,
+                            ProfessionalismScore = 92,
+                            PositiveAttitudeScore = 92,
+                            Score = 92,
+                            Feedback = "Worker scoped score.",
+                            RubricJson = "{\"score\":92}"
+                        }
+                    }
+                };
+            });
+        workerAiClient.Setup(x => x.GenerateStrengthsSummaryAsync(It.IsAny<AIInterviewStrengthsSummaryRequest>()))
+            .ReturnsAsync(new AIInterviewStrengthsSummaryResponse { Success = false });
+
+        var workerService = CreateService(
+            sessionService,
+            turnService,
+            workerAiClient,
+            productService,
+            customerService,
+            localizationService,
+            settings: new AIInterviewSettings { Prompt = "Be concise", EnableFinalScoringAtCompletion = true },
+            workContext: workContext,
+            eventPublisher: eventPublisher);
+
+        var terminalService = CreateService(
+            sessionService,
+            turnService,
+            terminalAiClient,
+            productService,
+            customerService,
+            localizationService,
+            settings: new AIInterviewSettings { Prompt = "Be concise", EnableFinalScoringAtCompletion = true },
+            workContext: workContext,
+            eventPublisher: eventPublisher);
+
+        var response = await terminalService.SubmitAnswerAsync(session.Token, "Final answer with enough concrete implementation detail.");
+        Assert.That(response.Success, Is.True);
+        Assert.That(response.ReportGenerationInProgress, Is.True);
+        Assert.That(session.CompletionState, Is.EqualTo(InterviewCompletionStates.Queued));
+        terminalAiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Never);
+        workerAiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Never);
+
+        sessionService.Setup(x => x.GetCompletionWorkSessionsAsync(It.IsAny<DateTime>(), InterviewCompletionRecoveryTask.BatchSize))
+            .ReturnsAsync(new List<InterviewSession> { session });
+        var recoveryTask = new InterviewCompletionRecoveryTask(sessionService.Object, workerService);
+        await recoveryTask.ExecuteAsync();
+        await workerFinalScoringStarted.Task;
+        await reportPersisted.Task;
+
+        Assert.That(session.CompletedOnUtc.HasValue, Is.True);
+        Assert.That(session.ReportData, Does.Contain("Worker scoped completion."));
+        Assert.That(session.CompletionState, Is.EqualTo(InterviewCompletionStates.Ready));
+        terminalAiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Never);
+        workerAiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Once);
+        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Once);
+    }
+
+    [Test]
+    public async Task ScheduledRecovery_ReclaimsStaleProcessingOnce_AcrossConcurrentRuns()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+        var session = new InterviewSession
+        {
+            Id = 4191,
+            ProductId = 41,
+            CustomerId = 9,
+            SessionKey = "session-4191",
+            Token = "stale-processing-token",
+            Difficulty = "Medium",
+            IsActive = false,
+            TokenExpiryUtc = DateTime.UtcNow.AddHours(1),
+            QuestionCount = 1,
+            CompletionState = InterviewCompletionStates.Processing,
+            CompletionAttemptCount = 1,
+            CompletionQueuedOnUtc = DateTime.UtcNow.AddMinutes(-20),
+            CompletionProcessingStartedOnUtc = DateTime.UtcNow.Subtract(InterviewCompletionRecoveryTask.ProcessingLeaseTimeout).AddMinutes(-1),
+            CompletionReason = "Interview completed."
+        };
+        var turn = new InterviewTurn
+        {
+            Id = 1,
+            InterviewSessionId = session.Id,
+            SequenceNumber = 1,
+            QuestionText = "Q1",
+            AnswerText = "A durable final answer.",
+            AnsweredOnUtc = DateTime.UtcNow.AddMinutes(-20),
+            AskedOnUtc = DateTime.UtcNow.AddMinutes(-21),
+            CreatedOnUtc = DateTime.UtcNow.AddMinutes(-21)
+        };
+        var scoringStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseScoring = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        sessionService.Setup(x => x.GetInterviewSessionByIdAsync(session.Id)).ReturnsAsync(session);
+        sessionService.Setup(x => x.GetCompletionWorkSessionsAsync(It.IsAny<DateTime>(), InterviewCompletionRecoveryTask.BatchSize))
+            .ReturnsAsync(new List<InterviewSession> { session });
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
+        sessionService.Setup(x => x.SendInterviewCompletionNotificationAsync(session, 1)).Returns(Task.CompletedTask);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(new List<InterviewTurn> { turn });
+        turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>())).Returns(Task.CompletedTask);
+        localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>())).ReturnsAsync((string key) => key);
+        workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new Nop.Core.Domain.Localization.Language { Id = 1 });
+        aiClient.Setup(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()))
+            .Returns(async () =>
+            {
+                scoringStarted.TrySetResult();
+                await releaseScoring.Task;
+                return new AIInterviewFinalScoringResponse
+                {
+                    Success = true,
+                    Completion = "Recovered after restart.",
+                    RawJson = "{\"complete\":true}",
+                    Turns =
+                    [
+                        new AIInterviewFinalScoringTurnResult
+                        {
+                            SequenceNumber = 1,
+                            TechnicalScore = 90,
+                            CommunicationScore = 90,
+                            ProfessionalismScore = 90,
+                            PositiveAttitudeScore = 90,
+                            Score = 90,
+                            Feedback = "Recovered score.",
+                            RubricJson = "{\"score\":90}"
+                        }
+                    ]
+                };
+            });
+        aiClient.Setup(x => x.GenerateStrengthsSummaryAsync(It.IsAny<AIInterviewStrengthsSummaryRequest>()))
+            .ReturnsAsync(new AIInterviewStrengthsSummaryResponse { Success = false });
+
+        var completionConsumer = new Nop.Plugin.Misc.AIInterview.Services.Events.MockAiInterviewCompletedEventConsumer(sessionService.Object, workContext.Object);
+        eventPublisher.Setup(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()))
+            .Returns((MockAiInterviewCompletedEvent eventMessage) => completionConsumer.HandleEventAsync(eventMessage));
+
+        var serviceAfterRestart = CreateService(
+            sessionService,
+            turnService,
+            aiClient,
+            productService,
+            customerService,
+            localizationService,
+            settings: new AIInterviewSettings { Prompt = "Be concise", EnableFinalScoringAtCompletion = true },
+            workContext: workContext,
+            eventPublisher: eventPublisher);
+        var firstTaskRun = new InterviewCompletionRecoveryTask(sessionService.Object, serviceAfterRestart);
+        var secondTaskRun = new InterviewCompletionRecoveryTask(sessionService.Object, serviceAfterRestart);
+
+        var concurrentRuns = Task.WhenAll(firstTaskRun.ExecuteAsync(), secondTaskRun.ExecuteAsync());
+        await scoringStarted.Task;
+        Assert.That(session.CompletionState, Is.EqualTo(InterviewCompletionStates.Processing));
+        Assert.That(session.CompletionAttemptCount, Is.EqualTo(2));
+        releaseScoring.SetResult();
+        await concurrentRuns;
+
+        Assert.That(session.CompletionState, Is.EqualTo(InterviewCompletionStates.Ready));
+        Assert.That(session.ReportData, Does.Contain("Recovered after restart."));
+        Assert.That(session.CompletionPublishedOnUtc, Is.Not.Null);
+        aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Once);
+        eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Once);
+        sessionService.Verify(x => x.SendInterviewCompletionNotificationAsync(session, 1), Times.Once);
+    }
+
+    [Test]
+    public async Task QueuedCompletion_FailureReturnsSafeMessage_AndLogsUnderlyingExceptionDetail()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var workContext = new Mock<IWorkContext>();
+        var eventPublisher = new Mock<IEventPublisher>();
+        var nopLogger = new Mock<NopLogger>();
+        var session = new InterviewSession
+        {
+            Id = 4242,
+            ProductId = 42,
+            CustomerId = 10,
+            Token = "worker-failure-token",
+            IsActive = false,
+            CompletedOnUtc = null,
+            ReportData = string.Empty,
+            CompletionState = InterviewCompletionStates.Queued,
+            CompletionQueuedOnUtc = DateTime.UtcNow.AddMinutes(-1),
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10),
+            QuestionCount = 1
+        };
+        var loggedDetails = new List<string>();
+
+        sessionService.Setup(x => x.GetInterviewSessionByIdAsync(session.Id)).ReturnsAsync(session);
+        turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id))
+            .ThrowsAsync(new ObjectDisposedException("System.Net.Http.HttpClient", "disposed-client-marker"));
+        nopLogger.Setup(x => x.InsertLogAsync(
+                It.IsAny<LogLevel>(),
+                "AI Interview completion processing failed",
+                It.IsAny<string>(),
+                It.IsAny<Customer>()))
+            .Callback<LogLevel, string, string, Customer>((_, _, fullMessage, _) => loggedDetails.Add(fullMessage))
+            .ReturnsAsync(new Log());
+
+        var service = CreateService(
+            sessionService,
+            turnService,
+            aiClient,
+            productService,
+            customerService,
+            localizationService,
+            settings: new AIInterviewSettings { Prompt = "Be concise", EnableFinalScoringAtCompletion = true },
+            workContext: workContext,
+            eventPublisher: eventPublisher,
+            nopLogger: nopLogger);
+
+        var response = await service.ProcessCompletionWorkAsync(session.Id);
+
+        Assert.That(response.Success, Is.False);
+        Assert.That(response.ReportGenerationFailed, Is.True);
+        Assert.That(response.Message, Is.EqualTo("Report generation failed. Please contact support if the report is not available from your interview history."));
+        Assert.That(session.CompletionState, Is.EqualTo(InterviewCompletionStates.Failed));
+        Assert.That(session.CompletionFailureMessage, Is.EqualTo(response.Message));
+        Assert.That(session.CompletionFinishedOnUtc, Is.Not.Null);
+        Assert.That(loggedDetails.Any(detail => detail.Contains("disposed-client-marker")), Is.True);
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(candidate =>
+            candidate.Id == session.Id &&
+            candidate.CompletionState == InterviewCompletionStates.Failed &&
+            candidate.CompletionFailureMessage == response.Message)), Times.AtLeastOnce);
         eventPublisher.Verify(x => x.PublishAsync(It.IsAny<MockAiInterviewCompletedEvent>()), Times.Never);
     }
 
@@ -3284,6 +3633,105 @@ public class RuntimeServiceTests
         Assert.That((await service.UploadRecordingAsync("recent-completed-expired", CreateRecordingFile())).Success, Is.False);
         Assert.That(httpHandler.Requests, Is.Empty);
         sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task UploadRecordingAsync_Allows_UnexpiredPendingCompletion_AndRejectsInvalidPendingVariants()
+    {
+        var sessionService = new Mock<IInterviewSessionService>();
+        var turnService = new Mock<IInterviewTurnService>();
+        var aiClient = new Mock<IAIInterviewClient>();
+        var productService = new Mock<IProductService>();
+        var customerService = new Mock<ICustomerService>();
+        var localizationService = new Mock<ILocalizationService>();
+        var httpHandler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Created)
+        {
+            Content = new StringContent(string.Empty)
+        });
+        var httpFactory = CreateHttpClientFactory(httpHandler);
+        var now = DateTime.UtcNow;
+        var validPending = new InterviewSession
+        {
+            Id = 5101,
+            CustomerId = 11,
+            ProductId = 15,
+            Token = "pending-recording",
+            IsActive = false,
+            CompletedOnUtc = null,
+            ReportData = string.Empty,
+            TokenExpiryUtc = now.AddMinutes(10)
+        };
+        var mismatchedToken = new InterviewSession
+        {
+            Id = 5102,
+            Token = "different-token",
+            IsActive = false,
+            ReportData = string.Empty,
+            TokenExpiryUtc = now.AddMinutes(10)
+        };
+        var expiredPending = new InterviewSession
+        {
+            Id = 5103,
+            Token = "expired-pending",
+            IsActive = false,
+            ReportData = string.Empty,
+            TokenExpiryUtc = now.AddMinutes(-1)
+        };
+        var existingRecordingPending = new InterviewSession
+        {
+            Id = 5104,
+            Token = "existing-recording-pending",
+            IsActive = false,
+            ReportData = string.Empty,
+            RecordingUrl = "https://storage.blob.core.windows.net/container/existing.webm",
+            TokenExpiryUtc = now.AddMinutes(10)
+        };
+        var inactiveNonPending = new InterviewSession
+        {
+            Id = 5105,
+            Token = "inactive-nonpending",
+            IsActive = false,
+            CompletedOnUtc = null,
+            ReportData = "not pending",
+            TokenExpiryUtc = now.AddMinutes(10)
+        };
+
+        sessionService.Setup(x => x.GetSessionByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync((string token) => token switch
+            {
+                "pending-recording" => validPending,
+                "mismatch" => mismatchedToken,
+                "expired-pending" => expiredPending,
+                "existing-recording-pending" => existingRecordingPending,
+                "inactive-nonpending" => inactiveNonPending,
+                _ => null
+            });
+        sessionService.Setup(x => x.EnsureRecordingShareTokenAsync(It.IsAny<InterviewSession>()))
+            .ReturnsAsync("share-token");
+        sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService(sessionService, turnService, aiClient, productService, customerService, localizationService, httpClientFactory: httpFactory,
+            settings: new AIInterviewSettings
+            {
+                AzureBlobStorageContainerUrl = "https://storage.blob.core.windows.net/container",
+                AzureBlobStorageSasToken = "sv=2024&sig=test",
+                RecordingUploadMaxMb = 100
+            });
+
+        var accepted = await service.UploadRecordingAsync("pending-recording", CreateRecordingFile("pending-webm"));
+
+        Assert.That(accepted.Success, Is.True);
+        Assert.That(validPending.RecordingUrl, Is.EqualTo(accepted.RecordingUrl));
+        Assert.That((await service.UploadRecordingAsync("pending-recording", CreateRecordingFile("replacement-webm"))).Success, Is.False);
+        Assert.That((await service.UploadRecordingAsync("mismatch", CreateRecordingFile())).Success, Is.False);
+        Assert.That((await service.UploadRecordingAsync("expired-pending", CreateRecordingFile())).Success, Is.False);
+        Assert.That((await service.UploadRecordingAsync("existing-recording-pending", CreateRecordingFile())).Success, Is.False);
+        Assert.That((await service.UploadRecordingAsync("inactive-nonpending", CreateRecordingFile())).Success, Is.False);
+        Assert.That((await service.UploadRecordingAsync("missing-pending", CreateRecordingFile())).Success, Is.False);
+        sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.Is<InterviewSession>(session => session.Id == validPending.Id && !string.IsNullOrWhiteSpace(session.RecordingUrl))), Times.Once);
+        sessionService.Verify(x => x.EnsureRecordingShareTokenAsync(It.Is<InterviewSession>(session => session.Id == validPending.Id)), Times.Once);
+        Assert.That(httpHandler.Requests.Count, Is.EqualTo(1));
     }
 
     [Test]

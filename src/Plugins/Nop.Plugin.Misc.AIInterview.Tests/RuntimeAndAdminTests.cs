@@ -1517,6 +1517,35 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void RuntimeServiceSource_UsesDurableScheduledCompletionRecovery()
+    {
+        var runtimeServiceText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Services", "InterviewRuntimeService.cs"));
+        var startupText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Infrastructure", "PluginNopStartup.cs"));
+        var taskText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Services", "InterviewCompletionRecoveryTask.cs"));
+        var pluginText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("AIInterviewPlugin.cs"));
+        var controllerText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "MockAiInterviewController.cs"));
+        var migrationText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Data", "InterviewSessionCompletionStateMigration.cs"));
+
+        Assert.That(startupText, Does.Contain("services.AddScoped<IInterviewRuntimeService, InterviewRuntimeService>();"));
+        Assert.That(startupText, Does.Contain("services.AddScoped<InterviewCompletionRecoveryTask>();"));
+        Assert.That(taskText, Does.Contain("public class InterviewCompletionRecoveryTask : IScheduleTask"));
+        Assert.That(taskText, Does.Contain("GetCompletionWorkSessionsAsync"));
+        Assert.That(taskText, Does.Contain("ProcessCompletionWorkAsync(session.Id)"));
+        Assert.That(pluginText, Does.Contain("AIInterviewDefaults.CompletionRecoveryTaskType"));
+        Assert.That(pluginText, Does.Contain("InsertTaskAsync(new ScheduleTask"));
+        Assert.That(pluginText, Does.Contain("DeleteTaskAsync(completionTask)"));
+        Assert.That(migrationText, Does.Contain("_dataProvider.InsertEntity(new ScheduleTask"));
+        Assert.That(runtimeServiceText, Does.Contain("session.CompletionState = InterviewCompletionStates.Queued;"));
+        Assert.That(runtimeServiceText, Does.Contain("public async Task<CompleteInterviewResponse> ProcessCompletionWorkAsync"));
+        Assert.That(runtimeServiceText, Does.Contain("_dataProvider?.CreateTransactionScope()"));
+        Assert.That(runtimeServiceText, Does.Not.Contain("CompletionTasks"));
+        Assert.That(runtimeServiceText, Does.Not.Contain("CompletionFailures"));
+        Assert.That(runtimeServiceText, Does.Not.Contain("ObserveQueuedCompletionAsync"));
+        Assert.That(controllerText, Does.Not.Contain("QueuePendingCompletionAsync"));
+        Assert.That(controllerText, Does.Not.Contain("concreteRuntimeService"));
+    }
+
+    [Test]
     public async Task Runtime_SubmitAnswer_PendingCompletion_DoesNotReturnReportRoute()
     {
         var session = new InterviewSession
@@ -1617,15 +1646,24 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task Runtime_CompletionStatus_ReturnsPendingReadyFailedAndRejectsWrongOwner()
+    public async Task Runtime_CompletionStatus_ReturnsPersistedPendingReadyFailedAndRejectsWrongOwner()
     {
         var customer = new Customer { Id = 7, Email = "owner@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _customerService.Setup(x => x.IsRegisteredAsync(customer, true)).ReturnsAsync(true);
 
-        var pending = new InterviewSession { Id = 701, CustomerId = 7, Token = "pending-token", IsActive = false, ReportData = string.Empty };
-        var ready = new InterviewSession { Id = 702, CustomerId = 7, Token = "ready-token", IsActive = false, CompletedOnUtc = DateTime.UtcNow, ReportData = "Report persisted." };
-        var failed = new InterviewSession { Id = 703, CustomerId = 7, Token = "failed-token", IsActive = false, ReportData = string.Empty };
+        var pending = new InterviewSession { Id = 701, CustomerId = 7, Token = "pending-token", IsActive = false, ReportData = string.Empty, CompletionState = InterviewCompletionStates.Queued };
+        var ready = new InterviewSession { Id = 702, CustomerId = 7, Token = "ready-token", IsActive = false, CompletedOnUtc = DateTime.UtcNow, ReportData = "Report persisted.", CompletionState = InterviewCompletionStates.Ready };
+        var failed = new InterviewSession
+        {
+            Id = 703,
+            CustomerId = 7,
+            Token = "failed-token",
+            IsActive = false,
+            ReportData = string.Empty,
+            CompletionState = InterviewCompletionStates.Failed,
+            CompletionFailureMessage = "Safe failure message."
+        };
         var wrongOwner = new InterviewSession { Id = 704, CustomerId = 8, Token = "wrong-owner", IsActive = false, ReportData = string.Empty };
         _sessionService.Setup(x => x.GetSessionByTokenAsync(It.IsAny<string>()))
             .ReturnsAsync((string token) => token switch
@@ -1637,29 +1675,41 @@ public class RuntimeAndAdminTests
                 _ => null
             });
 
-        var failuresField = typeof(InterviewRuntimeService).GetField("CompletionFailures", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
-        Assert.That(failuresField, Is.Not.Null);
-        var failures = (System.Collections.Concurrent.ConcurrentDictionary<int, string>)failuresField.GetValue(null);
-        failures[failed.Id] = "Safe failure message.";
-
         var urlHelper = new Mock<IUrlHelper>();
         urlHelper.Setup(x => x.RouteUrl(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext>()))
             .Returns((Microsoft.AspNetCore.Mvc.Routing.UrlRouteContext ctx) => ctx.RouteName == AIInterviewDefaults.MockReportRouteName ? "/mockaiinterview/report/702" : string.Empty);
         _runtimeController.Url = urlHelper.Object;
+        var freshRuntimeService = new Mock<IInterviewRuntimeService>();
+        var freshController = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            eventPublisher: _eventPublisher.Object,
+            interviewRuntimeService: freshRuntimeService.Object,
+            nopLogger: _nopLogger.Object)
+        {
+            Url = urlHelper.Object
+        };
 
         var pendingJson = (JsonResult)await _runtimeController.CompletionStatus("pending-token");
         Assert.That(GetJsonValue<bool>(pendingJson, nameof(CompletionStatusResponseModel.ReportGenerationInProgress)), Is.True);
         Assert.That(GetJsonValue<bool>(pendingJson, nameof(CompletionStatusResponseModel.ReportReady)), Is.False);
         Assert.That(GetJsonValue<string>(pendingJson, nameof(CompletionStatusResponseModel.ReportUrl)), Is.Empty);
 
-        var readyJson = (JsonResult)await _runtimeController.CompletionStatus("ready-token");
+        var readyJson = (JsonResult)await freshController.CompletionStatus("ready-token");
         Assert.That(GetJsonValue<bool>(readyJson, nameof(CompletionStatusResponseModel.ReportReady)), Is.True);
         Assert.That(GetJsonValue<string>(readyJson, nameof(CompletionStatusResponseModel.ReportUrl)), Is.EqualTo("/mockaiinterview/report/702"));
 
-        var failedJson = (JsonResult)await _runtimeController.CompletionStatus("failed-token");
+        var failedJson = (JsonResult)await freshController.CompletionStatus("failed-token");
         Assert.That(GetJsonValue<bool>(failedJson, nameof(CompletionStatusResponseModel.ReportGenerationFailed)), Is.True);
         Assert.That(GetJsonValue<string>(failedJson, nameof(CompletionStatusResponseModel.Message)), Is.EqualTo("Safe failure message."));
-        failures.TryRemove(failed.Id, out _);
+        freshRuntimeService.VerifyNoOtherCalls();
 
         var wrongOwnerJson = (JsonResult)await _runtimeController.CompletionStatus("wrong-owner");
         Assert.That(GetJsonValue<bool>(wrongOwnerJson, "success"), Is.False);
@@ -1830,7 +1880,7 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task RuntimeService_CompleteInterview_FinalBatchScoring_UsesAnsweredTurnsOnlyAndReturnsSynchronousFlags()
+    public async Task RuntimeService_ScheduledCompletion_FinalBatchScoring_UsesAnsweredTurnsOnly()
     {
         var session = new InterviewSession
         {
@@ -1849,6 +1899,7 @@ public class RuntimeAndAdminTests
         var turnService = new Mock<IInterviewTurnService>();
         var aiClient = new Mock<IAIInterviewClient>();
         _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(session.Id)).ReturnsAsync(session);
         _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(turns);
         turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>())).Returns(Task.CompletedTask);
@@ -1873,7 +1924,13 @@ public class RuntimeAndAdminTests
             });
         var service = CreateRuntimeService(turnService, aiClient, new AIInterviewSettings { EnableFinalScoringAtCompletion = true, Prompt = "Be concise" });
 
-        var response = await service.CompleteInterviewAsync(session.Token, "Stopped by user");
+        var accepted = await service.CompleteInterviewAsync(session.Token, "Stopped by user");
+
+        Assert.That(accepted.Success, Is.True);
+        Assert.That(accepted.ReportGenerationInProgress, Is.True);
+        Assert.That(session.CompletionState, Is.EqualTo(InterviewCompletionStates.Queued));
+        aiClient.Verify(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()), Times.Never);
+        var response = await service.ProcessCompletionWorkAsync(session.Id);
 
         Assert.That(response.Success, Is.True);
         Assert.That(response.IsTerminated, Is.True);
@@ -1913,6 +1970,7 @@ public class RuntimeAndAdminTests
         var turnService = new Mock<IInterviewTurnService>();
         var aiClient = new Mock<IAIInterviewClient>();
         _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(session.Id)).ReturnsAsync(session);
         _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(turns);
         turnService.Setup(x => x.UpdateInterviewTurnAsync(It.IsAny<InterviewTurn>())).Returns(Task.CompletedTask);
@@ -1934,7 +1992,9 @@ public class RuntimeAndAdminTests
             });
         var service = CreateRuntimeService(turnService, aiClient, new AIInterviewSettings { EnableFinalScoringAtCompletion = true, Prompt = "Be concise" });
 
-        var response = await service.CompleteInterviewAsync(session.Token, "Stopped by user");
+        var accepted = await service.CompleteInterviewAsync(session.Token, "Stopped by user");
+        Assert.That(accepted.ReportGenerationInProgress, Is.True);
+        var response = await service.ProcessCompletionWorkAsync(session.Id);
 
         Assert.That(response.Success, Is.True);
         Assert.That(session.ReportData, Does.Contain("Strengths: Demonstrated clear structure and communication."));
@@ -1961,6 +2021,8 @@ public class RuntimeAndAdminTests
         var turnService = new Mock<IInterviewTurnService>();
         var aiClient = new Mock<IAIInterviewClient>();
         _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        _sessionService.Setup(x => x.GetInterviewSessionByIdAsync(session.Id)).ReturnsAsync(session);
+        _sessionService.Setup(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>())).Returns(Task.CompletedTask);
         turnService.Setup(x => x.GetTurnsBySessionIdAsync(session.Id)).ReturnsAsync(turns);
         aiClient.Setup(x => x.ScoreInterviewAtCompletionAsync(It.IsAny<AIInterviewFinalScoringRequest>()))
             .ReturnsAsync(new AIInterviewFinalScoringResponse
@@ -1973,13 +2035,19 @@ public class RuntimeAndAdminTests
             });
         var service = CreateRuntimeService(turnService, aiClient, new AIInterviewSettings { EnableFinalScoringAtCompletion = true, Prompt = "Be concise" });
 
-        var response = await service.CompleteInterviewAsync(session.Token, "Stopped by user");
+        var accepted = await service.CompleteInterviewAsync(session.Token, "Stopped by user");
+        Assert.That(accepted.Success, Is.True);
+        Assert.That(accepted.ReportGenerationInProgress, Is.True);
+        var response = await service.ProcessCompletionWorkAsync(session.Id);
 
         Assert.That(response.Success, Is.False);
-        Assert.That(response.IsTerminated, Is.False);
-        Assert.That(session.IsActive, Is.True);
+        Assert.That(response.IsTerminated, Is.True);
+        Assert.That(response.ReportGenerationFailed, Is.True);
+        Assert.That(session.IsActive, Is.False);
+        Assert.That(session.CompletionState, Is.EqualTo(InterviewCompletionStates.Failed));
+        Assert.That(session.CompletionFailureMessage, Is.Not.Empty);
         Assert.That(turns.All(turn => turn.Score == null), Is.True);
-        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.AtLeastOnce);
     }
 
     [Test]

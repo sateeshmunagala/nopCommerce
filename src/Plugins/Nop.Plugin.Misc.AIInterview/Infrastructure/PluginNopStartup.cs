@@ -31,6 +31,7 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<IAzureOpenAiChatCompletionAdapter, AzureOpenAiChatCompletionAdapter>();
         services.AddScoped<IAIInterviewClient, InterviewAiClient>();
         services.AddScoped<IInterviewRuntimeService, InterviewRuntimeService>();
+        services.AddScoped<InterviewCompletionRecoveryTask>();
         services.AddScoped<ICreditService, CreditService>();
         services.AddScoped<ICreditActivityService, CreditActivityService>();
         services.AddScoped<ICreditDepositNotificationService, CreditDepositNotificationService>();

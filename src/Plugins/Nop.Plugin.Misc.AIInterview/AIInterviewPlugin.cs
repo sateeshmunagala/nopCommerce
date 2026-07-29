@@ -1,6 +1,7 @@
 ﻿using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Cms;
 using Nop.Core.Domain.Logging;
+using Nop.Core.Domain.ScheduleTasks;
 using Nop.Data;
 using Nop.Services.Catalog;
 using Nop.Services.Cms;
@@ -10,6 +11,7 @@ using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Plugins;
+using Nop.Services.ScheduleTasks;
 using Nop.Web.Framework.Infrastructure;
 
 namespace Nop.Plugin.Misc.AIInterview;
@@ -33,6 +35,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     private readonly ICategoryTemplateService _categoryTemplateService;
     private readonly IRepository<ActivityLogType> _activityLogTypeRepository;
     private readonly WidgetSettings _widgetSettings;
+    private readonly IScheduleTaskService _scheduleTaskService;
 
     #endregion
 
@@ -45,7 +48,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         IProductTemplateService productTemplateService = null,
         ICategoryTemplateService categoryTemplateService = null,
         WidgetSettings widgetSettings = null,
-        IRepository<ActivityLogType> activityLogTypeRepository = null)
+        IRepository<ActivityLogType> activityLogTypeRepository = null,
+        IScheduleTaskService scheduleTaskService = null)
     {
         _localizationService = localizationService;
         _settingService = settingService;
@@ -55,6 +59,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         _categoryTemplateService = categoryTemplateService;
         _activityLogTypeRepository = activityLogTypeRepository;
         _widgetSettings = widgetSettings;
+        _scheduleTaskService = scheduleTaskService;
     }
 
     #endregion
@@ -1674,6 +1679,20 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
         await EnsureRuntimeActivityLogTypesAsync();
 
+        if (_scheduleTaskService != null &&
+            await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.CompletionRecoveryTaskType) == null)
+        {
+            await _scheduleTaskService.InsertTaskAsync(new ScheduleTask
+            {
+                Enabled = true,
+                StopOnError = false,
+                LastEnabledUtc = DateTime.UtcNow,
+                Seconds = AIInterviewDefaults.CompletionRecoveryTaskPeriodSeconds,
+                Name = AIInterviewDefaults.CompletionRecoveryTaskName,
+                Type = AIInterviewDefaults.CompletionRecoveryTaskType
+            });
+        }
+
         await base.InstallAsync();
     }
 
@@ -1696,6 +1715,13 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         //locales
         await _localizationService.DeleteLocaleResourcesAsync(AIInterviewDefaults.LocalizationPrefix);
         await DeleteRuntimeActivityLogTypesAsync();
+
+        if (_scheduleTaskService != null)
+        {
+            var completionTask = await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.CompletionRecoveryTaskType);
+            if (completionTask != null)
+                await _scheduleTaskService.DeleteTaskAsync(completionTask);
+        }
 
         await base.UninstallAsync();
     }

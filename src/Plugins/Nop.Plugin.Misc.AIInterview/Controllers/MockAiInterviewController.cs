@@ -1622,7 +1622,7 @@ public class MockAiInterviewController : BasePluginController
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
-        var reportReady = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData);
+        var reportReady = InterviewRuntimeService.IsCompletionReady(session);
         if (reportReady)
         {
             var reportUrl = GetMockReportUrl(session.Id);
@@ -1638,12 +1638,14 @@ public class MockAiInterviewController : BasePluginController
             });
         }
 
-        if (InterviewRuntimeService.TryGetCompletionFailure(session.Id, out var failureMessage))
+        if (string.Equals(session.CompletionState, InterviewCompletionStates.Failed, StringComparison.Ordinal))
         {
             return Json(new CompletionStatusResponseModel
             {
                 Success = true,
-                Message = string.IsNullOrWhiteSpace(failureMessage) ? "Report generation failed. Please contact support if the report is not available from your interview history." : failureMessage,
+                Message = string.IsNullOrWhiteSpace(session.CompletionFailureMessage)
+                    ? "Report generation failed. Please contact support if the report is not available from your interview history."
+                    : session.CompletionFailureMessage,
                 ReportReady = false,
                 ReportGenerationInProgress = false,
                 ReportGenerationFailed = true,
@@ -1654,9 +1656,6 @@ public class MockAiInterviewController : BasePluginController
 
         if (InterviewRuntimeService.IsCompletionPending(session))
         {
-            if (_interviewRuntimeService is InterviewRuntimeService concreteRuntimeService)
-                await concreteRuntimeService.QueuePendingCompletionAsync(session.Id);
-
             return Json(new CompletionStatusResponseModel
             {
                 Success = true,

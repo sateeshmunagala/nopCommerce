@@ -27,6 +27,15 @@ public class InterviewSession : BaseEntity
     public string QuestionScores { get; set; }
     public decimal Score { get; set; }
     public int QuestionCount { get; set; }
+    public string CompletionState { get; set; }
+    public int CompletionAttemptCount { get; set; }
+    public DateTime? CompletionQueuedOnUtc { get; set; }
+    public DateTime? CompletionProcessingStartedOnUtc { get; set; }
+    public DateTime? CompletionFinishedOnUtc { get; set; }
+    public DateTime? CompletionPublishedOnUtc { get; set; }
+    public string CompletionFailureMessage { get; set; }
+    public string CompletionReason { get; set; }
+    public string CompletionAiResponse { get; set; }
     public int TotalPromptTokens { get; set; }
     public int TotalCompletionTokens { get; set; }
     public decimal TotalOpenAiCostUsd { get; set; }
@@ -44,4 +53,12 @@ public class InterviewSession : BaseEntity
     public DateTime CreatedOnUtc { get; set; }
     public DateTime? StartedOnUtc { get; set; }
     public DateTime? CompletedOnUtc { get; set; }
+}
+
+public static class InterviewCompletionStates
+{
+    public const string Queued = "Queued";
+    public const string Processing = "Processing";
+    public const string Ready = "Ready";
+    public const string Failed = "Failed";
 }

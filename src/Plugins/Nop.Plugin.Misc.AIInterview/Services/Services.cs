@@ -488,6 +488,30 @@ public class InterviewSessionService : IInterviewSessionService
             .OrderByDescending(s => s.CreatedOnUtc));
     }
 
+    public async Task<IList<InterviewSession>> GetCompletionWorkSessionsAsync(DateTime staleProcessingBeforeUtc, int maxCount = 20)
+    {
+        maxCount = Math.Clamp(maxCount, 1, 100);
+
+        return await _sessionRepository.GetAllAsync(query => query
+            .Where(session =>
+                session.CompletionState == InterviewCompletionStates.Queued ||
+                (session.CompletionState == InterviewCompletionStates.Processing &&
+                    (!session.CompletionProcessingStartedOnUtc.HasValue ||
+                     session.CompletionProcessingStartedOnUtc <= staleProcessingBeforeUtc)) ||
+                (session.CompletionState == InterviewCompletionStates.Ready &&
+                    !session.CompletionPublishedOnUtc.HasValue &&
+                    session.CompletedOnUtc.HasValue &&
+                    session.ReportData != null &&
+                    session.ReportData != string.Empty) ||
+                ((session.CompletionState == null || session.CompletionState == string.Empty) &&
+                    !session.IsActive &&
+                    !session.CompletedOnUtc.HasValue &&
+                    (session.ReportData == null || session.ReportData == string.Empty)))
+            .OrderBy(session => session.CompletionQueuedOnUtc ?? session.CreatedOnUtc)
+            .ThenBy(session => session.Id)
+            .Take(maxCount));
+    }
+
     public async Task<string> EnsureRecordingShareTokenAsync(InterviewSession session)
     {
         if (session == null || string.IsNullOrWhiteSpace(session.RecordingUrl))

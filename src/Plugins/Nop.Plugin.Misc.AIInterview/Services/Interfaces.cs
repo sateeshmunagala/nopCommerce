@@ -34,6 +34,7 @@ public interface IInterviewSessionService
     Task<InterviewSession> GetSessionByTokenAsync(string token);
     Task<InterviewSession> GetSessionByRecordingShareTokenAsync(string token);
     Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId);
+    Task<IList<InterviewSession>> GetCompletionWorkSessionsAsync(DateTime staleProcessingBeforeUtc, int maxCount = 20);
     Task<string> EnsureRecordingShareTokenAsync(InterviewSession session);
     Task UpdateInterviewSessionAsync(InterviewSession session);
     Task<bool> CanAccessReportAsync(int customerId, int sessionId);
@@ -56,6 +57,7 @@ public interface IInterviewRuntimeService
     Task<PrepareInterviewResponseModel> PrepareInterviewAsync(string token, Customer customer = null);
     Task<SubmitInterviewAnswerResponse> SubmitAnswerAsync(SubmitInterviewAnswerRequest request);
     Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null);
+    Task<CompleteInterviewResponse> ProcessCompletionWorkAsync(int sessionId);
     Task<SpeechTokenResponseModel> GetSpeechTokenAsync(string token);
     Task TrackSpeechSynthesisUsageAsync(SpeechSynthesisUsageRequest request);
     Task<RecordingUploadResponseModel> UploadRecordingAsync(string token, IFormFile recording);

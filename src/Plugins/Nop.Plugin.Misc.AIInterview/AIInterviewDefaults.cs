@@ -118,6 +118,9 @@ public static class AIInterviewDefaults
     public const int DefaultRecordingVideoBitsPerSecond = 650000;
     public const int MinRecordingVideoBitsPerSecond = 350000;
     public const int MaxRecordingVideoBitsPerSecond = 1200000;
+    public const string CompletionRecoveryTaskName = "AI Interview completion recovery";
+    public const string CompletionRecoveryTaskType = "Nop.Plugin.Misc.AIInterview.Services.InterviewCompletionRecoveryTask, Nop.Plugin.Misc.AIInterview";
+    public const int CompletionRecoveryTaskPeriodSeconds = 30;
     public const int DefaultRecordingAudioBitsPerSecond = 64000;
     public const int MinRecordingAudioBitsPerSecond = 32000;
     public const int MaxRecordingAudioBitsPerSecond = 128000;

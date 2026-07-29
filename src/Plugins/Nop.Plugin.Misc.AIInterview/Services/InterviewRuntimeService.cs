@@ -1510,8 +1510,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     private const string CompletionFailedMessage = "Report generation failed. Please contact support if the report is not available from your interview history.";
     private static readonly ConcurrentDictionary<int, SessionMutationLock> SessionMutationLocks = new();
     private static readonly ConcurrentDictionary<int, Lazy<Task<PrepareInterviewResponseModel>>> PreparationTasks = new();
-    private static readonly ConcurrentDictionary<int, Lazy<Task<CompleteInterviewResponse>>> CompletionTasks = new();
-    private static readonly ConcurrentDictionary<int, string> CompletionFailures = new();
 
     private sealed class SessionMutationLock
     {
@@ -1626,6 +1624,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     private readonly NopLogger _nopLogger;
     private readonly ICustomerActivityService _customerActivityService;
     private readonly ILogger<InterviewRuntimeService> _logger;
+    private readonly INopDataProvider _dataProvider;
 
     public InterviewRuntimeService(
         IInterviewSessionService sessionService,
@@ -1644,7 +1643,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         IEventPublisher eventPublisher = null,
         NopLogger nopLogger = null,
         ILogger<InterviewRuntimeService> logger = null,
-        ICustomerActivityService customerActivityService = null)
+        ICustomerActivityService customerActivityService = null,
+        INopDataProvider dataProvider = null)
     {
         _sessionService = sessionService;
         _turnService = turnService;
@@ -1663,6 +1663,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         _nopLogger = nopLogger;
         _logger = logger;
         _customerActivityService = customerActivityService;
+        _dataProvider = dataProvider;
     }
 
     protected virtual Task LogRuntimeIssueAsync(NopLogLevel level, string shortMessage, string fullMessage = "", Customer customer = null)
@@ -2409,7 +2410,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         session = await _sessionService.GetSessionByTokenAsync(token);
         if (IsCompletionPending(session))
         {
-            QueueCompletionProcessing(session.Id, "Interview completed.");
             return await BuildPendingCompletionSubmitResponseAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id));
         }
 
@@ -2563,6 +2563,44 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         currentTurn.RubricJson = BuildMergedRubricJson(currentTurn.RubricJson, evaluation);
         currentTurn.RawAIResponseJson = BuildMergedRawAiResponseJson(currentTurn.RawAIResponseJson, evaluation.RawJson);
         currentTurn.AnsweredOnUtc = DateTime.UtcNow;
+        var terminalTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, maxQuestions).ToList();
+        if (terminalTurns.Count >= maxQuestions)
+        {
+            session.Score = terminalTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
+            session.QuestionScores = JsonSerializer.Serialize(terminalTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
+            var completion = await AcceptTerminalAnswerAndQueueCompletionAsync(
+                session,
+                turns,
+                currentTurn,
+                evaluation.Completion ?? evaluation.Feedback ?? evaluation.ErrorMessage,
+                evaluation.Completion,
+                persistCurrentTurn: true);
+            await TrackSpeechRecognitionUsageAsync(session, currentTurn, request);
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.AnswerSubmitted",
+                BuildRuntimeActivityComment(session, currentTurn, "Terminal answer submitted.", submitStopwatch.ElapsedMilliseconds),
+                entity: currentTurn);
+
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = true,
+                IsTerminated = true,
+                Completion = completion.Completion,
+                Score = completion.Score,
+                Message = completion.Message,
+                ReportUrl = completion.ReportUrl,
+                Interrupted = false,
+                Question = string.Empty,
+                Turn = MapTurn(currentTurn),
+                Turns = completion.Turns,
+                ReportReady = completion.ReportReady,
+                ReportGenerationInProgress = completion.ReportGenerationInProgress,
+                ReportGenerationFailed = completion.ReportGenerationFailed,
+                EstimatedWaitSeconds = completion.EstimatedWaitSeconds
+            };
+        }
+
         await _turnService.UpdateInterviewTurnAsync(currentTurn);
         await TrackSpeechRecognitionUsageAsync(session, currentTurn, request);
         await LogRuntimeActivityAsync(
@@ -2671,6 +2709,46 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         currentTurn.AnswerText = answer;
         currentTurn.AnsweredOnUtc = DateTime.UtcNow;
+        var terminalTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, maxQuestions).ToList();
+        if (terminalTurns.Count >= maxQuestions)
+        {
+            var completion = await AcceptTerminalAnswerAndQueueCompletionAsync(
+                session,
+                turns,
+                currentTurn,
+                "Interview completed.",
+                persistCurrentTurn: true);
+            await TrackSpeechRecognitionUsageAsync(session, currentTurn, request);
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview submit persisted without scoring",
+                $"Mode=submit; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; TurnId={currentTurn.Id}; SequenceNumber={currentTurn.SequenceNumber}; Reason=terminal answer queued for final scoring; ElapsedMs={submitStopwatch.ElapsedMilliseconds}.",
+                await ResolveLogCustomerAsync(session));
+            await LogRuntimeActivityAsync(
+                session,
+                "AIInterview.Runtime.AnswerSubmitted",
+                BuildRuntimeActivityComment(session, currentTurn, "Terminal answer submitted without immediate scoring.", submitStopwatch.ElapsedMilliseconds),
+                entity: currentTurn);
+
+            return new SubmitInterviewAnswerResponse
+            {
+                Success = completion.Success,
+                IsTerminated = completion.IsTerminated,
+                Completion = completion.Completion,
+                Score = completion.Score,
+                Message = completion.Message,
+                ReportUrl = completion.ReportUrl,
+                Interrupted = false,
+                Question = string.Empty,
+                Turn = MapTurn(currentTurn),
+                Turns = completion.Turns,
+                ReportReady = completion.ReportReady,
+                ReportGenerationInProgress = completion.ReportGenerationInProgress,
+                ReportGenerationFailed = completion.ReportGenerationFailed,
+                EstimatedWaitSeconds = completion.EstimatedWaitSeconds
+            };
+        }
+
         await _turnService.UpdateInterviewTurnAsync(currentTurn);
         await TrackSpeechRecognitionUsageAsync(session, currentTurn, request);
         await LogRuntimeIssueAsync(
@@ -2772,7 +2850,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         IList<InterviewTurn> turns,
         InterviewTurn currentTurn,
         string reason,
-        string aiCompletion = null)
+        string aiCompletion = null,
+        bool persistCurrentTurn = false)
     {
         turns = (turns ?? new List<InterviewTurn>())
             .OrderBy(turn => turn.SequenceNumber)
@@ -2781,7 +2860,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var maxQuestions = GetMaxQuestions(session);
         var completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, maxQuestions).ToList();
 
-        if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
+        if (IsCompletionReady(session))
         {
             return new CompleteInterviewResponse
             {
@@ -2799,14 +2878,46 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
-        if (!IsCompletionPending(session))
+        if (string.Equals(session.CompletionState, InterviewCompletionStates.Failed, StringComparison.Ordinal))
         {
+            return new CompleteInterviewResponse
+            {
+                Success = false,
+                IsTerminated = true,
+                Score = session.Score,
+                Message = string.IsNullOrWhiteSpace(session.CompletionFailureMessage)
+                    ? CompletionFailedMessage
+                    : session.CompletionFailureMessage,
+                ReportGenerationFailed = true,
+                EstimatedWaitSeconds = 0,
+                Turns = MapTurns(completedTurns)
+            };
+        }
+
+        var acceptedNow = !IsCompletionPending(session);
+        if (acceptedNow)
+        {
+            using var transaction = _dataProvider?.CreateTransactionScope();
+            if (persistCurrentTurn && currentTurn != null)
+                await _turnService.UpdateInterviewTurnAsync(currentTurn);
+
+            var queuedOnUtc = DateTime.UtcNow;
             session.IsActive = false;
             session.CompletedOnUtc = null;
             session.ReportData = string.Empty;
+            session.CompletionState = InterviewCompletionStates.Queued;
+            session.CompletionAttemptCount = 0;
+            session.CompletionQueuedOnUtc = queuedOnUtc;
+            session.CompletionProcessingStartedOnUtc = null;
+            session.CompletionFinishedOnUtc = null;
+            session.CompletionPublishedOnUtc = null;
+            session.CompletionFailureMessage = null;
+            session.CompletionReason = NormalizeCompletionReason(reason);
+            session.CompletionAiResponse = aiCompletion;
             await PreserveLatestRecordingFieldsAsync(session);
             await _sessionService.UpdateInterviewSessionAsync(session);
-            CompletionFailures.TryRemove(session.Id, out _);
+            transaction?.Complete();
+
             await LogRuntimeIssueAsync(
                 NopLogLevel.Information,
                 "AI Interview completion accepted",
@@ -2826,8 +2937,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 $"Mode=completion-pending; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; ExpectedQuestions={maxQuestions}; AnsweredTurns={completedTurns.Count}.",
                 await ResolveLogCustomerAsync(session));
         }
-
-        QueueCompletionProcessing(session.Id, reason ?? "Interview completed.", aiCompletion);
 
         return new CompleteInterviewResponse
         {
@@ -2876,68 +2985,64 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     public static bool IsCompletionPending(InterviewSession session)
     {
-        return session != null
-            && !session.IsActive
-            && !session.CompletedOnUtc.HasValue
-            && string.IsNullOrWhiteSpace(session.ReportData);
-    }
-
-    public static bool TryGetCompletionFailure(int sessionId, out string safeMessage)
-    {
-        return CompletionFailures.TryGetValue(sessionId, out safeMessage);
-    }
-
-    public Task QueuePendingCompletionAsync(int sessionId)
-    {
-        QueueCompletionProcessing(sessionId, "Interview completed.");
-        return Task.CompletedTask;
-    }
-
-    protected virtual void QueueCompletionProcessing(int sessionId, string reason, string aiCompletion = null)
-    {
-        if (sessionId <= 0)
-            return;
-
-        var newLazyTask = new Lazy<Task<CompleteInterviewResponse>>(
-            () => RunQueuedCompletionProcessingAsync(sessionId, reason, aiCompletion),
-            LazyThreadSafetyMode.ExecutionAndPublication);
-        var lazyTask = CompletionTasks.GetOrAdd(sessionId, newLazyTask);
-
-        if (!ReferenceEquals(lazyTask, newLazyTask))
+        if (session == null ||
+            string.Equals(session.CompletionState, InterviewCompletionStates.Ready, StringComparison.Ordinal) ||
+            string.Equals(session.CompletionState, InterviewCompletionStates.Failed, StringComparison.Ordinal))
         {
-            _logger?.LogInformation("AI Interview completion duplicate suppressed for session {SessionId}.", sessionId);
-            return;
+            return false;
         }
 
-        _logger?.LogInformation("AI Interview completion queued for session {SessionId}.", sessionId);
-        _ = ObserveQueuedCompletionAsync(sessionId, lazyTask);
+        if (string.Equals(session.CompletionState, InterviewCompletionStates.Queued, StringComparison.Ordinal) ||
+            string.Equals(session.CompletionState, InterviewCompletionStates.Processing, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return !session.IsActive &&
+            !session.CompletedOnUtc.HasValue &&
+            string.IsNullOrWhiteSpace(session.ReportData);
     }
 
-    private async Task ObserveQueuedCompletionAsync(int sessionId, Lazy<Task<CompleteInterviewResponse>> lazyTask)
+    public static bool IsCompletionReady(InterviewSession session)
     {
-        try
-        {
-            await lazyTask.Value;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "AI Interview queued completion failed for session {SessionId}.", sessionId);
-            CompletionFailures[sessionId] = CompletionFailedMessage;
-        }
-        finally
-        {
-            if (lazyTask.IsValueCreated && lazyTask.Value.IsCompleted)
-                CompletionTasks.TryRemove(new KeyValuePair<int, Lazy<Task<CompleteInterviewResponse>>>(sessionId, lazyTask));
-        }
+        if (session == null)
+            return false;
+
+        var persistedReportReady = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData);
+        return persistedReportReady &&
+            (string.IsNullOrWhiteSpace(session.CompletionState) ||
+             string.Equals(session.CompletionState, InterviewCompletionStates.Ready, StringComparison.Ordinal));
     }
 
-    private async Task<CompleteInterviewResponse> RunQueuedCompletionProcessingAsync(int sessionId, string reason, string aiCompletion)
+    protected static string NormalizeCompletionReason(string reason)
+    {
+        var normalized = string.IsNullOrWhiteSpace(reason) ? "Interview completed." : reason.Trim();
+        return normalized.Length <= 500 ? normalized : normalized[..500];
+    }
+
+    protected static bool CanClaimCompletionWork(InterviewSession session, DateTime utcNow)
+    {
+        if (session == null)
+            return false;
+
+        if (string.Equals(session.CompletionState, InterviewCompletionStates.Queued, StringComparison.Ordinal))
+            return true;
+
+        if (string.Equals(session.CompletionState, InterviewCompletionStates.Processing, StringComparison.Ordinal))
+        {
+            return !session.CompletionProcessingStartedOnUtc.HasValue ||
+                session.CompletionProcessingStartedOnUtc <= utcNow.Subtract(InterviewCompletionRecoveryTask.ProcessingLeaseTimeout);
+        }
+
+        return string.IsNullOrWhiteSpace(session.CompletionState) && IsCompletionPending(session);
+    }
+
+    public async Task<CompleteInterviewResponse> ProcessCompletionWorkAsync(int sessionId)
     {
         using var sessionLock = await AcquireSessionMutationLockAsync(sessionId);
         var session = await _sessionService.GetInterviewSessionByIdAsync(sessionId);
         if (session == null)
         {
-            CompletionFailures[sessionId] = CompletionFailedMessage;
             return new CompleteInterviewResponse
             {
                 Success = false,
@@ -2947,9 +3052,19 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
-        if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
+        if (IsCompletionReady(session))
         {
-            CompletionFailures.TryRemove(sessionId, out _);
+            if (!string.Equals(session.CompletionState, InterviewCompletionStates.Ready, StringComparison.Ordinal))
+            {
+                session.CompletionState = InterviewCompletionStates.Ready;
+                session.CompletionFinishedOnUtc ??= session.CompletedOnUtc ?? DateTime.UtcNow;
+                session.CompletionProcessingStartedOnUtc = null;
+                session.CompletionFailureMessage = null;
+                await PreserveLatestRecordingFieldsAsync(session);
+                await _sessionService.UpdateInterviewSessionAsync(session);
+            }
+
+            await TryPublishCompletionAsync(session);
             return new CompleteInterviewResponse
             {
                 Success = true,
@@ -2963,35 +3078,73 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
-        if (!IsCompletionPending(session))
+        if (string.Equals(session.CompletionState, InterviewCompletionStates.Failed, StringComparison.Ordinal))
         {
-            CompletionFailures[sessionId] = CompletionFailedMessage;
             return new CompleteInterviewResponse
             {
                 Success = false,
                 IsTerminated = true,
-                Message = CompletionFailedMessage,
-                ReportGenerationFailed = true
+                Message = string.IsNullOrWhiteSpace(session.CompletionFailureMessage)
+                    ? CompletionFailedMessage
+                    : session.CompletionFailureMessage,
+                ReportGenerationFailed = true,
+                EstimatedWaitSeconds = 0
             };
         }
+
+        var now = DateTime.UtcNow;
+        if (!CanClaimCompletionWork(session, now))
+        {
+            return new CompleteInterviewResponse
+            {
+                Success = true,
+                IsTerminated = true,
+                Score = session.Score,
+                Message = CompletionPendingMessage,
+                ReportGenerationInProgress = IsCompletionPending(session),
+                EstimatedWaitSeconds = IsCompletionPending(session) ? CompletionEstimatedWaitSeconds : 0
+            };
+        }
+
+        session.CompletionState = InterviewCompletionStates.Processing;
+        session.CompletionAttemptCount++;
+        session.CompletionQueuedOnUtc ??= now;
+        session.CompletionProcessingStartedOnUtc = now;
+        session.CompletionFinishedOnUtc = null;
+        session.CompletionFailureMessage = null;
+        session.CompletionReason = NormalizeCompletionReason(session.CompletionReason);
+        await PreserveLatestRecordingFieldsAsync(session);
+        await _sessionService.UpdateInterviewSessionAsync(session);
 
         try
         {
             await LogRuntimeIssueAsync(
                 NopLogLevel.Information,
                 "AI Interview completion processing started",
-                $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}.",
+                $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Attempt={session.CompletionAttemptCount}.",
                 await ResolveLogCustomerAsync(session));
             var turns = await _turnService.GetTurnsBySessionIdAsync(session.Id);
-            var response = await CompleteInterviewInternalAsync(session, turns, reason, aiCompletion);
+            var response = await CompleteInterviewInternalAsync(
+                session,
+                turns,
+                session.CompletionReason,
+                session.CompletionAiResponse);
             if (response.Success)
             {
-                CompletionFailures.TryRemove(sessionId, out _);
-                await LogRuntimeIssueAsync(
-                    NopLogLevel.Information,
-                    "AI Interview completion processing completed",
-                    $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}.",
-                    await ResolveLogCustomerAsync(session));
+                try
+                {
+                    await LogRuntimeIssueAsync(
+                        NopLogLevel.Information,
+                        "AI Interview completion processing completed",
+                        $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}.",
+                        await ResolveLogCustomerAsync(session));
+                }
+                catch (Exception logException)
+                {
+                    _logger?.LogError(logException, "AI Interview completion success could not be written to the nopCommerce log for session {SessionId}.", session.Id);
+                }
+
+                await TryPublishCompletionAsync(session);
                 return response with
                 {
                     ReportReady = true,
@@ -3001,46 +3154,66 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 };
             }
 
-            CompletionFailures[sessionId] = CompletionFailedMessage;
-            await LogRuntimeIssueAsync(
-                NopLogLevel.Warning,
-                "AI Interview completion processing failed",
-                $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason={BuildSafeValue(response.Message)}.",
-                await ResolveLogCustomerAsync(session));
-            return response with
-            {
-                Message = CompletionFailedMessage,
-                ReportGenerationInProgress = false,
-                ReportGenerationFailed = true,
-                EstimatedWaitSeconds = 0
-            };
+            return await PersistCompletionFailureAsync(session, response.Message);
         }
         catch (Exception ex)
         {
-            CompletionFailures[sessionId] = CompletionFailedMessage;
             _logger?.LogError(ex, "AI Interview completion processing failed for session {SessionId}.", session.Id);
-            await LogRuntimeIssueAsync(
-                NopLogLevel.Warning,
-                "AI Interview completion processing failed",
-                $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason={BuildSafeValue(ex.Message)}.",
-                await ResolveLogCustomerAsync(session));
-            return new CompleteInterviewResponse
+            var persistedSession = await _sessionService.GetInterviewSessionByIdAsync(session.Id);
+            if (IsCompletionReady(persistedSession))
             {
-                Success = false,
-                IsTerminated = true,
-                Message = CompletionFailedMessage,
-                ReportGenerationInProgress = false,
-                ReportGenerationFailed = true,
-                EstimatedWaitSeconds = 0
-            };
+                await TryPublishCompletionAsync(persistedSession);
+                return new CompleteInterviewResponse
+                {
+                    Success = true,
+                    IsTerminated = true,
+                    Score = persistedSession.Score,
+                    Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
+                    Completion = persistedSession.ReportData,
+                    ReportReady = true,
+                    ReportGenerationInProgress = false,
+                    ReportGenerationFailed = false,
+                    EstimatedWaitSeconds = 0
+                };
+            }
+
+            return await PersistCompletionFailureAsync(session, ex.Message);
         }
+    }
+
+    protected virtual async Task<CompleteInterviewResponse> PersistCompletionFailureAsync(InterviewSession session, string diagnosticMessage)
+    {
+        session.CompletionState = InterviewCompletionStates.Failed;
+        session.CompletionProcessingStartedOnUtc = null;
+        session.CompletionFinishedOnUtc = DateTime.UtcNow;
+        session.CompletionFailureMessage = CompletionFailedMessage;
+        session.CompletedOnUtc = null;
+        session.ReportData = string.Empty;
+        await PreserveLatestRecordingFieldsAsync(session);
+        await _sessionService.UpdateInterviewSessionAsync(session);
+        await LogRuntimeIssueAsync(
+            NopLogLevel.Warning,
+            "AI Interview completion processing failed",
+            $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason={BuildSafeValue(diagnosticMessage)}.",
+            await ResolveLogCustomerAsync(session));
+
+        return new CompleteInterviewResponse
+        {
+            Success = false,
+            IsTerminated = true,
+            Message = CompletionFailedMessage,
+            ReportGenerationInProgress = false,
+            ReportGenerationFailed = true,
+            EstimatedWaitSeconds = 0
+        };
     }
 
     public async Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null)
     {
         var session = await _sessionService.GetSessionByTokenAsync(token);
         var now = DateTime.UtcNow;
-        if (session == null || (!IsSessionUsable(session, now) && !session.CompletedOnUtc.HasValue))
+        if (session == null ||
+            (!IsSessionUsable(session, now) && !IsCompletionPending(session) && !IsCompletionReady(session)))
         {
             return new CompleteInterviewResponse
             {
@@ -3051,7 +3224,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         using var sessionLock = await AcquireSessionMutationLockAsync(session.Id);
         session = await _sessionService.GetSessionByTokenAsync(token) ?? session;
-        if (session == null || (!IsSessionUsable(session, DateTime.UtcNow) && !session.CompletedOnUtc.HasValue))
+        if (session == null ||
+            (!IsSessionUsable(session, DateTime.UtcNow) && !IsCompletionPending(session) && !IsCompletionReady(session)))
         {
             return new CompleteInterviewResponse
             {
@@ -3070,7 +3244,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             };
         }
 
-        return await CompleteInterviewInternalAsync(session, turns, reason);
+        var currentTurn = InterviewTurnNormalizationHelper
+            .GetCanonicalTurns(turns, GetMaxQuestions(session))
+            .LastOrDefault();
+        return await AcceptTerminalAnswerAndQueueCompletionAsync(
+            session,
+            turns,
+            currentTurn,
+            reason ?? "Interview completed.");
     }
 
     private async Task<SubmitInterviewAnswerResponse> BuildCompletedSubmitResponseAsync(InterviewSession session, IList<InterviewTurn> turns, string fallbackFeedback = null)
@@ -3085,7 +3266,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             Message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Interview.CompletedScore"),
             Completion = session.ReportData,
             ReportUrl = string.Empty,
-            ReportReady = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData),
+            ReportReady = IsCompletionReady(session),
             Interrupted = false,
             Question = string.Empty,
             Turn = MapTurn(completedTurns.LastOrDefault()),
@@ -3362,9 +3543,16 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 return RecordingFailure("Recording upload failed.");
             }
 
-            session.RecordingUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}";
-            await _sessionService.UpdateInterviewSessionAsync(session);
-            await _sessionService.EnsureRecordingShareTokenAsync(session);
+            using (await AcquireSessionMutationLockAsync(session.Id))
+            {
+                session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? session;
+                if (string.IsNullOrWhiteSpace(session.RecordingUrl))
+                {
+                    session.RecordingUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}";
+                    await _sessionService.UpdateInterviewSessionAsync(session);
+                    await _sessionService.EnsureRecordingShareTokenAsync(session);
+                }
+            }
             await LogRecordingUploadSuccessAsync(session, recording, blobName, (int)response.StatusCode, normalizedContentType);
 
             return new RecordingUploadResponseModel
@@ -3401,6 +3589,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             return false;
 
         if (session.IsActive && !session.CompletedOnUtc.HasValue && session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc > utcNow)
+            return true;
+
+        if (IsCompletionPending(session) && session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc > utcNow)
             return true;
 
         if (session.CompletedOnUtc.HasValue &&
@@ -4003,7 +4194,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken"),
                 Completion = session.ReportData,
                 ReportUrl = string.Empty,
-                ReportReady = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData),
+                ReportReady = IsCompletionReady(session),
                 ReportGenerationInProgress = IsCompletionPending(session),
                 Turns = MapTurns(InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, GetMaxQuestions(session)))
             };
@@ -4031,6 +4222,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         completedTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, GetMaxQuestions(session)).ToList();
         session.IsActive = false;
         session.CompletedOnUtc = DateTime.UtcNow;
+        session.CompletionState = InterviewCompletionStates.Ready;
+        session.CompletionProcessingStartedOnUtc = null;
+        session.CompletionFinishedOnUtc = session.CompletedOnUtc;
+        session.CompletionFailureMessage = null;
         session.Score = completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
         session.QuestionScores = JsonSerializer.Serialize(completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
         var strengthsStageStopwatch = Stopwatch.StartNew();
@@ -4042,9 +4237,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         await _sessionService.UpdateInterviewSessionAsync(session);
         await LogCompletionStageAsync(session, "report-persistence", persistenceStageStopwatch.ElapsedMilliseconds, true);
 
-        var emailStageStopwatch = Stopwatch.StartNew();
-        await PublishCompletionAsync(session);
-        await LogCompletionStageAsync(session, "email-publication", emailStageStopwatch.ElapsedMilliseconds, true);
         await LogCompletionStageAsync(session, "total-completion", completionStopwatch.ElapsedMilliseconds, true);
         await LogRuntimeActivityAsync(
             session,
@@ -4355,6 +4547,41 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var workingLanguage = _workContext == null ? null : await _workContext.GetWorkingLanguageAsync();
         var languageId = workingLanguage?.Id ?? 0;
         await _eventPublisher.PublishAsync(new MockAiInterviewCompletedEvent(session, languageId));
+    }
+
+    protected virtual async Task TryPublishCompletionAsync(InterviewSession session)
+    {
+        try
+        {
+            session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? session;
+            if (!IsCompletionReady(session) || session.CompletionPublishedOnUtc.HasValue)
+                return;
+
+            using var transaction = _dataProvider?.CreateTransactionScope();
+            var publicationStopwatch = Stopwatch.StartNew();
+            await PublishCompletionAsync(session);
+            session.CompletionPublishedOnUtc = DateTime.UtcNow;
+            await PreserveLatestRecordingFieldsAsync(session);
+            await _sessionService.UpdateInterviewSessionAsync(session);
+            transaction?.Complete();
+            await LogCompletionStageAsync(session, "email-publication", publicationStopwatch.ElapsedMilliseconds, true);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "AI Interview completion publication failed for session {SessionId}.", session?.Id ?? 0);
+            try
+            {
+                await LogRuntimeIssueAsync(
+                    NopLogLevel.Warning,
+                    "AI Interview completion publication failed",
+                    $"Mode=completion-publication; SessionId={session?.Id ?? 0}; ProductId={session?.ProductId ?? 0}; CustomerId={session?.CustomerId ?? 0}; Reason={BuildSafeValue(ex.Message)}.",
+                    await ResolveLogCustomerAsync(session));
+            }
+            catch (Exception logException)
+            {
+                _logger?.LogError(logException, "AI Interview completion publication failure could not be written to the nopCommerce log for session {SessionId}.", session?.Id ?? 0);
+            }
+        }
     }
 
     protected virtual string BuildReport(IEnumerable<InterviewTurn> turns, decimal score, string reason, string aiCompletion = null, string strengthsSummary = null)
