@@ -1324,7 +1324,7 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task Runtime_Preserves_Service_Level_MediaFlags()
+    public async Task Runtime_Preserves_Service_Level_MediaFlags_AndUsesPersistedQuestionCount()
     {
         var tokenExpiryUtc = DateTime.UtcNow.AddHours(1);
         var runtimeModel = new InterviewRuntimeModel
@@ -1349,6 +1349,7 @@ public class RuntimeAndAdminTests
             CustomerId = 1,
             IsActive = true,
             Token = "token",
+            QuestionCount = 3,
             TokenExpiryUtc = tokenExpiryUtc
         });
         _interviewRuntimeService.Setup(x => x.GetRuntimeModelAsync("token"))
@@ -1398,8 +1399,8 @@ public class RuntimeAndAdminTests
 
         Assert.That(model.ClientSettings.SpeechAvailable, Is.False);
         Assert.That(model.ClientSettings.RecordingAvailable, Is.False);
-        Assert.That(model.QuestionCount, Is.EqualTo(5));
-        Assert.That(model.ClientSettings.QuestionCount, Is.EqualTo(5));
+        Assert.That(model.QuestionCount, Is.EqualTo(3));
+        Assert.That(model.ClientSettings.QuestionCount, Is.EqualTo(3));
         Assert.That(model.ClientSettings.SubmitAnswerUrl, Is.EqualTo("/mockaiinterview/submit-answer"));
         Assert.That(model.ClientSettings.BeginInterviewUrl, Is.EqualTo("/mockaiinterview/begin"));
         Assert.That(model.ClientSettings.PrepareInterviewUrl, Is.EqualTo("/mockaiinterview/prepare"));
@@ -3764,7 +3765,7 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task InterviewAiClient_ScoreAnswer_LengthTruncatedRetryExhausted_LogsExplicitContractFailure()
+    public async Task InterviewAiClient_ScoreAnswer_LengthTruncatedRetryExhausted_LogsContractFailureWithoutUsageRetrySummary()
     {
         var nopLogger = new Mock<ILogger>();
         nopLogger.Setup(logger => logger.InsertLogAsync(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Customer>()))
@@ -3816,13 +3817,10 @@ public class RuntimeAndAdminTests
         Assert.That(adapter.Requests[0].MaxCompletionTokens, Is.EqualTo(1200));
         Assert.That(adapter.Requests[1].MaxCompletionTokens, Is.EqualTo(2000));
         nopLogger.Verify(logger => logger.InsertLogAsync(
-            LogLevel.Warning,
+            It.IsAny<LogLevel>(),
             "AI Interview Azure OpenAI truncation retry exhausted",
-            It.Is<string>(message =>
-                message.Contains("Outcome=retry exhausted") &&
-                message.Contains("Reason=empty response content (finish_reason=length)") &&
-                message.Contains("Deployment=gpt-5-mini")),
-            null), Times.Once);
+            It.IsAny<string>(),
+            It.IsAny<Customer>()), Times.Never);
         nopLogger.Verify(logger => logger.InsertLogAsync(
             LogLevel.Warning,
             "AI Interview Azure OpenAI contract failure",
