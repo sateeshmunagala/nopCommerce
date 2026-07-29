@@ -1517,6 +1517,17 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         public int ReferenceCount { get; set; }
     }
 
+    private sealed class CompletionProcessingException : Exception
+    {
+        public CompletionProcessingException(string message, bool isRetryable, Exception innerException = null)
+            : base(message, innerException)
+        {
+            IsRetryable = isRetryable;
+        }
+
+        public bool IsRetryable { get; }
+    }
+
     private sealed class SessionMutationLockLease : IDisposable
     {
         private readonly int _sessionId;
@@ -2568,7 +2579,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         {
             session.Score = terminalTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
             session.QuestionScores = JsonSerializer.Serialize(terminalTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
-            var completion = await AcceptTerminalAnswerAndQueueCompletionAsync(
+            var scoredTerminalCompletion = await AcceptTerminalAnswerAndQueueCompletionAsync(
                 session,
                 turns,
                 currentTurn,
@@ -2586,18 +2597,18 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             {
                 Success = true,
                 IsTerminated = true,
-                Completion = completion.Completion,
-                Score = completion.Score,
-                Message = completion.Message,
-                ReportUrl = completion.ReportUrl,
+                Completion = scoredTerminalCompletion.Completion,
+                Score = scoredTerminalCompletion.Score,
+                Message = scoredTerminalCompletion.Message,
+                ReportUrl = scoredTerminalCompletion.ReportUrl,
                 Interrupted = false,
                 Question = string.Empty,
                 Turn = MapTurn(currentTurn),
-                Turns = completion.Turns,
-                ReportReady = completion.ReportReady,
-                ReportGenerationInProgress = completion.ReportGenerationInProgress,
-                ReportGenerationFailed = completion.ReportGenerationFailed,
-                EstimatedWaitSeconds = completion.EstimatedWaitSeconds
+                Turns = scoredTerminalCompletion.Turns,
+                ReportReady = scoredTerminalCompletion.ReportReady,
+                ReportGenerationInProgress = scoredTerminalCompletion.ReportGenerationInProgress,
+                ReportGenerationFailed = scoredTerminalCompletion.ReportGenerationFailed,
+                EstimatedWaitSeconds = scoredTerminalCompletion.EstimatedWaitSeconds
             };
         }
 
@@ -2712,7 +2723,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         var terminalTurns = InterviewTurnNormalizationHelper.GetCompletedReportTurns(turns, maxQuestions).ToList();
         if (terminalTurns.Count >= maxQuestions)
         {
-            var completion = await AcceptTerminalAnswerAndQueueCompletionAsync(
+            var unscoredTerminalCompletion = await AcceptTerminalAnswerAndQueueCompletionAsync(
                 session,
                 turns,
                 currentTurn,
@@ -2732,20 +2743,20 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
             return new SubmitInterviewAnswerResponse
             {
-                Success = completion.Success,
-                IsTerminated = completion.IsTerminated,
-                Completion = completion.Completion,
-                Score = completion.Score,
-                Message = completion.Message,
-                ReportUrl = completion.ReportUrl,
+                Success = unscoredTerminalCompletion.Success,
+                IsTerminated = unscoredTerminalCompletion.IsTerminated,
+                Completion = unscoredTerminalCompletion.Completion,
+                Score = unscoredTerminalCompletion.Score,
+                Message = unscoredTerminalCompletion.Message,
+                ReportUrl = unscoredTerminalCompletion.ReportUrl,
                 Interrupted = false,
                 Question = string.Empty,
                 Turn = MapTurn(currentTurn),
-                Turns = completion.Turns,
-                ReportReady = completion.ReportReady,
-                ReportGenerationInProgress = completion.ReportGenerationInProgress,
-                ReportGenerationFailed = completion.ReportGenerationFailed,
-                EstimatedWaitSeconds = completion.EstimatedWaitSeconds
+                Turns = unscoredTerminalCompletion.Turns,
+                ReportReady = unscoredTerminalCompletion.ReportReady,
+                ReportGenerationInProgress = unscoredTerminalCompletion.ReportGenerationInProgress,
+                ReportGenerationFailed = unscoredTerminalCompletion.ReportGenerationFailed,
+                EstimatedWaitSeconds = unscoredTerminalCompletion.EstimatedWaitSeconds
             };
         }
 
@@ -2907,11 +2918,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             session.ReportData = string.Empty;
             session.CompletionState = InterviewCompletionStates.Queued;
             session.CompletionAttemptCount = 0;
+            session.CompletionNextAttemptOnUtc = null;
             session.CompletionQueuedOnUtc = queuedOnUtc;
             session.CompletionProcessingStartedOnUtc = null;
             session.CompletionFinishedOnUtc = null;
             session.CompletionPublishedOnUtc = null;
             session.CompletionFailureMessage = null;
+            session.CompletionFailureDiagnostic = null;
             session.CompletionReason = NormalizeCompletionReason(reason);
             session.CompletionAiResponse = aiCompletion;
             await PreserveLatestRecordingFieldsAsync(session);
@@ -3022,11 +3035,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     protected static bool CanClaimCompletionWork(InterviewSession session, DateTime utcNow)
     {
-        if (session == null)
+        if (session == null || session.CompletionAttemptCount >= AIInterviewDefaults.CompletionMaxAttempts)
             return false;
 
         if (string.Equals(session.CompletionState, InterviewCompletionStates.Queued, StringComparison.Ordinal))
-            return true;
+        {
+            return !session.CompletionNextAttemptOnUtc.HasValue ||
+                session.CompletionNextAttemptOnUtc <= utcNow;
+        }
 
         if (string.Equals(session.CompletionState, InterviewCompletionStates.Processing, StringComparison.Ordinal))
         {
@@ -3058,8 +3074,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             {
                 session.CompletionState = InterviewCompletionStates.Ready;
                 session.CompletionFinishedOnUtc ??= session.CompletedOnUtc ?? DateTime.UtcNow;
+                session.CompletionNextAttemptOnUtc = null;
                 session.CompletionProcessingStartedOnUtc = null;
                 session.CompletionFailureMessage = null;
+                session.CompletionFailureDiagnostic = null;
                 await PreserveLatestRecordingFieldsAsync(session);
                 await _sessionService.UpdateInterviewSessionAsync(session);
             }
@@ -3093,6 +3111,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
 
         var now = DateTime.UtcNow;
+        var attemptLimitReached = session.CompletionAttemptCount >= AIInterviewDefaults.CompletionMaxAttempts &&
+            (string.Equals(session.CompletionState, InterviewCompletionStates.Queued, StringComparison.Ordinal) ||
+             (string.Equals(session.CompletionState, InterviewCompletionStates.Processing, StringComparison.Ordinal) &&
+              (!session.CompletionProcessingStartedOnUtc.HasValue ||
+               session.CompletionProcessingStartedOnUtc <= now.Subtract(InterviewCompletionRecoveryTask.ProcessingLeaseTimeout))));
+        if (attemptLimitReached)
+            return await PersistCompletionFailureAsync(session, "Completion attempt limit reached.");
+
         if (!CanClaimCompletionWork(session, now))
         {
             return new CompleteInterviewResponse
@@ -3108,6 +3134,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         session.CompletionState = InterviewCompletionStates.Processing;
         session.CompletionAttemptCount++;
+        session.CompletionNextAttemptOnUtc = null;
         session.CompletionQueuedOnUtc ??= now;
         session.CompletionProcessingStartedOnUtc = now;
         session.CompletionFinishedOnUtc = null;
@@ -3159,7 +3186,18 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         catch (Exception ex)
         {
             _logger?.LogError(ex, "AI Interview completion processing failed for session {SessionId}.", session.Id);
-            var persistedSession = await _sessionService.GetInterviewSessionByIdAsync(session.Id);
+            InterviewSession persistedSession = null;
+            Exception reloadException = null;
+            try
+            {
+                persistedSession = await _sessionService.GetInterviewSessionByIdAsync(session.Id);
+            }
+            catch (Exception lookupException)
+            {
+                reloadException = lookupException;
+                _logger?.LogError(lookupException, "AI Interview completion state could not be reloaded after failure for session {SessionId}.", session.Id);
+            }
+
             if (IsCompletionReady(persistedSession))
             {
                 await TryPublishCompletionAsync(persistedSession);
@@ -3177,25 +3215,63 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 };
             }
 
-            return await PersistCompletionFailureAsync(session, ex.Message);
+            var diagnosticMessage = reloadException == null
+                ? ex.Message
+                : $"{ex.Message}; StateReloadFailure={reloadException.GetType().Name}: {reloadException.Message}";
+            return await PersistCompletionFailureAsync(
+                session,
+                diagnosticMessage,
+                IsRetryableCompletionFailure(ex) || IsRetryableCompletionFailure(reloadException));
         }
     }
 
-    protected virtual async Task<CompleteInterviewResponse> PersistCompletionFailureAsync(InterviewSession session, string diagnosticMessage)
+    protected virtual async Task<CompleteInterviewResponse> PersistCompletionFailureAsync(InterviewSession session, string diagnosticMessage, bool retryable = false)
     {
+        var now = DateTime.UtcNow;
+        session.CompletionFailureDiagnostic = NormalizeCompletionDiagnostic(diagnosticMessage);
+        if (retryable && session.CompletionAttemptCount < AIInterviewDefaults.CompletionMaxAttempts)
+        {
+            session.CompletionState = InterviewCompletionStates.Queued;
+            session.CompletionNextAttemptOnUtc = now.Add(GetCompletionRetryDelay(session.CompletionAttemptCount));
+            session.CompletionProcessingStartedOnUtc = null;
+            session.CompletionFinishedOnUtc = null;
+            session.CompletionFailureMessage = null;
+            session.CompletedOnUtc = null;
+            session.ReportData = string.Empty;
+            await PreserveLatestRecordingFieldsAsync(session);
+            await _sessionService.UpdateInterviewSessionAsync(session);
+            await TryLogCompletionFailureAsync(
+                NopLogLevel.Warning,
+                "AI Interview completion processing retry scheduled",
+                session,
+                diagnosticMessage,
+                $"NextAttemptOnUtc={session.CompletionNextAttemptOnUtc:O}");
+
+            return new CompleteInterviewResponse
+            {
+                Success = true,
+                IsTerminated = true,
+                Message = CompletionPendingMessage,
+                ReportGenerationInProgress = true,
+                ReportGenerationFailed = false,
+                EstimatedWaitSeconds = CompletionEstimatedWaitSeconds
+            };
+        }
+
         session.CompletionState = InterviewCompletionStates.Failed;
+        session.CompletionNextAttemptOnUtc = null;
         session.CompletionProcessingStartedOnUtc = null;
-        session.CompletionFinishedOnUtc = DateTime.UtcNow;
+        session.CompletionFinishedOnUtc = now;
         session.CompletionFailureMessage = CompletionFailedMessage;
         session.CompletedOnUtc = null;
         session.ReportData = string.Empty;
         await PreserveLatestRecordingFieldsAsync(session);
         await _sessionService.UpdateInterviewSessionAsync(session);
-        await LogRuntimeIssueAsync(
+        await TryLogCompletionFailureAsync(
             NopLogLevel.Warning,
             "AI Interview completion processing failed",
-            $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Reason={BuildSafeValue(diagnosticMessage)}.",
-            await ResolveLogCustomerAsync(session));
+            session,
+            diagnosticMessage);
 
         return new CompleteInterviewResponse
         {
@@ -3206,6 +3282,121 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             ReportGenerationFailed = true,
             EstimatedWaitSeconds = 0
         };
+    }
+
+    protected virtual async Task TryLogCompletionFailureAsync(
+        NopLogLevel level,
+        string shortMessage,
+        InterviewSession session,
+        string diagnosticMessage,
+        string additionalDetail = null)
+    {
+        try
+        {
+            var detail = $"Mode=completion-worker; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; Attempt={session.CompletionAttemptCount}; Reason={BuildSafeValue(diagnosticMessage)}";
+            if (!string.IsNullOrWhiteSpace(additionalDetail))
+                detail += $"; {additionalDetail}";
+
+            await LogRuntimeIssueAsync(
+                level,
+                shortMessage,
+                detail + ".",
+                await ResolveLogCustomerAsync(session));
+        }
+        catch (Exception logException)
+        {
+            _logger?.LogError(logException, "AI Interview completion failure state could not be written to the nopCommerce log for session {SessionId}.", session.Id);
+        }
+    }
+
+    protected static TimeSpan GetCompletionRetryDelay(int attemptCount)
+    {
+        return TimeSpan.FromMinutes(attemptCount switch
+        {
+            <= 1 => AIInterviewDefaults.CompletionFirstRetryDelayMinutes,
+            2 => AIInterviewDefaults.CompletionSecondRetryDelayMinutes,
+            _ => AIInterviewDefaults.CompletionFallbackRetryDelayMinutes
+        });
+    }
+
+    protected static string NormalizeCompletionDiagnostic(string diagnosticMessage)
+    {
+        if (string.IsNullOrWhiteSpace(diagnosticMessage))
+            return "Completion processing failed.";
+
+        var normalized = Regex.Replace(diagnosticMessage.Trim(), "\\s+", " ");
+        return normalized.Length <= 2000 ? normalized : normalized[..2000];
+    }
+
+    protected static bool IsRetryableCompletionFailure(Exception exception)
+    {
+        if (exception == null)
+            return false;
+
+        if (exception is CompletionProcessingException completionException)
+            return completionException.IsRetryable;
+
+        if (exception is HttpRequestException ||
+            exception is TimeoutException ||
+            exception is TaskCanceledException ||
+            exception is System.Data.Common.DbException ||
+            (exception is IOException && exception is not InvalidDataException))
+        {
+            return true;
+        }
+
+        if (exception is Azure.RequestFailedException requestFailedException)
+            return IsRetryableCompletionStatusCode(requestFailedException.Status);
+
+        return exception.InnerException != null && IsRetryableCompletionFailure(exception.InnerException);
+    }
+
+    protected static bool IsRetryableCompletionFailure(string diagnosticMessage)
+    {
+        var failureKind = GetCompletionFailureMetadataValue(diagnosticMessage, "FailureKind");
+        if (string.Equals(failureKind, "azure-openai-http-failure", StringComparison.OrdinalIgnoreCase))
+        {
+            return int.TryParse(
+                    GetCompletionFailureMetadataValue(diagnosticMessage, "HttpStatus"),
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out var statusCode) &&
+                IsRetryableCompletionStatusCode(statusCode);
+        }
+
+        if (!string.Equals(failureKind, "azure-openai-exception", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var exceptionType = GetCompletionFailureMetadataValue(diagnosticMessage, "Reason");
+        return string.Equals(exceptionType, nameof(HttpRequestException), StringComparison.Ordinal) ||
+            string.Equals(exceptionType, nameof(TimeoutException), StringComparison.Ordinal) ||
+            string.Equals(exceptionType, nameof(TaskCanceledException), StringComparison.Ordinal) ||
+            string.Equals(exceptionType, nameof(IOException), StringComparison.Ordinal);
+    }
+
+    protected static bool IsRetryableCompletionStatusCode(int statusCode)
+    {
+        return statusCode is 408 or 429 || statusCode is >= 500 and <= 599;
+    }
+
+    protected static string GetCompletionFailureMetadataValue(string diagnosticMessage, string key)
+    {
+        if (string.IsNullOrWhiteSpace(diagnosticMessage) || string.IsNullOrWhiteSpace(key))
+            return null;
+
+        foreach (var segment in diagnosticMessage.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var separatorIndex = segment.IndexOf('=');
+            if (separatorIndex <= 0 ||
+                !string.Equals(segment[..separatorIndex].Trim(), key, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            return segment[(separatorIndex + 1)..].Trim().TrimEnd('.');
+        }
+
+        return null;
     }
 
     public async Task<CompleteInterviewResponse> CompleteInterviewAsync(string token, string reason = null)
@@ -4223,9 +4414,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         session.IsActive = false;
         session.CompletedOnUtc = DateTime.UtcNow;
         session.CompletionState = InterviewCompletionStates.Ready;
+        session.CompletionNextAttemptOnUtc = null;
         session.CompletionProcessingStartedOnUtc = null;
         session.CompletionFinishedOnUtc = session.CompletedOnUtc;
         session.CompletionFailureMessage = null;
+        session.CompletionFailureDiagnostic = null;
         session.Score = completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).DefaultIfEmpty(0).Average();
         session.QuestionScores = JsonSerializer.Serialize(completedTurns.Where(turn => turn.Score.HasValue).Select(turn => turn.Score.Value).ToList());
         var strengthsStageStopwatch = Stopwatch.StartNew();
@@ -4446,8 +4639,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     mode = "final-score-batch"
                 }, StorageSerializerOptions));
 
-            if (finalScoring == null || !finalScoring.Success)
-                throw new InvalidOperationException(finalScoring?.ErrorMessage ?? "Final batch scoring failed.");
+            if (finalScoring == null)
+                throw new CompletionProcessingException("Final batch scoring returned no result.", false);
+
+            if (!finalScoring.Success)
+            {
+                throw new CompletionProcessingException(
+                    finalScoring.ErrorMessage ?? "Final batch scoring failed.",
+                    IsRetryableCompletionFailure(finalScoring.ErrorMessage));
+            }
 
             var scoresBySequenceNumber = finalScoring.Turns
                 .GroupBy(turn => turn.SequenceNumber)
@@ -4509,15 +4709,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 $"Mode=final-score; SessionId={session.Id}; ProductId={session.ProductId}; CustomerId={session.CustomerId}; AnsweredTurns={answeredTurns.Count}; Reason={BuildSafeValue(ex.Message)}; ElapsedMs={finalScoringStopwatch.ElapsedMilliseconds}.",
                 await ResolveLogCustomerAsync(session));
 
-            return new CompleteInterviewResponse
-            {
-                Success = false,
-                IsTerminated = false,
-                Message = "Report generation is taking longer than expected. Please try opening the report from your interview history shortly.",
-                ReportGenerationInProgress = false,
-                EstimatedWaitSeconds = 0,
-                Turns = MapTurns(answeredTurns)
-            };
+            if (ex is CompletionProcessingException)
+                throw;
+
+            throw new CompletionProcessingException(ex.Message, IsRetryableCompletionFailure(ex), ex);
         }
     }
 

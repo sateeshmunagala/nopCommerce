@@ -103,3 +103,50 @@ public class InterviewSessionCompletionStateMigration : Migration
             Delete.Column(columnName).FromTable(TableName);
     }
 }
+
+[NopMigration("2026/07/29 10:00:00", "Misc.AIInterview bounded completion retry state", MigrationProcessType.Update)]
+public class InterviewSessionCompletionRetryMigration : Migration
+{
+    private const string TableName = nameof(InterviewSession);
+    private const string CompletionRetryIndexName = "IX_AIInterview_InterviewSession_CompletionState_NextAttempt_ProcessingStarted";
+
+    public override void Up()
+    {
+        if (!Schema.Table(TableName).Column(nameof(InterviewSession.CompletionNextAttemptOnUtc)).Exists())
+        {
+            Alter.Table(TableName)
+                .AddColumn(nameof(InterviewSession.CompletionNextAttemptOnUtc))
+                .AsDateTime2()
+                .Nullable();
+        }
+
+        if (!Schema.Table(TableName).Column(nameof(InterviewSession.CompletionFailureDiagnostic)).Exists())
+        {
+            Alter.Table(TableName)
+                .AddColumn(nameof(InterviewSession.CompletionFailureDiagnostic))
+                .AsString(2000)
+                .Nullable();
+        }
+
+        if (!Schema.Table(TableName).Index(CompletionRetryIndexName).Exists())
+        {
+            Create.Index(CompletionRetryIndexName)
+                .OnTable(TableName)
+                .OnColumn(nameof(InterviewSession.CompletionState)).Ascending()
+                .OnColumn(nameof(InterviewSession.CompletionNextAttemptOnUtc)).Ascending()
+                .OnColumn(nameof(InterviewSession.CompletionProcessingStartedOnUtc)).Ascending();
+        }
+    }
+
+    public override void Down()
+    {
+        if (Schema.Table(TableName).Index(CompletionRetryIndexName).Exists())
+            Delete.Index(CompletionRetryIndexName).OnTable(TableName);
+
+        if (Schema.Table(TableName).Column(nameof(InterviewSession.CompletionFailureDiagnostic)).Exists())
+            Delete.Column(nameof(InterviewSession.CompletionFailureDiagnostic)).FromTable(TableName);
+
+        if (Schema.Table(TableName).Column(nameof(InterviewSession.CompletionNextAttemptOnUtc)).Exists())
+            Delete.Column(nameof(InterviewSession.CompletionNextAttemptOnUtc)).FromTable(TableName);
+    }
+}

@@ -29,11 +29,13 @@ public class InterviewSession : BaseEntity
     public int QuestionCount { get; set; }
     public string CompletionState { get; set; }
     public int CompletionAttemptCount { get; set; }
+    public DateTime? CompletionNextAttemptOnUtc { get; set; }
     public DateTime? CompletionQueuedOnUtc { get; set; }
     public DateTime? CompletionProcessingStartedOnUtc { get; set; }
     public DateTime? CompletionFinishedOnUtc { get; set; }
     public DateTime? CompletionPublishedOnUtc { get; set; }
     public string CompletionFailureMessage { get; set; }
+    public string CompletionFailureDiagnostic { get; set; }
     public string CompletionReason { get; set; }
     public string CompletionAiResponse { get; set; }
     public int TotalPromptTokens { get; set; }

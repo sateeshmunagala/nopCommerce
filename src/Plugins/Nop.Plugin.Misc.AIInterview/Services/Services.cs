@@ -491,10 +491,13 @@ public class InterviewSessionService : IInterviewSessionService
     public async Task<IList<InterviewSession>> GetCompletionWorkSessionsAsync(DateTime staleProcessingBeforeUtc, int maxCount = 20)
     {
         maxCount = Math.Clamp(maxCount, 1, 100);
+        var utcNow = DateTime.UtcNow;
 
         return await _sessionRepository.GetAllAsync(query => query
             .Where(session =>
-                session.CompletionState == InterviewCompletionStates.Queued ||
+                (session.CompletionState == InterviewCompletionStates.Queued &&
+                    (!session.CompletionNextAttemptOnUtc.HasValue ||
+                     session.CompletionNextAttemptOnUtc <= utcNow)) ||
                 (session.CompletionState == InterviewCompletionStates.Processing &&
                     (!session.CompletionProcessingStartedOnUtc.HasValue ||
                      session.CompletionProcessingStartedOnUtc <= staleProcessingBeforeUtc)) ||
