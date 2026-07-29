@@ -3343,7 +3343,7 @@ public class RuntimeServiceTests
                 It.IsAny<string>(),
                 It.IsAny<Customer>()))
             .Callback<LogLevel, string, string, Customer>((_, _, fullMessage, _) => loggedDetails.Add(fullMessage))
-            .ReturnsAsync(new Log());
+            .Returns(Task.CompletedTask);
 
         var service = CreateService(
             sessionService,

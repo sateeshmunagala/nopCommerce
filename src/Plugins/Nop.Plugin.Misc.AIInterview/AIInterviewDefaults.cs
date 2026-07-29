@@ -123,8 +123,8 @@ public static class AIInterviewDefaults
     public const int CompletionRecoveryTaskPeriodSeconds = 30;
     public const int CompletionMaxAttempts = 3;
     public const int CompletionFirstRetryDelayMinutes = 1;
-    public const int CompletionSecondRetryDelayMinutes = 3;
-    public const int CompletionFallbackRetryDelayMinutes = 5;
+    public const int CompletionSecondRetryDelayMinutes = 5;
+    public const int CompletionFallbackRetryDelayMinutes = 15;
     public const int DefaultRecordingAudioBitsPerSecond = 64000;
     public const int MinRecordingAudioBitsPerSecond = 32000;
     public const int MaxRecordingAudioBitsPerSecond = 128000;
