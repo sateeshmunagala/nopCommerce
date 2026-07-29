@@ -1689,21 +1689,27 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (_scheduleTaskService == null)
             return;
 
-        var completionTask = await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.CompletionRecoveryTaskType);
-        var legacyCompletionTask = await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.LegacyCompletionRecoveryTaskType);
+        var completionTasks = (await _scheduleTaskService.GetAllTasksAsync(showHidden: true) ?? new List<ScheduleTask>())
+            .Where(task =>
+                string.Equals(task.Type, AIInterviewDefaults.CompletionRecoveryTaskType, StringComparison.Ordinal) ||
+                string.Equals(task.Type, AIInterviewDefaults.LegacyCompletionRecoveryTaskType, StringComparison.Ordinal))
+            .OrderBy(task => task.Id)
+            .ToList();
+        var retainedTask = completionTasks
+            .FirstOrDefault(task => string.Equals(task.Type, AIInterviewDefaults.CompletionRecoveryTaskType, StringComparison.Ordinal)) ??
+            completionTasks.FirstOrDefault();
 
-        if (completionTask != null)
+        if (retainedTask != null)
         {
-            if (legacyCompletionTask != null && !ReferenceEquals(legacyCompletionTask, completionTask))
-                await _scheduleTaskService.DeleteTaskAsync(legacyCompletionTask);
+            if (string.Equals(retainedTask.Type, AIInterviewDefaults.LegacyCompletionRecoveryTaskType, StringComparison.Ordinal))
+            {
+                retainedTask.Type = AIInterviewDefaults.CompletionRecoveryTaskType;
+                await _scheduleTaskService.UpdateTaskAsync(retainedTask);
+            }
 
-            return;
-        }
+            foreach (var duplicateTask in completionTasks.Where(task => !ReferenceEquals(task, retainedTask)))
+                await _scheduleTaskService.DeleteTaskAsync(duplicateTask);
 
-        if (legacyCompletionTask != null)
-        {
-            legacyCompletionTask.Type = AIInterviewDefaults.CompletionRecoveryTaskType;
-            await _scheduleTaskService.UpdateTaskAsync(legacyCompletionTask);
             return;
         }
 
@@ -1723,14 +1729,14 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (_scheduleTaskService == null)
             return;
 
-        var completionTask = await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.CompletionRecoveryTaskType);
-        var legacyCompletionTask = await _scheduleTaskService.GetTaskByTypeAsync(AIInterviewDefaults.LegacyCompletionRecoveryTaskType);
+        var completionTasks = (await _scheduleTaskService.GetAllTasksAsync(showHidden: true) ?? new List<ScheduleTask>())
+            .Where(task =>
+                string.Equals(task.Type, AIInterviewDefaults.CompletionRecoveryTaskType, StringComparison.Ordinal) ||
+                string.Equals(task.Type, AIInterviewDefaults.LegacyCompletionRecoveryTaskType, StringComparison.Ordinal))
+            .ToList();
 
-        if (completionTask != null)
+        foreach (var completionTask in completionTasks)
             await _scheduleTaskService.DeleteTaskAsync(completionTask);
-
-        if (legacyCompletionTask != null && !ReferenceEquals(legacyCompletionTask, completionTask))
-            await _scheduleTaskService.DeleteTaskAsync(legacyCompletionTask);
     }
 
     /// <summary>

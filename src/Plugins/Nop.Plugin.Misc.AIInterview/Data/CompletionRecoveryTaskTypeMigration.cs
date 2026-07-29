@@ -17,34 +17,31 @@ public class CompletionRecoveryTaskTypeMigration : Migration
 
     public override void Up()
     {
-        var completionTasks = _dataProvider.GetTable<ScheduleTask>()
+        var completionTaskCandidates = _dataProvider.GetTable<ScheduleTask>()
             .Where(task => task.Type == AIInterviewDefaults.CompletionRecoveryTaskType ||
                 task.Type == AIInterviewDefaults.LegacyCompletionRecoveryTaskType)
             .ToList();
-
-        var completionTask = completionTasks
-            .FirstOrDefault(task => task.Type == AIInterviewDefaults.CompletionRecoveryTaskType);
-        var legacyCompletionTasks = completionTasks
-            .Where(task => task.Type == AIInterviewDefaults.LegacyCompletionRecoveryTaskType)
+        var completionTasks = completionTaskCandidates
+            .Where(task =>
+                string.Equals(task.Type, AIInterviewDefaults.CompletionRecoveryTaskType, StringComparison.Ordinal) ||
+                string.Equals(task.Type, AIInterviewDefaults.LegacyCompletionRecoveryTaskType, StringComparison.Ordinal))
+            .OrderBy(task => task.Id)
             .ToList();
 
-        if (completionTask != null)
-        {
-            foreach (var legacyCompletionTask in legacyCompletionTasks)
-                _dataProvider.DeleteEntity(legacyCompletionTask);
-
+        var completionTask = completionTasks
+            .FirstOrDefault(task => string.Equals(task.Type, AIInterviewDefaults.CompletionRecoveryTaskType, StringComparison.Ordinal));
+        var retainedTask = completionTask ?? completionTasks.FirstOrDefault();
+        if (retainedTask == null)
             return;
+
+        if (string.Equals(retainedTask.Type, AIInterviewDefaults.LegacyCompletionRecoveryTaskType, StringComparison.Ordinal))
+        {
+            retainedTask.Type = AIInterviewDefaults.CompletionRecoveryTaskType;
+            _dataProvider.UpdateEntity(retainedTask);
         }
 
-        var repairedCompletionTask = legacyCompletionTasks.FirstOrDefault();
-        if (repairedCompletionTask == null)
-            return;
-
-        repairedCompletionTask.Type = AIInterviewDefaults.CompletionRecoveryTaskType;
-        _dataProvider.UpdateEntity(repairedCompletionTask);
-
-        foreach (var legacyCompletionTask in legacyCompletionTasks.Skip(1))
-            _dataProvider.DeleteEntity(legacyCompletionTask);
+        foreach (var duplicateTask in completionTasks.Where(task => !ReferenceEquals(task, retainedTask)))
+            _dataProvider.DeleteEntity(duplicateTask);
     }
 
     public override void Down()
