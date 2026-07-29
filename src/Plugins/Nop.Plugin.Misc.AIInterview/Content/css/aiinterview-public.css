@@ -2306,6 +2306,11 @@ body.ai-job-preview-open .item-box {
     display: none !important;
 }
 
+.runtime-status-region {
+    display: grid;
+    min-width: 0;
+}
+
 .runtime-header-status {
     min-height: 0;
     padding: 10px 12px;
@@ -2317,6 +2322,29 @@ body.ai-job-preview-open .item-box {
 
 .runtime-header-status.message-success {
     color: #166534;
+}
+
+.runtime-report-ready-action {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+    padding: 0 12px 10px;
+    border: 1px solid #bbf7d0;
+    border-top: 0;
+    border-radius: 0 0 1px 1px;
+    background: #f0fdf4;
+}
+
+.runtime-report-ready-action #view-report {
+    flex: 0 1 auto;
+    max-width: 100%;
+    min-height: 36px;
+    margin: 0;
+    border-color: var(--jb-accent, #35d6b4);
+    color: var(--jb-accent-dark, #24b99a);
+    white-space: normal;
 }
 
 .runtime-screen-share-interruption-warning {

@@ -2529,11 +2529,76 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("const finalRecordingUploadPromise = willCompleteOnSubmit\r\n                ? finalizeRecordingBeforeCompletion()\r\n                : null;").Or.Contain("const finalRecordingUploadPromise = willCompleteOnSubmit\n                ? finalizeRecordingBeforeCompletion()\n                : null;"));
         Assert.That(runtimeViewText, Does.Contain("await setCompletedState(result, finalRecordingUploadPromise);"));
 
-        Assert.That(runtimeViewText, Does.Contain("reportButton.onclick = () => navigateToReport(reportUrl);"));
+        Assert.That(runtimeViewText, Does.Contain("reportButton.onclick = () => navigateToReport(normalizedReportUrl);"));
         Assert.That(runtimeViewText, Does.Contain("if (!reportUrl || reportNavigationStarted)"));
-        Assert.That(runtimeViewText, Does.Contain("navigateToReport(reportUrl);"));
+        Assert.That(runtimeViewText.Split("navigateToReport(normalizedReportUrl);", StringSplitOptions.None).Length - 1, Is.EqualTo(1));
         Assert.That(runtimeViewText, Does.Contain("setHeaderStatus(`${message} Elapsed ${formatElapsedTime(elapsedSeconds)}`, false);"));
         Assert.That(runtimeViewText, Does.Contain("id=\"recording-status\" role=\"status\" aria-live=\"polite\""));
+    }
+
+    [Test]
+    public void RuntimeView_ReportReadyAction_IsAboveCameraAndHiddenWithoutReadyUrl()
+    {
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+        var runtimeCssText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
+
+        var headerStatusIndex = runtimeViewText.IndexOf("id=\"runtime-header-status\"", StringComparison.Ordinal);
+        var reportActionIndex = runtimeViewText.IndexOf("id=\"runtime-report-ready-action\"", StringComparison.Ordinal);
+        var reportButtonIndex = runtimeViewText.IndexOf("id=\"view-report\"", StringComparison.Ordinal);
+        var progressIndex = runtimeViewText.IndexOf("class=\"runtime-progress\"", StringComparison.Ordinal);
+        var runtimeLayoutIndex = runtimeViewText.IndexOf("class=\"runtime-layout\"", StringComparison.Ordinal);
+
+        Assert.That(headerStatusIndex, Is.GreaterThanOrEqualTo(0));
+        Assert.That(reportActionIndex, Is.GreaterThan(headerStatusIndex));
+        Assert.That(reportButtonIndex, Is.GreaterThan(reportActionIndex));
+        Assert.That(progressIndex, Is.GreaterThan(reportButtonIndex));
+        Assert.That(runtimeLayoutIndex, Is.GreaterThan(progressIndex));
+        Assert.That(runtimeViewText.Split("id=\"view-report\"", StringSplitOptions.None).Length - 1, Is.EqualTo(1));
+        Assert.That(runtimeViewText, Does.Contain("id=\"runtime-report-ready-action\" class=\"runtime-report-ready-action runtime-js-hidden\""));
+
+        var updateStart = runtimeViewText.IndexOf("const updateReportButton = (reportUrl) =>", StringComparison.Ordinal);
+        var updateEnd = runtimeViewText.IndexOf("const navigateToReport = (reportUrl) =>", updateStart, StringComparison.Ordinal);
+        var updateBlock = runtimeViewText.Substring(updateStart, updateEnd - updateStart);
+        Assert.That(updateBlock, Does.Contain("const normalizedReportUrl = typeof reportUrl === 'string' ? reportUrl.trim() : '';"));
+        Assert.That(updateBlock, Does.Contain("reportReadyAction.classList.remove('runtime-js-hidden');"));
+        Assert.That(updateBlock, Does.Contain("reportButton.classList.remove('runtime-js-hidden');"));
+        Assert.That(updateBlock.Split("reportButton.onclick = () => navigateToReport(normalizedReportUrl);", StringSplitOptions.None).Length - 1, Is.EqualTo(1));
+        Assert.That(updateBlock, Does.Contain("reportReadyAction.classList.add('runtime-js-hidden');"));
+        Assert.That(updateBlock, Does.Contain("reportButton.classList.add('runtime-js-hidden');"));
+        Assert.That(updateBlock, Does.Contain("reportButton.onclick = null;"));
+
+        var pollingStart = runtimeViewText.IndexOf("const pollCompletionStatusOnce = async", StringComparison.Ordinal);
+        var pollingEnd = runtimeViewText.IndexOf("const startCompletionStatusPolling", pollingStart, StringComparison.Ordinal);
+        var pollingBlock = runtimeViewText.Substring(pollingStart, pollingEnd - pollingStart);
+        Assert.That(pollingBlock, Does.Contain("if (!reportReady || !reportUrl)\r\n                    updateReportButton('');")
+            .Or.Contain("if (!reportReady || !reportUrl)\n                    updateReportButton('');"));
+        Assert.That(pollingBlock, Does.Contain("if (reportReady && reportUrl)"));
+        Assert.That(pollingBlock, Does.Contain("setHeaderStatus('Your report is ready.', false);"));
+        Assert.That(pollingBlock, Does.Contain("updateReportButton(reportUrl);"));
+        Assert.That(pollingBlock, Does.Contain("if (reportFailed || (!reportInProgress && !reportReady))"));
+        Assert.That(pollingBlock.Split("updateReportButton('');", StringSplitOptions.None).Length - 1, Is.EqualTo(2));
+
+        var navigationStart = runtimeViewText.IndexOf("const navigateToReport = (reportUrl) =>", StringComparison.Ordinal);
+        var navigationEnd = runtimeViewText.IndexOf("const renderCompletionWaitState", navigationStart, StringComparison.Ordinal);
+        var navigationBlock = runtimeViewText.Substring(navigationStart, navigationEnd - navigationStart);
+        Assert.That(navigationBlock, Does.Contain("if (!reportUrl || reportNavigationStarted)"));
+        Assert.That(navigationBlock, Does.Contain("reportNavigationStarted = true;"));
+        Assert.That(navigationBlock, Does.Contain("window.location.href = reportUrl;"));
+
+        var actionCssStart = runtimeCssText.IndexOf(".runtime-report-ready-action {", StringComparison.Ordinal);
+        var actionCssEnd = runtimeCssText.IndexOf('}', actionCssStart);
+        var actionCssBlock = runtimeCssText.Substring(actionCssStart, actionCssEnd - actionCssStart);
+        Assert.That(actionCssBlock, Does.Contain("display: flex;"));
+        Assert.That(actionCssBlock, Does.Contain("align-items: center;"));
+        Assert.That(actionCssBlock, Does.Contain("flex-wrap: wrap;"));
+        Assert.That(actionCssBlock, Does.Contain("gap: 8px;"));
+        Assert.That(actionCssBlock, Does.Contain("min-width: 0;"));
+
+        var buttonCssStart = runtimeCssText.IndexOf(".runtime-report-ready-action #view-report {", StringComparison.Ordinal);
+        var buttonCssEnd = runtimeCssText.IndexOf('}', buttonCssStart);
+        var buttonCssBlock = runtimeCssText.Substring(buttonCssStart, buttonCssEnd - buttonCssStart);
+        Assert.That(buttonCssBlock, Does.Contain("max-width: 100%;"));
+        Assert.That(buttonCssBlock, Does.Contain("white-space: normal;"));
     }
 
     [Test]

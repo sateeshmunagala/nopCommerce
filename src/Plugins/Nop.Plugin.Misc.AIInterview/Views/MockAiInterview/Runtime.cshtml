@@ -53,10 +53,15 @@
             </div>
         </div>
 
-        <div id="runtime-header-status" class="runtime-header-status runtime-status runtime-js-hidden" aria-live="polite"></div>
-        <div id="screen-share-interruption-warning" class="runtime-screen-share-interruption-warning runtime-js-hidden" aria-live="assertive">Resume screen share to continue.</div>
+        <div class="runtime-status-region">
+            <div id="runtime-header-status" class="runtime-header-status runtime-status runtime-js-hidden" aria-live="polite"></div>
+            <div id="runtime-report-ready-action" class="runtime-report-ready-action runtime-js-hidden">
+                <button type="button" id="view-report" class="button-2 runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</button>
+            </div>
+            <div id="screen-share-interruption-warning" class="runtime-screen-share-interruption-warning runtime-js-hidden" aria-live="assertive">Resume screen share to continue.</div>
 
-        <div class="runtime-progress"><span id="runtime-progress-bar"></span></div>
+            <div class="runtime-progress"><span id="runtime-progress-bar"></span></div>
+        </div>
 
         <div class="runtime-layout">
             <section class="runtime-stage">
@@ -222,7 +227,6 @@
                         </div>
                         <div id="runtime-actions" class="runtime-actions runtime-js-hidden">
                             <button type="button" id="stop-interview" class="button-2 runtime-js-hidden" disabled tabindex="-1" aria-hidden="true">@T("Plugins.Misc.AIInterview.Runtime.StopInterview")</button>
-                            <button type="button" id="view-report" class="button-2 runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</button>
                         </div>
                     </section>
                 </div>
@@ -600,7 +604,7 @@
         const runtimeLog = document.getElementById('runtime-log');
         const audioMeter = Array.from(document.querySelectorAll('#audio-meter span'));
         const reportButton = document.getElementById('view-report');
-        const actionsPanel = document.getElementById('runtime-actions');
+        const reportReadyAction = document.getElementById('runtime-report-ready-action');
         let cameraStream = null;
         let micStream = null;
         let screenShareStream = null;
@@ -2637,18 +2641,19 @@
         };
 
         const updateReportButton = (reportUrl) => {
-            if (!reportButton)
+            if (!reportButton || !reportReadyAction)
                 return;
 
-            if (reportUrl) {
-                actionsPanel?.classList.remove('runtime-js-hidden');
-                reportButton.style.display = 'inline-flex';
-                reportButton.onclick = () => navigateToReport(reportUrl);
+            const normalizedReportUrl = typeof reportUrl === 'string' ? reportUrl.trim() : '';
+            if (normalizedReportUrl) {
+                reportReadyAction.classList.remove('runtime-js-hidden');
+                reportButton.classList.remove('runtime-js-hidden');
+                reportButton.onclick = () => navigateToReport(normalizedReportUrl);
                 return;
             }
 
-            actionsPanel?.classList.add('runtime-js-hidden');
-            reportButton.style.display = 'none';
+            reportReadyAction.classList.add('runtime-js-hidden');
+            reportButton.classList.add('runtime-js-hidden');
             reportButton.onclick = null;
         };
 
@@ -2691,6 +2696,9 @@
                 const reportFailed = getValue(result, 'reportGenerationFailed', 'ReportGenerationFailed') === true;
                 const reportInProgress = getValue(result, 'reportGenerationInProgress', 'ReportGenerationInProgress') === true;
                 const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || '';
+                if (!reportReady || !reportUrl)
+                    updateReportButton('');
+
                 if (reportReady && reportUrl) {
                     stopCompletionStatusPolling();
                     clearInterval(completedCountdown);
