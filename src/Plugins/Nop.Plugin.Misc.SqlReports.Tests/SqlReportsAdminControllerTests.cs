@@ -72,6 +72,23 @@ public class SqlReportsAdminControllerTests
     }
 
     [Test]
+    public async Task ReportDelete_Post_WithExecutionLogs_DetachesLogsAndLogsActivity()
+    {
+        var fixture = new ControllerFixture();
+        fixture.ReportService.ExecutionLogs.Add(new SqlReportExecutionLog { Id = 1, SqlReportId = fixture.Report.Id, CustomerId = fixture.Customer.Id, Success = true });
+
+        var result = await fixture.Controller.ReportDelete(fixture.Report.Id);
+
+        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
+        Assert.That(fixture.ReportService.ReportDeleted, Is.True);
+        Assert.That(fixture.ReportService.ExecutionLogs.Single().SqlReportId, Is.Null);
+        fixture.ActivityService.Verify(service => service.InsertActivityAsync(
+            SqlReportsDefaults.ActivityLogTypeSystemNames.DeleteReport,
+            It.Is<string>(comment => comment.Contains($"ID = {fixture.Report.Id}")),
+            fixture.Report), Times.Once);
+    }
+
+    [Test]
     public void InstantQuery_Get_WhenDisabled_ReturnsAccessDenied()
     {
         var fixture = new ControllerFixture(settings => settings.EnableInstantQuery = false);
@@ -252,6 +269,8 @@ public class SqlReportsAdminControllerTests
 
         public SqlReport Report { get; set; }
 
+        public bool ReportDeleted { get; private set; }
+
         public override Task<SqlReport> GetReportByIdAsync(int reportId)
         {
             return Task.FromResult(Report?.Id == reportId ? Report : null);
@@ -270,6 +289,16 @@ public class SqlReportsAdminControllerTests
         public override Task InsertExecutionLogAsync(SqlReportExecutionLog executionLog)
         {
             ExecutionLogs.Add(executionLog);
+
+            return Task.CompletedTask;
+        }
+
+        public override Task DeleteReportAsync(SqlReport report)
+        {
+            foreach (var executionLog in ExecutionLogs.Where(log => log.SqlReportId == report.Id))
+                executionLog.SqlReportId = null;
+
+            ReportDeleted = true;
 
             return Task.CompletedTask;
         }

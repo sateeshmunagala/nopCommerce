@@ -14,6 +14,7 @@ public class SqlReportExecutionServiceTests
     [TestCase("with totals as (select 1 as Id) select Id from totals")]
     [TestCase("select 'delete from Customer' as TextValue")]
     [TestCase("select [Name] from Customer where Id = @CustomerId")]
+    [TestCase("select case when Total > 0 then 'Paid' else 'Free' end as PaymentStatus from [Order]")]
     public void ValidateSelectOnly_Allows_ReadOnlySingleStatements(string sql)
     {
         Assert.DoesNotThrow(() => CreateService().ValidateSelectOnly(sql));
