@@ -15,24 +15,31 @@ public class SqlReportExecutionService
 {
     private static readonly Regex ParameterNameRegex = new(@"(?<!@)@([A-Za-z_][A-Za-z0-9_]*)", RegexOptions.Compiled);
     private static readonly Regex TokenRegex = new(@"\b[A-Za-z_][A-Za-z0-9_]*\b|;", RegexOptions.Compiled);
+    private static readonly Regex CommentRegex = new(@"--|/\*", RegexOptions.Compiled);
     private static readonly HashSet<string> ForbiddenTokens = new(StringComparer.OrdinalIgnoreCase)
     {
         "ALTER", "BACKUP", "CREATE", "DBCC", "DECLARE", "DELETE", "DENY", "DROP", "EXEC", "EXECUTE",
-        "GRANT", "INSERT", "MERGE", "RESTORE", "REVOKE", "SET", "TRUNCATE", "UPDATE", "INTO"
+        "GRANT", "INSERT", "MERGE", "RESTORE", "REVOKE", "SET", "TRUNCATE", "UPDATE", "INTO",
+        "USE", "WAITFOR", "BULK", "OPENROWSET", "OPENDATASOURCE", "OPENQUERY", "OUTPUT", "PRINT",
+        "RAISERROR", "THROW", "BEGIN", "END", "WHILE", "CURSOR", "FETCH", "OPTION"
     };
+
+    private readonly SqlReportsSettings _settings;
+
+    public SqlReportExecutionService(SqlReportsSettings settings)
+    {
+        _settings = settings;
+    }
 
     public virtual async Task<SqlReportExecutionResult> ExecuteAsync(string sql,
         IEnumerable<SqlReportParameter> knownParameters,
         IDictionary<string, string> values,
-        int maxRows = 200)
+        int? maxRows = null)
     {
         EnsureSqlServer();
         ValidateSelectOnly(sql);
 
-        var parametersByName = (knownParameters ?? Enumerable.Empty<SqlReportParameter>())
-            .ToDictionary(parameter => NormalizeParameterName(parameter.ParameterName), StringComparer.OrdinalIgnoreCase);
-        var referencedParameterNames = ExtractParameterNames(sql);
-
+        var effectiveMaxRows = Math.Min(Math.Max(maxRows ?? _settings.MaxRowsPerQuery, 1), Math.Max(_settings.MaxRowsPerQuery, 1));
         var dataSettings = DataSettingsManager.LoadSettings();
 
         await using var connection = new SqlConnection(dataSettings.ConnectionString);
@@ -41,15 +48,10 @@ public class SqlReportExecutionService
         await using var command = connection.CreateCommand();
         command.CommandType = CommandType.Text;
         command.CommandText = sql;
-        if (dataSettings.SQLCommandTimeout.HasValue)
-            command.CommandTimeout = dataSettings.SQLCommandTimeout.Value;
+        command.CommandTimeout = _settings.CommandTimeoutSeconds > 0 ? _settings.CommandTimeoutSeconds : dataSettings.SQLCommandTimeout ?? 30;
 
-        foreach (var parameterName in referencedParameterNames)
-        {
-            parametersByName.TryGetValue(parameterName, out var parameterDefinition);
-            var submittedValue = values != null && values.TryGetValue(parameterName, out var value) ? value : parameterDefinition?.DefaultValue;
-            command.Parameters.Add(CreateSqlParameter(parameterName, parameterDefinition, submittedValue));
-        }
+        foreach (var parameter in BuildSqlParameters(sql, knownParameters, values))
+            command.Parameters.Add(parameter);
 
         var stopwatch = Stopwatch.StartNew();
         await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
@@ -60,7 +62,7 @@ public class SqlReportExecutionService
 
         while (await reader.ReadAsync())
         {
-            if (result.Rows.Count >= maxRows)
+            if (result.Rows.Count >= effectiveMaxRows)
             {
                 result.Truncated = true;
                 break;
@@ -68,7 +70,7 @@ public class SqlReportExecutionService
 
             var row = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
             foreach (var column in result.Columns.Select((name, index) => new { name, index }))
-                row[column.name] = await reader.IsDBNullAsync(column.index) ? null : reader.GetValue(column.index);
+                row[column.name] = await reader.IsDBNullAsync(column.index) ? null : NormalizeCellValue(reader.GetValue(column.index));
 
             result.Rows.Add(row);
         }
@@ -82,6 +84,9 @@ public class SqlReportExecutionService
 
     public virtual byte[] ExportToXlsx(SqlReportExecutionResult result)
     {
+        if (!_settings.AllowExport)
+            throw new InvalidOperationException("SQL report export is disabled.");
+
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Report");
 
@@ -94,7 +99,7 @@ public class SqlReportExecutionService
 
             for (var columnIndex = 0; columnIndex < result.Columns.Count; columnIndex++)
             {
-                var value = row.TryGetValue(result.Columns[columnIndex], out var cellValue) ? cellValue : null;
+                var value = row.TryGetValue(result.Columns[columnIndex], out var cellValue) ? NormalizeCellValue(cellValue) : null;
                 worksheet.Cell(rowIndex + 2, columnIndex + 1).Value = XLCellValue.FromObject(value);
             }
         }
@@ -115,10 +120,31 @@ public class SqlReportExecutionService
             .ToList();
     }
 
+    public virtual IList<SqlParameter> BuildSqlParameters(string sql,
+        IEnumerable<SqlReportParameter> knownParameters,
+        IDictionary<string, string> values)
+    {
+        var parametersByName = (knownParameters ?? Enumerable.Empty<SqlReportParameter>())
+            .ToDictionary(parameter => NormalizeParameterName(parameter.ParameterName), StringComparer.OrdinalIgnoreCase);
+
+        return ExtractParameterNames(sql)
+            .Select(parameterName =>
+            {
+                parametersByName.TryGetValue(parameterName, out var parameterDefinition);
+                var submittedValue = values != null && values.TryGetValue(parameterName, out var value) ? value : parameterDefinition?.DefaultValue;
+
+                return CreateSqlParameter(parameterName, parameterDefinition, submittedValue);
+            })
+            .ToList();
+    }
+
     public virtual void ValidateSelectOnly(string sql)
     {
         if (string.IsNullOrWhiteSpace(sql))
             throw new InvalidOperationException("SQL query is required.");
+
+        if (CommentRegex.IsMatch(sql))
+            throw new InvalidOperationException("SQL comments are not allowed.");
 
         var cleaned = RemoveCommentsAndStrings(sql).Trim();
         cleaned = Regex.Replace(cleaned, @";+\s*$", string.Empty).Trim();
@@ -137,12 +163,16 @@ public class SqlReportExecutionService
 
         if (tokens.Any(token => ForbiddenTokens.Contains(token)))
             throw new InvalidOperationException("Only read-only SELECT statements are allowed.");
+
+        if (tokens.Any(token => token.StartsWith("xp_", StringComparison.OrdinalIgnoreCase) ||
+            token.StartsWith("sp_", StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("Stored procedure access is not allowed.");
     }
 
     protected virtual SqlParameter CreateSqlParameter(string parameterName, SqlReportParameter parameterDefinition, string value)
     {
         var sqlParameter = new SqlParameter($"@{parameterName}", DBNull.Value);
-        var dataType = parameterDefinition?.DataType ?? SqlReportDataType.String;
+        var dataType = parameterDefinition?.DataType ?? SqlReportDataType.Text;
 
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -154,14 +184,39 @@ public class SqlReportExecutionService
 
         sqlParameter.Value = dataType switch
         {
-            SqlReportDataType.Int32 => int.Parse(value, CultureInfo.CurrentCulture),
-            SqlReportDataType.Decimal => decimal.Parse(value, CultureInfo.CurrentCulture),
-            SqlReportDataType.Boolean => bool.Parse(value),
-            SqlReportDataType.DateTime => DateTime.Parse(value, CultureInfo.CurrentCulture),
+            SqlReportDataType.Number => decimal.Parse(value, CultureInfo.CurrentCulture),
+            SqlReportDataType.NumberList => NormalizeNumberList(value),
+            SqlReportDataType.TextList => NormalizeTextList(value),
             _ => value
         };
 
         return sqlParameter;
+    }
+
+    protected virtual object NormalizeCellValue(object value)
+    {
+        if (value is not string text)
+            return value;
+
+        var maxCellLength = _settings.MaxCellLength > 0 ? _settings.MaxCellLength : 4000;
+        return text.Length <= maxCellLength ? text : text[..maxCellLength];
+    }
+
+    protected virtual string NormalizeTextList(string value)
+    {
+        return string.Join(",", SplitList(value)
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => item.Trim()));
+    }
+
+    protected virtual string NormalizeNumberList(string value)
+    {
+        return string.Join(",", SplitList(value).Select(item => decimal.Parse(item.Trim(), CultureInfo.CurrentCulture).ToString(CultureInfo.InvariantCulture)));
+    }
+
+    protected virtual IEnumerable<string> SplitList(string value)
+    {
+        return (value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     protected virtual string NormalizeParameterName(string parameterName)

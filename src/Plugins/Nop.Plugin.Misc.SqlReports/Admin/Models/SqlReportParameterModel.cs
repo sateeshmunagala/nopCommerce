@@ -33,4 +33,7 @@ public record SqlReportParameterModel : BaseNopEntityModel
 
     [NopResourceDisplayName("Plugins.Misc.SqlReports.Parameter.Fields.DisplayOrder")]
     public int DisplayOrder { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.SqlReports.Parameter.Fields.Options")]
+    public string OptionsText { get; set; }
 }

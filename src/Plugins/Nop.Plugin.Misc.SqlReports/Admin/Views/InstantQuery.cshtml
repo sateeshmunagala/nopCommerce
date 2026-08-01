@@ -19,10 +19,13 @@
                 <i class="fas fa-play"></i>
                 @T("Plugins.Misc.SqlReports.Run")
             </button>
-            <button type="submit" class="btn btn-success" formaction="@Url.Action("InstantExport")">
-                <i class="far fa-file-excel"></i>
-                @T("Admin.Common.ExportToExcel")
-            </button>
+            @if (Model.AllowExport)
+            {
+                <button type="submit" class="btn btn-success" formaction="@Url.Action("InstantExport")">
+                    <i class="far fa-file-excel"></i>
+                    @T("Admin.Common.ExportToExcel")
+                </button>
+            }
         </div>
     </div>
 

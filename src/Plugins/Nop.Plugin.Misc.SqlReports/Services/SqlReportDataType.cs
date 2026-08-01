@@ -2,11 +2,22 @@ namespace Nop.Plugin.Misc.SqlReports.Services;
 
 public static class SqlReportDataType
 {
-    public const string String = "String";
-    public const string Int32 = "Int32";
-    public const string Decimal = "Decimal";
-    public const string Boolean = "Boolean";
-    public const string DateTime = "DateTime";
+    public const string Text = "Text";
+    public const string Number = "Number";
+    public const string TextList = "TextList";
+    public const string NumberList = "NumberList";
 
-    public static IList<string> All => new List<string> { String, Int32, Decimal, Boolean, DateTime };
+    public static IList<string> All => new List<string> { Text, Number, TextList, NumberList };
+
+    public static bool IsList(string dataType)
+    {
+        return string.Equals(dataType, TextList, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(dataType, NumberList, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsNumber(string dataType)
+    {
+        return string.Equals(dataType, Number, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(dataType, NumberList, StringComparison.OrdinalIgnoreCase);
+    }
 }

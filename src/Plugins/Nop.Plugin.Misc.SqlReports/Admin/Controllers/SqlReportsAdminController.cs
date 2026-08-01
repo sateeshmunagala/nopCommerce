@@ -4,7 +4,9 @@ using Nop.Plugin.Misc.SqlReports.Admin.Factories;
 using Nop.Plugin.Misc.SqlReports.Admin.Models;
 using Nop.Plugin.Misc.SqlReports.Domain;
 using Nop.Plugin.Misc.SqlReports.Services;
+using Nop.Services.Configuration;
 using Nop.Services.Localization;
+using Nop.Services.Logging;
 using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Web.Framework;
@@ -22,25 +24,68 @@ namespace Nop.Plugin.Misc.SqlReports.Admin.Controllers;
 public class SqlReportsAdminController : BasePluginController
 {
     private readonly ILocalizationService _localizationService;
+    private readonly ICustomerActivityService _customerActivityService;
     private readonly INotificationService _notificationService;
+    private readonly ISettingService _settingService;
     private readonly IWorkContext _workContext;
     private readonly SqlReportExecutionService _executionService;
     private readonly SqlReportModelFactory _modelFactory;
     private readonly SqlReportService _sqlReportService;
+    private readonly SqlReportsSettings _settings;
 
     public SqlReportsAdminController(ILocalizationService localizationService,
+        ICustomerActivityService customerActivityService,
         INotificationService notificationService,
+        ISettingService settingService,
         IWorkContext workContext,
         SqlReportExecutionService executionService,
         SqlReportModelFactory modelFactory,
-        SqlReportService sqlReportService)
+        SqlReportService sqlReportService,
+        SqlReportsSettings settings)
     {
         _localizationService = localizationService;
+        _customerActivityService = customerActivityService;
         _notificationService = notificationService;
+        _settingService = settingService;
         _workContext = workContext;
         _executionService = executionService;
         _modelFactory = modelFactory;
         _sqlReportService = sqlReportService;
+        _settings = settings;
+    }
+
+    [CheckPermission(SqlReportsDefaults.Permissions.ManageReports)]
+    public IActionResult Configure()
+    {
+        var model = _modelFactory.PrepareConfigurationModel();
+
+        return View("~/Plugins/Misc.SqlReports/Admin/Views/Configure.cshtml", model);
+    }
+
+    [HttpPost]
+    [CheckPermission(SqlReportsDefaults.Permissions.ManageReports)]
+    public async Task<IActionResult> Configure(ConfigurationModel model)
+    {
+        if (model.MaxRowsPerQuery < 1)
+            ModelState.AddModelError(nameof(model.MaxRowsPerQuery), "Max rows per query must be at least 1.");
+        if (model.CommandTimeoutSeconds < 1)
+            ModelState.AddModelError(nameof(model.CommandTimeoutSeconds), "Command timeout must be at least 1 second.");
+        if (model.MaxCellLength < 1)
+            ModelState.AddModelError(nameof(model.MaxCellLength), "Max cell length must be at least 1.");
+
+        if (!ModelState.IsValid)
+            return View("~/Plugins/Misc.SqlReports/Admin/Views/Configure.cshtml", model);
+
+        _settings.MaxRowsPerQuery = model.MaxRowsPerQuery;
+        _settings.CommandTimeoutSeconds = model.CommandTimeoutSeconds;
+        _settings.MaxCellLength = model.MaxCellLength;
+        _settings.EnableInstantQuery = model.EnableInstantQuery;
+        _settings.AllowExport = model.AllowExport;
+
+        await _settingService.SaveSettingAsync(_settings);
+        _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Configuration.Updated"));
+
+        return RedirectToAction(nameof(Configure));
     }
 
     public IActionResult Index()
@@ -94,9 +139,22 @@ public class SqlReportsAdminController : BasePluginController
                 UpdatedOnUtc = DateTime.UtcNow
             };
 
-            await _sqlReportService.InsertReportAsync(report);
-            await _sqlReportService.SaveReportCustomerRoleMappingsAsync(report.Id, model.SelectedCustomerRoleIds);
-            await _sqlReportService.SaveReportParameterMappingsAsync(report.Id, model.SelectedParameterIds);
+            try
+            {
+                await _sqlReportService.InsertReportAsync(report);
+                await _sqlReportService.SaveReportCustomerRoleMappingsAsync(report.Id, model.SelectedCustomerRoleIds);
+                await _sqlReportService.SaveReportParameterMappingsAsync(report.Id, model.SelectedParameterIds);
+            }
+            catch (InvalidOperationException exception)
+            {
+                ModelState.AddModelError(string.Empty, exception.Message);
+                model = await _modelFactory.PrepareReportModelAsync(model, null, true);
+
+                return View("~/Plugins/Misc.SqlReports/Admin/Views/ReportCreate.cshtml", model);
+            }
+
+            await _customerActivityService.InsertActivityAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.AddReport,
+                $"Added SQL report (ID = {report.Id})", report);
 
             _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Common.DataSuccessfullySaved"));
 
@@ -141,9 +199,22 @@ public class SqlReportsAdminController : BasePluginController
             report.DisplayOrder = model.DisplayOrder;
             report.UpdatedOnUtc = DateTime.UtcNow;
 
-            await _sqlReportService.UpdateReportAsync(report);
-            await _sqlReportService.SaveReportCustomerRoleMappingsAsync(report.Id, model.SelectedCustomerRoleIds);
-            await _sqlReportService.SaveReportParameterMappingsAsync(report.Id, model.SelectedParameterIds);
+            try
+            {
+                await _sqlReportService.UpdateReportAsync(report);
+                await _sqlReportService.SaveReportCustomerRoleMappingsAsync(report.Id, model.SelectedCustomerRoleIds);
+                await _sqlReportService.SaveReportParameterMappingsAsync(report.Id, model.SelectedParameterIds);
+            }
+            catch (InvalidOperationException exception)
+            {
+                ModelState.AddModelError(string.Empty, exception.Message);
+                model = await _modelFactory.PrepareReportModelAsync(model, report, true);
+
+                return View("~/Plugins/Misc.SqlReports/Admin/Views/ReportEdit.cshtml", model);
+            }
+
+            await _customerActivityService.InsertActivityAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.EditReport,
+                $"Edited SQL report (ID = {report.Id})", report);
 
             _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Common.DataSuccessfullySaved"));
 
@@ -164,6 +235,8 @@ public class SqlReportsAdminController : BasePluginController
             return RedirectToAction(nameof(Reports));
 
         await _sqlReportService.DeleteReportAsync(report);
+        await _customerActivityService.InsertActivityAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.DeleteReport,
+            $"Deleted SQL report (ID = {report.Id})", report);
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Common.DataSuccessfullyDeleted"));
 
         return RedirectToAction(nameof(Reports));
@@ -191,6 +264,9 @@ public class SqlReportsAdminController : BasePluginController
 
         model = await _modelFactory.PrepareRunModelAsync(report, model);
         model.Result = await ExecuteReportAsync(report, model);
+        await LogExecutionAsync(report.Id, model.Result);
+        await _customerActivityService.InsertActivityAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.RunReport,
+            $"Ran SQL report (ID = {report.Id})", report);
 
         return View("~/Plugins/Misc.SqlReports/Admin/Views/Run.cshtml", model);
     }
@@ -203,7 +279,11 @@ public class SqlReportsAdminController : BasePluginController
         if (report == null)
             return AccessDeniedView();
 
-        var result = await ExecuteReportAsync(report, model, int.MaxValue);
+        if (!_settings.AllowExport)
+            return AccessDeniedView();
+
+        var result = await ExecuteReportAsync(report, model);
+        await LogExecutionAsync(report.Id, result);
         if (!string.IsNullOrEmpty(result.Error))
         {
             _notificationService.ErrorNotification(result.Error);
@@ -211,6 +291,8 @@ public class SqlReportsAdminController : BasePluginController
         }
 
         var bytes = _executionService.ExportToXlsx(ToExecutionResult(result));
+        await _customerActivityService.InsertActivityAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.ExportReport,
+            $"Exported SQL report (ID = {report.Id})", report);
 
         return File(bytes, MimeTypes.TextXlsx, $"{SanitizeFileName(report.Name)}.xlsx");
     }
@@ -245,6 +327,8 @@ public class SqlReportsAdminController : BasePluginController
     [CheckPermission(SqlReportsDefaults.Permissions.ManageReports)]
     public async Task<IActionResult> ParameterCreate(SqlReportParameterModel model, bool continueEditing)
     {
+        ValidateParameterOptions(model);
+
         if (ModelState.IsValid)
         {
             var parameter = new SqlReportParameter
@@ -258,7 +342,18 @@ public class SqlReportsAdminController : BasePluginController
                 DisplayOrder = model.DisplayOrder
             };
 
-            await _sqlReportService.InsertParameterAsync(parameter);
+            try
+            {
+                await _sqlReportService.InsertParameterAsync(parameter);
+                await _sqlReportService.SaveParameterOptionsAsync(parameter.Id, ParseParameterOptions(model));
+            }
+            catch (InvalidOperationException exception)
+            {
+                ModelState.AddModelError(string.Empty, exception.Message);
+                model = await _modelFactory.PrepareParameterModelAsync(model, null);
+
+                return View("~/Plugins/Misc.SqlReports/Admin/Views/ParameterCreate.cshtml", model);
+            }
             _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Common.DataSuccessfullySaved"));
 
             return continueEditing ? RedirectToAction(nameof(ParameterEdit), new { id = parameter.Id }) : RedirectToAction(nameof(Parameters));
@@ -290,6 +385,8 @@ public class SqlReportsAdminController : BasePluginController
         if (parameter == null)
             return RedirectToAction(nameof(Parameters));
 
+        ValidateParameterOptions(model);
+
         if (ModelState.IsValid)
         {
             parameter.Name = model.Name;
@@ -300,7 +397,18 @@ public class SqlReportsAdminController : BasePluginController
             parameter.IsRequired = model.IsRequired;
             parameter.DisplayOrder = model.DisplayOrder;
 
-            await _sqlReportService.UpdateParameterAsync(parameter);
+            try
+            {
+                await _sqlReportService.UpdateParameterAsync(parameter);
+                await _sqlReportService.SaveParameterOptionsAsync(parameter.Id, ParseParameterOptions(model));
+            }
+            catch (InvalidOperationException exception)
+            {
+                ModelState.AddModelError(string.Empty, exception.Message);
+                model = await _modelFactory.PrepareParameterModelAsync(model, parameter);
+
+                return View("~/Plugins/Misc.SqlReports/Admin/Views/ParameterEdit.cshtml", model);
+            }
             _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Common.DataSuccessfullySaved"));
 
             return continueEditing ? RedirectToAction(nameof(ParameterEdit), new { id = parameter.Id }) : RedirectToAction(nameof(Parameters));
@@ -328,14 +436,22 @@ public class SqlReportsAdminController : BasePluginController
     [CheckPermission(SqlReportsDefaults.Permissions.RunReports)]
     public IActionResult InstantQuery()
     {
-        return View("~/Plugins/Misc.SqlReports/Admin/Views/InstantQuery.cshtml", new InstantQueryModel());
+        if (!_settings.EnableInstantQuery)
+            return AccessDeniedView();
+
+        return View("~/Plugins/Misc.SqlReports/Admin/Views/InstantQuery.cshtml", new InstantQueryModel { AllowExport = _settings.AllowExport });
     }
 
     [HttpPost]
     [CheckPermission(SqlReportsDefaults.Permissions.RunReports)]
     public async Task<IActionResult> InstantQuery(InstantQueryModel model)
     {
+        if (!_settings.EnableInstantQuery)
+            return AccessDeniedView();
+
+        model.AllowExport = _settings.AllowExport;
         model.Result = await ExecuteInstantQueryAsync(model);
+        await LogExecutionAsync(null, model.Result);
 
         return View("~/Plugins/Misc.SqlReports/Admin/Views/InstantQuery.cshtml", model);
     }
@@ -344,10 +460,15 @@ public class SqlReportsAdminController : BasePluginController
     [CheckPermission(SqlReportsDefaults.Permissions.RunReports)]
     public async Task<IActionResult> InstantExport(InstantQueryModel model)
     {
+        if (!_settings.EnableInstantQuery || !_settings.AllowExport)
+            return AccessDeniedView();
+
         var result = await ExecuteInstantQueryAsync(model, int.MaxValue);
+        await LogExecutionAsync(null, result);
         if (!string.IsNullOrEmpty(result.Error))
         {
             _notificationService.ErrorNotification(result.Error);
+            model.AllowExport = _settings.AllowExport;
             return View("~/Plugins/Misc.SqlReports/Admin/Views/InstantQuery.cshtml", model);
         }
 
@@ -364,24 +485,32 @@ public class SqlReportsAdminController : BasePluginController
         return await _sqlReportService.CanRunReportAsync(report, customer) ? report : null;
     }
 
-    protected virtual async Task<SqlReportResultModel> ExecuteReportAsync(SqlReport report, SqlReportRunModel model, int maxRows = 200)
+    protected virtual async Task<SqlReportResultModel> ExecuteReportAsync(SqlReport report, SqlReportRunModel model, int? maxRows = null)
     {
+        var started = DateTime.UtcNow;
+
         try
         {
             var parameters = await _sqlReportService.GetReportParametersAsync(report.Id);
-            var values = model.Parameters.ToDictionary(parameter => parameter.ParameterName, parameter => parameter.Value, StringComparer.OrdinalIgnoreCase);
+            var values = BuildParameterValues(model.Parameters);
             var result = await _executionService.ExecuteAsync(report.SqlQuery, parameters, values, maxRows);
 
             return ToResultModel(result);
         }
         catch (Exception exception)
         {
-            return new SqlReportResultModel { Error = exception.Message };
+            return new SqlReportResultModel
+            {
+                Error = SanitizeError(exception.Message),
+                ElapsedMilliseconds = (long)(DateTime.UtcNow - started).TotalMilliseconds
+            };
         }
     }
 
     protected virtual async Task<SqlReportResultModel> ExecuteInstantQueryAsync(InstantQueryModel model, int maxRows = 200)
     {
+        var started = DateTime.UtcNow;
+
         try
         {
             var values = ParseInstantParameterValues(model.ParameterValues);
@@ -391,8 +520,34 @@ public class SqlReportsAdminController : BasePluginController
         }
         catch (Exception exception)
         {
-            return new SqlReportResultModel { Error = exception.Message };
+            return new SqlReportResultModel
+            {
+                Error = SanitizeError(exception.Message),
+                ElapsedMilliseconds = (long)(DateTime.UtcNow - started).TotalMilliseconds
+            };
         }
+    }
+
+    protected virtual IDictionary<string, string> BuildParameterValues(IList<SqlReportRunParameterModel> parameters)
+    {
+        return parameters.ToDictionary(parameter => parameter.ParameterName,
+            parameter => parameter.IsList ? string.Join(",", parameter.SelectedValues ?? new List<string>()) : parameter.Value,
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    protected virtual async Task LogExecutionAsync(int? reportId, SqlReportResultModel result)
+    {
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        await _sqlReportService.InsertExecutionLogAsync(new SqlReportExecutionLog
+        {
+            SqlReportId = reportId,
+            CustomerId = customer.Id,
+            DurationMs = result.ElapsedMilliseconds,
+            RowsReturned = result.RowsReturned,
+            Success = string.IsNullOrEmpty(result.Error),
+            Error = SanitizeError(result.Error),
+            CreatedOnUtc = DateTime.UtcNow
+        });
     }
 
     protected virtual SqlReportResultModel ToResultModel(SqlReportExecutionResult result)
@@ -442,6 +597,55 @@ public class SqlReportsAdminController : BasePluginController
         return (parameterName ?? string.Empty).Trim().TrimStart('@');
     }
 
+    protected virtual void ValidateParameterOptions(SqlReportParameterModel model)
+    {
+        if (!SqlReportDataType.IsList(model.DataType))
+            return;
+
+        var options = ParseParameterOptions(model);
+        if (!options.Any())
+            ModelState.AddModelError(nameof(model.OptionsText), "At least one option is required for list parameters.");
+    }
+
+    protected virtual IList<SqlReportParameterOption> ParseParameterOptions(SqlReportParameterModel model)
+    {
+        var options = new List<SqlReportParameterOption>();
+        if (string.IsNullOrWhiteSpace(model.OptionsText))
+            return options;
+
+        foreach (var line in model.OptionsText.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = line.Split('|');
+            if (parts.Length < 2)
+            {
+                ModelState.AddModelError(nameof(model.OptionsText), "Each option must use value|text or value|text|displayOrder.");
+                continue;
+            }
+
+            var value = parts[0].Trim();
+            var text = parts[1].Trim();
+            var displayOrder = parts.Length > 2 && int.TryParse(parts[2].Trim(), out var parsedOrder) ? parsedOrder : options.Count;
+
+            if (SqlReportDataType.IsNumber(model.DataType) && !decimal.TryParse(value, out _))
+                ModelState.AddModelError(nameof(model.OptionsText), $"Option value '{value}' must be numeric.");
+
+            if (string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(text))
+                ModelState.AddModelError(nameof(model.OptionsText), "Option value and text are required.");
+
+            options.Add(new SqlReportParameterOption
+            {
+                Value = value,
+                Text = text,
+                DisplayOrder = displayOrder
+            });
+        }
+
+        if (options.Select(option => option.Value).Distinct(StringComparer.OrdinalIgnoreCase).Count() != options.Count)
+            ModelState.AddModelError(nameof(model.OptionsText), "Option values must be unique.");
+
+        return options;
+    }
+
     protected virtual void ValidateSqlQuery(string sql)
     {
         try
@@ -460,5 +664,13 @@ public class SqlReportsAdminController : BasePluginController
             fileName = fileName.Replace(invalidChar, '-');
 
         return string.IsNullOrWhiteSpace(fileName) ? "sql-report" : fileName;
+    }
+
+    protected virtual string SanitizeError(string error)
+    {
+        if (string.IsNullOrWhiteSpace(error))
+            return string.Empty;
+
+        return error.Length <= 1000 ? error : error[..1000];
     }
 }

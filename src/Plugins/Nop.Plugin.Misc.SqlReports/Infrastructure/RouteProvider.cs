@@ -9,6 +9,10 @@ public class RouteProvider : IRouteProvider
 {
     public void RegisterRoutes(IEndpointRouteBuilder endpointRouteBuilder)
     {
+        endpointRouteBuilder.MapControllerRoute(SqlReportsDefaults.Routes.Configure,
+            "Admin/SqlReports/Configure",
+            new { controller = "SqlReportsAdmin", action = "Configure", area = AreaNames.ADMIN });
+
         endpointRouteBuilder.MapControllerRoute(SqlReportsDefaults.Routes.Reports,
             "Admin/SqlReports",
             new { controller = "SqlReportsAdmin", action = "Reports", area = AreaNames.ADMIN });

@@ -16,6 +16,7 @@ public class AddLocales : Migration
         this.AddOrUpdateLocaleResource(new Dictionary<string, string>
         {
             ["Plugins.Misc.SqlReports.Menu"] = "SQL reports",
+            ["Plugins.Misc.SqlReports.Configure"] = "SQL report settings",
             ["Plugins.Misc.SqlReports.Reports"] = "SQL reports",
             ["Plugins.Misc.SqlReports.Parameters"] = "Parameters",
             ["Plugins.Misc.SqlReports.InstantQuery"] = "Instant query",
@@ -45,9 +46,15 @@ public class AddLocales : Migration
             ["Plugins.Misc.SqlReports.Parameter.Fields.Prompt"] = "Prompt",
             ["Plugins.Misc.SqlReports.Parameter.Fields.IsRequired"] = "Required",
             ["Plugins.Misc.SqlReports.Parameter.Fields.DisplayOrder"] = "Display order",
+            ["Plugins.Misc.SqlReports.Parameter.Fields.Options"] = "Options",
             ["Plugins.Misc.SqlReports.Run.ParameterValue"] = "Value",
             ["Plugins.Misc.SqlReports.InstantQuery.Fields.SqlQuery"] = "SQL query",
             ["Plugins.Misc.SqlReports.InstantQuery.Fields.ParameterValues"] = "Parameter values",
+            ["Plugins.Misc.SqlReports.Configuration.MaxRowsPerQuery"] = "Max rows per query",
+            ["Plugins.Misc.SqlReports.Configuration.CommandTimeoutSeconds"] = "Command timeout seconds",
+            ["Plugins.Misc.SqlReports.Configuration.MaxCellLength"] = "Max cell length",
+            ["Plugins.Misc.SqlReports.Configuration.EnableInstantQuery"] = "Enable instant query",
+            ["Plugins.Misc.SqlReports.Configuration.AllowExport"] = "Allow export",
             ["Plugins.Misc.SqlReports.Result.RowsReturned"] = "Rows returned",
             ["Plugins.Misc.SqlReports.Result.Elapsed"] = "Elapsed",
             ["Plugins.Misc.SqlReports.Result.Truncated"] = "Preview row limit reached"

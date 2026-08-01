@@ -14,6 +14,7 @@ public class NopStartup : INopStartup
         services.AddScoped<SqlReportModelFactory>();
         services.AddScoped<SqlReportService>();
         services.AddScoped<SqlReportExecutionService>();
+        services.AddScoped<SqlReportsInstallService>();
     }
 
     public void Configure(IApplicationBuilder application)

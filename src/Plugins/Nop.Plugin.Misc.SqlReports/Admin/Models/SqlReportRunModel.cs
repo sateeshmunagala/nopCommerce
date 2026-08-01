@@ -1,5 +1,7 @@
 using Nop.Web.Framework.Models;
 using Nop.Web.Framework.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Nop.Plugin.Misc.SqlReports.Services;
 
 namespace Nop.Plugin.Misc.SqlReports.Admin.Models;
 
@@ -20,10 +22,18 @@ public record SqlReportRunModel : BaseNopEntityModel
     public IList<SqlReportRunParameterModel> Parameters { get; set; }
 
     public SqlReportResultModel Result { get; set; }
+
+    public bool AllowExport { get; set; }
 }
 
 public record SqlReportRunParameterModel : BaseNopModel
 {
+    public SqlReportRunParameterModel()
+    {
+        SelectedValues = new List<string>();
+        AvailableOptions = new List<SelectListItem>();
+    }
+
     public int ParameterId { get; set; }
 
     public string Name { get; set; }
@@ -38,4 +48,12 @@ public record SqlReportRunParameterModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Misc.SqlReports.Run.ParameterValue")]
     public string Value { get; set; }
+
+    public IList<string> SelectedValues { get; set; }
+
+    public IList<SelectListItem> AvailableOptions { get; set; }
+
+    public bool IsList => SqlReportDataType.IsList(DataType);
+
+    public bool IsNumber => SqlReportDataType.IsNumber(DataType);
 }

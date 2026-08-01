@@ -19,10 +19,13 @@
                 <i class="fas fa-play"></i>
                 @T("Plugins.Misc.SqlReports.Run")
             </button>
-            <button type="submit" class="btn btn-success" formaction="@Url.Action("Export", new { id = Model.Id })">
-                <i class="far fa-file-excel"></i>
-                @T("Admin.Common.ExportToExcel")
-            </button>
+            @if (Model.AllowExport)
+            {
+                <button type="submit" class="btn btn-success" formaction="@Url.Action("Export", new { id = Model.Id })">
+                    <i class="far fa-file-excel"></i>
+                    @T("Admin.Common.ExportToExcel")
+                </button>
+            }
         </div>
     </div>
 
@@ -53,9 +56,21 @@
                                         </label>
                                     </div>
                                     <div class="col-md-9">
-                                        <input asp-for="Parameters[i].Value" class="form-control" />
-                                    </div>
-                                </div>
+                                @if (Model.Parameters[i].IsList)
+                                {
+                                    <nop-select asp-for="Parameters[i].SelectedValues" asp-items="Model.Parameters[i].AvailableOptions" asp-multiple="true" />
+                                    <script>
+                                        $(function () {
+                                            $('#@Html.IdFor(model => model.Parameters[i].SelectedValues)').select2({ closeOnSelect: false });
+                                        });
+                                    </script>
+                                }
+                                else
+                                {
+                                    <input asp-for="Parameters[i].Value" class="form-control" type="@(Model.Parameters[i].IsNumber ? "number" : "text")" />
+                                }
+                            </div>
+                        </div>
                             }
                         </div>
                     </div>

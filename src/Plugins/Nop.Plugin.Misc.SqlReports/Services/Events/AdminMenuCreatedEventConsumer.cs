@@ -10,12 +10,15 @@ public class AdminMenuCreatedEventConsumer : IConsumer<AdminMenuCreatedEvent>
 {
     private readonly ILocalizationService _localizationService;
     private readonly INopUrlHelper _nopUrlHelper;
+    private readonly SqlReportsSettings _settings;
 
     public AdminMenuCreatedEventConsumer(ILocalizationService localizationService,
-        INopUrlHelper nopUrlHelper)
+        INopUrlHelper nopUrlHelper,
+        SqlReportsSettings settings)
     {
         _localizationService = localizationService;
         _nopUrlHelper = nopUrlHelper;
+        _settings = settings;
     }
 
     public async Task HandleEventAsync(AdminMenuCreatedEvent eventMessage)
@@ -47,13 +50,25 @@ public class AdminMenuCreatedEventConsumer : IConsumer<AdminMenuCreatedEvent>
             PermissionNames = new List<string> { SqlReportsDefaults.Permissions.ManageReports }
         });
 
+        if (_settings.EnableInstantQuery)
+        {
+            root.ChildNodes.Add(new AdminMenuItem
+            {
+                SystemName = SqlReportsDefaults.InstantQueryMenuSystemName,
+                Title = await _localizationService.GetResourceAsync("Plugins.Misc.SqlReports.InstantQuery"),
+                IconClass = "far fa-dot-circle",
+                Url = _nopUrlHelper.RouteUrl(SqlReportsDefaults.Routes.InstantQuery),
+                PermissionNames = new List<string> { SqlReportsDefaults.Permissions.RunReports }
+            });
+        }
+
         root.ChildNodes.Add(new AdminMenuItem
         {
-            SystemName = SqlReportsDefaults.InstantQueryMenuSystemName,
-            Title = await _localizationService.GetResourceAsync("Plugins.Misc.SqlReports.InstantQuery"),
+            SystemName = SqlReportsDefaults.ConfigureMenuSystemName,
+            Title = await _localizationService.GetResourceAsync("Plugins.Misc.SqlReports.Configure"),
             IconClass = "far fa-dot-circle",
-            Url = _nopUrlHelper.RouteUrl(SqlReportsDefaults.Routes.InstantQuery),
-            PermissionNames = new List<string> { SqlReportsDefaults.Permissions.RunReports }
+            Url = _nopUrlHelper.RouteUrl(SqlReportsDefaults.Routes.Configure),
+            PermissionNames = new List<string> { SqlReportsDefaults.Permissions.ManageReports }
         });
 
         eventMessage.RootMenuItem.InsertAfter("Reports", root);

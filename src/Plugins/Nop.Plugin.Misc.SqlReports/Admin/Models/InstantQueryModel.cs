@@ -17,4 +17,6 @@ public record InstantQueryModel : BaseNopModel
     public string ParameterValues { get; set; }
 
     public SqlReportResultModel Result { get; set; }
+
+    public bool AllowExport { get; set; }
 }

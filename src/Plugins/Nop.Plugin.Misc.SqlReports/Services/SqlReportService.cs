@@ -14,13 +14,17 @@ public class SqlReportService
     private readonly IRepository<SqlReportCustomerRoleMapping> _reportRoleMappingRepository;
     private readonly IRepository<SqlReportParameter> _parameterRepository;
     private readonly IRepository<SqlReportParameterMapping> _parameterMappingRepository;
+    private readonly IRepository<SqlReportParameterOption> _parameterOptionRepository;
+    private readonly IRepository<SqlReportExecutionLog> _executionLogRepository;
 
     public SqlReportService(ICustomerService customerService,
         IRepository<CustomerRole> customerRoleRepository,
         IRepository<SqlReport> reportRepository,
         IRepository<SqlReportCustomerRoleMapping> reportRoleMappingRepository,
         IRepository<SqlReportParameter> parameterRepository,
-        IRepository<SqlReportParameterMapping> parameterMappingRepository)
+        IRepository<SqlReportParameterMapping> parameterMappingRepository,
+        IRepository<SqlReportParameterOption> parameterOptionRepository,
+        IRepository<SqlReportExecutionLog> executionLogRepository)
     {
         _customerService = customerService;
         _customerRoleRepository = customerRoleRepository;
@@ -28,6 +32,8 @@ public class SqlReportService
         _reportRoleMappingRepository = reportRoleMappingRepository;
         _parameterRepository = parameterRepository;
         _parameterMappingRepository = parameterMappingRepository;
+        _parameterOptionRepository = parameterOptionRepository;
+        _executionLogRepository = executionLogRepository;
     }
 
     public virtual async Task<IPagedList<SqlReport>> GetAllReportsAsync(Customer customer = null,
@@ -65,11 +71,13 @@ public class SqlReportService
 
     public virtual async Task InsertReportAsync(SqlReport report)
     {
+        await EnsureUniqueReportSystemNameAsync(report);
         await _reportRepository.InsertAsync(report);
     }
 
     public virtual async Task UpdateReportAsync(SqlReport report)
     {
+        await EnsureUniqueReportSystemNameAsync(report);
         await _reportRepository.UpdateAsync(report);
     }
 
@@ -152,19 +160,14 @@ public class SqlReportService
         if (report == null || customer == null)
             return false;
 
-        if (await _customerService.IsAdminAsync(customer))
-            return true;
-
-        if (!report.IsActive)
-            return false;
+        var isAdmin = await _customerService.IsAdminAsync(customer);
+        if (isAdmin)
+            return SqlReportAccessRules.CanRunReport(true, report.IsActive, null, null);
 
         var allowedRoleIds = await GetReportCustomerRoleIdsAsync(report.Id);
-        if (!allowedRoleIds.Any())
-            return false;
-
         var customerRoleIds = await _customerService.GetCustomerRoleIdsAsync(customer);
 
-        return allowedRoleIds.Intersect(customerRoleIds).Any();
+        return SqlReportAccessRules.CanRunReport(isAdmin, report.IsActive, allowedRoleIds, customerRoleIds);
     }
 
     public virtual async Task<IPagedList<SqlReportParameter>> GetAllParametersAsync(string name = null,
@@ -194,17 +197,87 @@ public class SqlReportService
 
     public virtual async Task InsertParameterAsync(SqlReportParameter parameter)
     {
+        await EnsureUniqueParameterNameAsync(parameter);
         await _parameterRepository.InsertAsync(parameter);
     }
 
     public virtual async Task UpdateParameterAsync(SqlReportParameter parameter)
     {
+        await EnsureUniqueParameterNameAsync(parameter);
         await _parameterRepository.UpdateAsync(parameter);
     }
 
     public virtual async Task DeleteParameterAsync(SqlReportParameter parameter)
     {
+        await _parameterOptionRepository.DeleteAsync(option => option.SqlReportParameterId == parameter.Id);
         await _parameterMappingRepository.DeleteAsync(mapping => mapping.SqlReportParameterId == parameter.Id);
         await _parameterRepository.DeleteAsync(parameter);
+    }
+
+    public virtual async Task<IList<SqlReportParameterOption>> GetParameterOptionsAsync(int parameterId)
+    {
+        return await _parameterOptionRepository.Table
+            .Where(option => option.SqlReportParameterId == parameterId)
+            .OrderBy(option => option.DisplayOrder)
+            .ThenBy(option => option.Text)
+            .ToListAsync();
+    }
+
+    public virtual async Task<IDictionary<int, IList<SqlReportParameterOption>>> GetParameterOptionsByParameterIdsAsync(IList<int> parameterIds)
+    {
+        var options = await _parameterOptionRepository.Table
+            .Where(option => parameterIds.Contains(option.SqlReportParameterId))
+            .OrderBy(option => option.DisplayOrder)
+            .ThenBy(option => option.Text)
+            .ToListAsync();
+
+        return options
+            .GroupBy(option => option.SqlReportParameterId)
+            .ToDictionary(group => group.Key, group => (IList<SqlReportParameterOption>)group.ToList());
+    }
+
+    public virtual async Task SaveParameterOptionsAsync(int parameterId, IList<SqlReportParameterOption> options)
+    {
+        await _parameterOptionRepository.DeleteAsync(option => option.SqlReportParameterId == parameterId);
+
+        foreach (var option in options ?? new List<SqlReportParameterOption>())
+        {
+            option.SqlReportParameterId = parameterId;
+            await _parameterOptionRepository.InsertAsync(option);
+        }
+    }
+
+    public virtual async Task InsertExecutionLogAsync(SqlReportExecutionLog executionLog)
+    {
+        await _executionLogRepository.InsertAsync(executionLog);
+    }
+
+    protected virtual async Task EnsureUniqueReportSystemNameAsync(SqlReport report)
+    {
+        if (string.IsNullOrWhiteSpace(report.SystemName))
+            return;
+
+        var exists = await _reportRepository.Table.AnyAsync(item =>
+            item.Id != report.Id && item.SystemName == report.SystemName);
+
+        if (exists)
+            throw new InvalidOperationException($"A SQL report with system name '{report.SystemName}' already exists.");
+    }
+
+    protected virtual async Task EnsureUniqueParameterNameAsync(SqlReportParameter parameter)
+    {
+        var parameterName = NormalizeParameterName(parameter.ParameterName);
+        parameter.ParameterName = parameterName;
+
+        var exists = await _parameterRepository.Table.AnyAsync(item =>
+            item.Id != parameter.Id && item.ParameterName == parameterName);
+
+        if (exists)
+            throw new InvalidOperationException($"A SQL report parameter named '@{parameterName}' already exists.");
+    }
+
+    protected virtual string NormalizeParameterName(string parameterName)
+    {
+        return (parameterName ?? string.Empty).Trim().TrimStart('@');
     }
 }

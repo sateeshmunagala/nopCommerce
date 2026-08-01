@@ -1,6 +1,7 @@
 using FluentValidation;
 using Nop.Plugin.Misc.SqlReports.Admin.Models;
 using Nop.Plugin.Misc.SqlReports.Domain;
+using Nop.Plugin.Misc.SqlReports.Services;
 using Nop.Services.Localization;
 using Nop.Web.Framework.Validators;
 
@@ -20,7 +21,15 @@ public class SqlReportParameterValidator : BaseNopValidator<SqlReportParameterMo
             .WithMessageAwait(localizationService.GetResourceAsync("Plugins.Misc.SqlReports.Parameter.Fields.ParameterName.Invalid"));
 
         RuleFor(model => model.DataType)
-            .NotEmpty();
+            .Must(dataType => SqlReportDataType.All.Contains(dataType))
+            .WithMessage("Select a valid parameter data type.");
+
+        When(model => SqlReportDataType.IsNumber(model.DataType) && !string.IsNullOrWhiteSpace(model.DefaultValue), () =>
+        {
+            RuleFor(model => model.DefaultValue)
+                .Must(value => decimal.TryParse(value, out _))
+                .WithMessage("Default value must be numeric.");
+        });
 
         SetDatabaseValidationRules<SqlReportParameter>();
     }

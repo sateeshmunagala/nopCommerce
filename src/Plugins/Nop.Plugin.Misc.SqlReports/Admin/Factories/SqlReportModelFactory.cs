@@ -7,6 +7,7 @@ using Nop.Services.Customers;
 using Nop.Services.Security;
 using Nop.Web.Areas.Admin.Factories;
 using Nop.Web.Framework.Models.Extensions;
+using Nop.Web.Areas.Admin.Infrastructure.Mapper.Extensions;
 
 namespace Nop.Plugin.Misc.SqlReports.Admin.Factories;
 
@@ -17,18 +18,33 @@ public class SqlReportModelFactory
     private readonly IPermissionService _permissionService;
     private readonly IWorkContext _workContext;
     private readonly SqlReportService _sqlReportService;
+    private readonly SqlReportsSettings _settings;
 
     public SqlReportModelFactory(IBaseAdminModelFactory baseAdminModelFactory,
         ICustomerService customerService,
         IPermissionService permissionService,
         IWorkContext workContext,
-        SqlReportService sqlReportService)
+        SqlReportService sqlReportService,
+        SqlReportsSettings settings)
     {
         _baseAdminModelFactory = baseAdminModelFactory;
         _customerService = customerService;
         _permissionService = permissionService;
         _workContext = workContext;
         _sqlReportService = sqlReportService;
+        _settings = settings;
+    }
+
+    public virtual ConfigurationModel PrepareConfigurationModel()
+    {
+        return new ConfigurationModel
+        {
+            MaxRowsPerQuery = _settings.MaxRowsPerQuery,
+            CommandTimeoutSeconds = _settings.CommandTimeoutSeconds,
+            MaxCellLength = _settings.MaxCellLength,
+            EnableInstantQuery = _settings.EnableInstantQuery,
+            AllowExport = _settings.AllowExport
+        };
     }
 
     public virtual async Task<SqlReportSearchModel> PrepareReportSearchModelAsync(SqlReportSearchModel searchModel)
@@ -110,25 +126,52 @@ public class SqlReportModelFactory
     public virtual async Task<SqlReportRunModel> PrepareRunModelAsync(SqlReport report, SqlReportRunModel model = null)
     {
         var parameters = await _sqlReportService.GetReportParametersAsync(report.Id);
+        var optionsByParameterId = await _sqlReportService.GetParameterOptionsByParameterIdsAsync(parameters.Select(parameter => parameter.Id).ToList());
 
         model ??= new SqlReportRunModel();
         model.Id = report.Id;
         model.Name = report.Name;
         model.Description = report.Description;
         model.SqlQuery = report.SqlQuery;
+        model.AllowExport = _settings.AllowExport;
 
         if (!model.Parameters.Any())
         {
-            model.Parameters = parameters.Select(parameter => new SqlReportRunParameterModel
+            model.Parameters = parameters.Select(parameter =>
             {
-                ParameterId = parameter.Id,
-                Name = parameter.Name,
-                ParameterName = parameter.ParameterName.TrimStart('@'),
-                DataType = parameter.DataType,
-                Prompt = parameter.Prompt,
-                IsRequired = parameter.IsRequired,
-                Value = parameter.DefaultValue
+                var runParameter = new SqlReportRunParameterModel
+                {
+                    ParameterId = parameter.Id,
+                    Name = parameter.Name,
+                    ParameterName = parameter.ParameterName.TrimStart('@'),
+                    DataType = parameter.DataType,
+                    Prompt = parameter.Prompt,
+                    IsRequired = parameter.IsRequired,
+                    Value = parameter.DefaultValue
+                };
+
+                if (optionsByParameterId.TryGetValue(parameter.Id, out var options))
+                {
+                    foreach (var option in options)
+                    {
+                        runParameter.AvailableOptions.Add(new SelectListItem(option.Text, option.Value));
+                    }
+                }
+
+                return runParameter;
             }).ToList();
+        }
+        else
+        {
+            foreach (var parameterModel in model.Parameters)
+            {
+                if (!optionsByParameterId.TryGetValue(parameterModel.ParameterId, out var options))
+                    continue;
+
+                parameterModel.AvailableOptions.Clear();
+                foreach (var option in options)
+                    parameterModel.AvailableOptions.Add(new SelectListItem(option.Text, option.Value, parameterModel.SelectedValues.Contains(option.Value)));
+            }
         }
 
         return model;
@@ -179,13 +222,14 @@ public class SqlReportModelFactory
                 DefaultValue = parameter.DefaultValue,
                 Prompt = parameter.Prompt,
                 IsRequired = parameter.IsRequired,
-                DisplayOrder = parameter.DisplayOrder
+                DisplayOrder = parameter.DisplayOrder,
+                OptionsText = FormatOptions(await _sqlReportService.GetParameterOptionsAsync(parameter.Id))
             };
         }
 
         model ??= new SqlReportParameterModel
         {
-            DataType = SqlReportDataType.String
+            DataType = SqlReportDataType.Text
         };
 
         PrepareDataTypes(model);
@@ -208,5 +252,10 @@ public class SqlReportModelFactory
     {
         foreach (var parameter in await _sqlReportService.GetAllParametersAsync())
             items.Add(new SelectListItem($"{parameter.Name} ({parameter.ParameterName})", parameter.Id.ToString()));
+    }
+
+    protected virtual string FormatOptions(IList<SqlReportParameterOption> options)
+    {
+        return string.Join(Environment.NewLine, options.Select(option => $"{option.Value}|{option.Text}|{option.DisplayOrder}"));
     }
 }
