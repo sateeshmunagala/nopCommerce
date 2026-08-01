@@ -1,0 +1,72 @@
+@model SqlReportRunModel
+
+@{
+    ViewBag.PageTitle = Model.Name;
+    NopHtml.SetActiveMenuItemSystemName(SqlReportsDefaults.ReportsMenuSystemName);
+}
+
+<form asp-controller="SqlReportsAdmin" asp-action="Run" method="post">
+    <div class="content-header clearfix">
+        <h1 class="float-left">
+            @Model.Name
+            <small>
+                <i class="fas fa-arrow-circle-left"></i>
+                <a asp-action="Reports">@T("Plugins.Misc.SqlReports.BackToReports")</a>
+            </small>
+        </h1>
+        <div class="float-right">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-play"></i>
+                @T("Plugins.Misc.SqlReports.Run")
+            </button>
+            <button type="submit" class="btn btn-success" formaction="@Url.Action("Export", new { id = Model.Id })">
+                <i class="far fa-file-excel"></i>
+                @T("Admin.Common.ExportToExcel")
+            </button>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="form-horizontal">
+                <div class="cards-group">
+                    <div class="card card-default">
+                        <div class="card-body">
+                            <input asp-for="Id" type="hidden" />
+                            @for (var i = 0; i < Model.Parameters.Count; i++)
+                            {
+                                <input asp-for="Parameters[i].ParameterId" type="hidden" />
+                                <input asp-for="Parameters[i].ParameterName" type="hidden" />
+                                <input asp-for="Parameters[i].Name" type="hidden" />
+                                <input asp-for="Parameters[i].DataType" type="hidden" />
+                                <input asp-for="Parameters[i].Prompt" type="hidden" />
+                                <input asp-for="Parameters[i].IsRequired" type="hidden" />
+
+                                <div class="form-group row">
+                                    <div class="col-md-3">
+                                        <label class="col-form-label" for="@Html.IdFor(model => model.Parameters[i].Value)">
+                                            @(string.IsNullOrWhiteSpace(Model.Parameters[i].Prompt) ? Model.Parameters[i].Name : Model.Parameters[i].Prompt)
+                                            @if (Model.Parameters[i].IsRequired)
+                                            {
+                                                <span class="required">*</span>
+                                            }
+                                        </label>
+                                    </div>
+                                    <div class="col-md-9">
+                                        <input asp-for="Parameters[i].Value" class="form-control" />
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="card card-default">
+                        <div class="card-body">
+                            @await Html.PartialAsync("~/Plugins/Misc.SqlReports/Admin/Views/_Result.cshtml", Model.Result)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</form>

@@ -1,0 +1,11 @@
+{
+  "Group": "Misc",
+  "FriendlyName": "SQL Reports",
+  "SystemName": "Misc.SqlReports",
+  "Version": "1.00.0",
+  "SupportedVersions": [ "5.00" ],
+  "Author": "Custom",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.Misc.SqlReports.dll",
+  "Description": "Centralized Microsoft SQL Server reporting center for saved and ad-hoc SELECT reports."
+}

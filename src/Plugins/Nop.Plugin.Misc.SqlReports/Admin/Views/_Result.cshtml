@@ -1,0 +1,40 @@
+@model SqlReportResultModel
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+else if (Model.HasRows)
+{
+    <div class="mb-2">
+        <span>@T("Plugins.Misc.SqlReports.Result.RowsReturned"): @Model.RowsReturned</span>
+        <span class="ml-3">@T("Plugins.Misc.SqlReports.Result.Elapsed"): @Model.ElapsedMilliseconds ms</span>
+        @if (Model.Truncated)
+        {
+            <span class="ml-3 text-warning">@T("Plugins.Misc.SqlReports.Result.Truncated")</span>
+        }
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    @foreach (var column in Model.Columns)
+                    {
+                        <th>@column</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        @foreach (var column in Model.Columns)
+                        {
+                            <td>@(row.TryGetValue(column, out var value) ? value : null)</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

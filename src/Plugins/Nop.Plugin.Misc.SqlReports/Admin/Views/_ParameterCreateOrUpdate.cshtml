@@ -1,0 +1,80 @@
+@model SqlReportParameterModel
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="form-horizontal">
+            <div class="cards-group">
+                <div class="card card-default">
+                    <div class="card-body">
+                        <div asp-validation-summary="ModelOnly"></div>
+                        <input asp-for="Id" type="hidden" />
+
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="Name" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-editor asp-for="Name" asp-required="true" />
+                                <span asp-validation-for="Name"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="ParameterName" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-editor asp-for="ParameterName" asp-required="true" />
+                                <span asp-validation-for="ParameterName"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="DataType" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-select asp-for="DataType" asp-items="Model.AvailableDataTypes" />
+                                <span asp-validation-for="DataType"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="DefaultValue" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-editor asp-for="DefaultValue" />
+                                <span asp-validation-for="DefaultValue"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="Prompt" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-editor asp-for="Prompt" />
+                                <span asp-validation-for="Prompt"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="IsRequired" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-editor asp-for="IsRequired" />
+                                <span asp-validation-for="IsRequired"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="DisplayOrder" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-editor asp-for="DisplayOrder" />
+                                <span asp-validation-for="DisplayOrder"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

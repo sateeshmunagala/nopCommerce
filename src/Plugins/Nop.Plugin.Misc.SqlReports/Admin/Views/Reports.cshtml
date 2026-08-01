@@ -1,0 +1,130 @@
+@model SqlReportSearchModel
+
+@{
+    ViewBag.PageTitle = T("Plugins.Misc.SqlReports.Reports").Text;
+    NopHtml.SetActiveMenuItemSystemName(SqlReportsDefaults.ReportsMenuSystemName);
+
+    var columns = new List<ColumnProperty>
+    {
+        new(nameof(SqlReportModel.Name))
+        {
+            Title = T("Plugins.Misc.SqlReports.Report.Fields.Name").Text
+        },
+        new(nameof(SqlReportModel.CustomerRoleNames))
+        {
+            Title = T("Plugins.Misc.SqlReports.Report.Fields.CustomerRoles").Text
+        },
+        new(nameof(SqlReportModel.ParameterNames))
+        {
+            Title = T("Plugins.Misc.SqlReports.Report.Fields.Parameters").Text
+        },
+        new(nameof(SqlReportModel.IsActive))
+        {
+            Title = T("Plugins.Misc.SqlReports.Report.Fields.IsActive").Text,
+            Width = "100",
+            ClassName = NopColumnClassDefaults.CenterAll,
+            Render = new RenderBoolean()
+        },
+        new(nameof(SqlReportModel.DisplayOrder))
+        {
+            Title = T("Plugins.Misc.SqlReports.Report.Fields.DisplayOrder").Text,
+            Width = "120"
+        },
+        new(nameof(SqlReportModel.Id))
+        {
+            Title = T("Plugins.Misc.SqlReports.Run").Text,
+            Width = "100",
+            ClassName = NopColumnClassDefaults.Button,
+            Render = new RenderCustom("renderRunButton")
+        }
+    };
+
+    if (Model.CanManageReports)
+    {
+        columns.Add(new ColumnProperty(nameof(SqlReportModel.Id))
+        {
+            Title = T("Admin.Common.Edit").Text,
+            Width = "100",
+            ClassName = NopColumnClassDefaults.Button,
+            Render = new RenderButtonEdit(new DataUrl("~/Admin/SqlReports/Edit/"))
+        });
+    }
+}
+
+<div class="content-header clearfix">
+    <h1 class="float-left">@T("Plugins.Misc.SqlReports.Reports")</h1>
+    <div class="float-right">
+        @if (Model.CanManageReports)
+        {
+            <a asp-action="ReportCreate" class="btn btn-primary">
+                <i class="fas fa-square-plus"></i>
+                @T("Admin.Common.AddNew")
+            </a>
+            <a asp-action="Parameters" class="btn btn-default">
+                <i class="fas fa-sliders"></i>
+                @T("Plugins.Misc.SqlReports.Parameters")
+            </a>
+        }
+        <a asp-action="InstantQuery" class="btn btn-default">
+            <i class="fas fa-bolt"></i>
+            @T("Plugins.Misc.SqlReports.InstantQuery")
+        </a>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="form-horizontal">
+            <div class="cards-group">
+                <div class="card card-default card-search">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group row">
+                                    <div class="col-md-4">
+                                        <nop-label asp-for="SearchName" />
+                                    </div>
+                                    <div class="col-md-8">
+                                        <nop-editor asp-for="SearchName" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-8 offset-md-4">
+                                <button type="button" id="search-reports" class="btn btn-primary btn-search">
+                                    <i class="fas fa-magnifying-glass"></i>
+                                    @T("Admin.Common.Search")
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-default">
+                    <div class="card-body">
+                        @await Html.PartialAsync("Table", new DataTablesModel
+                        {
+                            Name = "sqlreports-grid",
+                            UrlRead = new DataUrl("List", "SqlReportsAdmin", null),
+                            SearchButtonId = "search-reports",
+                            Length = Model.PageSize,
+                            LengthMenu = Model.AvailablePageSizes,
+                            Filters = new List<FilterParameter>
+                            {
+                                new(nameof(Model.SearchName))
+                            },
+                            ColumnCollection = columns
+                        })
+
+                        <script>
+                            function renderRunButton(data, type, row, meta) {
+                                return '<a class="btn btn-default" href="@Url.Content("~/Admin/SqlReports/Run/")' + data + '"><i class="fas fa-play"></i>@T("Plugins.Misc.SqlReports.Run").Text</a>';
+                            }
+                        </script>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
