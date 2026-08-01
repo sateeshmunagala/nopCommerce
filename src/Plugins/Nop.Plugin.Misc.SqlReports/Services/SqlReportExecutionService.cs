@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -21,7 +21,7 @@ public class SqlReportExecutionService
         "ALTER", "BACKUP", "CREATE", "DBCC", "DECLARE", "DELETE", "DENY", "DROP", "EXEC", "EXECUTE",
         "GRANT", "INSERT", "MERGE", "RESTORE", "REVOKE", "SET", "TRUNCATE", "UPDATE", "INTO",
         "USE", "WAITFOR", "BULK", "OPENROWSET", "OPENDATASOURCE", "OPENQUERY", "OUTPUT", "PRINT",
-        "RAISERROR", "THROW", "BEGIN", "END", "WHILE", "CURSOR", "FETCH", "OPTION"
+        "RAISERROR", "THROW", "BEGIN", "WHILE", "CURSOR", "FETCH", "OPTION"
     };
 
     private readonly SqlReportsSettings _settings;

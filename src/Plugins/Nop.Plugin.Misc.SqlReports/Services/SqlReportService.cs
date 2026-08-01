@@ -83,6 +83,16 @@ public class SqlReportService
 
     public virtual async Task DeleteReportAsync(SqlReport report)
     {
+        var executionLogs = await _executionLogRepository.Table
+            .Where(log => log.SqlReportId == report.Id)
+            .ToListAsync();
+
+        foreach (var executionLog in executionLogs)
+            executionLog.SqlReportId = null;
+
+        if (executionLogs.Any())
+            await _executionLogRepository.UpdateAsync(executionLogs);
+
         await _reportRoleMappingRepository.DeleteAsync(mapping => mapping.SqlReportId == report.Id);
         await _parameterMappingRepository.DeleteAsync(mapping => mapping.SqlReportId == report.Id);
         await _reportRepository.DeleteAsync(report);
