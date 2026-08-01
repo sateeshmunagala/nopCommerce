@@ -71,18 +71,18 @@
         ? Model.ShortDescription
         : "Choose a difficulty level and either select a skill or upload a resume. The AI interview will use those selections to create practice questions without connecting you to any company, job post, or application.";
     string[] practiceDifficultyKeywords =
-    [
+    {
         "practice difficulty",
         "difficulty",
         "interview difficulty"
-    ];
+    };
     string[] practiceSkillKeywords =
-    [
+    {
         "practice skill",
         "skill",
         "skills",
         "interview skill"
-    ];
+    };
     string NormalizeAttributeLabel(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -94,7 +94,7 @@
             .ToArray());
 
         return string.Join(" ", sanitized
-            .Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+            .Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             .ToLowerInvariant();
     }
     bool MatchesAttributeKeyword(Nop.Web.Models.Catalog.ProductDetailsModel.ProductAttributeModel attribute, IEnumerable<string> keywords)
