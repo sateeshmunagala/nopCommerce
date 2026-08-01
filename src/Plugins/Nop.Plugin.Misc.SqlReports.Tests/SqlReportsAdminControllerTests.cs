@@ -99,6 +99,18 @@ public class SqlReportsAdminControllerTests
     }
 
     [Test]
+    public async Task InstantQuery_Post_WhenDisabled_DoesNotExecuteOrLog()
+    {
+        var fixture = new ControllerFixture(settings => settings.EnableInstantQuery = false);
+
+        var result = await fixture.Controller.InstantQuery(new InstantQueryModel { SqlQuery = "select 1" });
+
+        Assert.That(result, Is.TypeOf<ForbidResult>());
+        Assert.That(fixture.ExecutionService.ExecuteCallCount, Is.EqualTo(0));
+        Assert.That(fixture.ReportService.ExecutionLogs, Is.Empty);
+    }
+
+    [Test]
     public async Task InstantQuery_Post_LogsExecution_WithNullableReportId()
     {
         var fixture = new ControllerFixture();
