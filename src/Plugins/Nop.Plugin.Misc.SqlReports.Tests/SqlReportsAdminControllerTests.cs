@@ -72,6 +72,16 @@ public class SqlReportsAdminControllerTests
     }
 
     [Test]
+    public void InstantQuery_Get_WhenDisabled_ReturnsAccessDenied()
+    {
+        var fixture = new ControllerFixture(settings => settings.EnableInstantQuery = false);
+
+        var result = fixture.Controller.InstantQuery();
+
+        Assert.That(result, Is.TypeOf<ForbidResult>());
+    }
+
+    [Test]
     public async Task InstantQuery_Post_LogsExecution_WithNullableReportId()
     {
         var fixture = new ControllerFixture();
@@ -85,7 +95,7 @@ public class SqlReportsAdminControllerTests
     }
 
     [Test]
-    public async Task InstantExport_WhenDisabled_DoesNotExecuteOrLog()
+    public async Task InstantExport_WhenInstantQueryDisabled_DoesNotExecuteOrLog()
     {
         var fixture = new ControllerFixture(settings => settings.EnableInstantQuery = false);
 
@@ -94,6 +104,76 @@ public class SqlReportsAdminControllerTests
         Assert.That(result, Is.Not.TypeOf<FileContentResult>());
         Assert.That(fixture.ExecutionService.ExecuteCallCount, Is.EqualTo(0));
         Assert.That(fixture.ReportService.ExecutionLogs, Is.Empty);
+    }
+
+    [Test]
+    public async Task InstantExport_WhenExportDisabled_DoesNotExecuteOrLog()
+    {
+        var fixture = new ControllerFixture(settings => settings.AllowExport = false);
+
+        var result = await fixture.Controller.InstantExport(new InstantQueryModel { SqlQuery = "select 1" });
+
+        Assert.That(result, Is.TypeOf<ForbidResult>());
+        Assert.That(fixture.ExecutionService.ExecuteCallCount, Is.EqualTo(0));
+        Assert.That(fixture.ReportService.ExecutionLogs, Is.Empty);
+    }
+
+    [Test]
+    public async Task ParameterCreate_Post_LogsActivity_AfterSave()
+    {
+        var fixture = new ControllerFixture();
+
+        var result = await fixture.Controller.ParameterCreate(new SqlReportParameterModel
+        {
+            Name = "Customer",
+            ParameterName = "@CustomerId",
+            DataType = SqlReportDataType.Text
+        }, false);
+
+        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
+        Assert.That(fixture.ReportService.Parameter.Id, Is.GreaterThan(0));
+        fixture.ActivityService.Verify(service => service.InsertActivityAsync(
+            SqlReportsDefaults.ActivityLogTypeSystemNames.AddParameter,
+            It.Is<string>(comment => comment.Contains($"ID = {fixture.ReportService.Parameter.Id}")),
+            fixture.ReportService.Parameter), Times.Once);
+    }
+
+    [Test]
+    public async Task ParameterEdit_Post_LogsActivity_AfterSave()
+    {
+        var fixture = new ControllerFixture();
+        fixture.ReportService.Parameter = new SqlReportParameter { Id = 12, Name = "Customer", ParameterName = "CustomerId", DataType = SqlReportDataType.Text };
+
+        var result = await fixture.Controller.ParameterEdit(new SqlReportParameterModel
+        {
+            Id = 12,
+            Name = "Customer updated",
+            ParameterName = "@CustomerId",
+            DataType = SqlReportDataType.Number
+        }, false);
+
+        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
+        Assert.That(fixture.ReportService.Parameter.DataType, Is.EqualTo(SqlReportDataType.Number));
+        fixture.ActivityService.Verify(service => service.InsertActivityAsync(
+            SqlReportsDefaults.ActivityLogTypeSystemNames.EditParameter,
+            It.Is<string>(comment => comment.Contains("ID = 12")),
+            fixture.ReportService.Parameter), Times.Once);
+    }
+
+    [Test]
+    public async Task ParameterDelete_Post_LogsActivity_AfterDelete()
+    {
+        var fixture = new ControllerFixture();
+        fixture.ReportService.Parameter = new SqlReportParameter { Id = 12, Name = "Customer", ParameterName = "CustomerId", DataType = SqlReportDataType.Text };
+
+        var result = await fixture.Controller.ParameterDelete(12);
+
+        Assert.That(result, Is.TypeOf<RedirectToActionResult>());
+        Assert.That(fixture.ReportService.DeletedParameter, Is.SameAs(fixture.ReportService.Parameter));
+        fixture.ActivityService.Verify(service => service.InsertActivityAsync(
+            SqlReportsDefaults.ActivityLogTypeSystemNames.DeleteParameter,
+            It.Is<string>(comment => comment.Contains("ID = 12")),
+            fixture.ReportService.Parameter), Times.Once);
     }
 
     private sealed class ControllerFixture
@@ -166,6 +246,10 @@ public class SqlReportsAdminControllerTests
 
         public List<SqlReportExecutionLog> ExecutionLogs { get; } = new();
 
+        public SqlReportParameter DeletedParameter { get; private set; }
+
+        public SqlReportParameter Parameter { get; set; }
+
         public SqlReport Report { get; set; }
 
         public override Task<SqlReport> GetReportByIdAsync(int reportId)
@@ -187,6 +271,38 @@ public class SqlReportsAdminControllerTests
         {
             ExecutionLogs.Add(executionLog);
 
+            return Task.CompletedTask;
+        }
+
+        public override Task<SqlReportParameter> GetParameterByIdAsync(int parameterId)
+        {
+            return Task.FromResult(Parameter?.Id == parameterId ? Parameter : null);
+        }
+
+        public override Task InsertParameterAsync(SqlReportParameter parameter)
+        {
+            parameter.Id = 11;
+            Parameter = parameter;
+
+            return Task.CompletedTask;
+        }
+
+        public override Task UpdateParameterAsync(SqlReportParameter parameter)
+        {
+            Parameter = parameter;
+
+            return Task.CompletedTask;
+        }
+
+        public override Task DeleteParameterAsync(SqlReportParameter parameter)
+        {
+            DeletedParameter = parameter;
+
+            return Task.CompletedTask;
+        }
+
+        public override Task SaveParameterOptionsAsync(int parameterId, IList<SqlReportParameterOption> options)
+        {
             return Task.CompletedTask;
         }
     }

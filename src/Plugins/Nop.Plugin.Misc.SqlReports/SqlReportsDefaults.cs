@@ -34,6 +34,9 @@ public static class SqlReportsDefaults
         public const string AddReport = "SqlReports.AddReport";
         public const string EditReport = "SqlReports.EditReport";
         public const string DeleteReport = "SqlReports.DeleteReport";
+        public const string AddParameter = "SqlReports.AddParameter";
+        public const string EditParameter = "SqlReports.EditParameter";
+        public const string DeleteParameter = "SqlReports.DeleteParameter";
         public const string RunReport = "SqlReports.RunReport";
         public const string ExportReport = "SqlReports.ExportReport";
     }

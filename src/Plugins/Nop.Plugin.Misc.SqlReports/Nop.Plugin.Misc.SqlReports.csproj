@@ -8,7 +8,7 @@
     <PackageProjectUrl>https://www.nopcommerce.com/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/nopSolutions/nopCommerce</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
-    <OutputPath>$(SolutionDir)\Presentation\Nop.Web\Plugins\Misc.SqlReports</OutputPath>
+    <OutputPath>$(MSBuildProjectDirectory)\..\..\Presentation\Nop.Web\Plugins\Misc.SqlReports\</OutputPath>
     <OutDir>$(OutputPath)</OutDir>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -29,8 +29,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="$(SolutionDir)\Presentation\Nop.Web\Nop.Web.csproj" />
-    <ClearPluginAssemblies Include="$(SolutionDir)\Build\ClearPluginAssemblies.proj" />
+    <ProjectReference Include="$(MSBuildProjectDirectory)\..\..\Presentation\Nop.Web\Nop.Web.csproj" />
+    <ClearPluginAssemblies Include="$(MSBuildProjectDirectory)\..\..\Build\ClearPluginAssemblies.proj" />
   </ItemGroup>
 
   <Target Name="NopTarget" AfterTargets="Build">

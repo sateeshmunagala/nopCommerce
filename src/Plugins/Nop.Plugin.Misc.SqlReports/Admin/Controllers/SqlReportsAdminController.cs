@@ -354,6 +354,9 @@ public class SqlReportsAdminController : BasePluginController
 
                 return View("~/Plugins/Misc.SqlReports/Admin/Views/ParameterCreate.cshtml", model);
             }
+
+            await _customerActivityService.InsertActivityAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.AddParameter,
+                $"Added SQL report parameter (ID = {parameter.Id})", parameter);
             _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Common.DataSuccessfullySaved"));
 
             return continueEditing ? RedirectToAction(nameof(ParameterEdit), new { id = parameter.Id }) : RedirectToAction(nameof(Parameters));
@@ -409,6 +412,9 @@ public class SqlReportsAdminController : BasePluginController
 
                 return View("~/Plugins/Misc.SqlReports/Admin/Views/ParameterEdit.cshtml", model);
             }
+
+            await _customerActivityService.InsertActivityAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.EditParameter,
+                $"Edited SQL report parameter (ID = {parameter.Id})", parameter);
             _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Common.DataSuccessfullySaved"));
 
             return continueEditing ? RedirectToAction(nameof(ParameterEdit), new { id = parameter.Id }) : RedirectToAction(nameof(Parameters));
@@ -428,6 +434,8 @@ public class SqlReportsAdminController : BasePluginController
             return RedirectToAction(nameof(Parameters));
 
         await _sqlReportService.DeleteParameterAsync(parameter);
+        await _customerActivityService.InsertActivityAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.DeleteParameter,
+            $"Deleted SQL report parameter (ID = {parameter.Id})", parameter);
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Common.DataSuccessfullyDeleted"));
 
         return RedirectToAction(nameof(Parameters));

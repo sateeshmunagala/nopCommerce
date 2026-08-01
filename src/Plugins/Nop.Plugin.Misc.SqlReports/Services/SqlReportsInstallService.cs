@@ -34,6 +34,9 @@ public class SqlReportsInstallService
         await InsertActivityLogTypeAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.AddReport, "SQL reports. Add report");
         await InsertActivityLogTypeAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.EditReport, "SQL reports. Edit report");
         await InsertActivityLogTypeAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.DeleteReport, "SQL reports. Delete report");
+        await InsertActivityLogTypeAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.AddParameter, "SQL reports. Add parameter");
+        await InsertActivityLogTypeAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.EditParameter, "SQL reports. Edit parameter");
+        await InsertActivityLogTypeAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.DeleteParameter, "SQL reports. Delete parameter");
         await InsertActivityLogTypeAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.RunReport, "SQL reports. Run report");
         await InsertActivityLogTypeAsync(SqlReportsDefaults.ActivityLogTypeSystemNames.ExportReport, "SQL reports. Export report");
     }
@@ -48,6 +51,9 @@ public class SqlReportsInstallService
             SqlReportsDefaults.ActivityLogTypeSystemNames.AddReport,
             SqlReportsDefaults.ActivityLogTypeSystemNames.EditReport,
             SqlReportsDefaults.ActivityLogTypeSystemNames.DeleteReport,
+            SqlReportsDefaults.ActivityLogTypeSystemNames.AddParameter,
+            SqlReportsDefaults.ActivityLogTypeSystemNames.EditParameter,
+            SqlReportsDefaults.ActivityLogTypeSystemNames.DeleteParameter,
             SqlReportsDefaults.ActivityLogTypeSystemNames.RunReport,
             SqlReportsDefaults.ActivityLogTypeSystemNames.ExportReport
         };
