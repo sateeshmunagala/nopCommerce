@@ -64,6 +64,28 @@ public static class AIInterviewDefaults
 
     public static string MyActivityRouteName => "Plugin.Misc.AIInterview.MyActivity";
 
+    public static string HomepageTopPerformersWidgetZone => Nop.Web.Framework.Infrastructure.PublicWidgetZones.HomepageTop;
+
+    public const int HomepageTopPerformersMaxCount = 10;
+
+    public const int HomepageTopPerformersFreshnessDays = 30;
+
+    public static string DefaultAvatarImageUrl => "~/Plugins/Misc.AIInterview/Content/images/default-avatar.svg";
+
+    public static string HomepageTopPerformersTitleResourceKey => $"{LocalizationPrefix}.Homepage.TopPerformers.Title";
+
+    public static string HomepageTopPerformersScoreResourceKey => $"{LocalizationPrefix}.Homepage.TopPerformers.Score";
+
+    public static string HomepageTopPerformersFallbackSkillResourceKey => $"{LocalizationPrefix}.Homepage.TopPerformers.SkillFallback";
+
+    public static string HomepageTopPerformersAvatarAltResourceKey => $"{LocalizationPrefix}.Homepage.TopPerformers.AvatarAlt";
+
+    public static string HomepageTopPerformersPreviousResourceKey => $"{LocalizationPrefix}.Homepage.TopPerformers.Previous";
+
+    public static string HomepageTopPerformersNextResourceKey => $"{LocalizationPrefix}.Homepage.TopPerformers.Next";
+
+    public static string HomepageTopPerformersEmptyResourceKey => $"{LocalizationPrefix}.Homepage.TopPerformers.Empty";
+
     /// <summary>
     /// Gets the employer applications route name
     /// </summary>

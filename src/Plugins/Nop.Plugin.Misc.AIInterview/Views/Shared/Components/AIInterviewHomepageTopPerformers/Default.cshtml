@@ -1,0 +1,126 @@
+@model Nop.Plugin.Misc.AIInterview.Services.HomeTopPerformersModel
+
+@using System.Globalization
+@using Nop.Web.Framework.UI
+
+@{
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+
+    var performers = Model?.Performers ?? new List<Nop.Plugin.Misc.AIInterview.Services.HomeTopPerformer>();
+    var carouselId = $"ai-home-top-performers-{Guid.NewGuid():N}";
+    var fallbackAvatarUrl = Url.Content(AIInterviewDefaults.DefaultAvatarImageUrl);
+    var fallbackAvatarAltText = !string.IsNullOrWhiteSpace(Model?.FallbackAvatarAltText)
+        ? Model.FallbackAvatarAltText
+        : T(AIInterviewDefaults.HomepageTopPerformersAvatarAltResourceKey).Text;
+    var fallbackSkillText = T(AIInterviewDefaults.HomepageTopPerformersFallbackSkillResourceKey).Text;
+
+    string ResolveSkillText(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) || string.Equals(value, "Not specified", StringComparison.OrdinalIgnoreCase)
+            ? fallbackSkillText
+            : value;
+    }
+
+    string ResolveScoreText(decimal score)
+    {
+        return score.ToString("0.##", CultureInfo.InvariantCulture);
+    }
+}
+
+<section class="ai-home-performers" aria-labelledby="@($"{carouselId}-title")" data-ai-home-performers>
+    <div class="ai-home-performers-header">
+        <h2 id="@($"{carouselId}-title")">@T(AIInterviewDefaults.HomepageTopPerformersTitleResourceKey)</h2>
+        @if (performers.Any())
+        {
+            <div class="ai-home-performers-controls" aria-controls="@carouselId">
+                <button type="button"
+                        class="ai-home-performers-control"
+                        data-ai-home-performers-scroll="-1"
+                        aria-label="@T(AIInterviewDefaults.HomepageTopPerformersPreviousResourceKey)"
+                        title="@T(AIInterviewDefaults.HomepageTopPerformersPreviousResourceKey)">
+                    <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                </button>
+                <button type="button"
+                        class="ai-home-performers-control"
+                        data-ai-home-performers-scroll="1"
+                        aria-label="@T(AIInterviewDefaults.HomepageTopPerformersNextResourceKey)"
+                        title="@T(AIInterviewDefaults.HomepageTopPerformersNextResourceKey)">
+                    <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                </button>
+            </div>
+        }
+    </div>
+
+    @if (performers.Any())
+    {
+        <div class="ai-home-performers-viewport" id="@carouselId" tabindex="0" aria-live="polite">
+            <div class="ai-home-performers-track">
+                @foreach (var performer in performers)
+                {
+                    var imageUrl = Url.Content(string.IsNullOrWhiteSpace(performer.ImageUrl) ? AIInterviewDefaults.DefaultAvatarImageUrl : performer.ImageUrl);
+                    var isFallbackAvatar = string.Equals(imageUrl, fallbackAvatarUrl, StringComparison.OrdinalIgnoreCase) ||
+                        imageUrl.EndsWith("/default-avatar.svg", StringComparison.OrdinalIgnoreCase);
+                    var imageAlt = isFallbackAvatar ? fallbackAvatarAltText : $"{performer.FullName} profile avatar";
+                    var scoreText = ResolveScoreText(performer.Score);
+                    var skillText = ResolveSkillText(performer.PrimarySkillText);
+
+                    <article class="ai-home-performer-card">
+                        @if (!string.IsNullOrWhiteSpace(performer.ProfileLink))
+                        {
+                            <a class="ai-home-performer-media-link" href="@performer.ProfileLink" aria-label="@performer.FullName">
+                                <img class="ai-home-performer-avatar" src="@imageUrl" alt="@imageAlt" loading="lazy" />
+                            </a>
+                        }
+                        else
+                        {
+                            <img class="ai-home-performer-avatar" src="@imageUrl" alt="@imageAlt" loading="lazy" />
+                        }
+                        <div class="ai-home-performer-copy">
+                            @if (!string.IsNullOrWhiteSpace(performer.ProfileLink))
+                            {
+                                <a class="ai-home-performer-name" href="@performer.ProfileLink">@performer.FullName</a>
+                            }
+                            else
+                            {
+                                <span class="ai-home-performer-name">@performer.FullName</span>
+                            }
+                            <span class="ai-home-performer-skill">@skillText</span>
+                        </div>
+                        <div class="ai-home-performer-score" aria-label="@($"{T(AIInterviewDefaults.HomepageTopPerformersScoreResourceKey).Text}: {scoreText}")">
+                            <span class="ai-home-performer-score-value">@scoreText</span>
+                            <span class="ai-home-performer-score-label">@T(AIInterviewDefaults.HomepageTopPerformersScoreResourceKey)</span>
+                        </div>
+                    </article>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="ai-home-performers-empty">
+            @T(AIInterviewDefaults.HomepageTopPerformersEmptyResourceKey)
+        </div>
+    }
+</section>
+
+<script>
+    (function () {
+        var root = document.currentScript && document.currentScript.previousElementSibling;
+        if (!root || !root.matches('[data-ai-home-performers]')) {
+            return;
+        }
+
+        var viewport = root.querySelector('.ai-home-performers-viewport');
+        if (!viewport) {
+            return;
+        }
+
+        root.querySelectorAll('[data-ai-home-performers-scroll]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var direction = Number(button.getAttribute('data-ai-home-performers-scroll')) || 1;
+                var amount = Math.max(240, Math.floor(viewport.clientWidth * 0.85));
+                viewport.scrollBy({ left: direction * amount, behavior: 'smooth' });
+            });
+        });
+    })();
+</script>

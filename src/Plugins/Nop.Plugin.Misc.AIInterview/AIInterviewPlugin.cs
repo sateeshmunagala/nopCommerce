@@ -82,6 +82,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     {
         return Task.FromResult<IList<string>>(new List<string>
         {
+            AIInterviewDefaults.HomepageTopPerformersWidgetZone,
             "productdetails_before_collateral",
             AdminWidgetZones.ProductDetailsBlock
         });
@@ -96,6 +97,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     {
         if (string.Equals(widgetZone, AdminWidgetZones.ProductDetailsBlock, StringComparison.OrdinalIgnoreCase))
             return typeof(Components.AIInterviewAdminProductRequirementsViewComponent);
+
+        if (string.Equals(widgetZone, AIInterviewDefaults.HomepageTopPerformersWidgetZone, StringComparison.OrdinalIgnoreCase))
+            return typeof(Components.AIInterviewHomepageTopPerformersViewComponent);
 
         return typeof(Components.AIInterviewProductDetailsViewComponent);
     }
@@ -592,6 +596,13 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.CompletedUtc"] = "Completed",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.Available"] = "Available",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.Interview"] = "Interview",
+            [AIInterviewDefaults.HomepageTopPerformersTitleResourceKey] = "Top Performers",
+            [AIInterviewDefaults.HomepageTopPerformersScoreResourceKey] = "Best score",
+            [AIInterviewDefaults.HomepageTopPerformersFallbackSkillResourceKey] = "Not specified",
+            [AIInterviewDefaults.HomepageTopPerformersAvatarAltResourceKey] = "Default candidate avatar",
+            [AIInterviewDefaults.HomepageTopPerformersPreviousResourceKey] = "Previous performers",
+            [AIInterviewDefaults.HomepageTopPerformersNextResourceKey] = "Next performers",
+            [AIInterviewDefaults.HomepageTopPerformersEmptyResourceKey] = "Top performers will appear here after completed interviews are evaluated.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Status.Active"] = "Active",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.Attempt"] = "Attempt",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.ApplicationsCountLabel"] = "application(s)",
@@ -1587,6 +1598,13 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.None"] = "N/A",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Common.Interview"] = "Interview",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Index.Welcome"] = "Welcome to AI Interview.",
+            [AIInterviewDefaults.HomepageTopPerformersTitleResourceKey] = "Top Performers",
+            [AIInterviewDefaults.HomepageTopPerformersScoreResourceKey] = "Best score",
+            [AIInterviewDefaults.HomepageTopPerformersFallbackSkillResourceKey] = "Not specified",
+            [AIInterviewDefaults.HomepageTopPerformersAvatarAltResourceKey] = "Default candidate avatar",
+            [AIInterviewDefaults.HomepageTopPerformersPreviousResourceKey] = "Previous performers",
+            [AIInterviewDefaults.HomepageTopPerformersNextResourceKey] = "Next performers",
+            [AIInterviewDefaults.HomepageTopPerformersEmptyResourceKey] = "Top performers will appear here after completed interviews are evaluated.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyApplications.Title"] = "My Applications",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Title"] = "My Activity",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.NavigationLabel"] = "My Activity",

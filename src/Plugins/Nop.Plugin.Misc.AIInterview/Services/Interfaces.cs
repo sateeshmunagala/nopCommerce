@@ -16,6 +16,24 @@ public class PreviousResumeSource
     public string DefaultLabel { get; set; }
 }
 
+public sealed record HomeTopPerformersModel
+{
+    public IList<HomeTopPerformer> Performers { get; init; } = new List<HomeTopPerformer>();
+    public string FallbackAvatarAltText { get; init; }
+}
+
+public sealed record HomeTopPerformer
+{
+    public string ImageUrl { get; init; }
+    public string FullName { get; init; }
+    public string PrimarySkillText { get; init; }
+    public decimal Score { get; init; }
+    public string ProfileLink { get; init; }
+    public int CustomerId { get; init; }
+    public int InterviewSessionId { get; init; }
+    public DateTime CompletedOnUtc { get; init; }
+}
+
 public interface IApplicationService
 {
     Task SendApplicationSubmittedNotificationAsync(JobApplication application, int languageId);
@@ -46,6 +64,7 @@ public interface IInterviewSessionService
     Task<IList<InterviewSession>> GetPreviousResumeSourceSessionsAsync(int customerId);
     Task<IList<PreviousResumeSource>> GetPreviousResumeSourcesAsync(int customerId);
     Task<IList<InterviewSession>> GetCompletionWorkSessionsAsync(DateTime staleProcessingBeforeUtc, int maxCount = 20);
+    Task<IList<HomeTopPerformer>> GetHomepageTopPerformersAsync(int storeId, int maxCount = AIInterviewDefaults.HomepageTopPerformersMaxCount);
     Task<string> EnsureRecordingShareTokenAsync(InterviewSession session);
     Task<string> EnsureReportShareTokenAsync(InterviewSession session);
     Task<InterviewSession> GetSessionByReportShareTokenAsync(string token);

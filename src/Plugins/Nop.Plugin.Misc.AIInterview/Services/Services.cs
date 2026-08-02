@@ -1,7 +1,10 @@
 ﻿using Nop.Core;
 using Nop.Core.Domain.Catalog;
+using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Messages;
+using Nop.Core.Domain.Media;
+using Nop.Core.Domain.Stores;
 using Nop.Core.Domain.Vendors;
 using Nop.Data;
 using Nop.Data.Extensions;
@@ -10,12 +13,14 @@ using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
+using Nop.Services.Media;
 using Nop.Services.Vendors;
 using Nop.Services.Helpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace Nop.Plugin.Misc.AIInterview.Services;
 
@@ -256,6 +261,12 @@ public class InterviewSessionService : IInterviewSessionService
     private readonly IVendorService _vendorService;
     private readonly IDateTimeHelper _dateTimeHelper;
     private readonly ILogger<InterviewSessionService> _logger;
+    private readonly IRepository<JobApplication> _applicationRepository;
+    private readonly IRepository<Customer> _customerRepository;
+    private readonly IRepository<Product> _productRepository;
+    private readonly IRepository<StoreMapping> _storeMappingRepository;
+    private readonly IRepository<GenericAttribute> _genericAttributeRepository;
+    private readonly IPictureService _pictureService;
 
     public InterviewSessionService(IRepository<InterviewSession> sessionRepository,
         ICustomerService customerService,
@@ -270,7 +281,13 @@ public class InterviewSessionService : IInterviewSessionService
         IWebHelper webHelper,
         IVendorService vendorService,
         IDateTimeHelper dateTimeHelper,
-        ILogger<InterviewSessionService> logger = null)
+        ILogger<InterviewSessionService> logger = null,
+        IRepository<JobApplication> applicationRepository = null,
+        IRepository<Customer> customerRepository = null,
+        IRepository<Product> productRepository = null,
+        IRepository<StoreMapping> storeMappingRepository = null,
+        IRepository<GenericAttribute> genericAttributeRepository = null,
+        IPictureService pictureService = null)
     {
         _sessionRepository = sessionRepository;
         _customerService = customerService;
@@ -286,6 +303,12 @@ public class InterviewSessionService : IInterviewSessionService
         _vendorService = vendorService;
         _dateTimeHelper = dateTimeHelper;
         _logger = logger;
+        _applicationRepository = applicationRepository;
+        _customerRepository = customerRepository;
+        _productRepository = productRepository;
+        _storeMappingRepository = storeMappingRepository;
+        _genericAttributeRepository = genericAttributeRepository;
+        _pictureService = pictureService;
     }
 
     public async Task SendInterviewCompletionNotificationAsync(InterviewSession session, int languageId)
@@ -580,6 +603,232 @@ public class InterviewSessionService : IInterviewSessionService
             .Select(group => group.First())
             .Take(3)
             .ToList();
+    }
+
+    public async Task<IList<HomeTopPerformer>> GetHomepageTopPerformersAsync(int storeId, int maxCount = AIInterviewDefaults.HomepageTopPerformersMaxCount)
+    {
+        maxCount = Math.Clamp(maxCount, 1, AIInterviewDefaults.HomepageTopPerformersMaxCount);
+
+        if (_applicationRepository == null ||
+            _customerRepository == null ||
+            _productRepository == null ||
+            _storeMappingRepository == null)
+        {
+            return new List<HomeTopPerformer>();
+        }
+
+        var utcNow = DateTime.UtcNow;
+        var createdFromUtc = utcNow.AddDays(-AIInterviewDefaults.HomepageTopPerformersFreshnessDays);
+        var productEntityName = nameof(Product);
+
+        var eligibleQuery =
+            from session in _sessionRepository.Table
+            join customer in _customerRepository.Table on session.CustomerId equals customer.Id
+            join applicationJoin in _applicationRepository.Table on session.JobApplicationId equals applicationJoin.Id into applicationGroup
+            from application in applicationGroup.DefaultIfEmpty()
+            let productId = session.ProductId > 0 ? session.ProductId : application != null ? application.ProductId : 0
+            join product in _productRepository.Table on productId equals product.Id
+            where session.CompletedOnUtc.HasValue &&
+                session.CreatedOnUtc >= createdFromUtc &&
+                session.CreatedOnUtc <= utcNow &&
+                session.CompletedOnUtc.Value <= utcNow &&
+                customer.Active &&
+                !customer.Deleted &&
+                product.Published &&
+                !product.Deleted &&
+                product.VisibleIndividually &&
+                (!product.AvailableStartDateTimeUtc.HasValue || product.AvailableStartDateTimeUtc.Value <= utcNow) &&
+                (!product.AvailableEndDateTimeUtc.HasValue || product.AvailableEndDateTimeUtc.Value >= utcNow) &&
+                (storeId <= 0 ||
+                    !product.LimitedToStores ||
+                    _storeMappingRepository.Table.Any(storeMapping =>
+                        storeMapping.EntityName == productEntityName &&
+                        storeMapping.EntityId == product.Id &&
+                        storeMapping.StoreId == storeId))
+            select new
+            {
+                SessionId = session.Id,
+                session.CustomerId,
+                session.Score,
+                CompletedOnUtc = session.CompletedOnUtc.Value,
+                customer.FirstName,
+                customer.LastName,
+                ResumeProfileJson = session.ResumeProfileJson != null && session.ResumeProfileJson != string.Empty
+                    ? session.ResumeProfileJson
+                    : application != null ? application.ResumeProfileJson : null
+            };
+
+        var bestScoreQuery = eligibleQuery
+            .GroupBy(candidate => candidate.CustomerId)
+            .Select(group => new
+            {
+                CustomerId = group.Key,
+                Score = group.Max(candidate => candidate.Score)
+            });
+
+        var bestCompletionQuery =
+            from candidate in eligibleQuery
+            join bestScore in bestScoreQuery on new { candidate.CustomerId, candidate.Score } equals new { bestScore.CustomerId, bestScore.Score }
+            group candidate by candidate.CustomerId into group
+            select new
+            {
+                CustomerId = group.Key,
+                CompletedOnUtc = group.Max(candidate => candidate.CompletedOnUtc)
+            };
+
+        var bestSessionQuery =
+            from candidate in eligibleQuery
+            join bestScore in bestScoreQuery on new { candidate.CustomerId, candidate.Score } equals new { bestScore.CustomerId, bestScore.Score }
+            join bestCompletion in bestCompletionQuery on new { candidate.CustomerId, candidate.CompletedOnUtc } equals new { bestCompletion.CustomerId, bestCompletion.CompletedOnUtc }
+            group candidate by candidate.CustomerId into group
+            select new
+            {
+                CustomerId = group.Key,
+                SessionId = group.Max(candidate => candidate.SessionId)
+            };
+
+        var winnersQuery =
+            (from candidate in eligibleQuery
+             join bestSession in bestSessionQuery on new { candidate.CustomerId, candidate.SessionId } equals new { bestSession.CustomerId, bestSession.SessionId }
+             orderby candidate.Score descending, candidate.CompletedOnUtc descending, candidate.SessionId descending
+             select candidate)
+            .Take(maxCount);
+
+        var rows = await winnersQuery.ToListAsync();
+        var avatarUrls = await ResolveAvatarUrlsAsync(rows.Select(row => row.CustomerId));
+
+        return rows.Select(row =>
+        {
+            var fullName = $"{row.FirstName} {row.LastName}".Trim();
+            var primarySkillText = ResolvePrimarySkillText(row.ResumeProfileJson);
+            avatarUrls.TryGetValue(row.CustomerId, out var avatarUrl);
+
+            return new HomeTopPerformer
+            {
+                ImageUrl = string.IsNullOrWhiteSpace(avatarUrl) ? AIInterviewDefaults.DefaultAvatarImageUrl : avatarUrl,
+                FullName = string.IsNullOrWhiteSpace(fullName) ? "Unknown" : fullName,
+                PrimarySkillText = string.IsNullOrWhiteSpace(primarySkillText) ? "Not specified" : primarySkillText,
+                Score = row.Score,
+                ProfileLink = null,
+                CustomerId = row.CustomerId,
+                InterviewSessionId = row.SessionId,
+                CompletedOnUtc = row.CompletedOnUtc
+            };
+        }).ToList();
+    }
+
+    protected virtual async Task<IDictionary<int, string>> ResolveAvatarUrlsAsync(IEnumerable<int> customerIds)
+    {
+        var distinctCustomerIds = customerIds?.Where(id => id > 0).Distinct().ToArray() ?? Array.Empty<int>();
+        if (distinctCustomerIds.Length == 0 ||
+            _genericAttributeRepository == null ||
+            _pictureService == null)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        var avatarAttributes = await _genericAttributeRepository.GetAllAsync(query => query
+            .Where(attribute =>
+                distinctCustomerIds.Contains(attribute.EntityId) &&
+                attribute.KeyGroup == nameof(Customer) &&
+                attribute.Key == NopCustomerDefaults.AvatarPictureIdAttribute &&
+                attribute.StoreId == 0));
+        var avatarPictureIdsByCustomer = avatarAttributes
+            .Select(attribute => new
+            {
+                attribute.EntityId,
+                PictureId = int.TryParse(attribute.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pictureId) ? pictureId : 0
+            })
+            .Where(attribute => attribute.PictureId > 0)
+            .GroupBy(attribute => attribute.EntityId)
+            .ToDictionary(group => group.Key, group => group.First().PictureId);
+
+        var avatarUrls = new Dictionary<int, string>();
+        foreach (var (customerId, pictureId) in avatarPictureIdsByCustomer)
+        {
+            var imageUrl = await _pictureService.GetPictureUrlAsync(pictureId, 128, false, defaultPictureType: PictureType.Avatar);
+            if (!string.IsNullOrWhiteSpace(imageUrl))
+                avatarUrls[customerId] = imageUrl;
+        }
+
+        return avatarUrls;
+    }
+
+    protected virtual string ResolvePrimarySkillText(string resumeProfileJson)
+    {
+        if (string.IsNullOrWhiteSpace(resumeProfileJson))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(resumeProfileJson);
+            var root = document.RootElement;
+            return GetFirstJsonString(root, "primarySkills", "PrimarySkills") ??
+                GetJsonString(root, "primarySkill", "PrimarySkill") ??
+                GetFirstJsonString(root, "skills", "Skills") ??
+                GetJsonString(root, "skill", "Skill");
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    protected static string GetFirstJsonString(JsonElement root, params string[] propertyNames)
+    {
+        if (!TryGetJsonProperty(root, out var property, propertyNames))
+            return null;
+
+        if (property.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in property.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.String)
+                    continue;
+
+                var value = item.GetString()?.Trim();
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value;
+            }
+        }
+
+        return property.ValueKind == JsonValueKind.String ? property.GetString()?.Trim() : null;
+    }
+
+    protected static string GetJsonString(JsonElement root, params string[] propertyNames)
+    {
+        if (!TryGetJsonProperty(root, out var property, propertyNames) || property.ValueKind != JsonValueKind.String)
+            return null;
+
+        var value = property.GetString()?.Trim();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    protected static bool TryGetJsonProperty(JsonElement root, out JsonElement property, params string[] propertyNames)
+    {
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            property = default;
+            return false;
+        }
+
+        foreach (var propertyName in propertyNames)
+        {
+            if (root.TryGetProperty(propertyName, out property))
+                return true;
+        }
+
+        foreach (var item in root.EnumerateObject())
+        {
+            if (propertyNames.Any(propertyName => string.Equals(item.Name, propertyName, StringComparison.OrdinalIgnoreCase)))
+            {
+                property = item.Value;
+                return true;
+            }
+        }
+
+        property = default;
+        return false;
     }
 
     public async Task<IList<InterviewSession>> GetCompletionWorkSessionsAsync(DateTime staleProcessingBeforeUtc, int maxCount = 20)
