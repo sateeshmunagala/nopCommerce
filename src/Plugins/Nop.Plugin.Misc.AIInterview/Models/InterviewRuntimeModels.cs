@@ -211,4 +211,8 @@ public record InterviewReportModel : BaseNopModel
     public string RecordingShareUrl { get; set; }
     public string ReportShareUrl { get; set; }
     public IList<InterviewTurnViewModel> Turns { get; set; } = new List<InterviewTurnViewModel>();
+    public string CandidateName { get; set; }
+    public string InterviewType { get; set; }
+    public string SkillContext { get; set; }
+    public bool ResumeUsed { get; set; }
 }

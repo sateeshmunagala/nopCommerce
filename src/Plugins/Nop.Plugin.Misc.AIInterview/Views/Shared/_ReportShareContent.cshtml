@@ -46,6 +46,38 @@
      data-copied-text="@copiedText"
      data-copy-failed-text="@copyFailedText">
     <div class="ai-report-share-left">
+        @if (!string.IsNullOrWhiteSpace(Model.CandidateName) || !string.IsNullOrWhiteSpace(Model.InterviewType))
+        {
+            <div class="ai-report-context-header">
+                @if (!string.IsNullOrWhiteSpace(Model.CandidateName))
+                {
+                    <div class="ai-report-candidate-name">@Model.CandidateName</div>
+                }
+                <div class="ai-report-context-meta">
+                    @if (string.Equals(Model.InterviewType, "MockPractice", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <span class="ai-report-type-badge ai-report-type-mock">@T("Plugins.Misc.AIInterview.Report.TypeMock")</span>
+                        @if (Model.ResumeUsed && string.IsNullOrWhiteSpace(Model.SkillContext))
+                        {
+                            <span class="ai-report-context-line">@T("Plugins.Misc.AIInterview.Report.ContextResumeBased")</span>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(Model.SkillContext))
+                        {
+                            <span class="ai-report-context-line">@Model.SkillContext</span>
+                        }
+                    }
+                    else if (string.Equals(Model.InterviewType, "Job", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <span class="ai-report-type-badge ai-report-type-job">@T("Plugins.Misc.AIInterview.Report.TypeJob")</span>
+                        @if (!string.IsNullOrWhiteSpace(Model.JobTitle))
+                        {
+                            <span class="ai-report-context-line">@Model.JobTitle</span>
+                        }
+                    }
+                </div>
+            </div>
+        }
+
         <div class="ai-report-actions">
             @if (!string.IsNullOrWhiteSpace(reportShareUrl))
             {

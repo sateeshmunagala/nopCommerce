@@ -1347,6 +1347,68 @@ details[open] .fa-chevron-down {
     }
 }
 
+.ai-report-context-header {
+    margin-bottom: 1.25rem;
+    padding: 1rem 1.25rem;
+    background: #f8f9fb;
+    border: 1px solid #e5e8ec;
+    border-radius: 8px;
+}
+
+.ai-report-candidate-name {
+    margin-bottom: 0.4rem;
+    color: #1a1f2e;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.ai-report-context-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ai-report-type-badge {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.ai-report-type-mock {
+    background: #e6faf6;
+    color: #1b4e46;
+    border: 1px solid #24b99a;
+}
+
+.ai-report-type-job {
+    background: #e6faf6;
+    color: #1b4e46;
+    border: 1px solid #35d6b4;
+}
+
+.ai-report-context-line {
+    color: #5a6472;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+    .ai-report-context-header {
+        margin-bottom: 1rem;
+        padding: 0.875rem 1rem;
+    }
+
+    .ai-report-candidate-name {
+        font-size: 1rem;
+    }
+}
+
 .job-ai-panel {
     display: grid;
     gap: 18px;

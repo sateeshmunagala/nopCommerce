@@ -540,6 +540,10 @@ public class AIInterviewController : BasePluginController
         var turns = await GetTurnsSafeAsync(session.Id);
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
         var reportShareUrl = await BuildReportShareUrlAsync(session);
+        var candidate = session.CustomerId > 0 ? await _customerService.GetCustomerByIdAsync(session.CustomerId) : null;
+        var candidateName = candidate != null ? (candidate.FirstName + " " + candidate.LastName).Trim() : string.Empty;
+        var skillContext = BuildSelectedAttributesSummary(session.SelectedProductAttributesJson);
+        var resumeUsed = session.ResumeDownloadId > 0 || !string.IsNullOrWhiteSpace(session.ResumeProfileJson);
 
         return new InterviewReportModel
         {
@@ -559,8 +563,40 @@ public class AIInterviewController : BasePluginController
             CreatedOnUtc = session.CreatedOnUtc,
             ReportDateUtc = session.CompletedOnUtc ?? session.StartedOnUtc ?? session.CreatedOnUtc,
             CompletedOnUtc = session.CompletedOnUtc,
-            Turns = MapTurns(turns)
+            Turns = MapTurns(turns),
+            CandidateName = candidateName,
+            InterviewType = session.InterviewType ?? string.Empty,
+            SkillContext = skillContext,
+            ResumeUsed = resumeUsed
         };
+    }
+
+    private sealed record ReportAttributeSummaryEntry(
+        [property: System.Text.Json.Serialization.JsonPropertyName("AttributeName")] string AttributeName,
+        [property: System.Text.Json.Serialization.JsonPropertyName("Value")] string Value);
+
+    private sealed record ReportAttributesSummarySnapshot(
+        [property: System.Text.Json.Serialization.JsonPropertyName("Attributes")] IList<ReportAttributeSummaryEntry> Attributes);
+
+    protected virtual string BuildSelectedAttributesSummary(string selectedProductAttributesJson)
+    {
+        if (string.IsNullOrWhiteSpace(selectedProductAttributesJson))
+            return string.Empty;
+
+        try
+        {
+            var snapshot = System.Text.Json.JsonSerializer.Deserialize<ReportAttributesSummarySnapshot>(selectedProductAttributesJson);
+            var pairs = snapshot?.Attributes?
+                .Where(a => !string.IsNullOrWhiteSpace(a?.AttributeName) && !string.IsNullOrWhiteSpace(a?.Value))
+                .Select(a => $"{a.AttributeName.Trim()}: {a.Value.Trim()}")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return pairs?.Count > 0 ? string.Join("; ", pairs) : string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     protected virtual async Task<IActionResult> ProxyRecordingAsync(string recordingUrl)
