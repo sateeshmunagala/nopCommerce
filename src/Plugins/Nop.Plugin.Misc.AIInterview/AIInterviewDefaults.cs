@@ -64,7 +64,7 @@ public static class AIInterviewDefaults
 
     public static string MyActivityRouteName => "Plugin.Misc.AIInterview.MyActivity";
 
-    public static string HomepageTopPerformersWidgetZone => Nop.Web.Framework.Infrastructure.PublicWidgetZones.HomepageTop;
+    public static string HomepageTopPerformersWidgetZone => Nop.Web.Framework.Infrastructure.PublicWidgetZones.HomepageBeforeBestSellers;
 
     public const int HomepageTopPerformersMaxCount = 10;
 

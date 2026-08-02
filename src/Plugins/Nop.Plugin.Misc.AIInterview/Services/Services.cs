@@ -697,28 +697,40 @@ public class InterviewSessionService : IInterviewSessionService
             (from candidate in eligibleQuery
              join bestSession in bestSessionQuery on new { candidate.CustomerId, candidate.SessionId } equals new { bestSession.CustomerId, bestSession.SessionId }
              orderby candidate.Score descending, candidate.CompletedOnUtc descending, candidate.SessionId descending
-             select candidate)
-            .Take(maxCount);
+             select candidate);
 
         var rows = await winnersQuery.ToListAsync();
-        var avatarUrls = await ResolveAvatarUrlsAsync(rows.Select(row => row.CustomerId));
+        var rankedRows = rows
+            .Select(row => new
+            {
+                Row = row,
+                PrimarySkillText = ResolvePrimarySkillText(row.ResumeProfileJson)
+            })
+            .Where(item => HasSpecifiedPrimarySkill(item.PrimarySkillText))
+            .OrderByDescending(item => item.Row.Score)
+            .ThenByDescending(item => item.Row.CompletedOnUtc)
+            .ThenByDescending(item => item.Row.SessionId)
+            .Take(maxCount)
+            .ToList();
+
+        var avatarUrls = await ResolveAvatarUrlsAsync(rankedRows.Select(item => item.Row.CustomerId));
         var unknownCandidateText = _localizationService == null
             ? null
             : await _localizationService.GetResourceAsync(AIInterviewDefaults.HomepageTopPerformersUnknownCandidateResourceKey);
         if (string.IsNullOrWhiteSpace(unknownCandidateText))
             unknownCandidateText = "Unknown candidate";
 
-        return rows.Select(row =>
+        return rankedRows.Select(item =>
         {
+            var row = item.Row;
             var fullName = $"{row.FirstName} {row.LastName}".Trim();
-            var primarySkillText = ResolvePrimarySkillText(row.ResumeProfileJson);
             avatarUrls.TryGetValue(row.CustomerId, out var avatarUrl);
 
             return new HomeTopPerformer
             {
                 ImageUrl = string.IsNullOrWhiteSpace(avatarUrl) ? AIInterviewDefaults.DefaultAvatarImageUrl : avatarUrl,
                 FullName = string.IsNullOrWhiteSpace(fullName) ? unknownCandidateText : fullName,
-                PrimarySkillText = string.IsNullOrWhiteSpace(primarySkillText) ? "Not specified" : primarySkillText,
+                PrimarySkillText = item.PrimarySkillText,
                 Score = row.Score,
                 ProfileLink = null,
                 CustomerId = row.CustomerId,
@@ -726,6 +738,12 @@ public class InterviewSessionService : IInterviewSessionService
                 CompletedOnUtc = row.CompletedOnUtc
             };
         }).ToList();
+    }
+
+    protected static bool HasSpecifiedPrimarySkill(string primarySkillText)
+    {
+        return !string.IsNullOrWhiteSpace(primarySkillText) &&
+            !string.Equals(primarySkillText.Trim(), "Not specified", StringComparison.OrdinalIgnoreCase);
     }
 
     protected virtual async Task<IDictionary<int, string>> ResolveAvatarUrlsAsync(IEnumerable<int> customerIds)
