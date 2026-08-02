@@ -261,6 +261,7 @@ public class InterviewSessionService : IInterviewSessionService
     private readonly IVendorService _vendorService;
     private readonly IDateTimeHelper _dateTimeHelper;
     private readonly ILogger<InterviewSessionService> _logger;
+    private readonly ILocalizationService _localizationService;
     private readonly IRepository<JobApplication> _applicationRepository;
     private readonly IRepository<Customer> _customerRepository;
     private readonly IRepository<Product> _productRepository;
@@ -282,6 +283,7 @@ public class InterviewSessionService : IInterviewSessionService
         IVendorService vendorService,
         IDateTimeHelper dateTimeHelper,
         ILogger<InterviewSessionService> logger = null,
+        ILocalizationService localizationService = null,
         IRepository<JobApplication> applicationRepository = null,
         IRepository<Customer> customerRepository = null,
         IRepository<Product> productRepository = null,
@@ -303,6 +305,7 @@ public class InterviewSessionService : IInterviewSessionService
         _vendorService = vendorService;
         _dateTimeHelper = dateTimeHelper;
         _logger = logger;
+        _localizationService = localizationService;
         _applicationRepository = applicationRepository;
         _customerRepository = customerRepository;
         _productRepository = productRepository;
@@ -618,7 +621,7 @@ public class InterviewSessionService : IInterviewSessionService
         }
 
         var utcNow = DateTime.UtcNow;
-        var createdFromUtc = utcNow.AddDays(-AIInterviewDefaults.HomepageTopPerformersFreshnessDays);
+        var completedFromUtc = utcNow.AddDays(-AIInterviewDefaults.HomepageTopPerformersFreshnessDays);
         var productEntityName = nameof(Product);
 
         var eligibleQuery =
@@ -626,11 +629,14 @@ public class InterviewSessionService : IInterviewSessionService
             join customer in _customerRepository.Table on session.CustomerId equals customer.Id
             join applicationJoin in _applicationRepository.Table on session.JobApplicationId equals applicationJoin.Id into applicationGroup
             from application in applicationGroup.DefaultIfEmpty()
-            let productId = session.ProductId > 0 ? session.ProductId : application != null ? application.ProductId : 0
+            let productId = session.ProductId > 0
+                ? session.ProductId
+                : session.SourceProductId > 0
+                    ? session.SourceProductId
+                    : application != null ? application.ProductId : 0
             join product in _productRepository.Table on productId equals product.Id
             where session.CompletedOnUtc.HasValue &&
-                session.CreatedOnUtc >= createdFromUtc &&
-                session.CreatedOnUtc <= utcNow &&
+                session.CompletedOnUtc.Value >= completedFromUtc &&
                 session.CompletedOnUtc.Value <= utcNow &&
                 customer.Active &&
                 !customer.Deleted &&
@@ -660,31 +666,31 @@ public class InterviewSessionService : IInterviewSessionService
 
         var bestScoreQuery = eligibleQuery
             .GroupBy(candidate => candidate.CustomerId)
-            .Select(group => new
+            .Select(groupedRows => new
             {
-                CustomerId = group.Key,
-                Score = group.Max(candidate => candidate.Score)
+                CustomerId = groupedRows.Key,
+                Score = groupedRows.Max(candidate => candidate.Score)
             });
 
         var bestCompletionQuery =
             from candidate in eligibleQuery
             join bestScore in bestScoreQuery on new { candidate.CustomerId, candidate.Score } equals new { bestScore.CustomerId, bestScore.Score }
-            group candidate by candidate.CustomerId into group
+            group candidate by candidate.CustomerId into groupedRows
             select new
             {
-                CustomerId = group.Key,
-                CompletedOnUtc = group.Max(candidate => candidate.CompletedOnUtc)
+                CustomerId = groupedRows.Key,
+                CompletedOnUtc = groupedRows.Max(candidate => candidate.CompletedOnUtc)
             };
 
         var bestSessionQuery =
             from candidate in eligibleQuery
             join bestScore in bestScoreQuery on new { candidate.CustomerId, candidate.Score } equals new { bestScore.CustomerId, bestScore.Score }
             join bestCompletion in bestCompletionQuery on new { candidate.CustomerId, candidate.CompletedOnUtc } equals new { bestCompletion.CustomerId, bestCompletion.CompletedOnUtc }
-            group candidate by candidate.CustomerId into group
+            group candidate by candidate.CustomerId into groupedRows
             select new
             {
-                CustomerId = group.Key,
-                SessionId = group.Max(candidate => candidate.SessionId)
+                CustomerId = groupedRows.Key,
+                SessionId = groupedRows.Max(candidate => candidate.SessionId)
             };
 
         var winnersQuery =
@@ -696,6 +702,11 @@ public class InterviewSessionService : IInterviewSessionService
 
         var rows = await winnersQuery.ToListAsync();
         var avatarUrls = await ResolveAvatarUrlsAsync(rows.Select(row => row.CustomerId));
+        var unknownCandidateText = _localizationService == null
+            ? null
+            : await _localizationService.GetResourceAsync(AIInterviewDefaults.HomepageTopPerformersUnknownCandidateResourceKey);
+        if (string.IsNullOrWhiteSpace(unknownCandidateText))
+            unknownCandidateText = "Unknown candidate";
 
         return rows.Select(row =>
         {
@@ -706,7 +717,7 @@ public class InterviewSessionService : IInterviewSessionService
             return new HomeTopPerformer
             {
                 ImageUrl = string.IsNullOrWhiteSpace(avatarUrl) ? AIInterviewDefaults.DefaultAvatarImageUrl : avatarUrl,
-                FullName = string.IsNullOrWhiteSpace(fullName) ? "Unknown" : fullName,
+                FullName = string.IsNullOrWhiteSpace(fullName) ? unknownCandidateText : fullName,
                 PrimarySkillText = string.IsNullOrWhiteSpace(primarySkillText) ? "Not specified" : primarySkillText,
                 Score = row.Score,
                 ProfileLink = null,

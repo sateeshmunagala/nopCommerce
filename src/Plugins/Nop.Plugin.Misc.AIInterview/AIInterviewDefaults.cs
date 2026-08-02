@@ -86,6 +86,8 @@ public static class AIInterviewDefaults
 
     public static string HomepageTopPerformersEmptyResourceKey => $"{LocalizationPrefix}.Homepage.TopPerformers.Empty";
 
+    public static string HomepageTopPerformersUnknownCandidateResourceKey => $"{LocalizationPrefix}.Homepage.TopPerformers.UnknownCandidate";
+
     /// <summary>
     /// Gets the employer applications route name
     /// </summary>
