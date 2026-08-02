@@ -1706,6 +1706,10 @@ details[open] .fa-chevron-down {
     padding-right: 6px;
 }
 
+.ai-report-drawer-body .ai-report-actions {
+    display: none;
+}
+
 .ai-report-drawer-body .ai-report-hero,
 .ai-report-drawer-body .ai-report-card,
 .ai-report-drawer-body .mock-report-card,

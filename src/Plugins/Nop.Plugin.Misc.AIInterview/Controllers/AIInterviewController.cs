@@ -599,18 +599,16 @@ public class AIInterviewController : BasePluginController
                 .FirstOrDefault(a => string.Equals(a.AttributeName.Trim(), "Difficulty", StringComparison.OrdinalIgnoreCase))
                 ?.Value?.Trim();
 
-            const string separator = " \u00b7 ";
-
             if (!string.IsNullOrWhiteSpace(skill) && !string.IsNullOrWhiteSpace(difficulty))
-                return $"{skill}{separator}{difficulty}";
+                return $"Skill: {skill} \u00b7 Difficulty: {difficulty}";
 
             if (!string.IsNullOrWhiteSpace(skill))
-                return skill;
+                return $"Skill: {skill}";
 
             if (!string.IsNullOrWhiteSpace(difficulty))
-                return difficulty;
+                return $"Difficulty: {difficulty}";
 
-            return string.Join(separator, attributes
+            return string.Join(" \u00b7 ", attributes
                 .Select(a => a.Value.Trim())
                 .Where(v => !string.IsNullOrWhiteSpace(v))
                 .Distinct(StringComparer.OrdinalIgnoreCase));
