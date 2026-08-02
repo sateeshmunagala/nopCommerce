@@ -64,17 +64,21 @@
         <div class="order-details-area">
             <div class="order-overview">
                 <div class="order-number">
-                    <strong>@T("Order.Order#")@Model.CustomOrderNumber</strong>
+                    <span class="label">@T("Order.Order#")</span>
+                    <strong>@Model.CustomOrderNumber</strong>
                 </div>
                 <ul class="order-overview-content">
                     <li class="order-date">
-                        @T("Order.OrderDate"): @Model.CreatedOn.ToString("D")
+                        <span class="label">@T("Order.OrderDate"):</span>
+                        <span class="value">@Model.CreatedOn.ToString("D")</span>
                     </li>
                     <li class="order-status">
-                        @T("Order.OrderStatus"): @Model.OrderStatusText
+                        <span class="label">@T("Order.OrderStatus"):</span>
+                        <span class="value">@Model.OrderStatusText</span>
                     </li>
                     <li class="order-total">
-                        @T("Order.OrderTotal"): <strong>@Model.OrderTotal</strong>
+                        <span class="label">@T("Order.OrderTotal"):</span>
+                        <span class="value"><strong>@Model.OrderTotal</strong></span>
                     </li>
                 </ul>
                 @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageOverview, additionalData = Model })
@@ -576,14 +580,14 @@
             <div class="order-products-widgets order-products-widgets-after">
                 @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageAfterproducts, additionalData = Model })
             </div>
-            <div class="section options">
-                @if (!string.IsNullOrEmpty(Model.CheckoutAttributeInfo))
-                {
+            @if (!string.IsNullOrEmpty(Model.CheckoutAttributeInfo))
+            {
+                <div class="section options">
                     <div class="selected-checkout-attributes">
                         @Html.Raw(Model.CheckoutAttributeInfo)
                     </div>
-                }
-            </div>
+                </div>
+            }
             <div class="section totals">
                 <div class="total-info">
                     <table class="cart-total">

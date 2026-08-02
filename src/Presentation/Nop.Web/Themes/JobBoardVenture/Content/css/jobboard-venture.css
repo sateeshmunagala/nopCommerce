@@ -10805,8 +10805,8 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 18px;
+    gap: 12px;
+    margin-bottom: 14px;
 }
 
 .html-order-details-page .order-details-page .page-title h1 {
@@ -10820,6 +10820,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 .html-order-details-page .order-details-page .order-title-actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
     justify-content: flex-end;
 }
@@ -10831,8 +10832,8 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 38px;
-    padding: 9px 14px;
+    min-height: 36px;
+    padding: 8px 13px;
     border-radius: 4px;
     font-size: 0.9rem;
     line-height: 1;
@@ -10875,7 +10876,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 .html-order-details-page .order-details-page .order-details-area {
     display: grid;
     grid-template-columns: minmax(0, 1.75fr) minmax(300px, 0.85fr);
-    gap: 16px;
+    gap: 14px;
     align-items: start;
 }
 
@@ -10893,7 +10894,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .section,
 .html-order-details-page .order-details-page .order-overview {
-    padding: 16px;
+    padding: 14px;
 }
 
 .html-order-details-page .order-details-page .order-overview {
@@ -10903,11 +10904,24 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     background: #f7fbfa;
 }
 
+.html-order-details-page .order-details-page .order-overview .order-number {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.html-order-details-page .order-details-page .order-overview .order-number .label,
+.html-order-details-page .order-details-page .order-overview-content .label {
+    color: #5d6870;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
 .html-order-details-page .order-details-page .order-overview .order-number strong {
-    display: block;
     color: var(--jb-ink);
     font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 1.15rem;
+    font-size: 1.22rem;
     line-height: 1.2;
     text-transform: uppercase;
     overflow-wrap: anywhere;
@@ -10923,11 +10937,21 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .order-overview-content li {
     display: flex;
+    align-items: baseline;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     color: #59636b;
-    line-height: 1.4;
+    line-height: 1.45;
     overflow-wrap: anywhere;
+}
+
+.html-order-details-page .order-details-page .order-overview-content .value {
+    min-width: 0;
+    color: var(--jb-ink);
+    font-weight: 700;
+    text-align: right;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .html-order-details-page .order-details-page .order-overview-content .order-status,
@@ -10978,29 +11002,29 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 .html-order-details-page .order-details-page .shipping-info-wrap {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: 14px;
 }
 
 .html-order-details-page .order-details-page .billing-info,
 .html-order-details-page .order-details-page .payment-method-info,
 .html-order-details-page .order-details-page .shipping-info,
 .html-order-details-page .order-details-page .shipping-method-info {
-    padding: 16px;
+    padding: 14px;
 }
 
 .html-order-details-page .order-details-page .title,
 .html-order-details-page .order-details-page .section .title {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     color: var(--jb-ink);
     font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 1.12rem;
+    font-size: 1.06rem;
     line-height: 1.2;
     text-transform: uppercase;
 }
 
 .html-order-details-page .order-details-page .info-list {
     display: grid;
-    gap: 7px;
+    gap: 8px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -11018,6 +11042,18 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 .html-order-details-page .order-details-page .note,
 .html-order-details-page .order-details-page .tracking-number {
     min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.html-order-details-page .order-details-page .billing-info,
+.html-order-details-page .order-details-page .payment-method-info {
+    font-size: 1rem;
+    line-height: 1.58;
+}
+
+.html-order-details-page .order-details-page .billing-info *,
+.html-order-details-page .order-details-page .payment-method-info * {
     overflow-wrap: anywhere;
     word-break: break-word;
 }
@@ -11040,7 +11076,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .data-table {
     width: 100%;
-    min-width: 680px;
+    min-width: 640px;
     border-collapse: separate;
     border-spacing: 0;
     table-layout: auto;
@@ -11048,7 +11084,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .data-table th,
 .html-order-details-page .order-details-page .data-table td {
-    padding: 12px;
+    padding: 10px;
     border-bottom: 1px solid #e3e9e7;
     color: var(--jb-ink);
     line-height: 1.45;
@@ -11057,6 +11093,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 .html-order-details-page .order-details-page .data-table th {
+    padding: 9px 10px;
     background: #f4f8f7;
     color: #4d5961;
     font-family: "Fjalla One", Arial, sans-serif;
@@ -11099,9 +11136,14 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 .html-order-details-page .order-details-page .section.products .picture img {
-    max-width: 72px;
+    max-width: 64px;
     height: auto;
     border-radius: 4px;
+}
+
+.html-order-details-page .order-details-page .section.products .tax-shipping-info {
+    margin-top: 10px;
+    line-height: 1.45;
 }
 
 .html-order-details-page .order-details-page .section.products .total,
