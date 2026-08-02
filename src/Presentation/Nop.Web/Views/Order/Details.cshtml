@@ -30,16 +30,21 @@
     @if (!Model.PrintMode)
     {
         <div class="page-title">
-            <h1>@T("Order.OrderInformation")</h1>
+            <div class="order-title-copy">
+                <h1>@T("Order.OrderInformation")</h1>
+                <div class="order-title-meta">
+                    @T("Order.Order#")@Model.CustomOrderNumber | @Model.CreatedOn.ToString("D")
+                </div>
+            </div>
             <div class="order-title-actions">
-                @if (Model.IsReOrderAllowed)
-                {
-                    <button type="button" class="button-1 re-order-button" onclick="setLocation('@Url.RouteUrl(NopRouteNames.Standard.RE_ORDER, new { orderId = Model.Id })')">@T("Order.Reorder")</button>
-                }
                 <a href="@Url.RouteUrl(NopRouteNames.Standard.PRINT_ORDER_DETAILS, new { orderId = Model.Id })" target="_blank" class="button-2 print-order-button">@T("Order.Print")</a>
                 @if (!Model.PdfInvoiceDisabled)
                 {
                     <a href="@Url.RouteUrl(NopRouteNames.Standard.GET_ORDER_PDF_INVOICE, new { orderId = Model.Id })" class="button-2 pdf-invoice-button">@T("Order.GetPDFInvoice")</a>
+                }
+                @if (Model.IsReOrderAllowed)
+                {
+                    <button type="button" class="button-1 re-order-button" onclick="setLocation('@Url.RouteUrl(NopRouteNames.Standard.RE_ORDER, new { orderId = Model.Id })')">@T("Order.Reorder")</button>
                 }
                 @if (Model.CanCancelOrder)
                 {
@@ -63,23 +68,24 @@
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageTop, additionalData = Model })
         <div class="order-details-area">
             <div class="order-overview">
-                <div class="order-number">
-                    <span class="label">@T("Order.Order#")</span>
-                    <strong>@Model.CustomOrderNumber</strong>
-                </div>
+                @if (Model.PrintMode)
+                {
+                    <div class="print-order-meta">
+                        @T("Order.Order#")@Model.CustomOrderNumber | @Model.CreatedOn.ToString("D")
+                    </div>
+                }
+                <div class="order-overview-total-label">@T("Order.OrderTotal")</div>
+                <div class="order-overview-total-value">@Model.OrderTotal</div>
                 <ul class="order-overview-content">
-                    <li class="order-date">
-                        <span class="label">@T("Order.OrderDate"):</span>
-                        <span class="value">@Model.CreatedOn.ToString("D")</span>
-                    </li>
                     <li class="order-status">
-                        <span class="label">@T("Order.OrderStatus"):</span>
                         <span class="value">@Model.OrderStatusText</span>
                     </li>
-                    <li class="order-total">
-                        <span class="label">@T("Order.OrderTotal"):</span>
-                        <span class="value"><strong>@Model.OrderTotal</strong></span>
-                    </li>
+                    @if (!Model.PrintMode)
+                    {
+                        <li class="payment-status">
+                            <span class="value">@Model.PaymentMethodStatus</span>
+                        </li>
+                    }
                 </ul>
                 @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageOverview, additionalData = Model })
             </div>
@@ -589,6 +595,9 @@
                 </div>
             }
             <div class="section totals">
+                <h2 class="title">
+                    Account Summary
+                </h2>
                 <div class="total-info">
                     <table class="cart-total">
                         <tbody>
