@@ -11169,7 +11169,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     }
 
     .html-order-details-page .order-details-page .order-products-widgets-before {
-        order: 8;
+        order: 6;
     }
 
     .html-order-details-page .order-details-page .order-products-widgets-after {
@@ -11185,23 +11185,23 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     }
 
     .html-order-details-page .order-details-page .billing-info-wrap {
-        order: 4;
-    }
-
-    .html-order-details-page .order-details-page .shipping-info-wrap {
-        order: 5;
-    }
-
-    .html-order-details-page .order-details-page .section.options {
-        order: 7;
-    }
-
-    .html-order-details-page .order-details-page .section.shipments {
         order: 9;
     }
 
+    .html-order-details-page .order-details-page .shipping-info-wrap {
+        order: 4;
+    }
+
+    .html-order-details-page .order-details-page .section.options {
+        order: 5;
+    }
+
+    .html-order-details-page .order-details-page .section.shipments {
+        order: 7;
+    }
+
     .html-order-details-page .order-details-page .section.order-notes {
-        order: 10;
+        order: 8;
     }
 
     .html-order-details-page .order-details-page .billing-info-wrap,
