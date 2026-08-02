@@ -571,12 +571,9 @@ public class AIInterviewController : BasePluginController
         };
     }
 
-    private sealed record ReportAttributeSummaryEntry(
-        [property: System.Text.Json.Serialization.JsonPropertyName("AttributeName")] string AttributeName,
-        [property: System.Text.Json.Serialization.JsonPropertyName("Value")] string Value);
+    private sealed record ReportAttributeSummaryEntry(int? AttributeId, string AttributeName, string TextPrompt, int? ValueId, string Value);
 
-    private sealed record ReportAttributesSummarySnapshot(
-        [property: System.Text.Json.Serialization.JsonPropertyName("Attributes")] IList<ReportAttributeSummaryEntry> Attributes);
+    private sealed record ReportAttributesSummarySnapshot(IList<ReportAttributeSummaryEntry> Attributes);
 
     protected virtual string BuildSelectedAttributesSummary(string selectedProductAttributesJson)
     {
@@ -585,13 +582,38 @@ public class AIInterviewController : BasePluginController
 
         try
         {
-            var snapshot = System.Text.Json.JsonSerializer.Deserialize<ReportAttributesSummarySnapshot>(selectedProductAttributesJson);
-            var pairs = snapshot?.Attributes?
+            var options = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+            var snapshot = System.Text.Json.JsonSerializer.Deserialize<ReportAttributesSummarySnapshot>(selectedProductAttributesJson, options);
+            var attributes = snapshot?.Attributes?
                 .Where(a => !string.IsNullOrWhiteSpace(a?.AttributeName) && !string.IsNullOrWhiteSpace(a?.Value))
-                .Select(a => $"{a.AttributeName.Trim()}: {a.Value.Trim()}")
-                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
-            return pairs?.Count > 0 ? string.Join("; ", pairs) : string.Empty;
+
+            if (attributes == null || attributes.Count == 0)
+                return string.Empty;
+
+            var skill = attributes
+                .FirstOrDefault(a => string.Equals(a.AttributeName.Trim(), "Skill", StringComparison.OrdinalIgnoreCase))
+                ?.Value?.Trim();
+
+            var difficulty = attributes
+                .FirstOrDefault(a => string.Equals(a.AttributeName.Trim(), "Difficulty", StringComparison.OrdinalIgnoreCase))
+                ?.Value?.Trim();
+
+            const string separator = " \u00b7 ";
+
+            if (!string.IsNullOrWhiteSpace(skill) && !string.IsNullOrWhiteSpace(difficulty))
+                return $"{skill}{separator}{difficulty}";
+
+            if (!string.IsNullOrWhiteSpace(skill))
+                return skill;
+
+            if (!string.IsNullOrWhiteSpace(difficulty))
+                return difficulty;
+
+            return string.Join(separator, attributes
+                .Select(a => a.Value.Trim())
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Distinct(StringComparer.OrdinalIgnoreCase));
         }
         catch
         {
