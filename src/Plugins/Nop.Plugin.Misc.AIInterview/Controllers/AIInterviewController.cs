@@ -824,7 +824,7 @@ public class AIInterviewController : BasePluginController
                     : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Active"),
                 Score = session.Score,
                 InterviewReportUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
-                    ? Url?.RouteUrl(AIInterviewDefaults.MockReportRouteName, new { sessionId = session.Id })
+                    ? Url?.RouteUrl(AIInterviewDefaults.ReportRouteName, new { sessionId = session.Id })
                     : null,
                 InterviewReportPanelUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
                     ? Url?.Action("ReportPanel", "AIInterview", new { sessionId = session.Id })
@@ -1110,7 +1110,7 @@ public class AIInterviewController : BasePluginController
             return NotFound();
 
         var model = await BuildInterviewReportModelAsync(session);
-        return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_InterviewReportContent.cshtml", model);
+        return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_ReportShareContent.cshtml", model);
     }
 
     [HttpGet]
