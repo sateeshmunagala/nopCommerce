@@ -10805,8 +10805,8 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 10px;
+    margin-bottom: 10px;
 }
 
 .html-order-details-page .order-details-page .page-title h1 {
@@ -10875,9 +10875,14 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .order-details-area {
     display: grid;
-    grid-template-columns: minmax(0, 1.75fr) minmax(300px, 0.85fr);
-    gap: 14px;
+    grid-template-columns: minmax(0, 1.85fr) minmax(290px, 0.78fr);
+    gap: 10px 12px;
     align-items: start;
+}
+
+.html-order-details-page .order-details-page .order-details-area > * {
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
 .html-order-details-page .order-details-page .section,
@@ -10894,7 +10899,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .section,
 .html-order-details-page .order-details-page .order-overview {
-    padding: 14px;
+    padding: 12px;
 }
 
 .html-order-details-page .order-details-page .order-overview {
@@ -10906,7 +10911,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .order-overview .order-number {
     display: grid;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
 }
 
@@ -10921,7 +10926,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 .html-order-details-page .order-details-page .order-overview .order-number strong {
     color: var(--jb-ink);
     font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 1.22rem;
+    font-size: 1.16rem;
     line-height: 1.2;
     text-transform: uppercase;
     overflow-wrap: anywhere;
@@ -10929,8 +10934,8 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .order-overview-content {
     display: grid;
-    gap: 6px;
-    margin: 9px 0 0;
+    gap: 5px;
+    margin: 7px 0 0;
     padding: 0;
     list-style: none;
 }
@@ -10941,7 +10946,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     justify-content: space-between;
     gap: 10px;
     color: #59636b;
-    line-height: 1.45;
+    line-height: 1.38;
     overflow-wrap: anywhere;
 }
 
@@ -10981,7 +10986,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .order-overview,
 .html-order-details-page .order-details-page .section.totals {
-    padding: 14px;
+    padding: 12px;
 }
 
 .html-order-details-page .order-details-page .billing-info-wrap {
@@ -11002,19 +11007,19 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 .html-order-details-page .order-details-page .shipping-info-wrap {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    gap: 10px;
 }
 
 .html-order-details-page .order-details-page .billing-info,
 .html-order-details-page .order-details-page .payment-method-info,
 .html-order-details-page .order-details-page .shipping-info,
 .html-order-details-page .order-details-page .shipping-method-info {
-    padding: 14px;
+    padding: 12px;
 }
 
 .html-order-details-page .order-details-page .title,
 .html-order-details-page .order-details-page .section .title {
-    margin: 0 0 10px;
+    margin: 0 0 8px;
     color: var(--jb-ink);
     font-family: "Fjalla One", Arial, sans-serif;
     font-size: 1.06rem;
@@ -11024,7 +11029,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .info-list {
     display: grid;
-    gap: 8px;
+    gap: 6px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -11048,8 +11053,8 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .billing-info,
 .html-order-details-page .order-details-page .payment-method-info {
-    font-size: 1rem;
-    line-height: 1.58;
+    font-size: 1.04rem;
+    line-height: 1.48;
 }
 
 .html-order-details-page .order-details-page .billing-info *,
@@ -11084,16 +11089,16 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
 .html-order-details-page .order-details-page .data-table th,
 .html-order-details-page .order-details-page .data-table td {
-    padding: 10px;
+    padding: 8px 10px;
     border-bottom: 1px solid #e3e9e7;
     color: var(--jb-ink);
-    line-height: 1.45;
+    line-height: 1.38;
     text-align: left;
     vertical-align: top;
 }
 
 .html-order-details-page .order-details-page .data-table th {
-    padding: 9px 10px;
+    padding: 8px 10px;
     background: #f4f8f7;
     color: #4d5961;
     font-family: "Fjalla One", Arial, sans-serif;
@@ -11142,8 +11147,8 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 .html-order-details-page .order-details-page .section.products .tax-shipping-info {
-    margin-top: 10px;
-    line-height: 1.45;
+    margin-top: 8px;
+    line-height: 1.38;
 }
 
 .html-order-details-page .order-details-page .section.products .total,
@@ -11158,7 +11163,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 .html-order-details-page .order-details-page .cart-total td {
-    padding: 5px 0;
+    padding: 4px 0;
     vertical-align: top;
     overflow-wrap: anywhere;
     word-break: break-word;
@@ -11185,12 +11190,12 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 8px;
 }
 
 .html-order-details-page .order-details-page .payment-method-info .repost form {
     display: grid;
-    gap: 8px;
+    gap: 6px;
 }
 
 .html-order-details-page .order-details-page .payment-method-info .hint {
@@ -11203,7 +11208,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     .html-order-details-page .order-details-page .order-details-area {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 10px;
     }
 
     .html-order-details-page .order-details-page .section.products {
@@ -11249,6 +11254,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     .html-order-details-page .order-details-page .billing-info-wrap,
     .html-order-details-page .order-details-page .shipping-info-wrap {
         grid-template-columns: 1fr;
+        gap: 10px;
     }
 }
 
@@ -11282,7 +11288,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     .html-order-details-page .order-details-page .payment-method-info,
     .html-order-details-page .order-details-page .shipping-info,
     .html-order-details-page .order-details-page .shipping-method-info {
-        padding: 14px;
+        padding: 12px;
     }
 
     .html-order-details-page .order-details-page .data-table {
