@@ -79,104 +79,6 @@
                 </ul>
                 @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageOverview, additionalData = Model })
             </div>
-            <div class="billing-info-wrap">
-                <div class="billing-info">
-	                <h2 class="title">
-	                    @T("Order.BillingAddress")
-	                </h2>
-                    <ul class="info-list">
-                        <li class="name">
-                            @Model.BillingAddress.FirstName @Model.BillingAddress.LastName
-                        </li>
-                        <li class="email">
-                            @T("Order.Email"): @Model.BillingAddress.Email
-                        </li>
-                        @if (Model.BillingAddress.PhoneEnabled)
-                        {
-                            <li class="phone">
-                                @T("Order.Phone"): @Model.BillingAddress.PhoneNumber
-                            </li>
-                        }
-                        @if (Model.BillingAddress.FaxEnabled)
-                        {
-                            <li class="fax">
-                                @T("Order.Fax"): @Model.BillingAddress.FaxNumber
-                            </li>
-                        }
-                        @if (Model.BillingAddress.CompanyEnabled && !string.IsNullOrEmpty(Model.BillingAddress.Company))
-                        {
-                            <li class="company">
-                                @Model.BillingAddress.Company
-                            </li>
-                        }
-                        @foreach (var item in Model.BillingAddress.AddressFields)
-                        {
-                            <li class=@item.Key.ToString().ToLower()>@item.Value</li>
-                        }
-                        @if (!string.IsNullOrEmpty(Model.VatNumber))
-                        {
-                            <li class="vat">
-                                <span class="label">
-                                    @T("Order.VATNumber")
-                                </span>
-                                <span class="value">
-                                    @Model.VatNumber
-                                </span>
-                            </li>
-                        }
-                        @if (!string.IsNullOrEmpty(Model.BillingAddress.FormattedCustomAddressAttributes))
-                        {
-                            <li class="custom-attributes-view">
-                                @Html.Raw(Model.BillingAddress.FormattedCustomAddressAttributes)
-                            </li>
-                        }
-                        @await Html.PartialAsync("_OrderCustomValues", Model.CustomValues?.GetValuesByDisplayLocation(CustomValueDisplayLocation.BillingAddress))
-                        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsBillingAddress, additionalData = Model })
-                    </ul>
-                </div>
-                @if (!string.IsNullOrEmpty(Model.PaymentMethod))
-                {
-                    <div class="payment-method-info">
-                        <h2 class="title">
-                            @T("Order.Payment")
-                        </h2>
-                        <ul class="info-list">
-                            <li class="payment-method">
-                                <span class="label">
-                                    @T("Order.Payment.Method"):
-                                </span>
-                                <span class="value">
-                                    @Model.PaymentMethod
-                                </span>
-                            </li>
-                            @if (!Model.PrintMode)
-                            {
-                                <li class="payment-method-status">
-                                    <span class="label">
-                                        @T("Order.Payment.Status"):
-                                    </span>
-                                    <span class="value">
-                                        @Model.PaymentMethodStatus
-                                    </span>
-                                </li>
-                            }
-                            @if (!Model.PrintMode && Model.CanRePostProcessPayment)
-                            {
-                                @*Complete payment (for redirection payment methods)*@
-                                <li class="repost">
-                                    <form asp-route="@NopRouteNames.Standard.ORDER_DETAILS" method="post">
-                                        <button type="submit" name="repost-payment" class="button-2 re-order-button">@T("Order.RetryPayment")</button>
-                                        <p class="hint">
-                                            <em>@T("Order.RetryPayment.Hint")</em>
-                                        </p>
-                                    </form>
-                                </li>
-                            }
-                            @await Html.PartialAsync("_OrderCustomValues", Model.CustomValues?.GetValuesByDisplayLocation(CustomValueDisplayLocation.Payment))
-                        </ul>
-                    </div>
-                }
-            </div>
             @if (Model.IsShippable)
             {
                 <div class="shipping-info-wrap">
@@ -570,6 +472,104 @@
                     //of course, you can modify appropriate locales to include VAT info there
                     <div class="tax-shipping-info">
                         @T(inclTax ? "Order.TaxShipping.InclTax" : "Order.TaxShipping.ExclTax", await NopUrl.RouteTopicUrlAsync("shippinginfo"))
+                    </div>
+                }
+            </div>
+            <div class="billing-info-wrap">
+                <div class="billing-info">
+	                <h2 class="title">
+	                    @T("Order.BillingAddress")
+	                </h2>
+                    <ul class="info-list">
+                        <li class="name">
+                            @Model.BillingAddress.FirstName @Model.BillingAddress.LastName
+                        </li>
+                        <li class="email">
+                            @T("Order.Email"): @Model.BillingAddress.Email
+                        </li>
+                        @if (Model.BillingAddress.PhoneEnabled)
+                        {
+                            <li class="phone">
+                                @T("Order.Phone"): @Model.BillingAddress.PhoneNumber
+                            </li>
+                        }
+                        @if (Model.BillingAddress.FaxEnabled)
+                        {
+                            <li class="fax">
+                                @T("Order.Fax"): @Model.BillingAddress.FaxNumber
+                            </li>
+                        }
+                        @if (Model.BillingAddress.CompanyEnabled && !string.IsNullOrEmpty(Model.BillingAddress.Company))
+                        {
+                            <li class="company">
+                                @Model.BillingAddress.Company
+                            </li>
+                        }
+                        @foreach (var item in Model.BillingAddress.AddressFields)
+                        {
+                            <li class=@item.Key.ToString().ToLower()>@item.Value</li>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.VatNumber))
+                        {
+                            <li class="vat">
+                                <span class="label">
+                                    @T("Order.VATNumber")
+                                </span>
+                                <span class="value">
+                                    @Model.VatNumber
+                                </span>
+                            </li>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.BillingAddress.FormattedCustomAddressAttributes))
+                        {
+                            <li class="custom-attributes-view">
+                                @Html.Raw(Model.BillingAddress.FormattedCustomAddressAttributes)
+                            </li>
+                        }
+                        @await Html.PartialAsync("_OrderCustomValues", Model.CustomValues?.GetValuesByDisplayLocation(CustomValueDisplayLocation.BillingAddress))
+                        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsBillingAddress, additionalData = Model })
+                    </ul>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.PaymentMethod))
+                {
+                    <div class="payment-method-info">
+                        <h2 class="title">
+                            @T("Order.Payment")
+                        </h2>
+                        <ul class="info-list">
+                            <li class="payment-method">
+                                <span class="label">
+                                    @T("Order.Payment.Method"):
+                                </span>
+                                <span class="value">
+                                    @Model.PaymentMethod
+                                </span>
+                            </li>
+                            @if (!Model.PrintMode)
+                            {
+                                <li class="payment-method-status">
+                                    <span class="label">
+                                        @T("Order.Payment.Status"):
+                                    </span>
+                                    <span class="value">
+                                        @Model.PaymentMethodStatus
+                                    </span>
+                                </li>
+                            }
+                            @if (!Model.PrintMode && Model.CanRePostProcessPayment)
+                            {
+                                @*Complete payment (for redirection payment methods)*@
+                                <li class="repost">
+                                    <form asp-route="@NopRouteNames.Standard.ORDER_DETAILS" method="post">
+                                        <button type="submit" name="repost-payment" class="button-2 re-order-button">@T("Order.RetryPayment")</button>
+                                        <p class="hint">
+                                            <em>@T("Order.RetryPayment.Hint")</em>
+                                        </p>
+                                    </form>
+                                </li>
+                            }
+                            @await Html.PartialAsync("_OrderCustomValues", Model.CustomValues?.GetValuesByDisplayLocation(CustomValueDisplayLocation.Payment))
+                        </ul>
                     </div>
                 }
             </div>

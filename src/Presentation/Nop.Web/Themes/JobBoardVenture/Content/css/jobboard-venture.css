@@ -10791,16 +10791,11 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     }
 }
 
-/* Remove the extra top gap on single-column storefront pages. */
-.master-wrapper-content > .breadcrumb {
-    margin-bottom: 0;
-}
-
-section.center-1 .page-body {
+/* Order details invoice layout. */
+.html-order-details-page .order-details-page .page-body {
     padding-top: 0;
 }
 
-/* Order details invoice layout. */
 .html-order-details-page .order-details-page {
     color: var(--jb-ink);
 }
@@ -10920,8 +10915,8 @@ section.center-1 .page-body {
 
 .html-order-details-page .order-details-page .order-overview-content {
     display: grid;
-    gap: 8px;
-    margin: 12px 0 0;
+    gap: 6px;
+    margin: 9px 0 0;
     padding: 0;
     list-style: none;
 }
@@ -10950,7 +10945,7 @@ section.center-1 .page-body {
 }
 
 .html-order-details-page .order-details-page .order-products-widgets {
-    grid-column: 1 / -1;
+    grid-column: 1;
     min-width: 0;
 }
 
@@ -10960,7 +10955,17 @@ section.center-1 .page-body {
     background: #fbfdfc;
 }
 
-.html-order-details-page .order-details-page .billing-info-wrap,
+.html-order-details-page .order-details-page .order-overview,
+.html-order-details-page .order-details-page .section.totals {
+    padding: 14px;
+}
+
+.html-order-details-page .order-details-page .billing-info-wrap {
+    grid-column: 1;
+    grid-row: 3;
+    min-width: 0;
+}
+
 .html-order-details-page .order-details-page .shipping-info-wrap,
 .html-order-details-page .order-details-page .section.shipments,
 .html-order-details-page .order-details-page .section.order-notes,
@@ -11111,7 +11116,7 @@ section.center-1 .page-body {
 }
 
 .html-order-details-page .order-details-page .cart-total td {
-    padding: 7px 0;
+    padding: 5px 0;
     vertical-align: top;
     overflow-wrap: anywhere;
     word-break: break-word;
@@ -11164,11 +11169,11 @@ section.center-1 .page-body {
     }
 
     .html-order-details-page .order-details-page .order-products-widgets-before {
-        order: 1;
+        order: 8;
     }
 
     .html-order-details-page .order-details-page .order-products-widgets-after {
-        order: 4;
+        order: 6;
     }
 
     .html-order-details-page .order-details-page .order-overview {
@@ -11179,24 +11184,24 @@ section.center-1 .page-body {
         order: 3;
     }
 
-    .html-order-details-page .order-details-page .section.options {
-        order: 5;
-    }
-
     .html-order-details-page .order-details-page .billing-info-wrap {
-        order: 6;
+        order: 4;
     }
 
     .html-order-details-page .order-details-page .shipping-info-wrap {
+        order: 5;
+    }
+
+    .html-order-details-page .order-details-page .section.options {
         order: 7;
     }
 
     .html-order-details-page .order-details-page .section.shipments {
-        order: 8;
+        order: 9;
     }
 
     .html-order-details-page .order-details-page .section.order-notes {
-        order: 9;
+        order: 10;
     }
 
     .html-order-details-page .order-details-page .billing-info-wrap,
