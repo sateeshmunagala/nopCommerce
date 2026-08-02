@@ -27,6 +27,7 @@ using Nop.Web.Framework.Controllers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
 using Nop.Core.Http;
 using Nop.Plugin.Misc.AIInterview.Infrastructure;
 using Nop.Web.Framework.Mvc.Routing;
@@ -71,6 +72,7 @@ public class AIInterviewController : BasePluginController
     private readonly ISponsorInviteService _inviteService;
     private readonly ICreditService _creditService;
     private readonly ICreditActivityService _creditActivityService;
+    private readonly ILogger<AIInterviewController> _logger;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -100,7 +102,8 @@ public class AIInterviewController : BasePluginController
         IJobProductAccessService jobProductAccessService = null,
         ISponsorInviteService inviteService = null,
         ICreditService creditService = null,
-        ICreditActivityService creditActivityService = null)
+        ICreditActivityService creditActivityService = null,
+        ILogger<AIInterviewController> logger = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -131,6 +134,7 @@ public class AIInterviewController : BasePluginController
         _inviteService = inviteService;
         _creditService = creditService;
         _creditActivityService = creditActivityService;
+        _logger = logger;
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -158,7 +162,8 @@ public class AIInterviewController : BasePluginController
         IJobProductAccessService jobProductAccessService = null,
         ISponsorInviteService inviteService = null,
         ICreditService creditService = null,
-        ICreditActivityService creditActivityService = null)
+        ICreditActivityService creditActivityService = null,
+        ILogger<AIInterviewController> logger = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -187,7 +192,8 @@ public class AIInterviewController : BasePluginController
             jobProductAccessService,
             inviteService,
             creditService,
-            creditActivityService)
+            creditActivityService,
+            logger)
     {
     }
 
@@ -546,19 +552,41 @@ public class AIInterviewController : BasePluginController
 
     protected virtual async Task<IActionResult> ProxyRecordingAsync(string recordingUrl)
     {
+        _logger?.LogInformation("AI Interview recording proxy requested. RecordingUrl={RecordingUrl}; RecordingUrlConfigured={RecordingUrlConfigured}.",
+            BuildSafeRecordingUrlLogValue(recordingUrl),
+            !string.IsNullOrWhiteSpace(recordingUrl));
+
         var playbackUrl = BuildRecordingPlaybackUrl(recordingUrl);
         if (string.IsNullOrWhiteSpace(playbackUrl))
+        {
+            _logger?.LogWarning("AI Interview recording proxy could not build playback URL. RecordingUrl={RecordingUrl}.",
+                BuildSafeRecordingUrlLogValue(recordingUrl));
             return NotFound();
+        }
+
+        _logger?.LogInformation("AI Interview recording proxy playback URL built. PlaybackUrl={PlaybackUrl}; SasTokenAppended={SasTokenAppended}.",
+            BuildSafeRecordingUrlLogValue(playbackUrl),
+            !string.IsNullOrWhiteSpace(_aiInterviewSettings?.AzureBlobStorageSasToken));
 
         using var client = _httpClientFactory?.CreateClient(nameof(AIInterviewController)) ?? new HttpClient();
         var response = await client.GetAsync(playbackUrl, HttpCompletionOption.ResponseHeadersRead);
         if (!response.IsSuccessStatusCode)
         {
+            _logger?.LogWarning("AI Interview recording proxy source returned non-success. RecordingUrl={RecordingUrl}; StatusCode={StatusCode}; ReasonPhrase={ReasonPhrase}.",
+                BuildSafeRecordingUrlLogValue(recordingUrl),
+                (int)response.StatusCode,
+                response.ReasonPhrase);
             response.Dispose();
             return NotFound();
         }
 
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "video/webm";
+        _logger?.LogInformation("AI Interview recording proxy source opened. RecordingUrl={RecordingUrl}; StatusCode={StatusCode}; ContentType={ContentType}; ContentLength={ContentLength}.",
+            BuildSafeRecordingUrlLogValue(recordingUrl),
+            (int)response.StatusCode,
+            contentType,
+            response.Content.Headers.ContentLength);
+
         var stream = await response.Content.ReadAsStreamAsync();
         return File(new ProxyResponseStream(stream, response), contentType);
     }
@@ -1024,14 +1052,43 @@ public class AIInterviewController : BasePluginController
 
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (customer == null)
+        {
+            _logger?.LogWarning("AI Interview recording access challenged. SessionId={SessionId}; Reason=current customer unavailable.", sessionId);
             return Challenge();
+        }
 
-        if (!await _interviewSessionService.CanAccessReportAsync(customer.Id, sessionId))
+        _logger?.LogInformation("AI Interview recording access requested. SessionId={SessionId}; CustomerId={CustomerId}.",
+            sessionId,
+            customer.Id);
+
+        var canAccess = await _interviewSessionService.CanAccessReportAsync(customer.Id, sessionId);
+        _logger?.LogInformation("AI Interview recording permission checked. SessionId={SessionId}; CustomerId={CustomerId}; CanAccess={CanAccess}.",
+            sessionId,
+            customer.Id,
+            canAccess);
+        if (!canAccess)
+        {
+            _logger?.LogWarning("AI Interview recording access denied. SessionId={SessionId}; CustomerId={CustomerId}.",
+                sessionId,
+                customer.Id);
             return Challenge();
+        }
 
         var session = await _interviewSessionService.GetInterviewSessionByIdAsync(sessionId);
         if (session == null || string.IsNullOrWhiteSpace(session.RecordingUrl))
+        {
+            _logger?.LogWarning("AI Interview recording not found. SessionId={SessionId}; CustomerId={CustomerId}; SessionFound={SessionFound}; RecordingUrlConfigured={RecordingUrlConfigured}.",
+                sessionId,
+                customer.Id,
+                session != null,
+                !string.IsNullOrWhiteSpace(session?.RecordingUrl));
             return NotFound();
+        }
+
+        _logger?.LogInformation("AI Interview recording access accepted. SessionId={SessionId}; CustomerId={CustomerId}; RecordingUrl={RecordingUrl}.",
+            sessionId,
+            customer.Id,
+            BuildSafeRecordingUrlLogValue(session.RecordingUrl));
 
         return await ProxyRecordingAsync(session.RecordingUrl);
     }
@@ -1042,6 +1099,10 @@ public class AIInterviewController : BasePluginController
         if (!_aiInterviewSettings.Enabled)
             return NotFound();
 
+        _logger?.LogInformation("AI Interview recording share access requested. TokenConfigured={TokenConfigured}; TokenLength={TokenLength}.",
+            !string.IsNullOrWhiteSpace(token),
+            token?.Length ?? 0);
+
         var session = await _interviewSessionService.GetSessionByRecordingShareTokenAsync(token);
         if (session == null ||
             !session.RecordingShareEnabled ||
@@ -1049,8 +1110,20 @@ public class AIInterviewController : BasePluginController
             !string.Equals(session.RecordingShareToken, token, StringComparison.Ordinal) ||
             string.IsNullOrWhiteSpace(session.RecordingUrl))
         {
+            _logger?.LogWarning("AI Interview recording share not found or unavailable. TokenConfigured={TokenConfigured}; SessionFound={SessionFound}; SessionId={SessionId}; ShareEnabled={ShareEnabled}; StoredTokenConfigured={StoredTokenConfigured}; TokenMatches={TokenMatches}; RecordingUrlConfigured={RecordingUrlConfigured}.",
+                !string.IsNullOrWhiteSpace(token),
+                session != null,
+                session?.Id ?? 0,
+                session?.RecordingShareEnabled ?? false,
+                !string.IsNullOrWhiteSpace(session?.RecordingShareToken),
+                session != null && string.Equals(session.RecordingShareToken, token, StringComparison.Ordinal),
+                !string.IsNullOrWhiteSpace(session?.RecordingUrl));
             return NotFound();
         }
+
+        _logger?.LogInformation("AI Interview recording share access accepted. SessionId={SessionId}; RecordingUrl={RecordingUrl}.",
+            session.Id,
+            BuildSafeRecordingUrlLogValue(session.RecordingUrl));
 
         return await ProxyRecordingAsync(session.RecordingUrl);
     }
@@ -1073,35 +1146,88 @@ public class AIInterviewController : BasePluginController
 
     protected virtual string BuildRecordingPlaybackUrl(string recordingUrl)
     {
-        if (string.IsNullOrWhiteSpace(recordingUrl) ||
-            string.IsNullOrWhiteSpace(_aiInterviewSettings.AzureBlobStorageContainerUrl) ||
-            string.IsNullOrWhiteSpace(_aiInterviewSettings.AzureBlobStorageSasToken))
+        if (string.IsNullOrWhiteSpace(recordingUrl))
+        {
+            _logger?.LogWarning("AI Interview recording playback URL validation failed. Reason=missing recording URL; ContainerUrlConfigured={ContainerUrlConfigured}; SasTokenConfigured={SasTokenConfigured}.",
+                !string.IsNullOrWhiteSpace(_aiInterviewSettings?.AzureBlobStorageContainerUrl),
+                !string.IsNullOrWhiteSpace(_aiInterviewSettings?.AzureBlobStorageSasToken));
             return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(_aiInterviewSettings?.AzureBlobStorageContainerUrl) ||
+            string.IsNullOrWhiteSpace(_aiInterviewSettings?.AzureBlobStorageSasToken))
+        {
+            _logger?.LogWarning("AI Interview recording playback URL validation failed. Reason=missing Azure Blob configuration; RecordingUrl={RecordingUrl}; ContainerUrlConfigured={ContainerUrlConfigured}; SasTokenConfigured={SasTokenConfigured}.",
+                BuildSafeRecordingUrlLogValue(recordingUrl),
+                !string.IsNullOrWhiteSpace(_aiInterviewSettings?.AzureBlobStorageContainerUrl),
+                !string.IsNullOrWhiteSpace(_aiInterviewSettings?.AzureBlobStorageSasToken));
+            return null;
+        }
 
         if (!Uri.TryCreate(_aiInterviewSettings.AzureBlobStorageContainerUrl.Trim(), UriKind.Absolute, out var containerUri) ||
             !Uri.TryCreate(recordingUrl.Trim(), UriKind.Absolute, out var recordingUri))
+        {
+            _logger?.LogWarning("AI Interview recording playback URL validation failed. Reason=invalid absolute URL; RecordingUrl={RecordingUrl}; ContainerUrl={ContainerUrl}.",
+                BuildSafeRecordingUrlLogValue(recordingUrl),
+                BuildSafeRecordingUrlLogValue(_aiInterviewSettings.AzureBlobStorageContainerUrl));
             return null;
+        }
 
         if (!string.IsNullOrWhiteSpace(recordingUri.Query) || !string.IsNullOrWhiteSpace(recordingUri.Fragment))
+        {
+            _logger?.LogWarning("AI Interview recording playback URL validation failed. Reason=recording URL contains query or fragment; RecordingUrl={RecordingUrl}; HasQuery={HasQuery}; HasFragment={HasFragment}.",
+                BuildSafeRecordingUrlLogValue(recordingUrl),
+                !string.IsNullOrWhiteSpace(recordingUri.Query),
+                !string.IsNullOrWhiteSpace(recordingUri.Fragment));
             return null;
+        }
 
         if (!string.Equals(containerUri.Scheme, recordingUri.Scheme, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(containerUri.Host, recordingUri.Host, StringComparison.OrdinalIgnoreCase) ||
             containerUri.Port != recordingUri.Port)
+        {
+            _logger?.LogWarning("AI Interview recording playback URL validation failed. Reason=recording URL host does not match configured container; RecordingUrl={RecordingUrl}; ContainerUrl={ContainerUrl}.",
+                BuildSafeRecordingUrlLogValue(recordingUrl),
+                BuildSafeRecordingUrlLogValue(_aiInterviewSettings.AzureBlobStorageContainerUrl));
             return null;
+        }
 
         var containerPath = containerUri.AbsolutePath.TrimEnd('/');
         var recordingPath = recordingUri.AbsolutePath.TrimEnd('/');
         var isMatchingContainer = string.Equals(recordingPath, containerPath, StringComparison.OrdinalIgnoreCase) ||
             recordingPath.StartsWith(containerPath + "/", StringComparison.OrdinalIgnoreCase);
         if (!isMatchingContainer)
+        {
+            _logger?.LogWarning("AI Interview recording playback URL validation failed. Reason=recording URL path is outside configured container; RecordingPath={RecordingPath}; ContainerPath={ContainerPath}.",
+                recordingPath,
+                containerPath);
             return null;
+        }
 
         var sasToken = _aiInterviewSettings.AzureBlobStorageSasToken.Trim();
         if (!sasToken.StartsWith("?", StringComparison.Ordinal))
             sasToken = sasToken.StartsWith("&", StringComparison.Ordinal) ? "?" + sasToken[1..] : "?" + sasToken;
 
-        return $"{recordingUri.GetLeftPart(UriPartial.Path).TrimEnd('/')}{sasToken}";
+        var playbackUrl = $"{recordingUri.GetLeftPart(UriPartial.Path).TrimEnd('/')}{sasToken}";
+        _logger?.LogInformation("AI Interview recording playback URL validation succeeded. RecordingUrl={RecordingUrl}; PlaybackUrl={PlaybackUrl}; SasTokenAppended={SasTokenAppended}.",
+            BuildSafeRecordingUrlLogValue(recordingUrl),
+            BuildSafeRecordingUrlLogValue(playbackUrl),
+            true);
+
+        return playbackUrl;
+    }
+
+    protected static string BuildSafeRecordingUrlLogValue(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return string.Empty;
+
+        var trimmed = url.Trim();
+        if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+            return uri.GetLeftPart(UriPartial.Path);
+
+        const int maxLength = 300;
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
     private sealed class ProxyResponseStream : Stream

@@ -3745,6 +3745,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 return RecordingFailure("Recording upload failed.");
             }
 
+            var recordingUrlStored = false;
+            var existingRecordingUrlRetained = false;
             using (await AcquireSessionMutationLockAsync(session.Id))
             {
                 session = await _sessionService.GetInterviewSessionByIdAsync(session.Id) ?? session;
@@ -3753,8 +3755,23 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                     session.RecordingUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}";
                     await _sessionService.UpdateInterviewSessionAsync(session);
                     await _sessionService.EnsureRecordingShareTokenAsync(session);
+                    recordingUrlStored = true;
+                }
+                else
+                {
+                    existingRecordingUrlRetained = true;
                 }
             }
+
+            _logger?.LogInformation("AI Interview recording upload persistence completed. SessionId={SessionId}; CustomerId={CustomerId}; ProductId={ProductId}; BlobName={BlobName}; RecordingUrlStored={RecordingUrlStored}; ExistingRecordingUrlRetained={ExistingRecordingUrlRetained}; FinalRecordingUrl={FinalRecordingUrl}.",
+                session?.Id ?? 0,
+                session?.CustomerId ?? 0,
+                session?.ProductId ?? 0,
+                blobName,
+                recordingUrlStored,
+                existingRecordingUrlRetained,
+                BuildSafeRecordingUrlLogValue(session?.RecordingUrl));
+
             await LogRecordingUploadSuccessAsync(session, recording, blobName, (int)response.StatusCode, normalizedContentType);
 
             return new RecordingUploadResponseModel
@@ -5008,7 +5025,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             BuildRuntimeActivityComment(session, message: message ?? reason ?? "Recording upload failed.", statusCode: azureStatus, failureKind: reason));
     }
 
-    protected static string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null)
+    protected virtual string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null)
     {
         var details = new List<string>
         {
@@ -5016,10 +5033,15 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             $"SessionId={session?.Id ?? 0}",
             $"CustomerId={session?.CustomerId ?? 0}",
             $"ProductId={session?.ProductId ?? 0}",
+            $"RecordingUrlConfigured={!string.IsNullOrWhiteSpace(session?.RecordingUrl)}",
+            $"StoredRecordingUrl={BuildSafeRecordingUrlLogValue(session?.RecordingUrl)}",
             $"RecordingLength={recording?.Length ?? 0}",
             $"ContentType={recording?.ContentType ?? string.Empty}",
             $"NormalizedAzureContentType={normalizedContentType ?? NormalizeRecordingContentType(recording?.ContentType)}",
-            $"BlobName={blobName ?? string.Empty}"
+            $"BlobName={blobName ?? string.Empty}",
+            $"AzureContainerUrlConfigured={!string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageContainerUrl)}",
+            $"AzureContainerUrl={BuildSafeRecordingUrlLogValue(_settings?.AzureBlobStorageContainerUrl)}",
+            $"AzureSasTokenConfigured={!string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageSasToken)}"
         };
 
         if (!string.IsNullOrWhiteSpace(message))
@@ -5032,6 +5054,18 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             details.Add($"AzureErrorBody={TruncateSafe(azureErrorBody, 4000)}");
 
         return string.Join("; ", details);
+    }
+
+    protected static string BuildSafeRecordingUrlLogValue(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return string.Empty;
+
+        var trimmed = url.Trim();
+        if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+            return uri.GetLeftPart(UriPartial.Path);
+
+        return TruncateSafe(trimmed, 300);
     }
 
     protected static string NormalizeRecordingContentType(string contentType)

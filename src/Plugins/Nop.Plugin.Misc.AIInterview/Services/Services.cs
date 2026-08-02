@@ -255,6 +255,7 @@ public class InterviewSessionService : IInterviewSessionService
     private readonly IWebHelper _webHelper;
     private readonly IVendorService _vendorService;
     private readonly IDateTimeHelper _dateTimeHelper;
+    private readonly ILogger<InterviewSessionService> _logger;
 
     public InterviewSessionService(IRepository<InterviewSession> sessionRepository,
         ICustomerService customerService,
@@ -268,7 +269,8 @@ public class InterviewSessionService : IInterviewSessionService
         IStoreContext storeContext,
         IWebHelper webHelper,
         IVendorService vendorService,
-        IDateTimeHelper dateTimeHelper)
+        IDateTimeHelper dateTimeHelper,
+        ILogger<InterviewSessionService> logger = null)
     {
         _sessionRepository = sessionRepository;
         _customerService = customerService;
@@ -283,6 +285,7 @@ public class InterviewSessionService : IInterviewSessionService
         _webHelper = webHelper;
         _vendorService = vendorService;
         _dateTimeHelper = dateTimeHelper;
+        _logger = logger;
     }
 
     public async Task SendInterviewCompletionNotificationAsync(InterviewSession session, int languageId)
@@ -626,17 +629,29 @@ public class InterviewSessionService : IInterviewSessionService
     {
         var session = await GetInterviewSessionByIdAsync(sessionId);
         if (session == null)
+        {
+            LogCanAccessReportResult(false, "session not found", customerId, sessionId, null, null);
             return false;
+        }
 
         var customer = await _customerService.GetCustomerByIdAsync(customerId);
         if (customer == null)
+        {
+            LogCanAccessReportResult(false, "customer not found", customerId, sessionId, session, null);
             return false;
+        }
 
         if (session.CustomerId == customerId)
+        {
+            LogCanAccessReportResult(true, "session owner", customerId, sessionId, session, customer);
             return true;
+        }
 
         if (await _customerService.IsAdminAsync(customer))
+        {
+            LogCanAccessReportResult(true, "admin", customerId, sessionId, session, customer);
             return true;
+        }
 
         if (customer.VendorId > 0)
         {
@@ -644,7 +659,18 @@ public class InterviewSessionService : IInterviewSessionService
             {
                 var product = await _productService.GetProductByIdAsync(session.ProductId);
                 if (product != null && product.VendorId == customer.VendorId)
+                {
+                    LogCanAccessReportResult(true, "vendor owns session product", customerId, sessionId, session, customer);
                     return true;
+                }
+
+                _logger?.LogInformation("AI Interview report access vendor product check did not match. CustomerId={CustomerId}; SessionId={SessionId}; CustomerVendorId={CustomerVendorId}; SessionProductId={SessionProductId}; ProductFound={ProductFound}; ProductVendorId={ProductVendorId}.",
+                    customerId,
+                    sessionId,
+                    customer.VendorId,
+                    session.ProductId,
+                    product != null,
+                    product?.VendorId ?? 0);
             }
 
             if (session.JobApplicationId > 0)
@@ -654,12 +680,50 @@ public class InterviewSessionService : IInterviewSessionService
                 {
                     var product = await _productService.GetProductByIdAsync(application.ProductId);
                     if (product != null && product.VendorId == customer.VendorId)
+                    {
+                        LogCanAccessReportResult(true, "vendor owns application product", customerId, sessionId, session, customer);
                         return true;
+                    }
+
+                    _logger?.LogInformation("AI Interview report access vendor application check did not match. CustomerId={CustomerId}; SessionId={SessionId}; CustomerVendorId={CustomerVendorId}; JobApplicationId={JobApplicationId}; ApplicationProductId={ApplicationProductId}; ProductFound={ProductFound}; ProductVendorId={ProductVendorId}.",
+                        customerId,
+                        sessionId,
+                        customer.VendorId,
+                        session.JobApplicationId,
+                        application.ProductId,
+                        product != null,
+                        product?.VendorId ?? 0);
+                }
+                else
+                {
+                    _logger?.LogInformation("AI Interview report access vendor application check could not load application. CustomerId={CustomerId}; SessionId={SessionId}; CustomerVendorId={CustomerVendorId}; JobApplicationId={JobApplicationId}.",
+                        customerId,
+                        sessionId,
+                        customer.VendorId,
+                        session.JobApplicationId);
                 }
             }
         }
 
+        LogCanAccessReportResult(false, "no matching owner, admin, or vendor rule", customerId, sessionId, session, customer);
         return false;
+    }
+
+    protected virtual void LogCanAccessReportResult(bool canAccess, string reason, int customerId, int sessionId, InterviewSession session, Customer customer)
+    {
+        var logLevel = canAccess ? LogLevel.Information : LogLevel.Warning;
+        _logger?.Log(logLevel,
+            "AI Interview report access check completed. CanAccess={CanAccess}; Reason={Reason}; CustomerId={CustomerId}; SessionId={SessionId}; SessionFound={SessionFound}; SessionCustomerId={SessionCustomerId}; ProductId={ProductId}; JobApplicationId={JobApplicationId}; CustomerFound={CustomerFound}; CustomerVendorId={CustomerVendorId}.",
+            canAccess,
+            reason,
+            customerId,
+            sessionId,
+            session != null,
+            session?.CustomerId ?? 0,
+            session?.ProductId ?? 0,
+            session?.JobApplicationId ?? 0,
+            customer != null,
+            customer?.VendorId ?? 0);
     }
 
     protected virtual async Task<string> ResolveSessionJobTitleAsync(InterviewSession session)
