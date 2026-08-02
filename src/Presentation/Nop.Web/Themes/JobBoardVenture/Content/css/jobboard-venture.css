@@ -10799,3 +10799,446 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 section.center-1 .page-body {
     padding-top: 0;
 }
+
+/* Order details invoice layout. */
+.html-order-details-page .order-details-page {
+    color: var(--jb-ink);
+}
+
+.html-order-details-page .order-details-page .page-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.html-order-details-page .order-details-page .page-title h1 {
+    margin: 0;
+    color: var(--jb-ink);
+    font-size: 2rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.html-order-details-page .order-details-page .order-title-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.html-order-details-page .order-details-page .order-title-actions .button-1,
+.html-order-details-page .order-details-page .order-title-actions .button-2,
+.html-order-details-page .order-details-page .totals .actions .button-2,
+.html-order-details-page .order-details-page .payment-method-info .repost .button-2 {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 9px 14px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    line-height: 1;
+    text-align: center;
+    text-decoration: none;
+    white-space: normal;
+}
+
+.html-order-details-page .order-details-page .order-title-actions .button-1 {
+    border: 1px solid var(--jb-accent);
+    background: var(--jb-accent);
+    color: var(--jb-white);
+}
+
+.html-order-details-page .order-details-page .order-title-actions .button-1:hover,
+.html-order-details-page .order-details-page .order-title-actions .button-1:focus {
+    border-color: var(--jb-accent-dark);
+    background: var(--jb-accent-dark);
+    color: var(--jb-white);
+}
+
+.html-order-details-page .order-details-page .order-title-actions .button-2,
+.html-order-details-page .order-details-page .totals .actions .button-2,
+.html-order-details-page .order-details-page .payment-method-info .repost .button-2 {
+    border: 1px solid #cfd8d5;
+    background: var(--jb-white);
+    color: var(--jb-ink);
+}
+
+.html-order-details-page .order-details-page .order-title-actions .button-2:hover,
+.html-order-details-page .order-details-page .order-title-actions .button-2:focus,
+.html-order-details-page .order-details-page .totals .actions .button-2:hover,
+.html-order-details-page .order-details-page .totals .actions .button-2:focus,
+.html-order-details-page .order-details-page .payment-method-info .repost .button-2:hover,
+.html-order-details-page .order-details-page .payment-method-info .repost .button-2:focus {
+    border-color: var(--jb-accent);
+    color: var(--jb-accent-dark);
+}
+
+.html-order-details-page .order-details-page .order-details-area {
+    display: grid;
+    grid-template-columns: minmax(0, 1.75fr) minmax(300px, 0.85fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.html-order-details-page .order-details-page .section,
+.html-order-details-page .order-details-page .order-overview,
+.html-order-details-page .order-details-page .billing-info,
+.html-order-details-page .order-details-page .payment-method-info,
+.html-order-details-page .order-details-page .shipping-info,
+.html-order-details-page .order-details-page .shipping-method-info {
+    min-width: 0;
+    border: 1px solid #d9e4e0;
+    border-radius: 4px;
+    background: var(--jb-white);
+}
+
+.html-order-details-page .order-details-page .section,
+.html-order-details-page .order-details-page .order-overview {
+    padding: 16px;
+}
+
+.html-order-details-page .order-details-page .order-overview {
+    grid-column: 2;
+    grid-row: 1;
+    border-left: 3px solid var(--jb-accent);
+    background: #f7fbfa;
+}
+
+.html-order-details-page .order-details-page .order-overview .order-number strong {
+    display: block;
+    color: var(--jb-ink);
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.15rem;
+    line-height: 1.2;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+}
+
+.html-order-details-page .order-details-page .order-overview-content {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.html-order-details-page .order-details-page .order-overview-content li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: #59636b;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.html-order-details-page .order-details-page .order-overview-content .order-status,
+.html-order-details-page .order-details-page .order-overview-content .order-total {
+    color: var(--jb-ink);
+}
+
+.html-order-details-page .order-details-page .order-overview-content .order-total strong {
+    color: var(--jb-accent-dark);
+}
+
+.html-order-details-page .order-details-page .section.products {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+}
+
+.html-order-details-page .order-details-page .order-products-widgets {
+    grid-column: 1 / -1;
+    min-width: 0;
+}
+
+.html-order-details-page .order-details-page .section.totals {
+    grid-column: 2;
+    grid-row: 2;
+    background: #fbfdfc;
+}
+
+.html-order-details-page .order-details-page .billing-info-wrap,
+.html-order-details-page .order-details-page .shipping-info-wrap,
+.html-order-details-page .order-details-page .section.shipments,
+.html-order-details-page .order-details-page .section.order-notes,
+.html-order-details-page .order-details-page .section.options {
+    grid-column: 1 / -1;
+    min-width: 0;
+}
+
+.html-order-details-page .order-details-page .billing-info-wrap,
+.html-order-details-page .order-details-page .shipping-info-wrap {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.html-order-details-page .order-details-page .billing-info,
+.html-order-details-page .order-details-page .payment-method-info,
+.html-order-details-page .order-details-page .shipping-info,
+.html-order-details-page .order-details-page .shipping-method-info {
+    padding: 16px;
+}
+
+.html-order-details-page .order-details-page .title,
+.html-order-details-page .order-details-page .section .title {
+    margin: 0 0 12px;
+    color: var(--jb-ink);
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.12rem;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.html-order-details-page .order-details-page .info-list {
+    display: grid;
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.html-order-details-page .order-details-page .info-list li,
+.html-order-details-page .order-details-page .info-list .value,
+.html-order-details-page .order-details-page .custom-attributes-view,
+.html-order-details-page .order-details-page .selected-checkout-attributes,
+.html-order-details-page .order-details-page .tax-shipping-info,
+.html-order-details-page .order-details-page .attributes,
+.html-order-details-page .order-details-page .rental-info,
+.html-order-details-page .order-details-page .download,
+.html-order-details-page .order-details-page .license,
+.html-order-details-page .order-details-page .note,
+.html-order-details-page .order-details-page .tracking-number {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.html-order-details-page .order-details-page .info-list .name {
+    color: var(--jb-ink);
+    font-weight: 700;
+}
+
+.html-order-details-page .order-details-page .info-list .label {
+    color: #59636b;
+    font-weight: 700;
+}
+
+.html-order-details-page .order-details-page .table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.html-order-details-page .order-details-page .data-table {
+    width: 100%;
+    min-width: 680px;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: auto;
+}
+
+.html-order-details-page .order-details-page .data-table th,
+.html-order-details-page .order-details-page .data-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e3e9e7;
+    color: var(--jb-ink);
+    line-height: 1.45;
+    text-align: left;
+    vertical-align: top;
+}
+
+.html-order-details-page .order-details-page .data-table th {
+    background: #f4f8f7;
+    color: #4d5961;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.88rem;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.html-order-details-page .order-details-page .data-table td {
+    background: var(--jb-white);
+}
+
+.html-order-details-page .order-details-page .data-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.html-order-details-page .order-details-page .section.products .product,
+.html-order-details-page .order-details-page .section.products .sku,
+.html-order-details-page .order-details-page .section.products .vendor,
+.html-order-details-page .order-details-page .section.products .unit-price,
+.html-order-details-page .order-details-page .section.products .quantity,
+.html-order-details-page .order-details-page .section.products .total {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.html-order-details-page .order-details-page .section.products .product em {
+    font-style: normal;
+}
+
+.html-order-details-page .order-details-page .section.products .product a {
+    color: var(--jb-ink);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.html-order-details-page .order-details-page .section.products .product a:hover,
+.html-order-details-page .order-details-page .section.products .product a:focus {
+    color: var(--jb-accent-dark);
+}
+
+.html-order-details-page .order-details-page .section.products .picture img {
+    max-width: 72px;
+    height: auto;
+    border-radius: 4px;
+}
+
+.html-order-details-page .order-details-page .section.products .total,
+.html-order-details-page .order-details-page .section.products .product-subtotal {
+    color: var(--jb-accent-dark);
+    font-weight: 700;
+}
+
+.html-order-details-page .order-details-page .cart-total {
+    width: 100%;
+    table-layout: auto;
+}
+
+.html-order-details-page .order-details-page .cart-total td {
+    padding: 7px 0;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.html-order-details-page .order-details-page .cart-total-left {
+    padding-right: 12px;
+    color: #59636b;
+}
+
+.html-order-details-page .order-details-page .cart-total-right {
+    color: var(--jb-ink);
+    font-weight: 700;
+    text-align: right;
+}
+
+.html-order-details-page .order-details-page .cart-total-right strong {
+    color: var(--jb-accent-dark);
+    font-size: 1.08rem;
+}
+
+.html-order-details-page .order-details-page .totals .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.html-order-details-page .order-details-page .payment-method-info .repost form {
+    display: grid;
+    gap: 8px;
+}
+
+.html-order-details-page .order-details-page .payment-method-info .hint {
+    margin: 0;
+    color: #59636b;
+    line-height: 1.45;
+}
+
+@media (max-width: 1000px) {
+    .html-order-details-page .order-details-page .order-details-area {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .html-order-details-page .order-details-page .section.products {
+        order: 1;
+    }
+
+    .html-order-details-page .order-details-page .order-products-widgets-before {
+        order: 1;
+    }
+
+    .html-order-details-page .order-details-page .order-products-widgets-after {
+        order: 4;
+    }
+
+    .html-order-details-page .order-details-page .order-overview {
+        order: 2;
+    }
+
+    .html-order-details-page .order-details-page .section.totals {
+        order: 3;
+    }
+
+    .html-order-details-page .order-details-page .section.options {
+        order: 5;
+    }
+
+    .html-order-details-page .order-details-page .billing-info-wrap {
+        order: 6;
+    }
+
+    .html-order-details-page .order-details-page .shipping-info-wrap {
+        order: 7;
+    }
+
+    .html-order-details-page .order-details-page .section.shipments {
+        order: 8;
+    }
+
+    .html-order-details-page .order-details-page .section.order-notes {
+        order: 9;
+    }
+
+    .html-order-details-page .order-details-page .billing-info-wrap,
+    .html-order-details-page .order-details-page .shipping-info-wrap {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 767px) {
+    .html-order-details-page .order-details-page .page-title {
+        align-items: stretch;
+    }
+
+    .html-order-details-page .order-details-page .page-title h1,
+    .html-order-details-page .order-details-page .order-title-actions {
+        width: 100%;
+    }
+
+    .html-order-details-page .order-details-page .order-title-actions {
+        justify-content: flex-start;
+    }
+
+    .html-order-details-page .order-details-page .order-title-actions .button-1,
+    .html-order-details-page .order-details-page .order-title-actions .button-2 {
+        flex: 1 1 132px;
+    }
+
+    .html-order-details-page .order-details-page .order-overview-content li {
+        display: grid;
+        gap: 3px;
+    }
+
+    .html-order-details-page .order-details-page .section,
+    .html-order-details-page .order-details-page .order-overview,
+    .html-order-details-page .order-details-page .billing-info,
+    .html-order-details-page .order-details-page .payment-method-info,
+    .html-order-details-page .order-details-page .shipping-info,
+    .html-order-details-page .order-details-page .shipping-method-info {
+        padding: 14px;
+    }
+
+    .html-order-details-page .order-details-page .data-table {
+        min-width: 620px;
+    }
+}

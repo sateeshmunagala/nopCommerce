@@ -31,14 +31,23 @@
     {
         <div class="page-title">
             <h1>@T("Order.OrderInformation")</h1>
-            <a href="@Url.RouteUrl(NopRouteNames.Standard.PRINT_ORDER_DETAILS, new { orderId = Model.Id })" target="_blank" class="button-2 print-order-button">@T("Order.Print")</a>
-            @if (!Model.PdfInvoiceDisabled)
-            {
-                <a href="@Url.RouteUrl(NopRouteNames.Standard.GET_ORDER_PDF_INVOICE, new { orderId = Model.Id })" class="button-2 pdf-invoice-button">@T("Order.GetPDFInvoice")</a>
-            }
+            <div class="order-title-actions">
+                @if (Model.IsReOrderAllowed)
+                {
+                    <button type="button" class="button-1 re-order-button" onclick="setLocation('@Url.RouteUrl(NopRouteNames.Standard.RE_ORDER, new { orderId = Model.Id })')">@T("Order.Reorder")</button>
+                }
+                <a href="@Url.RouteUrl(NopRouteNames.Standard.PRINT_ORDER_DETAILS, new { orderId = Model.Id })" target="_blank" class="button-2 print-order-button">@T("Order.Print")</a>
+                @if (!Model.PdfInvoiceDisabled)
+                {
+                    <a href="@Url.RouteUrl(NopRouteNames.Standard.GET_ORDER_PDF_INVOICE, new { orderId = Model.Id })" class="button-2 pdf-invoice-button">@T("Order.GetPDFInvoice")</a>
+                }
+                @if (Model.CanCancelOrder)
+                {
+                    <a id="cancel_order" href="@Url.RouteUrl("CancelOrder", new { orderId = Model.Id })" class="button-2 cancel-order-button">@T("Order.Cancel")</a>
+                }
+            </div>
             @if (Model.CanCancelOrder)
             {
-                <a id="cancel_order" href="@Url.RouteUrl("CancelOrder", new { orderId = Model.Id })" class="button-2 cancel-order-button">@T("Order.Cancel")</a>
 
                 <script asp-location="Footer">
                     $(function() {
@@ -52,24 +61,24 @@
     }
     <div class="page-body">
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageTop, additionalData = Model })
-        <div class="order-overview">
-            <div class="order-number">
-                <strong>@T("Order.Order#")@Model.CustomOrderNumber</strong>
-            </div>
-            <ul class="order-overview-content">
-                <li class="order-date">
-                    @T("Order.OrderDate"): @Model.CreatedOn.ToString("D")
-                </li>
-                <li class="order-status">
-                    @T("Order.OrderStatus"): @Model.OrderStatusText
-                </li>
-                <li class="order-total">
-                    @T("Order.OrderTotal"): <strong>@Model.OrderTotal</strong>
-                </li>
-            </ul>
-            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageOverview, additionalData = Model })
-        </div>
         <div class="order-details-area">
+            <div class="order-overview">
+                <div class="order-number">
+                    <strong>@T("Order.Order#")@Model.CustomOrderNumber</strong>
+                </div>
+                <ul class="order-overview-content">
+                    <li class="order-date">
+                        @T("Order.OrderDate"): @Model.CreatedOn.ToString("D")
+                    </li>
+                    <li class="order-status">
+                        @T("Order.OrderStatus"): @Model.OrderStatusText
+                    </li>
+                    <li class="order-total">
+                        @T("Order.OrderTotal"): <strong>@Model.OrderTotal</strong>
+                    </li>
+                </ul>
+                @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageOverview, additionalData = Model })
+            </div>
             <div class="billing-info-wrap">
                 <div class="billing-info">
 	                <h2 class="title">
@@ -264,7 +273,6 @@
                     </div>
                 </div>
             }
-        </div>
         @if (!Model.PrintMode && Model.Shipments.Count > 0)
         {
             <div class="section shipments">
@@ -416,7 +424,9 @@
                     </div>
                 </div>
             }
-            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageBeforeproducts, additionalData = Model })
+            <div class="order-products-widgets order-products-widgets-before">
+                @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageBeforeproducts, additionalData = Model })
+            </div>
             <div class="section products">
                 <h2 class="title">
                     @T("Order.Product(s)")
@@ -563,7 +573,9 @@
                     </div>
                 }
             </div>
-            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageAfterproducts, additionalData = Model })
+            <div class="order-products-widgets order-products-widgets-after">
+                @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageAfterproducts, additionalData = Model })
+            </div>
             <div class="section options">
                 @if (!string.IsNullOrEmpty(Model.CheckoutAttributeInfo))
                 {
@@ -692,10 +704,6 @@
                 @if (!Model.PrintMode)
                 {
                     <div class="actions">
-                        @if (Model.IsReOrderAllowed)
-                        {
-                            <button type="button" class="button-1 re-order-button" onclick="setLocation('@Url.RouteUrl(NopRouteNames.Standard.RE_ORDER, new { orderId = Model.Id })')">@T("Order.Reorder")</button>
-                        }
                         @if (Model.IsReturnRequestAllowed)
                         {
                             <button type="button" class="button-2 return-items-button" onclick="setLocation('@Url.RouteUrl(NopRouteNames.Standard.RETURN_REQUEST, new { orderId = Model.Id })')">@Model.ReturnRequestText</button>
@@ -704,6 +712,7 @@
                 }
             </div>
         }
+        </div>
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.OrderDetailsPageBottom, additionalData = Model })
     </div>
 </div>
