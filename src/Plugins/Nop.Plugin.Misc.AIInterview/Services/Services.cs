@@ -509,6 +509,16 @@ public class InterviewSessionService : IInterviewSessionService
             session.RecordingShareToken == token))).FirstOrDefault();
     }
 
+    public async Task<InterviewSession> GetSessionByReportShareTokenAsync(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return null;
+
+        return (await _sessionRepository.GetAllAsync(query => query.Where(session =>
+            session.ReportShareEnabled &&
+            session.ReportShareToken == token))).FirstOrDefault();
+    }
+
     public async Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId)
     {
         return await _sessionRepository.GetAllAsync(query => query
@@ -618,6 +628,30 @@ public class InterviewSessionService : IInterviewSessionService
         session.RecordingShareCreatedOnUtc ??= DateTime.UtcNow;
         await _sessionRepository.UpdateAsync(session);
         return session.RecordingShareToken;
+    }
+
+    public async Task<string> EnsureReportShareTokenAsync(InterviewSession session)
+    {
+        if (session == null ||
+            (string.IsNullOrWhiteSpace(session.ReportData) && string.IsNullOrWhiteSpace(session.RecordingUrl)))
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.ReportShareToken) && session.ReportShareEnabled)
+            return session.ReportShareToken;
+
+        string token;
+        do
+        {
+            token = GenerateRecordingShareToken();
+        } while (await _sessionRepository.Table.AnyAsync(existing => existing.Id != session.Id && existing.ReportShareToken == token));
+
+        session.ReportShareToken = token;
+        session.ReportShareEnabled = true;
+        session.ReportShareCreatedOnUtc ??= DateTime.UtcNow;
+        await _sessionRepository.UpdateAsync(session);
+        return session.ReportShareToken;
     }
 
     public async Task UpdateInterviewSessionAsync(InterviewSession session)

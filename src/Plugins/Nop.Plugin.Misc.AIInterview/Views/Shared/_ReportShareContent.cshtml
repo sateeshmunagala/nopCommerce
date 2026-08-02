@@ -1,0 +1,318 @@
+@model Nop.Plugin.Misc.AIInterview.Models.InterviewReportModel
+@using Nop.Services.Helpers
+@inject IDateTimeHelper dateTimeHelper
+
+@{
+    async Task<string> FormatUtcDateTimeAsync(DateTime utcDateTime)
+    {
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(utcDateTime, DateTimeKind.Utc);
+        return userDateTime.ToString("g");
+    }
+
+    async Task<string> FormatNullableUtcDateTimeAsync(DateTime? utcDateTime)
+    {
+        if (!utcDateTime.HasValue)
+            return "-";
+
+        return await FormatUtcDateTimeAsync(utcDateTime.Value);
+    }
+
+    var categoryTurns = (Model.Turns ?? Enumerable.Empty<Nop.Plugin.Misc.AIInterview.Models.InterviewTurnViewModel>()).ToList();
+    decimal? avgTechnical = categoryTurns.Any(x => x.TechnicalScore.HasValue) ? categoryTurns.Where(x => x.TechnicalScore.HasValue).Average(x => x.TechnicalScore.Value) : null;
+    decimal? avgCommunication = categoryTurns.Any(x => x.CommunicationScore.HasValue) ? categoryTurns.Where(x => x.CommunicationScore.HasValue).Average(x => x.CommunicationScore.Value) : null;
+    decimal? avgProfessionalism = categoryTurns.Any(x => x.ProfessionalismScore.HasValue) ? categoryTurns.Where(x => x.ProfessionalismScore.HasValue).Average(x => x.ProfessionalismScore.Value) : null;
+    decimal? avgPositiveAttitude = categoryTurns.Any(x => x.PositiveAttitudeScore.HasValue) ? categoryTurns.Where(x => x.PositiveAttitudeScore.HasValue).Average(x => x.PositiveAttitudeScore.Value) : null;
+    var copyShareLinkText = T("Plugins.Misc.AIInterview.Report.CopyShareLink").Text;
+    var shareText = T("Plugins.Misc.AIInterview.Report.Share").Text;
+    var openSharePageText = T("Plugins.Misc.AIInterview.Report.OpenSharePage").Text;
+    var copiedText = T("Plugins.Misc.AIInterview.Report.Copied").Text;
+    var copyFailedText = T("Plugins.Misc.AIInterview.Report.CopyFailed").Text;
+    var recordingShareTitleText = T("Plugins.Misc.AIInterview.Report.RecordingShareTitle").Text;
+    var reportSubject = !string.IsNullOrWhiteSpace(Model.JobTitle)
+        ? Model.JobTitle
+        : !string.IsNullOrWhiteSpace(Model.ProductName)
+            ? Model.ProductName
+            : Model.SessionId > 0
+                ? $"Session {Model.SessionId}"
+                : T("Plugins.Misc.AIInterview.Report.Title").Text;
+    var copyShareLinkLabel = $"{copyShareLinkText} - {reportSubject}";
+    var shareLabel = $"{shareText} - {reportSubject}";
+    var recordingShareTitle = $"{recordingShareTitleText} - {reportSubject}";
+    var reportShareUrl = !string.IsNullOrWhiteSpace(Model.ReportShareUrl) ? Model.ReportShareUrl : Model.RecordingShareUrl;
+    var videoId = $"ai-report-video-{Model.SessionId}";
+}
+
+<div class="ai-report-share-layout"
+     data-copied-text="@copiedText"
+     data-copy-failed-text="@copyFailedText">
+    <div class="ai-report-share-left">
+        <div class="ai-report-actions">
+            @if (!string.IsNullOrWhiteSpace(reportShareUrl))
+            {
+                <button type="button"
+                        class="button-2 ai-report-action ai-report-action-secondary ai-copy-share-link ai-icon-action"
+                        data-share-url="@reportShareUrl"
+                        aria-label="@copyShareLinkLabel"
+                        title="@copyShareLinkLabel">
+                    <i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i>
+                    <i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i>
+                    <i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i>
+                    <span class="sr-only">@copyShareLinkLabel</span>
+                </button>
+                <button type="button"
+                        class="button-2 ai-report-action ai-report-action-secondary ai-native-share-link aiinterview-hidden ai-icon-action"
+                        data-share-url="@reportShareUrl"
+                        data-share-title="@recordingShareTitle"
+                        aria-label="@shareLabel"
+                        title="@shareLabel">
+                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>
+                    <span class="sr-only">@shareLabel</span>
+                </button>
+                <noscript>
+                    <a class="button-2 ai-report-action ai-report-action-secondary" href="@reportShareUrl" target="_blank" rel="noopener">
+                        <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i>
+                        <span>@openSharePageText</span>
+                    </a>
+                </noscript>
+            }
+        </div>
+
+        <details class="ai-report-section" open>
+            <summary class="ai-report-section-toggle">
+                <span>Score Summary</span>
+                <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+            </summary>
+            <section class="ai-report-hero">
+                <h2>@(string.IsNullOrWhiteSpace(Model.JobTitle) ? Model.ProductName : Model.JobTitle)</h2>
+                <div class="ai-report-grid">
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Score")</div>
+                        <div class="ai-report-stat-value">@Model.Score.ToString("N0")/100</div>
+                    </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Date")</div>
+                        <div class="ai-report-stat-value is-muted">@(await FormatNullableUtcDateTimeAsync(Model.ReportDateUtc))</div>
+                    </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Questions")</div>
+                        <div class="ai-report-stat-value">@((Model.Turns?.Count ?? 0).ToString())</div>
+                    </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Recording")</div>
+                        <div class="ai-report-stat-value is-muted">@(!string.IsNullOrWhiteSpace(Model.RecordingUrl) ? T("Plugins.Misc.AIInterview.Common.Available").Text : "-")</div>
+                    </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.AverageTechnicalScore")</div>
+                        <div class="ai-report-stat-value">@((avgTechnical.HasValue ? $"{avgTechnical.Value:N0}/100" : "-"))</div>
+                    </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.AverageCommunication")</div>
+                        <div class="ai-report-stat-value">@((avgCommunication.HasValue ? $"{avgCommunication.Value:N0}/100" : "-"))</div>
+                    </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.AverageProfessionalism")</div>
+                        <div class="ai-report-stat-value">@((avgProfessionalism.HasValue ? $"{avgProfessionalism.Value:N0}/100" : "-"))</div>
+                    </div>
+                    <div class="ai-report-stat">
+                        <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.AveragePositiveAttitude")</div>
+                        <div class="ai-report-stat-value">@((avgPositiveAttitude.HasValue ? $"{avgPositiveAttitude.Value:N0}/100" : "-"))</div>
+                    </div>
+                </div>
+            </section>
+        </details>
+
+        @if (Model.ParsedQuestionScores?.Any() == true)
+        {
+            <details class="ai-report-section" open>
+                <summary class="ai-report-section-toggle">
+                    <span>Question Scores</span>
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </summary>
+                <section class="ai-report-card">
+                    <h3>@T("Plugins.Misc.AIInterview.Report.QuestionScores")</h3>
+                    <div class="ai-report-grid">
+                        @for (var i = 0; i < Model.ParsedQuestionScores.Count; i++)
+                        {
+                            <div class="ai-report-stat">
+                                <div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Question") @(i + 1)</div>
+                                <div class="ai-report-stat-value">@Model.ParsedQuestionScores[i].ToString("N0")/100</div>
+                            </div>
+                        }
+                    </div>
+                </section>
+            </details>
+        }
+
+        @if (Model.Turns?.Any() == true)
+        {
+            <details class="ai-report-section">
+                <summary class="ai-report-section-toggle">
+                    <span>Interview Q&amp;A</span>
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </summary>
+                <section class="ai-report-card">
+                    <h3>@T("Plugins.Misc.AIInterview.Report.InterviewTurns")</h3>
+                    @foreach (var turn in Model.Turns)
+                    {
+                        <div class="ai-report-turn">
+                            <div class="ai-report-turn-title">Q@(turn.SequenceNumber). @turn.QuestionText</div>
+                            <div class="ai-report-answer"><strong>@T("Plugins.Misc.AIInterview.Report.Answer"):</strong> @(string.IsNullOrWhiteSpace(turn.AnswerText) ? T("Plugins.Misc.AIInterview.Report.Pending").Text : turn.AnswerText)</div>
+                            <div class="ai-report-feedback"><strong>@T("Plugins.Misc.AIInterview.Report.Feedback"):</strong> @(string.IsNullOrWhiteSpace(turn.Feedback) ? "-" : turn.Feedback)</div>
+                            <div class="ai-report-grid">
+                                <div class="ai-report-stat"><div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.TechnicalScore")</div><div class="ai-report-stat-value">@((turn.TechnicalScore.HasValue ? $"{turn.TechnicalScore.Value:N0}/100" : "-"))</div></div>
+                                <div class="ai-report-stat"><div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Communication")</div><div class="ai-report-stat-value">@((turn.CommunicationScore.HasValue ? $"{turn.CommunicationScore.Value:N0}/100" : "-"))</div></div>
+                                <div class="ai-report-stat"><div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.Professionalism")</div><div class="ai-report-stat-value">@((turn.ProfessionalismScore.HasValue ? $"{turn.ProfessionalismScore.Value:N0}/100" : "-"))</div></div>
+                                <div class="ai-report-stat"><div class="ai-report-stat-label">@T("Plugins.Misc.AIInterview.Report.PositiveAttitude")</div><div class="ai-report-stat-value">@((turn.PositiveAttitudeScore.HasValue ? $"{turn.PositiveAttitudeScore.Value:N0}/100" : "-"))</div></div>
+                            </div>
+                            <div class="ai-report-meta">
+                                <span><strong>@T("Plugins.Misc.AIInterview.Report.Score"):</strong> @(turn.Score.HasValue ? $"{turn.Score.Value:N0}/100" : "-")</span>
+                                <span><strong>@T("Plugins.Misc.AIInterview.Report.Asked"):</strong> @(await FormatUtcDateTimeAsync(turn.AskedOnUtc))</span>
+                                @if (turn.AnsweredOnUtc.HasValue)
+                                {
+                                    <span><strong>@T("Plugins.Misc.AIInterview.Report.Answered"):</strong> @(await FormatNullableUtcDateTimeAsync(turn.AnsweredOnUtc))</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </section>
+            </details>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.ReportData))
+        {
+            <details class="ai-report-section">
+                <summary class="ai-report-section-toggle">
+                    <span>AI Report Details</span>
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </summary>
+                <section class="ai-report-card">
+                    <h3>@T("Plugins.Misc.AIInterview.Report.Details")</h3>
+                    <div class="report-data">@Model.ReportData</div>
+                </section>
+            </details>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.RecordingUrl))
+    {
+        <aside class="ai-report-share-right">
+            <div class="ai-report-video-panel">
+                <h3>Interview Recording</h3>
+                <video id="@videoId" class="ai-report-video" src="@Model.RecordingUrl" controls preload="metadata"></video>
+                <div class="ai-report-video-actions">
+                    <button type="button" class="button-2 ai-report-video-fullscreen" data-video-id="@videoId">
+                        <i class="fa-solid fa-expand" aria-hidden="true"></i>
+                        <span>Fullscreen</span>
+                    </button>
+                    <button type="button" class="button-2 ai-report-video-copy" data-recording-url="@Model.RecordingUrl">
+                        <i class="fa-solid fa-copy" aria-hidden="true"></i>
+                        <span>Copy video link</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+    }
+</div>
+
+<script>
+(() => {
+    if (window.__aiInterviewReportShareContentInitialized) {
+        return;
+    }
+    window.__aiInterviewReportShareContentInitialized = true;
+
+    const writeToClipboard = async (text) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = text;
+        input.setAttribute('readonly', 'readonly');
+        input.style.position = 'absolute';
+        input.style.left = '-9999px';
+        document.body.appendChild(input);
+        input.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(input);
+        return copied;
+    };
+
+    document.addEventListener('click', async (event) => {
+        const shareCopyButton = event.target.closest('.ai-copy-share-link');
+        if (shareCopyButton) {
+            event.preventDefault();
+            const shareUrl = shareCopyButton.getAttribute('data-share-url');
+            if (!shareUrl) {
+                return;
+            }
+
+            try {
+                await writeToClipboard(shareUrl);
+                const feedbackRoot = shareCopyButton.closest('.ai-report-share-layout');
+                const copiedText = feedbackRoot?.dataset.copiedText || 'Copied';
+                shareCopyButton.classList.remove('is-error');
+                shareCopyButton.classList.add('is-success');
+                shareCopyButton.setAttribute('title', copiedText);
+                shareCopyButton.setAttribute('aria-label', copiedText);
+            } catch (error) {
+                const feedbackRoot = shareCopyButton.closest('.ai-report-share-layout');
+                const copyFailedText = feedbackRoot?.dataset.copyFailedText || 'Copy failed';
+                shareCopyButton.classList.remove('is-success');
+                shareCopyButton.classList.add('is-error');
+                shareCopyButton.setAttribute('title', copyFailedText);
+                shareCopyButton.setAttribute('aria-label', copyFailedText);
+            }
+            return;
+        }
+
+        const nativeShareButton = event.target.closest('.ai-native-share-link');
+        if (nativeShareButton) {
+            event.preventDefault();
+            const shareUrl = nativeShareButton.getAttribute('data-share-url');
+            if (!shareUrl) {
+                return;
+            }
+
+            if (!navigator.share) {
+                window.open(shareUrl, '_blank', 'noopener');
+                return;
+            }
+
+            try {
+                await navigator.share({
+                    title: nativeShareButton.getAttribute('data-share-title') || document.title,
+                    url: shareUrl
+                });
+            } catch (error) {
+            }
+            return;
+        }
+
+        const fullscreenButton = event.target.closest('.ai-report-video-fullscreen');
+        if (fullscreenButton) {
+            event.preventDefault();
+            const video = document.getElementById(fullscreenButton.dataset.videoId || '');
+            if (video && video.requestFullscreen) {
+                await video.requestFullscreen();
+            }
+            return;
+        }
+
+        const copyButton = event.target.closest('.ai-report-video-copy');
+        if (copyButton) {
+            event.preventDefault();
+            const recordingUrl = copyButton.getAttribute('data-recording-url');
+            if (recordingUrl) {
+                await writeToClipboard(recordingUrl);
+            }
+        }
+    });
+
+    if (navigator.share) {
+        document.querySelectorAll('.ai-native-share-link').forEach((button) => button.classList.remove('aiinterview-hidden'));
+    }
+})();
+</script>

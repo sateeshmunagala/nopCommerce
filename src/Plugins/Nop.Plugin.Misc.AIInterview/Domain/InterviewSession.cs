@@ -23,6 +23,9 @@ public class InterviewSession : BaseEntity
     public string RecordingShareToken { get; set; }
     public bool RecordingShareEnabled { get; set; }
     public DateTime? RecordingShareCreatedOnUtc { get; set; }
+    public string ReportShareToken { get; set; }
+    public bool ReportShareEnabled { get; set; }
+    public DateTime? ReportShareCreatedOnUtc { get; set; }
     public string ReportData { get; set; }
     public string QuestionScores { get; set; }
     public decimal Score { get; set; }

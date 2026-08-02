@@ -209,5 +209,6 @@ public record InterviewReportModel : BaseNopModel
     public string ReportData { get; set; }
     public string RecordingUrl { get; set; }
     public string RecordingShareUrl { get; set; }
+    public string ReportShareUrl { get; set; }
     public IList<InterviewTurnViewModel> Turns { get; set; } = new List<InterviewTurnViewModel>();
 }

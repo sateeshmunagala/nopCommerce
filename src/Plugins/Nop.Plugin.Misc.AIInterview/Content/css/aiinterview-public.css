@@ -1197,6 +1197,156 @@ body.html-aiinterview-vendor-job-creation-page {
     font-size: 0.85rem;
 }
 
+.ai-report-share-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 2rem;
+    align-items: start;
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.ai-report-share-left,
+.ai-report-share-right {
+    min-width: 0;
+}
+
+.ai-report-share-right {
+    position: sticky;
+    top: 1rem;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.ai-report-video-panel {
+    display: grid;
+    gap: 1rem;
+    padding: 1.5rem;
+    border: 1px solid #dedede;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.ai-report-video-panel h3 {
+    margin: 0;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-weight: 400;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.ai-report-video {
+    display: block;
+    width: 100%;
+    border-radius: 8px;
+    background: #111827;
+}
+
+.ai-report-video-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ai-report-video-actions .button-2 {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 14px;
+    border: 1px solid #9dd7cb;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #0f766e;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.1;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+.ai-report-section {
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color, #dedede);
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.ai-report-section-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    cursor: pointer;
+    color: #20252b;
+    font-family: "Fjalla One", Arial, sans-serif;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.ai-report-section-toggle::-webkit-details-marker {
+    display: none;
+}
+
+details[open] .ai-report-section-toggle {
+    background-color: #f4fcfa;
+}
+
+.ai-report-section-toggle .fa-chevron-down {
+    transition: transform 0.2s ease;
+}
+
+details[open] .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+.ai-report-section > .ai-report-hero,
+.ai-report-section > .ai-report-card {
+    border: 0;
+    border-top: 1px solid #dedede;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.ai-report-share-brand {
+    display: grid;
+    gap: 8px;
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.ai-report-share-brand h1 {
+    margin: 0;
+}
+
+.ai-report-share-brand p {
+    margin: 0;
+    color: #334155;
+}
+
+.ai-report-share-cta {
+    color: #0f766e;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+@media (max-width: 900px) {
+    .ai-report-share-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .ai-report-share-right {
+        position: static;
+        max-height: none;
+        overflow-y: visible;
+    }
+}
+
 .job-ai-panel {
     display: grid;
     gap: 18px;

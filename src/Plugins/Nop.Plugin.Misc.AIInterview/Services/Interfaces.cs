@@ -47,6 +47,8 @@ public interface IInterviewSessionService
     Task<IList<PreviousResumeSource>> GetPreviousResumeSourcesAsync(int customerId);
     Task<IList<InterviewSession>> GetCompletionWorkSessionsAsync(DateTime staleProcessingBeforeUtc, int maxCount = 20);
     Task<string> EnsureRecordingShareTokenAsync(InterviewSession session);
+    Task<string> EnsureReportShareTokenAsync(InterviewSession session);
+    Task<InterviewSession> GetSessionByReportShareTokenAsync(string token);
     Task UpdateInterviewSessionAsync(InterviewSession session);
     Task<bool> CanAccessReportAsync(int customerId, int sessionId);
 }

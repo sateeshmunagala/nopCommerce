@@ -165,6 +165,8 @@ Allowed categories: skill, project_scenario, job_fit, behavioral
 
     public static string ReportPanelRouteName => "Plugin.Misc.AIInterview.Report.Panel";
 
+    public static string ReportShareRouteName => "Plugin.Misc.AIInterview.Report.Share";
+
     public static string RecordingRouteName => "Plugin.Misc.AIInterview.Recording";
 
     public static string RecordingShareRouteName => "Plugin.Misc.AIInterview.Recording.Share";

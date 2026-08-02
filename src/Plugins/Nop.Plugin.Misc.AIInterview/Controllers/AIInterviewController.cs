@@ -471,20 +471,31 @@ public class AIInterviewController : BasePluginController
         return sessionId > 0 ? Url?.Action("ReportPanel", "AIInterview", new { sessionId }) : null;
     }
 
-    protected virtual string BuildAuthenticatedRecordingUrl(int sessionId)
+    protected virtual string BuildAuthenticatedRecordingUrl(InterviewSession session)
     {
-        return sessionId > 0 ? Url?.Action("Recording", "AIInterview", new { sessionId }) : null;
+        return string.IsNullOrWhiteSpace(session?.RecordingUrl) ? null : session.RecordingUrl;
     }
 
-    protected virtual async Task<string> BuildRecordingShareUrlAsync(InterviewSession session)
+    protected virtual Task<string> BuildRecordingShareUrlAsync(InterviewSession session)
     {
         if (session == null || string.IsNullOrWhiteSpace(session.RecordingUrl))
-            return null;
+            return Task.FromResult<string>(null);
 
-        var token = await _interviewSessionService.EnsureRecordingShareTokenAsync(session);
+        return Task.FromResult(session.RecordingUrl);
+    }
+
+    protected virtual async Task<string> BuildReportShareUrlAsync(InterviewSession session)
+    {
+        if (session == null ||
+            (string.IsNullOrWhiteSpace(session.ReportData) && string.IsNullOrWhiteSpace(session.RecordingUrl)))
+        {
+            return null;
+        }
+
+        var token = await _interviewSessionService.EnsureReportShareTokenAsync(session);
         return string.IsNullOrWhiteSpace(token)
             ? null
-            : BuildRouteUrl(AIInterviewDefaults.RecordingShareRouteName, new { token });
+            : BuildRouteUrl(AIInterviewDefaults.ReportShareRouteName, new { token });
     }
 
     protected virtual IList<InterviewTurnViewModel> MapTurns(IList<InterviewTurn> turns)
@@ -528,6 +539,7 @@ public class AIInterviewController : BasePluginController
 
         var turns = await GetTurnsSafeAsync(session.Id);
         var product = session.ProductId > 0 ? await _productService.GetProductByIdAsync(session.ProductId) : null;
+        var reportShareUrl = await BuildReportShareUrlAsync(session);
 
         return new InterviewReportModel
         {
@@ -541,8 +553,9 @@ public class AIInterviewController : BasePluginController
             QuestionScores = session.QuestionScores,
             ParsedQuestionScores = ParseQuestionScores(session.QuestionScores),
             ReportData = InterviewReportSummaryHelper.NormalizePersistedReportData(session.ReportData, turns, session.Score),
-            RecordingUrl = !string.IsNullOrWhiteSpace(session.RecordingUrl) ? BuildAuthenticatedRecordingUrl(session.Id) : null,
-            RecordingShareUrl = await BuildRecordingShareUrlAsync(session),
+            RecordingUrl = BuildAuthenticatedRecordingUrl(session),
+            RecordingShareUrl = reportShareUrl,
+            ReportShareUrl = reportShareUrl,
             CreatedOnUtc = session.CreatedOnUtc,
             ReportDateUtc = session.CompletedOnUtc ?? session.StartedOnUtc ?? session.CreatedOnUtc,
             CompletedOnUtc = session.CompletedOnUtc,
@@ -669,8 +682,8 @@ public class AIInterviewController : BasePluginController
                 InterviewScore = latestSession?.Score,
                 InterviewReportUrl = latestSession != null ? BuildAuthenticatedReportUrl(latestSession.Id) : null,
                 InterviewReportPanelUrl = latestSession != null ? BuildReportPanelUrl(latestSession.Id) : null,
-                RecordingUrl = latestSession != null && !string.IsNullOrWhiteSpace(latestSession.RecordingUrl) ? BuildAuthenticatedRecordingUrl(latestSession.Id) : null,
-                RecordingShareUrl = latestSession != null ? await BuildRecordingShareUrlAsync(latestSession) : null,
+                RecordingUrl = BuildAuthenticatedRecordingUrl(latestSession),
+                RecordingShareUrl = latestSession != null ? await BuildReportShareUrlAsync(latestSession) : null,
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
                 RawStatus = normalizedStatus,
                 CreatedOn = application.CreatedOnUtc,
@@ -758,11 +771,9 @@ public class AIInterviewController : BasePluginController
                 InterviewReportPanelUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
                     ? Url?.Action("ReportPanel", "AIInterview", new { sessionId = session.Id })
                     : null,
-                RecordingUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.RecordingUrl)
-                    ? Url?.Action("Recording", "AIInterview", new { sessionId = session.Id })
-                    : null,
+                RecordingUrl = session.CompletedOnUtc.HasValue ? session.RecordingUrl : null,
                 RecordingShareUrl = session.CompletedOnUtc.HasValue
-                    ? await BuildRecordingShareUrlAsync(session)
+                    ? await BuildReportShareUrlAsync(session)
                     : null
             };
         }));
@@ -1126,6 +1137,27 @@ public class AIInterviewController : BasePluginController
             BuildSafeRecordingUrlLogValue(session.RecordingUrl));
 
         return await ProxyRecordingAsync(session.RecordingUrl);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ReportShare(string token)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return NotFound();
+
+        var session = await _interviewSessionService.GetSessionByReportShareTokenAsync(token);
+        if (session == null ||
+            !session.ReportShareEnabled ||
+            string.IsNullOrWhiteSpace(session.ReportShareToken) ||
+            !string.Equals(session.ReportShareToken, token, StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(session.ReportData) ||
+            (string.IsNullOrWhiteSpace(session.ReportData) && string.IsNullOrWhiteSpace(session.RecordingUrl)))
+        {
+            return NotFound();
+        }
+
+        var model = await BuildInterviewReportModelAsync(session);
+        return View("~/Plugins/Misc.AIInterview/Views/ReportShare.cshtml", model);
     }
 
     public async Task<IActionResult> Interview(string sessionKey)
@@ -1790,9 +1822,7 @@ public class AIInterviewController : BasePluginController
                     Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
                     InterviewScore = latestCompletedSession?.Score,
                     InterviewReportUrl = latestCompletedSession != null ? Url?.Action("Report", "AIInterview", new { sessionId = latestCompletedSession.Id }) : null,
-                    RecordingUrl = latestCompletedSession != null && !string.IsNullOrWhiteSpace(latestCompletedSession.RecordingUrl)
-                        ? Url?.Action("Recording", "AIInterview", new { sessionId = latestCompletedSession.Id })
-                        : null,
+                    RecordingUrl = latestCompletedSession?.RecordingUrl,
                     CreatedOn = application.CreatedOnUtc,
                     CompletedOn = latestCompletedSession?.CompletedOnUtc
                 };

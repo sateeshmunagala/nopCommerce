@@ -126,6 +126,10 @@ public class RouteProvider : IRouteProvider
             pattern: "aiinterview/recording/share/{token}",
             defaults: new { controller = "AIInterview", action = "RecordingShare" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.ReportShareRouteName,
+            pattern: "aiinterview/report/share/{token}",
+            defaults: new { controller = "AIInterview", action = "ReportShare" });
+
         //MockAiInterview
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockStartRouteName,
             pattern: "mockaiinterview/start",
