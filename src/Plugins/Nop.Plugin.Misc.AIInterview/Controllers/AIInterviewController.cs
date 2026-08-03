@@ -1153,7 +1153,92 @@ public class AIInterviewController : BasePluginController
         if (!await IsInstituteVendorAsync(customer))
             return RedirectToRoute("Homepage");
 
-        return View("~/Plugins/Misc.AIInterview/Views/InstituteCredits.cshtml");
+        var instituteWallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
+        var invites = await _inviteService.GetSponsorInvitesAsync(customer.VendorId)
+            ?? new List<SponsorInvite>();
+        var accepted = invites.Where(i => i.IsAccepted).ToList();
+
+        var candidateModels = new List<InstituteCreditCandidateModel>();
+        foreach (var invite in accepted.OrderBy(i => i.Email))
+        {
+            var candidate = await _customerService.GetCustomerByEmailAsync(invite.Email);
+            if (candidate == null)
+                continue;
+            var wallet = await _creditService.GetOrCreateWalletAsync(candidate.Id);
+            var fullName = (candidate.FirstName + " " + candidate.LastName).Trim();
+            candidateModels.Add(new InstituteCreditCandidateModel
+            {
+                CustomerId = candidate.Id,
+                Email = invite.Email,
+                CustomerName = string.IsNullOrWhiteSpace(fullName) ? invite.Email : fullName,
+                CreditBalance = wallet.Balance
+            });
+        }
+
+        var model = new InstituteCreditAllotmentPageModel
+        {
+            InstituteBalance = instituteWallet.Balance,
+            AcceptedCandidates = candidateModels
+        };
+        return View("~/Plugins/Misc.AIInterview/Views/InstituteCredits.cshtml", model);
+    }
+
+    [HttpPost]
+    public virtual async Task<IActionResult> InstituteCreditAllot(
+        int selectedCandidateCustomerId, decimal amount, string remarks)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (!await IsInstituteVendorAsync(customer))
+            return RedirectToRoute("Homepage");
+
+        if (selectedCandidateCustomerId <= 0 || amount <= 0)
+        {
+            _notificationService.ErrorNotification(
+                "Please select a candidate and enter a credit amount greater than zero.");
+            return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
+        }
+
+        var candidate = await _customerService.GetCustomerByIdAsync(selectedCandidateCustomerId);
+        if (candidate == null)
+        {
+            _notificationService.ErrorNotification("Selected candidate not found.");
+            return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
+        }
+
+        var acceptedInvites = await _inviteService.GetSponsorInvitesAsync(customer.VendorId)
+            ?? new List<SponsorInvite>();
+        if (!acceptedInvites.Any(i => i.IsAccepted
+            && string.Equals(i.Email, candidate.Email, StringComparison.OrdinalIgnoreCase)))
+        {
+            _notificationService.ErrorNotification("Selected candidate is not accepted for this institute.");
+            return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
+        }
+
+        var effectiveRemarks = string.IsNullOrWhiteSpace(remarks)
+            ? $"Credit allotment from institute to {candidate.Email}"
+            : remarks.Trim();
+
+        var charged = await _creditService.AuthorizeAndChargeAsync(
+            customer.Id, amount, effectiveRemarks,
+            CreditLedgerSources.Adjustment);
+
+        if (!charged)
+        {
+            _notificationService.ErrorNotification(
+                "Insufficient credits in your institute account. Please purchase more credits.");
+            return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
+        }
+
+        await _creditService.AddCreditAsync(
+            candidate.Id, amount, effectiveRemarks,
+            CreditLedgerSources.Adjustment);
+
+        _notificationService.SuccessNotification(
+            $"{amount:0.##} credit(s) allotted to {candidate.Email} successfully.");
+        return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
     }
 
     public async Task<IActionResult> MyApplications(string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null)
