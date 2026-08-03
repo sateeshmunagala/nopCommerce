@@ -11596,3 +11596,158 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
         grid-template-columns: 1fr;
     }
 }
+
+/* ====================================
+   INSTITUTE CANDIDATES PAGE (Phase 3)
+   ==================================== */
+
+.ai-institute-candidates-page .institute-invite-form-panel {
+    background: var(--jb-white);
+    border: 1px solid var(--jb-border);
+    border-radius: 6px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+}
+
+.ai-institute-candidates-page .institute-invite-form-heading {
+    font-size: 1rem;
+    margin: 0 0 14px;
+    color: var(--jb-ink);
+}
+
+.ai-institute-candidates-page .institute-invite-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.ai-institute-candidates-page .institute-invite-email-input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 12px;
+    border: 1px solid var(--jb-border);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.ai-institute-candidates-page .institute-invite-submit {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.ai-institute-candidates-page .institute-candidates-empty {
+    color: var(--jb-muted);
+    font-size: 0.9rem;
+    padding: 16px 0;
+}
+
+.ai-institute-candidates-page .institute-candidates-table-wrapper {
+    overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid var(--jb-border);
+}
+
+.ai-institute-candidates-page .institute-candidates-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background: var(--jb-white);
+}
+
+.ai-institute-candidates-page .institute-candidates-table thead th {
+    padding: 12px 16px;
+    text-align: left;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--jb-muted);
+    border-bottom: 1px solid var(--jb-border);
+    background: var(--jb-bg);
+}
+
+.ai-institute-candidates-page .institute-candidates-table tbody td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--jb-border);
+}
+
+.ai-institute-candidates-page .institute-candidate-row:last-child td {
+    border-bottom: 0;
+}
+
+.ai-institute-candidates-page .candidate-email {
+    display: block;
+    color: var(--jb-ink);
+    font-weight: 600;
+}
+
+.ai-institute-candidates-page .candidate-name {
+    display: block;
+    color: var(--jb-muted);
+    font-size: 0.82rem;
+    margin-top: 2px;
+}
+
+.ai-institute-candidates-page .candidate-status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.ai-institute-candidates-page .badge-accepted {
+    background: #d4f5ec;
+    color: #0f7a56;
+}
+
+.ai-institute-candidates-page .badge-pending {
+    background: #fef3cd;
+    color: #856404;
+}
+
+@media (max-width: 640px) {
+    .ai-institute-candidates-page .institute-invite-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ai-institute-candidates-page .institute-invite-submit {
+        width: 100%;
+        text-align: center;
+    }
+
+    .ai-institute-candidates-page .institute-candidates-table thead {
+        display: none;
+    }
+
+    .ai-institute-candidates-page .institute-candidates-table,
+    .ai-institute-candidates-page .institute-candidates-table tbody,
+    .ai-institute-candidates-page .institute-candidate-row,
+    .ai-institute-candidates-page .institute-candidates-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .ai-institute-candidates-page .institute-candidate-row {
+        border-bottom: 2px solid var(--jb-border);
+        padding: 10px 0;
+    }
+
+    .ai-institute-candidates-page .institute-candidates-table td {
+        padding: 6px 16px;
+        border-bottom: 0;
+    }
+
+    .ai-institute-candidates-page .institute-candidates-table td::before {
+        content: attr(data-label) ": ";
+        font-weight: 700;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        color: var(--jb-muted);
+        display: inline;
+    }
+}

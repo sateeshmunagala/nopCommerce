@@ -1083,7 +1083,65 @@ public class AIInterviewController : BasePluginController
         if (!await IsInstituteVendorAsync(customer))
             return RedirectToRoute("Homepage");
 
-        return View("~/Plugins/Misc.AIInterview/Views/InstituteCandidates.cshtml");
+        var invites = await _inviteService.GetSponsorInvitesAsync(customer.VendorId) ?? new List<SponsorInvite>();
+        var candidateModels = new List<InstituteCandidateModel>();
+
+        foreach (var invite in invites.OrderByDescending(i => i.CreatedOnUtc))
+        {
+            var acceptedCustomer = invite.IsAccepted
+                ? await _customerService.GetCustomerByEmailAsync(invite.Email)
+                : null;
+
+            var wallet = acceptedCustomer != null
+                ? await _creditService.GetOrCreateWalletAsync(acceptedCustomer.Id)
+                : null;
+
+            var fullName = acceptedCustomer != null
+                ? (acceptedCustomer.FirstName + " " + acceptedCustomer.LastName).Trim()
+                : string.Empty;
+
+            candidateModels.Add(new InstituteCandidateModel
+            {
+                InviteId = invite.Id,
+                Email = invite.Email,
+                CustomerName = fullName,
+                IsAccepted = invite.IsAccepted,
+                IsActive = invite.IsActive,
+                CreditBalance = wallet?.Balance ?? 0,
+                CreatedOnUtc = invite.CreatedOnUtc
+            });
+        }
+
+        var model = new InstituteCandidatesPageModel { Candidates = candidateModels };
+        return View("~/Plugins/Misc.AIInterview/Views/InstituteCandidates.cshtml", model);
+    }
+
+    [HttpPost]
+    public virtual async Task<IActionResult> InstituteCandidateInvite(string email)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (!await IsInstituteVendorAsync(customer))
+            return RedirectToRoute("Homepage");
+
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+        {
+            _notificationService.ErrorNotification("Please enter a valid email address.");
+            return RedirectToRoute(AIInterviewDefaults.InstituteCandidatesRouteName);
+        }
+
+        var existingInvites = await _inviteService.GetSponsorInvitesAsync(customer.VendorId) ?? new List<SponsorInvite>();
+        if (existingInvites.Any(i => string.Equals(i.Email, email.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            _notificationService.ErrorNotification("This candidate has already been invited.");
+            return RedirectToRoute(AIInterviewDefaults.InstituteCandidatesRouteName);
+        }
+
+        await _inviteService.CreateInviteAsync(customer.VendorId, email.Trim(), 0, 999, null);
+        _notificationService.SuccessNotification($"Invitation sent to {email.Trim()}.");
+        return RedirectToRoute(AIInterviewDefaults.InstituteCandidatesRouteName);
     }
 
     public virtual async Task<IActionResult> InstituteCredits()
