@@ -11539,3 +11539,60 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
         padding-left: 30px;
     }
 }
+
+/* ====================================
+   INSTITUTE DASHBOARD CARDS (Phase 2)
+   ==================================== */
+
+.ai-institute-dashboard-page .institute-dashboard-intro {
+    margin-bottom: 24px;
+    color: var(--jb-muted);
+    font-size: 0.95rem;
+}
+
+.ai-institute-dashboard-page .institute-dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.ai-institute-dashboard-page .institute-dashboard-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px 18px;
+    background: var(--jb-white);
+    border: 1px solid var(--jb-border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--jb-ink);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ai-institute-dashboard-page .institute-dashboard-card:hover {
+    border-color: var(--jb-accent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ai-institute-dashboard-page .institute-dashboard-card-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.ai-institute-dashboard-page .institute-dashboard-card-label {
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.05rem;
+    color: var(--jb-ink);
+}
+
+.ai-institute-dashboard-page .institute-dashboard-card-hint {
+    font-size: 0.82rem;
+    color: var(--jb-muted);
+    line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+    .ai-institute-dashboard-page .institute-dashboard-cards {
+        grid-template-columns: 1fr;
+    }
+}

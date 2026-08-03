@@ -1,5 +1,6 @@
 using Nop.Core.Http;
 using Nop.Services.Events;
+using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Web.Framework.Events;
 using Nop.Web.Framework.Models;
@@ -11,16 +12,19 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
     private readonly ILocalizationService _localizationService;
     private readonly Services.ICreditService _creditService;
     private readonly Nop.Core.IWorkContext _workContext;
+    private readonly ICustomerService _customerService;
     private readonly AIInterviewSettings _aiInterviewSettings;
 
     public EventConsumer(ILocalizationService localizationService,
         Services.ICreditService creditService,
         Nop.Core.IWorkContext workContext,
+        ICustomerService customerService,
         AIInterviewSettings aiInterviewSettings)
     {
         _localizationService = localizationService;
         _creditService = creditService;
         _workContext = workContext;
+        _customerService = customerService;
         _aiInterviewSettings = aiInterviewSettings;
     }
 
@@ -76,6 +80,25 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                             Tab = AIInterviewDefaults.EmployerDashboardNavigationTab,
                             ItemClass = "vendor-employer-dashboard"
                         });
+                    }
+                }
+
+                if (customer != null && customer.VendorId > 0
+                    && await _customerService.IsInCustomerRoleAsync(customer, "Institute", true))
+                {
+                    if (!navigationModel.CustomerNavigationItems.Any(item =>
+                        string.Equals(item.RouteName,
+                            AIInterviewDefaults.InstituteDashboardRouteName,
+                            StringComparison.OrdinalIgnoreCase)))
+                    {
+                        navigationModel.CustomerNavigationItems.Add(
+                            new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                            {
+                                RouteName = AIInterviewDefaults.InstituteDashboardRouteName,
+                                Title = "Institute Dashboard",
+                                Tab = AIInterviewDefaults.InstituteDashboardNavigationTab,
+                                ItemClass = "institute-dashboard"
+                            });
                     }
                 }
             }

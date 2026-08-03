@@ -1,0 +1,20 @@
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts("Credits");
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation",
+        new { selectedTabId = AIInterviewDefaults.InstituteDashboardNavigationTab })
+}
+
+<div class="page ai-institute-credits-page">
+    <div class="page-title"><h1>Credits</h1></div>
+    <div class="page-body">
+        <p>Credit allocation will be implemented in a future phase.</p>
+    </div>
+</div>

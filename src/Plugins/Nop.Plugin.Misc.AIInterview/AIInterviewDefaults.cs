@@ -94,6 +94,10 @@ public static class AIInterviewDefaults
     public static string EmployerApplicationsRouteName => "Plugin.Misc.AIInterview.EmployerApplications";
     public static string EmployerDownloadResumeRouteName => "Plugin.Misc.AIInterview.EmployerDownloadResume";
     public static string EmployerDashboardRouteName => "Plugin.Misc.AIInterview.EmployerDashboard";
+    public static string InstituteDashboardRouteName => "Plugin.Misc.AIInterview.InstituteDashboard";
+    public static string InstituteCandidatesRouteName => "Plugin.Misc.AIInterview.InstituteCandidates";
+    public static string InstituteCreditsRouteName => "Plugin.Misc.AIInterview.InstituteCredits";
+    public static int InstituteDashboardNavigationTab => 50;
 
     public static string VendorScoreboardRouteName => "Plugin.Misc.AIInterview.VendorScoreboard";
 

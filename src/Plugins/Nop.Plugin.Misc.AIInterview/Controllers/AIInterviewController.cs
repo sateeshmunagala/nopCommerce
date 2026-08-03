@@ -1053,6 +1053,51 @@ public class AIInterviewController : BasePluginController
         return View("~/Plugins/Misc.AIInterview/Views/EmployerDashboard.cshtml", model);
     }
 
+    protected virtual async Task<bool> IsInstituteVendorAsync(Nop.Core.Domain.Customers.Customer customer)
+    {
+        if (customer == null || customer.VendorId <= 0)
+            return false;
+        return await _customerService.IsInCustomerRoleAsync(customer, "Institute", true);
+    }
+
+    public virtual async Task<IActionResult> InstituteDashboard()
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (!await IsInstituteVendorAsync(customer))
+            return RedirectToRoute("Homepage");
+
+        ViewData["InstituteVendorName"] = customer.FirstName?.Trim() is { Length: > 0 } fn
+            ? fn : customer.Email ?? string.Empty;
+        return View("~/Plugins/Misc.AIInterview/Views/InstituteDashboard.cshtml");
+    }
+
+    public virtual async Task<IActionResult> InstituteCandidates()
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (!await IsInstituteVendorAsync(customer))
+            return RedirectToRoute("Homepage");
+
+        return View("~/Plugins/Misc.AIInterview/Views/InstituteCandidates.cshtml");
+    }
+
+    public virtual async Task<IActionResult> InstituteCredits()
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (!await IsInstituteVendorAsync(customer))
+            return RedirectToRoute("Homepage");
+
+        return View("~/Plugins/Misc.AIInterview/Views/InstituteCredits.cshtml");
+    }
+
     public async Task<IActionResult> MyApplications(string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null)
     {
         if (!_aiInterviewSettings.Enabled)

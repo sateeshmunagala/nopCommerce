@@ -98,6 +98,21 @@ public class RouteProvider : IRouteProvider
             pattern: "aiinterview/employer-dashboard",
             defaults: new { controller = "AIInterview", action = "EmployerDashboard" });
 
+        endpointRouteBuilder.MapControllerRoute(
+            name: AIInterviewDefaults.InstituteDashboardRouteName,
+            pattern: "institute/dashboard",
+            defaults: new { controller = "AIInterview", action = "InstituteDashboard" });
+
+        endpointRouteBuilder.MapControllerRoute(
+            name: AIInterviewDefaults.InstituteCandidatesRouteName,
+            pattern: "institute/candidates",
+            defaults: new { controller = "AIInterview", action = "InstituteCandidates" });
+
+        endpointRouteBuilder.MapControllerRoute(
+            name: AIInterviewDefaults.InstituteCreditsRouteName,
+            pattern: "institute/credits",
+            defaults: new { controller = "AIInterview", action = "InstituteCredits" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.EmployerDownloadResumeRouteName,
             pattern: "aiinterview/employer-applications/{applicationId:int}/resume",
             defaults: new { controller = "AIInterview", action = "EmployerDownloadResume" });
