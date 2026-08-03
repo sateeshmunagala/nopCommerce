@@ -85,6 +85,8 @@ public class AIInterviewSettings : ISettings
     /// </summary>
     public string Provider { get; set; }
 
+    public string PlatformMode { get; set; } = "Employer";
+
     /// <summary>
     /// Gets or sets the AI model
     /// </summary>
