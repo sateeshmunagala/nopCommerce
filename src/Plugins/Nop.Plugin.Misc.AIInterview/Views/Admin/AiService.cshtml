@@ -19,18 +19,25 @@
 
     <section class="content">
         <div class="container-fluid">
+            @await Component.InvokeAsync(typeof(StoreScopeConfigurationViewComponent))
             <div class="card card-default">
                 <div class="card-body">
                     <h4>General / Model</h4>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="UseMockResponses" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="UseMockResponses_OverrideForStore" asp-input="UseMockResponses" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="UseMockResponses" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="UseMockResponses" />
                             <small class="form-text text-warning font-weight-bold" id="mock-responses-hint" style="display: none;">Development AI mode is enabled. Azure OpenAI is bypassed.</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="MockInterviewQuestionCount" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="MockInterviewQuestionCount_OverrideForStore" asp-input="MockInterviewQuestionCount" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="MockInterviewQuestionCount" />
+                        </div>
                         <div class="col-md-9">
                             <input asp-for="MockInterviewQuestionCount" class="form-control" type="number" min="1" max="10" step="1" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.Configure.MockInterviewQuestionCount.Hint")</small>
@@ -52,34 +59,41 @@
                     </script>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Provider" /></div><div class="col-md-9"><nop-select asp-for="Provider" asp-items="Model.AvailableProviders" /></div></div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="ApiKey" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="ApiKey_OverrideForStore" asp-input="ApiKey" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="ApiKey" />
+                        </div>
                         <div class="col-md-9">
                             <input asp-for="ApiKey" class="form-control" type="text" autocomplete="off" />
                         </div>
                     </div>
                     <div class="form-group row">
                         <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="Model_OverrideForStore" asp-input="Model" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
                             <label class="col-form-label">@T("Plugins.Misc.AIInterview.Model")</label>
                         </div>
                         <div class="col-md-9">
                             <input class="form-control" type="text" name="Model" id="Model" value="@Model.Model" />
                         </div>
                     </div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Prompt" /></div><div class="col-md-9"><nop-textarea asp-for="Prompt" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ServiceSettings" /></div><div class="col-md-9"><nop-textarea asp-for="ServiceSettings" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="Prompt_OverrideForStore" asp-input="Prompt" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="Prompt" /></div><div class="col-md-9"><nop-textarea asp-for="Prompt" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="ServiceSettings_OverrideForStore" asp-input="ServiceSettings" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="ServiceSettings" /></div><div class="col-md-9"><nop-textarea asp-for="ServiceSettings" /></div></div>
                     <hr />
                     <h4>Prompt templates</h4>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="ResumeProfileExtractionSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="ResumeProfileExtractionSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.ResumeProfileExtractionSystemPrompt.Hint")</small></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="QuestionPlanSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="QuestionPlanSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanSystemPrompt.Hint")</small></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="QuestionPlanBuilderInstructionBlock" /></div><div class="col-md-9"><nop-textarea asp-for="QuestionPlanBuilderInstructionBlock" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanBuilderInstructionBlock.Hint")</small></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="RuntimeQuestionGenerationSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="RuntimeQuestionGenerationSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RuntimeQuestionGenerationSystemPrompt.Hint")</small></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="RuntimeScoringSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="RuntimeScoringSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RuntimeScoringSystemPrompt.Hint")</small></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="RuntimeScoringRetryAddendumPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="RuntimeScoringRetryAddendumPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RuntimeScoringRetryAddendumPrompt.Hint")</small></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="FinalScoringSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="FinalScoringSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.FinalScoringSystemPrompt.Hint")</small></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="StrengthsSummarySystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="StrengthsSummarySystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummarySystemPrompt.Hint")</small></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="StrengthsSummaryRetryStrictJsonSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="StrengthsSummaryRetryStrictJsonSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryRetryStrictJsonSystemPrompt.Hint")</small></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="ResumeProfileExtractionSystemPrompt_OverrideForStore" asp-input="ResumeProfileExtractionSystemPrompt" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="ResumeProfileExtractionSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="ResumeProfileExtractionSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.ResumeProfileExtractionSystemPrompt.Hint")</small></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="QuestionPlanSystemPrompt_OverrideForStore" asp-input="QuestionPlanSystemPrompt" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="QuestionPlanSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="QuestionPlanSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanSystemPrompt.Hint")</small></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="QuestionPlanBuilderInstructionBlock_OverrideForStore" asp-input="QuestionPlanBuilderInstructionBlock" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="QuestionPlanBuilderInstructionBlock" /></div><div class="col-md-9"><nop-textarea asp-for="QuestionPlanBuilderInstructionBlock" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanBuilderInstructionBlock.Hint")</small></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="RuntimeQuestionGenerationSystemPrompt_OverrideForStore" asp-input="RuntimeQuestionGenerationSystemPrompt" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="RuntimeQuestionGenerationSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="RuntimeQuestionGenerationSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RuntimeQuestionGenerationSystemPrompt.Hint")</small></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="RuntimeScoringSystemPrompt_OverrideForStore" asp-input="RuntimeScoringSystemPrompt" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="RuntimeScoringSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="RuntimeScoringSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RuntimeScoringSystemPrompt.Hint")</small></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="RuntimeScoringRetryAddendumPrompt_OverrideForStore" asp-input="RuntimeScoringRetryAddendumPrompt" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="RuntimeScoringRetryAddendumPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="RuntimeScoringRetryAddendumPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RuntimeScoringRetryAddendumPrompt.Hint")</small></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="FinalScoringSystemPrompt_OverrideForStore" asp-input="FinalScoringSystemPrompt" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="FinalScoringSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="FinalScoringSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.FinalScoringSystemPrompt.Hint")</small></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="StrengthsSummarySystemPrompt_OverrideForStore" asp-input="StrengthsSummarySystemPrompt" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="StrengthsSummarySystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="StrengthsSummarySystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummarySystemPrompt.Hint")</small></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="StrengthsSummaryRetryStrictJsonSystemPrompt_OverrideForStore" asp-input="StrengthsSummaryRetryStrictJsonSystemPrompt" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="StrengthsSummaryRetryStrictJsonSystemPrompt" /></div><div class="col-md-9"><nop-textarea asp-for="StrengthsSummaryRetryStrictJsonSystemPrompt" /><small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryRetryStrictJsonSystemPrompt.Hint")</small></div></div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="SupportPhoneNumber" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="SupportPhoneNumber_OverrideForStore" asp-input="SupportPhoneNumber" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="SupportPhoneNumber" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="SupportPhoneNumber" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.SupportPhoneNumber.Hint")</small>
@@ -88,27 +102,39 @@
                     <hr />
                     <h4>Azure OpenAI</h4>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="AzureOpenAiEndpointUrl" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="AzureOpenAiEndpointUrl_OverrideForStore" asp-input="AzureOpenAiEndpointUrl" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="AzureOpenAiEndpointUrl" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="AzureOpenAiEndpointUrl" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiEndpointUrl.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="AzureOpenAiApiKey" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="AzureOpenAiApiKey_OverrideForStore" asp-input="AzureOpenAiApiKey" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="AzureOpenAiApiKey" />
+                        </div>
                         <div class="col-md-9">
                             <input asp-for="AzureOpenAiApiKey" class="form-control" type="text" autocomplete="off" />
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="AzureOpenAiDeploymentOrModel" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="AzureOpenAiDeploymentOrModel_OverrideForStore" asp-input="AzureOpenAiDeploymentOrModel" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="AzureOpenAiDeploymentOrModel" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="AzureOpenAiDeploymentOrModel" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="StrengthsSummaryMaxCompletionTokens" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="StrengthsSummaryMaxCompletionTokens_OverrideForStore" asp-input="StrengthsSummaryMaxCompletionTokens" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="StrengthsSummaryMaxCompletionTokens" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="StrengthsSummaryMaxCompletionTokens" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens.Hint")</small>
@@ -156,37 +182,52 @@
                     <hr />
                     <h4>Azure Speech</h4>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="AzureSpeechKey" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="AzureSpeechKey_OverrideForStore" asp-input="AzureSpeechKey" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="AzureSpeechKey" />
+                        </div>
                         <div class="col-md-9">
                             <input asp-for="AzureSpeechKey" class="form-control" type="text" autocomplete="off" />
                         </div>
                     </div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureSpeechRegion" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechRegion" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="AzureSpeechRegion_OverrideForStore" asp-input="AzureSpeechRegion" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="AzureSpeechRegion" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechRegion" /></div></div>
                     <hr />
                     <h4>Azure Document Intelligence</h4>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="AzureDocumentIntelligenceEndpointUrl" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="AzureDocumentIntelligenceEndpointUrl_OverrideForStore" asp-input="AzureDocumentIntelligenceEndpointUrl" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="AzureDocumentIntelligenceEndpointUrl" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="AzureDocumentIntelligenceEndpointUrl" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceEndpointUrl.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="AzureDocumentIntelligenceApiKey" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="AzureDocumentIntelligenceApiKey_OverrideForStore" asp-input="AzureDocumentIntelligenceApiKey" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="AzureDocumentIntelligenceApiKey" />
+                        </div>
                         <div class="col-md-9">
                             <input asp-for="AzureDocumentIntelligenceApiKey" class="form-control" type="text" value="" autocomplete="off" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceApiKey.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="AzureDocumentIntelligenceModelId" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="AzureDocumentIntelligenceModelId_OverrideForStore" asp-input="AzureDocumentIntelligenceModelId" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="AzureDocumentIntelligenceModelId" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="AzureDocumentIntelligenceModelId" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceModelId.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="AzureDocumentIntelligenceTimeoutSeconds" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="AzureDocumentIntelligenceTimeoutSeconds_OverrideForStore" asp-input="AzureDocumentIntelligenceTimeoutSeconds" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="AzureDocumentIntelligenceTimeoutSeconds" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="AzureDocumentIntelligenceTimeoutSeconds" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds.Hint")</small>
@@ -194,24 +235,30 @@
                     </div>
                     <hr />
                     <h4>Usage tracking / pricing</h4>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="TrackAzureOpenAiUsage" /></div><div class="col-md-9"><nop-editor asp-for="TrackAzureOpenAiUsage" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="TrackAzureSpeechUsage" /></div><div class="col-md-9"><nop-editor asp-for="TrackAzureSpeechUsage" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="CalculateAzureCostPerInterview" /></div><div class="col-md-9"><nop-editor asp-for="CalculateAzureCostPerInterview" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureOpenAiPromptTokenPricePerThousand" /></div><div class="col-md-9"><nop-editor asp-for="AzureOpenAiPromptTokenPricePerThousand" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureOpenAiCompletionTokenPricePerThousand" /></div><div class="col-md-9"><nop-editor asp-for="AzureOpenAiCompletionTokenPricePerThousand" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureSpeechRecognitionPricePerHour" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechRecognitionPricePerHour" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureSpeechSynthesisPricePerThousandCharacters" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechSynthesisPricePerThousandCharacters" /></div></div>
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="AzureUsageCurrencyCode" /></div><div class="col-md-9"><nop-editor asp-for="AzureUsageCurrencyCode" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="TrackAzureOpenAiUsage_OverrideForStore" asp-input="TrackAzureOpenAiUsage" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="TrackAzureOpenAiUsage" /></div><div class="col-md-9"><nop-editor asp-for="TrackAzureOpenAiUsage" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="TrackAzureSpeechUsage_OverrideForStore" asp-input="TrackAzureSpeechUsage" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="TrackAzureSpeechUsage" /></div><div class="col-md-9"><nop-editor asp-for="TrackAzureSpeechUsage" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="CalculateAzureCostPerInterview_OverrideForStore" asp-input="CalculateAzureCostPerInterview" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="CalculateAzureCostPerInterview" /></div><div class="col-md-9"><nop-editor asp-for="CalculateAzureCostPerInterview" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="AzureOpenAiPromptTokenPricePerThousand_OverrideForStore" asp-input="AzureOpenAiPromptTokenPricePerThousand" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="AzureOpenAiPromptTokenPricePerThousand" /></div><div class="col-md-9"><nop-editor asp-for="AzureOpenAiPromptTokenPricePerThousand" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="AzureOpenAiCompletionTokenPricePerThousand_OverrideForStore" asp-input="AzureOpenAiCompletionTokenPricePerThousand" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="AzureOpenAiCompletionTokenPricePerThousand" /></div><div class="col-md-9"><nop-editor asp-for="AzureOpenAiCompletionTokenPricePerThousand" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="AzureSpeechRecognitionPricePerHour_OverrideForStore" asp-input="AzureSpeechRecognitionPricePerHour" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="AzureSpeechRecognitionPricePerHour" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechRecognitionPricePerHour" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="AzureSpeechSynthesisPricePerThousandCharacters_OverrideForStore" asp-input="AzureSpeechSynthesisPricePerThousandCharacters" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="AzureSpeechSynthesisPricePerThousandCharacters" /></div><div class="col-md-9"><nop-editor asp-for="AzureSpeechSynthesisPricePerThousandCharacters" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-override-store-checkbox asp-for="AzureUsageCurrencyCode_OverrideForStore" asp-input="AzureUsageCurrencyCode" asp-store-scope="@Model.ActiveStoreScopeConfiguration" /><nop-label asp-for="AzureUsageCurrencyCode" /></div><div class="col-md-9"><nop-editor asp-for="AzureUsageCurrencyCode" /></div></div>
                     <h4>Azure Blob storage</h4>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="AzureBlobStorageContainerUrl" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="AzureBlobStorageContainerUrl_OverrideForStore" asp-input="AzureBlobStorageContainerUrl" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="AzureBlobStorageContainerUrl" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="AzureBlobStorageContainerUrl" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="AzureBlobStorageSasToken" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="AzureBlobStorageSasToken_OverrideForStore" asp-input="AzureBlobStorageSasToken" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="AzureBlobStorageSasToken" />
+                        </div>
                         <div class="col-md-9">
                             <input asp-for="AzureBlobStorageSasToken" class="form-control" type="text" autocomplete="off" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint")</small>
@@ -220,42 +267,60 @@
                     <hr />
                     <h4>Runtime recording</h4>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="RecordingUploadMaxMb" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="RecordingUploadMaxMb_OverrideForStore" asp-input="RecordingUploadMaxMb" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="RecordingUploadMaxMb" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="RecordingUploadMaxMb" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb.Hint") Server hard cap is still enforced; the effective value cannot exceed that cap.</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="RecordingVideoBitsPerSecond" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="RecordingVideoBitsPerSecond_OverrideForStore" asp-input="RecordingVideoBitsPerSecond" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="RecordingVideoBitsPerSecond" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="RecordingVideoBitsPerSecond" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="RecordingAudioBitsPerSecond" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="RecordingAudioBitsPerSecond_OverrideForStore" asp-input="RecordingAudioBitsPerSecond" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="RecordingAudioBitsPerSecond" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="RecordingAudioBitsPerSecond" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RecordingAudioBitsPerSecond.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="RecordingSourceMode" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="RecordingSourceMode_OverrideForStore" asp-input="RecordingSourceMode" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="RecordingSourceMode" />
+                        </div>
                         <div class="col-md-9">
                             <nop-select asp-for="RecordingSourceMode" asp-items="Model.AvailableRecordingSourceModes" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RecordingSourceMode.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="RecordingUploadTimeoutMs" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="RecordingUploadTimeoutMs_OverrideForStore" asp-input="RecordingUploadTimeoutMs" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="RecordingUploadTimeoutMs" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="RecordingUploadTimeoutMs" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadTimeoutMs.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="FinalizationWaitTimeoutMs" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="FinalizationWaitTimeoutMs_OverrideForStore" asp-input="FinalizationWaitTimeoutMs" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="FinalizationWaitTimeoutMs" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="FinalizationWaitTimeoutMs" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.FinalizationWaitTimeoutMs.Hint")</small>
@@ -264,14 +329,20 @@
                     <hr />
                     <h4>Credits</h4>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="CreditProductSkuMappingsJson" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="CreditProductSkuMappingsJson_OverrideForStore" asp-input="CreditProductSkuMappingsJson" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="CreditProductSkuMappingsJson" />
+                        </div>
                         <div class="col-md-9">
                             <nop-textarea asp-for="CreditProductSkuMappingsJson" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.CreditProductSkuMappingsJson.Hint")</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-md-3"><nop-label asp-for="CreditPurchasePageUrl" /></div>
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="CreditPurchasePageUrl_OverrideForStore" asp-input="CreditPurchasePageUrl" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="CreditPurchasePageUrl" />
+                        </div>
                         <div class="col-md-9">
                             <nop-editor asp-for="CreditPurchasePageUrl" />
                             <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.CreditPurchasePageUrl.Hint")</small>

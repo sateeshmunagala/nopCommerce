@@ -37,12 +37,16 @@ public record AIInterviewConfigureModel : BaseNopModel
 
 public record AiServiceSettingsModel : BaseNopModel
 {
+    public int ActiveStoreScopeConfiguration { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.UseMockResponses")]
     public bool UseMockResponses { get; set; }
+    public bool UseMockResponses_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.Configure.MockInterviewQuestionCount")]
     [Range(1, 10)]
     public int MockInterviewQuestionCount { get; set; } = 5;
+    public bool MockInterviewQuestionCount_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Provider")]
     public string Provider { get; set; }
@@ -51,131 +55,173 @@ public record AiServiceSettingsModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.ApiKey")]
     public string ApiKey { get; set; }
+    public bool ApiKey_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Model")]
     public string Model { get; set; }
+    public bool Model_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Prompt")]
     public string Prompt { get; set; }
+    public bool Prompt_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.ResumeProfileExtractionSystemPrompt")]
     public string ResumeProfileExtractionSystemPrompt { get; set; } = AIInterviewDefaults.DefaultResumeProfileExtractionSystemPrompt;
+    public bool ResumeProfileExtractionSystemPrompt_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanSystemPrompt")]
     public string QuestionPlanSystemPrompt { get; set; } = AIInterviewDefaults.DefaultQuestionPlanSystemPrompt;
+    public bool QuestionPlanSystemPrompt_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanBuilderInstructionBlock")]
     public string QuestionPlanBuilderInstructionBlock { get; set; } = AIInterviewDefaults.DefaultQuestionPlanBuilderInstructionBlock;
+    public bool QuestionPlanBuilderInstructionBlock_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RuntimeQuestionGenerationSystemPrompt")]
     public string RuntimeQuestionGenerationSystemPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeQuestionGenerationSystemPrompt;
+    public bool RuntimeQuestionGenerationSystemPrompt_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RuntimeScoringSystemPrompt")]
     public string RuntimeScoringSystemPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeScoringSystemPrompt;
+    public bool RuntimeScoringSystemPrompt_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RuntimeScoringRetryAddendumPrompt")]
     public string RuntimeScoringRetryAddendumPrompt { get; set; } = AIInterviewDefaults.DefaultRuntimeScoringRetryAddendumPrompt;
+    public bool RuntimeScoringRetryAddendumPrompt_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.FinalScoringSystemPrompt")]
     public string FinalScoringSystemPrompt { get; set; } = AIInterviewDefaults.DefaultFinalScoringSystemPrompt;
+    public bool FinalScoringSystemPrompt_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummarySystemPrompt")]
     public string StrengthsSummarySystemPrompt { get; set; } = AIInterviewDefaults.DefaultStrengthsSummarySystemPrompt;
+    public bool StrengthsSummarySystemPrompt_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryRetryStrictJsonSystemPrompt")]
     public string StrengthsSummaryRetryStrictJsonSystemPrompt { get; set; } = AIInterviewDefaults.DefaultStrengthsSummaryRetryStrictJsonSystemPrompt;
+    public bool StrengthsSummaryRetryStrictJsonSystemPrompt_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.ServiceSettings")]
     public string ServiceSettings { get; set; }
+    public bool ServiceSettings_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.CreditProductSkuMappingsJson")]
     public string CreditProductSkuMappingsJson { get; set; }
+    public bool CreditProductSkuMappingsJson_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.CreditPurchasePageUrl")]
     public string CreditPurchasePageUrl { get; set; }
+    public bool CreditPurchasePageUrl_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.SupportPhoneNumber")]
     public string SupportPhoneNumber { get; set; }
+    public bool SupportPhoneNumber_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiEndpointUrl")]
     public string AzureOpenAiEndpointUrl { get; set; }
+    public bool AzureOpenAiEndpointUrl_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiApiKey")]
     public string AzureOpenAiApiKey { get; set; }
+    public bool AzureOpenAiApiKey_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel")]
     public string AzureOpenAiDeploymentOrModel { get; set; }
+    public bool AzureOpenAiDeploymentOrModel_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens")]
     public int StrengthsSummaryMaxCompletionTokens { get; set; } = AIInterviewDefaults.DefaultStrengthsSummaryMaxCompletionTokens;
+    public bool StrengthsSummaryMaxCompletionTokens_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechKey")]
     public string AzureSpeechKey { get; set; }
+    public bool AzureSpeechKey_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRegion")]
     public string AzureSpeechRegion { get; set; }
+    public bool AzureSpeechRegion_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceEndpointUrl")]
     public string AzureDocumentIntelligenceEndpointUrl { get; set; }
+    public bool AzureDocumentIntelligenceEndpointUrl_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceApiKey")]
     public string AzureDocumentIntelligenceApiKey { get; set; }
+    public bool AzureDocumentIntelligenceApiKey_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceModelId")]
     public string AzureDocumentIntelligenceModelId { get; set; }
+    public bool AzureDocumentIntelligenceModelId_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureDocumentIntelligenceTimeoutSeconds")]
     public int AzureDocumentIntelligenceTimeoutSeconds { get; set; }
+    public bool AzureDocumentIntelligenceTimeoutSeconds_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.TrackAzureOpenAiUsage")]
     public bool TrackAzureOpenAiUsage { get; set; }
+    public bool TrackAzureOpenAiUsage_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.TrackAzureSpeechUsage")]
     public bool TrackAzureSpeechUsage { get; set; }
+    public bool TrackAzureSpeechUsage_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.CalculateAzureCostPerInterview")]
     public bool CalculateAzureCostPerInterview { get; set; }
+    public bool CalculateAzureCostPerInterview_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiPromptTokenPricePerThousand")]
     public decimal AzureOpenAiPromptTokenPricePerThousand { get; set; }
+    public bool AzureOpenAiPromptTokenPricePerThousand_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiCompletionTokenPricePerThousand")]
     public decimal AzureOpenAiCompletionTokenPricePerThousand { get; set; }
+    public bool AzureOpenAiCompletionTokenPricePerThousand_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechRecognitionPricePerHour")]
     public decimal AzureSpeechRecognitionPricePerHour { get; set; }
+    public bool AzureSpeechRecognitionPricePerHour_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechSynthesisPricePerThousandCharacters")]
     public decimal AzureSpeechSynthesisPricePerThousandCharacters { get; set; }
+    public bool AzureSpeechSynthesisPricePerThousandCharacters_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureUsageCurrencyCode")]
     public string AzureUsageCurrencyCode { get; set; }
+    public bool AzureUsageCurrencyCode_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageContainerUrl")]
     public string AzureBlobStorageContainerUrl { get; set; }
+    public bool AzureBlobStorageContainerUrl_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken")]
     public string AzureBlobStorageSasToken { get; set; }
+    public bool AzureBlobStorageSasToken_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb")]
     public int RecordingUploadMaxMb { get; set; } = AIInterviewDefaults.DefaultRecordingUploadMaxMb;
+    public bool RecordingUploadMaxMb_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond")]
     public int RecordingVideoBitsPerSecond { get; set; } = AIInterviewDefaults.DefaultRecordingVideoBitsPerSecond;
+    public bool RecordingVideoBitsPerSecond_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RecordingAudioBitsPerSecond")]
     public int RecordingAudioBitsPerSecond { get; set; } = AIInterviewDefaults.DefaultRecordingAudioBitsPerSecond;
+    public bool RecordingAudioBitsPerSecond_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RecordingSourceMode")]
     public string RecordingSourceMode { get; set; } = AIInterviewDefaults.DefaultRecordingSourceMode;
+    public bool RecordingSourceMode_OverrideForStore { get; set; }
 
     public IList<SelectListItem> AvailableRecordingSourceModes { get; set; } = new List<SelectListItem>();
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadTimeoutMs")]
     public int RecordingUploadTimeoutMs { get; set; } = AIInterviewDefaults.DefaultRecordingUploadTimeoutMs;
+    public bool RecordingUploadTimeoutMs_OverrideForStore { get; set; }
 
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.FinalizationWaitTimeoutMs")]
     public int FinalizationWaitTimeoutMs { get; set; } = AIInterviewDefaults.DefaultFinalizationWaitTimeoutMs;
+    public bool FinalizationWaitTimeoutMs_OverrideForStore { get; set; }
 }
 
 public record SponsorInviteAdminModel : BaseNopModel

@@ -62,6 +62,7 @@ public class AIInterviewAdminController : BasePluginController
     private readonly IDateTimeHelper _dateTimeHelper;
     private readonly ILogger<AIInterviewAdminController> _logger;
     private readonly IWorkContext _workContext;
+    private readonly IStoreContext _storeContext;
     private readonly ISettingService _settingService;
     private readonly IRepository<Customer> _customerRepository;
     private readonly IRepository<InterviewSession> _sessionRepository;
@@ -104,7 +105,8 @@ public class AIInterviewAdminController : BasePluginController
         ICreditDepositNotificationService creditDepositNotificationService = null,
         IDownloadService downloadService = null,
         IAzureOpenAiChatCompletionAdapter azureOpenAiChatCompletionAdapter = null,
-        NopLogger nopLogger = null)
+        NopLogger nopLogger = null,
+        IStoreContext storeContext = null)
     {
         _creditService = creditService;
         _inviteService = inviteService;
@@ -120,6 +122,7 @@ public class AIInterviewAdminController : BasePluginController
         _dateTimeHelper = dateTimeHelper;
         _logger = logger;
         _workContext = workContext;
+        _storeContext = storeContext;
         _settingService = settingService;
         _customerRepository = customerRepository;
         _sessionRepository = sessionRepository;
@@ -198,10 +201,21 @@ public class AIInterviewAdminController : BasePluginController
 
         try
         {
-            var currentAiInterviewSettings = await _settingService.LoadSettingAsync<AIInterviewSettings>() ?? _aiInterviewSettings;
+            var storeScope = _storeContext != null
+                ? await _storeContext.GetActiveStoreScopeConfigurationAsync()
+                : 0;
 
-            _mockAIInterviewSettings.UseMockResponses = settingsModel.UseMockResponses;
-            await _settingService.SaveSettingAsync(_mockAIInterviewSettings);
+            var currentAiInterviewSettings =
+                await _settingService.LoadSettingAsync<AIInterviewSettings>(storeScope)
+                ?? _aiInterviewSettings;
+            var currentMockSettings =
+                await _settingService.LoadSettingAsync<MockAIInterviewSettings>(storeScope)
+                ?? _mockAIInterviewSettings;
+
+            currentMockSettings.UseMockResponses = settingsModel.UseMockResponses;
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentMockSettings, x => x.UseMockResponses,
+                settingsModel.UseMockResponses_OverrideForStore, storeScope, false);
 
             currentAiInterviewSettings.Provider = AzureOpenAiProviderValue;
             currentAiInterviewSettings.ApiKey = PreserveSecretIfBlank(settingsModel.ApiKey, currentAiInterviewSettings.ApiKey);
@@ -247,7 +261,138 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.RecordingSourceMode = NormalizeRecordingSourceMode(settingsModel.RecordingSourceMode);
             currentAiInterviewSettings.RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(settingsModel.RecordingUploadTimeoutMs);
             currentAiInterviewSettings.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(settingsModel.FinalizationWaitTimeoutMs, currentAiInterviewSettings.RecordingUploadTimeoutMs);
-            await _settingService.SaveSettingAsync(currentAiInterviewSettings);
+            await _settingService.SaveSettingAsync(
+                currentAiInterviewSettings, x => x.Provider, 0, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.ApiKey,
+                settingsModel.ApiKey_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.Model,
+                settingsModel.Model_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.Prompt,
+                settingsModel.Prompt_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.MockInterviewQuestionCount,
+                settingsModel.MockInterviewQuestionCount_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.ResumeProfileExtractionSystemPrompt,
+                settingsModel.ResumeProfileExtractionSystemPrompt_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.QuestionPlanSystemPrompt,
+                settingsModel.QuestionPlanSystemPrompt_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.QuestionPlanBuilderInstructionBlock,
+                settingsModel.QuestionPlanBuilderInstructionBlock_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.RuntimeQuestionGenerationSystemPrompt,
+                settingsModel.RuntimeQuestionGenerationSystemPrompt_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.RuntimeScoringSystemPrompt,
+                settingsModel.RuntimeScoringSystemPrompt_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.RuntimeScoringRetryAddendumPrompt,
+                settingsModel.RuntimeScoringRetryAddendumPrompt_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.FinalScoringSystemPrompt,
+                settingsModel.FinalScoringSystemPrompt_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.StrengthsSummarySystemPrompt,
+                settingsModel.StrengthsSummarySystemPrompt_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.StrengthsSummaryRetryStrictJsonSystemPrompt,
+                settingsModel.StrengthsSummaryRetryStrictJsonSystemPrompt_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.ServiceSettings,
+                settingsModel.ServiceSettings_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.CreditProductSkuMappingsJson,
+                settingsModel.CreditProductSkuMappingsJson_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.CreditPurchasePageUrl,
+                settingsModel.CreditPurchasePageUrl_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.SupportPhoneNumber,
+                settingsModel.SupportPhoneNumber_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureOpenAiEndpointUrl,
+                settingsModel.AzureOpenAiEndpointUrl_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureOpenAiApiKey,
+                settingsModel.AzureOpenAiApiKey_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureOpenAiDeploymentOrModel,
+                settingsModel.AzureOpenAiDeploymentOrModel_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.StrengthsSummaryMaxCompletionTokens,
+                settingsModel.StrengthsSummaryMaxCompletionTokens_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureSpeechKey,
+                settingsModel.AzureSpeechKey_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureSpeechRegion,
+                settingsModel.AzureSpeechRegion_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureDocumentIntelligenceEndpointUrl,
+                settingsModel.AzureDocumentIntelligenceEndpointUrl_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureDocumentIntelligenceApiKey,
+                settingsModel.AzureDocumentIntelligenceApiKey_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureDocumentIntelligenceModelId,
+                settingsModel.AzureDocumentIntelligenceModelId_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureDocumentIntelligenceTimeoutSeconds,
+                settingsModel.AzureDocumentIntelligenceTimeoutSeconds_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.TrackAzureOpenAiUsage,
+                settingsModel.TrackAzureOpenAiUsage_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.TrackAzureSpeechUsage,
+                settingsModel.TrackAzureSpeechUsage_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.CalculateAzureCostPerInterview,
+                settingsModel.CalculateAzureCostPerInterview_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureOpenAiPromptTokenPricePerThousand,
+                settingsModel.AzureOpenAiPromptTokenPricePerThousand_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureOpenAiCompletionTokenPricePerThousand,
+                settingsModel.AzureOpenAiCompletionTokenPricePerThousand_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureSpeechRecognitionPricePerHour,
+                settingsModel.AzureSpeechRecognitionPricePerHour_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureSpeechSynthesisPricePerThousandCharacters,
+                settingsModel.AzureSpeechSynthesisPricePerThousandCharacters_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureUsageCurrencyCode,
+                settingsModel.AzureUsageCurrencyCode_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureBlobStorageContainerUrl,
+                settingsModel.AzureBlobStorageContainerUrl_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.AzureBlobStorageSasToken,
+                settingsModel.AzureBlobStorageSasToken_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.RecordingUploadMaxMb,
+                settingsModel.RecordingUploadMaxMb_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.RecordingVideoBitsPerSecond,
+                settingsModel.RecordingVideoBitsPerSecond_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.RecordingAudioBitsPerSecond,
+                settingsModel.RecordingAudioBitsPerSecond_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.RecordingSourceMode,
+                settingsModel.RecordingSourceMode_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.RecordingUploadTimeoutMs,
+                settingsModel.RecordingUploadTimeoutMs_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.FinalizationWaitTimeoutMs,
+                settingsModel.FinalizationWaitTimeoutMs_OverrideForStore, storeScope, false);
+            await _settingService.ClearCacheAsync();
         }
         catch (Exception exception)
         {
@@ -265,7 +410,12 @@ public class AIInterviewAdminController : BasePluginController
     [HttpPost]
     public async Task<IActionResult> TestAzureOpenAiConnection()
     {
-        var aiInterviewSettings = await _settingService.LoadSettingAsync<AIInterviewSettings>() ?? _aiInterviewSettings;
+        var storeScope = _storeContext != null
+            ? await _storeContext.GetActiveStoreScopeConfigurationAsync()
+            : 0;
+        var aiInterviewSettings =
+            await _settingService.LoadSettingAsync<AIInterviewSettings>(storeScope)
+            ?? _aiInterviewSettings;
         var endpointConfigured = !string.IsNullOrWhiteSpace(aiInterviewSettings?.AzureOpenAiEndpointUrl);
         var apiKeyConfigured = !string.IsNullOrWhiteSpace(aiInterviewSettings?.AzureOpenAiApiKey);
         var deploymentConfigured = !string.IsNullOrWhiteSpace(aiInterviewSettings?.AzureOpenAiDeploymentOrModel);
@@ -1678,8 +1828,15 @@ public class AIInterviewAdminController : BasePluginController
 
     protected virtual async Task<AiServiceSettingsModel> PrepareAiServiceModelAsync(AiServiceSettingsModel model = null)
     {
-        var aiInterviewSettings = await _settingService.LoadSettingAsync<AIInterviewSettings>() ?? _aiInterviewSettings;
-        var mockAIInterviewSettings = await _settingService.LoadSettingAsync<MockAIInterviewSettings>() ?? _mockAIInterviewSettings;
+        var storeScope = _storeContext != null
+            ? await _storeContext.GetActiveStoreScopeConfigurationAsync()
+            : 0;
+        var aiInterviewSettings =
+            await _settingService.LoadSettingAsync<AIInterviewSettings>(storeScope)
+            ?? _aiInterviewSettings;
+        var mockAIInterviewSettings =
+            await _settingService.LoadSettingAsync<MockAIInterviewSettings>(storeScope)
+            ?? _mockAIInterviewSettings;
 
         model ??= new AiServiceSettingsModel
         {
@@ -1743,6 +1900,113 @@ public class AIInterviewAdminController : BasePluginController
         model.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(model.FinalizationWaitTimeoutMs, model.RecordingUploadTimeoutMs);
         model.AvailableProviders = BuildProviderSelectList(model.Provider);
         model.AvailableRecordingSourceModes = BuildRecordingSourceModeSelectList(model.RecordingSourceMode);
+        model.ActiveStoreScopeConfiguration = storeScope;
+
+        if (storeScope > 0)
+        {
+            model.UseMockResponses_OverrideForStore = await _settingService.SettingExistsAsync(
+                mockAIInterviewSettings, x => x.UseMockResponses, storeScope);
+            model.MockInterviewQuestionCount_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.MockInterviewQuestionCount, storeScope);
+            model.ApiKey_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.ApiKey, storeScope);
+            model.Model_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.Model, storeScope);
+            model.Prompt_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.Prompt, storeScope);
+            model.ServiceSettings_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.ServiceSettings, storeScope);
+            model.ResumeProfileExtractionSystemPrompt_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.ResumeProfileExtractionSystemPrompt, storeScope);
+            model.QuestionPlanSystemPrompt_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.QuestionPlanSystemPrompt, storeScope);
+            model.QuestionPlanBuilderInstructionBlock_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.QuestionPlanBuilderInstructionBlock, storeScope);
+            model.RuntimeQuestionGenerationSystemPrompt_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.RuntimeQuestionGenerationSystemPrompt, storeScope);
+            model.RuntimeScoringSystemPrompt_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.RuntimeScoringSystemPrompt, storeScope);
+            model.RuntimeScoringRetryAddendumPrompt_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.RuntimeScoringRetryAddendumPrompt, storeScope);
+            model.FinalScoringSystemPrompt_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.FinalScoringSystemPrompt, storeScope);
+            model.StrengthsSummarySystemPrompt_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.StrengthsSummarySystemPrompt, storeScope);
+            model.StrengthsSummaryRetryStrictJsonSystemPrompt_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.StrengthsSummaryRetryStrictJsonSystemPrompt, storeScope);
+            model.CreditProductSkuMappingsJson_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.CreditProductSkuMappingsJson, storeScope);
+            model.CreditPurchasePageUrl_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.CreditPurchasePageUrl, storeScope);
+            model.SupportPhoneNumber_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.SupportPhoneNumber, storeScope);
+            model.AzureOpenAiEndpointUrl_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.AzureOpenAiEndpointUrl, storeScope);
+            model.AzureOpenAiApiKey_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.AzureOpenAiApiKey, storeScope);
+            model.AzureOpenAiDeploymentOrModel_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.AzureOpenAiDeploymentOrModel, storeScope);
+            model.StrengthsSummaryMaxCompletionTokens_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.StrengthsSummaryMaxCompletionTokens, storeScope);
+            model.AzureSpeechKey_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.AzureSpeechKey, storeScope);
+            model.AzureSpeechRegion_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.AzureSpeechRegion, storeScope);
+            model.AzureDocumentIntelligenceEndpointUrl_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.AzureDocumentIntelligenceEndpointUrl, storeScope);
+            model.AzureDocumentIntelligenceApiKey_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.AzureDocumentIntelligenceApiKey, storeScope);
+            model.AzureDocumentIntelligenceModelId_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.AzureDocumentIntelligenceModelId, storeScope);
+            model.AzureDocumentIntelligenceTimeoutSeconds_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.AzureDocumentIntelligenceTimeoutSeconds, storeScope);
+            model.TrackAzureOpenAiUsage_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.TrackAzureOpenAiUsage, storeScope);
+            model.TrackAzureSpeechUsage_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.TrackAzureSpeechUsage, storeScope);
+            model.CalculateAzureCostPerInterview_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.CalculateAzureCostPerInterview, storeScope);
+            model.AzureOpenAiPromptTokenPricePerThousand_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.AzureOpenAiPromptTokenPricePerThousand, storeScope);
+            model.AzureOpenAiCompletionTokenPricePerThousand_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.AzureOpenAiCompletionTokenPricePerThousand, storeScope);
+            model.AzureSpeechRecognitionPricePerHour_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.AzureSpeechRecognitionPricePerHour, storeScope);
+            model.AzureSpeechSynthesisPricePerThousandCharacters_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.AzureSpeechSynthesisPricePerThousandCharacters, storeScope);
+            model.AzureUsageCurrencyCode_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.AzureUsageCurrencyCode, storeScope);
+            model.AzureBlobStorageContainerUrl_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.AzureBlobStorageContainerUrl, storeScope);
+            model.AzureBlobStorageSasToken_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.AzureBlobStorageSasToken, storeScope);
+            model.RecordingUploadMaxMb_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.RecordingUploadMaxMb, storeScope);
+            model.RecordingVideoBitsPerSecond_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.RecordingVideoBitsPerSecond, storeScope);
+            model.RecordingAudioBitsPerSecond_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.RecordingAudioBitsPerSecond, storeScope);
+            model.RecordingSourceMode_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.RecordingSourceMode, storeScope);
+            model.RecordingUploadTimeoutMs_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.RecordingUploadTimeoutMs, storeScope);
+            model.FinalizationWaitTimeoutMs_OverrideForStore = await _settingService.SettingExistsAsync(
+                aiInterviewSettings, x => x.FinalizationWaitTimeoutMs, storeScope);
+        }
+
         return model;
     }
 
