@@ -11939,3 +11939,201 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
         text-align: center;
     }
 }
+
+/* ===================================================
+   PHASE 6 - VENDOR PORTAL ADMIN LAYOUT
+   =================================================== */
+
+/* Hide public top navigation bar on vendor portal pages */
+.html-vendor-portal-page .header-lower .menu-container {
+    display: none !important;
+}
+
+/* Expand account layout to use full available width on portal pages */
+.html-vendor-portal-page.html-account-page .master-wrapper-content {
+    max-width: 100%;
+}
+
+.html-vendor-portal-page.html-account-page .master-column-wrapper {
+    max-width: 1400px;
+    margin: 0 auto;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 0;
+    padding: 0;
+    align-items: stretch;
+    min-height: calc(100vh - 64px);
+}
+
+/* Sidebar: full-height admin drawer style */
+.html-vendor-portal-page .block-account-navigation {
+    position: sticky;
+    top: 64px;
+    min-height: calc(100vh - 64px);
+    border-right: 1px solid #2d3440;
+    background: #1a1f27;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Override light background for vendor portal nav header */
+.html-vendor-portal-page .block-account-navigation .title {
+    background: #1a1f27;
+    color: #35d6b4;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    padding: 20px 20px 12px;
+    border-bottom: 1px solid #2d3440;
+}
+
+/* Nav list items for vendor portal */
+.html-vendor-portal-page .block-account-navigation .list {
+    flex: 1;
+    padding: 8px 0;
+}
+
+.html-vendor-portal-page .block-account-navigation .list > li {
+    border-bottom: 0;
+}
+
+.html-vendor-portal-page .block-account-navigation a {
+    padding: 12px 20px;
+    color: #9aa3b0;
+    font-size: 0.88rem;
+    letter-spacing: 0.04em;
+    border-left: 3px solid transparent;
+}
+
+.html-vendor-portal-page .block-account-navigation a:hover,
+.html-vendor-portal-page .block-account-navigation li.inactive a:hover {
+    background: #232830;
+    color: #c8d0dc;
+}
+
+.html-vendor-portal-page .block-account-navigation li.active a {
+    border-left: 3px solid #35d6b4;
+    padding-left: 17px;
+    background: #232830;
+    color: #35d6b4;
+}
+
+/* Section divider label before first vendor-specific nav item */
+.html-vendor-portal-page .block-account-navigation .institute-nav-candidates::before,
+.html-vendor-portal-page .block-account-navigation .vendor-employer-dashboard::before,
+.html-vendor-portal-page .block-account-navigation .institute-dashboard::before {
+    content: "PORTAL";
+    display: block;
+    padding: 14px 20px 4px;
+    color: #4d5666;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    pointer-events: none;
+}
+
+/* Remove duplicate divider if multiple vendor items exist */
+.html-vendor-portal-page .block-account-navigation .institute-nav-candidates::before,
+.html-vendor-portal-page .block-account-navigation .institute-nav-credits::before {
+    content: none;
+}
+
+/* Main content area padding for portal pages */
+.html-vendor-portal-page.html-account-page .center-2 {
+    padding: 28px 32px 48px;
+    background: #f4f5f7;
+    min-height: calc(100vh - 64px);
+}
+
+/* Page title styling for vendor portal */
+.html-vendor-portal-page .account-page .page-title {
+    border-bottom: 1px solid #dde1e8;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+}
+
+.html-vendor-portal-page .account-page .page-title h1 {
+    font-size: 1.6rem;
+    color: #1a1f27;
+}
+
+/* Toggle button: portal pages use icon-only label */
+.html-vendor-portal-page .jb-account-nav-toggle {
+    background: #1a1f27;
+    color: #35d6b4;
+    border: 0;
+    padding: 12px 18px;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    width: 100%;
+    text-align: left;
+}
+
+/* ---- MOBILE VENDOR PORTAL (<= 1000px) ---- */
+@media (max-width: 1000px) {
+    .html-vendor-portal-page.html-account-page .master-column-wrapper {
+        display: block;
+        padding: 0;
+        min-height: 0;
+    }
+
+    .html-vendor-portal-page .block-account-navigation {
+        position: static;
+        min-height: 0;
+        border-right: 0;
+        border-bottom: 1px solid #2d3440;
+    }
+
+    .html-vendor-portal-page .block-account-navigation .list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 0;
+    }
+
+    .html-vendor-portal-page .block-account-navigation .list > li {
+        border-bottom: 1px solid #2d3440;
+        border-right: 1px solid #2d3440;
+    }
+
+    .html-vendor-portal-page .block-account-navigation a {
+        padding: 12px 14px;
+        font-size: 0.82rem;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    .html-vendor-portal-page .block-account-navigation .title {
+        padding: 14px 18px 10px;
+    }
+
+    .html-vendor-portal-page .block-account-navigation .institute-nav-candidates::before,
+    .html-vendor-portal-page .block-account-navigation .vendor-employer-dashboard::before,
+    .html-vendor-portal-page .block-account-navigation .institute-dashboard::before {
+        content: none;
+    }
+
+    .html-vendor-portal-page.html-account-page .center-2 {
+        padding: 20px 16px 36px;
+        min-height: 0;
+    }
+
+    .html-vendor-portal-page .account-page .page-title h1 {
+        font-size: 1.35rem;
+    }
+}
+
+/* ---- DRAWER OVERLAY MODE (jb-account-nav-enhanced) ---- */
+@media (max-width: 1000px) {
+    body.jb-vendor-portal-page.jb-account-nav-enhanced #jb-account-navigation {
+        background: #1a1f27;
+    }
+
+    body.jb-vendor-portal-page.jb-account-nav-enhanced .block-account-navigation .list {
+        grid-template-columns: 1fr;
+    }
+
+    body.jb-vendor-portal-page.jb-account-nav-enhanced .block-account-navigation .list > li {
+        border-right: 0;
+    }
+}

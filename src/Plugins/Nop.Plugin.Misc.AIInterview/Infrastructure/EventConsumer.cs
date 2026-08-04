@@ -44,19 +44,29 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                 foreach (var legacyActivityItem in legacyActivityItems)
                     navigationModel.CustomerNavigationItems.Remove(legacyActivityItem);
 
-                if (!navigationModel.CustomerNavigationItems.Any(item =>
-                    string.Equals(item.RouteName, AIInterviewDefaults.MyActivityRouteName, StringComparison.OrdinalIgnoreCase)))
+                var customer = await _workContext.GetCurrentCustomerAsync();
+                var isInstituteVendor = customer != null && customer.VendorId > 0
+                    && await _customerService.IsInCustomerRoleAsync(customer, "Institute", true);
+
+                // Only applicants (non-vendor customers) should see My Activity
+                if (customer == null || customer.VendorId == 0)
                 {
-                    navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                    if (!navigationModel.CustomerNavigationItems.Any(item =>
+                        string.Equals(item.RouteName, AIInterviewDefaults.MyActivityRouteName,
+                            StringComparison.OrdinalIgnoreCase)))
                     {
-                        RouteName = AIInterviewDefaults.MyActivityRouteName,
-                        Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.MyActivity.Title"),
-                        Tab = AIInterviewDefaults.MyActivityNavigationTab,
-                        ItemClass = "customer-my-activity"
-                    });
+                        navigationModel.CustomerNavigationItems.Add(
+                            new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                            {
+                                RouteName = AIInterviewDefaults.MyActivityRouteName,
+                                Title = await _localizationService.GetResourceAsync(
+                                    "Plugins.Misc.AIInterview.MyActivity.Title"),
+                                Tab = AIInterviewDefaults.MyActivityNavigationTab,
+                                ItemClass = "customer-my-activity"
+                            });
+                    }
                 }
 
-                var customer = await _workContext.GetCurrentCustomerAsync();
                 if (customer != null && customer.VendorId > 0)
                 {
                     var legacyEmployerItems = navigationModel.CustomerNavigationItems
@@ -70,21 +80,23 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     foreach (var legacyEmployerItem in legacyEmployerItems)
                         navigationModel.CustomerNavigationItems.Remove(legacyEmployerItem);
 
-                    if (!navigationModel.CustomerNavigationItems.Any(item =>
-                        string.Equals(item.RouteName, AIInterviewDefaults.EmployerDashboardRouteName, StringComparison.OrdinalIgnoreCase)))
+                    if (!isInstituteVendor)
                     {
-                        navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                        if (!navigationModel.CustomerNavigationItems.Any(item =>
+                            string.Equals(item.RouteName, AIInterviewDefaults.EmployerDashboardRouteName, StringComparison.OrdinalIgnoreCase)))
                         {
-                            RouteName = AIInterviewDefaults.EmployerDashboardRouteName,
-                            Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Dashboard.Title"),
-                            Tab = AIInterviewDefaults.EmployerDashboardNavigationTab,
-                            ItemClass = "vendor-employer-dashboard"
-                        });
+                            navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                            {
+                                RouteName = AIInterviewDefaults.EmployerDashboardRouteName,
+                                Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Dashboard.Title"),
+                                Tab = AIInterviewDefaults.EmployerDashboardNavigationTab,
+                                ItemClass = "vendor-employer-dashboard"
+                            });
+                        }
                     }
                 }
 
-                if (customer != null && customer.VendorId > 0
-                    && await _customerService.IsInCustomerRoleAsync(customer, "Institute", true))
+                if (isInstituteVendor)
                 {
                     if (!navigationModel.CustomerNavigationItems.Any(item =>
                         string.Equals(item.RouteName,
@@ -98,6 +110,36 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                                 Title = "Institute Dashboard",
                                 Tab = AIInterviewDefaults.InstituteDashboardNavigationTab,
                                 ItemClass = "institute-dashboard"
+                            });
+                    }
+
+                    if (!navigationModel.CustomerNavigationItems.Any(item =>
+                        string.Equals(item.RouteName,
+                            AIInterviewDefaults.InstituteCandidatesRouteName,
+                            StringComparison.OrdinalIgnoreCase)))
+                    {
+                        navigationModel.CustomerNavigationItems.Add(
+                            new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                            {
+                                RouteName = AIInterviewDefaults.InstituteCandidatesRouteName,
+                                Title = "Candidates",
+                                Tab = AIInterviewDefaults.InstituteDashboardNavigationTab,
+                                ItemClass = "institute-nav-candidates"
+                            });
+                    }
+
+                    if (!navigationModel.CustomerNavigationItems.Any(item =>
+                        string.Equals(item.RouteName,
+                            AIInterviewDefaults.InstituteCreditsRouteName,
+                            StringComparison.OrdinalIgnoreCase)))
+                    {
+                        navigationModel.CustomerNavigationItems.Add(
+                            new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                            {
+                                RouteName = AIInterviewDefaults.InstituteCreditsRouteName,
+                                Title = "Credits",
+                                Tab = AIInterviewDefaults.InstituteDashboardNavigationTab,
+                                ItemClass = "institute-nav-credits"
                             });
                     }
                 }
