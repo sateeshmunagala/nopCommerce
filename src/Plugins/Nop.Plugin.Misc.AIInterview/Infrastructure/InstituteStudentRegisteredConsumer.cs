@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Data;
@@ -14,15 +15,18 @@ public class InstituteStudentRegisteredConsumer : IConsumer<CustomerRegisteredEv
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IGenericAttributeService _genericAttributeService;
     private readonly IVendorService _vendorService;
+    private readonly ILogger<InstituteStudentRegisteredConsumer> _logger;
 
     public InstituteStudentRegisteredConsumer(
         IHttpContextAccessor httpContextAccessor,
         IGenericAttributeService genericAttributeService,
-        IVendorService vendorService)
+        IVendorService vendorService,
+        ILogger<InstituteStudentRegisteredConsumer> logger)
     {
         _httpContextAccessor = httpContextAccessor;
         _genericAttributeService = genericAttributeService;
         _vendorService = vendorService;
+        _logger = logger;
     }
 
     public async Task HandleEventAsync(CustomerRegisteredEvent eventMessage)
@@ -57,17 +61,10 @@ public class InstituteStudentRegisteredConsumer : IConsumer<CustomerRegisteredEv
 
     protected virtual async Task<int> ResolveInstituteVendorIdAsync(string registrationValue)
     {
-        if (InstituteRegistrationSlugHelper.TryResolveLegacyVendorId(registrationValue, out var legacyVendorId))
-            return legacyVendorId;
-
-        var slug = InstituteRegistrationSlugHelper.NormalizeRegistrationValue(registrationValue);
-        if (string.IsNullOrWhiteSpace(slug) || _vendorService == null)
-            return 0;
-
-        var vendors = await _vendorService.GetAllVendorsAsync(showHidden: true);
-        var vendor = vendors.FirstOrDefault(vendor =>
-            string.Equals(InstituteRegistrationSlugHelper.BuildSlug(vendor.Name), slug, StringComparison.OrdinalIgnoreCase));
-
-        return vendor?.Id ?? 0;
+        return await InstituteRegistrationSlugService.ResolveVendorIdAsync(
+            _vendorService,
+            registrationValue,
+            _logger,
+            nameof(InstituteStudentRegisteredConsumer));
     }
 }

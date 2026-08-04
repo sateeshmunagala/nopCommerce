@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Nop.Core;
 using Nop.Plugin.Misc.AIInterview.Infrastructure;
 using Nop.Services.Customers;
@@ -15,19 +16,22 @@ public class AIInterviewInstituteRedirectViewComponent : NopViewComponent
     private readonly IVendorService _vendorService;
     private readonly AIInterviewSettings _settings;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<AIInterviewInstituteRedirectViewComponent> _logger;
 
     public AIInterviewInstituteRedirectViewComponent(
         IWorkContext workContext,
         ICustomerService customerService,
         IVendorService vendorService,
         AIInterviewSettings settings,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<AIInterviewInstituteRedirectViewComponent> logger)
     {
         _workContext = workContext;
         _customerService = customerService;
         _vendorService = vendorService;
         _settings = settings;
         _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData)
@@ -69,15 +73,10 @@ public class AIInterviewInstituteRedirectViewComponent : NopViewComponent
 
     protected virtual async Task<bool> CanResolveInstituteRegistrationValueAsync(string registrationValue)
     {
-        if (InstituteRegistrationSlugHelper.TryResolveLegacyVendorId(registrationValue, out _))
-            return true;
-
-        var slug = InstituteRegistrationSlugHelper.NormalizeRegistrationValue(registrationValue);
-        if (string.IsNullOrWhiteSpace(slug) || _vendorService == null)
-            return false;
-
-        var vendors = await _vendorService.GetAllVendorsAsync(showHidden: true);
-        return vendors.Any(vendor =>
-            string.Equals(InstituteRegistrationSlugHelper.BuildSlug(vendor.Name), slug, StringComparison.OrdinalIgnoreCase));
+        return await InstituteRegistrationSlugService.ResolveVendorIdAsync(
+            _vendorService,
+            registrationValue,
+            _logger,
+            nameof(AIInterviewInstituteRedirectViewComponent)) > 0;
     }
 }

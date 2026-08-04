@@ -1079,23 +1079,16 @@ public class AIInterviewController : BasePluginController
 
     protected static string BuildInstituteSlug(string vendorName)
     {
-        return InstituteRegistrationSlugHelper.BuildSlug(vendorName);
+        return InstituteRegistrationSlugService.BuildSlug(vendorName);
     }
 
     protected virtual async Task<int> ResolveInstituteVendorIdFromRegistrationValueAsync(string registrationValue)
     {
-        if (InstituteRegistrationSlugHelper.TryResolveLegacyVendorId(registrationValue, out var legacyVendorId))
-            return legacyVendorId;
-
-        var slug = InstituteRegistrationSlugHelper.NormalizeRegistrationValue(registrationValue);
-        if (string.IsNullOrWhiteSpace(slug) || _vendorService == null)
-            return 0;
-
-        var vendors = await _vendorService.GetAllVendorsAsync(showHidden: true);
-        var vendor = vendors.FirstOrDefault(vendor =>
-            string.Equals(BuildInstituteSlug(vendor.Name), slug, StringComparison.OrdinalIgnoreCase));
-
-        return vendor?.Id ?? 0;
+        return await InstituteRegistrationSlugService.ResolveVendorIdAsync(
+            _vendorService,
+            registrationValue,
+            _logger,
+            nameof(AIInterviewController));
     }
 
     protected virtual async Task<IList<Customer>> GetInstituteStudentsAsync(int vendorId)
@@ -1150,6 +1143,16 @@ public class AIInterviewController : BasePluginController
         var slug = vendor != null ? BuildInstituteSlug(vendor.Name) : "institute";
         if (string.IsNullOrWhiteSpace(slug))
             slug = "institute";
+
+        if (!await InstituteRegistrationSlugService.IsSlugUniqueForVendorAsync(
+            _vendorService,
+            slug,
+            customer.VendorId,
+            _logger,
+            nameof(BuildInstituteJoinUrlAsync)))
+        {
+            return string.Empty;
+        }
 
         return $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={slug}";
     }
@@ -1330,6 +1333,24 @@ public class AIInterviewController : BasePluginController
     {
         if (entry == null)
             return "Ledger entry";
+
+        var isDeposit = string.Equals(entry.TransactionType, "Deposit", StringComparison.OrdinalIgnoreCase) || entry.Amount > 0;
+        var isWithdrawal = string.Equals(entry.TransactionType, "Withdrawal", StringComparison.OrdinalIgnoreCase) || entry.Amount < 0;
+
+        if (string.Equals(entry.LedgerSource, CreditLedgerSources.Adjustment, StringComparison.OrdinalIgnoreCase))
+            return isDeposit ? "Allocated by institute" : isWithdrawal ? "Deallocated by institute" : "Institute adjustment";
+
+        if (string.Equals(entry.LedgerSource, CreditLedgerSources.InterviewUsage, StringComparison.OrdinalIgnoreCase))
+            return "Interview usage";
+
+        if (string.Equals(entry.LedgerSource, CreditLedgerSources.SponsorInterviewUsage, StringComparison.OrdinalIgnoreCase))
+            return "Sponsored interview usage";
+
+        if (string.Equals(entry.LedgerSource, CreditLedgerSources.Order, StringComparison.OrdinalIgnoreCase))
+            return "Credit purchase";
+
+        if (string.Equals(entry.LedgerSource, CreditLedgerSources.AdminTopUp, StringComparison.OrdinalIgnoreCase))
+            return "Admin top-up";
 
         if (string.Equals(entry.TransactionType, "Deposit", StringComparison.OrdinalIgnoreCase))
             return "Credit added";
