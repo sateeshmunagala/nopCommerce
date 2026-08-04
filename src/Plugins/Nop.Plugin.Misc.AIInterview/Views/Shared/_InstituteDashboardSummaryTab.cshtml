@@ -21,6 +21,13 @@
             </p>
         </div>
     }
+    else if (!string.IsNullOrWhiteSpace(Model.JoinUrlUnavailableMessage))
+    {
+        <div class="institute-join-url-status" role="status">
+            <strong>Applicant registration link unavailable</strong>
+            <p>@Model.JoinUrlUnavailableMessage</p>
+        </div>
+    }
 
     <div class="institute-credit-summary-grid">
         <div class="institute-credit-summary-card">

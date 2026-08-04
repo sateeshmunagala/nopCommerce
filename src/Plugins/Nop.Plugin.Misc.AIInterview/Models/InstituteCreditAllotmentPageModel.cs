@@ -27,6 +27,7 @@ public record InstituteDashboardPageModel
     public int SelectedNavigationTab { get; init; }
     public string VendorName { get; init; }
     public string JoinUrl { get; init; }
+    public string JoinUrlUnavailableMessage { get; init; }
     public decimal TotalCredits { get; init; }
     public decimal AvailableCredits { get; init; }
     public decimal ConsumedCredits { get; init; }

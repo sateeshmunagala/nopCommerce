@@ -1162,6 +1162,7 @@ public class AIInterviewController : BasePluginController
         var activeTab = NormalizeInstituteDashboardTab(tab);
         var students = await GetInstituteStudentsAsync(customer.VendorId);
         var instituteWallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
+        var joinUrl = await BuildInstituteJoinUrlAsync(customer);
         var candidates = new List<InstituteCandidateModel>();
         var studentWalletIds = new List<int>();
         decimal studentCurrentBalances = 0;
@@ -1211,7 +1212,10 @@ public class AIInterviewController : BasePluginController
             ActiveTab = activeTab,
             SelectedNavigationTab = GetInstituteNavigationTab(activeTab),
             VendorName = vendor?.Name ?? vendorName,
-            JoinUrl = await BuildInstituteJoinUrlAsync(customer),
+            JoinUrl = joinUrl,
+            JoinUrlUnavailableMessage = string.IsNullOrWhiteSpace(joinUrl)
+                ? "Applicant registration link is unavailable because this institute name does not produce a unique registration slug. Contact support or an administrator to update the institute name and generate a unique link."
+                : null,
             AvailableCredits = instituteWallet.Balance,
             ConsumedCredits = consumedCredits,
             TotalCredits = instituteWallet.Balance + studentCurrentBalances + consumedCredits,
@@ -1291,7 +1295,7 @@ public class AIInterviewController : BasePluginController
                 Action = BuildInstituteLedgerAction(entry),
                 Amount = entry.Amount,
                 RunningBalance = runningBalance,
-                Source = string.IsNullOrWhiteSpace(entry.LedgerSource) ? "-" : entry.LedgerSource,
+                Source = BuildInstituteLedgerSource(entry),
                 Remarks = entry.Remarks ?? string.Empty
             };
         }).ToList();
@@ -1352,13 +1356,24 @@ public class AIInterviewController : BasePluginController
         if (string.Equals(entry.LedgerSource, CreditLedgerSources.AdminTopUp, StringComparison.OrdinalIgnoreCase))
             return "Admin top-up";
 
-        if (string.Equals(entry.TransactionType, "Deposit", StringComparison.OrdinalIgnoreCase))
-            return "Credit added";
+        return "Ledger entry";
+    }
 
-        if (string.Equals(entry.TransactionType, "Withdrawal", StringComparison.OrdinalIgnoreCase))
-            return "Credit used";
+    protected static string BuildInstituteLedgerSource(CreditLedgerEntry entry)
+    {
+        if (!IsKnownInstituteLedgerSource(entry?.LedgerSource))
+            return "-";
 
-        return string.IsNullOrWhiteSpace(entry.TransactionType) ? "Ledger entry" : entry.TransactionType;
+        return entry.LedgerSource;
+    }
+
+    protected static bool IsKnownInstituteLedgerSource(string source)
+    {
+        return string.Equals(source, CreditLedgerSources.Adjustment, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(source, CreditLedgerSources.InterviewUsage, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(source, CreditLedgerSources.SponsorInterviewUsage, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(source, CreditLedgerSources.Order, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(source, CreditLedgerSources.AdminTopUp, StringComparison.OrdinalIgnoreCase);
     }
 
     [HttpPost]
