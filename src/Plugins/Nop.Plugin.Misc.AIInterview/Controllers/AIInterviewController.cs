@@ -76,6 +76,7 @@ public class AIInterviewController : BasePluginController
     private readonly ICreditActivityService _creditActivityService;
     private readonly IVendorService _vendorService;
     private readonly IRepository<GenericAttribute> _genericAttributeRepository;
+    private readonly IRepository<CreditLedgerEntry> _creditLedgerRepository;
     private readonly ILogger<AIInterviewController> _logger;
 
     public AIInterviewController(IApplicationService applicationService,
@@ -109,6 +110,7 @@ public class AIInterviewController : BasePluginController
         ICreditActivityService creditActivityService = null,
         IVendorService vendorService = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
+        IRepository<CreditLedgerEntry> creditLedgerRepository = null,
         ILogger<AIInterviewController> logger = null)
     {
         _applicationService = applicationService;
@@ -142,6 +144,7 @@ public class AIInterviewController : BasePluginController
         _creditActivityService = creditActivityService;
         _vendorService = vendorService;
         _genericAttributeRepository = genericAttributeRepository;
+        _creditLedgerRepository = creditLedgerRepository;
         _logger = logger;
     }
 
@@ -173,6 +176,7 @@ public class AIInterviewController : BasePluginController
         ICreditActivityService creditActivityService = null,
         IVendorService vendorService = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
+        IRepository<CreditLedgerEntry> creditLedgerRepository = null,
         ILogger<AIInterviewController> logger = null)
         : this(applicationService,
             interviewSessionService,
@@ -205,6 +209,7 @@ public class AIInterviewController : BasePluginController
             creditActivityService,
             vendorService,
             genericAttributeRepository,
+            creditLedgerRepository,
             logger)
     {
     }
@@ -1110,68 +1115,108 @@ public class AIInterviewController : BasePluginController
         return students.OrderBy(c => c.Email).ToList();
     }
 
-    public virtual async Task<IActionResult> InstituteDashboard()
+    protected virtual string NormalizeInstituteDashboardTab(string tab)
     {
-        if (!_aiInterviewSettings.Enabled)
-            return RedirectToRoute("Homepage");
-
-        var customer = await _workContext.GetCurrentCustomerAsync();
-        if (!await IsInstituteVendorAsync(customer))
-            return RedirectToRoute("Homepage");
-
-        ViewData["InstituteVendorName"] = customer.FirstName?.Trim() is { Length: > 0 } fn
-            ? fn : customer.Email ?? string.Empty;
-
-        var vendor = _vendorService != null
-            ? await _vendorService.GetVendorByIdAsync(customer.VendorId)
-            : null;
-        var slug = vendor != null ? BuildInstituteSlug(vendor.Name) : customer.VendorId.ToString();
-        var joinUrl = $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={slug}:{customer.VendorId}";
-        ViewData["InstituteJoinUrl"] = joinUrl;
-
-        return View("~/Plugins/Misc.AIInterview/Views/InstituteDashboard.cshtml");
+        return (tab ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            var value when string.Equals(value, AIInterviewDefaults.InstituteCreditsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.InstituteCreditsTabKey,
+            var value when string.Equals(value, AIInterviewDefaults.InstituteCandidatesTabKey, StringComparison.Ordinal) => AIInterviewDefaults.InstituteCandidatesTabKey,
+            _ => AIInterviewDefaults.InstituteDashboardTabKey
+        };
     }
 
-    public virtual async Task<IActionResult> InstituteCandidates()
+    protected virtual int GetInstituteNavigationTab(string tab)
     {
-        if (!_aiInterviewSettings.Enabled)
-            return RedirectToRoute("Homepage");
+        return NormalizeInstituteDashboardTab(tab) switch
+        {
+            var value when string.Equals(value, AIInterviewDefaults.InstituteCreditsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.InstituteCreditsNavigationTab,
+            var value when string.Equals(value, AIInterviewDefaults.InstituteCandidatesTabKey, StringComparison.Ordinal) => AIInterviewDefaults.InstituteCandidatesNavigationTab,
+            _ => AIInterviewDefaults.InstituteDashboardNavigationTab
+        };
+    }
 
-        var customer = await _workContext.GetCurrentCustomerAsync();
-        if (!await IsInstituteVendorAsync(customer))
-            return RedirectToRoute("Homepage");
-
+    protected virtual async Task<string> BuildInstituteJoinUrlAsync(Customer customer)
+    {
         var vendor = _vendorService != null
             ? await _vendorService.GetVendorByIdAsync(customer.VendorId)
             : null;
         var slug = vendor != null ? BuildInstituteSlug(vendor.Name) : customer.VendorId.ToString();
-        var joinUrl = $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={slug}:{customer.VendorId}";
-        ViewData["InstituteJoinUrl"] = joinUrl;
+        return $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={slug}:{customer.VendorId}";
+    }
 
+    protected virtual async Task<InstituteDashboardPageModel> BuildInstituteDashboardPageModelAsync(Customer customer, string tab, string transferMessage = null, bool transferSucceeded = false)
+    {
+        var activeTab = NormalizeInstituteDashboardTab(tab);
         var students = await GetInstituteStudentsAsync(customer.VendorId);
-        var candidateModels = new List<InstituteCandidateModel>();
+        var instituteWallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
+        var candidates = new List<InstituteCandidateModel>();
+        var studentWalletIds = new List<int>();
+        decimal studentCurrentBalances = 0;
 
         foreach (var student in students)
         {
             var wallet = await _creditService.GetOrCreateWalletAsync(student.Id);
+            studentWalletIds.Add(wallet.Id);
+            studentCurrentBalances += wallet.Balance;
             var fullName = (student.FirstName + " " + student.LastName).Trim();
-            candidateModels.Add(new InstituteCandidateModel
+            candidates.Add(new InstituteCandidateModel
             {
+                CustomerId = student.Id,
                 InviteId = student.Id,
                 Email = student.Email ?? string.Empty,
                 CustomerName = string.IsNullOrWhiteSpace(fullName) ? student.Email : fullName,
                 IsAccepted = true,
                 IsActive = student.Active,
-                CreditBalance = wallet?.Balance ?? 0,
+                CreditBalance = wallet.Balance,
                 CreatedOnUtc = student.CreatedOnUtc
             });
         }
 
-        var model = new InstituteCandidatesPageModel { Candidates = candidateModels };
-        return View("~/Plugins/Misc.AIInterview/Views/InstituteCandidates.cshtml", model);
+        var consumedCredits = 0m;
+        if (_creditLedgerRepository != null && studentWalletIds.Any())
+        {
+            var usageSources = new[] { CreditLedgerSources.InterviewUsage, CreditLedgerSources.SponsorInterviewUsage };
+            var usageEntries = await _creditLedgerRepository.GetAllAsync(q =>
+                q.Where(entry =>
+                    studentWalletIds.Contains(entry.CreditWalletId) &&
+                    string.Equals(entry.TransactionType, "Withdrawal") &&
+                    usageSources.Contains(entry.LedgerSource)));
+            consumedCredits = usageEntries.Sum(entry => Math.Abs(entry.Amount));
+        }
+
+        var vendor = _vendorService != null
+            ? await _vendorService.GetVendorByIdAsync(customer.VendorId)
+            : null;
+        var vendorName = customer.FirstName?.Trim() is { Length: > 0 } fn
+            ? fn : customer.Email ?? string.Empty;
+
+        return new InstituteDashboardPageModel
+        {
+            ActiveTab = activeTab,
+            SelectedNavigationTab = GetInstituteNavigationTab(activeTab),
+            VendorName = vendor?.Name ?? vendorName,
+            JoinUrl = await BuildInstituteJoinUrlAsync(customer),
+            AvailableCredits = instituteWallet.Balance,
+            ConsumedCredits = consumedCredits,
+            TotalCredits = instituteWallet.Balance + studentCurrentBalances + consumedCredits,
+            Candidates = candidates,
+            TransferMessage = transferMessage,
+            TransferSucceeded = transferSucceeded
+        };
     }
 
-    public virtual async Task<IActionResult> InstituteCredits()
+    protected virtual IActionResult InstituteTabResult(InstituteDashboardPageModel model)
+    {
+        ViewData["InstituteJoinUrl"] = model.JoinUrl;
+        ViewData["InstituteVendorName"] = model.VendorName;
+
+        if (IsHtmxRequest())
+            return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteDashboardTabContent.cshtml", model);
+
+        return View("~/Plugins/Misc.AIInterview/Views/InstituteDashboard.cshtml", model);
+    }
+
+    public virtual async Task<IActionResult> InstituteDashboard(string tab = null)
     {
         if (!_aiInterviewSettings.Enabled)
             return RedirectToRoute("Homepage");
@@ -1180,34 +1225,23 @@ public class AIInterviewController : BasePluginController
         if (!await IsInstituteVendorAsync(customer))
             return RedirectToRoute("Homepage");
 
-        var instituteWallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
-        var students = await GetInstituteStudentsAsync(customer.VendorId);
-        var candidateModels = new List<InstituteCreditCandidateModel>();
+        var model = await BuildInstituteDashboardPageModelAsync(customer, tab);
+        return InstituteTabResult(model);
+    }
 
-        foreach (var student in students)
-        {
-            var wallet = await _creditService.GetOrCreateWalletAsync(student.Id);
-            var fullName = (student.FirstName + " " + student.LastName).Trim();
-            candidateModels.Add(new InstituteCreditCandidateModel
-            {
-                CustomerId = student.Id,
-                Email = student.Email ?? string.Empty,
-                CustomerName = string.IsNullOrWhiteSpace(fullName) ? student.Email : fullName,
-                CreditBalance = wallet?.Balance ?? 0
-            });
-        }
+    public virtual IActionResult InstituteCandidates()
+    {
+        return RedirectToRoute(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteCandidatesTabKey });
+    }
 
-        var model = new InstituteCreditAllotmentPageModel
-        {
-            InstituteBalance = instituteWallet.Balance,
-            AcceptedCandidates = candidateModels
-        };
-        return View("~/Plugins/Misc.AIInterview/Views/InstituteCredits.cshtml", model);
+    public virtual IActionResult InstituteCredits()
+    {
+        return RedirectToRoute(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteCreditsTabKey });
     }
 
     [HttpPost]
     public virtual async Task<IActionResult> InstituteCreditAllot(
-        int selectedCandidateCustomerId, decimal amount, string remarks)
+        int selectedCandidateCustomerId, string transferAction, decimal amount, string remarks)
     {
         if (!_aiInterviewSettings.Enabled)
             return RedirectToRoute("Homepage");
@@ -1216,42 +1250,97 @@ public class AIInterviewController : BasePluginController
         if (!await IsInstituteVendorAsync(customer))
             return RedirectToRoute("Homepage");
 
+        var students = await GetInstituteStudentsAsync(customer.VendorId);
+        var candidateBelongsToInstitute = students.Any(student => student.Id == selectedCandidateCustomerId);
+        var normalizedAction = (transferAction ?? string.Empty).Trim().ToLowerInvariant();
+        var targetTab = AIInterviewDefaults.InstituteCandidatesTabKey;
+
         if (selectedCandidateCustomerId <= 0 || amount <= 0)
         {
-            _notificationService.ErrorNotification(
+            var validationModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
                 "Please select a candidate and enter a credit amount greater than zero.");
-            return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
+            return InstituteTabResult(validationModel);
+        }
+
+        if (!candidateBelongsToInstitute)
+        {
+            var validationModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
+                "Selected candidate does not belong to this institute.");
+            return InstituteTabResult(validationModel);
+        }
+
+        if (!string.Equals(normalizedAction, "allocate", StringComparison.Ordinal) &&
+            !string.Equals(normalizedAction, "deallocate", StringComparison.Ordinal))
+        {
+            var validationModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
+                "Please choose Allocate or Deallocate.");
+            return InstituteTabResult(validationModel);
+        }
+
+        if (string.IsNullOrWhiteSpace(remarks))
+        {
+            var validationModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
+                "Comments are required.");
+            return InstituteTabResult(validationModel);
         }
 
         var candidate = await _customerService.GetCustomerByIdAsync(selectedCandidateCustomerId);
         if (candidate == null)
         {
-            _notificationService.ErrorNotification("Selected candidate not found.");
-            return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
+            var validationModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
+                "Selected candidate not found.");
+            return InstituteTabResult(validationModel);
         }
 
-        var effectiveRemarks = string.IsNullOrWhiteSpace(remarks)
-            ? $"Credit allotment from institute to {candidate.Email}"
-            : remarks.Trim();
+        var comments = remarks.Trim();
+        var effectiveRemarks = string.Equals(normalizedAction, "allocate", StringComparison.Ordinal)
+            ? $"Institute allocation to {candidate.Email}: {comments}"
+            : $"Institute deallocation from {candidate.Email}: {comments}";
 
-        var charged = await _creditService.AuthorizeAndChargeAsync(
-            customer.Id, amount, effectiveRemarks,
-            CreditLedgerSources.Adjustment);
-
-        if (!charged)
+        if (string.Equals(normalizedAction, "allocate", StringComparison.Ordinal))
         {
-            _notificationService.ErrorNotification(
-                "Insufficient credits in your institute account. Please purchase more credits.");
-            return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
+            var chargedInstitute = await _creditService.AuthorizeAndChargeAsync(
+                customer.Id, amount, effectiveRemarks,
+                CreditLedgerSources.Adjustment);
+
+            if (!chargedInstitute)
+            {
+                var insufficientModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
+                    "Insufficient credits in your institute account. Please purchase more credits.");
+                return InstituteTabResult(insufficientModel);
+            }
+
+            await _creditService.AddCreditAsync(
+                candidate.Id, amount, effectiveRemarks,
+                CreditLedgerSources.Adjustment);
+
+            _notificationService.SuccessNotification(
+                $"{amount:0.##} credit(s) allotted to {candidate.Email} successfully.");
+            var successModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
+                $"{amount:0.##} credit(s) allotted to {candidate.Email} successfully.", true);
+            return InstituteTabResult(successModel);
         }
 
-        await _creditService.AddCreditAsync(
+        var chargedStudent = await _creditService.AuthorizeAndChargeAsync(
             candidate.Id, amount, effectiveRemarks,
             CreditLedgerSources.Adjustment);
 
+        if (!chargedStudent)
+        {
+            var insufficientModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
+                "Insufficient credits in the student's account.");
+            return InstituteTabResult(insufficientModel);
+        }
+
+        await _creditService.AddCreditAsync(
+            customer.Id, amount, effectiveRemarks,
+            CreditLedgerSources.Adjustment);
+
         _notificationService.SuccessNotification(
-            $"{amount:0.##} credit(s) allotted to {candidate.Email} successfully.");
-        return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
+            $"{amount:0.##} credit(s) deallocated from {candidate.Email} successfully.");
+        var deallocateSuccessModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
+            $"{amount:0.##} credit(s) deallocated from {candidate.Email} successfully.", true);
+        return InstituteTabResult(deallocateSuccessModel);
     }
 
     public async Task<IActionResult> MyApplications(string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null)

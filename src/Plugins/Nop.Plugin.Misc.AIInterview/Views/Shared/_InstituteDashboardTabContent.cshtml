@@ -1,0 +1,29 @@
+@model InstituteDashboardPageModel
+
+<script>
+    (function () {
+        var activeTab = '@Model.ActiveTab';
+        document.querySelectorAll('.institute-dashboard-tab').forEach(function (tab) {
+            var isActive = tab.getAttribute('data-institute-tab') === activeTab;
+            tab.classList.toggle('is-active', isActive);
+            if (isActive) {
+                tab.setAttribute('aria-current', 'page');
+            } else {
+                tab.removeAttribute('aria-current');
+            }
+        });
+    })();
+</script>
+
+@switch (Model.ActiveTab)
+{
+    case var value when string.Equals(value, AIInterviewDefaults.InstituteCreditsTabKey, StringComparison.Ordinal):
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteCreditsTab.cshtml", Model)
+        break;
+    case var value when string.Equals(value, AIInterviewDefaults.InstituteCandidatesTabKey, StringComparison.Ordinal):
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteCandidatesTab.cshtml", Model)
+        break;
+    default:
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteDashboardSummaryTab.cshtml", Model)
+        break;
+}

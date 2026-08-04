@@ -1,0 +1,62 @@
+@model InstituteDashboardPageModel
+
+<div id="institute-credit-modal" class="institute-credit-modal" aria-hidden="true">
+    <div class="institute-credit-modal-backdrop"
+         onclick="document.getElementById('institute-credit-modal').classList.remove('is-open');"></div>
+    <div class="institute-credit-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="institute-credit-modal-title">
+        <header class="institute-credit-modal-header">
+            <h2 id="institute-credit-modal-title">Manage Student Credits</h2>
+            <button type="button"
+                    class="institute-credit-modal-close"
+                    aria-label="Close"
+                    onclick="document.getElementById('institute-credit-modal').classList.remove('is-open');">
+                &times;
+            </button>
+        </header>
+        <form asp-route="@AIInterviewDefaults.InstituteCreditAllotRouteName"
+              method="post"
+              class="institute-credit-modal-form"
+              hx-post="@Url.RouteUrl(AIInterviewDefaults.InstituteCreditAllotRouteName)"
+              hx-target="#institute-dashboard-content"
+              hx-swap="innerHTML">
+            <input type="hidden" id="selectedCandidateCustomerId" name="selectedCandidateCustomerId" />
+            <div class="institute-credit-modal-grid">
+                <div class="institute-credit-modal-field">
+                    <label for="institute-credit-modal-student">Student</label>
+                    <input id="institute-credit-modal-student" type="text" readonly />
+                </div>
+                <div class="institute-credit-modal-field">
+                    <label for="institute-credit-modal-balance">Current Student Balance</label>
+                    <input id="institute-credit-modal-balance" type="text" readonly />
+                </div>
+                <div class="institute-credit-modal-field">
+                    <label for="institute-credit-modal-institute-balance">Institute Available Credits</label>
+                    <input id="institute-credit-modal-institute-balance" type="text" readonly value="@Model.AvailableCredits.ToString("0.##")" />
+                </div>
+                <div class="institute-credit-modal-field">
+                    <label for="transferAction">Action</label>
+                    <select id="transferAction" name="transferAction" required>
+                        <option value="allocate">Allocate</option>
+                        <option value="deallocate">Deallocate</option>
+                    </select>
+                </div>
+                <div class="institute-credit-modal-field">
+                    <label for="amount">Amount</label>
+                    <input id="amount" name="amount" type="number" min="1" step="1" required />
+                </div>
+                <div class="institute-credit-modal-field institute-credit-modal-field--wide">
+                    <label for="remarks">Comments</label>
+                    <input id="remarks" name="remarks" type="text" maxlength="200" required />
+                </div>
+            </div>
+            <footer class="institute-credit-modal-actions">
+                <button type="button"
+                        class="button-2"
+                        onclick="document.getElementById('institute-credit-modal').classList.remove('is-open');">
+                    Cancel
+                </button>
+                <button type="submit" class="button-1">Save</button>
+            </footer>
+        </form>
+    </div>
+</div>

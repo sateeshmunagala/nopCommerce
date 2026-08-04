@@ -1,0 +1,43 @@
+@model InstituteDashboardPageModel
+
+<div class="institute-dashboard-tab-panel">
+    @if (!string.IsNullOrWhiteSpace(Model.JoinUrl))
+    {
+        <div class="institute-join-url-panel">
+            <label class="institute-join-url-label">Your Student Registration Link</label>
+            <div class="institute-join-url-row">
+                <input type="text" readonly value="@Model.JoinUrl"
+                       class="institute-join-url-input"
+                       id="institute-join-url" />
+                <button type="button"
+                        class="button-2 institute-join-url-copy"
+                        onclick="navigator.clipboard.writeText(document.getElementById('institute-join-url').value).then(function(){this.textContent='Copied!';setTimeout(function(){document.querySelector('.institute-join-url-copy').textContent='Copy Link';},2000);}.bind(this))">
+                    Copy Link
+                </button>
+            </div>
+            <p class="institute-join-url-hint">
+                Share this link with your students. When they register using this link
+                they will automatically appear in your Candidates list.
+            </p>
+        </div>
+    }
+
+    <div class="institute-credit-summary-grid">
+        <div class="institute-credit-summary-card">
+            <span>Total Credits</span>
+            <strong>@Model.TotalCredits.ToString("0.##")</strong>
+        </div>
+        <div class="institute-credit-summary-card">
+            <span>Available Credits</span>
+            <strong>@Model.AvailableCredits.ToString("0.##")</strong>
+        </div>
+        <div class="institute-credit-summary-card">
+            <span>Consumed Credits</span>
+            <strong>@Model.ConsumedCredits.ToString("0.##")</strong>
+        </div>
+    </div>
+
+    <p class="institute-dashboard-intro">
+        Welcome to your institute portal. Use Credits to review usage and Candidates to manage student balances.
+    </p>
+</div>

@@ -123,7 +123,7 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                             {
                                 RouteName = AIInterviewDefaults.InstituteCandidatesRouteName,
                                 Title = "Candidates",
-                                Tab = AIInterviewDefaults.InstituteDashboardNavigationTab,
+                                Tab = AIInterviewDefaults.InstituteCandidatesNavigationTab,
                                 ItemClass = "institute-nav-candidates"
                             });
                     }
@@ -138,7 +138,7 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                             {
                                 RouteName = AIInterviewDefaults.InstituteCreditsRouteName,
                                 Title = "Credits",
-                                Tab = AIInterviewDefaults.InstituteDashboardNavigationTab,
+                                Tab = AIInterviewDefaults.InstituteCreditsNavigationTab,
                                 ItemClass = "institute-nav-credits"
                             });
                     }

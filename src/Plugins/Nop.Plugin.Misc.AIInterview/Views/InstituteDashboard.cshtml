@@ -1,3 +1,5 @@
+@model InstituteDashboardPageModel
+
 @{
     Layout = "_ColumnsTwo";
     NopHtml.AddTitleParts("Institute Dashboard");
@@ -7,59 +9,59 @@
     NopHtml.AppendPageCssClassParts("html-aiinterview-institute-dashboard-page");
     NopHtml.AppendPageCssClassParts("html-vendor-portal-page");
 
-    var vendorName = ViewData["InstituteVendorName"] as string ?? string.Empty;
-    var joinUrl = ViewData["InstituteJoinUrl"] as string ?? string.Empty;
-    var candidatesUrl = Url.RouteUrl(AIInterviewDefaults.InstituteCandidatesRouteName);
-    var creditsUrl = Url.RouteUrl(AIInterviewDefaults.InstituteCreditsRouteName);
+    var dashboardUrl = Url.RouteUrl(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteDashboardTabKey });
+    var creditsUrl = Url.RouteUrl(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteCreditsTabKey });
+    var candidatesUrl = Url.RouteUrl(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteCandidatesTabKey });
 }
 
 @section left
 {
     @await Component.InvokeAsync("CustomerNavigation",
-        new { selectedTabId = AIInterviewDefaults.InstituteDashboardNavigationTab })
+        new { selectedTabId = Model.SelectedNavigationTab })
 }
 
 <div class="page ai-institute-dashboard-page">
     <div class="page-title">
-        <h1>Institute Dashboard@(string.IsNullOrEmpty(vendorName) ? "" : $" - {vendorName}")</h1>
+        <h1>Institute Dashboard@(string.IsNullOrEmpty(Model.VendorName) ? "" : $" - {Model.VendorName}")</h1>
     </div>
     <div class="page-body">
-        @if (!string.IsNullOrWhiteSpace(joinUrl))
-        {
-            <div class="institute-join-url-panel">
-                <label class="institute-join-url-label">Your Student Registration Link</label>
-                <div class="institute-join-url-row">
-                    <input type="text" readonly value="@joinUrl"
-                           class="institute-join-url-input"
-                           id="institute-join-url" />
-                    <button type="button"
-                            class="button-2 institute-join-url-copy"
-                            onclick="navigator.clipboard.writeText(document.getElementById('institute-join-url').value).then(function(){this.textContent='Copied!';setTimeout(function(){document.querySelector('.institute-join-url-copy').textContent='Copy Link';},2000);}.bind(this))">
-                        Copy Link
-                    </button>
-                </div>
-                <p class="institute-join-url-hint">
-                    Share this link with your students. When they register using this link
-                    they will automatically appear in your Candidates list.
-                </p>
-            </div>
-        }
+        <div class="institute-dashboard-shell">
+            <nav class="institute-dashboard-tabs" aria-label="Institute portal">
+                <a class="institute-dashboard-tab @(Model.ActiveTab == AIInterviewDefaults.InstituteDashboardTabKey ? "is-active" : null)"
+                   href="@dashboardUrl"
+                   data-institute-tab="@AIInterviewDefaults.InstituteDashboardTabKey"
+                   hx-get="@dashboardUrl"
+                   hx-target="#institute-dashboard-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.InstituteDashboardTabKey ? "page" : null)">
+                    Dashboard
+                </a>
+                <a class="institute-dashboard-tab @(Model.ActiveTab == AIInterviewDefaults.InstituteCreditsTabKey ? "is-active" : null)"
+                   href="@creditsUrl"
+                   data-institute-tab="@AIInterviewDefaults.InstituteCreditsTabKey"
+                   hx-get="@creditsUrl"
+                   hx-target="#institute-dashboard-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.InstituteCreditsTabKey ? "page" : null)">
+                    Credits
+                </a>
+                <a class="institute-dashboard-tab @(Model.ActiveTab == AIInterviewDefaults.InstituteCandidatesTabKey ? "is-active" : null)"
+                   href="@candidatesUrl"
+                   data-institute-tab="@AIInterviewDefaults.InstituteCandidatesTabKey"
+                   hx-get="@candidatesUrl"
+                   hx-target="#institute-dashboard-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.InstituteCandidatesTabKey ? "page" : null)">
+                    Candidates
+                </a>
+            </nav>
 
-        <p class="institute-dashboard-intro">
-            Welcome to your institute portal. Use the links below to manage your candidates
-            and allocate interview credits to your students.
-        </p>
-        <div class="institute-dashboard-cards">
-            <a class="institute-dashboard-card" href="@candidatesUrl">
-                <span class="institute-dashboard-card-icon">&#128101;</span>
-                <span class="institute-dashboard-card-label">Candidates</span>
-                <span class="institute-dashboard-card-hint">View and manage your enrolled students</span>
-            </a>
-            <a class="institute-dashboard-card" href="@creditsUrl">
-                <span class="institute-dashboard-card-icon">&#127881;</span>
-                <span class="institute-dashboard-card-label">Credits</span>
-                <span class="institute-dashboard-card-hint">Allocate interview credits</span>
-            </a>
+            <section id="institute-dashboard-content" class="institute-dashboard-content" aria-live="polite">
+                @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteDashboardTabContent.cshtml", Model)
+            </section>
         </div>
     </div>
 </div>

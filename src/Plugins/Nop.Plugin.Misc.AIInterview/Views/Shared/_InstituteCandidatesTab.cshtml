@@ -1,0 +1,81 @@
+@model InstituteDashboardPageModel
+
+<div class="institute-dashboard-tab-panel ai-institute-candidates-page">
+    @if (!string.IsNullOrWhiteSpace(Model.TransferMessage))
+    {
+        <div class="institute-transfer-alert @(Model.TransferSucceeded ? "is-success" : "is-error")">
+            @Model.TransferMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.JoinUrl))
+    {
+        <div class="institute-join-url-panel">
+            <label class="institute-join-url-label">Student Registration Link</label>
+            <div class="institute-join-url-row">
+                <input type="text" readonly value="@Model.JoinUrl"
+                       class="institute-join-url-input"
+                       id="institute-join-url-candidates" />
+                <button type="button"
+                        class="button-2 institute-join-url-copy"
+                        onclick="navigator.clipboard.writeText(document.getElementById('institute-join-url-candidates').value).then(function(){this.textContent='Copied!';setTimeout(function(){document.querySelector('.institute-join-url-copy').textContent='Copy Link';},2000);}.bind(this))">
+                    Copy Link
+                </button>
+            </div>
+            <p class="institute-join-url-hint">
+                Share this link with your students. Registered students appear below automatically.
+            </p>
+        </div>
+    }
+
+    @if (!Model.Candidates.Any())
+    {
+        <p class="institute-candidates-empty">
+            No students yet. Share your registration link above to onboard students.
+        </p>
+    }
+    else
+    {
+        <div class="institute-candidates-table-wrapper">
+            <table class="institute-candidates-table">
+                <thead>
+                    <tr>
+                        <th>Email / Name</th>
+                        <th>Status</th>
+                        <th>Credits</th>
+                        <th>Joined On</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Candidates)
+                    {
+                        <tr class="institute-candidate-row">
+                            <td data-label="Email / Name">
+                                <span class="candidate-email">@c.Email</span>
+                                @if (!string.IsNullOrWhiteSpace(c.CustomerName))
+                                {
+                                    <span class="candidate-name">@c.CustomerName</span>
+                                }
+                            </td>
+                            <td data-label="Status">
+                                <span class="candidate-status-badge badge-accepted">Active</span>
+                            </td>
+                            <td data-label="Credits">@c.CreditBalance.ToString("0.##")</td>
+                            <td data-label="Joined On">@c.CreatedOnUtc.ToString("dd MMM yyyy")</td>
+                            <td data-label="Actions">
+                                <button type="button"
+                                        class="button-2 institute-candidate-edit"
+                                        onclick="document.getElementById('selectedCandidateCustomerId').value='@c.CustomerId';document.getElementById('institute-credit-modal-student').value='@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(c.CustomerName ?? string.Empty)';document.getElementById('institute-credit-modal-balance').value='@c.CreditBalance.ToString("0.##")';document.getElementById('institute-credit-modal').classList.add('is-open');">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteCandidateCreditModal.cshtml", Model)
+    }
+</div>

@@ -1,5 +1,5 @@
-@using Nop.Plugin.Misc.AIInterview.Models
-@model InstituteCreditAllotmentPageModel
+@model InstituteDashboardPageModel
+
 @{
     Layout = "_ColumnsTwo";
     NopHtml.AddTitleParts("Credits");
@@ -13,113 +13,12 @@
 @section left
 {
     @await Component.InvokeAsync("CustomerNavigation",
-        new { selectedTabId = AIInterviewDefaults.InstituteDashboardNavigationTab })
+        new { selectedTabId = AIInterviewDefaults.InstituteCreditsNavigationTab })
 }
 
 <div class="page ai-institute-credits-page">
     <div class="page-title"><h1>Credits</h1></div>
     <div class="page-body">
-
-        <div class="institute-credits-balance-panel">
-            <span class="institute-credits-balance-label">Your Available Credits</span>
-            <span class="institute-credits-balance-value">@Model.InstituteBalance.ToString("0.##")</span>
-        </div>
-
-        @if (!Model.AcceptedCandidates.Any())
-        {
-            <div class="institute-credits-no-candidates">
-                <p>No accepted candidates yet. Invite students from the
-                    <a href="@Url.RouteUrl(AIInterviewDefaults.InstituteCandidatesRouteName)">
-                        Candidates
-                    </a> page and ask them to accept your invitation.
-                </p>
-            </div>
-        }
-        else
-        {
-            <div class="institute-allot-form-panel">
-                <h2 class="institute-allot-form-heading">Allot Credits to a Student</h2>
-                <form asp-route="@AIInterviewDefaults.InstituteCreditAllotRouteName"
-                      method="post"
-                      class="institute-allot-form">
-                    <div class="institute-allot-fields">
-                        <div class="institute-allot-field">
-                            <label class="institute-allot-label" for="selectedCandidateCustomerId">
-                                Student
-                            </label>
-                            <select id="selectedCandidateCustomerId"
-                                    name="selectedCandidateCustomerId"
-                                    class="institute-allot-select"
-                                    required>
-                                <option value="">- Select a student -</option>
-                                @foreach (var c in Model.AcceptedCandidates)
-                                {
-                                    <option value="@c.CustomerId">
-                                        @c.CustomerName (@c.CreditBalance.ToString("0.##") credits)
-                                    </option>
-                                }
-                            </select>
-                        </div>
-                        <div class="institute-allot-field">
-                            <label class="institute-allot-label" for="amount">Credits</label>
-                            <input type="number"
-                                   id="amount"
-                                   name="amount"
-                                   min="1"
-                                   step="1"
-                                   placeholder="e.g. 10"
-                                   class="institute-allot-input"
-                                   required />
-                        </div>
-                        <div class="institute-allot-field institute-allot-field--wide">
-                            <label class="institute-allot-label" for="remarks">
-                                Notes (optional)
-                            </label>
-                            <input type="text"
-                                   id="remarks"
-                                   name="remarks"
-                                   placeholder="e.g. Semester 1 batch"
-                                   class="institute-allot-input"
-                                   maxlength="200" />
-                        </div>
-                    </div>
-                    <div class="institute-allot-actions">
-                        <button type="submit" class="button-1 institute-allot-submit">
-                            Allot Credits
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="institute-credits-candidates-section">
-                <h2 class="institute-credits-candidates-heading">Student Balances</h2>
-                <div class="institute-candidates-table-wrapper">
-                    <table class="institute-candidates-table">
-                        <thead>
-                            <tr>
-                                <th>Student</th>
-                                <th>Email</th>
-                                <th>Credit Balance</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var c in Model.AcceptedCandidates)
-                            {
-                                <tr class="institute-candidate-row">
-                                    <td data-label="Student">@c.CustomerName</td>
-                                    <td data-label="Email">
-                                        <span class="candidate-email">@c.Email</span>
-                                    </td>
-                                    <td data-label="Credit Balance">
-                                        <strong>@c.CreditBalance.ToString("0.##")</strong>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        }
-
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteCreditsTab.cshtml", Model)
     </div>
 </div>

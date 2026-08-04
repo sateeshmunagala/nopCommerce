@@ -100,7 +100,6 @@ public static class AIInterviewDefaults
     public static string InstituteVendorIdAttributeKey => "AIInterview.InstituteVendorId";
     public static string InstituteRegistrationCookieName => "ai_inst";
     public static string InstituteCreditAllotRouteName => "Plugin.Misc.AIInterview.InstituteCreditAllot";
-    public static int InstituteDashboardNavigationTab => 50;
 
     public static string VendorScoreboardRouteName => "Plugin.Misc.AIInterview.VendorScoreboard";
 
@@ -247,11 +246,17 @@ Allowed categories: skill, project_scenario, job_fit, behavioral
     public static string EmployerDashboardJobsTabKey => "jobs";
     public static string EmployerDashboardApplicationsTabKey => "applications";
     public static string EmployerDashboardInvitesTabKey => "invites";
+    public static string InstituteDashboardTabKey => "dashboard";
+    public static string InstituteCreditsTabKey => "credits";
+    public static string InstituteCandidatesTabKey => "candidates";
 
     public const int MyActivityNavigationTab = 160;
     public const int MyApplicationsNavigationTab = 160;
     public const int MockHistoryNavigationTab = 165;
     public const int EmployerDashboardNavigationTab = 170;
+    public const int InstituteDashboardNavigationTab = 50;
+    public const int InstituteCandidatesNavigationTab = 51;
+    public const int InstituteCreditsNavigationTab = 52;
     public const int VendorScoreboardNavigationTab = EmployerDashboardNavigationTab;
     public const int VendorJobCreationNavigationTab = EmployerDashboardNavigationTab;
     public const int EmployerApplicationsNavigationTab = EmployerDashboardNavigationTab;

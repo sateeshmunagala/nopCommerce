@@ -2,6 +2,7 @@ namespace Nop.Plugin.Misc.AIInterview.Models;
 
 public record InstituteCandidateModel
 {
+    public int CustomerId { get; init; }
     public int InviteId { get; init; }
     public string Email { get; init; }
     public string CustomerName { get; init; }

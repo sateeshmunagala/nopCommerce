@@ -12184,3 +12184,277 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
         display: block;
     }
 }
+
+/* ===================================================
+   INSTITUTE DASHBOARD TABS + CREDIT POPUP
+   =================================================== */
+
+.institute-dashboard-shell,
+.institute-dashboard-content,
+.institute-dashboard-tab-panel,
+.ai-institute-candidates-page .institute-candidates-table-wrapper,
+.ai-institute-credits-page .institute-candidates-table-wrapper {
+    overflow: visible;
+}
+
+.institute-dashboard-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #dfe4ea;
+}
+
+.institute-dashboard-tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 10px 16px;
+    color: #4b5563;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+}
+
+.institute-dashboard-tab:hover {
+    color: var(--jb-accent-dark);
+    background: #f0fdfb;
+}
+
+.institute-dashboard-tab.is-active {
+    color: var(--jb-accent-dark);
+    border-bottom-color: var(--jb-accent);
+}
+
+.institute-credit-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.institute-credit-summary-card {
+    background: #ffffff;
+    border: 1px solid #e4e7eb;
+    border-radius: 6px;
+    padding: 18px 20px;
+}
+
+.institute-credit-summary-card span {
+    display: block;
+    color: #6b7280;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.institute-credit-summary-card strong {
+    display: block;
+    color: #111827;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.65rem;
+    line-height: 1;
+}
+
+.institute-candidate-edit {
+    min-width: 74px;
+    text-align: center;
+}
+
+.institute-transfer-alert {
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.institute-transfer-alert.is-success {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #047857;
+}
+
+.institute-transfer-alert.is-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+}
+
+.institute-credit-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow: visible;
+}
+
+.institute-credit-modal.is-open {
+    display: flex;
+}
+
+.institute-credit-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.42);
+}
+
+.institute-credit-modal-dialog {
+    position: relative;
+    z-index: 1;
+    width: min(680px, 100%);
+    max-height: calc(100vh - 40px);
+    overflow: visible;
+    background: #ffffff;
+    border: 1px solid #e4e7eb;
+    border-radius: 8px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+}
+
+.institute-credit-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #e4e7eb;
+}
+
+.institute-credit-modal-header h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.05rem;
+}
+
+.institute-credit-modal-close {
+    border: 0;
+    background: transparent;
+    color: #4b5563;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.institute-credit-modal-form {
+    padding: 20px;
+    overflow: visible;
+}
+
+.institute-credit-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+    overflow: visible;
+}
+
+.institute-credit-modal-field {
+    min-width: 0;
+    overflow: visible;
+}
+
+.institute-credit-modal-field--wide {
+    grid-column: 1 / -1;
+}
+
+.institute-credit-modal-field label {
+    display: block;
+    color: #6b7280;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.institute-credit-modal-field input,
+.institute-credit-modal-field select {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #d7dde5;
+    border-radius: 4px;
+    padding: 8px 10px;
+    background: #ffffff;
+    color: #111827;
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+.institute-credit-modal-field select {
+    position: relative;
+    z-index: 10060;
+}
+
+.institute-credit-modal-field input[readonly] {
+    background: #f7f8fa;
+    color: #4b5563;
+}
+
+.institute-credit-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 18px;
+}
+
+@media (min-width: 641px) {
+    .ai-institute-candidates-page .institute-candidates-table,
+    .ai-institute-credits-page .institute-candidates-table {
+        display: table;
+    }
+
+    .ai-institute-candidates-page .institute-candidates-table thead,
+    .ai-institute-credits-page .institute-candidates-table thead {
+        display: table-header-group;
+    }
+
+    .ai-institute-candidates-page .institute-candidates-table tbody,
+    .ai-institute-credits-page .institute-candidates-table tbody {
+        display: table-row-group;
+    }
+
+    .ai-institute-candidates-page .institute-candidate-row,
+    .ai-institute-credits-page .institute-candidate-row {
+        display: table-row;
+    }
+
+    .ai-institute-candidates-page .institute-candidates-table td,
+    .ai-institute-credits-page .institute-candidates-table td {
+        display: table-cell;
+        width: auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .institute-credit-summary-grid,
+    .institute-credit-modal-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-credit-modal {
+        align-items: flex-start;
+        padding: 12px;
+    }
+
+    .institute-credit-modal-dialog {
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+    }
+
+    .institute-credit-modal-actions {
+        flex-direction: column-reverse;
+    }
+
+    .institute-credit-modal-actions .button-1,
+    .institute-credit-modal-actions .button-2 {
+        width: 100%;
+        text-align: center;
+    }
+}
