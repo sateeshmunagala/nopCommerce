@@ -11680,6 +11680,7 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     display: block;
     color: var(--jb-ink);
     font-weight: 600;
+    overflow-wrap: anywhere;
 }
 
 .ai-institute-candidates-page .candidate-name {
@@ -11687,6 +11688,7 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     color: var(--jb-muted);
     font-size: 0.82rem;
     margin-top: 2px;
+    overflow-wrap: anywhere;
 }
 
 .ai-institute-candidates-page .candidate-status-badge {
@@ -12191,9 +12193,7 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
 
 .institute-dashboard-shell,
 .institute-dashboard-content,
-.institute-dashboard-tab-panel,
-.ai-institute-candidates-page .institute-candidates-table-wrapper,
-.ai-institute-credits-page .institute-candidates-table-wrapper {
+.institute-dashboard-tab-panel {
     overflow: visible;
 }
 
@@ -12323,6 +12323,10 @@ body.institute-credit-modal-open {
     box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
 }
 
+.institute-credit-modal-dialog:focus {
+    outline: none;
+}
+
 .institute-credit-modal-header {
     display: flex;
     align-items: center;
@@ -12391,7 +12395,7 @@ body.institute-credit-modal-open {
     overflow: visible;
 }
 
-.institute-credit-modal-field select {
+.institute-credit-modal.is-open .institute-credit-modal-field select {
     position: relative;
     z-index: 10060;
 }

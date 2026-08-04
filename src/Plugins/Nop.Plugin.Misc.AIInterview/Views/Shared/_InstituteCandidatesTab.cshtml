@@ -3,7 +3,10 @@
 <div class="institute-dashboard-tab-panel ai-institute-candidates-page">
     @if (!string.IsNullOrWhiteSpace(Model.TransferMessage))
     {
-        <div class="institute-transfer-alert @(Model.TransferSucceeded ? "is-success" : "is-error")">
+        <div class="institute-transfer-alert @(Model.TransferSucceeded ? "is-success" : "is-error")"
+             role="@(Model.TransferSucceeded ? "status" : "alert")"
+             aria-live="@(Model.TransferSucceeded ? "polite" : "assertive")"
+             aria-atomic="true">
             @Model.TransferMessage
         </div>
     }
@@ -66,7 +69,7 @@
                             <td data-label="Actions">
                                 <button type="button"
                                         class="button-2 institute-candidate-edit"
-                                        onclick="document.getElementById('selectedCandidateCustomerId').value='@c.CustomerId';document.getElementById('institute-credit-modal-student').value='@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(c.CustomerName ?? string.Empty)';document.getElementById('institute-credit-modal-balance').value='@c.CreditBalance.ToString("0.##")';document.getElementById('institute-credit-modal').classList.add('is-open');">
+                                        onclick="document.getElementById('selectedCandidateCustomerId').value='@c.CustomerId';document.getElementById('institute-credit-modal-student').value='@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(c.CustomerName ?? string.Empty)';document.getElementById('institute-credit-modal-balance').value='@c.CreditBalance.ToString("0.##")';window.openInstituteCreditModal && window.openInstituteCreditModal(this);">
                                     Edit
                                 </button>
                             </td>

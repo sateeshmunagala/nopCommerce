@@ -68,8 +68,66 @@
 
 <script>
     (function () {
+        var instituteCreditModalTrigger = null;
+        var instituteNavClassByTab = {
+            '@AIInterviewDefaults.InstituteDashboardTabKey': 'institute-dashboard',
+            '@AIInterviewDefaults.InstituteCreditsTabKey': 'institute-nav-credits',
+            '@AIInterviewDefaults.InstituteCandidatesTabKey': 'institute-nav-candidates'
+        };
+
         function getModal() {
             return document.getElementById('institute-credit-modal');
+        }
+
+        function getFocusableElements(modal) {
+            if (!modal) {
+                return [];
+            }
+
+            return Array.prototype.slice.call(modal.querySelectorAll([
+                'a[href]',
+                'button:not([disabled])',
+                'input:not([disabled])',
+                'select:not([disabled])',
+                'textarea:not([disabled])',
+                '[tabindex]:not([tabindex="-1"])'
+            ].join(','))).filter(function (element) {
+                return element.offsetWidth > 0 || element.offsetHeight > 0 || element === document.activeElement;
+            });
+        }
+
+        function focusModalStart(modal) {
+            var closeButton = modal && modal.querySelector('.institute-credit-modal-close');
+            var focusTarget = closeButton || getFocusableElements(modal)[0] || modal.querySelector('.institute-credit-modal-dialog');
+            if (focusTarget && typeof focusTarget.focus === 'function') {
+                focusTarget.focus({ preventScroll: true });
+            }
+        }
+
+        function trapModalFocus(event, modal) {
+            var focusableElements = getFocusableElements(modal);
+            if (!focusableElements.length) {
+                event.preventDefault();
+                var dialog = modal.querySelector('.institute-credit-modal-dialog');
+                if (dialog) {
+                    dialog.focus({ preventScroll: true });
+                }
+                return;
+            }
+
+            var firstElement = focusableElements[0];
+            var lastElement = focusableElements[focusableElements.length - 1];
+
+            if (event.shiftKey && document.activeElement === firstElement) {
+                event.preventDefault();
+                lastElement.focus({ preventScroll: true });
+                return;
+            }
+
+            if (!event.shiftKey && document.activeElement === lastElement) {
+                event.preventDefault();
+                firstElement.focus({ preventScroll: true });
+            }
         }
 
         function resetInstituteCreditModal(modal) {
@@ -85,33 +143,64 @@
             });
         }
 
+        function syncInstituteNavigation(activeTab) {
+            var navClass = instituteNavClassByTab[activeTab] || instituteNavClassByTab['@AIInterviewDefaults.InstituteDashboardTabKey'];
+            document.querySelectorAll('.block-account-navigation .list > li').forEach(function (item) {
+                var isActive = item.classList.contains(navClass);
+                item.classList.toggle('active', isActive);
+                item.classList.toggle('inactive', !isActive);
+            });
+        }
+
+        window.syncInstituteNavigation = syncInstituteNavigation;
+        syncInstituteNavigation('@Model.ActiveTab');
+
         window.closeInstituteCreditModal = function () {
             var modal = getModal();
             if (!modal) {
                 document.body.classList.remove('institute-credit-modal-open');
+                instituteCreditModalTrigger = null;
                 return;
             }
 
+            var trigger = instituteCreditModalTrigger;
             modal.classList.remove('is-open');
             modal.setAttribute('aria-hidden', 'true');
             document.body.classList.remove('institute-credit-modal-open');
             resetInstituteCreditModal(modal);
+            instituteCreditModalTrigger = null;
+
+            if (trigger && document.contains(trigger) && typeof trigger.focus === 'function') {
+                window.setTimeout(function () {
+                    trigger.focus({ preventScroll: true });
+                }, 0);
+            }
         };
 
-        window.openInstituteCreditModal = function () {
+        window.openInstituteCreditModal = function (trigger) {
             var modal = getModal();
             if (!modal) {
                 return;
             }
 
+            instituteCreditModalTrigger = trigger || document.activeElement;
             modal.classList.add('is-open');
             modal.setAttribute('aria-hidden', 'false');
             document.body.classList.add('institute-credit-modal-open');
+            window.setTimeout(function () {
+                focusModalStart(modal);
+            }, 0);
         };
 
+        if (window.__aiInstituteDashboardRuntimeBound) {
+            return;
+        }
+        window.__aiInstituteDashboardRuntimeBound = true;
+
         document.addEventListener('click', function (event) {
-            if (event.target.closest('.institute-candidate-edit')) {
-                window.openInstituteCreditModal();
+            var editButton = event.target.closest('.institute-candidate-edit');
+            if (editButton && !(getModal() && getModal().classList.contains('is-open'))) {
+                window.openInstituteCreditModal(editButton);
             }
             if (event.target.closest('.institute-credit-modal-backdrop')) {
                 window.closeInstituteCreditModal();
@@ -119,8 +208,19 @@
         });
 
         document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && getModal()?.classList.contains('is-open')) {
+            var modal = getModal();
+            if (!modal || !modal.classList.contains('is-open')) {
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
                 window.closeInstituteCreditModal();
+                return;
+            }
+
+            if (event.key === 'Tab') {
+                trapModalFocus(event, modal);
             }
         });
 
@@ -133,6 +233,16 @@
         document.body.addEventListener('htmx:afterSwap', function (event) {
             if (event.detail && event.detail.target && event.detail.target.id === 'institute-dashboard-content') {
                 window.closeInstituteCreditModal();
+                window.setTimeout(function () {
+                    var activeTab = '@AIInterviewDefaults.InstituteDashboardTabKey';
+                    var activeTabElement = document.querySelector('.institute-dashboard-tab.is-active');
+                    if (activeTabElement) {
+                        activeTab = activeTabElement.getAttribute('data-institute-tab') || activeTab;
+                    } else {
+                        activeTab = new URL(window.location.href).searchParams.get('tab') || activeTab;
+                    }
+                    syncInstituteNavigation(activeTab);
+                }, 0);
             }
         });
     })();
