@@ -12005,6 +12005,8 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
 
 .html-aiinterview-institute-dashboard-page.html-account-page .master-wrapper-content {
     min-height: 0 !important;
+    padding-bottom: 0 !important;
+    background: #f7f8fa;
 }
 
 /* ===================================================
@@ -12134,6 +12136,8 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
 
 .html-aiinterview-institute-dashboard-page.html-account-page .center-2 {
     padding: 18px 28px 24px;
+    min-height: 0 !important;
+    box-sizing: border-box;
 }
 
 .html-aiinterview-institute-dashboard-page .page.ai-institute-dashboard-page {
@@ -12159,6 +12163,39 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
 
 .html-aiinterview-institute-dashboard-page .institute-dashboard-tab-panel .institute-dashboard-intro {
     margin: 0;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-join-url-panel,
+.html-aiinterview-institute-dashboard-page .institute-join-url-status {
+    margin-bottom: 18px;
+}
+
+@media (min-width: 1001px) {
+    .html-aiinterview-institute-dashboard-page.html-account-page .master-column-wrapper {
+        display: grid !important;
+        grid-template-columns: 220px minmax(0, 1fr) !important;
+        align-items: stretch !important;
+        min-height: calc(100svh - 64px) !important;
+        padding: 0 !important;
+    }
+
+    .html-aiinterview-institute-dashboard-page.html-account-page .side-2 {
+        min-height: 0;
+    }
+
+    .html-aiinterview-institute-dashboard-page.html-account-page .center-2 {
+        display: flex;
+        flex-direction: column;
+        padding: 16px 26px 20px;
+    }
+
+    .html-aiinterview-institute-dashboard-page .page.ai-institute-dashboard-page,
+    .html-aiinterview-institute-dashboard-page .ai-institute-dashboard-page .page-body,
+    .html-aiinterview-institute-dashboard-page .institute-dashboard-shell,
+    .html-aiinterview-institute-dashboard-page .institute-dashboard-content,
+    .html-aiinterview-institute-dashboard-page .institute-dashboard-tab-panel {
+        min-height: 0;
+    }
 }
 
 .html-vendor-portal-page .account-page .page-title {
@@ -12228,6 +12265,10 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     .html-vendor-portal-page.html-account-page .center-2 {
         padding: 20px 16px 36px !important;
         min-height: 0 !important;
+    }
+
+    .html-aiinterview-institute-dashboard-page.html-account-page .center-2 {
+        padding: 16px 14px 22px !important;
     }
 
     .html-vendor-portal-page .account-page .page-title h1 {
