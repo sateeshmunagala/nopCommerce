@@ -7,9 +7,10 @@
         (function () {
             var key = 'inst_redirected';
             if (!sessionStorage.getItem(key)) {
-                var isHome = window.location.pathname === '/'
-                    || window.location.pathname === '';
-                if (isHome) {
+                var path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+                var isPortalEntry = path === ''
+                    || path === '/customer/info';
+                if (isPortalEntry) {
                     sessionStorage.setItem(key, '1');
                     window.location.replace('@Html.Raw(dashboardUrl)');
                 }

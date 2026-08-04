@@ -11941,54 +11941,101 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
 }
 
 /* ===================================================
-   PHASE 6 - VENDOR PORTAL ADMIN LAYOUT
+   PHASE 6 - VENDOR PORTAL ADMIN LAYOUT (FIXED)
    =================================================== */
 
 /* Hide public top navigation bar on vendor portal pages */
 .html-vendor-portal-page .header-lower .menu-container {
     display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
 }
 
-/* Expand account layout to use full available width on portal pages */
+/* Expand layout to full available width on vendor portal pages */
 .html-vendor-portal-page.html-account-page .master-wrapper-content {
-    max-width: 100%;
+    max-width: 100% !important;
 }
 
 .html-vendor-portal-page.html-account-page .master-column-wrapper {
-    max-width: 1400px;
-    margin: 0 auto;
-    grid-template-columns: 240px minmax(0, 1fr);
-    gap: 0;
-    padding: 0;
-    align-items: stretch;
-    min-height: calc(100vh - 64px);
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    grid-template-columns: 220px minmax(0, 1fr) !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    align-items: stretch !important;
 }
 
-/* Sidebar: full-height admin drawer style */
+/* ===================================================
+   BUG FIX: Disable jb-account-nav-enhanced
+   drawer mode on DESKTOP for vendor portal pages.
+   JS adds jb-account-nav-enhanced to body which
+   hides the sidebar. We must override it here.
+   html.html-vendor-portal-page targets the html
+   element which is where AppendPageCssClassParts
+   places its classes in nopCommerce.
+   =================================================== */
+@media (min-width: 1001px) {
+    html.html-vendor-portal-page body.jb-account-nav-enhanced #jb-account-navigation {
+        position: sticky !important;
+        top: 64px !important;
+        left: auto !important;
+        width: auto !important;
+        height: auto !important;
+        min-height: calc(100vh - 64px) !important;
+        max-height: none !important;
+        transform: none !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        box-shadow: none !important;
+        transition: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    html.html-vendor-portal-page body.jb-account-nav-enhanced .jb-account-nav-overlay {
+        display: none !important;
+    }
+
+    html.html-vendor-portal-page .jb-account-nav-toggle {
+        display: none !important;
+    }
+}
+
+/* SIDEBAR LIGHT THEME */
 .html-vendor-portal-page .block-account-navigation {
     position: sticky;
     top: 64px;
     min-height: calc(100vh - 64px);
-    border-right: 1px solid #2d3440;
-    background: #1a1f27;
     display: flex;
     flex-direction: column;
+    background: #ffffff;
+    border-right: 1px solid #e8eaed;
 }
 
-/* Override light background for vendor portal nav header */
 .html-vendor-portal-page .block-account-navigation .title {
-    background: #1a1f27;
-    color: #35d6b4;
-    font-size: 0.72rem;
+    margin: 0;
+    padding: 18px 20px 14px;
+    background: #ffffff;
+    color: #6b7280;
+    font-size: 0.68rem;
+    font-weight: 700;
     letter-spacing: 0.12em;
-    padding: 20px 20px 12px;
-    border-bottom: 1px solid #2d3440;
+    text-transform: uppercase;
+    border-bottom: 1px solid #f0f1f3;
 }
 
-/* Nav list items for vendor portal */
+.html-vendor-portal-page .block-account-navigation .listbox {
+    padding: 6px 0 16px;
+}
+
 .html-vendor-portal-page .block-account-navigation .list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
     flex: 1;
-    padding: 8px 0;
 }
 
 .html-vendor-portal-page .block-account-navigation .list > li {
@@ -11996,92 +12043,87 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
 }
 
 .html-vendor-portal-page .block-account-navigation a {
-    padding: 12px 20px;
-    color: #9aa3b0;
-    font-size: 0.88rem;
-    letter-spacing: 0.04em;
+    display: block;
+    padding: 10px 20px 10px 17px;
+    color: #4b5563;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    text-decoration: none;
     border-left: 3px solid transparent;
+    transition: background 0.12s, color 0.12s;
 }
 
-.html-vendor-portal-page .block-account-navigation a:hover,
-.html-vendor-portal-page .block-account-navigation li.inactive a:hover {
-    background: #232830;
-    color: #c8d0dc;
+.html-vendor-portal-page .block-account-navigation li.inactive a:hover,
+.html-vendor-portal-page .block-account-navigation a:hover {
+    background: #f5f7ff;
+    color: #2563eb;
+    border-left-color: #c7d7fd;
 }
 
 .html-vendor-portal-page .block-account-navigation li.active a {
-    border-left: 3px solid #35d6b4;
+    border-left: 3px solid var(--jb-accent);
     padding-left: 17px;
-    background: #232830;
-    color: #35d6b4;
+    background: #f0fdfb;
+    color: var(--jb-accent-dark);
 }
 
-/* Section divider label before first vendor-specific nav item */
-.html-vendor-portal-page .block-account-navigation .institute-nav-candidates::before,
-.html-vendor-portal-page .block-account-navigation .vendor-employer-dashboard::before,
-.html-vendor-portal-page .block-account-navigation .institute-dashboard::before {
+/* Section divider before first portal-specific nav item */
+.html-vendor-portal-page .block-account-navigation .institute-dashboard::before,
+.html-vendor-portal-page .block-account-navigation .vendor-employer-dashboard::before {
     content: "PORTAL";
     display: block;
-    padding: 14px 20px 4px;
-    color: #4d5666;
-    font-size: 0.68rem;
-    letter-spacing: 0.12em;
+    padding: 12px 20px 4px;
+    color: #9ca3af;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     pointer-events: none;
 }
 
-/* Remove duplicate divider if multiple vendor items exist */
-.html-vendor-portal-page .block-account-navigation .institute-nav-candidates::before,
-.html-vendor-portal-page .block-account-navigation .institute-nav-credits::before {
-    content: none;
-}
-
-/* Main content area padding for portal pages */
+/* Main content area */
 .html-vendor-portal-page.html-account-page .center-2 {
     padding: 28px 32px 48px;
-    background: #f4f5f7;
+    background: #f7f8fa;
     min-height: calc(100vh - 64px);
 }
 
-/* Page title styling for vendor portal */
 .html-vendor-portal-page .account-page .page-title {
-    border-bottom: 1px solid #dde1e8;
+    border-bottom: 1px solid #e4e7eb;
     margin-bottom: 24px;
     padding-bottom: 16px;
 }
 
 .html-vendor-portal-page .account-page .page-title h1 {
     font-size: 1.6rem;
-    color: #1a1f27;
+    color: #111827;
 }
 
-/* Toggle button: portal pages use icon-only label */
-.html-vendor-portal-page .jb-account-nav-toggle {
-    background: #1a1f27;
-    color: #35d6b4;
-    border: 0;
-    padding: 12px 18px;
-    font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 0.85rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    width: 100%;
-    text-align: left;
+/* Hide footer on portal pages to keep the admin feel */
+.html-vendor-portal-page .footer {
+    display: none;
 }
 
 /* ---- MOBILE VENDOR PORTAL (<= 1000px) ---- */
 @media (max-width: 1000px) {
     .html-vendor-portal-page.html-account-page .master-column-wrapper {
-        display: block;
-        padding: 0;
-        min-height: 0;
+        display: block !important;
+        padding: 0 !important;
+        min-height: 0 !important;
     }
 
     .html-vendor-portal-page .block-account-navigation {
         position: static;
         min-height: 0;
         border-right: 0;
-        border-bottom: 1px solid #2d3440;
+        border-bottom: 1px solid #e8eaed;
+    }
+
+    /* On mobile the jb-account-nav-enhanced drawer is useful - allow it but style it */
+    html.html-vendor-portal-page body.jb-account-nav-enhanced #jb-account-navigation {
+        background: #ffffff !important;
     }
 
     .html-vendor-portal-page .block-account-navigation .list {
@@ -12091,49 +12133,54 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     }
 
     .html-vendor-portal-page .block-account-navigation .list > li {
-        border-bottom: 1px solid #2d3440;
-        border-right: 1px solid #2d3440;
+        border-bottom: 1px solid #e8eaed;
+        border-right: 1px solid #e8eaed;
     }
 
     .html-vendor-portal-page .block-account-navigation a {
-        padding: 12px 14px;
-        font-size: 0.82rem;
         min-height: 44px;
         display: flex;
         align-items: center;
+        font-size: 0.82rem;
+        padding: 10px 12px 10px 9px;
     }
 
     .html-vendor-portal-page .block-account-navigation .title {
-        padding: 14px 18px 10px;
+        padding: 14px 16px 10px;
     }
 
-    .html-vendor-portal-page .block-account-navigation .institute-nav-candidates::before,
-    .html-vendor-portal-page .block-account-navigation .vendor-employer-dashboard::before,
-    .html-vendor-portal-page .block-account-navigation .institute-dashboard::before {
+    .html-vendor-portal-page .block-account-navigation .institute-dashboard::before,
+    .html-vendor-portal-page .block-account-navigation .vendor-employer-dashboard::before {
         content: none;
     }
 
     .html-vendor-portal-page.html-account-page .center-2 {
-        padding: 20px 16px 36px;
-        min-height: 0;
+        padding: 20px 16px 36px !important;
+        min-height: 0 !important;
     }
 
     .html-vendor-portal-page .account-page .page-title h1 {
         font-size: 1.35rem;
     }
-}
 
-/* ---- DRAWER OVERLAY MODE (jb-account-nav-enhanced) ---- */
-@media (max-width: 1000px) {
-    body.jb-vendor-portal-page.jb-account-nav-enhanced #jb-account-navigation {
-        background: #1a1f27;
+    .html-vendor-portal-page .jb-account-nav-toggle {
+        background: #ffffff;
+        color: var(--jb-accent-dark);
+        border: 0;
+        border-bottom: 1px solid #e8eaed;
+        padding: 14px 18px;
+        font-family: "Fjalla One", Arial, sans-serif;
+        font-size: 0.85rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        width: 100%;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
-    body.jb-vendor-portal-page.jb-account-nav-enhanced .block-account-navigation .list {
-        grid-template-columns: 1fr;
-    }
-
-    body.jb-vendor-portal-page.jb-account-nav-enhanced .block-account-navigation .list > li {
-        border-right: 0;
+    .html-vendor-portal-page .footer {
+        display: block;
     }
 }
