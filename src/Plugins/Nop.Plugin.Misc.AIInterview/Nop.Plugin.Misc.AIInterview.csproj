@@ -29,7 +29,11 @@
     <None Remove="Content\js\aiinterview-job-card.js" />
     <None Remove="logo.png" />
     <None Remove="plugin.json" />
+    <None Remove="Views\InstituteCandidates.cshtml" />
+    <None Remove="Views\InstituteCredits.cshtml" />
+    <None Remove="Views\InstituteDashboard.cshtml" />
     <None Remove="Views\ReportShare.cshtml" />
+    <None Remove="Views\Shared\Components\AIInterviewInstituteRedirect\Default.cshtml" />
     <None Remove="Views\Shared\_ReportShareContent.cshtml" />
     <None Remove="Views\_ViewImports.cshtml" />
     <None Remove="Views\Apply.cshtml" />
@@ -111,6 +115,15 @@
     <Content Include="Views\Index.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Views\InstituteCandidates.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\InstituteCredits.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\InstituteDashboard.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Views\MyActivity.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -133,6 +146,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\ReportShare.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\Components\AIInterviewInstituteRedirect\Default.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\_ReportShareContent.cshtml">
