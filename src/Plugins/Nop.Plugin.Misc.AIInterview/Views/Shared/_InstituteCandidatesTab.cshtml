@@ -47,11 +47,24 @@
                             <td data-label="Credits">@c.CreditBalance.ToString("0.##")</td>
                             <td data-label="Joined On">@c.CreatedOnUtc.ToString("dd MMM yyyy")</td>
                             <td data-label="Actions">
-                                <button type="button"
-                                        class="button-2 institute-candidate-edit"
-                                        onclick="document.getElementById('selectedCandidateCustomerId').value='@c.CustomerId';document.getElementById('institute-credit-modal-student').value='@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(c.CustomerName ?? string.Empty)';document.getElementById('institute-credit-modal-balance').value='@c.CreditBalance.ToString("0.##")';window.openInstituteCreditModal && window.openInstituteCreditModal(this);">
-                                    Edit
-                                </button>
+                                <div class="institute-candidate-actions">
+                                    <button type="button"
+                                            class="button-2 institute-candidate-edit"
+                                            aria-label="Edit credits for @c.CustomerName"
+                                            data-applicant-customer-id="@c.CustomerId"
+                                            onclick="document.getElementById('selectedCandidateCustomerId').value='@c.CustomerId';document.getElementById('institute-credit-modal-student').value='@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(c.CustomerName ?? string.Empty)';document.getElementById('institute-credit-modal-balance').value='@c.CreditBalance.ToString("0.##")';window.openInstituteCreditModal && window.openInstituteCreditModal(this);">
+                                        Edit
+                                    </button>
+                                    <button type="button"
+                                            class="button-2 institute-applicant-history"
+                                            aria-label="View credit history for @c.CustomerName"
+                                            data-applicant-customer-id="@c.CustomerId"
+                                            hx-get="@Url.RouteUrl(AIInterviewDefaults.InstituteApplicantLedgerRouteName, new { applicantCustomerId = c.CustomerId })"
+                                            hx-target="#institute-ledger-modal-host"
+                                            hx-swap="innerHTML">
+                                        History
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     }
@@ -61,4 +74,6 @@
 
         @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteCandidateCreditModal.cshtml", Model)
     }
+
+    <div id="institute-ledger-modal-host" class="institute-ledger-modal-host" aria-live="polite"></div>
 </div>

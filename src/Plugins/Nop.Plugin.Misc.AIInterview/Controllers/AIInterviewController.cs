@@ -27,7 +27,6 @@ using Nop.Services.Helpers;
 using Nop.Web.Factories;
 using Nop.Web.Framework.Controllers;
 using System.Text.Json;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
@@ -79,7 +78,6 @@ public class AIInterviewController : BasePluginController
     private readonly IRepository<GenericAttribute> _genericAttributeRepository;
     private readonly IRepository<CreditLedgerEntry> _creditLedgerRepository;
     private readonly ILogger<AIInterviewController> _logger;
-    private readonly IDataProtector _instituteRegistrationProtector;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -113,8 +111,7 @@ public class AIInterviewController : BasePluginController
         IVendorService vendorService = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
         IRepository<CreditLedgerEntry> creditLedgerRepository = null,
-        ILogger<AIInterviewController> logger = null,
-        IDataProtectionProvider dataProtectionProvider = null)
+        ILogger<AIInterviewController> logger = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -149,7 +146,6 @@ public class AIInterviewController : BasePluginController
         _genericAttributeRepository = genericAttributeRepository;
         _creditLedgerRepository = creditLedgerRepository;
         _logger = logger;
-        _instituteRegistrationProtector = InstituteRegistrationTokenHelper.CreateProtector(dataProtectionProvider);
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -181,8 +177,7 @@ public class AIInterviewController : BasePluginController
         IVendorService vendorService = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
         IRepository<CreditLedgerEntry> creditLedgerRepository = null,
-        ILogger<AIInterviewController> logger = null,
-        IDataProtectionProvider dataProtectionProvider = null)
+        ILogger<AIInterviewController> logger = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -215,8 +210,7 @@ public class AIInterviewController : BasePluginController
             vendorService,
             genericAttributeRepository,
             creditLedgerRepository,
-            logger,
-            dataProtectionProvider)
+            logger)
     {
     }
 
@@ -1085,12 +1079,23 @@ public class AIInterviewController : BasePluginController
 
     protected static string BuildInstituteSlug(string vendorName)
     {
-        if (string.IsNullOrWhiteSpace(vendorName))
-            return string.Empty;
+        return InstituteRegistrationSlugHelper.BuildSlug(vendorName);
+    }
 
-        var slug = vendorName.ToLowerInvariant().Replace(' ', '-');
-        slug = System.Text.RegularExpressions.Regex.Replace(slug, @"[^a-z0-9\-]", string.Empty);
-        return slug.Trim('-');
+    protected virtual async Task<int> ResolveInstituteVendorIdFromRegistrationValueAsync(string registrationValue)
+    {
+        if (InstituteRegistrationSlugHelper.TryResolveLegacyVendorId(registrationValue, out var legacyVendorId))
+            return legacyVendorId;
+
+        var slug = InstituteRegistrationSlugHelper.NormalizeRegistrationValue(registrationValue);
+        if (string.IsNullOrWhiteSpace(slug) || _vendorService == null)
+            return 0;
+
+        var vendors = await _vendorService.GetAllVendorsAsync(showHidden: true);
+        var vendor = vendors.FirstOrDefault(vendor =>
+            string.Equals(BuildInstituteSlug(vendor.Name), slug, StringComparison.OrdinalIgnoreCase));
+
+        return vendor?.Id ?? 0;
     }
 
     protected virtual async Task<IList<Customer>> GetInstituteStudentsAsync(int vendorId)
@@ -1146,12 +1151,7 @@ public class AIInterviewController : BasePluginController
         if (string.IsNullOrWhiteSpace(slug))
             slug = "institute";
 
-        var token = InstituteRegistrationTokenHelper.CreateToken(_instituteRegistrationProtector, customer.VendorId, DateTime.UtcNow);
-        var registrationValue = string.IsNullOrWhiteSpace(token)
-            ? slug
-            : $"{slug}.{Uri.EscapeDataString(token)}";
-
-        return $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={registrationValue}";
+        return $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={slug}";
     }
 
     protected virtual async Task<InstituteDashboardPageModel> BuildInstituteDashboardPageModelAsync(Customer customer, string tab, string transferMessage = null, bool transferSucceeded = false)
@@ -1250,6 +1250,94 @@ public class AIInterviewController : BasePluginController
     public virtual IActionResult InstituteCredits()
     {
         return RedirectToRoute(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteDashboardTabKey });
+    }
+
+    public virtual async Task<IActionResult> InstituteApplicantLedger(int applicantCustomerId, int page = 1, int pageSize = 12)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (!await IsInstituteVendorAsync(customer))
+            return RedirectToRoute("Homepage");
+
+        var applicants = await GetInstituteStudentsAsync(customer.VendorId);
+        var applicant = applicants.FirstOrDefault(student => student.Id == applicantCustomerId);
+        if (applicant == null)
+            return NotFound();
+
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 5, 50);
+
+        var wallet = _creditService == null ? null : await _creditService.GetOrCreateWalletAsync(applicant.Id);
+        var entries = wallet == null || _creditLedgerRepository == null
+            ? new List<CreditLedgerEntry>()
+            : (await _creditLedgerRepository.GetAllAsync(q =>
+                q.Where(entry => entry.CreditWalletId == wallet.Id)
+                    .OrderBy(entry => entry.CreatedOnUtc)
+                    .ThenBy(entry => entry.Id)))
+                .ToList();
+
+        var runningBalance = 0m;
+        var ledgerRows = entries.Select(entry =>
+        {
+            runningBalance += entry.Amount;
+            return new InstituteApplicantLedgerRowModel
+            {
+                CreatedOnUtc = entry.CreatedOnUtc,
+                Action = BuildInstituteLedgerAction(entry),
+                Amount = entry.Amount,
+                RunningBalance = runningBalance,
+                Source = string.IsNullOrWhiteSpace(entry.LedgerSource) ? "-" : entry.LedgerSource,
+                Remarks = entry.Remarks ?? string.Empty
+            };
+        }).ToList();
+
+        var totalRows = ledgerRows.Count;
+        var totalPages = totalRows == 0 ? 1 : (int)Math.Ceiling(totalRows / (decimal)pageSize);
+        page = Math.Min(page, totalPages);
+
+        var fullName = (applicant.FirstName + " " + applicant.LastName).Trim();
+        var model = new InstituteApplicantLedgerModalModel
+        {
+            ApplicantCustomerId = applicant.Id,
+            ApplicantName = string.IsNullOrWhiteSpace(fullName) ? applicant.Email : fullName,
+            ApplicantEmail = applicant.Email ?? string.Empty,
+            CurrentBalance = wallet?.Balance ?? 0m,
+            TotalDeposits = entries.Where(entry => entry.Amount > 0).Sum(entry => entry.Amount),
+            TotalWithdrawals = Math.Abs(entries.Where(entry => entry.Amount < 0).Sum(entry => entry.Amount)),
+            Page = page,
+            PageSize = pageSize,
+            TotalRows = totalRows,
+            TotalPages = totalPages,
+            Filters = new InstituteApplicantLedgerFilterModel
+            {
+                ApplicantCustomerId = applicant.Id,
+                Page = page,
+                PageSize = pageSize
+            },
+            Rows = ledgerRows
+                .OrderByDescending(row => row.CreatedOnUtc)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList()
+        };
+
+        return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteApplicantLedgerModal.cshtml", model);
+    }
+
+    protected static string BuildInstituteLedgerAction(CreditLedgerEntry entry)
+    {
+        if (entry == null)
+            return "Ledger entry";
+
+        if (string.Equals(entry.TransactionType, "Deposit", StringComparison.OrdinalIgnoreCase))
+            return "Credit added";
+
+        if (string.Equals(entry.TransactionType, "Withdrawal", StringComparison.OrdinalIgnoreCase))
+            return "Credit used";
+
+        return string.IsNullOrWhiteSpace(entry.TransactionType) ? "Ledger entry" : entry.TransactionType;
     }
 
     [HttpPost]

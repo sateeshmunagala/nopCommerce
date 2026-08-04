@@ -11967,7 +11967,7 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     gap: 0 !important;
     padding: 0 !important;
     align-items: stretch !important;
-    min-height: calc(100vh - 64px);
+    min-height: auto;
     box-sizing: border-box;
 }
 
@@ -11992,7 +11992,7 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
         left: auto !important;
         width: auto !important;
         height: auto !important;
-        min-height: calc(100vh - 64px) !important;
+        min-height: auto !important;
         max-height: none !important;
         transform: none !important;
         visibility: visible !important;
@@ -12017,7 +12017,7 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
 .html-vendor-portal-page .block-account-navigation {
     position: sticky;
     top: 64px;
-    min-height: calc(100vh - 64px);
+    min-height: auto;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -12095,14 +12095,14 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
 
 /* Main content area */
 .html-vendor-portal-page.html-account-page .center-2 {
-    padding: 28px 32px 48px;
+    padding: 24px 28px 34px;
     background: #f7f8fa;
-    min-height: calc(100vh - 64px);
+    min-height: auto;
     box-sizing: border-box;
 }
 
 .html-aiinterview-institute-dashboard-page.html-account-page .center-2 {
-    padding: 24px 28px 36px;
+    padding: 24px 32px 34px;
 }
 
 .html-vendor-portal-page .account-page .page-title {
@@ -12279,6 +12279,18 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     text-align: center;
 }
 
+.institute-candidate-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.institute-candidate-actions .button-2 {
+    min-width: 74px;
+    text-align: center;
+}
+
 .institute-transfer-alert {
     border-radius: 6px;
     padding: 12px 14px;
@@ -12425,6 +12437,182 @@ body.institute-credit-modal-open {
     padding-top: 18px;
 }
 
+.institute-ledger-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10070;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+body.institute-ledger-modal-open {
+    overflow: hidden;
+}
+
+.institute-ledger-modal.is-open {
+    display: flex;
+}
+
+.institute-ledger-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.46);
+}
+
+.institute-ledger-modal-dialog {
+    position: relative;
+    z-index: 1;
+    width: min(980px, 100%);
+    max-height: calc(100dvh - 40px);
+    overflow: auto;
+    background: #ffffff;
+    border: 1px solid #e4e7eb;
+    border-radius: 8px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+}
+
+.institute-ledger-modal-dialog:focus {
+    outline: none;
+}
+
+.institute-ledger-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #e4e7eb;
+}
+
+.institute-ledger-modal-header h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.08rem;
+}
+
+.institute-ledger-modal-header p {
+    margin: 5px 0 0;
+    color: #4b5563;
+    font-size: 0.86rem;
+}
+
+.institute-ledger-modal-header p span {
+    color: #6b7280;
+}
+
+.institute-ledger-modal-close {
+    border: 0;
+    background: transparent;
+    color: #4b5563;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.institute-ledger-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    padding: 18px 20px 0;
+}
+
+.institute-ledger-summary-card {
+    border: 1px solid #e4e7eb;
+    border-radius: 6px;
+    padding: 14px 16px;
+    background: #f9fafb;
+}
+
+.institute-ledger-summary-card span {
+    display: block;
+    margin-bottom: 6px;
+    color: #6b7280;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.institute-ledger-summary-card strong {
+    display: block;
+    color: #111827;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.35rem;
+}
+
+.institute-ledger-empty {
+    margin: 18px 20px 0;
+    padding: 16px;
+    border: 1px dashed #d7dde5;
+    border-radius: 6px;
+    color: #6b7280;
+    background: #f9fafb;
+}
+
+.institute-ledger-table-wrapper {
+    margin: 18px 20px 0;
+    overflow-x: auto;
+    border: 1px solid #e4e7eb;
+    border-radius: 6px;
+}
+
+.institute-ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+    font-size: 0.86rem;
+}
+
+.institute-ledger-table th,
+.institute-ledger-table td {
+    padding: 11px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid #eef0f3;
+}
+
+.institute-ledger-table th {
+    color: #6b7280;
+    background: #f7f8fa;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.76rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.institute-ledger-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.institute-ledger-table .is-positive {
+    color: #047857;
+    font-weight: 700;
+}
+
+.institute-ledger-table .is-negative {
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+.institute-ledger-modal-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 20px 20px;
+}
+
+.institute-ledger-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    color: #4b5563;
+    font-size: 0.86rem;
+}
+
 @media (min-width: 641px) {
     .ai-institute-candidates-page .institute-candidates-table,
     .ai-institute-credits-page .institute-candidates-table {
@@ -12455,27 +12643,88 @@ body.institute-credit-modal-open {
 
 @media (max-width: 640px) {
     .institute-credit-summary-grid,
-    .institute-credit-modal-grid {
+    .institute-credit-modal-grid,
+    .institute-ledger-summary-grid {
         grid-template-columns: 1fr;
     }
 
-    .institute-credit-modal {
+    .institute-credit-modal,
+    .institute-ledger-modal {
         align-items: flex-start;
         padding: 12px;
     }
 
-    .institute-credit-modal-dialog {
+    .institute-credit-modal-dialog,
+    .institute-ledger-modal-dialog {
         max-height: calc(100vh - 24px);
         overflow: auto;
     }
 
-    .institute-credit-modal-actions {
+    .institute-credit-modal-actions,
+    .institute-ledger-modal-actions {
         flex-direction: column-reverse;
+        align-items: stretch;
     }
 
     .institute-credit-modal-actions .button-1,
-    .institute-credit-modal-actions .button-2 {
+    .institute-credit-modal-actions .button-2,
+    .institute-ledger-modal-actions .button-1,
+    .institute-ledger-modal-actions .button-2 {
         width: 100%;
         text-align: center;
+    }
+
+    .institute-ledger-modal-header,
+    .institute-ledger-summary-grid,
+    .institute-ledger-modal-actions {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .institute-ledger-table-wrapper {
+        margin-left: 16px;
+        margin-right: 16px;
+        overflow-x: visible;
+    }
+
+    .institute-ledger-table thead {
+        display: none;
+    }
+
+    .institute-ledger-table,
+    .institute-ledger-table tbody,
+    .institute-ledger-table tr,
+    .institute-ledger-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .institute-ledger-table tr {
+        padding: 10px 0;
+        border-bottom: 1px solid #e4e7eb;
+    }
+
+    .institute-ledger-table tr:last-child {
+        border-bottom: 0;
+    }
+
+    .institute-ledger-table td {
+        padding: 5px 12px;
+        border-bottom: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .institute-ledger-table td::before {
+        content: attr(data-label) ": ";
+        display: inline;
+        color: #6b7280;
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .institute-ledger-pagination {
+        width: 100%;
+        justify-content: center;
     }
 }

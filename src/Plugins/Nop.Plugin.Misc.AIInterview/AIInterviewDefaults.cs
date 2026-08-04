@@ -100,6 +100,7 @@ public static class AIInterviewDefaults
     public static string InstituteVendorIdAttributeKey => "AIInterview.InstituteVendorId";
     public static string InstituteRegistrationCookieName => "ai_inst";
     public static string InstituteCreditAllotRouteName => "Plugin.Misc.AIInterview.InstituteCreditAllot";
+    public static string InstituteApplicantLedgerRouteName => "Plugin.Misc.AIInterview.InstituteApplicantLedger";
 
     public static string VendorScoreboardRouteName => "Plugin.Misc.AIInterview.VendorScoreboard";
 

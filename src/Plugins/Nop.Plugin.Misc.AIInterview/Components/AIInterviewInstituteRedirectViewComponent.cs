@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.DataProtection;
 using Nop.Core;
 using Nop.Plugin.Misc.AIInterview.Infrastructure;
 using Nop.Services.Customers;
+using Nop.Services.Vendors;
 using Nop.Web.Framework.Components;
 
 namespace Nop.Plugin.Misc.AIInterview.Components;
@@ -12,22 +12,22 @@ public class AIInterviewInstituteRedirectViewComponent : NopViewComponent
 {
     private readonly IWorkContext _workContext;
     private readonly ICustomerService _customerService;
+    private readonly IVendorService _vendorService;
     private readonly AIInterviewSettings _settings;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IDataProtector _instituteRegistrationProtector;
 
     public AIInterviewInstituteRedirectViewComponent(
         IWorkContext workContext,
         ICustomerService customerService,
+        IVendorService vendorService,
         AIInterviewSettings settings,
-        IHttpContextAccessor httpContextAccessor,
-        IDataProtectionProvider dataProtectionProvider)
+        IHttpContextAccessor httpContextAccessor)
     {
         _workContext = workContext;
         _customerService = customerService;
+        _vendorService = vendorService;
         _settings = settings;
         _httpContextAccessor = httpContextAccessor;
-        _instituteRegistrationProtector = InstituteRegistrationTokenHelper.CreateProtector(dataProtectionProvider);
     }
 
     public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData)
@@ -35,11 +35,7 @@ public class AIInterviewInstituteRedirectViewComponent : NopViewComponent
         var httpContext = _httpContextAccessor?.HttpContext;
         var instParam = httpContext?.Request.Query[AIInterviewDefaults.InstituteRegistrationCookieName]
             .FirstOrDefault();
-        if (InstituteRegistrationTokenHelper.TryResolveVendorId(
-            _instituteRegistrationProtector,
-            instParam,
-            DateTime.UtcNow,
-            out _))
+        if (await CanResolveInstituteRegistrationValueAsync(instParam))
         {
             httpContext.Response.Cookies.Append(
                 AIInterviewDefaults.InstituteRegistrationCookieName,
@@ -69,5 +65,19 @@ public class AIInterviewInstituteRedirectViewComponent : NopViewComponent
         return View(
             "~/Plugins/Misc.AIInterview/Views/Shared/Components/" +
             "AIInterviewInstituteRedirect/Default.cshtml");
+    }
+
+    protected virtual async Task<bool> CanResolveInstituteRegistrationValueAsync(string registrationValue)
+    {
+        if (InstituteRegistrationSlugHelper.TryResolveLegacyVendorId(registrationValue, out _))
+            return true;
+
+        var slug = InstituteRegistrationSlugHelper.NormalizeRegistrationValue(registrationValue);
+        if (string.IsNullOrWhiteSpace(slug) || _vendorService == null)
+            return false;
+
+        var vendors = await _vendorService.GetAllVendorsAsync(showHidden: true);
+        return vendors.Any(vendor =>
+            string.Equals(InstituteRegistrationSlugHelper.BuildSlug(vendor.Name), slug, StringComparison.OrdinalIgnoreCase));
     }
 }
