@@ -65,3 +65,75 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        function getModal() {
+            return document.getElementById('institute-credit-modal');
+        }
+
+        function resetInstituteCreditModal(modal) {
+            var form = modal && modal.querySelector('form');
+            if (form) {
+                form.reset();
+            }
+            ['selectedCandidateCustomerId', 'institute-credit-modal-student', 'institute-credit-modal-balance'].forEach(function (id) {
+                var field = document.getElementById(id);
+                if (field) {
+                    field.value = '';
+                }
+            });
+        }
+
+        window.closeInstituteCreditModal = function () {
+            var modal = getModal();
+            if (!modal) {
+                document.body.classList.remove('institute-credit-modal-open');
+                return;
+            }
+
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('institute-credit-modal-open');
+            resetInstituteCreditModal(modal);
+        };
+
+        window.openInstituteCreditModal = function () {
+            var modal = getModal();
+            if (!modal) {
+                return;
+            }
+
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('institute-credit-modal-open');
+        };
+
+        document.addEventListener('click', function (event) {
+            if (event.target.closest('.institute-candidate-edit')) {
+                window.openInstituteCreditModal();
+            }
+            if (event.target.closest('.institute-credit-modal-backdrop')) {
+                window.closeInstituteCreditModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && getModal()?.classList.contains('is-open')) {
+                window.closeInstituteCreditModal();
+            }
+        });
+
+        document.body.addEventListener('htmx:beforeSwap', function (event) {
+            if (event.detail && event.detail.target && event.detail.target.id === 'institute-dashboard-content') {
+                window.closeInstituteCreditModal();
+            }
+        });
+
+        document.body.addEventListener('htmx:afterSwap', function (event) {
+            if (event.detail && event.detail.target && event.detail.target.id === 'institute-dashboard-content') {
+                window.closeInstituteCreditModal();
+            }
+        });
+    })();
+</script>

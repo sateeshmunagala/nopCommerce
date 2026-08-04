@@ -3,6 +3,12 @@
 <script>
     (function () {
         var activeTab = '@Model.ActiveTab';
+        var navClassByTab = {
+            '@AIInterviewDefaults.InstituteDashboardTabKey': 'institute-dashboard',
+            '@AIInterviewDefaults.InstituteCreditsTabKey': 'institute-nav-credits',
+            '@AIInterviewDefaults.InstituteCandidatesTabKey': 'institute-nav-candidates'
+        };
+
         document.querySelectorAll('.institute-dashboard-tab').forEach(function (tab) {
             var isActive = tab.getAttribute('data-institute-tab') === activeTab;
             tab.classList.toggle('is-active', isActive);
@@ -12,6 +18,18 @@
                 tab.removeAttribute('aria-current');
             }
         });
+
+        document.querySelectorAll('.block-account-navigation li.institute-dashboard, .block-account-navigation li.institute-nav-credits, .block-account-navigation li.institute-nav-candidates').forEach(function (item) {
+            var isActive = item.classList.contains(navClassByTab[activeTab]);
+            item.classList.toggle('active', isActive);
+            item.classList.toggle('inactive', !isActive);
+        });
+
+        if (window.closeInstituteCreditModal) {
+            window.closeInstituteCreditModal();
+        } else {
+            document.body.classList.remove('institute-credit-modal-open');
+        }
     })();
 </script>
 

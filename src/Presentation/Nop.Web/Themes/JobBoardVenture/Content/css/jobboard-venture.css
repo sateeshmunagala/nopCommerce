@@ -12297,6 +12297,10 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     overflow: visible;
 }
 
+body.institute-credit-modal-open {
+    overflow: hidden;
+}
+
 .institute-credit-modal.is-open {
     display: flex;
 }

@@ -1,15 +1,14 @@
 @model InstituteDashboardPageModel
 
 <div id="institute-credit-modal" class="institute-credit-modal" aria-hidden="true">
-    <div class="institute-credit-modal-backdrop"
-         onclick="document.getElementById('institute-credit-modal').classList.remove('is-open');"></div>
+    <div class="institute-credit-modal-backdrop"></div>
     <div class="institute-credit-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="institute-credit-modal-title">
         <header class="institute-credit-modal-header">
             <h2 id="institute-credit-modal-title">Manage Student Credits</h2>
             <button type="button"
                     class="institute-credit-modal-close"
                     aria-label="Close"
-                    onclick="document.getElementById('institute-credit-modal').classList.remove('is-open');">
+                    onclick="window.closeInstituteCreditModal && window.closeInstituteCreditModal();">
                 &times;
             </button>
         </header>
@@ -52,7 +51,7 @@
             <footer class="institute-credit-modal-actions">
                 <button type="button"
                         class="button-2"
-                        onclick="document.getElementById('institute-credit-modal').classList.remove('is-open');">
+                        onclick="window.closeInstituteCreditModal && window.closeInstituteCreditModal();">
                     Cancel
                 </button>
                 <button type="submit" class="button-1">Save</button>

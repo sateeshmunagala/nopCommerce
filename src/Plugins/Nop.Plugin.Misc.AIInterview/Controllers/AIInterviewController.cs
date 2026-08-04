@@ -1175,13 +1175,16 @@ public class AIInterviewController : BasePluginController
         var consumedCredits = 0m;
         if (_creditLedgerRepository != null && studentWalletIds.Any())
         {
-            var usageSources = new[] { CreditLedgerSources.InterviewUsage, CreditLedgerSources.SponsorInterviewUsage };
+            var usageSources = new HashSet<string>(
+                new[] { CreditLedgerSources.InterviewUsage, CreditLedgerSources.SponsorInterviewUsage },
+                StringComparer.OrdinalIgnoreCase);
             var usageEntries = await _creditLedgerRepository.GetAllAsync(q =>
-                q.Where(entry =>
-                    studentWalletIds.Contains(entry.CreditWalletId) &&
-                    string.Equals(entry.TransactionType, "Withdrawal") &&
-                    usageSources.Contains(entry.LedgerSource)));
-            consumedCredits = usageEntries.Sum(entry => Math.Abs(entry.Amount));
+                q.Where(entry => studentWalletIds.Contains(entry.CreditWalletId)));
+            consumedCredits = usageEntries
+                .Where(entry =>
+                    string.Equals(entry.TransactionType, "Withdrawal", StringComparison.OrdinalIgnoreCase) &&
+                    usageSources.Contains(entry.LedgerSource ?? string.Empty))
+                .Sum(entry => Math.Abs(entry.Amount));
         }
 
         var vendor = _vendorService != null
