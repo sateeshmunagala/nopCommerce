@@ -7,6 +7,7 @@
     NopHtml.AppendPageCssClassParts("html-aiinterview-institute-dashboard-page");
 
     var vendorName = ViewData["InstituteVendorName"] as string ?? string.Empty;
+    var joinUrl = ViewData["InstituteJoinUrl"] as string ?? string.Empty;
     var candidatesUrl = Url.RouteUrl(AIInterviewDefaults.InstituteCandidatesRouteName);
     var creditsUrl = Url.RouteUrl(AIInterviewDefaults.InstituteCreditsRouteName);
 }
@@ -22,6 +23,27 @@
         <h1>Institute Dashboard@(string.IsNullOrEmpty(vendorName) ? "" : $" - {vendorName}")</h1>
     </div>
     <div class="page-body">
+        @if (!string.IsNullOrWhiteSpace(joinUrl))
+        {
+            <div class="institute-join-url-panel">
+                <label class="institute-join-url-label">Your Student Registration Link</label>
+                <div class="institute-join-url-row">
+                    <input type="text" readonly value="@joinUrl"
+                           class="institute-join-url-input"
+                           id="institute-join-url" />
+                    <button type="button"
+                            class="button-2 institute-join-url-copy"
+                            onclick="navigator.clipboard.writeText(document.getElementById('institute-join-url').value).then(function(){this.textContent='Copied!';setTimeout(function(){document.querySelector('.institute-join-url-copy').textContent='Copy Link';},2000);}.bind(this))">
+                        Copy Link
+                    </button>
+                </div>
+                <p class="institute-join-url-hint">
+                    Share this link with your students. When they register using this link
+                    they will automatically appear in your Candidates list.
+                </p>
+            </div>
+        }
+
         <p class="institute-dashboard-intro">
             Welcome to your institute portal. Use the links below to manage your candidates
             and allocate interview credits to your students.

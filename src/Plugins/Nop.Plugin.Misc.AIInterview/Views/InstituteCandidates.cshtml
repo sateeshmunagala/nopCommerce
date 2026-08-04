@@ -7,6 +7,7 @@
     NopHtml.AppendPageCssClassParts("html-account-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-institute-candidates-page");
+    var joinUrl = ViewData["InstituteJoinUrl"] as string ?? string.Empty;
 }
 
 @section left
@@ -18,28 +19,31 @@
 <div class="page ai-institute-candidates-page">
     <div class="page-title"><h1>Candidates</h1></div>
     <div class="page-body">
-        <div class="institute-invite-form-panel">
-            <h2 class="institute-invite-form-heading">Invite a Student</h2>
-            <form asp-route="@AIInterviewDefaults.InstituteCandidateInviteRouteName"
-                  method="post"
-                  class="institute-invite-form">
-                <div class="institute-invite-row">
-                    <input type="email"
-                           name="email"
-                           placeholder="student@example.com"
-                           class="institute-invite-email-input"
-                           required />
-                    <button type="submit" class="button-1 institute-invite-submit">
-                        Invite
+
+        @if (!string.IsNullOrWhiteSpace(joinUrl))
+        {
+            <div class="institute-join-url-panel">
+                <label class="institute-join-url-label">Student Registration Link</label>
+                <div class="institute-join-url-row">
+                    <input type="text" readonly value="@joinUrl"
+                           class="institute-join-url-input"
+                           id="institute-join-url-candidates" />
+                    <button type="button"
+                            class="button-2 institute-join-url-copy"
+                            onclick="navigator.clipboard.writeText(document.getElementById('institute-join-url-candidates').value).then(function(){this.textContent='Copied!';setTimeout(function(){document.querySelector('.institute-join-url-copy').textContent='Copy Link';},2000);}.bind(this))">
+                        Copy Link
                     </button>
                 </div>
-            </form>
-        </div>
+                <p class="institute-join-url-hint">
+                    Share this link with your students. Registered students appear below automatically.
+                </p>
+            </div>
+        }
 
         @if (!Model.Candidates.Any())
         {
             <p class="institute-candidates-empty">
-                No candidates yet. Invite your first student using the form above.
+                No students yet. Share your registration link above to onboard students.
             </p>
         }
         else
@@ -51,13 +55,13 @@
                             <th>Email / Name</th>
                             <th>Status</th>
                             <th>Credits</th>
-                            <th>Invited On</th>
+                            <th>Joined On</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var c in Model.Candidates)
                         {
-                            <tr class="institute-candidate-row @(c.IsAccepted ? "is-accepted" : "is-pending")">
+                            <tr class="institute-candidate-row">
                                 <td data-label="Email / Name">
                                     <span class="candidate-email">@c.Email</span>
                                     @if (!string.IsNullOrWhiteSpace(c.CustomerName))
@@ -66,12 +70,10 @@
                                     }
                                 </td>
                                 <td data-label="Status">
-                                    <span class="candidate-status-badge @(c.IsAccepted ? "badge-accepted" : "badge-pending")">
-                                        @(c.IsAccepted ? "Accepted" : "Pending")
-                                    </span>
+                                    <span class="candidate-status-badge badge-accepted">Active</span>
                                 </td>
                                 <td data-label="Credits">@c.CreditBalance.ToString("0.##")</td>
-                                <td data-label="Invited On">@c.CreatedOnUtc.ToString("dd MMM yyyy")</td>
+                                <td data-label="Joined On">@c.CreatedOnUtc.ToString("dd MMM yyyy")</td>
                             </tr>
                         }
                     </tbody>

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
 using Nop.Services.Customers;
@@ -10,19 +11,39 @@ public class AIInterviewInstituteRedirectViewComponent : NopViewComponent
     private readonly IWorkContext _workContext;
     private readonly ICustomerService _customerService;
     private readonly AIInterviewSettings _settings;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public AIInterviewInstituteRedirectViewComponent(
         IWorkContext workContext,
         ICustomerService customerService,
-        AIInterviewSettings settings)
+        AIInterviewSettings settings,
+        IHttpContextAccessor httpContextAccessor)
     {
         _workContext = workContext;
         _customerService = customerService;
         _settings = settings;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData)
     {
+        var httpContext = _httpContextAccessor?.HttpContext;
+        var instParam = httpContext?.Request.Query[AIInterviewDefaults.InstituteRegistrationCookieName]
+            .FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(instParam) && instParam.Contains(':'))
+        {
+            httpContext.Response.Cookies.Append(
+                AIInterviewDefaults.InstituteRegistrationCookieName,
+                instParam,
+                new Microsoft.AspNetCore.Http.CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = httpContext.Request.IsHttps,
+                    SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
+                    Expires = DateTimeOffset.UtcNow.AddDays(30)
+                });
+        }
+
         if (!_settings.Enabled)
             return Content(string.Empty);
 

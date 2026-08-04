@@ -11874,3 +11874,68 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
         text-align: center;
     }
 }
+
+/* ===================================================
+   INSTITUTE JOIN URL PANEL (Phase 3 Revision)
+   =================================================== */
+
+.institute-join-url-panel {
+    background: var(--jb-white);
+    border: 1px solid var(--jb-border);
+    border-left: 4px solid var(--jb-accent);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+.institute-join-url-label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--jb-muted);
+    margin-bottom: 8px;
+}
+
+.institute-join-url-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.institute-join-url-input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--jb-border);
+    border-radius: 4px;
+    font-size: 0.88rem;
+    background: var(--jb-bg);
+    color: var(--jb-ink);
+    cursor: text;
+}
+
+.institute-join-url-copy {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.institute-join-url-hint {
+    font-size: 0.82rem;
+    color: var(--jb-muted);
+    margin: 0;
+}
+
+@media (max-width: 640px) {
+    .institute-join-url-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .institute-join-url-copy {
+        width: 100%;
+        text-align: center;
+    }
+}

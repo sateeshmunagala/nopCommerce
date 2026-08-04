@@ -14,5 +14,4 @@ public record InstituteCandidateModel
 public record InstituteCandidatesPageModel
 {
     public IList<InstituteCandidateModel> Candidates { get; init; } = new List<InstituteCandidateModel>();
-    public string InviteEmail { get; set; }
 }

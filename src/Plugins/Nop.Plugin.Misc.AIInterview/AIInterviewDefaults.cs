@@ -97,7 +97,8 @@ public static class AIInterviewDefaults
     public static string InstituteDashboardRouteName => "Plugin.Misc.AIInterview.InstituteDashboard";
     public static string InstituteCandidatesRouteName => "Plugin.Misc.AIInterview.InstituteCandidates";
     public static string InstituteCreditsRouteName => "Plugin.Misc.AIInterview.InstituteCredits";
-    public static string InstituteCandidateInviteRouteName => "Plugin.Misc.AIInterview.InstituteCandidateInvite";
+    public static string InstituteVendorIdAttributeKey => "AIInterview.InstituteVendorId";
+    public static string InstituteRegistrationCookieName => "ai_inst";
     public static string InstituteCreditAllotRouteName => "Plugin.Misc.AIInterview.InstituteCreditAllot";
     public static int InstituteDashboardNavigationTab => 50;
 

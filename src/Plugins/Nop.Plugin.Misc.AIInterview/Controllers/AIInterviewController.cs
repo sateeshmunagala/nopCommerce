@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Http;
 using Nop.Core;
+using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Media;
@@ -13,6 +14,7 @@ using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Plugin.Misc.AIInterview.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
+using Nop.Data;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Messages;
@@ -72,6 +74,8 @@ public class AIInterviewController : BasePluginController
     private readonly ISponsorInviteService _inviteService;
     private readonly ICreditService _creditService;
     private readonly ICreditActivityService _creditActivityService;
+    private readonly IVendorService _vendorService;
+    private readonly IRepository<GenericAttribute> _genericAttributeRepository;
     private readonly ILogger<AIInterviewController> _logger;
 
     public AIInterviewController(IApplicationService applicationService,
@@ -103,6 +107,8 @@ public class AIInterviewController : BasePluginController
         ISponsorInviteService inviteService = null,
         ICreditService creditService = null,
         ICreditActivityService creditActivityService = null,
+        IVendorService vendorService = null,
+        IRepository<GenericAttribute> genericAttributeRepository = null,
         ILogger<AIInterviewController> logger = null)
     {
         _applicationService = applicationService;
@@ -134,6 +140,8 @@ public class AIInterviewController : BasePluginController
         _inviteService = inviteService;
         _creditService = creditService;
         _creditActivityService = creditActivityService;
+        _vendorService = vendorService;
+        _genericAttributeRepository = genericAttributeRepository;
         _logger = logger;
     }
 
@@ -163,6 +171,8 @@ public class AIInterviewController : BasePluginController
         ISponsorInviteService inviteService = null,
         ICreditService creditService = null,
         ICreditActivityService creditActivityService = null,
+        IVendorService vendorService = null,
+        IRepository<GenericAttribute> genericAttributeRepository = null,
         ILogger<AIInterviewController> logger = null)
         : this(applicationService,
             interviewSessionService,
@@ -193,6 +203,8 @@ public class AIInterviewController : BasePluginController
             inviteService,
             creditService,
             creditActivityService,
+            vendorService,
+            genericAttributeRepository,
             logger)
     {
     }
@@ -1060,6 +1072,44 @@ public class AIInterviewController : BasePluginController
         return await _customerService.IsInCustomerRoleAsync(customer, "Institute", true);
     }
 
+    protected static string BuildInstituteSlug(string vendorName)
+    {
+        if (string.IsNullOrWhiteSpace(vendorName))
+            return string.Empty;
+
+        var slug = vendorName.ToLowerInvariant().Replace(' ', '-');
+        slug = System.Text.RegularExpressions.Regex.Replace(slug, @"[^a-z0-9\-]", string.Empty);
+        return slug.Trim('-');
+    }
+
+    protected virtual async Task<IList<Customer>> GetInstituteStudentsAsync(int vendorId)
+    {
+        if (_genericAttributeRepository == null || vendorId <= 0)
+            return new List<Customer>();
+
+        var vendorIdStr = vendorId.ToString();
+        var customerIds = (await _genericAttributeRepository.GetAllAsync(q =>
+            q.Where(a =>
+                a.KeyGroup == nameof(Customer) &&
+                a.Key == AIInterviewDefaults.InstituteVendorIdAttributeKey &&
+                a.Value == vendorIdStr)))
+            .Select(a => a.EntityId)
+            .Distinct()
+            .ToList();
+
+        if (!customerIds.Any())
+            return new List<Customer>();
+
+        var students = new List<Customer>();
+        foreach (var id in customerIds)
+        {
+            var c = await _customerService.GetCustomerByIdAsync(id);
+            if (c != null && !c.Deleted)
+                students.Add(c);
+        }
+        return students.OrderBy(c => c.Email).ToList();
+    }
+
     public virtual async Task<IActionResult> InstituteDashboard()
     {
         if (!_aiInterviewSettings.Enabled)
@@ -1071,6 +1121,14 @@ public class AIInterviewController : BasePluginController
 
         ViewData["InstituteVendorName"] = customer.FirstName?.Trim() is { Length: > 0 } fn
             ? fn : customer.Email ?? string.Empty;
+
+        var vendor = _vendorService != null
+            ? await _vendorService.GetVendorByIdAsync(customer.VendorId)
+            : null;
+        var slug = vendor != null ? BuildInstituteSlug(vendor.Name) : customer.VendorId.ToString();
+        var joinUrl = $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={slug}:{customer.VendorId}";
+        ViewData["InstituteJoinUrl"] = joinUrl;
+
         return View("~/Plugins/Misc.AIInterview/Views/InstituteDashboard.cshtml");
     }
 
@@ -1083,65 +1141,34 @@ public class AIInterviewController : BasePluginController
         if (!await IsInstituteVendorAsync(customer))
             return RedirectToRoute("Homepage");
 
-        var invites = await _inviteService.GetSponsorInvitesAsync(customer.VendorId) ?? new List<SponsorInvite>();
+        var vendor = _vendorService != null
+            ? await _vendorService.GetVendorByIdAsync(customer.VendorId)
+            : null;
+        var slug = vendor != null ? BuildInstituteSlug(vendor.Name) : customer.VendorId.ToString();
+        var joinUrl = $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={slug}:{customer.VendorId}";
+        ViewData["InstituteJoinUrl"] = joinUrl;
+
+        var students = await GetInstituteStudentsAsync(customer.VendorId);
         var candidateModels = new List<InstituteCandidateModel>();
 
-        foreach (var invite in invites.OrderByDescending(i => i.CreatedOnUtc))
+        foreach (var student in students)
         {
-            var acceptedCustomer = invite.IsAccepted
-                ? await _customerService.GetCustomerByEmailAsync(invite.Email)
-                : null;
-
-            var wallet = acceptedCustomer != null
-                ? await _creditService.GetOrCreateWalletAsync(acceptedCustomer.Id)
-                : null;
-
-            var fullName = acceptedCustomer != null
-                ? (acceptedCustomer.FirstName + " " + acceptedCustomer.LastName).Trim()
-                : string.Empty;
-
+            var wallet = await _creditService.GetOrCreateWalletAsync(student.Id);
+            var fullName = (student.FirstName + " " + student.LastName).Trim();
             candidateModels.Add(new InstituteCandidateModel
             {
-                InviteId = invite.Id,
-                Email = invite.Email,
-                CustomerName = fullName,
-                IsAccepted = invite.IsAccepted,
-                IsActive = invite.IsActive,
+                InviteId = student.Id,
+                Email = student.Email ?? string.Empty,
+                CustomerName = string.IsNullOrWhiteSpace(fullName) ? student.Email : fullName,
+                IsAccepted = true,
+                IsActive = student.Active,
                 CreditBalance = wallet?.Balance ?? 0,
-                CreatedOnUtc = invite.CreatedOnUtc
+                CreatedOnUtc = student.CreatedOnUtc
             });
         }
 
         var model = new InstituteCandidatesPageModel { Candidates = candidateModels };
         return View("~/Plugins/Misc.AIInterview/Views/InstituteCandidates.cshtml", model);
-    }
-
-    [HttpPost]
-    public virtual async Task<IActionResult> InstituteCandidateInvite(string email)
-    {
-        if (!_aiInterviewSettings.Enabled)
-            return RedirectToRoute("Homepage");
-
-        var customer = await _workContext.GetCurrentCustomerAsync();
-        if (!await IsInstituteVendorAsync(customer))
-            return RedirectToRoute("Homepage");
-
-        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
-        {
-            _notificationService.ErrorNotification("Please enter a valid email address.");
-            return RedirectToRoute(AIInterviewDefaults.InstituteCandidatesRouteName);
-        }
-
-        var existingInvites = await _inviteService.GetSponsorInvitesAsync(customer.VendorId) ?? new List<SponsorInvite>();
-        if (existingInvites.Any(i => string.Equals(i.Email, email.Trim(), StringComparison.OrdinalIgnoreCase)))
-        {
-            _notificationService.ErrorNotification("This candidate has already been invited.");
-            return RedirectToRoute(AIInterviewDefaults.InstituteCandidatesRouteName);
-        }
-
-        await _inviteService.CreateInviteAsync(customer.VendorId, email.Trim(), 0, 999, null);
-        _notificationService.SuccessNotification($"Invitation sent to {email.Trim()}.");
-        return RedirectToRoute(AIInterviewDefaults.InstituteCandidatesRouteName);
     }
 
     public virtual async Task<IActionResult> InstituteCredits()
@@ -1154,24 +1181,19 @@ public class AIInterviewController : BasePluginController
             return RedirectToRoute("Homepage");
 
         var instituteWallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
-        var invites = await _inviteService.GetSponsorInvitesAsync(customer.VendorId)
-            ?? new List<SponsorInvite>();
-        var accepted = invites.Where(i => i.IsAccepted).ToList();
-
+        var students = await GetInstituteStudentsAsync(customer.VendorId);
         var candidateModels = new List<InstituteCreditCandidateModel>();
-        foreach (var invite in accepted.OrderBy(i => i.Email))
+
+        foreach (var student in students)
         {
-            var candidate = await _customerService.GetCustomerByEmailAsync(invite.Email);
-            if (candidate == null)
-                continue;
-            var wallet = await _creditService.GetOrCreateWalletAsync(candidate.Id);
-            var fullName = (candidate.FirstName + " " + candidate.LastName).Trim();
+            var wallet = await _creditService.GetOrCreateWalletAsync(student.Id);
+            var fullName = (student.FirstName + " " + student.LastName).Trim();
             candidateModels.Add(new InstituteCreditCandidateModel
             {
-                CustomerId = candidate.Id,
-                Email = invite.Email,
-                CustomerName = string.IsNullOrWhiteSpace(fullName) ? invite.Email : fullName,
-                CreditBalance = wallet.Balance
+                CustomerId = student.Id,
+                Email = student.Email ?? string.Empty,
+                CustomerName = string.IsNullOrWhiteSpace(fullName) ? student.Email : fullName,
+                CreditBalance = wallet?.Balance ?? 0
             });
         }
 
@@ -1205,15 +1227,6 @@ public class AIInterviewController : BasePluginController
         if (candidate == null)
         {
             _notificationService.ErrorNotification("Selected candidate not found.");
-            return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
-        }
-
-        var acceptedInvites = await _inviteService.GetSponsorInvitesAsync(customer.VendorId)
-            ?? new List<SponsorInvite>();
-        if (!acceptedInvites.Any(i => i.IsAccepted
-            && string.Equals(i.Email, candidate.Email, StringComparison.OrdinalIgnoreCase)))
-        {
-            _notificationService.ErrorNotification("Selected candidate is not accepted for this institute.");
             return RedirectToRoute(AIInterviewDefaults.InstituteCreditsRouteName);
         }
 
