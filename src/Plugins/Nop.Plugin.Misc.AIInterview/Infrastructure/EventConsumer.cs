@@ -98,6 +98,17 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
 
                 if (isInstituteVendor)
                 {
+                    var legacyInstituteItems = navigationModel.CustomerNavigationItems
+                        .Where(item =>
+                            string.Equals(item.RouteName, AIInterviewDefaults.InstituteCandidatesRouteName, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(item.RouteName, AIInterviewDefaults.InstituteCreditsRouteName, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(item.ItemClass, "institute-nav-candidates", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(item.ItemClass, "institute-nav-credits", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    foreach (var legacyInstituteItem in legacyInstituteItems)
+                        navigationModel.CustomerNavigationItems.Remove(legacyInstituteItem);
+
                     if (!navigationModel.CustomerNavigationItems.Any(item =>
                         string.Equals(item.RouteName,
                             AIInterviewDefaults.InstituteDashboardRouteName,
@@ -110,36 +121,6 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                                 Title = "Institute Dashboard",
                                 Tab = AIInterviewDefaults.InstituteDashboardNavigationTab,
                                 ItemClass = "institute-dashboard"
-                            });
-                    }
-
-                    if (!navigationModel.CustomerNavigationItems.Any(item =>
-                        string.Equals(item.RouteName,
-                            AIInterviewDefaults.InstituteCandidatesRouteName,
-                            StringComparison.OrdinalIgnoreCase)))
-                    {
-                        navigationModel.CustomerNavigationItems.Add(
-                            new Nop.Web.Models.Customer.CustomerNavigationItemModel
-                            {
-                                RouteName = AIInterviewDefaults.InstituteCandidatesRouteName,
-                                Title = "Candidates",
-                                Tab = AIInterviewDefaults.InstituteCandidatesNavigationTab,
-                                ItemClass = "institute-nav-candidates"
-                            });
-                    }
-
-                    if (!navigationModel.CustomerNavigationItems.Any(item =>
-                        string.Equals(item.RouteName,
-                            AIInterviewDefaults.InstituteCreditsRouteName,
-                            StringComparison.OrdinalIgnoreCase)))
-                    {
-                        navigationModel.CustomerNavigationItems.Add(
-                            new Nop.Web.Models.Customer.CustomerNavigationItemModel
-                            {
-                                RouteName = AIInterviewDefaults.InstituteCreditsRouteName,
-                                Title = "Credits",
-                                Tab = AIInterviewDefaults.InstituteCreditsNavigationTab,
-                                ItemClass = "institute-nav-credits"
                             });
                     }
                 }

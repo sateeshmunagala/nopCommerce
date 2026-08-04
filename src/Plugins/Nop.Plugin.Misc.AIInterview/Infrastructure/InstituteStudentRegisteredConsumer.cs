@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.DataProtection;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Data;
@@ -12,13 +13,16 @@ public class InstituteStudentRegisteredConsumer : IConsumer<CustomerRegisteredEv
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IGenericAttributeService _genericAttributeService;
+    private readonly IDataProtector _instituteRegistrationProtector;
 
     public InstituteStudentRegisteredConsumer(
         IHttpContextAccessor httpContextAccessor,
-        IGenericAttributeService genericAttributeService)
+        IGenericAttributeService genericAttributeService,
+        IDataProtectionProvider dataProtectionProvider)
     {
         _httpContextAccessor = httpContextAccessor;
         _genericAttributeService = genericAttributeService;
+        _instituteRegistrationProtector = InstituteRegistrationTokenHelper.CreateProtector(dataProtectionProvider);
     }
 
     public async Task HandleEventAsync(CustomerRegisteredEvent eventMessage)
@@ -36,9 +40,14 @@ public class InstituteStudentRegisteredConsumer : IConsumer<CustomerRegisteredEv
         if (string.IsNullOrWhiteSpace(cookieValue))
             return;
 
-        var parts = cookieValue.Split(':', 2);
-        if (parts.Length != 2 || !int.TryParse(parts[1], out var vendorId) || vendorId <= 0)
+        if (!InstituteRegistrationTokenHelper.TryResolveVendorId(
+            _instituteRegistrationProtector,
+            cookieValue,
+            DateTime.UtcNow,
+            out var vendorId))
+        {
             return;
+        }
 
         await _genericAttributeService.SaveAttributeAsync(
             customer,

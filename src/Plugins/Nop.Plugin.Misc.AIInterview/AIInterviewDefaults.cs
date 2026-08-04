@@ -247,8 +247,10 @@ Allowed categories: skill, project_scenario, job_fit, behavioral
     public static string EmployerDashboardApplicationsTabKey => "applications";
     public static string EmployerDashboardInvitesTabKey => "invites";
     public static string InstituteDashboardTabKey => "dashboard";
+    public static string LegacyInstituteCreditsTabKey => "credits";
+    public static string LegacyInstituteCandidatesTabKey => "candidates";
     public static string InstituteCreditsTabKey => "credits";
-    public static string InstituteCandidatesTabKey => "candidates";
+    public static string InstituteCandidatesTabKey => "applicants";
 
     public const int MyActivityNavigationTab = 160;
     public const int MyApplicationsNavigationTab = 160;

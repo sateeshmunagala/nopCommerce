@@ -27,6 +27,7 @@ using Nop.Services.Helpers;
 using Nop.Web.Factories;
 using Nop.Web.Framework.Controllers;
 using System.Text.Json;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
@@ -78,6 +79,7 @@ public class AIInterviewController : BasePluginController
     private readonly IRepository<GenericAttribute> _genericAttributeRepository;
     private readonly IRepository<CreditLedgerEntry> _creditLedgerRepository;
     private readonly ILogger<AIInterviewController> _logger;
+    private readonly IDataProtector _instituteRegistrationProtector;
 
     public AIInterviewController(IApplicationService applicationService,
         IInterviewSessionService interviewSessionService,
@@ -111,7 +113,8 @@ public class AIInterviewController : BasePluginController
         IVendorService vendorService = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
         IRepository<CreditLedgerEntry> creditLedgerRepository = null,
-        ILogger<AIInterviewController> logger = null)
+        ILogger<AIInterviewController> logger = null,
+        IDataProtectionProvider dataProtectionProvider = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -146,6 +149,7 @@ public class AIInterviewController : BasePluginController
         _genericAttributeRepository = genericAttributeRepository;
         _creditLedgerRepository = creditLedgerRepository;
         _logger = logger;
+        _instituteRegistrationProtector = InstituteRegistrationTokenHelper.CreateProtector(dataProtectionProvider);
     }
 
     public AIInterviewController(IApplicationService applicationService,
@@ -177,7 +181,8 @@ public class AIInterviewController : BasePluginController
         IVendorService vendorService = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
         IRepository<CreditLedgerEntry> creditLedgerRepository = null,
-        ILogger<AIInterviewController> logger = null)
+        ILogger<AIInterviewController> logger = null,
+        IDataProtectionProvider dataProtectionProvider = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -210,7 +215,8 @@ public class AIInterviewController : BasePluginController
             vendorService,
             genericAttributeRepository,
             creditLedgerRepository,
-            logger)
+            logger,
+            dataProtectionProvider)
     {
     }
 
@@ -1119,20 +1125,16 @@ public class AIInterviewController : BasePluginController
     {
         return (tab ?? string.Empty).Trim().ToLowerInvariant() switch
         {
-            var value when string.Equals(value, AIInterviewDefaults.InstituteCreditsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.InstituteCreditsTabKey,
+            var value when string.Equals(value, AIInterviewDefaults.LegacyInstituteCreditsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.InstituteDashboardTabKey,
             var value when string.Equals(value, AIInterviewDefaults.InstituteCandidatesTabKey, StringComparison.Ordinal) => AIInterviewDefaults.InstituteCandidatesTabKey,
+            var value when string.Equals(value, AIInterviewDefaults.LegacyInstituteCandidatesTabKey, StringComparison.Ordinal) => AIInterviewDefaults.InstituteCandidatesTabKey,
             _ => AIInterviewDefaults.InstituteDashboardTabKey
         };
     }
 
     protected virtual int GetInstituteNavigationTab(string tab)
     {
-        return NormalizeInstituteDashboardTab(tab) switch
-        {
-            var value when string.Equals(value, AIInterviewDefaults.InstituteCreditsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.InstituteCreditsNavigationTab,
-            var value when string.Equals(value, AIInterviewDefaults.InstituteCandidatesTabKey, StringComparison.Ordinal) => AIInterviewDefaults.InstituteCandidatesNavigationTab,
-            _ => AIInterviewDefaults.InstituteDashboardNavigationTab
-        };
+        return AIInterviewDefaults.InstituteDashboardNavigationTab;
     }
 
     protected virtual async Task<string> BuildInstituteJoinUrlAsync(Customer customer)
@@ -1140,8 +1142,16 @@ public class AIInterviewController : BasePluginController
         var vendor = _vendorService != null
             ? await _vendorService.GetVendorByIdAsync(customer.VendorId)
             : null;
-        var slug = vendor != null ? BuildInstituteSlug(vendor.Name) : customer.VendorId.ToString();
-        return $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={slug}:{customer.VendorId}";
+        var slug = vendor != null ? BuildInstituteSlug(vendor.Name) : "institute";
+        if (string.IsNullOrWhiteSpace(slug))
+            slug = "institute";
+
+        var token = InstituteRegistrationTokenHelper.CreateToken(_instituteRegistrationProtector, customer.VendorId, DateTime.UtcNow);
+        var registrationValue = string.IsNullOrWhiteSpace(token)
+            ? slug
+            : $"{slug}.{Uri.EscapeDataString(token)}";
+
+        return $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={registrationValue}";
     }
 
     protected virtual async Task<InstituteDashboardPageModel> BuildInstituteDashboardPageModelAsync(Customer customer, string tab, string transferMessage = null, bool transferSucceeded = false)
@@ -1239,7 +1249,7 @@ public class AIInterviewController : BasePluginController
 
     public virtual IActionResult InstituteCredits()
     {
-        return RedirectToRoute(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteCreditsTabKey });
+        return RedirectToRoute(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteDashboardTabKey });
     }
 
     [HttpPost]
@@ -1261,14 +1271,14 @@ public class AIInterviewController : BasePluginController
         if (selectedCandidateCustomerId <= 0 || amount <= 0)
         {
             var validationModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
-                "Please select a candidate and enter a credit amount greater than zero.");
+                "Please select an applicant and enter a credit amount greater than zero.");
             return InstituteTabResult(validationModel);
         }
 
         if (!candidateBelongsToInstitute)
         {
             var validationModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
-                "Selected candidate does not belong to this institute.");
+                "Selected applicant does not belong to this institute.");
             return InstituteTabResult(validationModel);
         }
 
@@ -1291,14 +1301,14 @@ public class AIInterviewController : BasePluginController
         if (candidate == null)
         {
             var validationModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
-                "Selected candidate not found.");
+                "Selected applicant not found.");
             return InstituteTabResult(validationModel);
         }
 
         var comments = remarks.Trim();
         var effectiveRemarks = string.Equals(normalizedAction, "allocate", StringComparison.Ordinal)
-            ? $"Institute allocation to {candidate.Email}: {comments}"
-            : $"Institute deallocation from {candidate.Email}: {comments}";
+            ? $"Institute allocation to applicant {candidate.Email}: {comments}"
+            : $"Institute deallocation from applicant {candidate.Email}: {comments}";
 
         if (string.Equals(normalizedAction, "allocate", StringComparison.Ordinal))
         {
@@ -1318,9 +1328,9 @@ public class AIInterviewController : BasePluginController
                 CreditLedgerSources.Adjustment);
 
             _notificationService.SuccessNotification(
-                $"{amount:0.##} credit(s) allotted to {candidate.Email} successfully.");
+                $"{amount:0.##} credit(s) allotted to applicant {candidate.Email} successfully.");
             var successModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
-                $"{amount:0.##} credit(s) allotted to {candidate.Email} successfully.", true);
+                $"{amount:0.##} credit(s) allotted to applicant {candidate.Email} successfully.", true);
             return InstituteTabResult(successModel);
         }
 
@@ -1331,7 +1341,7 @@ public class AIInterviewController : BasePluginController
         if (!chargedStudent)
         {
             var insufficientModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
-                "Insufficient credits in the student's account.");
+                "Insufficient credits in the applicant's account.");
             return InstituteTabResult(insufficientModel);
         }
 
@@ -1340,9 +1350,9 @@ public class AIInterviewController : BasePluginController
             CreditLedgerSources.Adjustment);
 
         _notificationService.SuccessNotification(
-            $"{amount:0.##} credit(s) deallocated from {candidate.Email} successfully.");
+            $"{amount:0.##} credit(s) deallocated from applicant {candidate.Email} successfully.");
         var deallocateSuccessModel = await BuildInstituteDashboardPageModelAsync(customer, targetTab,
-            $"{amount:0.##} credit(s) deallocated from {candidate.Email} successfully.", true);
+            $"{amount:0.##} credit(s) deallocated from applicant {candidate.Email} successfully.", true);
         return InstituteTabResult(deallocateSuccessModel);
     }
 

@@ -11967,6 +11967,13 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     gap: 0 !important;
     padding: 0 !important;
     align-items: stretch !important;
+    min-height: calc(100vh - 64px);
+    box-sizing: border-box;
+}
+
+.html-aiinterview-institute-dashboard-page.html-account-page .master-column-wrapper {
+    width: 100% !important;
+    max-width: none !important;
 }
 
 /* ===================================================
@@ -12011,6 +12018,7 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     position: sticky;
     top: 64px;
     min-height: calc(100vh - 64px);
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     background: #ffffff;
@@ -12090,6 +12098,11 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     padding: 28px 32px 48px;
     background: #f7f8fa;
     min-height: calc(100vh - 64px);
+    box-sizing: border-box;
+}
+
+.html-aiinterview-institute-dashboard-page.html-account-page .center-2 {
+    padding: 24px 28px 36px;
 }
 
 .html-vendor-portal-page .account-page .page-title {

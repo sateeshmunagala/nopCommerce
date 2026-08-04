@@ -11,30 +11,10 @@
         </div>
     }
 
-    @if (!string.IsNullOrWhiteSpace(Model.JoinUrl))
-    {
-        <div class="institute-join-url-panel">
-            <label class="institute-join-url-label">Student Registration Link</label>
-            <div class="institute-join-url-row">
-                <input type="text" readonly value="@Model.JoinUrl"
-                       class="institute-join-url-input"
-                       id="institute-join-url-candidates" />
-                <button type="button"
-                        class="button-2 institute-join-url-copy"
-                        onclick="navigator.clipboard.writeText(document.getElementById('institute-join-url-candidates').value).then(function(){this.textContent='Copied!';setTimeout(function(){document.querySelector('.institute-join-url-copy').textContent='Copy Link';},2000);}.bind(this))">
-                    Copy Link
-                </button>
-            </div>
-            <p class="institute-join-url-hint">
-                Share this link with your students. Registered students appear below automatically.
-            </p>
-        </div>
-    }
-
     @if (!Model.Candidates.Any())
     {
         <p class="institute-candidates-empty">
-            No students yet. Share your registration link above to onboard students.
+            No applicants yet. Share your registration link from Dashboard to onboard applicants.
         </p>
     }
     else

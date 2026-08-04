@@ -17,10 +17,10 @@
     </div>
 
     <div class="institute-credits-candidates-section">
-        <h2 class="institute-credits-candidates-heading">Student Balances</h2>
+        <h2 class="institute-credits-candidates-heading">Applicant Balances</h2>
         @if (!Model.Candidates.Any())
         {
-            <p class="institute-candidates-empty">No students have joined this institute yet.</p>
+            <p class="institute-candidates-empty">No applicants have joined this institute yet.</p>
         }
         else
         {
@@ -28,7 +28,7 @@
                 <table class="institute-candidates-table">
                     <thead>
                         <tr>
-                            <th>Student</th>
+                            <th>Applicant</th>
                             <th>Email</th>
                             <th>Credit Balance</th>
                         </tr>
@@ -37,7 +37,7 @@
                         @foreach (var c in Model.Candidates)
                         {
                             <tr class="institute-candidate-row">
-                                <td data-label="Student">@c.CustomerName</td>
+                                <td data-label="Applicant">@c.CustomerName</td>
                                 <td data-label="Email">
                                     <span class="candidate-email">@c.Email</span>
                                 </td>

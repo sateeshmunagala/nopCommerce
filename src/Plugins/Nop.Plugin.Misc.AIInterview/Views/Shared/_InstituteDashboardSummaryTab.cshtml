@@ -4,7 +4,7 @@
     @if (!string.IsNullOrWhiteSpace(Model.JoinUrl))
     {
         <div class="institute-join-url-panel">
-            <label class="institute-join-url-label">Your Student Registration Link</label>
+            <label class="institute-join-url-label">Your Applicant Registration Link</label>
             <div class="institute-join-url-row">
                 <input type="text" readonly value="@Model.JoinUrl"
                        class="institute-join-url-input"
@@ -16,8 +16,8 @@
                 </button>
             </div>
             <p class="institute-join-url-hint">
-                Share this link with your students. When they register using this link
-                they will automatically appear in your Candidates list.
+                Share this link with your applicants. When they register using this link
+                they will automatically appear in your Applicants list.
             </p>
         </div>
     }
@@ -38,6 +38,6 @@
     </div>
 
     <p class="institute-dashboard-intro">
-        Welcome to your institute portal. Use Credits to review usage and Candidates to manage student balances.
+        Welcome to your institute portal. Review credit usage here and use Applicants to manage applicant balances.
     </p>
 </div>

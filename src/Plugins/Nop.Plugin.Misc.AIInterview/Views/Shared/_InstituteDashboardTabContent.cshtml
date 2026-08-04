@@ -3,11 +3,6 @@
 <script>
     (function () {
         var activeTab = '@Model.ActiveTab';
-        var navClassByTab = {
-            '@AIInterviewDefaults.InstituteDashboardTabKey': 'institute-dashboard',
-            '@AIInterviewDefaults.InstituteCreditsTabKey': 'institute-nav-credits',
-            '@AIInterviewDefaults.InstituteCandidatesTabKey': 'institute-nav-candidates'
-        };
 
         document.querySelectorAll('.institute-dashboard-tab').forEach(function (tab) {
             var isActive = tab.getAttribute('data-institute-tab') === activeTab;
@@ -19,11 +14,9 @@
             }
         });
 
-        document.querySelectorAll('.block-account-navigation li.institute-dashboard, .block-account-navigation li.institute-nav-credits, .block-account-navigation li.institute-nav-candidates').forEach(function (item) {
-            var isActive = item.classList.contains(navClassByTab[activeTab]);
-            item.classList.toggle('active', isActive);
-            item.classList.toggle('inactive', !isActive);
-        });
+        if (window.syncInstituteNavigation) {
+            window.syncInstituteNavigation(activeTab);
+        }
 
         if (window.closeInstituteCreditModal) {
             window.closeInstituteCreditModal();
@@ -35,9 +28,6 @@
 
 @switch (Model.ActiveTab)
 {
-    case var value when string.Equals(value, AIInterviewDefaults.InstituteCreditsTabKey, StringComparison.Ordinal):
-        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteCreditsTab.cshtml", Model)
-        break;
     case var value when string.Equals(value, AIInterviewDefaults.InstituteCandidatesTabKey, StringComparison.Ordinal):
         @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteCandidatesTab.cshtml", Model)
         break;
