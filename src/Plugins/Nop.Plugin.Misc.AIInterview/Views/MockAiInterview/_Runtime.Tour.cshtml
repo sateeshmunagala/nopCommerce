@@ -42,6 +42,33 @@
             } catch { }
         };
 
+        const getElapsedSeconds = (timerText) => {
+            const timerParts = (timerText || '').trim().split(':').map(Number);
+            if (timerParts.length !== 2 || timerParts.some(part => !Number.isFinite(part) || part < 0))
+                return 0;
+
+            return (timerParts[0] * 60) + timerParts[1];
+        };
+
+        const isInterviewInProgressOrResumed = () => {
+            const hasConversationItems = !!document.querySelector('#conversation .runtime-chat-message');
+            const timerProgressed = getElapsedSeconds(document.getElementById('runtime-timer')?.textContent) > 0;
+            const timerIsLive = document.getElementById('runtime-timer-label')?.textContent?.trim().toLowerCase() === 'live';
+            const stopControlIsActive = document.getElementById('stop-interview-top')?.disabled === false;
+            const answerControlIsActive = document.getElementById('runtime-answer')?.disabled === false;
+            const questionCounter = document.getElementById('runtime-question-counter');
+            const hasActiveQuestionCounter = !!questionCounter?.textContent?.trim()
+                && !questionCounter.hidden
+                && !questionCounter.classList.contains('runtime-js-hidden');
+
+            return hasConversationItems
+                || timerProgressed
+                || timerIsLive
+                || stopControlIsActive
+                || answerControlIsActive
+                || hasActiveQuestionCounter;
+        };
+
         const runtimeTour = createRuntimeTour({
             popoverClass: 'runtime-area-tour',
             overlayOpacity: 0.55,
@@ -131,14 +158,24 @@
         });
 
         const initializeRuntimeTour = () => {
-            document.getElementById('btn-runtime-tour')?.addEventListener('click', () => runtimeTour.drive());
+            const tourTrigger = document.getElementById('btn-runtime-tour');
+            if (tourTrigger && tourTrigger.dataset.runtimeTourBound !== 'true') {
+                tourTrigger.addEventListener('click', () => runtimeTour.drive());
+                tourTrigger.dataset.runtimeTourBound = 'true';
+            }
+
+            if (tourTrigger?.dataset.runtimeTourAutoplayChecked === 'true')
+                return;
+
+            if (tourTrigger)
+                tourTrigger.dataset.runtimeTourAutoplayChecked = 'true';
 
             let hasSeenTour = false;
             try {
                 hasSeenTour = window.localStorage.getItem(storageKey) !== null;
             } catch { }
 
-            if (!hasSeenTour)
+            if (!hasSeenTour && !isInterviewInProgressOrResumed())
                 runtimeTour.drive();
         };
 
