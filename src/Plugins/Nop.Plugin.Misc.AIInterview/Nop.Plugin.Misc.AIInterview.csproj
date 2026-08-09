@@ -33,6 +33,7 @@
     <None Remove="Views\InstituteCredits.cshtml" />
     <None Remove="Views\InstituteDashboard.cshtml" />
     <None Remove="Views\InstituteApplicantInterviews.cshtml" />
+    <None Remove="Views\MockAiInterview\_Runtime.Tour.cshtml" />
     <None Remove="Views\ReportShare.cshtml" />
     <None Remove="Views\Shared\Components\AIInterviewInstituteRedirect\Default.cshtml" />
     <None Remove="Views\Shared\_ReportShareContent.cshtml" />
@@ -131,6 +132,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\InstituteApplicantInterviews.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\_Runtime.Tour.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\MyActivity.cshtml">
