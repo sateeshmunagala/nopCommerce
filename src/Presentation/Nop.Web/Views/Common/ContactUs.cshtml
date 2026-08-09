@@ -20,8 +20,27 @@
                     <section class="contact-hero-metadata-cards" aria-label="@T("PageTitle.ContactUs")">
                         <div class="contact-hero-metadata-card">@await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "ContactUs" })</div>
                         <div class="contact-hero-metadata-card">@await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ContactUsTop, additionalData = Model })</div>
-                        <div class="contact-hero-metadata-card">Email: support@example.com</div>
-                        <div class="contact-hero-metadata-card">Phone: +1 000 000 0000</div>
+                        <div class="contact-hero-metadata-card">
+                            <div class="contact-meta-item">
+                                <span class="contact-meta-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                        <path d="M3 6.75h18v10.5H3z" />
+                                        <path d="m3.75 7.5 8.25 6 8.25-6" />
+                                    </svg>
+                                </span>
+                                <span class="contact-meta-text">Email: support@example.com</span>
+                            </div>
+                        </div>
+                        <div class="contact-hero-metadata-card">
+                            <div class="contact-meta-item">
+                                <span class="contact-meta-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                        <path d="M7.4 3.75H4.75c-.55 0-1 .45-1 1 0 8.56 6.94 15.5 15.5 15.5.55 0 1-.45 1-1V16.6l-3.55-.9-1.1 2.2a13.14 13.14 0 0 1-9.5-9.5l2.2-1.1-.9-3.55Z" />
+                                    </svg>
+                                </span>
+                                <span class="contact-meta-text">Phone: +1 000 000 0000</span>
+                            </div>
+                        </div>
                     </section>
                 </div>
             </aside>

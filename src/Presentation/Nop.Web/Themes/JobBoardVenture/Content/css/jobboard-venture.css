@@ -2551,6 +2551,43 @@ body.jb-search-open .jb-drawer-overlay {
     display: none;
 }
 
+.contact-page .contact-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    color: var(--jb-ink);
+}
+
+.contact-page .contact-meta-icon {
+    display: inline-flex;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--jb-border);
+    border-radius: 2px;
+    background: var(--jb-bg);
+    color: var(--jb-ink);
+}
+
+.contact-page .contact-meta-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.contact-page .contact-meta-text {
+    min-width: 0;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
 .contact-page .contact-hero-metadata-card .topic-block,
 .contact-page .contact-hero-metadata-card .topic-block-body,
 .contact-page .contact-hero-metadata-card .topic-block-body p {
@@ -2607,6 +2644,11 @@ body.jb-search-open .jb-drawer-overlay {
     font-size: inherit;
 }
 
+.contact-page .contact-form-attributes .inputs {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 6px;
+}
+
 .contact-page .contact-form-field-wide,
 .contact-page .contact-form-attributes,
 .contact-page .contact-form-captcha {
@@ -2627,6 +2669,25 @@ body.jb-search-open .jb-drawer-overlay {
     font-size: 0.86rem;
     font-weight: 700;
     line-height: 1.35;
+}
+
+.contact-page .contact-form-attributes .inputs > label {
+    grid-column: 1 / -1;
+}
+
+.contact-page .contact-form-attributes .inputs > input,
+.contact-page .contact-form-attributes .inputs > select,
+.contact-page .contact-form-attributes .inputs > textarea,
+.contact-page .contact-form-attributes .inputs > .option-list {
+    grid-column: 1;
+}
+
+.contact-page .contact-form-attributes .inputs > .required {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    margin: 2px 0 0;
+    color: var(--jb-accent-dark);
 }
 
 .contact-page .contact-form-control {
@@ -2763,6 +2824,20 @@ body.jb-search-open .jb-drawer-overlay {
 
     .contact-page .contact-hero-metadata-cards {
         grid-template-columns: 1fr;
+    }
+
+    .contact-page .contact-meta-item {
+        gap: 10px;
+    }
+
+    .contact-page .contact-meta-icon {
+        flex-basis: 32px;
+        width: 32px;
+        height: 32px;
+    }
+
+    .contact-page .contact-form-attributes .inputs > .required {
+        margin-inline-start: 0;
     }
 
     .contact-page .contact-form-field-wide,
