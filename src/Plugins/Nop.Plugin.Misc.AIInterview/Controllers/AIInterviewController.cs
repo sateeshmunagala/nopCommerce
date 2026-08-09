@@ -1167,11 +1167,11 @@ public class AIInterviewController : BasePluginController
             return RedirectToRoute("Homepage");
 
         if (string.IsNullOrWhiteSpace(slug))
-            return RedirectToRoute("RegisterPage");
+            return RedirectToRoute(NopRouteNames.Standard.REGISTER);
 
         var normalizedSlug = InstituteRegistrationSlugService.NormalizeRegistrationValue(slug);
         if (string.IsNullOrWhiteSpace(normalizedSlug))
-            return RedirectToRoute("RegisterPage");
+            return RedirectToRoute(NopRouteNames.Standard.REGISTER);
 
         HttpContext.Response.Cookies.Append(
             AIInterviewDefaults.InstituteRegistrationCookieName,
@@ -1184,7 +1184,7 @@ public class AIInterviewController : BasePluginController
                 Expires = DateTimeOffset.UtcNow.AddDays(30)
             });
 
-        return RedirectToRoute("RegisterPage");
+        return RedirectToRoute(NopRouteNames.Standard.REGISTER);
     }
 
     protected virtual async Task<InstituteDashboardPageModel> BuildInstituteDashboardPageModelAsync(Customer customer, string tab, string transferMessage = null, bool transferSucceeded = false)
