@@ -16,11 +16,12 @@
                         <div class="page-title">
                             <h1 id="contact-page-title">@T("PageTitle.ContactUs")</h1>
                         </div>
-                        <p class="contact-hero-support">@T("ContactUs.Enquiry.Hint")</p>
                     </div>
                     <section class="contact-hero-metadata-cards" aria-label="@T("PageTitle.ContactUs")">
                         <div class="contact-hero-metadata-card">@await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "ContactUs" })</div>
                         <div class="contact-hero-metadata-card">@await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ContactUsTop, additionalData = Model })</div>
+                        <div class="contact-hero-metadata-card">support@example.com</div>
+                        <div class="contact-hero-metadata-card">Phone: +1 000 000 0000</div>
                     </section>
                 </div>
             </aside>

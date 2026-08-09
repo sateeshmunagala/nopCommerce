@@ -2480,7 +2480,7 @@ body.jb-search-open .jb-drawer-overlay {
     grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1.18fr);
     overflow: hidden;
     border: 1px solid var(--jb-border);
-    border-radius: 18px;
+    border-radius: 2px;
     background: var(--jb-white);
 }
 
@@ -2542,7 +2542,7 @@ body.jb-search-open .jb-drawer-overlay {
     min-width: 0;
     padding: 18px;
     border: 1px solid var(--jb-border);
-    border-radius: 12px;
+    border-radius: 2px;
     background: var(--jb-white);
     color: var(--jb-ink);
 }
@@ -2568,7 +2568,7 @@ body.jb-search-open .jb-drawer-overlay {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: clamp(28px, 4vw, 56px);
+    padding: clamp(22px, 3vw, 40px);
     background: var(--jb-white);
 }
 
@@ -2578,18 +2578,19 @@ body.jb-search-open .jb-drawer-overlay {
 
 .contact-page .result,
 .contact-page .message-error {
-    margin: 0 0 24px;
+    margin: 0 0 16px;
     text-align: start;
 }
 
 .contact-page .contact-form-fieldset {
     margin: 0;
+    padding: 0;
 }
 
 .contact-page .contact-form-fields {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px 18px;
+    gap: 16px 14px;
     padding: 0;
     border: 0;
     background: var(--jb-white);
@@ -2614,7 +2615,7 @@ body.jb-search-open .jb-drawer-overlay {
 
 .contact-page .contact-form-attributes {
     display: grid;
-    gap: 22px;
+    gap: 16px;
 }
 
 .contact-page .contact-form-field label,
@@ -2651,14 +2652,14 @@ body.jb-search-open .jb-drawer-overlay {
 .contact-page .contact-form-control input,
 .contact-page .contact-form-attributes input[type="text"],
 .contact-page .contact-form-attributes select {
-    min-height: 48px;
-    padding: 11px 13px;
+    min-height: 44px;
+    padding: 9px 12px;
 }
 
 .contact-page .contact-form-control textarea,
 .contact-page .contact-form-attributes textarea {
-    min-height: 148px;
-    padding: 13px;
+    min-height: 120px;
+    padding: 11px 12px;
     resize: vertical;
 }
 
@@ -2696,7 +2697,7 @@ body.jb-search-open .jb-drawer-overlay {
 .contact-page .contact-form-actions {
     display: flex;
     justify-content: flex-start;
-    margin: 28px 0 0;
+    margin: 18px 0 0;
 }
 
 .contact-page .contact-form-actions .contact-us-button {
@@ -2747,12 +2748,12 @@ body.jb-search-open .jb-drawer-overlay {
     }
 
     .contact-page .contact-shell {
-        border-radius: 12px;
+        border-radius: 2px;
     }
 
     .contact-page .contact-info-panel,
     .contact-page .contact-form-panel {
-        padding: 24px 18px;
+        padding: 20px 16px;
     }
 
     .contact-page .contact-hero,
