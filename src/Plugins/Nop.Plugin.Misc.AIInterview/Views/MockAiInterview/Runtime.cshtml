@@ -1333,23 +1333,38 @@
             });
         };
 
-        const setGuidelinesModalOpen = (open) => {
+        const setGuidelinesModalOpen = (open, closeReason = 'programmatic') => {
             if (!guidelinesModal)
                 return;
 
+            const wasOpen = guidelinesModal.classList.contains('is-open')
+                || guidelinesModal.getAttribute('aria-hidden') === 'false';
             guidelinesModal.classList.toggle('is-open', open);
             guidelinesModal.setAttribute('aria-hidden', open ? 'false' : 'true');
-            if (!open)
+            if (!open) {
                 cleanupPermissionPrechecks();
+
+                const isClosed = !guidelinesModal.classList.contains('is-open')
+                    && guidelinesModal.getAttribute('aria-hidden') === 'true';
+                if (wasOpen && isClosed) {
+                    window.dispatchEvent(new CustomEvent('runtime:guidelines-closed', {
+                        detail: {
+                            reason: closeReason,
+                            acknowledged: guidelinesAcknowledged
+                        }
+                    }));
+                }
+            }
         };
 
         const openGuidelinesModal = () => {
             clearGuidelinesModalTimer();
+            guidelinesModal?.removeAttribute('data-runtime-guidelines-open-pending');
             renderPermissionFlow();
             setGuidelinesModalOpen(true);
         };
 
-        const closeGuidelinesModal = () => setGuidelinesModalOpen(false);
+        const closeGuidelinesModal = (reason = 'programmatic') => setGuidelinesModalOpen(false, reason);
 
         const isPermissionStepComplete = (stepIndex) => {
             switch (stepIndex) {
@@ -4648,7 +4663,7 @@
 
                 guidelinesAcknowledged = true;
                 guidelinesAcknowledgedAt = new Date().toISOString();
-                closeGuidelinesModal();
+                closeGuidelinesModal('agree');
                 updateStartButtonState();
                 setStatus('Guidelines acknowledged. You can start the interview.', false);
                 const payload = logGuidelinesAcknowledgement();
@@ -4656,14 +4671,14 @@
             });
         }
         document.getElementById('guidelines-cancel').addEventListener('click', () => {
-            closeGuidelinesModal();
+            closeGuidelinesModal('cancel');
             updateStartButtonState();
             setStatus('Please acknowledge the interview guidelines before starting.', false);
         });
         if (guidelinesModal) {
             guidelinesModal.addEventListener('click', (event) => {
                 if (event.target === guidelinesModal) {
-                    closeGuidelinesModal();
+                    closeGuidelinesModal('backdrop');
                     updateStartButtonState();
                     if (!guidelinesAcknowledged)
                         setStatus('Please acknowledge the interview guidelines before starting.', false);
@@ -4801,6 +4816,7 @@
         updateFeedbackIssueState();
         refreshAudioDevices().catch(error => logActivity(`Audio device refresh failed. reason=${error?.message || 'unknown'}`));
         syncAnswerCaption();
+        guidelinesModal?.setAttribute('data-runtime-guidelines-open-pending', 'true');
         guidelinesModalTimer = setTimeout(openGuidelinesModal, 3000);
     })();
 </script>

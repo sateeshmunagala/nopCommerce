@@ -170,13 +170,33 @@
             if (tourTrigger)
                 tourTrigger.dataset.runtimeTourAutoplayChecked = 'true';
 
-            let hasSeenTour = false;
-            try {
-                hasSeenTour = window.localStorage.getItem(storageKey) !== null;
-            } catch { }
+            let autoplayEvaluated = false;
+            const launchAutoplay = () => {
+                if (autoplayEvaluated)
+                    return;
 
-            if (!hasSeenTour && !isInterviewInProgressOrResumed())
-                runtimeTour.drive();
+                autoplayEvaluated = true;
+                let hasSeenTour = false;
+                try {
+                    hasSeenTour = window.localStorage.getItem(storageKey) !== null;
+                } catch { }
+
+                if (!hasSeenTour && !isInterviewInProgressOrResumed())
+                    runtimeTour.drive();
+            };
+
+            const guidelinesModal = document.getElementById('guidelines-modal');
+            window.addEventListener('runtime:guidelines-closed', launchAutoplay, { once: true });
+
+            // Allow runtime initialization to declare a pending guidelines open before using the closed-state fallback.
+            setTimeout(() => {
+                const guidelinesAreClosed = !guidelinesModal
+                    || (guidelinesModal.getAttribute('aria-hidden') === 'true'
+                        && !guidelinesModal.classList.contains('is-open'));
+                const guidelinesOpenPending = guidelinesModal?.getAttribute('data-runtime-guidelines-open-pending') === 'true';
+                if (guidelinesAreClosed && !guidelinesOpenPending)
+                    launchAutoplay();
+            }, 0);
         };
 
         if (document.readyState === 'loading')
