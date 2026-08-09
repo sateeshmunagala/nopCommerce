@@ -11778,17 +11778,29 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
         overflow: hidden;
     }
 
-    .html-account-page .jb-account-nav-header {
+    body.jb-account-nav-enhanced .jb-account-nav-header {
         background: #20252b;
         padding: 14px 16px;
     }
 
-    .html-account-page .jb-account-nav-header .title {
+    body.jb-account-nav-enhanced .jb-account-nav-header .title {
         color: #ffffff;
         font-size: 0.95rem;
         margin: 0;
         text-transform: uppercase;
         letter-spacing: 0.04em;
+    }
+
+    html.html-vendor-portal-page .jb-account-nav-header {
+        background: #ffffff;
+        border-bottom: 1px solid #f0f1f3;
+    }
+
+    html.html-vendor-portal-page .jb-account-nav-header .title {
+        color: #6b7280;
+        font-size: 0.68rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
     }
 
     .html-account-page .jb-account-nav .listbox {
@@ -12298,19 +12310,46 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
 }
 
 /* Expand layout to full available width on vendor portal pages */
-.html-vendor-portal-page.html-account-page .master-wrapper-content {
+html.html-vendor-portal-page .master-wrapper-page,
+html.html-vendor-portal-page .master-wrapper-content {
     max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #f7f8fa !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
 }
 
-.html-vendor-portal-page.html-account-page .master-column-wrapper {
-    max-width: 1400px !important;
-    margin: 0 auto !important;
+html.html-vendor-portal-page .master-column-wrapper {
+    display: grid !important;
     grid-template-columns: 220px minmax(0, 1fr) !important;
     gap: 0 !important;
     padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100svh !important;
     align-items: stretch !important;
-    min-height: auto;
-    box-sizing: border-box;
+    box-sizing: border-box !important;
+}
+
+html.html-vendor-portal-page .side-2 {
+    float: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+html.html-vendor-portal-page .center-2 {
+    float: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 20px 28px 28px !important;
+    background: #f7f8fa !important;
+    box-sizing: border-box !important;
 }
 
 html.html-aiinterview-institute-dashboard-page,
@@ -12452,7 +12491,7 @@ html.html-aiinterview-institute-dashboard-page .institute-join-url-status {
 @media (min-width: 1001px) {
     html.html-vendor-portal-page body.jb-account-nav-enhanced #jb-account-navigation {
         position: sticky !important;
-        top: 64px !important;
+        top: 0 !important;
         left: auto !important;
         width: auto !important;
         height: auto !important;
@@ -12480,8 +12519,10 @@ html.html-aiinterview-institute-dashboard-page .institute-join-url-status {
 /* SIDEBAR LIGHT THEME */
 .html-vendor-portal-page .block-account-navigation {
     position: sticky;
-    top: 64px;
+    top: 0;
     min-height: auto;
+    max-height: 100svh;
+    overflow-y: auto;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -12557,14 +12598,6 @@ html.html-aiinterview-institute-dashboard-page .institute-join-url-status {
     pointer-events: none;
 }
 
-/* Main content area */
-.html-vendor-portal-page.html-account-page .center-2 {
-    padding: 24px 28px 34px;
-    background: #f7f8fa;
-    min-height: auto;
-    box-sizing: border-box;
-}
-
 .html-vendor-portal-page .account-page .page-title {
     border-bottom: 1px solid #e4e7eb;
     margin-bottom: 24px;
@@ -12583,7 +12616,7 @@ html.html-aiinterview-institute-dashboard-page .institute-join-url-status {
 
 /* ---- MOBILE VENDOR PORTAL (<= 1000px) ---- */
 @media (max-width: 1000px) {
-    .html-vendor-portal-page.html-account-page .master-column-wrapper {
+    html.html-vendor-portal-page .master-column-wrapper {
         display: block !important;
         padding: 0 !important;
         min-height: 0 !important;
