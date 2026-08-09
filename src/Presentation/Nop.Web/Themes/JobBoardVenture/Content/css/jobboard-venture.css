@@ -12080,6 +12080,20 @@ html.html-aiinterview-institute-dashboard-page .ai-institute-dashboard-page .pag
     text-transform: uppercase;
 }
 
+.html-aiinterview-institute-dashboard-page .institute-back-link {
+    display: inline-block;
+    margin-bottom: 10px;
+    color: var(--jb-accent-dark);
+    font-size: 0.88rem;
+    text-decoration: none;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-applicant-subtitle {
+    margin: -10px 0 16px;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
 html.html-aiinterview-institute-dashboard-page .ai-institute-dashboard-page .page-body {
     margin: 0;
 }
@@ -12772,6 +12786,14 @@ body.institute-ledger-modal-open {
 }
 
 @media (max-width: 640px) {
+    .html-aiinterview-institute-dashboard-page .applications-table-wrap {
+        display: none;
+    }
+
+    .html-aiinterview-institute-dashboard-page .history-mobile-list {
+        display: grid;
+    }
+
     .institute-credit-summary-grid,
     .institute-credit-modal-grid,
     .institute-ledger-summary-grid {

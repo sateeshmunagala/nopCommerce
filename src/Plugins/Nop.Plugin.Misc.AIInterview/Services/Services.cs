@@ -959,6 +959,27 @@ public class InterviewSessionService : IInterviewSessionService
             return true;
         }
 
+        if (_genericAttributeRepository != null)
+        {
+            var sessionOwner = await _customerService.GetCustomerByIdAsync(session.CustomerId);
+            if (sessionOwner != null)
+            {
+                var attr = (await _genericAttributeRepository.GetAllAsync(q =>
+                    q.Where(a => a.KeyGroup == nameof(Customer) &&
+                                 a.Key == AIInterviewDefaults.InstituteVendorIdAttributeKey &&
+                                 a.EntityId == sessionOwner.Id))).FirstOrDefault();
+
+                if (attr != null &&
+                    int.TryParse(attr.Value, out var attrVendorId) &&
+                    attrVendorId > 0)
+                {
+                    var viewer = await _customerService.GetCustomerByIdAsync(customerId);
+                    if (viewer != null && viewer.VendorId == attrVendorId)
+                        return true;
+                }
+            }
+        }
+
         if (await _customerService.IsAdminAsync(customer))
         {
             LogCanAccessReportResult(true, "admin", customerId, sessionId, session, customer);

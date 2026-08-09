@@ -64,6 +64,11 @@
                                             hx-swap="innerHTML">
                                         History
                                     </button>
+                                    <a class="button-2"
+                                       href="@Url.RouteUrl(AIInterviewDefaults.InstituteApplicantInterviewsRouteName, new { applicantCustomerId = c.CustomerId })"
+                                       aria-label="View AI interviews for @(c.CustomerName ?? c.Email)">
+                                        Interviews
+                                    </a>
                                 </div>
                             </td>
                         </tr>

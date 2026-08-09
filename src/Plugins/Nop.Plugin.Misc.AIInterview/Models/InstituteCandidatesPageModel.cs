@@ -49,3 +49,11 @@ public record InstituteApplicantLedgerModalModel
     public InstituteApplicantLedgerFilterModel Filters { get; init; }
     public IList<InstituteApplicantLedgerRowModel> Rows { get; init; } = new List<InstituteApplicantLedgerRowModel>();
 }
+
+public record InstituteApplicantInterviewsPageModel
+{
+    public int ApplicantCustomerId { get; init; }
+    public string ApplicantName { get; init; }
+    public string ApplicantEmail { get; init; }
+    public IList<InterviewHistoryItemModel> Sessions { get; init; } = new List<InterviewHistoryItemModel>();
+}

@@ -1333,6 +1333,34 @@ public class AIInterviewController : BasePluginController
         return PartialView("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteApplicantLedgerModal.cshtml", model);
     }
 
+    [HttpGet]
+    public virtual async Task<IActionResult> InstituteApplicantInterviews(int applicantCustomerId)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (!await IsInstituteVendorAsync(customer))
+            return RedirectToRoute("Homepage");
+
+        var applicants = await GetInstituteStudentsAsync(customer.VendorId);
+        var applicant = applicants.FirstOrDefault(s => s.Id == applicantCustomerId);
+        if (applicant == null)
+            return NotFound();
+
+        var fullName = (applicant.FirstName + " " + applicant.LastName).Trim();
+        var sessions = await BuildMockInterviewHistoryItemsAsync(applicant);
+        var model = new InstituteApplicantInterviewsPageModel
+        {
+            ApplicantCustomerId = applicant.Id,
+            ApplicantName = string.IsNullOrWhiteSpace(fullName) ? applicant.Email : fullName,
+            ApplicantEmail = applicant.Email ?? string.Empty,
+            Sessions = sessions.OrderByDescending(s => s.CompletedOnUtc ?? s.CreatedOnUtc).ToList()
+        };
+
+        return View("~/Plugins/Misc.AIInterview/Views/InstituteApplicantInterviews.cshtml", model);
+    }
+
     protected static string BuildInstituteLedgerAction(CreditLedgerEntry entry)
     {
         if (entry == null)
