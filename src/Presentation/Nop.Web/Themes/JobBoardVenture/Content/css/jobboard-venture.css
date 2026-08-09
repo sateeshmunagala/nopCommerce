@@ -13250,3 +13250,252 @@ body.institute-ledger-modal-open {
         justify-content: center;
     }
 }
+
+/* PHASE 21 UNIFIED VENDOR PORTAL LAYOUT */
+html.html-vendor-portal-page header.header {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+.html-vendor-portal-page .header-lower {
+    padding: 0 16px 0 16px !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-bottom: 1px solid #e8eaed !important;
+    background: #ffffff !important;
+}
+
+html.html-vendor-portal-page .header-lower {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 0 0 0 !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    box-sizing: border-box !important;
+}
+
+html.html-vendor-portal-page header .header-lower,
+html.html-vendor-portal-page header.header .header-lower {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 16px !important;
+}
+
+html.html-vendor-portal-page .header-logo {
+    padding-left: 0;
+    order: 0;
+    flex-grow: 1;
+}
+
+.html-vendor-portal-page .jb-account-nav-toggle {
+    position: fixed !important;
+    top: 48px !important;
+    left: 0 !important;
+    z-index: 1000 !important;
+}
+
+.html-vendor-portal-page .jb-mobile-toggles.left,
+.html-vendor-portal-page .header-menu,
+.html-vendor-portal-page .jb-header-search,
+.html-vendor-portal-page .header-lower .store-search-box {
+    display: none !important;
+}
+
+.html-vendor-portal-page .jb-mobile-toggles.right {
+    display: flex !important;
+    order: 1;
+    flex-shrink: 0;
+}
+
+.html-vendor-portal-page .header-links-wrapper {
+    order: 2;
+    flex-shrink: 0;
+}
+
+.html-vendor-portal-page .jb-mobile-account {
+    display: flex !important;
+}
+
+.html-vendor-portal-page .header-links ul {
+    display: flex !important;
+}
+
+.html-vendor-portal-page .header-lower .menu-container {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+.html-vendor-portal-page .header-upper {
+    display: none !important;
+}
+
+.html-vendor-portal-page .block-account-navigation {
+    position: sticky;
+    top: 0;
+    min-height: auto;
+    max-height: 100svh;
+    overflow-y: auto;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-right: 1px solid #e8eaed;
+    padding-top: 48px;
+}
+
+.html-vendor-portal-page .jb-account-nav-header {
+    display: none !important;
+}
+
+.html-vendor-portal-page .block-account-navigation .listbox {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.html-vendor-portal-page .block-account-navigation .list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.html-vendor-portal-page .block-account-navigation .list > li {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.html-vendor-portal-page .block-account-navigation a {
+    display: block;
+    padding: 13px 16px;
+    color: #666666;
+    text-decoration: none;
+    font-family: "Lato", sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.html-vendor-portal-page .block-account-navigation li.inactive a:hover,
+.html-vendor-portal-page .block-account-navigation a:hover {
+    background-color: color-mix(in srgb, var(--jb-accent) 10%, #ffffff);
+    color: var(--jb-accent-dark);
+    border-left-color: var(--jb-accent-dark);
+}
+
+.html-vendor-portal-page .block-account-navigation li.active a {
+    background-color: #f0f0f0;
+    color: var(--jb-accent-dark);
+    border-left-color: var(--jb-accent);
+    font-weight: 500;
+}
+
+.html-vendor-portal-page .account-page .page-title {
+    margin: 0;
+    padding: 24px 0;
+    text-align: left;
+}
+
+.html-vendor-portal-page .account-page .page-title h1 {
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.8rem;
+    color: #2c2c2c;
+    font-weight: 400;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.html-vendor-portal-page .footer {
+    display: none !important;
+}
+
+html.html-vendor-portal-page .master-wrapper-page,
+html.html-vendor-portal-page .master-wrapper-content {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+html.html-vendor-portal-page .master-column-wrapper {
+    display: flex !important;
+    flex-direction: row;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    align-items: flex-start;
+    gap: 0;
+    min-height: calc(100vh - 48px);
+}
+
+html.html-vendor-portal-page .side-2 {
+    flex: 0 0 280px;
+    width: 280px;
+    max-height: 100svh;
+    overflow-y: auto;
+    border-right: 1px solid #e8eaed;
+    padding: 0;
+    margin: 0;
+}
+
+html.html-vendor-portal-page .center-2 {
+    flex: 1 1 auto;
+    width: calc(100% - 280px);
+    max-width: 100%;
+    padding: 24px;
+    margin: 0;
+}
+
+@media (max-width: 1000px) {
+    html.html-vendor-portal-page .master-column-wrapper {
+        flex-direction: column;
+        min-height: auto;
+    }
+
+    html.html-vendor-portal-page .side-2 {
+        flex: 0 0 auto;
+        width: 100%;
+        max-height: auto;
+        border-right: 0;
+        border-bottom: 1px solid #e8eaed;
+        padding-top: 48px;
+    }
+
+    html.html-vendor-portal-page .center-2 {
+        width: 100%;
+        padding: 16px;
+    }
+
+    .html-vendor-portal-page .block-account-navigation {
+        padding-top: 0;
+    }
+}
+
+@media (max-width: 767px) {
+    html.html-vendor-portal-page .center-2 {
+        padding: 12px;
+    }
+
+    .html-vendor-portal-page .block-account-navigation a {
+        padding: 12px 14px;
+        font-size: 0.9rem;
+    }
+}
