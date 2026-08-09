@@ -1154,7 +1154,37 @@ public class AIInterviewController : BasePluginController
             return string.Empty;
         }
 
-        return $"{Request.Scheme}://{Request.Host}/register?{AIInterviewDefaults.InstituteRegistrationCookieName}={slug}";
+        var joinPath = Url.RouteUrl(AIInterviewDefaults.InstituteJoinRouteName, new { slug });
+        return string.IsNullOrWhiteSpace(joinPath)
+            ? $"{Request.Scheme}://{Request.Host}/register/{slug}"
+            : $"{Request.Scheme}://{Request.Host}{joinPath}";
+    }
+
+    [HttpGet]
+    public virtual IActionResult InstituteJoin(string slug)
+    {
+        if (!_aiInterviewSettings.Enabled)
+            return RedirectToRoute("Homepage");
+
+        if (string.IsNullOrWhiteSpace(slug))
+            return RedirectToRoute("RegisterPage");
+
+        var normalizedSlug = InstituteRegistrationSlugService.NormalizeRegistrationValue(slug);
+        if (string.IsNullOrWhiteSpace(normalizedSlug))
+            return RedirectToRoute("RegisterPage");
+
+        HttpContext.Response.Cookies.Append(
+            AIInterviewDefaults.InstituteRegistrationCookieName,
+            normalizedSlug,
+            new Microsoft.AspNetCore.Http.CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddDays(30)
+            });
+
+        return RedirectToRoute("RegisterPage");
     }
 
     protected virtual async Task<InstituteDashboardPageModel> BuildInstituteDashboardPageModelAsync(Customer customer, string tab, string transferMessage = null, bool transferSucceeded = false)

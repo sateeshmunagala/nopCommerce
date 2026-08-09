@@ -16,6 +16,11 @@ public class RouteProvider : IRouteProvider
     /// <param name="endpointRouteBuilder">Route builder</param>
     public void RegisterRoutes(IEndpointRouteBuilder endpointRouteBuilder)
     {
+        endpointRouteBuilder.MapControllerRoute(
+            name: AIInterviewDefaults.InstituteJoinRouteName,
+            pattern: "register/{slug}",
+            defaults: new { controller = "AIInterview", action = "InstituteJoin" });
+
         //Admin
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.ConfigurationRouteName,
             pattern: "Admin/AIInterview/Configure",
