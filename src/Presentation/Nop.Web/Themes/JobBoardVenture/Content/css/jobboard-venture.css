@@ -2466,7 +2466,7 @@ body.jb-search-open .jb-drawer-overlay {
 .contact-page {
     width: min(100%, 1240px);
     margin-inline: auto;
-    padding: clamp(24px, 4vw, 56px) clamp(16px, 3vw, 32px);
+    padding: clamp(12px, 2vw, 28px) clamp(16px, 3vw, 32px) clamp(24px, 4vw, 56px);
     color: var(--jb-ink);
     text-align: start;
 }
@@ -2517,7 +2517,7 @@ body.jb-search-open .jb-drawer-overlay {
     margin: 0;
     color: var(--jb-ink);
     font-family: "Fjalla One", Arial, sans-serif;
-    font-size: clamp(2.25rem, 4.6vw, 4.5rem);
+    font-size: clamp(1.35rem, 2.76vw, 2.7rem);
     font-weight: 400;
     line-height: 0.98;
     letter-spacing: 0.01em;
@@ -2586,6 +2586,25 @@ body.jb-search-open .jb-drawer-overlay {
     min-width: 0;
     line-height: 1.45;
     overflow-wrap: anywhere;
+}
+
+.contact-page .contact-meta-link {
+    color: var(--jb-ink);
+    font-weight: 600;
+    text-decoration: none;
+    text-underline-offset: 3px;
+}
+
+.contact-page .contact-meta-link:hover {
+    color: var(--jb-accent-dark);
+    text-decoration: underline;
+}
+
+.contact-page .contact-meta-link:focus-visible {
+    color: var(--jb-accent-dark);
+    text-decoration: underline;
+    outline: 2px solid var(--jb-accent);
+    outline-offset: 3px;
 }
 
 .contact-page .contact-hero-metadata-card .topic-block,
@@ -2687,7 +2706,7 @@ body.jb-search-open .jb-drawer-overlay {
     grid-row: 2;
     align-self: start;
     margin: 2px 0 0;
-    color: var(--jb-accent-dark);
+    color: var(--error-red-color, #d51f28);
 }
 
 .contact-page .contact-form-control {
@@ -2743,7 +2762,7 @@ body.jb-search-open .jb-drawer-overlay {
 .contact-page .contact-form-control .required {
     flex: 0 0 auto;
     margin: 2px 0 0 6px;
-    color: var(--jb-accent-dark);
+    color: var(--error-red-color, #d51f28);
 }
 
 .contact-page .contact-form-field > span,
@@ -2805,7 +2824,7 @@ body.jb-search-open .jb-drawer-overlay {
 
 @media (max-width: 680px) {
     .contact-page {
-        padding: 20px 12px 36px;
+        padding: 10px 12px 36px;
     }
 
     .contact-page .contact-shell {
