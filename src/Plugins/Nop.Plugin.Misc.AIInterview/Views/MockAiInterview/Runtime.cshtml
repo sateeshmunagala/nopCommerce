@@ -44,6 +44,10 @@
                     <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
                     <span>@T("Plugins.Misc.AIInterview.Runtime.Feedback.Trigger")</span>
                 </button>
+                <button type="button" id="btn-runtime-tour" class="runtime-icon-button button-2" title="@T("Plugins.Misc.AIInterview.Tour.TriggerLabel")" aria-label="@T("Plugins.Misc.AIInterview.Tour.TriggerLabel")">
+                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    <span class="sr-only">@T("Plugins.Misc.AIInterview.Tour.TriggerLabel")</span>
+                </button>
                 @if (!string.IsNullOrWhiteSpace(Model.CandidateName))
                 {
                     <span class="runtime-candidate-chip">@Model.CandidateName</span>
@@ -492,6 +496,8 @@
         </div>
     </div>
 </div>
+
+@await Html.PartialAsync("_Runtime.Tour")
 
 <script asp-location="Footer">
     (() => {

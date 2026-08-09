@@ -257,6 +257,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetRuntimeTourLocaleResources());
         await EnsureRuntimeActivityLogTypesAsync();
 
         await base.UpdateAsync(currentVersion, targetVersion);
@@ -885,6 +886,38 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         };
     }
 
+    protected static Dictionary<string, string> GetRuntimeTourLocaleResources()
+    {
+        return new Dictionary<string, string>
+        {
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.TriggerLabel"] = "Take a Tour of the interview controls and interview flow",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Intro.Title"] = "Welcome to your interview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Intro.Description"] = "Get ready before you begin. This quick tour explains the interview controls, where questions and answers appear, and how to move through the interview from start to completion.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Guidelines.Title"] = "Review guidelines and readiness",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Guidelines.Description"] = "Open the guidelines to review expectations and complete the required camera, microphone, speaker, connection, and speech checks before starting.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Microphone.Title"] = "Control your microphone",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Microphone.Description"] = "Turn your microphone on when you are ready to speak and use this control to mute or unmute during the interview.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Start.Title"] = "Start and continue",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Start.Description"] = "After the readiness checks are complete, use this button to start the interview and continue through the expected question flow.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Camera.Title"] = "Control your camera",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Camera.Description"] = "Turn your camera preview on or off here. Confirm that you are clearly visible before the interview begins.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.ScreenShare.Title"] = "Share your screen",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.ScreenShare.Description"] = "Use this control when screen sharing is required. Keep sharing active throughout the interview to avoid interruptions.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Conversation.Title"] = "Follow the conversation",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Conversation.Description"] = "Interview questions, prompts, and conversation updates appear in this panel so you can follow the discussion as it progresses.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Answer.Title"] = "Provide your answer",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Answer.Description"] = "Use the answer area when typed responses are available. Review your response before submitting it for the current question.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Details.Title"] = "Check interview details",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Details.Description"] = "Open this tab to review interview progress, elapsed time, and the current status of your camera, microphone, and screen share.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Completion.Title"] = "Complete the interview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Completion.Description"] = "Use this control when you need to finish the interview. Confirm completion only after you have answered all expected questions.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Previous"] = "Previous",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Next"] = "Next",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Done"] = "Done",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Tour.Progress"] = "Step {{current}} of {{total}}"
+        };
+    }
+
     protected static Dictionary<string, string> GetAdminLocaleResources()
     {
         return new Dictionary<string, string>
@@ -1310,6 +1343,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetRuntimeTourLocaleResources());
 
         //locales
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>

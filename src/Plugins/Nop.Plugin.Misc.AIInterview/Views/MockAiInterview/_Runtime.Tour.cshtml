@@ -1,0 +1,150 @@
+@using System.Text.Encodings.Web
+
+<link rel="stylesheet" href="~/lib_npm/driver.js/driver.min.css" />
+<script src="~/lib_npm/driver.js/driver.js.iife.min.js"></script>
+<script asp-location="Footer">
+    (() => {
+        const createRuntimeTour = window.driver?.js?.driver;
+        if (!createRuntimeTour)
+            return;
+
+        const storageKey = 'aiinterview-runtime-tour-seen';
+        const localizedTour = {
+            introTitle: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Intro.Title").Text)',
+            introDescription: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Intro.Description").Text)',
+            guidelinesTitle: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Guidelines.Title").Text)',
+            guidelinesDescription: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Guidelines.Description").Text)',
+            microphoneTitle: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Microphone.Title").Text)',
+            microphoneDescription: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Microphone.Description").Text)',
+            startTitle: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Start.Title").Text)',
+            startDescription: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Start.Description").Text)',
+            cameraTitle: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Camera.Title").Text)',
+            cameraDescription: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Camera.Description").Text)',
+            screenShareTitle: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.ScreenShare.Title").Text)',
+            screenShareDescription: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.ScreenShare.Description").Text)',
+            conversationTitle: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Conversation.Title").Text)',
+            conversationDescription: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Conversation.Description").Text)',
+            answerTitle: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Answer.Title").Text)',
+            answerDescription: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Answer.Description").Text)',
+            detailsTitle: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Details.Title").Text)',
+            detailsDescription: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Details.Description").Text)',
+            completionTitle: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Completion.Title").Text)',
+            completionDescription: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Completion.Description").Text)',
+            previous: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Previous").Text)',
+            next: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Next").Text)',
+            done: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Done").Text)',
+            progress: '@JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.Tour.Progress").Text)'
+        };
+
+        const markTourSeen = () => {
+            try {
+                window.localStorage.setItem(storageKey, 'true');
+            } catch { }
+        };
+
+        const runtimeTour = createRuntimeTour({
+            popoverClass: 'runtime-area-tour',
+            overlayOpacity: 0.55,
+            smoothScroll: true,
+            showProgress: true,
+            disableActiveInteraction: true,
+            progressText: localizedTour.progress,
+            prevBtnText: localizedTour.previous,
+            nextBtnText: localizedTour.next,
+            doneBtnText: localizedTour.done,
+            steps: [
+                {
+                    popover: {
+                        title: localizedTour.introTitle,
+                        description: localizedTour.introDescription
+                    }
+                },
+                {
+                    element: '#view-guidelines',
+                    popover: {
+                        title: localizedTour.guidelinesTitle,
+                        description: localizedTour.guidelinesDescription
+                    }
+                },
+                {
+                    element: '#toggle-mic',
+                    popover: {
+                        title: localizedTour.microphoneTitle,
+                        description: localizedTour.microphoneDescription
+                    }
+                },
+                {
+                    element: '#start-or-next',
+                    popover: {
+                        title: localizedTour.startTitle,
+                        description: localizedTour.startDescription
+                    }
+                },
+                {
+                    element: '#toggle-camera',
+                    popover: {
+                        title: localizedTour.cameraTitle,
+                        description: localizedTour.cameraDescription
+                    }
+                },
+                {
+                    element: '#toggle-screen-share',
+                    popover: {
+                        title: localizedTour.screenShareTitle,
+                        description: localizedTour.screenShareDescription
+                    }
+                },
+                {
+                    element: '#runtime-panel-conversation',
+                    popover: {
+                        title: localizedTour.conversationTitle,
+                        description: localizedTour.conversationDescription
+                    }
+                },
+                {
+                    element: '#runtime-answer',
+                    popover: {
+                        title: localizedTour.answerTitle,
+                        description: localizedTour.answerDescription
+                    }
+                },
+                {
+                    element: '#runtime-tab-details',
+                    popover: {
+                        title: localizedTour.detailsTitle,
+                        description: localizedTour.detailsDescription
+                    }
+                },
+                {
+                    element: '#stop-interview-top',
+                    popover: {
+                        title: localizedTour.completionTitle,
+                        description: localizedTour.completionDescription
+                    }
+                }
+            ],
+            onCloseClick: () => {
+                markTourSeen();
+                runtimeTour.destroy();
+            },
+            onDestroyed: markTourSeen
+        });
+
+        const initializeRuntimeTour = () => {
+            document.getElementById('btn-runtime-tour')?.addEventListener('click', () => runtimeTour.drive());
+
+            let hasSeenTour = false;
+            try {
+                hasSeenTour = window.localStorage.getItem(storageKey) !== null;
+            } catch { }
+
+            if (!hasSeenTour)
+                runtimeTour.drive();
+        };
+
+        if (document.readyState === 'loading')
+            document.addEventListener('DOMContentLoaded', initializeRuntimeTour, { once: true });
+        else
+            initializeRuntimeTour();
+    })();
+</script>
