@@ -13395,13 +13395,13 @@ html.html-vendor-portal-page .header-logo {
 }
 
 .html-vendor-portal-page .jb-account-nav-toggle {
-    position: fixed !important;
-    top: 48px !important;
+    position: sticky !important;
+    top: 0 !important;
     left: 0 !important;
-    z-index: 1000 !important;
+    z-index: 100 !important;
+    width: 100% !important;
 }
 
-.html-vendor-portal-page .jb-mobile-toggles.left,
 .html-vendor-portal-page .header-menu,
 .html-vendor-portal-page .jb-header-search,
 .html-vendor-portal-page .header-lower .store-search-box {
@@ -13447,7 +13447,7 @@ html.html-vendor-portal-page .header-logo {
     flex-direction: column;
     background: #ffffff;
     border-right: 1px solid #e8eaed;
-    padding-top: 48px;
+    padding-top: 56px;
 }
 
 .html-vendor-portal-page .jb-account-nav-header {
@@ -13594,7 +13594,7 @@ html.html-vendor-portal-page .center-2 {
     }
 }
 
-/* Hide store brand mark and name in drawer header - keep close button visible */
-.html-vendor-portal-page #jb-mobile-menu-drawer .jb-drawer-brand {
+/* Hide store brand mark and name inside mobile drawer on all pages globally */
+#jb-mobile-menu-drawer .jb-drawer-brand {
     display: none !important;
 }
