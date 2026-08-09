@@ -3765,6 +3765,42 @@ label, label + * {
   cursor: pointer;
 }
 
+/*********** CONTACT PAGE SPLIT LAYOUT RTL ***********/
+
+.contact-page,
+.contact-page .page-title,
+.contact-page .contact-hero-support,
+.contact-page .contact-hero-metadata-card,
+.contact-page .contact-form-panel,
+.contact-page .contact-form-field,
+.contact-page .contact-form-attributes .inputs,
+.contact-page .contact-form-field label,
+.contact-page .contact-form-attributes .inputs > label,
+.contact-page .contact-form-field > span,
+.contact-page .contact-form-attributes .field-validation-error,
+.contact-page .result,
+.contact-page .message-error {
+  text-align: right;
+}
+
+.contact-page .contact-shell,
+.contact-page .contact-hero,
+.contact-page .contact-hero-metadata-cards,
+.contact-page .contact-form-fields,
+.contact-page .contact-form-control {
+  direction: rtl;
+}
+
+.contact-page .contact-form-control .required {
+  margin-right: 6px;
+  margin-left: 0;
+}
+
+.contact-page .contact-form-actions {
+  direction: rtl;
+  justify-content: flex-start;
+}
+
 /********** REGISTRATION, LOGIN, ACCOUNT PAGES  **********/
 
 
