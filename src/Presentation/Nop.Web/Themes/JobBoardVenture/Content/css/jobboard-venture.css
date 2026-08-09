@@ -12418,21 +12418,41 @@ html.html-aiinterview-institute-dashboard-page .institute-join-url-status {
     line-height: 1;
 }
 
-.institute-candidate-edit {
-    min-width: 74px;
-    text-align: center;
-}
-
 .institute-candidate-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 6px;
     align-items: center;
 }
 
-.institute-candidate-actions .button-2 {
-    min-width: 74px;
-    text-align: center;
+.institute-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #4b5563;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    position: relative;
+}
+
+.institute-action-icon:hover,
+.institute-action-icon:focus-visible {
+    background: #f0fdfb;
+    color: var(--jb-accent-dark);
+    border-color: var(--jb-accent);
+    outline: none;
+}
+
+.institute-candidate-edit {
+    /* kept for JS selector compatibility */
 }
 
 .institute-transfer-alert {

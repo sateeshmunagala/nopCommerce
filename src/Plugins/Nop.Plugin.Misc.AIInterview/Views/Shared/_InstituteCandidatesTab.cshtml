@@ -49,25 +49,28 @@
                             <td data-label="Actions">
                                 <div class="institute-candidate-actions">
                                     <button type="button"
-                                            class="button-2 institute-candidate-edit"
-                                            aria-label="Edit credits for @c.CustomerName"
+                                            class="institute-action-icon institute-candidate-edit"
+                                            title="Edit credits for @c.CustomerName"
+                                            aria-label="Edit credits for @(c.CustomerName ?? c.Email)"
                                             data-applicant-customer-id="@c.CustomerId"
                                             onclick="document.getElementById('selectedCandidateCustomerId').value='@c.CustomerId';document.getElementById('institute-credit-modal-student').value='@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(c.CustomerName ?? string.Empty)';document.getElementById('institute-credit-modal-balance').value='@c.CreditBalance.ToString("0.##")';window.openInstituteCreditModal && window.openInstituteCreditModal(this);">
-                                        Edit
+                                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
                                     </button>
                                     <button type="button"
-                                            class="button-2 institute-applicant-history"
-                                            aria-label="View credit history for @c.CustomerName"
+                                            class="institute-action-icon institute-applicant-history"
+                                            title="Credit history for @c.CustomerName"
+                                            aria-label="View credit history for @(c.CustomerName ?? c.Email)"
                                             data-applicant-customer-id="@c.CustomerId"
                                             hx-get="@Url.RouteUrl(AIInterviewDefaults.InstituteApplicantLedgerRouteName, new { applicantCustomerId = c.CustomerId })"
                                             hx-target="#institute-ledger-modal-host"
                                             hx-swap="innerHTML">
-                                        History
+                                        <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
                                     </button>
-                                    <a class="button-2"
+                                    <a class="institute-action-icon"
                                        href="@Url.RouteUrl(AIInterviewDefaults.InstituteApplicantInterviewsRouteName, new { applicantCustomerId = c.CustomerId })"
+                                       title="AI interviews for @c.CustomerName"
                                        aria-label="View AI interviews for @(c.CustomerName ?? c.Email)">
-                                        Interviews
+                                        <i class="fa-solid fa-video" aria-hidden="true"></i>
                                     </a>
                                 </div>
                             </td>
