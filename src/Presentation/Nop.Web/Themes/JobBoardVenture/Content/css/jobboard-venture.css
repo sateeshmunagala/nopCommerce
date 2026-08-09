@@ -12215,9 +12215,9 @@ html.html-aiinterview-institute-dashboard-page .institute-join-url-status {
 
 .html-vendor-portal-page .block-account-navigation li.inactive a:hover,
 .html-vendor-portal-page .block-account-navigation a:hover {
-    background: #f5f7ff;
-    color: #2563eb;
-    border-left-color: #c7d7fd;
+    background: color-mix(in srgb, var(--jb-accent) 10%, #ffffff);
+    color: var(--jb-accent-dark);
+    border-left-color: var(--jb-accent);
 }
 
 .html-vendor-portal-page .block-account-navigation li.active a {

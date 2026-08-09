@@ -6,6 +6,7 @@
 @{
     var currentCustomer = await workContext.GetCurrentCustomerAsync();
     var isVendorPortal = currentCustomer.VendorId > 0;
+    NopHtml.AppendPageCssClassParts("html-vendor-portal-page");
 }
 <div class="jb-account-nav-shell">
     <button class="jb-account-nav-toggle" type="button"
