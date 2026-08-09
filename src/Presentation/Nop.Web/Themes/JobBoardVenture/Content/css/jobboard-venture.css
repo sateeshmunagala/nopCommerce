@@ -13574,3 +13574,8 @@ html.html-vendor-portal-page .center-2 {
         font-size: 0.9rem;
     }
 }
+
+/* Hide store brand mark and name in drawer header - keep close button visible */
+.html-vendor-portal-page #jb-mobile-menu-drawer .jb-drawer-brand {
+    display: none !important;
+}
