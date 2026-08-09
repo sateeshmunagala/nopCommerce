@@ -13394,6 +13394,12 @@ html.html-vendor-portal-page .header-logo {
     flex-grow: 1;
 }
 
+/* Force left hamburger to leftmost flex slot before logo on vendor portal header */
+.html-vendor-portal-page .jb-mobile-toggles.left {
+    order: -1;
+    flex-shrink: 0;
+}
+
 .html-vendor-portal-page .jb-account-nav-toggle {
     position: sticky !important;
     top: 0 !important;
@@ -13423,6 +13429,32 @@ html.html-vendor-portal-page .header-logo {
     display: flex !important;
 }
 
+/* Constrain profile panel to compact dropdown size on vendor portal pages */
+.html-vendor-portal-page .jb-mobile-account-panel,
+.html-vendor-portal-page .jb-account-panel,
+.html-vendor-portal-page .header-links-dropdown {
+    max-height: 200px !important;
+    overflow-y: auto !important;
+    position: absolute !important;
+    top: 48px !important;
+    right: 0 !important;
+    width: auto !important;
+    min-width: 160px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    background: #ffffff !important;
+    border: 1px solid var(--jb-border) !important;
+    border-radius: 4px !important;
+    z-index: 500 !important;
+}
+
+/* Hide currency and tax selectors inside profile panel on vendor portal pages */
+.html-vendor-portal-page .header-links .currency-selector,
+.html-vendor-portal-page .header-links .tax-type-selector,
+.html-vendor-portal-page .header-links .currency-selector,
+.html-vendor-portal-page .header-links select {
+    display: none !important;
+}
+
 .html-vendor-portal-page .header-links ul {
     display: flex !important;
 }
@@ -13447,7 +13479,7 @@ html.html-vendor-portal-page .header-logo {
     flex-direction: column;
     background: #ffffff;
     border-right: 1px solid #e8eaed;
-    padding-top: 56px;
+    padding-top: 64px;
 }
 
 .html-vendor-portal-page .jb-account-nav-header {
@@ -13597,4 +13629,9 @@ html.html-vendor-portal-page .center-2 {
 /* Hide store brand mark and name inside mobile drawer on all pages globally */
 #jb-mobile-menu-drawer .jb-drawer-brand {
     display: none !important;
+}
+
+/* Push close button to right when brand is hidden and it is the only header child */
+#jb-mobile-menu-drawer .jb-drawer-header {
+    justify-content: flex-end;
 }
