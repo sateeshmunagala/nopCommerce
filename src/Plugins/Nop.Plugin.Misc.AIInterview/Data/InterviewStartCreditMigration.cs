@@ -80,3 +80,38 @@ public class InterviewStartCreditMigration : Migration
             Delete.Column(column).FromTable(table);
     }
 }
+
+[NopMigration("2026/08/10 09:30:00", "Misc.AIInterview refund notification retry markers", MigrationProcessType.Update)]
+public class InterviewStartCreditRefundNotificationRetryMigration : Migration
+{
+    private const string SessionTable = nameof(InterviewSession);
+
+    public override void Up()
+    {
+        if (!Schema.Table(SessionTable).Column(nameof(InterviewSession.CreditRefundNotificationAttemptCount)).Exists())
+        {
+            Alter.Table(SessionTable)
+                .AddColumn(nameof(InterviewSession.CreditRefundNotificationAttemptCount))
+                .AsInt32()
+                .NotNullable()
+                .WithDefaultValue(0);
+        }
+
+        if (!Schema.Table(SessionTable).Column(nameof(InterviewSession.CreditRefundNotificationProcessingOnUtc)).Exists())
+        {
+            Alter.Table(SessionTable)
+                .AddColumn(nameof(InterviewSession.CreditRefundNotificationProcessingOnUtc))
+                .AsDateTime2()
+                .Nullable();
+        }
+    }
+
+    public override void Down()
+    {
+        if (Schema.Table(SessionTable).Column(nameof(InterviewSession.CreditRefundNotificationProcessingOnUtc)).Exists())
+            Delete.Column(nameof(InterviewSession.CreditRefundNotificationProcessingOnUtc)).FromTable(SessionTable);
+
+        if (Schema.Table(SessionTable).Column(nameof(InterviewSession.CreditRefundNotificationAttemptCount)).Exists())
+            Delete.Column(nameof(InterviewSession.CreditRefundNotificationAttemptCount)).FromTable(SessionTable);
+    }
+}

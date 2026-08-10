@@ -1185,6 +1185,8 @@ public class InterviewStartCreditService : IInterviewStartCreditService
 {
     public const decimal InterviewStartCost = 1m;
     public const string RefundNotificationTemplateName = "AIInterview.InterviewStartCreditRefunded";
+    public const int RefundNotificationMaxAttempts = 3;
+    private static readonly TimeSpan RefundNotificationProcessingLease = TimeSpan.FromMinutes(5);
     private static readonly ConcurrentDictionary<int, SessionCreditLock> SessionCreditLocks = new();
 
     private sealed class SessionCreditLock
@@ -1403,24 +1405,25 @@ public class InterviewStartCreditService : IInterviewStartCreditService
             return;
 
         using var sessionLock = await AcquireSessionCreditLockAsync(session.Id);
-        InterviewSession persistedSession;
+        var persistedSession = await _sessionRepository.GetByIdAsync(session.Id) ?? session;
+        var effectiveReasonCode = reasonCode ?? persistedSession.CreditRefundReasonCode ?? string.Empty;
+        if (!persistedSession.CreditRefundedOnUtc.HasValue || persistedSession.CreditChargeCustomerId <= 0)
+            return;
+
+        if (persistedSession.CreditRefundNotificationSentOnUtc.HasValue)
+        {
+            LogRefundNotificationSuppressed(persistedSession, effectiveReasonCode, "AlreadySent");
+            return;
+        }
+
+        if (persistedSession.CreditRefundNotificationAttemptCount >= RefundNotificationMaxAttempts)
+        {
+            LogRefundNotificationSuppressed(persistedSession, effectiveReasonCode, "RetryLimitReached");
+            return;
+        }
+
         try
         {
-            using (var transaction = _dataProvider.CreateTransactionScope())
-            {
-                persistedSession = await _sessionRepository.GetByIdAsync(session.Id) ?? session;
-                if (!persistedSession.CreditRefundedOnUtc.HasValue ||
-                    persistedSession.CreditChargeCustomerId <= 0 ||
-                    persistedSession.CreditRefundNotificationAttemptedOnUtc.HasValue)
-                {
-                    return;
-                }
-
-                persistedSession.CreditRefundNotificationAttemptedOnUtc = DateTime.UtcNow;
-                await _sessionRepository.UpdateAsync(persistedSession);
-                transaction.Complete();
-            }
-
             var chargedCustomer = await _customerService.GetCustomerByIdAsync(persistedSession.CreditChargeCustomerId);
             if (chargedCustomer == null || string.IsNullOrWhiteSpace(chargedCustomer.Email) || !CommonHelper.IsValidEmail(chargedCustomer.Email))
                 throw new InvalidOperationException("The charged customer does not have a valid refund notification email address.");
@@ -1448,43 +1451,144 @@ public class InterviewStartCreditService : IInterviewStartCreditService
                 new("AIInterview.SessionId", persistedSession.Id.ToString(CultureInfo.InvariantCulture)),
                 new("AIInterview.ProductName", product?.Name ?? "Interview"),
                 new("AIInterview.RefundAmount", FormatCredits(persistedSession.CreditChargeAmount > 0 ? persistedSession.CreditChargeAmount : InterviewStartCost)),
-                new("AIInterview.RefundReason", reasonCode ?? persistedSession.CreditRefundReasonCode ?? string.Empty),
+                new("AIInterview.RefundReason", effectiveReasonCode),
                 new("AIInterview.OccurredUtc", occurredUtc.ToString("u", CultureInfo.InvariantCulture))
             };
-
-            await _workflowMessageService.SendNotificationAsync(
-                template,
-                emailAccount,
-                languageId,
-                tokens,
-                chargedCustomer.Email,
-                $"{chargedCustomer.FirstName} {chargedCustomer.LastName}".Trim(),
-                ignoreDelayBeforeSend: true);
 
             using (var transaction = _dataProvider.CreateTransactionScope())
             {
                 persistedSession = await _sessionRepository.GetByIdAsync(session.Id) ?? persistedSession;
-                persistedSession.CreditRefundNotificationSentOnUtc ??= DateTime.UtcNow;
+                if (!persistedSession.CreditRefundedOnUtc.HasValue || persistedSession.CreditChargeCustomerId <= 0)
+                    return;
+
+                if (persistedSession.CreditRefundNotificationSentOnUtc.HasValue)
+                {
+                    LogRefundNotificationSuppressed(persistedSession, effectiveReasonCode, "AlreadySent");
+                    return;
+                }
+
+                if (persistedSession.CreditRefundNotificationAttemptCount >= RefundNotificationMaxAttempts)
+                {
+                    LogRefundNotificationSuppressed(persistedSession, effectiveReasonCode, "RetryLimitReached");
+                    return;
+                }
+
+                var leaseCutoffUtc = DateTime.UtcNow.Subtract(RefundNotificationProcessingLease);
+                if (persistedSession.CreditRefundNotificationProcessingOnUtc > leaseCutoffUtc)
+                {
+                    LogRefundNotificationSuppressed(persistedSession, effectiveReasonCode, "AttemptInProgress");
+                    return;
+                }
+
+                persistedSession.CreditRefundNotificationProcessingOnUtc = DateTime.UtcNow;
                 await _sessionRepository.UpdateAsync(persistedSession);
                 transaction.Complete();
             }
 
-            _logger.LogInformation(
-                "AIInterview refund email sent. ReasonCode={ReasonCode}; CustomerId={CustomerId}; SessionId={SessionId}; RefundAmount={RefundAmount}.",
-                reasonCode, persistedSession.CreditChargeCustomerId, persistedSession.Id, persistedSession.CreditChargeAmount);
+            while (persistedSession.CreditRefundNotificationAttemptCount < RefundNotificationMaxAttempts)
+            {
+                var attemptNumber = persistedSession.CreditRefundNotificationAttemptCount + 1;
+                _logger.LogInformation(
+                    "AIInterview refund email attempt started. ReasonCode={ReasonCode}; CustomerId={CustomerId}; SessionId={SessionId}; AttemptNumber={AttemptNumber}; MaxAttempts={MaxAttempts}.",
+                    effectiveReasonCode, persistedSession.CreditChargeCustomerId, persistedSession.Id, attemptNumber, RefundNotificationMaxAttempts);
+
+                try
+                {
+                    await _workflowMessageService.SendNotificationAsync(
+                        template,
+                        emailAccount,
+                        languageId,
+                        tokens,
+                        chargedCustomer.Email,
+                        $"{chargedCustomer.FirstName} {chargedCustomer.LastName}".Trim(),
+                        ignoreDelayBeforeSend: true);
+
+                    var sentOnUtc = DateTime.UtcNow;
+                    using (var transaction = _dataProvider.CreateTransactionScope())
+                    {
+                        persistedSession = await _sessionRepository.GetByIdAsync(session.Id) ?? persistedSession;
+                        persistedSession.CreditRefundNotificationAttemptCount = Math.Max(
+                            persistedSession.CreditRefundNotificationAttemptCount,
+                            attemptNumber);
+                        persistedSession.CreditRefundNotificationAttemptedOnUtc = sentOnUtc;
+                        persistedSession.CreditRefundNotificationSentOnUtc ??= sentOnUtc;
+                        persistedSession.CreditRefundNotificationProcessingOnUtc = null;
+                        await _sessionRepository.UpdateAsync(persistedSession);
+                        transaction.Complete();
+                    }
+
+                    _logger.LogInformation(
+                        "AIInterview refund email sent. ReasonCode={ReasonCode}; CustomerId={CustomerId}; SessionId={SessionId}; RefundAmount={RefundAmount}; AttemptNumber={AttemptNumber}.",
+                        effectiveReasonCode, persistedSession.CreditChargeCustomerId, persistedSession.Id, persistedSession.CreditChargeAmount, attemptNumber);
+                    return;
+                }
+                catch (Exception exception)
+                {
+                    var isTransient = IsTransientNotificationFailure(exception);
+                    var willRetry = isTransient && attemptNumber < RefundNotificationMaxAttempts;
+                    var attemptedOnUtc = DateTime.UtcNow;
+
+                    using (var transaction = _dataProvider.CreateTransactionScope())
+                    {
+                        persistedSession = await _sessionRepository.GetByIdAsync(session.Id) ?? persistedSession;
+                        persistedSession.CreditRefundNotificationAttemptCount = Math.Max(
+                            persistedSession.CreditRefundNotificationAttemptCount,
+                            attemptNumber);
+                        persistedSession.CreditRefundNotificationAttemptedOnUtc = attemptedOnUtc;
+                        if (!willRetry)
+                            persistedSession.CreditRefundNotificationProcessingOnUtc = null;
+                        await _sessionRepository.UpdateAsync(persistedSession);
+                        transaction.Complete();
+                    }
+
+                    _logger.LogWarning(
+                        exception,
+                        "AIInterview refund email attempt failed. ReasonCode={ReasonCode}; CustomerId={CustomerId}; SessionId={SessionId}; AttemptNumber={AttemptNumber}; MaxAttempts={MaxAttempts}; IsTransient={IsTransient}; WillRetry={WillRetry}.",
+                        effectiveReasonCode, persistedSession.CreditChargeCustomerId, persistedSession.Id, attemptNumber, RefundNotificationMaxAttempts, isTransient, willRetry);
+
+                    if (!willRetry)
+                    {
+                        _logger.LogError(
+                            exception,
+                            "AIInterview refund email final failure. ReasonCode={ReasonCode}; CustomerId={CustomerId}; SessionId={SessionId}; AttemptCount={AttemptCount}; IsTransient={IsTransient}.",
+                            effectiveReasonCode, persistedSession.CreditChargeCustomerId, persistedSession.Id, persistedSession.CreditRefundNotificationAttemptCount, isTransient);
+                        return;
+                    }
+
+                    await Task.Delay(GetRefundNotificationRetryDelay(attemptNumber));
+                }
+            }
         }
         catch (Exception exception)
         {
-            var chargedCustomerId = session.CreditChargeCustomerId;
-            var persisted = await _sessionRepository.GetByIdAsync(session.Id);
-            if (persisted?.CreditChargeCustomerId > 0)
-                chargedCustomerId = persisted.CreditChargeCustomerId;
-
-            _logger.LogWarning(
+            _logger.LogError(
                 exception,
-                "AIInterview refund email failed. ReasonCode={ReasonCode}; CustomerId={CustomerId}; SessionId={SessionId}.",
-                reasonCode, chargedCustomerId, session.Id);
+                "AIInterview refund email preparation or persistence failed. ReasonCode={ReasonCode}; CustomerId={CustomerId}; SessionId={SessionId}; AttemptCount={AttemptCount}.",
+                effectiveReasonCode, persistedSession.CreditChargeCustomerId, session.Id, persistedSession.CreditRefundNotificationAttemptCount);
         }
+    }
+
+    private static bool IsTransientNotificationFailure(Exception exception)
+    {
+        if (exception is TimeoutException or TaskCanceledException or IOException or
+            System.Net.Http.HttpRequestException or System.Net.Mail.SmtpException or System.Net.Sockets.SocketException)
+        {
+            return true;
+        }
+
+        return exception.InnerException != null && IsTransientNotificationFailure(exception.InnerException);
+    }
+
+    private static TimeSpan GetRefundNotificationRetryDelay(int failedAttemptNumber)
+    {
+        return TimeSpan.FromMilliseconds(250 * failedAttemptNumber);
+    }
+
+    private void LogRefundNotificationSuppressed(InterviewSession session, string reasonCode, string suppressionReason)
+    {
+        _logger.LogInformation(
+            "AIInterview refund email suppressed. ReasonCode={ReasonCode}; CustomerId={CustomerId}; SessionId={SessionId}; SuppressionReason={SuppressionReason}; AttemptCount={AttemptCount}.",
+            reasonCode, session.CreditChargeCustomerId, session.Id, suppressionReason, session.CreditRefundNotificationAttemptCount);
     }
 
     private async Task<CreditWallet> GetWalletAsync(int customerId)

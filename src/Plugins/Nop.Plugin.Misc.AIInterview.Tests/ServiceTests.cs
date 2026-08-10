@@ -734,6 +734,8 @@ public class ServiceTests
                 null,
                 null,
                 true))
+            .Callback(() => Assert.That(session.CreditRefundNotificationAttemptedOnUtc, Is.Null,
+                "The first notification attempt must not be marked before the send workflow runs."))
             .ReturnsAsync(1);
 
         var service = new InterviewStartCreditService(
@@ -773,6 +775,8 @@ public class ServiceTests
         await service.NotifyRefundAsync(session, "FIRST_QUESTION_START_FAILED");
 
         Assert.That(session.CreditRefundNotificationAttemptedOnUtc, Is.Not.Null);
+        Assert.That(session.CreditRefundNotificationAttemptCount, Is.EqualTo(1));
+        Assert.That(session.CreditRefundNotificationProcessingOnUtc, Is.Null);
         Assert.That(session.CreditRefundNotificationSentOnUtc, Is.Not.Null);
         customerService.Verify(x => x.GetCustomerByIdAsync(invite.SponsorId), Times.Once);
         workflowMessageService.Verify(x => x.SendNotificationAsync(
@@ -797,6 +801,132 @@ public class ServiceTests
                 state.ToString().Contains("AIInterview refund email sent") &&
                 state.ToString().Contains("FIRST_QUESTION_START_FAILED") &&
                 state.ToString().Contains("CustomerId=99")),
+            null,
+            It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+    }
+
+    [Test]
+    public async Task InterviewStartCreditService_RefundNotificationRetriesTransientFailureThenSuppressesAfterSent()
+    {
+        var session = new InterviewSession
+        {
+            Id = 777,
+            CustomerId = 55,
+            ProductId = 12,
+            CreditChargeCustomerId = 99,
+            CreditChargeAmount = 1,
+            CreditRefundedOnUtc = DateTime.UtcNow,
+            CreditRefundReasonCode = "FIRST_QUESTION_START_FAILED"
+        };
+        var chargedOwner = new Customer
+        {
+            Id = session.CreditChargeCustomerId,
+            Email = "sponsor@example.com",
+            FirstName = "Sponsor",
+            LastName = "Owner"
+        };
+        var template = new Nop.Core.Domain.Messages.MessageTemplate
+        {
+            Name = InterviewStartCreditService.RefundNotificationTemplateName,
+            EmailAccountId = 7,
+            IsActive = true
+        };
+        var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 7, Email = "store@example.com" };
+        var store = new Nop.Core.Domain.Stores.Store { Id = 4, DefaultLanguageId = 9 };
+        var sessionRepository = new Mock<IRepository<InterviewSession>>();
+        var dataProvider = new Mock<INopDataProvider>();
+        var customerService = new Mock<ICustomerService>();
+        var productService = new Mock<IProductService>();
+        var workflowMessageService = new Mock<IWorkflowMessageService>();
+        var messageTemplateService = new Mock<IMessageTemplateService>();
+        var emailAccountService = new Mock<IEmailAccountService>();
+        var storeContext = new Mock<IStoreContext>();
+        var logger = new Mock<ILogger<InterviewStartCreditService>>();
+
+        sessionRepository.Setup(x => x.GetByIdAsync(session.Id)).ReturnsAsync(session);
+        sessionRepository.Setup(x => x.UpdateAsync(session, true)).Returns(Task.CompletedTask);
+        dataProvider.Setup(x => x.CreateTransactionScope())
+            .Returns(() => new TransactionScope(TransactionScopeOption.RequiresNew, TransactionScopeAsyncFlowOption.Enabled));
+        customerService.Setup(x => x.GetCustomerByIdAsync(chargedOwner.Id)).ReturnsAsync(chargedOwner);
+        productService.Setup(x => x.GetProductByIdAsync(session.ProductId))
+            .ReturnsAsync(new Product { Id = session.ProductId, Name = "Backend Engineer" });
+        storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
+        messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync(InterviewStartCreditService.RefundNotificationTemplateName, store.Id))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { template });
+        emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(emailAccount.Id)).ReturnsAsync(emailAccount);
+        workflowMessageService.SetupSequence(x => x.SendNotificationAsync(
+                template,
+                emailAccount,
+                store.DefaultLanguageId,
+                It.IsAny<IList<Token>>(),
+                chargedOwner.Email,
+                "Sponsor Owner",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true))
+            .ThrowsAsync(new HttpRequestException("Temporary email provider failure."))
+            .ReturnsAsync(1);
+
+        var service = new InterviewStartCreditService(
+            new Mock<IRepository<CreditWallet>>().Object,
+            new Mock<IRepository<CreditLedgerEntry>>().Object,
+            sessionRepository.Object,
+            new Mock<IRepository<SponsorInvite>>().Object,
+            dataProvider.Object,
+            logger.Object,
+            customerService.Object,
+            productService.Object,
+            workflowMessageService.Object,
+            messageTemplateService.Object,
+            emailAccountService.Object,
+            new Nop.Core.Domain.Messages.EmailAccountSettings { DefaultEmailAccountId = emailAccount.Id },
+            storeContext.Object);
+
+        await service.NotifyRefundAsync(session, session.CreditRefundReasonCode);
+
+        Assert.That(session.CreditRefundNotificationAttemptCount, Is.EqualTo(2));
+        Assert.That(session.CreditRefundNotificationAttemptedOnUtc, Is.Not.Null);
+        Assert.That(session.CreditRefundNotificationSentOnUtc, Is.Not.Null);
+        Assert.That(session.CreditRefundNotificationProcessingOnUtc, Is.Null);
+
+        await service.NotifyRefundAsync(session, session.CreditRefundReasonCode);
+
+        workflowMessageService.Verify(x => x.SendNotificationAsync(
+            template,
+            emailAccount,
+            store.DefaultLanguageId,
+            It.IsAny<IList<Token>>(),
+            chargedOwner.Email,
+            "Sponsor Owner",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true), Times.Exactly(2));
+        customerService.Verify(x => x.GetCustomerByIdAsync(chargedOwner.Id), Times.Once);
+        logger.Verify(x => x.Log(
+            LogLevel.Warning,
+            It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((state, _) =>
+                state.ToString().Contains("AIInterview refund email attempt failed") &&
+                state.ToString().Contains("AttemptNumber=1") &&
+                state.ToString().Contains("WillRetry=True")),
+            It.IsAny<HttpRequestException>(),
+            It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+        logger.Verify(x => x.Log(
+            LogLevel.Information,
+            It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((state, _) =>
+                state.ToString().Contains("AIInterview refund email suppressed") &&
+                state.ToString().Contains("SuppressionReason=AlreadySent")),
             null,
             It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
     }

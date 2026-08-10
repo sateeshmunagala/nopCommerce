@@ -57,6 +57,8 @@ public class InterviewSession : BaseEntity
     public DateTime? CreditRefundedOnUtc { get; set; }
     public string CreditRefundReasonCode { get; set; }
     public DateTime? CreditRefundNotificationAttemptedOnUtc { get; set; }
+    public int CreditRefundNotificationAttemptCount { get; set; }
+    public DateTime? CreditRefundNotificationProcessingOnUtc { get; set; }
     public DateTime? CreditRefundNotificationSentOnUtc { get; set; }
     public string CandidateFeedbackIssue { get; set; }
     public string CandidateFeedbackHelpfulness { get; set; }
