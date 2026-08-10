@@ -63,6 +63,10 @@ public class AIInterviewSettings : ISettings
 
     public int StrengthsSummaryMaxCompletionTokens { get; set; } = AIInterviewDefaults.DefaultStrengthsSummaryMaxCompletionTokens;
 
+    public int QuestionPlanMaxCompletionTokens { get; set; } = AIInterviewDefaults.DefaultQuestionPlanMaxCompletionTokens;
+
+    public int QuestionPlanRetryMaxCompletionTokens { get; set; } = AIInterviewDefaults.DefaultQuestionPlanRetryMaxCompletionTokens;
+
     public int RecordingUploadMaxMb { get; set; } = AIInterviewDefaults.DefaultRecordingUploadMaxMb;
 
     public int RecordingVideoBitsPerSecond { get; set; } = AIInterviewDefaults.DefaultRecordingVideoBitsPerSecond;

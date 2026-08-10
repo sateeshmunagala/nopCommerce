@@ -135,6 +135,7 @@ public sealed record AzureOpenAiChatCompletionRequest
     public string SystemPrompt { get; init; }
     public string UserPrompt { get; init; }
     public int MaxCompletionTokens { get; init; }
+    public string ReasoningEffort { get; init; }
 }
 
 public sealed record AzureOpenAiChatCompletionResult

@@ -112,7 +112,7 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
 
     private static string BuildChatCompletionsRequestBody(AzureOpenAiChatCompletionRequest request)
     {
-        return JsonSerializer.Serialize(new Dictionary<string, object>
+        var body = new Dictionary<string, object>
         {
             ["messages"] = new[]
             {
@@ -120,18 +120,24 @@ public class AzureOpenAiChatCompletionAdapter : IAzureOpenAiChatCompletionAdapte
                 new { role = "user", content = request?.UserPrompt ?? string.Empty }
             },
             ["max_completion_tokens"] = request?.MaxCompletionTokens ?? 0
-        });
+        };
+        if (!string.IsNullOrWhiteSpace(request?.ReasoningEffort))
+            body["reasoning_effort"] = request.ReasoningEffort;
+        return JsonSerializer.Serialize(body);
     }
 
     private static string BuildResponsesRequestBody(AzureOpenAiChatCompletionRequest request, string deploymentOrModel)
     {
-        return JsonSerializer.Serialize(new Dictionary<string, object>
+        var body = new Dictionary<string, object>
         {
             ["model"] = deploymentOrModel,
             ["instructions"] = request?.SystemPrompt ?? string.Empty,
             ["input"] = request?.UserPrompt ?? string.Empty,
             ["max_output_tokens"] = request?.MaxCompletionTokens ?? 0
-        });
+        };
+        if (!string.IsNullOrWhiteSpace(request?.ReasoningEffort))
+            body["reasoning_effort"] = request.ReasoningEffort;
+        return JsonSerializer.Serialize(body);
     }
 
     private static AzureOpenAiChatCompletionResult BuildSuccessResult(string responseBody, string mode, Uri endpoint, string deploymentOrModel, string requestShape, bool fallbackUsed)

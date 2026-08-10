@@ -142,6 +142,28 @@
                         </div>
                     </div>
                     <div class="form-group row">
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="QuestionPlanMaxCompletionTokens_OverrideForStore"
+                                asp-input="QuestionPlanMaxCompletionTokens" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="QuestionPlanMaxCompletionTokens" />
+                        </div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="QuestionPlanMaxCompletionTokens" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanMaxCompletionTokens.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3">
+                            <nop-override-store-checkbox asp-for="QuestionPlanRetryMaxCompletionTokens_OverrideForStore"
+                                asp-input="QuestionPlanRetryMaxCompletionTokens" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            <nop-label asp-for="QuestionPlanRetryMaxCompletionTokens" />
+                        </div>
+                        <div class="col-md-9">
+                            <nop-editor asp-for="QuestionPlanRetryMaxCompletionTokens" />
+                            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanRetryMaxCompletionTokens.Hint")</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
                         <div class="col-md-3"></div>
                         <div class="col-md-9">
                             <button type="button" class="btn btn-secondary" id="test-azure-openai-connection">

@@ -143,6 +143,12 @@ public static class AIInterviewDefaults
     public const int DefaultAzureDocumentIntelligenceTimeoutSeconds = 60;
     public static string DefaultSupportPhoneNumber => "+91 72073 33883";
     public const int DefaultStrengthsSummaryMaxCompletionTokens = 1500;
+    public const int DefaultQuestionPlanMaxCompletionTokens = 8000;
+    public const int MinQuestionPlanMaxCompletionTokens = 2000;
+    public const int MaxQuestionPlanMaxCompletionTokens = 32000;
+    public const int DefaultQuestionPlanRetryMaxCompletionTokens = 16000;
+    public const int MinQuestionPlanRetryMaxCompletionTokens = 4000;
+    public const int MaxQuestionPlanRetryMaxCompletionTokens = 64000;
     public const int MinStrengthsSummaryMaxCompletionTokens = 500;
     public const int MaxStrengthsSummaryMaxCompletionTokens = 3000;
     public const int DefaultRecordingUploadMaxMb = 100;

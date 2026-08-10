@@ -239,6 +239,8 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.AzureOpenAiApiKey = PreserveSecretIfBlank(settingsModel.AzureOpenAiApiKey, currentAiInterviewSettings.AzureOpenAiApiKey);
             currentAiInterviewSettings.AzureOpenAiDeploymentOrModel = settingsModel.AzureOpenAiDeploymentOrModel;
             currentAiInterviewSettings.StrengthsSummaryMaxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(settingsModel.StrengthsSummaryMaxCompletionTokens);
+            currentAiInterviewSettings.QuestionPlanMaxCompletionTokens = NormalizeQuestionPlanMaxCompletionTokens(settingsModel.QuestionPlanMaxCompletionTokens);
+            currentAiInterviewSettings.QuestionPlanRetryMaxCompletionTokens = NormalizeQuestionPlanRetryMaxCompletionTokens(settingsModel.QuestionPlanRetryMaxCompletionTokens);
             currentAiInterviewSettings.AzureSpeechKey = PreserveSecretIfBlank(settingsModel.AzureSpeechKey, currentAiInterviewSettings.AzureSpeechKey);
             currentAiInterviewSettings.AzureSpeechRegion = settingsModel.AzureSpeechRegion;
             currentAiInterviewSettings.AzureDocumentIntelligenceEndpointUrl = settingsModel.AzureDocumentIntelligenceEndpointUrl;
@@ -326,6 +328,12 @@ public class AIInterviewAdminController : BasePluginController
             await _settingService.SaveSettingOverridablePerStoreAsync(
                 currentAiInterviewSettings, x => x.StrengthsSummaryMaxCompletionTokens,
                 settingsModel.StrengthsSummaryMaxCompletionTokens_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.QuestionPlanMaxCompletionTokens,
+                settingsModel.QuestionPlanMaxCompletionTokens_OverrideForStore, storeScope, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(
+                currentAiInterviewSettings, x => x.QuestionPlanRetryMaxCompletionTokens,
+                settingsModel.QuestionPlanRetryMaxCompletionTokens_OverrideForStore, storeScope, false);
             await _settingService.SaveSettingOverridablePerStoreAsync(
                 currentAiInterviewSettings, x => x.AzureSpeechKey,
                 settingsModel.AzureSpeechKey_OverrideForStore, storeScope, false);
@@ -1116,6 +1124,18 @@ public class AIInterviewAdminController : BasePluginController
             AIInterviewDefaults.MaxStrengthsSummaryMaxCompletionTokens);
     }
 
+    protected virtual int NormalizeQuestionPlanMaxCompletionTokens(int maxCompletionTokens) =>
+        Math.Clamp(
+            maxCompletionTokens <= 0 ? AIInterviewDefaults.DefaultQuestionPlanMaxCompletionTokens : maxCompletionTokens,
+            AIInterviewDefaults.MinQuestionPlanMaxCompletionTokens,
+            AIInterviewDefaults.MaxQuestionPlanMaxCompletionTokens);
+
+    protected virtual int NormalizeQuestionPlanRetryMaxCompletionTokens(int maxCompletionTokens) =>
+        Math.Clamp(
+            maxCompletionTokens <= 0 ? AIInterviewDefaults.DefaultQuestionPlanRetryMaxCompletionTokens : maxCompletionTokens,
+            AIInterviewDefaults.MinQuestionPlanRetryMaxCompletionTokens,
+            AIInterviewDefaults.MaxQuestionPlanRetryMaxCompletionTokens);
+
     protected virtual int NormalizeRecordingUploadMaxMb(int maxMb)
     {
         return Math.Clamp(
@@ -1862,6 +1882,8 @@ public class AIInterviewAdminController : BasePluginController
             AzureOpenAiApiKey = aiInterviewSettings.AzureOpenAiApiKey,
             AzureOpenAiDeploymentOrModel = aiInterviewSettings.AzureOpenAiDeploymentOrModel,
             StrengthsSummaryMaxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(aiInterviewSettings.StrengthsSummaryMaxCompletionTokens),
+            QuestionPlanMaxCompletionTokens = NormalizeQuestionPlanMaxCompletionTokens(aiInterviewSettings.QuestionPlanMaxCompletionTokens),
+            QuestionPlanRetryMaxCompletionTokens = NormalizeQuestionPlanRetryMaxCompletionTokens(aiInterviewSettings.QuestionPlanRetryMaxCompletionTokens),
             AzureSpeechKey = aiInterviewSettings.AzureSpeechKey,
             AzureSpeechRegion = aiInterviewSettings.AzureSpeechRegion,
             AzureDocumentIntelligenceEndpointUrl = aiInterviewSettings.AzureDocumentIntelligenceEndpointUrl,
@@ -1892,6 +1914,8 @@ public class AIInterviewAdminController : BasePluginController
         model.AzureDocumentIntelligenceModelId = NormalizeAzureDocumentIntelligenceModelId(model.AzureDocumentIntelligenceModelId);
         model.AzureDocumentIntelligenceTimeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(model.AzureDocumentIntelligenceTimeoutSeconds);
         model.StrengthsSummaryMaxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(model.StrengthsSummaryMaxCompletionTokens);
+        model.QuestionPlanMaxCompletionTokens = NormalizeQuestionPlanMaxCompletionTokens(model.QuestionPlanMaxCompletionTokens);
+        model.QuestionPlanRetryMaxCompletionTokens = NormalizeQuestionPlanRetryMaxCompletionTokens(model.QuestionPlanRetryMaxCompletionTokens);
         model.RecordingUploadMaxMb = NormalizeRecordingUploadMaxMb(model.RecordingUploadMaxMb);
         model.RecordingVideoBitsPerSecond = NormalizeRecordingVideoBitsPerSecond(model.RecordingVideoBitsPerSecond);
         model.RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(model.RecordingAudioBitsPerSecond);
@@ -1953,6 +1977,12 @@ public class AIInterviewAdminController : BasePluginController
             model.StrengthsSummaryMaxCompletionTokens_OverrideForStore =
                 await _settingService.SettingExistsAsync(
                     aiInterviewSettings, x => x.StrengthsSummaryMaxCompletionTokens, storeScope);
+            model.QuestionPlanMaxCompletionTokens_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.QuestionPlanMaxCompletionTokens, storeScope);
+            model.QuestionPlanRetryMaxCompletionTokens_OverrideForStore =
+                await _settingService.SettingExistsAsync(
+                    aiInterviewSettings, x => x.QuestionPlanRetryMaxCompletionTokens, storeScope);
             model.AzureSpeechKey_OverrideForStore = await _settingService.SettingExistsAsync(
                 aiInterviewSettings, x => x.AzureSpeechKey, storeScope);
             model.AzureSpeechRegion_OverrideForStore = await _settingService.SettingExistsAsync(

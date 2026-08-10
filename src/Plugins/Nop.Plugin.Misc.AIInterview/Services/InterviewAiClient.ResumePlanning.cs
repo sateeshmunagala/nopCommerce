@@ -14,8 +14,6 @@ public partial class InterviewAiClient
     private const int ResumeProfileRetryMaxCompletionTokens = 3600;
     private const int ResumeProfileMaxResumeTextLength = 8000;
     private const int ResumeProfileRetryMaxResumeTextLength = 5000;
-    private const int QuestionPlanMaxCompletionTokens = 2200;
-    private const int QuestionPlanRetryMaxCompletionTokens = 3000;
     private const int QuestionPlanMaxQuestionLength = 170;
     private const string ResumeProfileContractFailureMarker = "FailureKind=azure-openai-contract-failure";
 
@@ -112,6 +110,8 @@ public partial class InterviewAiClient
         if (_mockSettings?.UseMockResponses != false)
             return BuildMockQuestionPlan(request);
 
+        var maxTokens = NormalizeQuestionPlanMaxCompletionTokens(_settings?.QuestionPlanMaxCompletionTokens ?? 0);
+        var retryMaxTokens = NormalizeQuestionPlanRetryMaxCompletionTokens(_settings?.QuestionPlanRetryMaxCompletionTokens ?? 0);
         var systemPrompt = ResolvePromptSetting(_settings?.QuestionPlanSystemPrompt, AIInterviewDefaults.DefaultQuestionPlanSystemPrompt);
         var prompt = BuildQuestionPlanPrompt(
             request,
@@ -120,8 +120,9 @@ public partial class InterviewAiClient
             "question-plan",
             systemPrompt,
             prompt,
-            QuestionPlanMaxCompletionTokens,
-            allowEmptySuccessfulContent: true);
+            maxTokens,
+            allowEmptySuccessfulContent: true,
+            reasoningEffort: "low");
 
         if (!result.Success)
         {
@@ -142,14 +143,15 @@ public partial class InterviewAiClient
             await LogAiClientIssueAsync(
                 NopLogLevel.Information,
                 "AI Interview question plan truncation retry initiated",
-                BuildQuestionPlanLengthRetryLog(result, "retry initiated due to truncation", QuestionPlanMaxCompletionTokens, QuestionPlanRetryMaxCompletionTokens));
+                BuildQuestionPlanLengthRetryLog(result, "retry initiated due to truncation", maxTokens, retryMaxTokens));
 
             result = await CallAzureContentAsync(
                 "question-plan",
                 systemPrompt,
                 prompt,
-                QuestionPlanRetryMaxCompletionTokens,
-                allowEmptySuccessfulContent: true);
+                retryMaxTokens,
+                allowEmptySuccessfulContent: true,
+                reasoningEffort: "low");
 
             var retryParsed = result.Success ? ParseQuestionPlanResponse(result.Content, request.QuestionCount) : null;
             if (retryParsed?.Success == true)
@@ -157,14 +159,14 @@ public partial class InterviewAiClient
                 await LogAiClientIssueAsync(
                     NopLogLevel.Information,
                     "AI Interview question plan truncation retry recovered",
-                    BuildQuestionPlanLengthRetryLog(result, "retry recovered", QuestionPlanMaxCompletionTokens, QuestionPlanRetryMaxCompletionTokens));
+                    BuildQuestionPlanLengthRetryLog(result, "retry recovered", maxTokens, retryMaxTokens));
                 return retryParsed with { RawJson = TruncateSafe(result.Content, 4000), UsageInfo = result.UsageInfo };
             }
 
             await LogAiClientIssueAsync(
                 NopLogLevel.Warning,
                 "AI Interview question plan truncation retry exhausted",
-                BuildQuestionPlanLengthRetryLog(result, "retry exhausted", QuestionPlanMaxCompletionTokens, QuestionPlanRetryMaxCompletionTokens));
+                BuildQuestionPlanLengthRetryLog(result, "retry exhausted", maxTokens, retryMaxTokens));
         }
 
         var contractReason = BuildQuestionPlanContractFailureLog(result);
@@ -276,7 +278,10 @@ public partial class InterviewAiClient
         };
     }
 
-    private async Task<AzureContentCallResult> CallAzureContentAsync(string mode, string systemPrompt, string prompt, int maxTokens, bool allowEmptySuccessfulContent = false)
+    private async Task<AzureContentCallResult> CallAzureContentAsync(
+        string mode, string systemPrompt, string prompt, int maxTokens,
+        bool allowEmptySuccessfulContent = false,
+        string reasoningEffort = null)
     {
         var endpointConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiEndpointUrl);
         var apiKeyConfigured = !string.IsNullOrWhiteSpace(_settings?.AzureOpenAiApiKey);
@@ -296,7 +301,8 @@ public partial class InterviewAiClient
                 OperationName = BuildAzureOperationName(mode),
                 SystemPrompt = systemPrompt,
                 UserPrompt = prompt,
-                MaxCompletionTokens = maxTokens
+                MaxCompletionTokens = maxTokens,
+                ReasoningEffort = reasoningEffort
             });
 
             if (!result.Success)
@@ -506,6 +512,18 @@ public partial class InterviewAiClient
             AIInterviewDefaults.MinStrengthsSummaryMaxCompletionTokens,
             AIInterviewDefaults.MaxStrengthsSummaryMaxCompletionTokens);
     }
+
+    private static int NormalizeQuestionPlanMaxCompletionTokens(int value) =>
+        Math.Clamp(
+            value <= 0 ? AIInterviewDefaults.DefaultQuestionPlanMaxCompletionTokens : value,
+            AIInterviewDefaults.MinQuestionPlanMaxCompletionTokens,
+            AIInterviewDefaults.MaxQuestionPlanMaxCompletionTokens);
+
+    private static int NormalizeQuestionPlanRetryMaxCompletionTokens(int value) =>
+        Math.Clamp(
+            value <= 0 ? AIInterviewDefaults.DefaultQuestionPlanRetryMaxCompletionTokens : value,
+            AIInterviewDefaults.MinQuestionPlanRetryMaxCompletionTokens,
+            AIInterviewDefaults.MaxQuestionPlanRetryMaxCompletionTokens);
 
     private static bool ShouldRetryTruncatedEmptyStrengthsSummary(AzureContentCallResult result)
     {

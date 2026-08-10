@@ -240,6 +240,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             settings.SupportPhoneNumber = AIInterviewDefaults.DefaultSupportPhoneNumber;
 
         settings.StrengthsSummaryMaxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(settings.StrengthsSummaryMaxCompletionTokens);
+        settings.QuestionPlanMaxCompletionTokens = NormalizeQuestionPlanMaxCompletionTokens(settings.QuestionPlanMaxCompletionTokens);
+        settings.QuestionPlanRetryMaxCompletionTokens = NormalizeQuestionPlanRetryMaxCompletionTokens(settings.QuestionPlanRetryMaxCompletionTokens);
         settings.RecordingUploadMaxMb = NormalizeRecordingUploadMaxMb(settings.RecordingUploadMaxMb);
         settings.RecordingVideoBitsPerSecond = NormalizeRecordingVideoBitsPerSecond(settings.RecordingVideoBitsPerSecond);
         settings.RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(settings.RecordingAudioBitsPerSecond);
@@ -646,6 +648,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"] = "Paste the SAS token string exactly as issued. It is stored only in admin settings.",
             ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens"] = "Strengths Summary Max Completion Tokens",
             ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens.Hint"] = "Allowed range: 500 to 3000. Recommended range: 1200 to 1800.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanMaxCompletionTokens"] = "Question Plan Max Completion Tokens",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanMaxCompletionTokens.Hint"] = "Allowed range: 2000 to 32000. Recommended: 8000. Increase if question plan returns empty content.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanRetryMaxCompletionTokens"] = "Question Plan Retry Max Completion Tokens",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanRetryMaxCompletionTokens.Hint"] = "Allowed range: 4000 to 64000. Recommended: 16000. Used when the first plan attempt is truncated.",
             ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb"] = "Recording Upload Max MB",
             ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb.Hint"] = "Allowed range: 80 to 250 MB. Uploads larger than this are blocked before submit and rejected server-side.",
             ["Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond"] = "Recording Video Bits Per Second",
@@ -960,6 +966,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiDeploymentOrModel.Hint"] = "Enter the Azure OpenAI deployment name configured for the resource. The SDK resolves the deployment path.",
             ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens"] = "Strengths Summary Max Completion Tokens",
             ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens.Hint"] = "Allowed range: 500 to 3000. Recommended range: 1200 to 1800.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanMaxCompletionTokens"] = "Question Plan Max Completion Tokens",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanMaxCompletionTokens.Hint"] = "Allowed range: 2000 to 32000. Recommended: 8000. Increase if question plan returns empty content.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanRetryMaxCompletionTokens"] = "Question Plan Retry Max Completion Tokens",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanRetryMaxCompletionTokens.Hint"] = "Allowed range: 4000 to 64000. Recommended: 16000. Used when the first plan attempt is truncated.",
             ["Plugins.Misc.AIInterview.Admin.AiService.ResumeProfileExtractionSystemPrompt"] = "Resume Profile Extraction System Prompt",
             ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanSystemPrompt"] = "Question Plan System Prompt",
             ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanBuilderInstructionBlock"] = "Question Plan Builder Instruction Block",
@@ -1148,6 +1158,10 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureBlobStorageSasToken.Hint"] = "Paste the SAS token string exactly as issued. It is stored only in admin settings.",
             ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens"] = "Strengths Summary Max Completion Tokens",
             ["Plugins.Misc.AIInterview.Admin.AiService.StrengthsSummaryMaxCompletionTokens.Hint"] = "Allowed range: 500 to 3000. Recommended range: 1200 to 1800.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanMaxCompletionTokens"] = "Question Plan Max Completion Tokens",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanMaxCompletionTokens.Hint"] = "Allowed range: 2000 to 32000. Recommended: 8000. Increase if question plan returns empty content.",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanRetryMaxCompletionTokens"] = "Question Plan Retry Max Completion Tokens",
+            ["Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanRetryMaxCompletionTokens.Hint"] = "Allowed range: 4000 to 64000. Recommended: 16000. Used when the first plan attempt is truncated.",
             ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb"] = "Recording Upload Max MB",
             ["Plugins.Misc.AIInterview.Admin.AiService.RecordingUploadMaxMb.Hint"] = "Allowed range: 80 to 250 MB. Uploads larger than this are blocked before submit and rejected server-side.",
             ["Plugins.Misc.AIInterview.Admin.AiService.RecordingVideoBitsPerSecond"] = "Recording Video Bits Per Second",
@@ -1240,6 +1254,18 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             AIInterviewDefaults.MaxStrengthsSummaryMaxCompletionTokens);
     }
 
+    protected static int NormalizeQuestionPlanMaxCompletionTokens(int maxCompletionTokens) =>
+        Math.Clamp(
+            maxCompletionTokens <= 0 ? AIInterviewDefaults.DefaultQuestionPlanMaxCompletionTokens : maxCompletionTokens,
+            AIInterviewDefaults.MinQuestionPlanMaxCompletionTokens,
+            AIInterviewDefaults.MaxQuestionPlanMaxCompletionTokens);
+
+    protected static int NormalizeQuestionPlanRetryMaxCompletionTokens(int maxCompletionTokens) =>
+        Math.Clamp(
+            maxCompletionTokens <= 0 ? AIInterviewDefaults.DefaultQuestionPlanRetryMaxCompletionTokens : maxCompletionTokens,
+            AIInterviewDefaults.MinQuestionPlanRetryMaxCompletionTokens,
+            AIInterviewDefaults.MaxQuestionPlanRetryMaxCompletionTokens);
+
     protected static int NormalizeRecordingUploadMaxMb(int maxMb)
     {
         return Math.Clamp(
@@ -1307,6 +1333,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             AzureUsageCurrencyCode = "USD",
             SupportPhoneNumber = AIInterviewDefaults.DefaultSupportPhoneNumber,
             StrengthsSummaryMaxCompletionTokens = AIInterviewDefaults.DefaultStrengthsSummaryMaxCompletionTokens,
+            QuestionPlanMaxCompletionTokens = AIInterviewDefaults.DefaultQuestionPlanMaxCompletionTokens,
+            QuestionPlanRetryMaxCompletionTokens = AIInterviewDefaults.DefaultQuestionPlanRetryMaxCompletionTokens,
             RecordingUploadMaxMb = AIInterviewDefaults.DefaultRecordingUploadMaxMb,
             RecordingVideoBitsPerSecond = AIInterviewDefaults.DefaultRecordingVideoBitsPerSecond,
             RecordingAudioBitsPerSecond = AIInterviewDefaults.DefaultRecordingAudioBitsPerSecond,

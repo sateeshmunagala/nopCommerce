@@ -133,6 +133,14 @@ public record AiServiceSettingsModel : BaseNopModel
     public int StrengthsSummaryMaxCompletionTokens { get; set; } = AIInterviewDefaults.DefaultStrengthsSummaryMaxCompletionTokens;
     public bool StrengthsSummaryMaxCompletionTokens_OverrideForStore { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanMaxCompletionTokens")]
+    public int QuestionPlanMaxCompletionTokens { get; set; } = AIInterviewDefaults.DefaultQuestionPlanMaxCompletionTokens;
+    public bool QuestionPlanMaxCompletionTokens_OverrideForStore { get; set; }
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.QuestionPlanRetryMaxCompletionTokens")]
+    public int QuestionPlanRetryMaxCompletionTokens { get; set; } = AIInterviewDefaults.DefaultQuestionPlanRetryMaxCompletionTokens;
+    public bool QuestionPlanRetryMaxCompletionTokens_OverrideForStore { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.Admin.AiService.AzureSpeechKey")]
     public string AzureSpeechKey { get; set; }
     public bool AzureSpeechKey_OverrideForStore { get; set; }
