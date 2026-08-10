@@ -2589,9 +2589,9 @@ body.ai-job-preview-open .item-box {
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
-    padding: 10px 12px;
+    padding: 7px 10px;
     border: 1px solid #bbf7d0;
     border-radius: 1px;
     background: #f0fdf4;
@@ -2612,7 +2612,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-report-ready-row > .runtime-header-status {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-width: 0;
     min-height: 0;
     margin: 0;
@@ -2620,6 +2620,7 @@ body.ai-job-preview-open .item-box {
     border: 0;
     background: transparent;
     color: #166534;
+    line-height: 1.25;
     overflow-wrap: anywhere;
 }
 
@@ -2653,25 +2654,24 @@ body.ai-job-preview-open .item-box {
     flex: 0 0 auto;
     box-sizing: border-box;
     max-width: 100%;
-    min-height: 36px;
-    min-width: 118px;
+    min-height: 34px;
+    min-width: 104px;
     margin: 0;
-    padding: 7px 14px;
+    padding: 6px 10px;
     border: 1px solid var(--jb-accent-dark, #24b99a);
     border-radius: 1px;
     background: var(--jb-accent, #35d6b4);
     color: #123f38;
     cursor: pointer;
     font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     font-weight: 400;
     letter-spacing: 0;
     line-height: 1.1;
     text-align: center;
     text-decoration: none;
     text-transform: uppercase;
-    white-space: normal;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
     transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -2767,7 +2767,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-video {
-    --runtime-caption-bottom: 18px;
+    --runtime-caption-bottom: 32px;
     position: relative;
     display: grid;
     place-items: center;
@@ -4573,7 +4573,7 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video {
-        --runtime-caption-bottom: 10px;
+        --runtime-caption-bottom: 26px;
         min-height: min(460px, 58vh);
         max-height: 58vh;
     }
@@ -4602,12 +4602,16 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-report-ready-row {
-        flex-wrap: wrap;
+        gap: 6px;
+        padding: 7px 8px;
     }
 
-    .runtime-report-ready-action,
-    .runtime-report-ready-action .runtime-report-link {
-        width: 100%;
+    .runtime-shell .runtime-report-ready-action .runtime-report-link {
+        flex: 0 0 auto;
+        width: auto;
+        min-height: 34px;
+        min-width: 96px;
+        padding: 6px 8px;
     }
 
     .runtime-status-region {
@@ -4649,7 +4653,7 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video {
-        --runtime-caption-bottom: 6px;
+        --runtime-caption-bottom: 18px;
         min-height: 260px;
         height: auto;
     }

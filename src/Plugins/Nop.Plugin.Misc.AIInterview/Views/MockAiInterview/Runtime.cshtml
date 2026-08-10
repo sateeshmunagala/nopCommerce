@@ -1012,10 +1012,7 @@
             botAudioRecordingFallbackNotifiedForCurrentSpeech = true;
             const message = 'Interviewer audio recording depends on screen audio in this browser.';
             logActivity('Interviewer voice recording is falling back to browser/system capture only.');
-            if (recordingEnabled)
-                setRecordingStatus(message, false, true);
-            else
-                setAudioDeviceStatus(message, true);
+            setAudioDeviceStatus(message);
         };
 
         const disconnectRecordingAudioSources = () => {
@@ -2799,15 +2796,13 @@
                 isError = true;
             } else if (completionReportUrl) {
                 message = completionRecordingIncomplete
-                    ? 'Your report is ready; recording upload incomplete.'
+                    ? 'Your report is ready. Recording upload incomplete.'
                     : completionRecordingNote
                         ? `Your report is ready. ${completionRecordingNote}`
                         : 'Your report is ready.';
                 resolvedReportUrl = completionReportUrl;
             } else if (completionWaitingMessage) {
-                message = completionRecordingNote
-                    ? `${completionWaitingMessage} ${completionRecordingNote}`
-                    : completionWaitingMessage;
+                message = completionWaitingMessage;
             } else if (completionRecordingNote) {
                 message = completionRecordingNote;
             }
