@@ -2741,6 +2741,7 @@ body.ai-job-preview-open .item-box {
     display: none;
     width: 100%;
     max-height: 160px;
+    margin-top: 8px;
     overflow-y: auto;
     box-sizing: border-box;
     padding: 8px 10px;
@@ -2872,11 +2873,10 @@ body.ai-job-preview-open .item-box {
 .runtime-video-caption-track {
     display: flex;
     align-items: center;
-    gap: 48px;
-    width: max-content;
-    min-width: 100%;
+    gap: 0;
+    width: 100%;
+    min-width: 0;
     height: 100%;
-    will-change: transform;
 }
 
 .runtime-video-caption-item {
@@ -2884,16 +2884,27 @@ body.ai-job-preview-open .item-box {
     align-items: center;
     flex: 0 0 auto;
     gap: 6px;
+    min-width: 0;
+    max-width: 100%;
     white-space: nowrap;
 }
 
-.runtime-video-caption:not(.is-scrolling) .runtime-video-caption-item:first-child {
-    min-width: 0;
-    max-width: 100%;
+.runtime-video-caption.is-scrolling .runtime-video-caption-track {
+    gap: 48px;
+    width: max-content;
+    min-width: max-content;
+    animation: runtime-caption-scroll var(--runtime-caption-scroll-duration, 14s) linear infinite;
+    will-change: transform;
 }
 
-.runtime-video-caption.is-scrolling .runtime-video-caption-track {
-    animation: runtime-caption-scroll 14s linear infinite;
+.runtime-video-caption.is-scrolling .runtime-video-caption-item {
+    min-width: max-content;
+    max-width: none;
+}
+
+.runtime-video-caption.is-scrolling .runtime-video-caption-text {
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .runtime-video-caption-copy[hidden] {
@@ -2929,10 +2940,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-video-caption-copy {
-    color: #ffffff;
-    font-size: 0.9rem;
-    font-weight: 600;
-    line-height: 1;
+    flex: 0 0 auto;
 }
 
 .runtime-controls {
@@ -3110,7 +3118,13 @@ body.ai-job-preview-open .item-box {
     color: #166534;
 }
 
+.runtime-screen-share-status.is-error {
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
+
 .runtime-screen-share-status.is-warning,
+.runtime-screen-share-status.is-error,
 .runtime-status.message-error {
     color: #b42318;
 }
@@ -4502,9 +4516,14 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video {
-        --runtime-caption-bottom: 16px;
+        --runtime-caption-bottom: 10px;
         min-height: min(460px, 58vh);
         max-height: 58vh;
+    }
+
+    .runtime-video-caption {
+        width: min(82%, 760px);
+        height: 36px;
     }
 }
 
@@ -4568,7 +4587,7 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video {
-        --runtime-caption-bottom: 14px;
+        --runtime-caption-bottom: 6px;
         min-height: 260px;
         height: auto;
     }
@@ -4623,23 +4642,24 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video-caption {
-        right: 8px;
+        right: 6px;
         bottom: var(--runtime-caption-bottom);
-        left: 8px;
+        left: 6px;
         width: auto;
         max-width: none;
-        height: 34px;
-        padding: 0 10px;
+        height: 32px;
+        padding: 0 8px;
         transform: none;
     }
 
     .runtime-video-caption-speaker {
-        font-size: 0.68rem;
+        font-size: 0.64rem;
+        letter-spacing: 0.05em;
     }
 
     .runtime-video-caption-text,
     .runtime-video-caption-copy {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
     }
 
     .runtime-modal {
@@ -4711,7 +4731,12 @@ body.ai-job-preview-open .item-box {
 @media (prefers-reduced-motion: reduce) {
     .runtime-video-caption.is-scrolling .runtime-video-caption-track {
         width: 100%;
+        min-width: 0;
+        gap: 0;
+        overflow: hidden;
         animation: none;
+        transform: none;
+        will-change: auto;
     }
 
     .runtime-video-caption.is-scrolling .runtime-video-caption-item:first-child {
@@ -4719,8 +4744,13 @@ body.ai-job-preview-open .item-box {
         max-width: 100%;
     }
 
+    .runtime-video-caption.is-scrolling .runtime-video-caption-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     .runtime-video-caption.is-scrolling .runtime-video-caption-copy {
-        display: none;
+        display: none !important;
     }
 }
 

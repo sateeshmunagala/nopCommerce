@@ -74,13 +74,14 @@
                 </div>
             }
             <div id="runtime-status" class="runtime-status runtime-js-hidden" role="status" aria-live="polite"></div>
-            <details id="runtime-log" class="runtime-log-panel">
-                <summary class="runtime-log-title">@T("Plugins.Misc.AIInterview.Runtime.Log")</summary>
-                <div id="runtime-log-body"></div>
-            </details>
 
             <div class="runtime-progress"><span id="runtime-progress-bar"></span></div>
         </div>
+
+        <details id="runtime-log" class="runtime-log-panel">
+            <summary class="runtime-log-title">@T("Plugins.Misc.AIInterview.Runtime.Log")</summary>
+            <div id="runtime-log-body"></div>
+        </details>
 
         <div class="runtime-layout">
             <section class="runtime-stage">
@@ -107,7 +108,10 @@
                                 <span id="runtime-video-caption-speaker" class="runtime-video-caption-speaker"></span>
                                 <span id="runtime-video-caption-text" class="runtime-video-caption-text"></span>
                             </span>
-                            <span id="runtime-video-caption-copy" class="runtime-video-caption-item runtime-video-caption-copy" aria-hidden="true" hidden></span>
+                            <span id="runtime-video-caption-copy" class="runtime-video-caption-item runtime-video-caption-copy" aria-hidden="true" hidden>
+                                <span id="runtime-video-caption-copy-speaker" class="runtime-video-caption-speaker"></span>
+                                <span id="runtime-video-caption-copy-text" class="runtime-video-caption-text"></span>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -198,7 +202,6 @@
                                 </button>
                             </div>
                         </div>
-                        <div id="runtime-completion" class="runtime-message is-info runtime-js-hidden" aria-live="polite"></div>
                     </section>
 
                     <section class="runtime-sidebar-panel" id="runtime-panel-details" data-runtime-panel="details" role="tabpanel" aria-labelledby="runtime-tab-details" hidden>
@@ -530,7 +533,6 @@
         const questionBox = document.getElementById('runtime-question');
         const messageBox = document.getElementById('runtime-message');
         const statusBox = document.getElementById('runtime-status');
-        const completionBox = document.getElementById('runtime-completion');
         const transcript = document.getElementById('runtime-transcript');
         const transcriptBody = document.getElementById('transcript-body');
         const conversation = document.getElementById('conversation');
@@ -544,6 +546,8 @@
         const videoCaptionSpeaker = document.getElementById('runtime-video-caption-speaker');
         const videoCaptionText = document.getElementById('runtime-video-caption-text');
         const videoCaptionCopy = document.getElementById('runtime-video-caption-copy');
+        const videoCaptionCopySpeaker = document.getElementById('runtime-video-caption-copy-speaker');
+        const videoCaptionCopyText = document.getElementById('runtime-video-caption-copy-text');
         const cameraPlaceholder = document.getElementById('camera-placeholder');
         const recordingStatus = document.getElementById('recording-status');
         const screenShareStatus = document.getElementById('screen-share-status');
@@ -1291,23 +1295,37 @@
             guidelinesModalTimer = null;
         };
 
+        let runtimeCaptionAnimationFrame = 0;
+
         const refreshRuntimeCaptionScroll = () => {
             if (!videoCaption || !videoCaptionItem || !videoCaptionText || !videoCaptionCopy || videoCaption.hidden)
                 return;
 
+            cancelAnimationFrame(runtimeCaptionAnimationFrame);
             videoCaption.classList.remove('is-scrolling');
             videoCaptionCopy.hidden = true;
-            requestAnimationFrame(() => {
-                const availableWidth = Math.max(0, videoCaption.clientWidth - 24);
-                const shouldScroll = videoCaptionText.scrollWidth > videoCaptionText.clientWidth
-                    || videoCaptionItem.scrollWidth > availableWidth;
+            runtimeCaptionAnimationFrame = requestAnimationFrame(() => {
+                runtimeCaptionAnimationFrame = 0;
+                if (videoCaption.hidden)
+                    return;
+
+                const shouldScroll = videoCaptionText.scrollWidth - videoCaptionText.clientWidth > 1;
                 videoCaption.classList.toggle('is-scrolling', shouldScroll);
                 videoCaptionCopy.hidden = !shouldScroll;
+
+                if (shouldScroll) {
+                    const scrollDistance = videoCaptionItem.scrollWidth + 48;
+                    const durationSeconds = Math.min(22, Math.max(10, scrollDistance / 42));
+                    videoCaption.style.setProperty('--runtime-caption-scroll-duration', `${durationSeconds}s`);
+                } else {
+                    videoCaption.style.removeProperty('--runtime-caption-scroll-duration');
+                }
             });
         };
 
         const setRuntimeCaption = (speaker, text) => {
-            if (!videoCaption || !videoCaptionItem || !videoCaptionSpeaker || !videoCaptionText || !videoCaptionCopy)
+            if (!videoCaption || !videoCaptionItem || !videoCaptionSpeaker || !videoCaptionText || !videoCaptionCopy
+                || !videoCaptionCopySpeaker || !videoCaptionCopyText)
                 return;
 
             const normalizedText = (text || '').replace(/\s+/g, ' ').trim();
@@ -1318,29 +1336,38 @@
                 videoCaption.parentElement?.classList.remove('has-caption');
                 videoCaptionSpeaker.textContent = '';
                 videoCaptionText.textContent = '';
-                videoCaptionCopy.textContent = '';
+                videoCaptionCopySpeaker.textContent = '';
+                videoCaptionCopyText.textContent = '';
                 videoCaptionCopy.hidden = true;
+                videoCaption.style.removeProperty('--runtime-caption-scroll-duration');
                 return;
             }
 
             const normalizedSpeaker = (speaker || '').replace(/\s+/g, ' ').trim();
             const maximumCaptionLength = 140;
             const overlayText = normalizedText.length > maximumCaptionLength
-                ? `${normalizedText.slice(0, maximumCaptionLength - 1).trimEnd()}…`
+                ? `${normalizedText.slice(0, maximumCaptionLength - 3).trimEnd()}...`
                 : normalizedText;
             const speakerLabel = normalizedSpeaker ? `${normalizedSpeaker}:` : '';
 
             videoCaptionSpeaker.textContent = speakerLabel;
             videoCaptionSpeaker.hidden = !speakerLabel;
             videoCaptionText.textContent = overlayText;
-            videoCaptionCopy.textContent = `${speakerLabel} ${overlayText}`.trim();
+            videoCaptionCopySpeaker.textContent = speakerLabel;
+            videoCaptionCopySpeaker.hidden = !speakerLabel;
+            videoCaptionCopyText.textContent = overlayText;
             videoCaption.classList.remove('runtime-js-hidden');
             videoCaption.hidden = false;
             videoCaption.parentElement?.classList.add('has-caption');
             refreshRuntimeCaptionScroll();
         };
 
-        window.addEventListener('resize', refreshRuntimeCaptionScroll);
+        if (videoCaption && typeof ResizeObserver === 'function') {
+            const runtimeCaptionResizeObserver = new ResizeObserver(refreshRuntimeCaptionScroll);
+            runtimeCaptionResizeObserver.observe(videoCaption);
+        } else if (videoCaption) {
+            window.addEventListener('resize', refreshRuntimeCaptionScroll);
+        }
 
         const syncAnswerCaption = () => {
             const currentAnswer = (answerBox?.value || '').trim();
@@ -1971,7 +1998,8 @@
 
             screenShareStatus.textContent = message;
             const isVisible = state === 'warning' || state === 'error';
-            screenShareStatus.className = `runtime-screen-share-status ${state === 'active' ? 'is-active' : state === 'warning' ? 'is-warning' : ''} ${isVisible ? '' : 'runtime-js-hidden'}`.trim();
+            const stateClass = state === 'active' ? 'is-active' : state === 'warning' ? 'is-warning' : state === 'error' ? 'is-error' : '';
+            screenShareStatus.className = `runtime-screen-share-status ${stateClass} ${isVisible ? '' : 'runtime-js-hidden'}`.trim();
         };
 
         const setScreenShareInterruptionWarning = (visible) => {
@@ -2079,11 +2107,6 @@
             completionStatusRequestInFlight = false;
             if (!runtimeStoppedOrCompleted)
                 reportNavigationStarted = false;
-            if (completionBox) {
-                completionBox.replaceChildren();
-                completionBox.classList.add('runtime-js-hidden');
-                completionBox.style.display = 'none';
-            }
         };
 
         const clearActiveInterviewTimers = () => {
@@ -2477,7 +2500,7 @@
             if (recordingEnabled && mediaRecorder)
                 await stopRecording(false, { preserveSegment: true, statusMessage: 'Recording paused until screen sharing resumes.' });
             refreshRecordingAudioMix();
-            setScreenShareStatus('Screen sharing ended. Resume screen sharing to continue.', 'warning');
+            setScreenShareStatus('Screen sharing required');
             setScreenShareInterruptionWarning(true);
             updateStartButtonState();
             updateSubmitAvailability();
@@ -2568,10 +2591,7 @@
         const showUnavailableQuestionState = (message = 'AI service unavailable. Please try again later.') => {
             interviewUnavailable = true;
             clearAnswerTimers();
-            questionBox.textContent = message;
-            messageBox.textContent = message;
-            messageBox.classList.add('runtime-js-hidden');
-            setRuntimeCaption('Interviewer', message);
+            setRuntimeCaption('', '');
             updateAnswerInputState();
             setStatus(message, true);
             updateSubmitAvailability();
@@ -2723,12 +2743,6 @@
 
         const renderCompletionWaitState = (remainingSeconds) => {
             setHeaderStatus(`${reportGenerationMessage} Time remaining: ${formatCountdown(remainingSeconds)}`, false);
-            if (completionBox) {
-                completionBox.replaceChildren();
-                completionBox.classList.add('runtime-js-hidden');
-                completionBox.hidden = true;
-                completionBox.style.display = 'none';
-            }
             updateReportButton('');
         };
 
@@ -2830,10 +2844,6 @@
             }
             recordingEnabled = false;
             await stopLiveMediaForCompletion();
-            questionBox.textContent = reportGenerationMessage;
-            messageBox.textContent = reportGenerationMessage;
-            messageBox.classList.add('runtime-js-hidden');
-            setRuntimeCaption('Interviewer', reportGenerationMessage);
             updateAnswerInputState();
             updateStartButtonState();
             updateAuxiliaryControlsState();
@@ -2845,6 +2855,7 @@
             clearActiveInterviewTimers();
             interviewStarted = false;
             answerNeedsEditAfterFailure = false;
+            setRuntimeCaption('', '');
             setStatus('', false);
             messageBox.classList.add('runtime-js-hidden');
             updateAnswerInputState();
@@ -4191,7 +4202,7 @@
             const auto = options.auto === true;
             if (isScreenShareBlockingInterview()) {
                 logActivity(`${auto ? 'Auto-submit' : 'Manual submit'} blocked; screen sharing is inactive.`);
-                setStatus('Screen sharing ended. Resume screen sharing to continue the interview.', true);
+                setScreenShareInterruptionWarning(true);
                 updateSubmitAvailability();
                 return;
             }
