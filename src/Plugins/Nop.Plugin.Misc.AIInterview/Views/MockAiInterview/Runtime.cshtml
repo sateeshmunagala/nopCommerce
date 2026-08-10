@@ -107,7 +107,7 @@
                         </div>
                     </div>
                     <div id="runtime-video-caption" class="runtime-video-caption runtime-js-hidden" aria-live="polite" hidden>
-                        <div class="runtime-video-caption-track">
+                        <div id="runtime-video-caption-track" class="runtime-video-caption-track">
                             <span id="runtime-video-caption-item" class="runtime-video-caption-item">
                                 <span id="runtime-video-caption-speaker" class="runtime-video-caption-speaker"></span>
                                 <span id="runtime-video-caption-text" class="runtime-video-caption-text"></span>
@@ -182,7 +182,7 @@
                 <div class="runtime-sidebar-panels">
                     <section class="runtime-sidebar-panel is-active" id="runtime-panel-conversation" data-runtime-panel="conversation" role="tabpanel" aria-labelledby="runtime-tab-conversation">
                         <div id="runtime-question" class="runtime-question runtime-js-hidden">@(string.IsNullOrWhiteSpace(Model.CurrentQuestion) ? T("Plugins.Misc.AIInterview.Runtime.WelcomePrompt").Text : Model.CurrentQuestion)</div>
-                        <div id="runtime-message" class="runtime-message is-info runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
+                        <div id="runtime-message" class="runtime-message is-info runtime-js-hidden" hidden aria-hidden="true">@T("Plugins.Misc.AIInterview.Runtime.StartPrompt")</div>
 
                         <div class="runtime-conversation" id="conversation">
                             <div class="runtime-chat-placeholder" id="conversation-empty-state">
@@ -549,6 +549,7 @@
         const creditUpgradeLink = document.getElementById('runtime-credit-upgrade');
         const video = document.getElementById('runtime-video');
         const videoCaption = document.getElementById('runtime-video-caption');
+        const videoCaptionTrack = document.getElementById('runtime-video-caption-track');
         const videoCaptionItem = document.getElementById('runtime-video-caption-item');
         const videoCaptionSpeaker = document.getElementById('runtime-video-caption-speaker');
         const videoCaptionText = document.getElementById('runtime-video-caption-text');
@@ -797,9 +798,11 @@
             }
         };
 
-        const setAudioDeviceStatus = (message = '') => {
+        const setAudioDeviceStatus = (message = '', isWarning = false) => {
             if (audioDeviceStatus)
-                audioDeviceStatus.textContent = message;
+                audioDeviceStatus.textContent = isWarning ? '' : message;
+            if (isWarning)
+                setRuntimeWarning(message);
         };
 
         const setAudioDevicePanelOpen = (open) => {
@@ -873,7 +876,7 @@
             if (!navigator.mediaDevices?.enumerateDevices) {
                 audioInputSelect && (audioInputSelect.disabled = true);
                 audioOutputSelect && (audioOutputSelect.disabled = true);
-                setAudioDeviceStatus('Audio device selection is not supported in this browser.');
+                setAudioDeviceStatus('Audio device selection is not supported in this browser.', true);
                 return;
             }
 
@@ -892,7 +895,7 @@
                 if (!inputStillAvailable && inputListCanConfirmAvailability) {
                     selectedAudioInputId = '';
                     writeLocalStorageValue(audioInputStorageKey, '');
-                    setAudioDeviceStatus('Selected microphone unavailable. Using default microphone.');
+                    setAudioDeviceStatus('Selected microphone unavailable. Using default microphone.', true);
                 }
 
                 const outputStillAvailable = !selectedAudioOutputId
@@ -913,16 +916,16 @@
 
                 const currentStatus = (audioDeviceStatus?.textContent || '').trim();
                 if (!supportsAudioOutputSelection && !currentStatus)
-                    setAudioDeviceStatus('Speaker selection is not supported in this browser.');
+                    setAudioDeviceStatus('Speaker selection is not supported in this browser.', true);
                 else if (supportsAudioOutputSelection && !availableAudioOutputs.some(device => device.deviceId) && !currentStatus)
                     setAudioDeviceStatus('Using browser default speaker.');
                 else if (hasOnlyUnlabeledAudioDevices(availableAudioInputs) && !isMicActive() && !currentStatus)
-                    setAudioDeviceStatus('Allow microphone access to show device names.');
+                    setAudioDeviceStatus('Allow microphone access to show device names.', true);
                 else if (!currentStatus)
                     setAudioDeviceStatus(selectedAudioOutputId ? 'Speaker selected.' : 'Using browser default speaker.');
             } catch (error) {
                 logActivity(`Audio device enumeration failed. reason=${error?.message || error?.name || 'unknown'}`);
-                setAudioDeviceStatus('Audio devices unavailable.');
+                setAudioDeviceStatus('Audio devices unavailable.', true);
             }
         };
 
@@ -1011,7 +1014,7 @@
             if (recordingEnabled)
                 setRecordingStatus(message, false, true);
             else
-                setAudioDeviceStatus(message);
+                setAudioDeviceStatus(message, true);
         };
 
         const disconnectRecordingAudioSources = () => {
@@ -1307,7 +1310,7 @@
         let runtimeCaptionAnimationFrame = 0;
 
         const refreshRuntimeCaptionScroll = () => {
-            if (!videoCaption || !videoCaptionItem || !videoCaptionText || !videoCaptionCopy || videoCaption.hidden)
+            if (!videoCaption || !videoCaptionTrack || !videoCaptionItem || !videoCaptionText || !videoCaptionCopy || videoCaption.hidden)
                 return;
 
             cancelAnimationFrame(runtimeCaptionAnimationFrame);
@@ -1323,7 +1326,8 @@
                 videoCaptionCopy.hidden = !shouldScroll;
 
                 if (shouldScroll) {
-                    const scrollDistance = videoCaptionItem.scrollWidth + 48;
+                    const captionTrackGap = parseFloat(window.getComputedStyle(videoCaptionTrack).columnGap) || 0;
+                    const scrollDistance = videoCaptionItem.scrollWidth + captionTrackGap;
                     const durationSeconds = Math.min(22, Math.max(10, scrollDistance / 42));
                     videoCaption.style.setProperty('--runtime-caption-scroll-duration', `${durationSeconds}s`);
                 } else {
@@ -1377,6 +1381,9 @@
         } else if (videoCaption) {
             window.addEventListener('resize', refreshRuntimeCaptionScroll);
         }
+
+        if (document.fonts?.ready)
+            document.fonts.ready.then(refreshRuntimeCaptionScroll).catch(() => { });
 
         const syncAnswerCaption = () => {
             const currentAnswer = (answerBox?.value || '').trim();
@@ -2265,6 +2272,14 @@
             statusBox.textContent = message || '';
             const isVisible = !!message && (isError || runtimeStoppedOrCompleted || stopInProgress);
             statusBox.className = `runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
+        };
+
+        const setRuntimeWarning = (message) => {
+            if (!statusBox || runtimeStoppedOrCompleted)
+                return;
+
+            statusBox.textContent = message || '';
+            statusBox.className = `runtime-status ${message ? '' : 'runtime-js-hidden'} message-warning`.trim();
         };
 
         const setHeaderStatus = (message, isError = false) => {
@@ -4157,7 +4172,7 @@
                     writeLocalStorageValue(audioInputStorageKey, '');
                     if (audioInputSelect)
                         audioInputSelect.value = '';
-                    setAudioDeviceStatus('Selected microphone unavailable. Using default microphone.');
+                    setAudioDeviceStatus('Selected microphone unavailable. Using default microphone.', true);
                     micStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
                 }
                 await refreshAudioDevices();
