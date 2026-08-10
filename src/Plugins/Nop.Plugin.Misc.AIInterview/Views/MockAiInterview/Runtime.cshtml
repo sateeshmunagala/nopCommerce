@@ -65,7 +65,7 @@
             <div id="runtime-report-ready-row" class="runtime-report-ready-row">
                 <div id="runtime-header-status" class="runtime-header-status runtime-status runtime-js-hidden" aria-live="polite"></div>
                 <div id="runtime-report-ready-action" class="runtime-report-ready-action runtime-js-hidden">
-                    <a id="view-report" class="button-2 runtime-report-link runtime-js-hidden" target="_blank" rel="noopener noreferrer">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</a>
+                    <a id="view-report" class="button-2 runtime-report-link runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</a>
                 </div>
             </div>
             <div id="screen-share-interruption-warning" class="runtime-screen-share-interruption-warning runtime-js-hidden" aria-live="assertive">Resume screen share to continue.</div>
@@ -2339,11 +2339,13 @@
             const isVisible = !!message && !!config.recordingAvailable && (!!isError || !!forceVisible);
             if (runtimeStoppedOrCompleted) {
                 completionRecordingNote = isVisible ? activeRecordingStatusMessage : '';
-                if (!message) {
-                    completionRecordingIncomplete = false;
-                } else if (isError || /failed|incomplete|did not finish|timed out|still finishing|could not/i.test(activeRecordingStatusMessage)) {
-                    completionRecordingIncomplete = true;
+                completionRecordingIncomplete = isVisible
+                    && (isError || /failed|incomplete|did not finish|timed out|still finishing|could not/i.test(activeRecordingStatusMessage));
+
+                if (completionReportUrl) {
+                    completionWaitingMessage = '';
                 }
+
                 renderResolvedCompletionStatus();
                 return;
             }

@@ -2675,8 +2675,10 @@ body.ai-job-preview-open .item-box {
     transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
+.runtime-report-ready-action .runtime-report-link:link,
 .runtime-report-ready-action .runtime-report-link:visited {
     color: #123f38;
+    text-decoration: none;
 }
 
 .runtime-report-ready-action .runtime-report-link:hover {
@@ -2689,6 +2691,7 @@ body.ai-job-preview-open .item-box {
 .runtime-report-ready-action .runtime-report-link:focus-visible {
     outline: 0;
     box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.3);
+    text-decoration: none;
 }
 
 .runtime-report-ready-action .runtime-report-link:active {
