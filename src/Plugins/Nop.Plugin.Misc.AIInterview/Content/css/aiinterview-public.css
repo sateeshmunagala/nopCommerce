@@ -2592,7 +2592,7 @@ body.ai-job-preview-open .item-box {
     flex-wrap: nowrap;
     gap: 2px;
     min-width: 0;
-    padding: 4px 6px;
+    padding: 3px 6px;
     border: 1px solid #bbf7d0;
     border-radius: 1px;
     background: #f0fdf4;
@@ -2622,7 +2622,7 @@ body.ai-job-preview-open .item-box {
     background: transparent;
     color: #166534;
     line-height: 1.15;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
 }
 
 .runtime-header-status.message-success {
@@ -2655,17 +2655,17 @@ body.ai-job-preview-open .item-box {
     flex: 0 0 auto;
     box-sizing: border-box;
     max-width: 100%;
-    min-height: 32px;
-    min-width: 96px;
+    min-height: 28px;
+    min-width: 88px;
     margin: 0;
-    padding: 5px 10px;
+    padding: 4px 8px;
     border: 1px solid var(--jb-accent-dark, #24b99a);
     border-radius: 1px;
     background: var(--jb-accent, #35d6b4);
     color: #123f38;
     cursor: pointer;
     font-family: "Fjalla One", Arial, sans-serif;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 400;
     letter-spacing: 0;
     line-height: 1.1;
@@ -2738,7 +2738,7 @@ body.ai-job-preview-open .item-box {
     height: 100%;
     min-height: 0;
     align-items: stretch;
-    padding-top: 12px;
+    padding-top: 4px;
     overflow: hidden;
 }
 
@@ -2748,7 +2748,7 @@ body.ai-job-preview-open .item-box {
     gap: 12px;
     min-width: 0;
     min-height: 0;
-    padding: 14px;
+    padding: 10px;
     border: 1px solid #dbe2ea;
     border-radius: 1px;
     background: rgba(255, 255, 255, 0.88);
@@ -2764,7 +2764,7 @@ body.ai-job-preview-open .item-box {
     grid-template-rows: minmax(0, 1fr) auto auto auto;
     height: 100%;
     align-content: stretch;
-    gap: 14px;
+    gap: 10px;
 }
 
 .runtime-video {
@@ -4565,6 +4565,7 @@ body.ai-job-preview-open .item-box {
     .runtime-layout {
         grid-template-columns: 1fr;
         height: auto;
+        padding-top: 4px;
         overflow: visible;
     }
 
@@ -4604,13 +4605,13 @@ body.ai-job-preview-open .item-box {
 
     .runtime-report-ready-row {
         gap: 2px;
-        padding: 4px 6px;
+        padding: 3px 6px;
     }
 
     .runtime-shell .runtime-report-ready-action .runtime-report-link {
         flex: 0 0 auto;
         width: auto;
-        min-height: 34px;
+        min-height: 28px;
         min-width: 92px;
         padding: 5px 7px;
     }
