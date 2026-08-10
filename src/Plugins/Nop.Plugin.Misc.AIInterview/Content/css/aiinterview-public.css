@@ -2588,10 +2588,11 @@ body.ai-job-preview-open .item-box {
 .runtime-report-ready-row {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     flex-wrap: nowrap;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
-    padding: 7px 10px;
+    padding: 6px 8px;
     border: 1px solid #bbf7d0;
     border-radius: 1px;
     background: #f0fdf4;
@@ -2620,7 +2621,7 @@ body.ai-job-preview-open .item-box {
     border: 0;
     background: transparent;
     color: #166534;
-    line-height: 1.25;
+    line-height: 1.15;
     overflow-wrap: anywhere;
 }
 
@@ -2637,7 +2638,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-report-ready-action {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     flex: 0 0 auto;
     min-width: 0;
@@ -2654,10 +2655,10 @@ body.ai-job-preview-open .item-box {
     flex: 0 0 auto;
     box-sizing: border-box;
     max-width: 100%;
-    min-height: 34px;
-    min-width: 104px;
+    min-height: 32px;
+    min-width: 96px;
     margin: 0;
-    padding: 6px 10px;
+    padding: 5px 10px;
     border: 1px solid var(--jb-accent-dark, #24b99a);
     border-radius: 1px;
     background: var(--jb-accent, #35d6b4);
@@ -2767,7 +2768,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-video {
-    --runtime-caption-bottom: 32px;
+    --runtime-caption-bottom: 40px;
     position: relative;
     display: grid;
     place-items: center;
@@ -4573,7 +4574,7 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video {
-        --runtime-caption-bottom: 26px;
+        --runtime-caption-bottom: 32px;
         min-height: min(460px, 58vh);
         max-height: 58vh;
     }
@@ -4602,16 +4603,16 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-report-ready-row {
-        gap: 6px;
-        padding: 7px 8px;
+        gap: 4px;
+        padding: 6px 7px;
     }
 
     .runtime-shell .runtime-report-ready-action .runtime-report-link {
         flex: 0 0 auto;
         width: auto;
         min-height: 34px;
-        min-width: 96px;
-        padding: 6px 8px;
+        min-width: 92px;
+        padding: 5px 7px;
     }
 
     .runtime-status-region {
@@ -4653,7 +4654,7 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video {
-        --runtime-caption-bottom: 18px;
+        --runtime-caption-bottom: 24px;
         min-height: 260px;
         height: auto;
     }

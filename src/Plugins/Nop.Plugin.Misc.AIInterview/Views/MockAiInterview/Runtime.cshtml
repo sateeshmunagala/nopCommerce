@@ -2124,7 +2124,8 @@
             completionWaitingMessage = '';
             completionRecordingNote = '';
             completionRecordingIncomplete = false;
-            updateReportButton('');
+            if (runtimeStoppedOrCompleted)
+                renderResolvedCompletionStatus();
         };
 
         const clearActiveInterviewTimers = () => {
@@ -2271,7 +2272,7 @@
             return true;
         };
 
-        const setStatus = (message, isError) => {
+        const setStatus = (message = '', isError = false) => {
             if (resolveCompletedStatusUpdate(message, isError))
                 return;
 
@@ -2338,11 +2339,6 @@
                 completionRecordingNote = isVisible ? activeRecordingStatusMessage : '';
                 completionRecordingIncomplete = isVisible
                     && (isError || /failed|incomplete|did not finish|timed out|still finishing|could not/i.test(activeRecordingStatusMessage));
-
-                if (completionReportUrl) {
-                    completionWaitingMessage = '';
-                }
-
                 renderResolvedCompletionStatus();
                 return;
             }
@@ -2771,16 +2767,14 @@
                 return;
 
             const normalizedReportUrl = typeof reportUrl === 'string' ? reportUrl.trim() : '';
-            if (normalizedReportUrl) {
+            const hasReportUrl = normalizedReportUrl.length > 0;
+            if (hasReportUrl)
                 reportButton.href = normalizedReportUrl;
-                reportReadyAction.classList.remove('runtime-js-hidden');
-                reportButton.classList.remove('runtime-js-hidden');
-                return;
-            }
+            else
+                reportButton.removeAttribute('href');
 
-            reportButton.removeAttribute('href');
-            reportReadyAction.classList.add('runtime-js-hidden');
-            reportButton.classList.add('runtime-js-hidden');
+            reportReadyAction.classList.toggle('runtime-js-hidden', !hasReportUrl);
+            reportButton.classList.toggle('runtime-js-hidden', !hasReportUrl);
         };
 
         const renderResolvedCompletionStatus = () => {
@@ -2797,9 +2791,7 @@
             } else if (completionReportUrl) {
                 message = completionRecordingIncomplete
                     ? 'Your report is ready. Recording upload incomplete.'
-                    : completionRecordingNote
-                        ? `Your report is ready. ${completionRecordingNote}`
-                        : 'Your report is ready.';
+                    : 'Your report is ready.';
                 resolvedReportUrl = completionReportUrl;
             } else if (completionWaitingMessage) {
                 message = completionWaitingMessage;
