@@ -56,6 +56,8 @@ public class InterviewSession : BaseEntity
     public string CreditChargeLedgerSource { get; set; }
     public DateTime? CreditRefundedOnUtc { get; set; }
     public string CreditRefundReasonCode { get; set; }
+    public DateTime? CreditRefundNotificationAttemptedOnUtc { get; set; }
+    public DateTime? CreditRefundNotificationSentOnUtc { get; set; }
     public string CandidateFeedbackIssue { get; set; }
     public string CandidateFeedbackHelpfulness { get; set; }
     public string CandidateFeedbackComment { get; set; }

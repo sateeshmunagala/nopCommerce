@@ -1,4 +1,5 @@
 using Moq;
+using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Caching;
@@ -675,7 +676,24 @@ public class ServiceTests
         var sessionRepository = new Mock<IRepository<InterviewSession>>();
         var inviteRepository = new Mock<IRepository<SponsorInvite>>();
         var dataProvider = new Mock<INopDataProvider>();
+        var customerService = new Mock<ICustomerService>();
+        var productService = new Mock<IProductService>();
+        var workflowMessageService = new Mock<IWorkflowMessageService>();
+        var messageTemplateService = new Mock<IMessageTemplateService>();
+        var emailAccountService = new Mock<IEmailAccountService>();
+        var storeContext = new Mock<IStoreContext>();
+        var logger = new Mock<ILogger<InterviewStartCreditService>>();
         var ledgerEntries = new List<CreditLedgerEntry>();
+        var chargedOwner = new Customer { Id = invite.SponsorId, Email = "sponsor@example.com", FirstName = "Sponsor", LastName = "Owner" };
+        var product = new Product { Id = session.ProductId, Name = "Backend Engineer" };
+        var template = new Nop.Core.Domain.Messages.MessageTemplate
+        {
+            Name = InterviewStartCreditService.RefundNotificationTemplateName,
+            EmailAccountId = 7,
+            IsActive = true
+        };
+        var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 7, Email = "store@example.com" };
+        var store = new Nop.Core.Domain.Stores.Store { Id = 4, DefaultLanguageId = 9 };
 
         walletRepository.Setup(x => x.GetAllAsync(It.IsAny<Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>>>(), It.IsAny<Func<ICacheKeyService, CacheKey>>(), true))
             .ReturnsAsync(new List<CreditWallet> { wallet });
@@ -688,6 +706,35 @@ public class ServiceTests
         inviteRepository.Setup(x => x.GetByIdAsync(invite.Id)).ReturnsAsync(invite);
         dataProvider.Setup(x => x.CreateTransactionScope())
             .Returns(() => new TransactionScope(TransactionScopeOption.RequiresNew, TransactionScopeAsyncFlowOption.Enabled));
+        customerService.Setup(x => x.GetCustomerByIdAsync(invite.SponsorId)).ReturnsAsync(chargedOwner);
+        productService.Setup(x => x.GetProductByIdAsync(session.ProductId)).ReturnsAsync(product);
+        storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
+        messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync(InterviewStartCreditService.RefundNotificationTemplateName, store.Id))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { template });
+        emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(emailAccount.Id)).ReturnsAsync(emailAccount);
+        workflowMessageService.Setup(x => x.SendNotificationAsync(
+                template,
+                emailAccount,
+                store.DefaultLanguageId,
+                It.Is<IList<Token>>(tokens =>
+                    tokens.Count == 5 &&
+                    tokens.Any(token => token.Key == "AIInterview.SessionId" && Equals(token.Value, "501")) &&
+                    tokens.Any(token => token.Key == "AIInterview.ProductName" && Equals(token.Value, "Backend Engineer")) &&
+                    tokens.Any(token => token.Key == "AIInterview.RefundAmount" && Equals(token.Value, "1")) &&
+                    tokens.Any(token => token.Key == "AIInterview.RefundReason" && Equals(token.Value, "FIRST_QUESTION_START_FAILED")) &&
+                    tokens.Any(token => token.Key == "AIInterview.OccurredUtc") &&
+                    tokens.All(token => !token.Key.Contains("Token", StringComparison.OrdinalIgnoreCase) && !token.Key.Contains("Secret", StringComparison.OrdinalIgnoreCase))),
+                chargedOwner.Email,
+                "Sponsor Owner",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true))
+            .ReturnsAsync(1);
 
         var service = new InterviewStartCreditService(
             walletRepository.Object,
@@ -695,7 +742,14 @@ public class ServiceTests
             sessionRepository.Object,
             inviteRepository.Object,
             dataProvider.Object,
-            new Mock<ILogger<InterviewStartCreditService>>().Object);
+            logger.Object,
+            customerService.Object,
+            productService.Object,
+            workflowMessageService.Object,
+            messageTemplateService.Object,
+            emailAccountService.Object,
+            new Nop.Core.Domain.Messages.EmailAccountSettings { DefaultEmailAccountId = emailAccount.Id },
+            storeContext.Object);
 
         var chargeResults = await Task.WhenAll(service.ChargeAsync(session), service.ChargeAsync(session));
 
@@ -714,6 +768,37 @@ public class ServiceTests
         Assert.That(wallet.Balance, Is.EqualTo(2));
         Assert.That(session.CreditRefundReasonCode, Is.EqualTo("FIRST_QUESTION_START_FAILED"));
         Assert.That(ledgerEntries.Count(entry => entry.TransactionType == "Deposit" && entry.LedgerSource == CreditLedgerSources.InterviewStartRefund), Is.EqualTo(1));
+
+        await service.NotifyRefundAsync(session, "FIRST_QUESTION_START_FAILED");
+        await service.NotifyRefundAsync(session, "FIRST_QUESTION_START_FAILED");
+
+        Assert.That(session.CreditRefundNotificationAttemptedOnUtc, Is.Not.Null);
+        Assert.That(session.CreditRefundNotificationSentOnUtc, Is.Not.Null);
+        customerService.Verify(x => x.GetCustomerByIdAsync(invite.SponsorId), Times.Once);
+        workflowMessageService.Verify(x => x.SendNotificationAsync(
+            template,
+            emailAccount,
+            store.DefaultLanguageId,
+            It.IsAny<IList<Token>>(),
+            chargedOwner.Email,
+            "Sponsor Owner",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true), Times.Once);
+        logger.Verify(x => x.Log(
+            LogLevel.Information,
+            It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((state, _) =>
+                state.ToString().Contains("AIInterview refund email sent") &&
+                state.ToString().Contains("FIRST_QUESTION_START_FAILED") &&
+                state.ToString().Contains("CustomerId=99")),
+            null,
+            It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
     }
 
     [Test]

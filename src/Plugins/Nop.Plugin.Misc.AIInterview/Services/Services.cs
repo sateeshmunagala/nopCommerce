@@ -1184,6 +1184,7 @@ public class CreditService : ICreditService
 public class InterviewStartCreditService : IInterviewStartCreditService
 {
     public const decimal InterviewStartCost = 1m;
+    public const string RefundNotificationTemplateName = "AIInterview.InterviewStartCreditRefunded";
     private static readonly ConcurrentDictionary<int, SessionCreditLock> SessionCreditLocks = new();
 
     private sealed class SessionCreditLock
@@ -1226,6 +1227,13 @@ public class InterviewStartCreditService : IInterviewStartCreditService
     private readonly IRepository<SponsorInvite> _inviteRepository;
     private readonly INopDataProvider _dataProvider;
     private readonly ILogger<InterviewStartCreditService> _logger;
+    private readonly ICustomerService _customerService;
+    private readonly Nop.Services.Catalog.IProductService _productService;
+    private readonly Nop.Services.Messages.IWorkflowMessageService _workflowMessageService;
+    private readonly Nop.Services.Messages.IMessageTemplateService _messageTemplateService;
+    private readonly Nop.Services.Messages.IEmailAccountService _emailAccountService;
+    private readonly EmailAccountSettings _emailAccountSettings;
+    private readonly IStoreContext _storeContext;
 
     public InterviewStartCreditService(
         IRepository<CreditWallet> walletRepository,
@@ -1233,7 +1241,14 @@ public class InterviewStartCreditService : IInterviewStartCreditService
         IRepository<InterviewSession> sessionRepository,
         IRepository<SponsorInvite> inviteRepository,
         INopDataProvider dataProvider,
-        ILogger<InterviewStartCreditService> logger)
+        ILogger<InterviewStartCreditService> logger,
+        ICustomerService customerService,
+        Nop.Services.Catalog.IProductService productService,
+        Nop.Services.Messages.IWorkflowMessageService workflowMessageService,
+        Nop.Services.Messages.IMessageTemplateService messageTemplateService,
+        Nop.Services.Messages.IEmailAccountService emailAccountService,
+        EmailAccountSettings emailAccountSettings,
+        IStoreContext storeContext)
     {
         _walletRepository = walletRepository;
         _ledgerRepository = ledgerRepository;
@@ -1241,6 +1256,13 @@ public class InterviewStartCreditService : IInterviewStartCreditService
         _inviteRepository = inviteRepository;
         _dataProvider = dataProvider;
         _logger = logger;
+        _customerService = customerService;
+        _productService = productService;
+        _workflowMessageService = workflowMessageService;
+        _messageTemplateService = messageTemplateService;
+        _emailAccountService = emailAccountService;
+        _emailAccountSettings = emailAccountSettings;
+        _storeContext = storeContext;
     }
 
     public async Task<InterviewCreditEligibilityResult> CheckEligibilityAsync(InterviewSession session)
@@ -1375,13 +1397,94 @@ public class InterviewStartCreditService : IInterviewStartCreditService
         }
     }
 
-    public Task NotifyRefundAsync(InterviewSession session, string reasonCode)
+    public async Task NotifyRefundAsync(InterviewSession session, string reasonCode)
     {
-        // Placeholder integration point: replace this log with the refund email workflow.
-        _logger.LogInformation(
-            "AIInterview refund email notification placeholder invoked. ReasonCode={ReasonCode}; SessionId={SessionId}; CustomerId={CustomerId}.",
-            reasonCode, session?.Id ?? 0, session?.CustomerId ?? 0);
-        return Task.CompletedTask;
+        if (session == null || session.Id <= 0)
+            return;
+
+        using var sessionLock = await AcquireSessionCreditLockAsync(session.Id);
+        InterviewSession persistedSession;
+        try
+        {
+            using (var transaction = _dataProvider.CreateTransactionScope())
+            {
+                persistedSession = await _sessionRepository.GetByIdAsync(session.Id) ?? session;
+                if (!persistedSession.CreditRefundedOnUtc.HasValue ||
+                    persistedSession.CreditChargeCustomerId <= 0 ||
+                    persistedSession.CreditRefundNotificationAttemptedOnUtc.HasValue)
+                {
+                    return;
+                }
+
+                persistedSession.CreditRefundNotificationAttemptedOnUtc = DateTime.UtcNow;
+                await _sessionRepository.UpdateAsync(persistedSession);
+                transaction.Complete();
+            }
+
+            var chargedCustomer = await _customerService.GetCustomerByIdAsync(persistedSession.CreditChargeCustomerId);
+            if (chargedCustomer == null || string.IsNullOrWhiteSpace(chargedCustomer.Email) || !CommonHelper.IsValidEmail(chargedCustomer.Email))
+                throw new InvalidOperationException("The charged customer does not have a valid refund notification email address.");
+
+            var store = await _storeContext.GetCurrentStoreAsync();
+            var storeId = store?.Id ?? 0;
+            var languageId = store?.DefaultLanguageId ?? 0;
+            var templates = await _messageTemplateService.GetMessageTemplatesByNameAsync(RefundNotificationTemplateName, storeId);
+            var template = templates?.FirstOrDefault();
+            if (template == null || !template.IsActive)
+                throw new InvalidOperationException("The interview start refund notification template is unavailable or inactive.");
+
+            var emailAccountId = template.EmailAccountId > 0 ? template.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId;
+            var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(emailAccountId);
+            emailAccount ??= (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
+            if (emailAccount == null)
+                throw new InvalidOperationException("No email account is available for the interview start refund notification.");
+
+            var product = persistedSession.ProductId > 0
+                ? await _productService.GetProductByIdAsync(persistedSession.ProductId)
+                : null;
+            var occurredUtc = persistedSession.CreditRefundedOnUtc.Value;
+            var tokens = new List<Nop.Services.Messages.Token>
+            {
+                new("AIInterview.SessionId", persistedSession.Id.ToString(CultureInfo.InvariantCulture)),
+                new("AIInterview.ProductName", product?.Name ?? "Interview"),
+                new("AIInterview.RefundAmount", FormatCredits(persistedSession.CreditChargeAmount > 0 ? persistedSession.CreditChargeAmount : InterviewStartCost)),
+                new("AIInterview.RefundReason", reasonCode ?? persistedSession.CreditRefundReasonCode ?? string.Empty),
+                new("AIInterview.OccurredUtc", occurredUtc.ToString("u", CultureInfo.InvariantCulture))
+            };
+
+            await _workflowMessageService.SendNotificationAsync(
+                template,
+                emailAccount,
+                languageId,
+                tokens,
+                chargedCustomer.Email,
+                $"{chargedCustomer.FirstName} {chargedCustomer.LastName}".Trim(),
+                ignoreDelayBeforeSend: true);
+
+            using (var transaction = _dataProvider.CreateTransactionScope())
+            {
+                persistedSession = await _sessionRepository.GetByIdAsync(session.Id) ?? persistedSession;
+                persistedSession.CreditRefundNotificationSentOnUtc ??= DateTime.UtcNow;
+                await _sessionRepository.UpdateAsync(persistedSession);
+                transaction.Complete();
+            }
+
+            _logger.LogInformation(
+                "AIInterview refund email sent. ReasonCode={ReasonCode}; CustomerId={CustomerId}; SessionId={SessionId}; RefundAmount={RefundAmount}.",
+                reasonCode, persistedSession.CreditChargeCustomerId, persistedSession.Id, persistedSession.CreditChargeAmount);
+        }
+        catch (Exception exception)
+        {
+            var chargedCustomerId = session.CreditChargeCustomerId;
+            var persisted = await _sessionRepository.GetByIdAsync(session.Id);
+            if (persisted?.CreditChargeCustomerId > 0)
+                chargedCustomerId = persisted.CreditChargeCustomerId;
+
+            _logger.LogWarning(
+                exception,
+                "AIInterview refund email failed. ReasonCode={ReasonCode}; CustomerId={CustomerId}; SessionId={SessionId}.",
+                reasonCode, chargedCustomerId, session.Id);
+        }
     }
 
     private async Task<CreditWallet> GetWalletAsync(int customerId)
@@ -1390,6 +1493,11 @@ public class InterviewStartCreditService : IInterviewStartCreditService
             .Where(wallet => wallet.CustomerId == customerId)
             .OrderBy(wallet => wallet.Id)))
             .FirstOrDefault();
+    }
+
+    private static string FormatCredits(decimal value)
+    {
+        return value.ToString("0.####", CultureInfo.InvariantCulture);
     }
 
     private async Task<(int CustomerId, string LedgerSource, string Remarks)> ResolveChargeContextAsync(InterviewSession session)

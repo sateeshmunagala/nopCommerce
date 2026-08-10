@@ -19,6 +19,8 @@ public class InterviewStartCreditMigration : Migration
         AddStringColumn(SessionTable, nameof(InterviewSession.CreditChargeLedgerSource), 100);
         AddDateTimeColumn(SessionTable, nameof(InterviewSession.CreditRefundedOnUtc));
         AddStringColumn(SessionTable, nameof(InterviewSession.CreditRefundReasonCode), 100);
+        AddDateTimeColumn(SessionTable, nameof(InterviewSession.CreditRefundNotificationAttemptedOnUtc));
+        AddDateTimeColumn(SessionTable, nameof(InterviewSession.CreditRefundNotificationSentOnUtc));
 
         if (!Schema.Table(LedgerTable).Column(nameof(CreditLedgerEntry.InterviewSessionId)).Exists())
             Alter.Table(LedgerTable).AddColumn(nameof(CreditLedgerEntry.InterviewSessionId)).AsInt32().Nullable();
@@ -38,6 +40,8 @@ public class InterviewStartCreditMigration : Migration
         if (Schema.Table(LedgerTable).Index(LedgerIndex).Exists())
             Delete.Index(LedgerIndex).OnTable(LedgerTable);
         DeleteColumnIfExists(LedgerTable, nameof(CreditLedgerEntry.InterviewSessionId));
+        DeleteColumnIfExists(SessionTable, nameof(InterviewSession.CreditRefundNotificationSentOnUtc));
+        DeleteColumnIfExists(SessionTable, nameof(InterviewSession.CreditRefundNotificationAttemptedOnUtc));
         DeleteColumnIfExists(SessionTable, nameof(InterviewSession.CreditRefundReasonCode));
         DeleteColumnIfExists(SessionTable, nameof(InterviewSession.CreditRefundedOnUtc));
         DeleteColumnIfExists(SessionTable, nameof(InterviewSession.CreditChargeLedgerSource));

@@ -370,6 +370,28 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             });
         }
 
+        var startRefundTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync(Services.InterviewStartCreditService.RefundNotificationTemplateName, 0);
+        if (!(startRefundTemplates?.Any() ?? false))
+        {
+            await _messageTemplateService.InsertMessageTemplateAsync(new Nop.Core.Domain.Messages.MessageTemplate
+            {
+                Name = Services.InterviewStartCreditService.RefundNotificationTemplateName,
+                Subject = "Interview credit refunded for session %AIInterview.SessionId%",
+                Body = @"<div style=""font-family:Arial,Helvetica,sans-serif;color:#1f2937;line-height:1.5;"">
+  <h1 style=""font-size:22px;color:#111827;"">Interview credit refunded</h1>
+  <p>Your interview could not start, so the credit charge was reversed.</p>
+  <table role=""presentation"" cellspacing=""0"" cellpadding=""6"" style=""border-collapse:collapse;"">
+    <tr><td><strong>Session ID</strong></td><td>%AIInterview.SessionId%</td></tr>
+    <tr><td><strong>Interview</strong></td><td>%AIInterview.ProductName%</td></tr>
+    <tr><td><strong>Refund amount</strong></td><td>%AIInterview.RefundAmount%</td></tr>
+    <tr><td><strong>Reason</strong></td><td>%AIInterview.RefundReason%</td></tr>
+    <tr><td><strong>Occurred (UTC)</strong></td><td>%AIInterview.OccurredUtc%</td></tr>
+  </table>
+</div>",
+                IsActive = true
+            });
+        }
+
         var runtimeFeedbackTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.RuntimeFeedbackSubmitted.AdminNotification", 0);
         if (!(runtimeFeedbackTemplates?.Any() ?? false))
         {
@@ -553,6 +575,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.StartAgain"] = "Start Again",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.ExpiredLink"] = "Your previous interview link expired. Start the interview again from this page.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Runtime.Error.Unavailable"] = "The interview service is temporarily unavailable. Please try again.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Email.InterviewStartRefund.Subject"] = "Interview credit refunded for session %AIInterview.SessionId%",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Email.InterviewStartRefund.Heading"] = "Interview credit refunded",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Email.InterviewStartRefund.Message"] = "Your interview could not start, so the credit charge was reversed.",
             [FinalCompletionSpeechResourceKey] = DefaultFinalCompletionSpeech,
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.Questions"] = "Questions",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Report.Recording"] = "Recording",

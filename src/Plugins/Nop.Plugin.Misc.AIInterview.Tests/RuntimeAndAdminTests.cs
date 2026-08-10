@@ -20,6 +20,7 @@ using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Media;
 using Nop.Services.Messages;
+using System.Transactions;
 using NUnit.Framework;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
@@ -160,6 +161,26 @@ public class RuntimeAndAdminTests
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("contact").IgnoreCase);
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("congratulations").IgnoreCase);
         Assert.That(ApprovedFinalCompletionSpeech, Does.Not.Contain("passed").IgnoreCase);
+    }
+
+    [Test]
+    public void InterviewStartRefundEmail_TemplateAndEnglishResourcesAreRegisteredWithSafeTokens()
+    {
+        var pluginText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("AIInterviewPlugin.cs"));
+        var upgradeMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var resources = (Dictionary<string, string>)upgradeMethod.Invoke(null, null);
+
+        Assert.That(InterviewStartCreditService.RefundNotificationTemplateName, Is.EqualTo("AIInterview.InterviewStartCreditRefunded"));
+        Assert.That(pluginText, Does.Contain("RefundNotificationTemplateName"));
+        Assert.That(pluginText, Does.Contain("%AIInterview.SessionId%"));
+        Assert.That(pluginText, Does.Contain("%AIInterview.ProductName%"));
+        Assert.That(pluginText, Does.Contain("%AIInterview.RefundAmount%"));
+        Assert.That(pluginText, Does.Contain("%AIInterview.RefundReason%"));
+        Assert.That(pluginText, Does.Contain("%AIInterview.OccurredUtc%"));
+        Assert.That(pluginText, Does.Not.Contain("%AIInterview.Token%"));
+        Assert.That(resources[$"{AIInterviewDefaults.LocalizationPrefix}.Email.InterviewStartRefund.Subject"], Is.Not.Empty);
+        Assert.That(resources[$"{AIInterviewDefaults.LocalizationPrefix}.Email.InterviewStartRefund.Heading"], Is.EqualTo("Interview credit refunded"));
+        Assert.That(resources[$"{AIInterviewDefaults.LocalizationPrefix}.Email.InterviewStartRefund.Message"], Does.Contain("credit charge was reversed"));
     }
 
     [Test]
@@ -545,7 +566,130 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task Runtime_Begin_FirstQuestionFailureRefundsAndInvokesNotificationPlaceholder()
+    public async Task Runtime_Begin_DuplicateSponsorCallsChargeSponsorWalletOnceAndNeverRefund()
+    {
+        var candidate = new Customer { Id = 7, Email = "candidate@example.com" };
+        var sponsor = new Customer { Id = 99, Email = "sponsor@example.com" };
+        const int productId = 12;
+        InterviewSession session = null;
+        var invite = new SponsorInvite
+        {
+            Id = 44,
+            SponsorId = sponsor.Id,
+            ProductId = productId,
+            Email = candidate.Email,
+            InviteCode = "sponsor-start-token",
+            IsActive = true,
+            MaxAttempts = 2,
+            ExpiryDateUtc = DateTime.UtcNow.AddDays(1)
+        };
+        var sponsorWallet = new CreditWallet { Id = 17, CustomerId = sponsor.Id, Balance = 2 };
+        var walletRepository = new Mock<IRepository<CreditWallet>>();
+        var ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
+        var sessionRepository = new Mock<IRepository<InterviewSession>>();
+        var inviteRepository = new Mock<IRepository<SponsorInvite>>();
+        var dataProvider = new Mock<INopDataProvider>();
+        var workflowMessageService = new Mock<IWorkflowMessageService>();
+        var ledgerEntries = new List<CreditLedgerEntry>();
+
+        walletRepository.Setup(x => x.GetAllAsync(
+                It.IsAny<Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>>>(),
+                It.IsAny<Func<Nop.Core.Caching.ICacheKeyService, Nop.Core.Caching.CacheKey>>(),
+                true))
+            .ReturnsAsync(new List<CreditWallet> { sponsorWallet });
+        walletRepository.Setup(x => x.UpdateAsync(sponsorWallet, true)).Returns(Task.CompletedTask);
+        ledgerRepository.Setup(x => x.InsertAsync(It.IsAny<CreditLedgerEntry>(), true))
+            .Callback<CreditLedgerEntry, bool>((entry, _) => ledgerEntries.Add(entry))
+            .Returns(Task.CompletedTask);
+        sessionRepository.Setup(x => x.UpdateAsync(It.IsAny<InterviewSession>(), true)).Returns(Task.CompletedTask);
+        inviteRepository.Setup(x => x.GetByIdAsync(invite.Id)).ReturnsAsync(invite);
+        dataProvider.Setup(x => x.CreateTransactionScope())
+            .Returns(() => new TransactionScope(TransactionScopeOption.RequiresNew, TransactionScopeAsyncFlowOption.Enabled));
+        var startCredits = new InterviewStartCreditService(
+            walletRepository.Object,
+            ledgerRepository.Object,
+            sessionRepository.Object,
+            inviteRepository.Object,
+            dataProvider.Object,
+            new Mock<Microsoft.Extensions.Logging.ILogger<InterviewStartCreditService>>().Object,
+            _customerService.Object,
+            _productService.Object,
+            workflowMessageService.Object,
+            new Mock<IMessageTemplateService>().Object,
+            new Mock<IEmailAccountService>().Object,
+            new Nop.Core.Domain.Messages.EmailAccountSettings(),
+            new Mock<IStoreContext>().Object);
+
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(candidate);
+        _sessionService.Setup(x => x.GetSessionsByCustomerIdAsync(candidate.Id)).ReturnsAsync(new List<InterviewSession>());
+        _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(invite.Id)).ReturnsAsync(0);
+        _sessionService.Setup(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()))
+            .Callback<InterviewSession>(createdSession =>
+            {
+                session = createdSession;
+                session.Id = 805;
+            })
+            .Returns(Task.CompletedTask);
+        _inviteService.Setup(x => x.GetSponsorInviteByCodeAsync(invite.InviteCode)).ReturnsAsync(invite);
+        _productService.Setup(x => x.GetProductByIdAsync(productId)).ReturnsAsync(new Product { Id = productId, Name = "Backend Engineer" });
+        _interviewRuntimeService.Setup(x => x.BeginInterviewAsync(It.IsAny<string>(), candidate)).ReturnsAsync(new InterviewRuntimeModel
+        {
+            CurrentQuestion = "Describe your experience.",
+            Turns = new[] { new InterviewTurnViewModel { TurnId = 1, QuestionText = "Describe your experience." } }
+        });
+        var controller = new MockAiInterviewController(
+            _sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object,
+            _creditService.Object, _customerService.Object, _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object,
+            eventPublisher: _eventPublisher.Object,
+            interviewRuntimeService: _interviewRuntimeService.Object,
+            nopLogger: _nopLogger.Object,
+            interviewStartCreditService: startCredits);
+
+        var startResult = await controller.StartPost(
+            new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>()),
+            productId,
+            "Medium",
+            invite.InviteCode);
+
+        Assert.That(startResult, Is.TypeOf<JsonResult>());
+        Assert.That(session, Is.Not.Null);
+        Assert.That(session.SponsorInviteId, Is.EqualTo(invite.Id));
+        Assert.That(sponsorWallet.Balance, Is.EqualTo(2), "StartPost must create the sponsored runtime session without debiting the sponsor.");
+        Assert.That(ledgerEntries, Is.Empty);
+        sessionRepository.Setup(x => x.GetByIdAsync(session.Id)).ReturnsAsync(session);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+
+        var firstResult = (JsonResult)await controller.Begin(session.Token);
+        var duplicateResult = (JsonResult)await controller.Begin(session.Token);
+
+        Assert.That(GetJsonValue<bool>(firstResult, "success"), Is.True);
+        Assert.That(GetJsonValue<bool>(duplicateResult, "success"), Is.True);
+        Assert.That(sponsorWallet.Balance, Is.EqualTo(1));
+        Assert.That(session.CreditChargeCustomerId, Is.EqualTo(sponsor.Id));
+        Assert.That(session.CreditChargeLedgerSource, Is.EqualTo(CreditLedgerSources.SponsorInterviewUsage));
+        Assert.That(ledgerEntries.Count(entry => entry.TransactionType == "Withdrawal"), Is.EqualTo(1));
+        Assert.That(ledgerEntries.Count(entry => entry.TransactionType == "Deposit"), Is.Zero);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+        workflowMessageService.Verify(x => x.SendNotificationAsync(
+            It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>(),
+            It.IsAny<Nop.Core.Domain.Messages.EmailAccount>(),
+            It.IsAny<int>(),
+            It.IsAny<IList<Token>>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<bool>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Begin_FirstQuestionFailureRefundsAndInvokesNotificationOnce()
     {
         var customer = new Customer { Id = 7, Email = "owner@example.com" };
         var session = new InterviewSession
@@ -560,8 +704,12 @@ public class RuntimeAndAdminTests
         var startCredits = new Mock<IInterviewStartCreditService>();
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
         _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
-        startCredits.Setup(x => x.ChargeAsync(session)).ReturnsAsync(new InterviewCreditChargeResult { Eligible = true, ChargedNow = true });
-        startCredits.Setup(x => x.RefundAsync(session, "FIRST_QUESTION_START_FAILED", "Credit charge reversed because interview start did not complete.")).ReturnsAsync(true);
+        startCredits.SetupSequence(x => x.ChargeAsync(session))
+            .ReturnsAsync(new InterviewCreditChargeResult { Eligible = true, ChargedNow = true })
+            .ReturnsAsync(new InterviewCreditChargeResult { Eligible = true, AlreadyCharged = true });
+        startCredits.SetupSequence(x => x.RefundAsync(session, "FIRST_QUESTION_START_FAILED", "Credit charge reversed because interview start did not complete."))
+            .ReturnsAsync(true)
+            .ReturnsAsync(false);
         _interviewRuntimeService.Setup(x => x.BeginInterviewAsync(session.Token, customer)).ReturnsAsync(new InterviewRuntimeModel { CurrentQuestion = string.Empty });
         var controller = new MockAiInterviewController(
             _sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object,
@@ -573,9 +721,12 @@ public class RuntimeAndAdminTests
             interviewStartCreditService: startCredits.Object);
 
         var result = (JsonResult)await controller.Begin(session.Token);
+        var duplicateResult = (JsonResult)await controller.Begin(session.Token);
 
         Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
-        startCredits.Verify(x => x.RefundAsync(session, "FIRST_QUESTION_START_FAILED", "Credit charge reversed because interview start did not complete."), Times.Once);
+        Assert.That(GetJsonValue<bool>(duplicateResult, "success"), Is.False);
+        startCredits.Verify(x => x.ChargeAsync(session), Times.Exactly(2));
+        startCredits.Verify(x => x.RefundAsync(session, "FIRST_QUESTION_START_FAILED", "Credit charge reversed because interview start did not complete."), Times.Exactly(2));
         startCredits.Verify(x => x.NotifyRefundAsync(session, "FIRST_QUESTION_START_FAILED"), Times.Once);
     }
 
