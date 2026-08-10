@@ -1887,6 +1887,26 @@ body {
     }
 }
 
+/* Ensure inline currency appears between search toggle and account links */
+@media (min-width: 1001px) {
+    .jb-header-actions {
+        align-items: stretch;
+    }
+
+    .jb-inline-selectors {
+        order: 2;
+        align-self: stretch;
+    }
+
+    .jb-header-actions .jb-mobile-toggles.right {
+        order: 1;
+    }
+
+    .jb-header-actions .header-links-wrapper {
+        order: 3;
+    }
+}
+
 .header-selectors-wrapper {
     display: flex;
     align-items: center;
@@ -3376,7 +3396,6 @@ body.jb-search-open .jb-drawer-overlay {
         width: 100%;
         min-height: 55px;
         padding: 0 16px;
-        padding-left: 16px;
         border: 0;
         background: transparent;
         color: #4a4a4a;
