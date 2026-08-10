@@ -65,20 +65,17 @@
             <div id="runtime-report-ready-row" class="runtime-report-ready-row">
                 <div id="runtime-header-status" class="runtime-header-status runtime-status runtime-js-hidden" aria-live="polite"></div>
                 <div id="runtime-report-ready-action" class="runtime-report-ready-action runtime-js-hidden">
-                    <button type="button" id="view-report" class="button-2 runtime-js-hidden">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</button>
+                    <a id="view-report" class="button-2 runtime-report-link runtime-js-hidden" target="_blank" rel="noopener noreferrer">@T("Plugins.Misc.AIInterview.Runtime.ViewReport")</a>
                 </div>
             </div>
             <div id="screen-share-interruption-warning" class="runtime-screen-share-interruption-warning runtime-js-hidden" aria-live="assertive">Resume screen share to continue.</div>
             <div id="screen-share-status" class="runtime-screen-share-status runtime-js-hidden" aria-live="polite"></div>
-            <div class="runtime-status runtime-js-hidden" id="recording-status" role="status" aria-live="polite"></div>
             @if (Model.IsMockMode)
             {
                 <div class="runtime-status message-info runtime-mock-warning">
                     @T("Plugins.Misc.AIInterview.Runtime.MockMode.Warning")
                 </div>
             }
-            <div id="runtime-status" class="runtime-status runtime-js-hidden" role="status" aria-live="polite"></div>
-
             <div class="runtime-progress"><span id="runtime-progress-bar"></span></div>
         </div>
 
@@ -536,7 +533,7 @@
         const answerBox = document.getElementById('runtime-answer');
         const questionBox = document.getElementById('runtime-question');
         const messageBox = document.getElementById('runtime-message');
-        const statusBox = document.getElementById('runtime-status');
+        const statusBox = document.getElementById('runtime-header-status');
         const transcript = document.getElementById('runtime-transcript');
         const transcriptBody = document.getElementById('transcript-body');
         const conversation = document.getElementById('conversation');
@@ -557,7 +554,6 @@
         const videoCaptionCopySpeaker = document.getElementById('runtime-video-caption-copy-speaker');
         const videoCaptionCopyText = document.getElementById('runtime-video-caption-copy-text');
         const cameraPlaceholder = document.getElementById('camera-placeholder');
-        const recordingStatus = document.getElementById('recording-status');
         const screenShareStatus = document.getElementById('screen-share-status');
         const screenShareInterruptionWarning = document.getElementById('screen-share-interruption-warning');
         const timerChip = document.getElementById('runtime-timer-chip');
@@ -710,7 +706,6 @@
         let completedCountdown = null;
         let completionStatusTimer = null;
         let completionStatusRequestInFlight = false;
-        let reportNavigationStarted = false;
         let completionRecordingCleanupPromise = null;
         let completionLiveMediaStopPromise = null;
         let finalCompletionSpoken = false;
@@ -733,6 +728,12 @@
         let timerStartedAt = null;
         let answerNeedsEditAfterFailure = false;
         let completionWaitGeneration = 0;
+        let completionCriticalError = '';
+        let completionReportUrl = '';
+        let completionWaitingMessage = '';
+        let completionRecordingNote = '';
+        let completionRecordingIncomplete = false;
+        let activeRecordingStatusMessage = '';
         let screenShareAudioAvailable = false;
         let recognitionTurnCharacters = 0;
         let recognitionTurnDurationMs = 0;
@@ -2121,8 +2122,12 @@
             completedCountdown = null;
             completionStatusTimer = null;
             completionStatusRequestInFlight = false;
-            if (!runtimeStoppedOrCompleted)
-                reportNavigationStarted = false;
+            completionCriticalError = '';
+            completionReportUrl = '';
+            completionWaitingMessage = '';
+            completionRecordingNote = '';
+            completionRecordingIncomplete = false;
+            updateReportButton('');
         };
 
         const clearActiveInterviewTimers = () => {
@@ -2257,21 +2262,25 @@
             return `${minutes}:${seconds}`;
         };
 
-        const shouldSuppressCompletedStatus = (message, isError) => {
-            if (!runtimeStoppedOrCompleted || !isError || !message)
+        const resolveCompletedStatusUpdate = (message, isError) => {
+            if (!runtimeStoppedOrCompleted)
                 return false;
 
-            logActivity(`Post-completion status suppressed: ${message}`);
+            if (isError && message) {
+                completionCriticalError = message;
+                logActivity(`Post-completion critical status received: ${message}`);
+            }
+            renderResolvedCompletionStatus();
             return true;
         };
 
         const setStatus = (message, isError) => {
-            if (shouldSuppressCompletedStatus(message, isError))
+            if (resolveCompletedStatusUpdate(message, isError))
                 return;
 
             statusBox.textContent = message || '';
             const isVisible = !!message && (isError || runtimeStoppedOrCompleted || stopInProgress);
-            statusBox.className = `runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
+            statusBox.className = `runtime-header-status runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
         };
 
         const setRuntimeWarning = (message) => {
@@ -2279,13 +2288,13 @@
                 return;
 
             statusBox.textContent = message || '';
-            statusBox.className = `runtime-status ${message ? '' : 'runtime-js-hidden'} message-warning`.trim();
+            statusBox.className = `runtime-header-status runtime-status ${message ? '' : 'runtime-js-hidden'} message-warning`.trim();
         };
 
         const setHeaderStatus = (message, isError = false) => {
             if (!headerStatusBox)
                 return;
-            if (shouldSuppressCompletedStatus(message, isError))
+            if (resolveCompletedStatusUpdate(message, isError))
                 return;
 
             headerStatusBox.textContent = message || '';
@@ -2326,12 +2335,21 @@
         };
 
         const setRecordingStatus = (message, isError, forceVisible = false) => {
-            if (!recordingStatus)
-                return;
-
-            recordingStatus.textContent = message || '';
+            activeRecordingStatusMessage = message || '';
             const isVisible = !!message && !!config.recordingAvailable && (!!isError || !!forceVisible);
-            recordingStatus.className = `runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
+            if (runtimeStoppedOrCompleted) {
+                completionRecordingNote = isVisible ? activeRecordingStatusMessage : '';
+                if (!message) {
+                    completionRecordingIncomplete = false;
+                } else if (isError || /failed|incomplete|did not finish|timed out|still finishing|could not/i.test(activeRecordingStatusMessage)) {
+                    completionRecordingIncomplete = true;
+                }
+                renderResolvedCompletionStatus();
+                return;
+            }
+
+            statusBox.textContent = activeRecordingStatusMessage;
+            statusBox.className = `runtime-header-status runtime-status ${isVisible ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
         };
 
         const logActivity = (msg) => {
@@ -2728,7 +2746,7 @@
                     logActivity('Final recording upload before completion started.');
                     const uploaded = await stopRecording(true);
                     logActivity('Final recording upload before completion finished.');
-                    if (uploaded || (recordingStatus?.textContent || '') === 'Uploading interview recording...')
+                    if (uploaded || activeRecordingStatusMessage === 'Uploading interview recording...')
                         setRecordingStatus('', false);
                     await stopLiveMediaForCompletion();
                     return uploaded;
@@ -2755,28 +2773,54 @@
 
             const normalizedReportUrl = typeof reportUrl === 'string' ? reportUrl.trim() : '';
             if (normalizedReportUrl) {
+                reportButton.href = normalizedReportUrl;
                 reportReadyAction.classList.remove('runtime-js-hidden');
                 reportButton.classList.remove('runtime-js-hidden');
-                reportButton.onclick = () => navigateToReport(normalizedReportUrl);
                 return;
             }
 
+            reportButton.removeAttribute('href');
             reportReadyAction.classList.add('runtime-js-hidden');
             reportButton.classList.add('runtime-js-hidden');
-            reportButton.onclick = null;
         };
 
-        const navigateToReport = (reportUrl) => {
-            if (!reportUrl || reportNavigationStarted)
+        const renderResolvedCompletionStatus = () => {
+            if (!runtimeStoppedOrCompleted)
                 return;
 
-            reportNavigationStarted = true;
-            window.location.href = reportUrl;
+            let message = '';
+            let isError = false;
+            let resolvedReportUrl = '';
+
+            if (completionCriticalError) {
+                message = completionCriticalError;
+                isError = true;
+            } else if (completionReportUrl) {
+                message = completionRecordingIncomplete
+                    ? 'Your report is ready; recording upload incomplete.'
+                    : completionRecordingNote
+                        ? `Your report is ready. ${completionRecordingNote}`
+                        : 'Your report is ready.';
+                resolvedReportUrl = completionReportUrl;
+            } else if (completionWaitingMessage) {
+                message = completionRecordingNote
+                    ? `${completionWaitingMessage} ${completionRecordingNote}`
+                    : completionWaitingMessage;
+            } else if (completionRecordingNote) {
+                message = completionRecordingNote;
+            }
+
+            headerStatusBox.textContent = message;
+            headerStatusBox.className = `runtime-header-status runtime-status ${message ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
+            updateReportButton(resolvedReportUrl);
         };
 
         const renderCompletionWaitState = (remainingSeconds) => {
-            setHeaderStatus(`${reportGenerationMessage} Time remaining: ${formatCountdown(remainingSeconds)}`, false);
-            updateReportButton('');
+            if (completionCriticalError || completionReportUrl)
+                return;
+
+            completionWaitingMessage = `${reportGenerationMessage} Time remaining: ${formatCountdown(remainingSeconds)}`;
+            renderResolvedCompletionStatus();
         };
 
         const stopCompletionStatusPolling = () => {
@@ -2798,16 +2842,16 @@
                 const reportReady = getValue(result, 'reportReady', 'ReportReady') === true;
                 const reportFailed = getValue(result, 'reportGenerationFailed', 'ReportGenerationFailed') === true;
                 const reportInProgress = getValue(result, 'reportGenerationInProgress', 'ReportGenerationInProgress') === true;
-                const reportUrl = getValue(result, 'reportUrl', 'ReportUrl') || '';
-                if (!reportReady || !reportUrl)
-                    updateReportButton('');
-
+                const reportUrlValue = getValue(result, 'reportUrl', 'ReportUrl');
+                const reportUrl = typeof reportUrlValue === 'string' ? reportUrlValue.trim() : '';
                 if (reportReady && reportUrl) {
                     stopCompletionStatusPolling();
                     clearInterval(completedCountdown);
                     completedCountdown = null;
-                    setHeaderStatus('Your report is ready.', false);
-                    updateReportButton(reportUrl);
+                    completionCriticalError = '';
+                    completionWaitingMessage = '';
+                    completionReportUrl = reportUrl;
+                    renderResolvedCompletionStatus();
                     return;
                 }
 
@@ -2815,8 +2859,10 @@
                     stopCompletionStatusPolling();
                     clearInterval(completedCountdown);
                     completedCountdown = null;
-                    setHeaderStatus(getRuntimeMessage(result, 'Report generation failed. Please contact support if the report is not available from your interview history.'), true);
-                    updateReportButton('');
+                    completionCriticalError = getRuntimeMessage(result, 'Report generation failed. Please contact support if the report is not available from your interview history.');
+                    completionWaitingMessage = '';
+                    completionReportUrl = '';
+                    renderResolvedCompletionStatus();
                 }
             } catch (error) {
                 logActivity(`Completion status polling failed: ${error?.message || 'unknown'}`);
@@ -2868,12 +2914,12 @@
 
                 if (!recordingUploaded && config.recordingAvailable && recordingEnabled) {
                     logActivity('recording-upload-failed-before-report-redirect');
-                    setRecordingStatus('Recording upload did not finish. Your report is ready.', false, true);
+                    setRecordingStatus('Recording upload incomplete.', false, true);
                 }
             } catch (error) {
                 const message = error?.message || 'Completion finalization failed.';
                 logActivity(`Completion finalization failed: ${message}`);
-                setRecordingStatus('Recording cleanup is still finishing. Report generation continues.', false, true);
+                setRecordingStatus('Recording cleanup is still finishing.', false, true);
             }
             recordingEnabled = false;
             await stopLiveMediaForCompletion();
