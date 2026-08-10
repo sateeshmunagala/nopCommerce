@@ -65,6 +65,19 @@
                 </div>
             </div>
             <div id="screen-share-interruption-warning" class="runtime-screen-share-interruption-warning runtime-js-hidden" aria-live="assertive">Resume screen share to continue.</div>
+            <div id="screen-share-status" class="runtime-screen-share-status runtime-js-hidden" aria-live="polite"></div>
+            <div class="runtime-status runtime-js-hidden" id="recording-status" role="status" aria-live="polite"></div>
+            @if (Model.IsMockMode)
+            {
+                <div class="runtime-status message-info runtime-mock-warning">
+                    @T("Plugins.Misc.AIInterview.Runtime.MockMode.Warning")
+                </div>
+            }
+            <div id="runtime-status" class="runtime-status runtime-js-hidden" role="status" aria-live="polite"></div>
+            <details id="runtime-log" class="runtime-log-panel">
+                <summary class="runtime-log-title">@T("Plugins.Misc.AIInterview.Runtime.Log")</summary>
+                <div id="runtime-log-body"></div>
+            </details>
 
             <div class="runtime-progress"><span id="runtime-progress-bar"></span></div>
         </div>
@@ -72,10 +85,6 @@
         <div class="runtime-layout">
             <section class="runtime-stage">
                 <div class="runtime-video">
-                    <div id="runtime-log" class="runtime-log-panel">
-                        <div class="runtime-log-title">@T("Plugins.Misc.AIInterview.Runtime.Log")</div>
-                        <div id="runtime-log-body"></div>
-                    </div>
                     <video id="runtime-video" autoplay playsinline muted></video>
                     <div id="camera-placeholder" class="runtime-camera-placeholder">
                         <i class="fa-solid fa-video-slash" aria-hidden="true"></i>
@@ -93,8 +102,13 @@
                         </div>
                     </div>
                     <div id="runtime-video-caption" class="runtime-video-caption runtime-js-hidden" aria-live="polite" hidden>
-                        <div id="runtime-video-caption-speaker" class="runtime-video-caption-speaker"></div>
-                        <div id="runtime-video-caption-text" class="runtime-video-caption-text"></div>
+                        <div class="runtime-video-caption-track">
+                            <span id="runtime-video-caption-item" class="runtime-video-caption-item">
+                                <span id="runtime-video-caption-speaker" class="runtime-video-caption-speaker"></span>
+                                <span id="runtime-video-caption-text" class="runtime-video-caption-text"></span>
+                            </span>
+                            <span id="runtime-video-caption-copy" class="runtime-video-caption-item runtime-video-caption-copy" aria-hidden="true" hidden></span>
+                        </div>
                     </div>
                 </div>
                 <div class="runtime-controls">
@@ -148,14 +162,6 @@
                         </div>
                     </div>
                 </div>
-                <div id="screen-share-status" class="runtime-screen-share-status runtime-js-hidden" aria-live="polite"></div>
-                <div class="runtime-status runtime-js-hidden" id="recording-status" role="status" aria-live="polite"></div>
-                @if (Model.IsMockMode)
-                {
-                    <div class="runtime-status message-info runtime-mock-warning">
-                        @T("Plugins.Misc.AIInterview.Runtime.MockMode.Warning")
-                    </div>
-                }
             </section>
 
             <aside class="runtime-sidebar">
@@ -192,8 +198,6 @@
                                 </button>
                             </div>
                         </div>
-
-                        <div id="runtime-status" class="runtime-status runtime-js-hidden"></div>
                         <div id="runtime-completion" class="runtime-message is-info runtime-js-hidden" aria-live="polite"></div>
                     </section>
 
@@ -536,8 +540,10 @@
         const headerStatusBox = document.getElementById('runtime-header-status');
         const video = document.getElementById('runtime-video');
         const videoCaption = document.getElementById('runtime-video-caption');
+        const videoCaptionItem = document.getElementById('runtime-video-caption-item');
         const videoCaptionSpeaker = document.getElementById('runtime-video-caption-speaker');
         const videoCaptionText = document.getElementById('runtime-video-caption-text');
+        const videoCaptionCopy = document.getElementById('runtime-video-caption-copy');
         const cameraPlaceholder = document.getElementById('camera-placeholder');
         const recordingStatus = document.getElementById('recording-status');
         const screenShareStatus = document.getElementById('screen-share-status');
@@ -1285,26 +1291,56 @@
             guidelinesModalTimer = null;
         };
 
-        const setRuntimeCaption = (speaker, text) => {
-            if (!videoCaption || !videoCaptionSpeaker || !videoCaptionText)
+        const refreshRuntimeCaptionScroll = () => {
+            if (!videoCaption || !videoCaptionItem || !videoCaptionText || !videoCaptionCopy || videoCaption.hidden)
                 return;
 
-            const normalizedText = (text || '').trim();
+            videoCaption.classList.remove('is-scrolling');
+            videoCaptionCopy.hidden = true;
+            requestAnimationFrame(() => {
+                const availableWidth = Math.max(0, videoCaption.clientWidth - 24);
+                const shouldScroll = videoCaptionText.scrollWidth > videoCaptionText.clientWidth
+                    || videoCaptionItem.scrollWidth > availableWidth;
+                videoCaption.classList.toggle('is-scrolling', shouldScroll);
+                videoCaptionCopy.hidden = !shouldScroll;
+            });
+        };
+
+        const setRuntimeCaption = (speaker, text) => {
+            if (!videoCaption || !videoCaptionItem || !videoCaptionSpeaker || !videoCaptionText || !videoCaptionCopy)
+                return;
+
+            const normalizedText = (text || '').replace(/\s+/g, ' ').trim();
             if (!normalizedText) {
                 videoCaption.classList.add('runtime-js-hidden');
+                videoCaption.classList.remove('is-scrolling');
                 videoCaption.hidden = true;
                 videoCaption.parentElement?.classList.remove('has-caption');
                 videoCaptionSpeaker.textContent = '';
                 videoCaptionText.textContent = '';
+                videoCaptionCopy.textContent = '';
+                videoCaptionCopy.hidden = true;
                 return;
             }
 
-            videoCaptionSpeaker.textContent = `${speaker}:`;
-            videoCaptionText.textContent = normalizedText;
+            const normalizedSpeaker = (speaker || '').replace(/\s+/g, ' ').trim();
+            const maximumCaptionLength = 140;
+            const overlayText = normalizedText.length > maximumCaptionLength
+                ? `${normalizedText.slice(0, maximumCaptionLength - 1).trimEnd()}…`
+                : normalizedText;
+            const speakerLabel = normalizedSpeaker ? `${normalizedSpeaker}:` : '';
+
+            videoCaptionSpeaker.textContent = speakerLabel;
+            videoCaptionSpeaker.hidden = !speakerLabel;
+            videoCaptionText.textContent = overlayText;
+            videoCaptionCopy.textContent = `${speakerLabel} ${overlayText}`.trim();
             videoCaption.classList.remove('runtime-js-hidden');
             videoCaption.hidden = false;
             videoCaption.parentElement?.classList.add('has-caption');
+            refreshRuntimeCaptionScroll();
         };
+
+        window.addEventListener('resize', refreshRuntimeCaptionScroll);
 
         const syncAnswerCaption = () => {
             const currentAnswer = (answerBox?.value || '').trim();

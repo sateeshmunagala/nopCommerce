@@ -2524,7 +2524,30 @@ body.ai-job-preview-open .item-box {
 
 .runtime-status-region {
     display: grid;
+    gap: 8px;
     min-width: 0;
+}
+
+.runtime-status-region > .runtime-status {
+    box-sizing: border-box;
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 1px solid #bbf7d0;
+    border-radius: 1px;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.runtime-status-region > .runtime-status.message-error {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #b42318;
+}
+
+.runtime-status-region > .runtime-status.message-info {
+    border-color: #fed7aa;
+    background: #fff7ed;
+    color: #9a3412;
 }
 
 .runtime-report-ready-row {
@@ -2537,6 +2560,11 @@ body.ai-job-preview-open .item-box {
     border: 1px solid #bbf7d0;
     border-radius: 1px;
     background: #f0fdf4;
+}
+
+.runtime-report-ready-row:has(> .runtime-header-status.message-error) {
+    border-color: #fca5a5;
+    background: #fef2f2;
 }
 
 .runtime-report-ready-row:has(> .runtime-header-status.runtime-js-hidden):has(> .runtime-report-ready-action.runtime-js-hidden) {
@@ -2557,6 +2585,10 @@ body.ai-job-preview-open .item-box {
 
 .runtime-header-status.message-success {
     color: #166534;
+}
+
+.runtime-report-ready-row > .runtime-header-status.message-error {
+    color: #b42318;
 }
 
 .runtime-report-ready-action {
@@ -2615,6 +2647,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-screen-share-interruption-warning {
+    box-sizing: border-box;
     min-height: 42px;
     padding: 11px 14px;
     border: 1px solid #fca5a5;
@@ -2706,18 +2739,15 @@ body.ai-job-preview-open .item-box {
 
 .runtime-log-panel {
     display: none;
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    z-index: 10;
-    max-width: 250px;
-    max-height: 200px;
+    width: 100%;
+    max-height: 160px;
     overflow-y: auto;
-    padding: 8px;
-    border: 1px solid #ddd;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px dashed #cbd5e1;
     border-radius: 1px;
-    background: rgba(255, 255, 255, 0.92);
-    color: #333;
+    background: #f8fafc;
+    color: #334155;
     font-size: 11px;
     text-align: left;
 }
@@ -2742,9 +2772,13 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-log-title {
-    margin-bottom: 4px;
-    color: #333;
+    color: #334155;
     font-weight: 700;
+    cursor: pointer;
+}
+
+.runtime-log-panel[open] .runtime-log-title {
+    margin-bottom: 6px;
 }
 
 .runtime-avatar {
@@ -2818,13 +2852,13 @@ body.ai-job-preview-open .item-box {
     position: absolute;
     bottom: var(--runtime-caption-bottom);
     left: 50%;
-    display: grid;
-    gap: 6px;
-    width: min(72%, 860px);
+    display: block;
+    width: min(68%, 760px);
     max-width: calc(100% - 44px);
-    max-height: min(42%, calc(100% - var(--runtime-caption-bottom) - 22px));
-    overflow-y: auto;
-    padding: 14px 16px;
+    height: 40px;
+    overflow: hidden;
+    box-sizing: border-box;
+    padding: 0 12px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 1px;
     background: rgba(15, 23, 42, 0.72);
@@ -2833,10 +2867,51 @@ body.ai-job-preview-open .item-box {
     box-shadow: 0 14px 34px rgba(15, 23, 42, 0.22);
     z-index: 4;
     transform: translateX(-50%);
-    overscroll-behavior: contain;
+}
+
+.runtime-video-caption-track {
+    display: flex;
+    align-items: center;
+    gap: 48px;
+    width: max-content;
+    min-width: 100%;
+    height: 100%;
+    will-change: transform;
+}
+
+.runtime-video-caption-item {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.runtime-video-caption:not(.is-scrolling) .runtime-video-caption-item:first-child {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.runtime-video-caption.is-scrolling .runtime-video-caption-track {
+    animation: runtime-caption-scroll 14s linear infinite;
+}
+
+.runtime-video-caption-copy[hidden] {
+    display: none;
+}
+
+@keyframes runtime-caption-scroll {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(calc(-50% - 24px));
+    }
 }
 
 .runtime-video-caption-speaker {
+    flex: 0 0 auto;
     color: #9ae6d8;
     font-size: 0.76rem;
     font-weight: 700;
@@ -2845,10 +2920,19 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-video-caption-text {
-    font-size: 1rem;
-    line-height: 1.55;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.9rem;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.runtime-video-caption-copy {
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1;
 }
 
 .runtime-controls {
@@ -4445,6 +4529,19 @@ body.ai-job-preview-open .item-box {
         flex-wrap: wrap;
     }
 
+    .runtime-status-region {
+        gap: 6px;
+    }
+
+    .runtime-status-region > .runtime-status,
+    .runtime-screen-share-interruption-warning,
+    .runtime-screen-share-status,
+    .runtime-mock-warning {
+        min-height: 36px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
     .runtime-page,
     .runtime-stage,
     .runtime-sidebar {
@@ -4526,13 +4623,23 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-video-caption {
-        right: 14px;
+        right: 8px;
         bottom: var(--runtime-caption-bottom);
-        left: 14px;
+        left: 8px;
         width: auto;
         max-width: none;
-        max-height: min(48%, calc(100% - var(--runtime-caption-bottom) - 14px));
+        height: 34px;
+        padding: 0 10px;
         transform: none;
+    }
+
+    .runtime-video-caption-speaker {
+        font-size: 0.68rem;
+    }
+
+    .runtime-video-caption-text,
+    .runtime-video-caption-copy {
+        font-size: 0.8rem;
     }
 
     .runtime-modal {
@@ -4598,6 +4705,22 @@ body.ai-job-preview-open .item-box {
     .runtime-permissions-summary-list div {
         display: grid;
         gap: 4px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .runtime-video-caption.is-scrolling .runtime-video-caption-track {
+        width: 100%;
+        animation: none;
+    }
+
+    .runtime-video-caption.is-scrolling .runtime-video-caption-item:first-child {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .runtime-video-caption.is-scrolling .runtime-video-caption-copy {
+        display: none;
     }
 }
 
