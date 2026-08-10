@@ -2524,14 +2524,14 @@ body.ai-job-preview-open .item-box {
 
 .runtime-status-region {
     display: grid;
-    gap: 8px;
+    gap: 2px;
     min-width: 0;
 }
 
 .runtime-status-region > .runtime-status {
     box-sizing: border-box;
     min-height: 42px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 1px solid #bbf7d0;
     border-radius: 1px;
     background: #f0fdf4;
@@ -2590,9 +2590,9 @@ body.ai-job-preview-open .item-box {
     align-items: center;
     justify-content: flex-start;
     flex-wrap: nowrap;
-    gap: 4px;
+    gap: 2px;
     min-width: 0;
-    padding: 6px 8px;
+    padding: 4px 6px;
     border: 1px solid #bbf7d0;
     border-radius: 1px;
     background: #f0fdf4;
@@ -4603,8 +4603,8 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-report-ready-row {
-        gap: 4px;
-        padding: 6px 7px;
+        gap: 2px;
+        padding: 4px 6px;
     }
 
     .runtime-shell .runtime-report-ready-action .runtime-report-link {
@@ -4616,7 +4616,7 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-status-region {
-        gap: 6px;
+        gap: 2px;
     }
 
     .runtime-status-region > .runtime-status,

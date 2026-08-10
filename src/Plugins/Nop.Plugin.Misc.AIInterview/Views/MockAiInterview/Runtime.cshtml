@@ -4067,8 +4067,6 @@
 
             try {
                 const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tokenResult.token, tokenResult.region);
-                if (purpose === 'question')
-                    setHeaderStatus('Playing interviewer audio.', false);
                 botAudioCapturedForCurrentSpeech = false;
                 botAudioRecordingFallbackNotifiedForCurrentSpeech = false;
 
@@ -4079,9 +4077,6 @@
                     logActivity(`Controlled speech playback unavailable. reason=${controlledPlaybackError?.message || controlledPlaybackError?.name || 'unknown'}`);
                     noteBotAudioRecordingFallback();
                     await speakTextWithDefaultOutput(speechConfig, text, reportTtsStartedOnce, { suppressCandidateMessage: purpose === 'completion' });
-                } finally {
-                    if (purpose === 'question')
-                        setHeaderStatus('', false);
                 }
 
                 if (purpose === 'question')
