@@ -1842,6 +1842,51 @@ body {
     background: #2c2c2c;
 }
 
+/* Suppress the separate header band visually on all viewports */
+.jb-selectors-hidden {
+    display: none !important;
+}
+
+/* Inline selectors container inside header-lower (desktop only) */
+.jb-inline-selectors {
+    display: flex;
+    align-items: center;
+    height: 64px;
+    border-left: 1px solid #ededed;
+    flex-shrink: 0;
+}
+
+.jb-inline-selectors .currency-selector,
+.jb-inline-selectors .language-selector {
+    display: flex;
+    align-items: center;
+    height: 64px;
+}
+
+.jb-inline-selectors .currency-selector select,
+.jb-inline-selectors .language-selector select {
+    min-height: 64px;
+    padding: 0 18px 0 10px;
+    border: 0;
+    background: transparent;
+    color: #7d7d7d;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.86rem;
+    cursor: pointer;
+}
+
+.jb-inline-selectors .currency-selector select:hover,
+.jb-inline-selectors .language-selector select:hover {
+    color: var(--jb-accent-dark);
+}
+
+/* Hide inline selectors on mobile; currency is in drawer via existing mechanism */
+@media (max-width: 1000px) {
+    .jb-inline-selectors {
+        display: none !important;
+    }
+}
+
 .header-selectors-wrapper {
     display: flex;
     align-items: center;
@@ -3301,14 +3346,42 @@ body.jb-search-open .jb-drawer-overlay {
         border-bottom: 1px dashed #d4d4d4;
     }
 
+    .jb-drawer-selectors .currency-selector {
+        position: relative;
+    }
+
+    .jb-drawer-selectors .currency-selector::before {
+        content: "Currency";
+        display: block;
+        padding: 12px 16px 0;
+        color: #9e9e9e;
+        font-family: "Fjalla One", Arial, sans-serif;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .jb-drawer-selectors .language-selector::before {
+        content: "Language";
+        display: block;
+        padding: 12px 16px 0;
+        color: #9e9e9e;
+        font-family: "Fjalla One", Arial, sans-serif;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
     .jb-drawer-selectors select {
         width: 100%;
         min-height: 55px;
         padding: 0 16px;
+        padding-left: 16px;
         border: 0;
         background: transparent;
-        color: #7f7f7f;
+        color: #4a4a4a;
         font-family: "Fjalla One", Arial, sans-serif;
+        text-align: left;
     }
 
     .store-search-box.jb-search-overlay {
@@ -7561,6 +7634,12 @@ body.jb-filter-panel-open .product-filters {
     margin: 0;
 }
 
+.html-account-page .center-2 {
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
 .html-account-page .block-account-navigation {
     margin: 0;
     border: 0;
@@ -7568,6 +7647,7 @@ body.jb-filter-panel-open .product-filters {
 }
 
 .html-account-page .block-account-navigation .title {
+    display: block;
     margin: 0;
     padding: 22px 24px;
     border: 0;
@@ -7602,7 +7682,8 @@ body.jb-filter-panel-open .product-filters {
 }
 
 .html-account-page .block-account-navigation a {
-    display: block;
+    display: flex;
+    align-items: center;
     min-width: 0;
     padding: 16px 22px;
     color: #555d65;
@@ -7613,6 +7694,19 @@ body.jb-filter-panel-open .product-filters {
     text-transform: uppercase;
     overflow-wrap: anywhere;
     transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.html-account-page .block-account-navigation a i {
+    flex-shrink: 0;
+    width: 18px;
+    margin-right: 10px;
+    color: var(--jb-muted);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.html-account-page .block-account-navigation li.active a i {
+    color: var(--jb-accent-dark);
 }
 
 .html-account-page .block-account-navigation li.active a {
@@ -7647,10 +7741,17 @@ body.jb-filter-panel-open .product-filters {
 }
 
 .html-account-page .customer-info-page .page-body {
+    display: block;
+    width: 100%;
     min-width: 0;
+    overflow: hidden;
 }
 
 .html-account-page .customer-info-page form {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     padding: 30px 36px 34px;
     border-left: 0;
     background: #ffffff;
@@ -7658,7 +7759,11 @@ body.jb-filter-panel-open .product-filters {
 
 .html-account-page .customer-info-page .fieldset,
 .html-account-page .customer-info-page .jb-account-panel {
+    display: block;
+    width: 100%;
     min-width: 0;
+    float: none;
+    box-sizing: border-box;
     margin: 0 0 26px;
     padding: 0;
     border: 0;
@@ -11903,7 +12008,8 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     }
 
     .html-account-page .jb-account-nav .list li a {
-        display: block;
+        display: flex;
+        align-items: center;
         padding: 10px 18px;
         color: var(--jb-ink);
         font-size: 0.9rem;

@@ -5602,6 +5602,35 @@ body.ai-job-preview-open .item-box {
     gap: 24px;
 }
 
+.practice-about {
+    min-width: 0;
+    padding: 20px 24px;
+    border: 1px solid var(--job-border);
+    border-radius: 8px;
+    background: var(--job-card);
+    box-shadow: var(--job-shadow);
+}
+
+.practice-about h2 {
+    margin: 0 0 12px;
+    color: var(--job-text);
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.practice-about .practice-description {
+    color: var(--job-text);
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+}
+
+.practice-content-grid:empty {
+    display: none;
+}
+
 .practice-content-grid > .job-card:last-child:nth-child(odd) {
     grid-column: 1 / -1;
 }

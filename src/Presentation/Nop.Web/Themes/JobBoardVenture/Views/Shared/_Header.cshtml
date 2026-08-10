@@ -29,7 +29,7 @@
     @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HeaderBefore })
     @if (hasHeaderSelectors)
     {
-        <div class="header-upper">
+        <div class="header-upper jb-selectors-hidden" aria-hidden="true">
             <div class="header-selectors-wrapper">
                 @taxSelector
                 @currencySelector
@@ -73,6 +73,14 @@
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </button>
             </div>
+
+            @if (HasVisibleContent(currencySelector) || HasVisibleContent(languageSelector))
+            {
+                <div class="jb-inline-selectors">
+                    @if (HasVisibleContent(currencySelector)) { @currencySelector }
+                    @if (HasVisibleContent(languageSelector)) { @languageSelector }
+                </div>
+            }
 
             <div class="header-links-wrapper">
                 @await Component.InvokeAsync(typeof(HeaderLinksViewComponent))

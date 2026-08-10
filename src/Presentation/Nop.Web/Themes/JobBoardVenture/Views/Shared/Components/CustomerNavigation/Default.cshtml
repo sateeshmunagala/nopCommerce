@@ -30,8 +30,26 @@
                           additionalData = Model })
                 @foreach (var item in Model.CustomerNavigationItems)
                 {
+                    var iconClass = item.ItemClass switch
+                    {
+                        "customer-info" => "fas fa-user",
+                        "customer-orders" => "fas fa-box",
+                        "customer-addresses" => "fas fa-map-marker-alt",
+                        "paypal-payment-tokens" => "fas fa-credit-card",
+                        "change-password" => "fas fa-lock",
+                        "customer-my-activity" => "fas fa-chart-bar",
+                        "return-requests" => "fas fa-undo",
+                        "downloadable-products" => "fas fa-download",
+                        _ => string.Empty
+                    };
                     <li class="@item.ItemClass @(Model.SelectedTab == item.Tab ? "active" : "inactive")">
-                        <a href="@Url.RouteUrl(item.RouteName)">@item.Title</a>
+                        <a href="@Url.RouteUrl(item.RouteName)">
+                            @if (!string.IsNullOrEmpty(iconClass))
+                            {
+                                <i class="@iconClass" aria-hidden="true"></i>
+                            }
+                            @item.Title
+                        </a>
                     </li>
                 }
                 @await Component.InvokeAsync(typeof(WidgetViewComponent),

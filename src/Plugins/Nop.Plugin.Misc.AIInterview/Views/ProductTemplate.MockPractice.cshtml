@@ -178,6 +178,15 @@
                             <span>Skill or resume</span>
                         </div>
                     </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
+                    {
+                        <div class="practice-about">
+                            <h2>About this AI Interview</h2>
+                            <div class="practice-description">
+                                @Html.Raw(Model.FullDescription)
+                            </div>
+                        </div>
+                    }
                 </div>
 
                 <div class="job-ai-panel practice-start-panel">
@@ -298,18 +307,6 @@
                     </div>
                 </div>
             </section>
-
-            <div class="job-content-grid practice-content-grid">
-                @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
-                {
-                    <section class="job-card">
-                        <h2>About this AI Interview</h2>
-                        <div class="practice-description">
-                            @Html.Raw(Model.FullDescription)
-                        </div>
-                    </section>
-                }
-            </div>
         </div>
     </div>
 </div>
