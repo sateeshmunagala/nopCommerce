@@ -158,8 +158,7 @@
         <div class="job-shell practice-shell">
             <section class="job-hero">
                 <div class="job-hero-copy">
-                    <p class="job-kicker">Generic AI interview practice</p>
-                    <h3>@Model.Name</h3>
+                    <p class="job-kicker">@Model.Name</p>
                     <div class="job-lead">@Html.Raw(summary)</div>
                     <div class="job-grid">
                         <div class="job-card">
@@ -184,7 +183,7 @@
                 <div class="job-ai-panel practice-start-panel">
                     <div class="job-ai-grid">
                         <div>
-                            <h2>Start practice</h2>
+                            <h2>Start Interview</h2>
                         </div>
 
                         @if (!isAuthenticated)
@@ -304,7 +303,7 @@
                 @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
                 {
                     <section class="job-card">
-                        <h2>About this practice</h2>
+                        <h2>About this AI Interview</h2>
                         <div class="practice-description">
                             @Html.Raw(Model.FullDescription)
                         </div>
