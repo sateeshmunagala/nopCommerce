@@ -11,6 +11,7 @@ public class CreditLedgerEntry : BaseEntity
     public int ProductId { get; set; }
     public int OrderId { get; set; }
     public int SponsorInviteId { get; set; }
+    public int? InterviewSessionId { get; set; }
     public string Remarks { get; set; }
     public DateTime CreatedOnUtc { get; set; }
 }

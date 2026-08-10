@@ -19,6 +19,7 @@ using Nop.Services.Helpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -1180,6 +1181,296 @@ public class CreditService : ICreditService
     }
 }
 
+public class InterviewStartCreditService : IInterviewStartCreditService
+{
+    public const decimal InterviewStartCost = 1m;
+    private static readonly ConcurrentDictionary<int, SessionCreditLock> SessionCreditLocks = new();
+
+    private sealed class SessionCreditLock
+    {
+        public SemaphoreSlim Semaphore { get; } = new(1, 1);
+        public int ReferenceCount { get; set; }
+    }
+
+    private sealed class SessionCreditLockLease : IDisposable
+    {
+        private readonly int _sessionId;
+        private readonly SessionCreditLock _sessionLock;
+        private bool _disposed;
+
+        public SessionCreditLockLease(int sessionId, SessionCreditLock sessionLock)
+        {
+            _sessionId = sessionId;
+            _sessionLock = sessionLock;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            _sessionLock.Semaphore.Release();
+            lock (_sessionLock)
+            {
+                _sessionLock.ReferenceCount--;
+                if (_sessionLock.ReferenceCount == 0)
+                    SessionCreditLocks.TryRemove(new KeyValuePair<int, SessionCreditLock>(_sessionId, _sessionLock));
+            }
+        }
+    }
+
+    private readonly IRepository<CreditWallet> _walletRepository;
+    private readonly IRepository<CreditLedgerEntry> _ledgerRepository;
+    private readonly IRepository<InterviewSession> _sessionRepository;
+    private readonly IRepository<SponsorInvite> _inviteRepository;
+    private readonly INopDataProvider _dataProvider;
+    private readonly ILogger<InterviewStartCreditService> _logger;
+
+    public InterviewStartCreditService(
+        IRepository<CreditWallet> walletRepository,
+        IRepository<CreditLedgerEntry> ledgerRepository,
+        IRepository<InterviewSession> sessionRepository,
+        IRepository<SponsorInvite> inviteRepository,
+        INopDataProvider dataProvider,
+        ILogger<InterviewStartCreditService> logger)
+    {
+        _walletRepository = walletRepository;
+        _ledgerRepository = ledgerRepository;
+        _sessionRepository = sessionRepository;
+        _inviteRepository = inviteRepository;
+        _dataProvider = dataProvider;
+        _logger = logger;
+    }
+
+    public async Task<InterviewCreditEligibilityResult> CheckEligibilityAsync(InterviewSession session)
+    {
+        if (session == null || session.Id <= 0)
+            return new InterviewCreditEligibilityResult { Eligible = false };
+
+        var persistedSession = await _sessionRepository.GetByIdAsync(session.Id) ?? session;
+        if (HasExistingCharge(persistedSession))
+            return BuildEligibility(persistedSession, true, true);
+
+        var chargeContext = await ResolveChargeContextAsync(persistedSession);
+        if (chargeContext.CustomerId <= 0)
+            return BuildEligibility(persistedSession, false, false, chargeContext);
+
+        var wallet = await GetWalletAsync(chargeContext.CustomerId);
+        return BuildEligibility(persistedSession, wallet?.Balance >= InterviewStartCost, false, chargeContext);
+    }
+
+    public async Task<InterviewCreditChargeResult> ChargeAsync(InterviewSession session)
+    {
+        if (session == null || session.Id <= 0)
+            return new InterviewCreditChargeResult { Eligible = false };
+
+        using var sessionLock = await AcquireSessionCreditLockAsync(session.Id);
+        try
+        {
+            using var transaction = _dataProvider.CreateTransactionScope();
+            var persistedSession = await _sessionRepository.GetByIdAsync(session.Id) ?? session;
+            if (HasExistingCharge(persistedSession))
+            {
+                transaction.Complete();
+                return BuildChargeResult(persistedSession, true, true, false);
+            }
+
+            var chargeContext = await ResolveChargeContextAsync(persistedSession);
+            if (chargeContext.CustomerId <= 0)
+                return BuildChargeResult(persistedSession, false, false, false, chargeContext);
+
+            var wallet = await GetWalletAsync(chargeContext.CustomerId);
+            if (wallet == null || wallet.Balance < InterviewStartCost)
+                return BuildChargeResult(persistedSession, false, false, false, chargeContext);
+
+            wallet.Balance -= InterviewStartCost;
+            await _walletRepository.UpdateAsync(wallet);
+
+            var chargedOnUtc = DateTime.UtcNow;
+            await _ledgerRepository.InsertAsync(new CreditLedgerEntry
+            {
+                CreditWalletId = wallet.Id,
+                Amount = -InterviewStartCost,
+                TransactionType = "Withdrawal",
+                LedgerSource = chargeContext.LedgerSource,
+                ProductId = persistedSession.ProductId,
+                SponsorInviteId = persistedSession.SponsorInviteId,
+                InterviewSessionId = persistedSession.Id,
+                Remarks = chargeContext.Remarks,
+                CreatedOnUtc = chargedOnUtc
+            });
+
+            persistedSession.CreditChargedOnUtc = chargedOnUtc;
+            persistedSession.CreditChargeCustomerId = chargeContext.CustomerId;
+            persistedSession.CreditChargeAmount = InterviewStartCost;
+            persistedSession.CreditChargeLedgerSource = chargeContext.LedgerSource;
+            await _sessionRepository.UpdateAsync(persistedSession);
+            transaction.Complete();
+
+            return BuildChargeResult(persistedSession, true, false, true, chargeContext);
+        }
+        catch
+        {
+            // Serializable persistence may choose one parallel request as a transaction victim.
+            // If its peer committed first, return that durable marker as a successful no-op.
+            var persistedSession = await _sessionRepository.GetByIdAsync(session.Id);
+            if (persistedSession?.CreditChargedOnUtc.HasValue == true)
+                return BuildChargeResult(persistedSession, true, true, false);
+            throw;
+        }
+    }
+
+    public async Task<bool> RefundAsync(InterviewSession session, string reasonCode, string notice)
+    {
+        if (session == null || session.Id <= 0)
+            return false;
+
+        using var sessionLock = await AcquireSessionCreditLockAsync(session.Id);
+        try
+        {
+            using var transaction = _dataProvider.CreateTransactionScope();
+            var persistedSession = await _sessionRepository.GetByIdAsync(session.Id) ?? session;
+            if (!persistedSession.CreditChargedOnUtc.HasValue || persistedSession.CreditRefundedOnUtc.HasValue || persistedSession.CreditChargeCustomerId <= 0)
+                return false;
+
+            var wallet = await GetWalletAsync(persistedSession.CreditChargeCustomerId);
+            if (wallet == null)
+                return false;
+
+            var amount = persistedSession.CreditChargeAmount > 0 ? persistedSession.CreditChargeAmount : InterviewStartCost;
+            wallet.Balance += amount;
+            await _walletRepository.UpdateAsync(wallet);
+
+            var refundedOnUtc = DateTime.UtcNow;
+            await _ledgerRepository.InsertAsync(new CreditLedgerEntry
+            {
+                CreditWalletId = wallet.Id,
+                Amount = amount,
+                TransactionType = "Deposit",
+                LedgerSource = CreditLedgerSources.InterviewStartRefund,
+                ProductId = persistedSession.ProductId,
+                SponsorInviteId = persistedSession.SponsorInviteId,
+                InterviewSessionId = persistedSession.Id,
+                Remarks = notice,
+                CreatedOnUtc = refundedOnUtc
+            });
+
+            persistedSession.CreditRefundedOnUtc = refundedOnUtc;
+            persistedSession.CreditRefundReasonCode = reasonCode;
+            await _sessionRepository.UpdateAsync(persistedSession);
+            transaction.Complete();
+
+            _logger.LogWarning(
+                "AIInterview credit refund recorded. ReasonCode={ReasonCode}; SessionId={SessionId}; CustomerId={CustomerId}; LedgerSource={LedgerSource}; Amount={Amount}.",
+                reasonCode, persistedSession.Id, persistedSession.CreditChargeCustomerId, persistedSession.CreditChargeLedgerSource, amount);
+            return true;
+        }
+        catch
+        {
+            var persistedSession = await _sessionRepository.GetByIdAsync(session.Id);
+            if (persistedSession?.CreditRefundedOnUtc.HasValue == true)
+                return false;
+            throw;
+        }
+    }
+
+    public Task NotifyRefundAsync(InterviewSession session, string reasonCode)
+    {
+        // Placeholder integration point: replace this log with the refund email workflow.
+        _logger.LogInformation(
+            "AIInterview refund email notification placeholder invoked. ReasonCode={ReasonCode}; SessionId={SessionId}; CustomerId={CustomerId}.",
+            reasonCode, session?.Id ?? 0, session?.CustomerId ?? 0);
+        return Task.CompletedTask;
+    }
+
+    private async Task<CreditWallet> GetWalletAsync(int customerId)
+    {
+        return (await _walletRepository.GetAllAsync(query => query
+            .Where(wallet => wallet.CustomerId == customerId)
+            .OrderBy(wallet => wallet.Id)))
+            .FirstOrDefault();
+    }
+
+    private async Task<(int CustomerId, string LedgerSource, string Remarks)> ResolveChargeContextAsync(InterviewSession session)
+    {
+        if (session.SponsorInviteId > 0)
+        {
+            var invite = await _inviteRepository.GetByIdAsync(session.SponsorInviteId);
+            var inviteUsable = invite != null &&
+                invite.IsActive &&
+                invite.ProductId == session.ProductId &&
+                (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc > DateTime.UtcNow);
+            if (!inviteUsable)
+                return (0, CreditLedgerSources.SponsorInterviewUsage, "Sponsored Interview Start Charge");
+
+            return (invite.SponsorId, CreditLedgerSources.SponsorInterviewUsage, "Sponsored Interview Start Charge");
+        }
+
+        return (session.CustomerId, CreditLedgerSources.InterviewUsage, "Interview Start Charge");
+    }
+
+    private static InterviewCreditEligibilityResult BuildEligibility(
+        InterviewSession session,
+        bool eligible,
+        bool alreadyCharged,
+        (int CustomerId, string LedgerSource, string Remarks)? context = null)
+    {
+        return new InterviewCreditEligibilityResult
+        {
+            Eligible = eligible,
+            AlreadyCharged = alreadyCharged,
+            ChargeCustomerId = session.CreditChargeCustomerId > 0 ? session.CreditChargeCustomerId : context?.CustomerId ?? 0,
+            LedgerSource = !string.IsNullOrWhiteSpace(session.CreditChargeLedgerSource) ? session.CreditChargeLedgerSource : context?.LedgerSource
+        };
+    }
+
+    private static bool HasExistingCharge(InterviewSession session)
+    {
+        // Sessions created by older plugin versions were charged before navigation and marked
+        // StartedOnUtc immediately. Treat them as already paid so deployment cannot double-charge
+        // an applicant who still has an active legacy token.
+        return session?.CreditChargedOnUtc.HasValue == true || session?.StartedOnUtc.HasValue == true;
+    }
+
+    private static InterviewCreditChargeResult BuildChargeResult(
+        InterviewSession session,
+        bool eligible,
+        bool alreadyCharged,
+        bool chargedNow,
+        (int CustomerId, string LedgerSource, string Remarks)? context = null)
+    {
+        return new InterviewCreditChargeResult
+        {
+            Eligible = eligible,
+            AlreadyCharged = alreadyCharged,
+            ChargedNow = chargedNow,
+            ChargeCustomerId = session.CreditChargeCustomerId > 0 ? session.CreditChargeCustomerId : context?.CustomerId ?? 0,
+            LedgerSource = !string.IsNullOrWhiteSpace(session.CreditChargeLedgerSource) ? session.CreditChargeLedgerSource : context?.LedgerSource
+        };
+    }
+
+    private static async Task<IDisposable> AcquireSessionCreditLockAsync(int sessionId)
+    {
+        SessionCreditLock sessionLock;
+        while (true)
+        {
+            sessionLock = SessionCreditLocks.GetOrAdd(sessionId, _ => new SessionCreditLock());
+            lock (sessionLock)
+            {
+                if (SessionCreditLocks.TryGetValue(sessionId, out var current) && ReferenceEquals(current, sessionLock))
+                {
+                    sessionLock.ReferenceCount++;
+                    break;
+                }
+            }
+        }
+
+        await sessionLock.Semaphore.WaitAsync();
+        return new SessionCreditLockLease(sessionId, sessionLock);
+    }
+}
+
 public class CreditActivityService : ICreditActivityService
 {
     private sealed record LedgerDisplayContext(CreditLedgerEntry Entry, int CustomerId, decimal BalanceAfter);
@@ -1313,6 +1604,9 @@ public class CreditActivityService : ICreditActivityService
         var productName = await ResolveProductNameAsync(entry.ProductId);
         var grant = await ResolvePurchaseGrantAsync(context);
         productName ??= await ResolveProductNameAsync(grant?.ProductId ?? 0);
+
+        if (IsSource(entry, CreditLedgerSources.InterviewStartRefund))
+            return (productName ?? "-", CreditLedgerSources.InterviewStartRefund, "Interview start refund");
 
         if (IsSource(entry, CreditLedgerSources.Order) || entry.OrderId > 0 || grant != null)
             return (productName ?? "Credit pack", CreditLedgerSources.Order, "Credit pack purchase");

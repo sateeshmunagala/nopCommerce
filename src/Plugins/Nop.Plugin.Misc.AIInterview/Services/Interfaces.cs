@@ -435,12 +435,21 @@ public interface ICreditService
     Task<bool> AuthorizeAndChargeAsync(int customerId, decimal amount, string remarks, string ledgerSource, int productId = 0, int sponsorInviteId = 0);
 }
 
+public interface IInterviewStartCreditService
+{
+    Task<InterviewCreditEligibilityResult> CheckEligibilityAsync(InterviewSession session);
+    Task<InterviewCreditChargeResult> ChargeAsync(InterviewSession session);
+    Task<bool> RefundAsync(InterviewSession session, string reasonCode, string notice);
+    Task NotifyRefundAsync(InterviewSession session, string reasonCode);
+}
+
 public static class CreditLedgerSources
 {
     public const string Order = "Order";
     public const string AdminTopUp = "Admin top-up";
     public const string InterviewUsage = "Interview usage";
     public const string SponsorInterviewUsage = "Sponsor interview usage";
+    public const string InterviewStartRefund = "Interview start refund";
     public const string Adjustment = "Adjustment";
 }
 

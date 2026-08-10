@@ -50,6 +50,12 @@ public class InterviewSession : BaseEntity
     public decimal TotalSpeechCostUsd { get; set; }
     public decimal TotalAzureCostUsd { get; set; }
     public int SponsorInviteId { get; set; }
+    public DateTime? CreditChargedOnUtc { get; set; }
+    public int CreditChargeCustomerId { get; set; }
+    public decimal CreditChargeAmount { get; set; }
+    public string CreditChargeLedgerSource { get; set; }
+    public DateTime? CreditRefundedOnUtc { get; set; }
+    public string CreditRefundReasonCode { get; set; }
     public string CandidateFeedbackIssue { get; set; }
     public string CandidateFeedbackHelpfulness { get; set; }
     public string CandidateFeedbackComment { get; set; }

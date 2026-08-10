@@ -2550,6 +2550,35 @@ body.ai-job-preview-open .item-box {
     color: #9a3412;
 }
 
+.runtime-credit-warning {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: 1px solid #f59e0b;
+    border-radius: 4px;
+    background: #fffbeb;
+    color: #92400e;
+    font-weight: 600;
+}
+
+.runtime-credit-upgrade {
+    flex: 0 0 auto;
+    min-width: 96px;
+    padding: 8px 14px;
+    text-align: center;
+    text-decoration: none;
+}
+
+@media (max-width: 640px) {
+    .runtime-credit-warning {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
 .runtime-report-ready-row {
     display: flex;
     align-items: center;

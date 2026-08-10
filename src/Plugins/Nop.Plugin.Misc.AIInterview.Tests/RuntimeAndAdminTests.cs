@@ -431,6 +431,170 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public async Task Runtime_Load_PrechecksCreditsWithoutChargingAndShowsPricingWarningSettings()
+    {
+        var session = new InterviewSession
+        {
+            Id = 801,
+            CustomerId = 7,
+            ProductId = 12,
+            Token = "credit-preview-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(20)
+        };
+        var startCredits = new Mock<IInterviewStartCreditService>();
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        _interviewRuntimeService.Setup(x => x.GetRuntimeModelAsync(session.Token)).ReturnsAsync(new InterviewRuntimeModel());
+        startCredits.Setup(x => x.CheckEligibilityAsync(session)).ReturnsAsync(new InterviewCreditEligibilityResult { Eligible = false });
+        var controller = new MockAiInterviewController(
+            _sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object,
+            _creditService.Object, _customerService.Object, _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object,
+            eventPublisher: _eventPublisher.Object,
+            interviewRuntimeService: _interviewRuntimeService.Object,
+            nopLogger: _nopLogger.Object,
+            interviewStartCreditService: startCredits.Object);
+
+        var result = (ViewResult)await controller.Runtime(session.Token);
+        var model = (InterviewRuntimeModel)result.Model;
+
+        Assert.That(model.ClientSettings.CreditEligible, Is.False);
+        Assert.That(model.ClientSettings.CreditWarningMessage, Is.EqualTo("You do not have enough credits to start this interview. Please upgrade your plan or buy additional credits."));
+        Assert.That(model.ClientSettings.PricingUrl, Is.EqualTo("/pricing"));
+        startCredits.Verify(x => x.CheckEligibilityAsync(session), Times.Once);
+        startCredits.Verify(x => x.ChargeAsync(It.IsAny<InterviewSession>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Begin_InsufficientCreditsDoesNotStartAndReturnsFiveSecondPricingRedirect()
+    {
+        var customer = new Customer { Id = 7, Email = "owner@example.com" };
+        var session = new InterviewSession
+        {
+            Id = 802,
+            CustomerId = customer.Id,
+            ProductId = 12,
+            Token = "insufficient-credit-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(20)
+        };
+        var startCredits = new Mock<IInterviewStartCreditService>();
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        startCredits.Setup(x => x.ChargeAsync(session)).ReturnsAsync(new InterviewCreditChargeResult { Eligible = false });
+        var controller = new MockAiInterviewController(
+            _sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object,
+            _creditService.Object, _customerService.Object, _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object,
+            eventPublisher: _eventPublisher.Object,
+            interviewRuntimeService: _interviewRuntimeService.Object,
+            nopLogger: _nopLogger.Object,
+            interviewStartCreditService: startCredits.Object);
+
+        var result = (JsonResult)await controller.Begin(session.Token);
+
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
+        Assert.That(GetJsonValue<bool>(result, "insufficientCredits"), Is.True);
+        Assert.That(GetJsonValue<string>(result, "redirect"), Is.EqualTo("/pricing"));
+        Assert.That(GetJsonValue<int>(result, "redirectDelayMilliseconds"), Is.EqualTo(5000));
+        _interviewRuntimeService.Verify(x => x.BeginInterviewAsync(It.IsAny<string>(), It.IsAny<Customer>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Begin_SufficientCreditsChargesBeforeFirstQuestionStarts()
+    {
+        var customer = new Customer { Id = 7, Email = "owner@example.com" };
+        var session = new InterviewSession
+        {
+            Id = 804,
+            CustomerId = customer.Id,
+            ProductId = 12,
+            Token = "sufficient-credit-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(20)
+        };
+        var startCredits = new Mock<IInterviewStartCreditService>();
+        var callOrder = new List<string>();
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        startCredits.Setup(x => x.ChargeAsync(session))
+            .Callback(() => callOrder.Add("charge"))
+            .ReturnsAsync(new InterviewCreditChargeResult { Eligible = true, ChargedNow = true });
+        _interviewRuntimeService.Setup(x => x.BeginInterviewAsync(session.Token, customer))
+            .Callback(() => callOrder.Add("begin"))
+            .ReturnsAsync(new InterviewRuntimeModel
+            {
+                CurrentQuestion = "Tell me about your experience.",
+                Turns = new[] { new InterviewTurnViewModel { TurnId = 1, QuestionText = "Tell me about your experience." } }
+            });
+        var controller = new MockAiInterviewController(
+            _sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object,
+            _creditService.Object, _customerService.Object, _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object,
+            eventPublisher: _eventPublisher.Object,
+            interviewRuntimeService: _interviewRuntimeService.Object,
+            nopLogger: _nopLogger.Object,
+            interviewStartCreditService: startCredits.Object);
+
+        var result = (JsonResult)await controller.Begin(session.Token);
+
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.True);
+        Assert.That(GetJsonValue<string>(result, "question"), Is.EqualTo("Tell me about your experience."));
+        Assert.That(callOrder, Is.EqualTo(new[] { "charge", "begin" }));
+        startCredits.Verify(x => x.RefundAsync(It.IsAny<InterviewSession>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Runtime_Begin_FirstQuestionFailureRefundsAndInvokesNotificationPlaceholder()
+    {
+        var customer = new Customer { Id = 7, Email = "owner@example.com" };
+        var session = new InterviewSession
+        {
+            Id = 803,
+            CustomerId = customer.Id,
+            ProductId = 12,
+            Token = "refund-credit-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(20)
+        };
+        var startCredits = new Mock<IInterviewStartCreditService>();
+        _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        startCredits.Setup(x => x.ChargeAsync(session)).ReturnsAsync(new InterviewCreditChargeResult { Eligible = true, ChargedNow = true });
+        startCredits.Setup(x => x.RefundAsync(session, "FIRST_QUESTION_START_FAILED", "Credit charge reversed because interview start did not complete.")).ReturnsAsync(true);
+        _interviewRuntimeService.Setup(x => x.BeginInterviewAsync(session.Token, customer)).ReturnsAsync(new InterviewRuntimeModel { CurrentQuestion = string.Empty });
+        var controller = new MockAiInterviewController(
+            _sessionService.Object, _localizationService.Object, _workContext.Object, _inviteService.Object,
+            _creditService.Object, _customerService.Object, _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object, new Mock<IApplicationService>().Object,
+            eventPublisher: _eventPublisher.Object,
+            interviewRuntimeService: _interviewRuntimeService.Object,
+            nopLogger: _nopLogger.Object,
+            interviewStartCreditService: startCredits.Object);
+
+        var result = (JsonResult)await controller.Begin(session.Token);
+
+        Assert.That(GetJsonValue<bool>(result, "success"), Is.False);
+        startCredits.Verify(x => x.RefundAsync(session, "FIRST_QUESTION_START_FAILED", "Credit charge reversed because interview start did not complete."), Times.Once);
+        startCredits.Verify(x => x.NotifyRefundAsync(session, "FIRST_QUESTION_START_FAILED"), Times.Once);
+    }
+
+    [Test]
+    public void RuntimeView_CreditWarningUsesTopStatusUpgradeAndFiveSecondRedirectHooks()
+    {
+        var runtimeView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+        var runtimeCss = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
+
+        Assert.That(runtimeView, Does.Contain("id=\"runtime-credit-warning\""));
+        Assert.That(runtimeView, Does.Contain("id=\"runtime-credit-upgrade\""));
+        Assert.That(runtimeView, Does.Contain("You do not have enough credits to start this interview. Please upgrade your plan or buy additional credits."));
+        Assert.That(runtimeView, Does.Contain("redirectDelayMilliseconds"));
+        Assert.That(runtimeView, Does.Contain("creditRedirectPending = true"));
+        Assert.That(runtimeView, Does.Contain("beginInterviewInProgress = true"));
+        Assert.That(runtimeCss, Does.Contain(".runtime-credit-warning"));
+    }
+
+    [Test]
     public async Task Runtime_SameTokenInterleavedCallers_PrepareSpeechAndBegin_DoNotMutateToken()
     {
         var customer = new Customer { Id = 7, Email = "owner@example.com" };
@@ -632,7 +796,7 @@ public class RuntimeAndAdminTests
         Assert.That(insertedSession.TokenExpiryUtc, Is.Not.Null);
         Assert.That(insertedSession.TokenExpiryUtc.Value, Is.GreaterThanOrEqualTo(beforeStartUtc.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes).AddSeconds(-5)));
         Assert.That(insertedSession.TokenExpiryUtc.Value, Is.LessThanOrEqualTo(afterStartUtc.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes).AddSeconds(5)));
-        Assert.That(insertedSession.StartedOnUtc, Is.EqualTo(insertedSession.CreatedOnUtc));
+        Assert.That(insertedSession.StartedOnUtc, Is.Null);
         Assert.That(insertedSession.TokenExpiryUtc.Value, Is.EqualTo(insertedSession.CreatedOnUtc.AddMinutes(AIInterviewDefaults.RuntimeTokenLifetimeMinutes)));
         Assert.That(insertedSession.CustomerId, Is.EqualTo(customer.Id));
         Assert.That(insertedSession.ProductId, Is.EqualTo(1));
@@ -662,7 +826,7 @@ public class RuntimeAndAdminTests
         var json = (JsonResult)result;
 
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session => session.SponsorInviteId == 0)), Times.Once);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>(), CreditLedgerSources.InterviewUsage, 1, 0), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         _creditService.Verify(x => x.AuthorizeAndChargeAsync(2, 1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
@@ -694,12 +858,12 @@ public class RuntimeAndAdminTests
         var json = (JsonResult)result;
 
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(session => session.SponsorInviteId == 0)), Times.Once);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>(), CreditLedgerSources.InterviewUsage, 1, 0), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         _creditService.Verify(x => x.AuthorizeAndChargeAsync(2, 1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
     [Test]
-    public async Task Runtime_Start_NoCredits_ReturnsLocalizedInlineError()
+    public async Task Runtime_Start_NoCredits_StillCreatesPreviewSessionWithoutCharging()
     {
         var customer = new Customer { Id = 1, Email = "candidate@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
@@ -710,11 +874,9 @@ public class RuntimeAndAdminTests
 
         Assert.That(result, Is.TypeOf<JsonResult>());
         var json = (JsonResult)result;
-        var success = json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
-        var error = json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
-        Assert.That(success, Is.False);
-        Assert.That(error, Is.EqualTo("Insufficient credits. Please purchase credits to start the interview."));
-        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
+        Assert.That(json.Value.GetType().GetProperty("runtimeUrl"), Is.Not.Null);
+        _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
     [Test]

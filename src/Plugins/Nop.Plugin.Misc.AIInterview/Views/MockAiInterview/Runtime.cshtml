@@ -58,6 +58,10 @@
         </div>
 
         <div class="runtime-status-region">
+            <div id="runtime-credit-warning" class="runtime-credit-warning runtime-js-hidden" role="alert" aria-live="assertive">
+                <span id="runtime-credit-warning-message"></span>
+                <a id="runtime-credit-upgrade" class="button-1 runtime-credit-upgrade" href="/pricing">Upgrade</a>
+            </div>
             <div id="runtime-report-ready-row" class="runtime-report-ready-row">
                 <div id="runtime-header-status" class="runtime-header-status runtime-status runtime-js-hidden" aria-live="polite"></div>
                 <div id="runtime-report-ready-action" class="runtime-report-ready-action runtime-js-hidden">
@@ -540,6 +544,9 @@
         const questionCounter = document.getElementById('runtime-question-counter');
         const questionCountDetails = document.getElementById('runtime-question-count');
         const headerStatusBox = document.getElementById('runtime-header-status');
+        const creditWarningBox = document.getElementById('runtime-credit-warning');
+        const creditWarningMessage = document.getElementById('runtime-credit-warning-message');
+        const creditUpgradeLink = document.getElementById('runtime-credit-upgrade');
         const video = document.getElementById('runtime-video');
         const videoCaption = document.getElementById('runtime-video-caption');
         const videoCaptionItem = document.getElementById('runtime-video-caption-item');
@@ -660,6 +667,8 @@
         let recordingUploadInFlight = false;
         let interviewStarted = false;
         let interviewUnavailable = false;
+        let beginInterviewInProgress = false;
+        let creditRedirectPending = false;
         let speechUnavailable = !config.speechAvailable;
         let runtimeStoppedOrCompleted = false;
         let stopInProgress = false;
@@ -2023,7 +2032,7 @@
             }
 
             if (!interviewStarted) {
-                primaryActionButton.disabled = !guidelinesAcknowledged;
+                primaryActionButton.disabled = beginInterviewInProgress || creditRedirectPending || !guidelinesAcknowledged;
                 setButtonLabel(primaryActionButton, 'Start Interview');
                 updateStopButtonsState();
                 updateAuxiliaryControlsState();
@@ -2266,6 +2275,15 @@
 
             headerStatusBox.textContent = message || '';
             headerStatusBox.className = `runtime-header-status runtime-status ${message ? '' : 'runtime-js-hidden'} ${isError ? 'message-error' : 'message-success'}`.trim();
+        };
+
+        const setCreditWarning = (message, pricingUrl = '/pricing') => {
+            if (!creditWarningBox || !creditWarningMessage || !creditUpgradeLink)
+                return;
+
+            creditWarningMessage.textContent = message || '';
+            creditUpgradeLink.href = pricingUrl || '/pricing';
+            creditWarningBox.classList.toggle('runtime-js-hidden', !message);
         };
 
         const clearRecoveredMediaBlockingStatus = () => {
@@ -4479,25 +4497,38 @@
                     await speakText(questionBox.textContent, 'question');
                 return;
             }
+            if (beginInterviewInProgress || creditRedirectPending)
+                return;
+
+            const finishBeginAttempt = () => {
+                beginInterviewInProgress = false;
+                primaryActionButton?.classList.remove('is-loading');
+                updateStartButtonState();
+            };
+            beginInterviewInProgress = true;
+            primaryActionButton.disabled = true;
+            primaryActionButton.classList.add('is-loading');
+
             if (!guidelinesAcknowledged) {
                 openGuidelinesModal();
                 setStatus('Please review and accept the interview guidelines before starting.', false);
-                updateStartButtonState();
+                finishBeginAttempt();
                 return;
             }
             if (!(await ensureRequiredMediaReady())) {
                 interviewStarted = false;
+                finishBeginAttempt();
                 return;
             }
             if (!(await requestScreenShareForInterviewStart())) {
                 interviewStarted = false;
-                updateStartButtonState();
+                finishBeginAttempt();
                 return;
             }
             if (!(await ensureRuntimeTokenFresh())) {
                 stopScreenShare();
                 interviewStarted = false;
-                updateStartButtonState();
+                finishBeginAttempt();
                 updateSubmitAvailability();
                 return;
             }
@@ -4505,7 +4536,7 @@
                 stopScreenShare();
                 interviewStarted = false;
                 setStatus('Interview start endpoint is unavailable.', true);
-                updateStartButtonState();
+                finishBeginAttempt();
                 return;
             }
 
@@ -4518,8 +4549,18 @@
                 interviewStarted = false;
                 const beginMessage = getRuntimeMessage(beginResult, 'AI service unavailable. Please try again later.');
                 logActivity(`Begin interview failed. message=${beginMessage}`);
+                const insufficientCredits = !!getValue(beginResult, 'insufficientCredits', 'InsufficientCredits');
+                if (insufficientCredits) {
+                    const pricingUrl = getValue(beginResult, 'redirect', 'Redirect') || config.pricingUrl || '/pricing';
+                    const redirectDelay = clampNumber(getValue(beginResult, 'redirectDelayMilliseconds', 'RedirectDelayMilliseconds'), 5000, 1000, 30000);
+                    creditRedirectPending = true;
+                    setCreditWarning(beginMessage, pricingUrl);
+                    finishBeginAttempt();
+                    window.setTimeout(() => { window.location.href = pricingUrl; }, redirectDelay);
+                    return;
+                }
                 showUnavailableQuestionState(beginMessage);
-                updateStartButtonState();
+                finishBeginAttempt();
                 return;
             }
             const firstQuestion = getValue(beginResult, "question", "Question");
@@ -4529,7 +4570,7 @@
                 stopScreenShare();
                 interviewStarted = false;
                 showUnavailableQuestionState();
-                updateStartButtonState();
+                finishBeginAttempt();
                 return;
             }
             reportRuntimeClientStageTiming('begin-response', performance.now() - beginStartedAt, true);
@@ -4546,6 +4587,7 @@
 
             interviewUnavailable = false;
             interviewStarted = true;
+            setCreditWarning('');
             screenShareActive = true;
             screenShareInterrupted = false;
             setScreenShareStatus('Screen sharing active', 'active');
@@ -4557,7 +4599,7 @@
             messageBox.classList.add('runtime-js-hidden');
             setRuntimeCaption('Interviewer', firstQuestion);
             renderTranscript();
-            updateStartButtonState();
+            finishBeginAttempt();
             if (questionBox.textContent) logActivity('Question shown: ' + questionBox.textContent);
             logActivity('First question rendered.');
             reportRuntimeClientStageTiming('first-question-rendered', performance.now() - beginStartedAt, true);
@@ -4853,6 +4895,8 @@
         updateAnswerInputState();
         submitButton.disabled = true;
         updateStopButtonsState();
+        if (config.creditEligible === false)
+            setCreditWarning(config.creditWarningMessage || 'You do not have enough credits to start this interview. Please upgrade your plan or buy additional credits.', config.pricingUrl || '/pricing');
         setStatus('Click Start Interview to begin.', false);
         setScreenShareStatus('Screen sharing required');
         setScreenShareInterruptionWarning(false);

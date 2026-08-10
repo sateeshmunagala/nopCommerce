@@ -325,7 +325,7 @@ public class CandidateFlowTests
         Assert.That(insertedSession, Is.Not.Null);
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Once);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>(), It.IsAny<string>(), 1, 0), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         Assert.That(token, Is.EqualTo(insertedSession.Token));
         Assert.That(token, Is.Not.EqualTo("expired-token"));
         Assert.That(runtimeUrl, Is.EqualTo("/mockaiinterview/runtime?token=generated"));
@@ -1023,7 +1023,7 @@ public class CandidateFlowTests
             session.ProductId == product.Id &&
             session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice &&
             session.Token != "job-token")), Times.Once);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>(), CreditLedgerSources.InterviewUsage, product.Id, 0), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
     [Test]
@@ -1071,7 +1071,7 @@ public class CandidateFlowTests
         var json = (JsonResult)result;
 
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.SponsorInviteId == 0)), Times.Once);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>(), CreditLedgerSources.InterviewUsage, 1, 0), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         _creditService.Verify(x => x.AuthorizeAndChargeAsync(2, 1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
@@ -1103,7 +1103,7 @@ public class CandidateFlowTests
         var json = (JsonResult)result;
 
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.SponsorInviteId == 0)), Times.Once);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>(), CreditLedgerSources.InterviewUsage, 1, 0), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         _creditService.Verify(x => x.AuthorizeAndChargeAsync(2, 1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
@@ -1133,7 +1133,7 @@ public class CandidateFlowTests
         var json = (JsonResult)result;
 
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.SponsorInviteId == 0)), Times.Once);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>(), CreditLedgerSources.InterviewUsage, 1, 0), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         _creditService.Verify(x => x.AuthorizeAndChargeAsync(2, 1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
@@ -1166,7 +1166,7 @@ public class CandidateFlowTests
         var json = (JsonResult)result;
 
         _sessionService.Verify(x => x.InsertInterviewSessionAsync(It.Is<InterviewSession>(s => s.SponsorInviteId == 0)), Times.Once);
-        _creditService.Verify(x => x.AuthorizeAndChargeAsync(customer.Id, 1, It.IsAny<string>(), CreditLedgerSources.InterviewUsage, 1, 0), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         _creditService.Verify(x => x.AuthorizeAndChargeAsync(2, 1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 

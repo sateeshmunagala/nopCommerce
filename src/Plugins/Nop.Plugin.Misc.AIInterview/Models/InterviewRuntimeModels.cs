@@ -60,6 +60,9 @@ public record RuntimeClientSettingsModel
     public string CompletionStatusUrl { get; set; }
     public string AcknowledgeGuidelinesUrl { get; set; }
     public string RuntimeClientEventUrl { get; set; }
+    public bool CreditEligible { get; set; } = true;
+    public string CreditWarningMessage { get; set; }
+    public string PricingUrl { get; set; } = "/pricing";
     public string SpeechRegion { get; set; }
     public string SpeechVoiceName { get; set; }
     public string ProductName { get; set; }
@@ -84,6 +87,19 @@ public record StartInterviewResponseModel
     public string RuntimeUrl { get; init; }
     public string SessionKey { get; init; }
     public string Token { get; init; }
+}
+
+public record InterviewCreditEligibilityResult
+{
+    public bool Eligible { get; init; }
+    public bool AlreadyCharged { get; init; }
+    public int ChargeCustomerId { get; init; }
+    public string LedgerSource { get; init; }
+}
+
+public record InterviewCreditChargeResult : InterviewCreditEligibilityResult
+{
+    public bool ChargedNow { get; init; }
 }
 
 public record PrepareInterviewResponseModel

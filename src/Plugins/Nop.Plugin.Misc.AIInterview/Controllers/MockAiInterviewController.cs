@@ -33,6 +33,9 @@ namespace Nop.Plugin.Misc.AIInterview.Controllers;
 
 public class MockAiInterviewController : BasePluginController
 {
+    private const string InsufficientCreditsMessage = "You do not have enough credits to start this interview. Please upgrade your plan or buy additional credits.";
+    private const string CreditRefundNotice = "Credit charge reversed because interview start did not complete.";
+    private const string FirstQuestionStartFailureReasonCode = "FIRST_QUESTION_START_FAILED";
     public const long MaxRecordingUploadBytes = 250L * 1024L * 1024L;
 
     private const string VoiceUnavailableMessage = "Voice mode is unavailable. Please type your answer below.";
@@ -113,6 +116,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly ICustomerActivityService _customerActivityService;
     private readonly IDownloadService _downloadService;
     private readonly AIInterviewSettings _aiInterviewSettings;
+    private readonly IInterviewStartCreditService _interviewStartCreditService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -140,7 +144,8 @@ public class MockAiInterviewController : BasePluginController
         IJobProductAccessService jobProductAccessService = null,
         ICustomerActivityService customerActivityService = null,
         IDownloadService downloadService = null,
-        AIInterviewSettings aiInterviewSettings = null)
+        AIInterviewSettings aiInterviewSettings = null,
+        IInterviewStartCreditService interviewStartCreditService = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -169,6 +174,7 @@ public class MockAiInterviewController : BasePluginController
         _customerActivityService = customerActivityService;
         _downloadService = downloadService;
         _aiInterviewSettings = aiInterviewSettings ?? new AIInterviewSettings();
+        _interviewStartCreditService = interviewStartCreditService;
     }
 
     protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
@@ -1166,7 +1172,6 @@ public class MockAiInterviewController : BasePluginController
         }
 
         int sponsorInviteId = 0;
-        bool validSponsorInvite = false;
         if (!string.IsNullOrEmpty(sponsorToken))
         {
             var invite = await _inviteService.GetSponsorInviteByCodeAsync(sponsorToken);
@@ -1180,30 +1185,9 @@ public class MockAiInterviewController : BasePluginController
                 string.Equals(invite.Email, customer.Email, StringComparison.OrdinalIgnoreCase) &&
                 sponsoredAttempts < invite.MaxAttempts)
             {
-                // Sponsor validation logic: check if sponsor wallet has credits
-                var sponsorWallet = await _creditService.GetOrCreateWalletAsync(invite.SponsorId);
-                if (sponsorWallet.Balance >= 1)
-                {
-                    var chargedSponsor = await _creditService.AuthorizeAndChargeAsync(invite.SponsorId, 1, $"Sponsored Interview Start Charge for {customer.Email}",
-                        CreditLedgerSources.SponsorInterviewUsage,
-                        productId,
-                        invite.Id);
-                    if (chargedSponsor)
-                    {
-                        validSponsorInvite = true;
-                        sponsorInviteId = invite.Id;
-                    }
-                }
+                // Persist the sponsor context now; eligibility and charging are finalized in runtime Begin.
+                sponsorInviteId = invite.Id;
             }
-        }
-
-        if (!validSponsorInvite)
-        {
-            var charged = await _creditService.AuthorizeAndChargeAsync(customer.Id, 1, "Interview Start Charge",
-                CreditLedgerSources.InterviewUsage,
-                productId);
-            if (!charged)
-                return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.NoCredits", "Insufficient credits. Please purchase credits to start the interview.");
         }
 
         JobApplication newSessionApplication = null;
@@ -1257,7 +1241,7 @@ public class MockAiInterviewController : BasePluginController
             IsActive = true,
             QuestionCount = isMockPracticeProduct ? ResolveMockQuestionCount() : await ResolveQuestionCountAsync(productId),
             SponsorInviteId = sponsorInviteId,
-            StartedOnUtc = sessionCreatedUtc,
+            StartedOnUtc = null,
             CreatedOnUtc = sessionCreatedUtc
         };
         await _interviewSessionService.InsertInterviewSessionAsync(session);
@@ -1303,6 +1287,14 @@ public class MockAiInterviewController : BasePluginController
         }
 
         await ApplyRuntimeClientSettingsAsync(model, session);
+
+        if (_interviewStartCreditService != null)
+        {
+            var eligibility = await _interviewStartCreditService.CheckEligibilityAsync(session);
+            model.ClientSettings.CreditEligible = eligibility.Eligible;
+            model.ClientSettings.CreditWarningMessage = eligibility.Eligible ? string.Empty : InsufficientCreditsMessage;
+            model.ClientSettings.PricingUrl = "/pricing";
+        }
 
         return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/Runtime.cshtml", model);
     }
@@ -1387,7 +1379,40 @@ public class MockAiInterviewController : BasePluginController
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
-        var model = await _interviewRuntimeService.BeginInterviewAsync(token, customer);
+        if (customer == null || !await _customerService.IsRegisteredAsync(customer) || session.CustomerId != customer.Id)
+            return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.Unauthorized", "Unauthorized runtime request.", 401);
+
+        var wasStartedBeforeBegin = session.StartedOnUtc.HasValue;
+        if (_interviewStartCreditService != null)
+        {
+            var chargeResult = await _interviewStartCreditService.ChargeAsync(session);
+            if (!chargeResult.Eligible)
+            {
+                return Json(new
+                {
+                    success = false,
+                    insufficientCredits = true,
+                    message = InsufficientCreditsMessage,
+                    redirect = "/pricing",
+                    redirectDelayMilliseconds = 5000
+                });
+            }
+        }
+
+        Nop.Plugin.Misc.AIInterview.Models.InterviewRuntimeModel model;
+        try
+        {
+            model = await _interviewRuntimeService.BeginInterviewAsync(token, customer);
+        }
+        catch (Exception exception)
+        {
+            await RefundFailedInterviewStartAsync(session, wasStartedBeforeBegin);
+            await LogRuntimeIssueAsync(
+                "AI Interview begin failed after credit authorization",
+                $"Endpoint=begin; ReasonCode={FirstQuestionStartFailureReasonCode}; SessionId={session.Id}; CustomerId={session.CustomerId}; ProductId={session.ProductId}; Error={SanitizeRuntimeClientMessage(exception.Message)}.",
+                customer);
+            return Json(new { success = false, message = "AI service unavailable. Please try again later." });
+        }
         if (model == null)
         {
             await LogRuntimeIssueAsync(
@@ -1395,6 +1420,7 @@ public class MockAiInterviewController : BasePluginController
                 $"Endpoint=begin; Token={MaskToken(token)}; ReasonCode=runtime-model-not-found; SessionId={session.Id}; CustomerId={session.CustomerId}; ProductId={session.ProductId};",
                 await ResolveLogCustomerAsync(session, customer));
 
+            await RefundFailedInterviewStartAsync(session, wasStartedBeforeBegin);
             return await LocalizedErrorAsync("Plugins.Misc.AIInterview.Runtime.Error.InvalidToken", "Invalid or expired session token.");
         }
 
@@ -1402,6 +1428,7 @@ public class MockAiInterviewController : BasePluginController
         if (string.IsNullOrWhiteSpace(currentQuestion) ||
             string.Equals(currentQuestion, "AI service unavailable. Please try again later.", StringComparison.OrdinalIgnoreCase))
         {
+            await RefundFailedInterviewStartAsync(session, wasStartedBeforeBegin);
             return Json(new
             {
                 success = false,
@@ -1420,6 +1447,28 @@ public class MockAiInterviewController : BasePluginController
             turn = currentTurn,
             turns = model.Turns
         });
+    }
+
+    protected virtual async Task RefundFailedInterviewStartAsync(InterviewSession session, bool wasStartedBeforeBegin)
+    {
+        if (_interviewStartCreditService == null || session == null || wasStartedBeforeBegin)
+            return;
+
+        var persistedSession = await _interviewSessionService.GetInterviewSessionByIdAsync(session.Id) ?? session;
+        if (persistedSession.StartedOnUtc.HasValue)
+            return;
+
+        var refunded = await _interviewStartCreditService.RefundAsync(
+            persistedSession,
+            FirstQuestionStartFailureReasonCode,
+            CreditRefundNotice);
+        if (!refunded)
+            return;
+
+        await _interviewStartCreditService.NotifyRefundAsync(persistedSession, FirstQuestionStartFailureReasonCode);
+        _logger?.LogWarning(
+            "AIInterview start credit reversed. ReasonCode={ReasonCode}; SessionId={SessionId}; CustomerId={CustomerId}; Message={Message}",
+            FirstQuestionStartFailureReasonCode, session.Id, session.CustomerId, CreditRefundNotice);
     }
 
     protected async Task<string> GetRestartUrlAsync(InterviewSession session)

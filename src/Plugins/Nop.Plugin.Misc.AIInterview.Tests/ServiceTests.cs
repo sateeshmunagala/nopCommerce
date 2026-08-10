@@ -12,6 +12,7 @@ using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Services.Messages;
 using Microsoft.Extensions.Logging;
+using System.Transactions;
 using NUnit.Framework;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
@@ -654,6 +655,65 @@ public class ServiceTests
         walletRepository.Verify(x => x.InsertAsync(It.Is<CreditWallet>(wallet => wallet.CustomerId == 55 && wallet.Balance == 25), true), Times.Once);
         walletRepository.Verify(x => x.UpdateAsync(It.Is<CreditWallet>(wallet => wallet.CustomerId == 55 && wallet.Balance == 25), true), Times.Once);
         ledgerRepository.Verify(x => x.InsertAsync(It.Is<CreditLedgerEntry>(entry => entry.CreditWalletId == 17 && entry.Amount == 25 && entry.Remarks == "Admin top-up"), true), Times.Once);
+    }
+
+    [Test]
+    public async Task InterviewStartCreditService_ParallelSponsorStartsChargeOnceAndRefundOnce()
+    {
+        var wallet = new CreditWallet { Id = 17, CustomerId = 99, Balance = 2 };
+        var session = new InterviewSession { Id = 501, CustomerId = 55, ProductId = 12, SponsorInviteId = 44 };
+        var invite = new SponsorInvite
+        {
+            Id = 44,
+            SponsorId = 99,
+            ProductId = 12,
+            IsActive = true,
+            ExpiryDateUtc = DateTime.UtcNow.AddDays(1)
+        };
+        var walletRepository = new Mock<IRepository<CreditWallet>>();
+        var ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
+        var sessionRepository = new Mock<IRepository<InterviewSession>>();
+        var inviteRepository = new Mock<IRepository<SponsorInvite>>();
+        var dataProvider = new Mock<INopDataProvider>();
+        var ledgerEntries = new List<CreditLedgerEntry>();
+
+        walletRepository.Setup(x => x.GetAllAsync(It.IsAny<Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>>>(), It.IsAny<Func<ICacheKeyService, CacheKey>>(), true))
+            .ReturnsAsync(new List<CreditWallet> { wallet });
+        walletRepository.Setup(x => x.UpdateAsync(wallet, true)).Returns(Task.CompletedTask);
+        ledgerRepository.Setup(x => x.InsertAsync(It.IsAny<CreditLedgerEntry>(), true))
+            .Callback<CreditLedgerEntry, bool>((entry, _) => ledgerEntries.Add(entry))
+            .Returns(Task.CompletedTask);
+        sessionRepository.Setup(x => x.GetByIdAsync(session.Id)).ReturnsAsync(session);
+        sessionRepository.Setup(x => x.UpdateAsync(session, true)).Returns(Task.CompletedTask);
+        inviteRepository.Setup(x => x.GetByIdAsync(invite.Id)).ReturnsAsync(invite);
+        dataProvider.Setup(x => x.CreateTransactionScope())
+            .Returns(() => new TransactionScope(TransactionScopeOption.RequiresNew, TransactionScopeAsyncFlowOption.Enabled));
+
+        var service = new InterviewStartCreditService(
+            walletRepository.Object,
+            ledgerRepository.Object,
+            sessionRepository.Object,
+            inviteRepository.Object,
+            dataProvider.Object,
+            new Mock<ILogger<InterviewStartCreditService>>().Object);
+
+        var chargeResults = await Task.WhenAll(service.ChargeAsync(session), service.ChargeAsync(session));
+
+        Assert.That(chargeResults.Count(result => result.ChargedNow), Is.EqualTo(1));
+        Assert.That(chargeResults.Count(result => result.AlreadyCharged), Is.EqualTo(1));
+        Assert.That(wallet.Balance, Is.EqualTo(1));
+        Assert.That(session.CreditChargeCustomerId, Is.EqualTo(invite.SponsorId));
+        Assert.That(session.CreditChargeLedgerSource, Is.EqualTo(CreditLedgerSources.SponsorInterviewUsage));
+        Assert.That(ledgerEntries.Count(entry => entry.TransactionType == "Withdrawal" && entry.InterviewSessionId == session.Id), Is.EqualTo(1));
+
+        var firstRefund = await service.RefundAsync(session, "FIRST_QUESTION_START_FAILED", "Credit charge reversed because interview start did not complete.");
+        var duplicateRefund = await service.RefundAsync(session, "FIRST_QUESTION_START_FAILED", "Credit charge reversed because interview start did not complete.");
+
+        Assert.That(firstRefund, Is.True);
+        Assert.That(duplicateRefund, Is.False);
+        Assert.That(wallet.Balance, Is.EqualTo(2));
+        Assert.That(session.CreditRefundReasonCode, Is.EqualTo("FIRST_QUESTION_START_FAILED"));
+        Assert.That(ledgerEntries.Count(entry => entry.TransactionType == "Deposit" && entry.LedgerSource == CreditLedgerSources.InterviewStartRefund), Is.EqualTo(1));
     }
 
     [Test]
