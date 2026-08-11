@@ -12570,10 +12570,11 @@ html.html-vendor-portal-page header.header {
 }
 
 html.html-vendor-portal-page .header-lower {
-    display: flex;
-    align-items: center;
-    height: 48px;
-    min-height: 48px;
+    display: flex !important;
+    align-items: center !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
     max-width: 100%;
     margin: 0;
     padding: 0;
@@ -12581,23 +12582,41 @@ html.html-vendor-portal-page .header-lower {
     border-bottom: 1px solid #e8eaed;
     background: #fff;
     box-sizing: border-box;
+    position: relative !important;
 }
 
 /* Logo */
 html.html-vendor-portal-page .header-logo {
-    display: flex;
-    align-items: center;
-    height: 48px;
+    display: flex !important;
+    align-items: center !important;
+    align-self: center !important;
+    height: 48px !important;
     overflow: hidden;
     padding: 0 12px;
+    margin: 0 !important;
     flex-shrink: 0;
     order: 0;
-    position: static;
+    position: relative !important;
+    z-index: 4;
     left: auto;
     transform: none;
+    line-height: 0;
 }
 
-html.html-vendor-portal-page .header-logo img { max-height: 32px; width: auto; display: block; }
+html.html-vendor-portal-page .header-logo > a {
+    display: flex !important;
+    align-items: center !important;
+    height: 48px !important;
+    margin: 0 !important;
+    line-height: 0;
+}
+
+html.html-vendor-portal-page .header-logo img {
+    display: block !important;
+    width: auto !important;
+    max-height: 32px !important;
+    margin: 0 !important;
+}
 
 /* Header links - no border dividers, constrained to 48 px */
 html.html-vendor-portal-page .header-links a {
@@ -12623,6 +12642,46 @@ html.html-vendor-portal-page .jb-mobile-toggles.right { height: 48px; align-item
 
 /* Desktop hamburger after logo */
 @media (min-width: 1001px) {
+    /* Keep desktop search inside the right side of the header without covering the logo. */
+    html.html-vendor-portal-page body.jb-search-open .header-logo {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    html.html-vendor-portal-page body.jb-search-open .header-lower .store-search-box.jb-search-overlay {
+        display: block !important;
+        position: absolute !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: auto !important;
+        left: auto !important;
+        width: fit-content !important;
+        max-width: calc(100% - 220px) !important;
+        height: 48px !important;
+        margin: 0 !important;
+        padding: 4px 12px !important;
+        transform: none !important;
+        box-sizing: border-box;
+        background: #fff;
+        z-index: 3;
+    }
+
+    html.html-vendor-portal-page body.jb-search-open .store-search-box.jb-search-overlay form {
+        height: 40px;
+        margin: 0 !important;
+        align-items: center;
+    }
+
+    html.html-vendor-portal-page body.jb-search-open .store-search-box.jb-search-overlay .search-box-text,
+    html.html-vendor-portal-page body.jb-search-open .store-search-box.jb-search-overlay .search-box-button,
+    html.html-vendor-portal-page body.jb-search-open .store-search-box.jb-search-overlay .jb-search-close {
+        height: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        box-sizing: border-box;
+    }
+
     html.html-vendor-portal-page .jb-mobile-toggles.left {
         display: flex;
         align-items: center;
@@ -12663,16 +12722,48 @@ html.html-vendor-portal-page .jb-mobile-toggles.right { height: 48px; align-item
 
 /* Desktop two-column layout */
 @media (min-width: 1001px) {
+    html.html-vendor-portal-page,
+    html.html-vendor-portal-page body {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    html.html-vendor-portal-page .master-wrapper-page {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    html.html-vendor-portal-page header.header {
+        position: sticky;
+        top: 0;
+        flex: 0 0 auto;
+    }
+
+    html.html-vendor-portal-page .master-wrapper-content {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+
     html.html-vendor-portal-page .master-column-wrapper {
         display: flex !important;
+        flex: 1 1 auto;
         flex-direction: row;
         flex-wrap: nowrap;
         align-items: stretch;
         width: 100%;
+        height: 100%;
+        min-height: 0;
         max-width: 100%;
         gap: 0 !important;
         padding: 0;
         margin: 0;
+        overflow: hidden;
     }
 
     html.html-vendor-portal-page .side-2 {
@@ -12680,21 +12771,36 @@ html.html-vendor-portal-page .jb-mobile-toggles.right { height: 48px; align-item
         width: 260px !important;
         min-width: 260px !important;
         max-width: 260px !important;
-        min-height: 100vh;
+        height: 100% !important;
+        min-height: 0 !important;
         position: static;
         top: auto;
         margin: 0;
         padding: 0;
+        overflow: hidden !important;
         background: #1e2a3a;
     }
 
-    html.html-vendor-portal-page .jb-account-nav { position: static; top: auto; }
+    html.html-vendor-portal-page .jb-account-nav,
+    html.html-vendor-portal-page .block-account-navigation,
+    html.html-vendor-portal-page .jb-account-nav-shell,
+    html.html-vendor-portal-page #jb-account-navigation {
+        position: static;
+        top: auto;
+        max-height: none;
+        overflow: hidden !important;
+    }
 
     html.html-vendor-portal-page .center-2 {
         flex: 1 1 auto;
         min-width: 0;
+        height: 100%;
         margin: 0;
         padding: 20px 28px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
         background: #f7f8fa;
     }
 }
@@ -12843,7 +12949,7 @@ html.html-vendor-portal-page .customer-info-page form { padding-top: 0; }
     /* The LogoViewComponent renders its own <a>; hide the empty jb-brand wrapper */
     html.html-vendor-portal-page .header-lower .header-logo .jb-brand { display: none !important; }
     html.html-vendor-portal-page .header-logo a:not(.jb-brand) { display: flex; align-items: center; height: 48px; }
-    html.html-vendor-portal-page .header-logo img { max-height: 30px; width: auto; }
+    html.html-vendor-portal-page .header-logo img { max-height: 30px !important; width: auto; }
 
     html.html-vendor-portal-page .jb-header-actions {
         grid-column: 3;
