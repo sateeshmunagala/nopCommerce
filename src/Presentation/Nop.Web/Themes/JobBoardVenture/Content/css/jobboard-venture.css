@@ -7763,7 +7763,12 @@ body.jb-filter-panel-open .product-filters {
     display: block;
     width: 100%;
     min-width: 0;
-    overflow: hidden;
+    overflow-x: hidden;
+}
+
+.html-account-page .customer-info-page .page-body > * {
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .html-account-page .customer-info-page form {
@@ -8243,6 +8248,20 @@ body.jb-filter-panel-open .product-filters {
         align-self: start;
         height: max-content;
     }
+}
+
+/* Contain widget overflow on account pages without breaking sticky nav */
+.html-account-page .master-wrapper-content {
+    overflow-x: hidden;
+}
+
+.html-account-page .master-column-wrapper {
+    overflow-x: hidden;
+}
+
+.html-account-page .center-2 {
+    overflow-x: hidden;
+    overflow-y: visible;
 }
 
 @media (max-width: 1000px) {
@@ -8971,6 +8990,15 @@ body.jb-filter-panel-open .product-filters {
     border-left: 2px solid var(--jb-accent);
     padding: 28px 30px;
     background: #ffffff;
+}
+
+.html-account-page .customer-info-page .jb-account-content {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
 
 .html-account-page .account-page:not(.customer-info-page) .page-body {
