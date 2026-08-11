@@ -376,6 +376,24 @@
                 e.stopPropagation();
             }
 
+            // On vendor portal: desktop toggles sidebar collapse; mobile toggles slide-in drawer
+            if (document.documentElement.classList.contains('html-vendor-portal-page')) {
+                if (window.innerWidth > 1000) {
+                    document.documentElement.classList.toggle('vp-sidebar-collapsed');
+                } else {
+                    document.documentElement.classList.toggle('vp-nav-open');
+                    if (document.documentElement.classList.contains('vp-nav-open')) {
+                        document.body.addEventListener('click', function closeVpNav(e) {
+                            if (!e.target.closest('.side-2')) {
+                                document.documentElement.classList.remove('vp-nav-open');
+                                document.body.removeEventListener('click', closeVpNav);
+                            }
+                        });
+                    }
+                }
+                return;
+            }
+
             if (document.body.classList.contains('jb-menu-open')) {
                 return;
             }
