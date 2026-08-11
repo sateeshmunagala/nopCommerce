@@ -2525,7 +2525,7 @@ body.jb-search-open .jb-drawer-overlay {
 }
 
 /* ===================================================
-   CONTACT PAGE — SPLIT INFORMATION + FORM LAYOUT
+   CONTACT PAGE - SPLIT INFORMATION + FORM LAYOUT
    =================================================== */
 
 .contact-page {
@@ -12046,18 +12046,6 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
         margin: 0;
         text-transform: uppercase;
         letter-spacing: 0.04em;
-    }
-
-    html.html-vendor-portal-page .jb-account-nav-header {
-        background: #ffffff;
-        border-bottom: 1px solid #f0f1f3;
-    }
-
-    html.html-vendor-portal-page .jb-account-nav-header .title {
-        color: #6b7280;
-        font-size: 0.68rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
     }
 
     .html-account-page .jb-account-nav .listbox {
