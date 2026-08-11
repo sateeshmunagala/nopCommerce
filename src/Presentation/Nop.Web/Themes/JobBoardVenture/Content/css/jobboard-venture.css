@@ -7787,6 +7787,16 @@ body.jb-filter-panel-open .product-filters {
     width: 100%;
     min-width: 0;
     float: none;
+    /* Override vendor-portal dropdown styles that break the account form layout */
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    box-shadow: none !important;
+    z-index: auto !important;
+    border-radius: 0 !important;
     box-sizing: border-box;
     margin: 0 0 26px;
     padding: 0;
