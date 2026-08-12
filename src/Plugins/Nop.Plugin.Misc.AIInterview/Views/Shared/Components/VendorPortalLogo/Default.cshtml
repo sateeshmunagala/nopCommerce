@@ -1,0 +1,9 @@
+@model string
+@if (!string.IsNullOrEmpty(Model))
+{
+    <img class="vp-vendor-logo" src="@Model" alt="Organisation logo" />
+}
+else
+{
+    @await Component.InvokeAsync(typeof(Nop.Web.Components.LogoViewComponent))
+}

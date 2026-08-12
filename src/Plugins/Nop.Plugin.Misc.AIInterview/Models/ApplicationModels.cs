@@ -170,6 +170,7 @@ public record MyActivityPageModel : BaseNopModel
     public SavedJobsListModel SavedJobs { get; set; }
     public MockInterviewHistoryListModel MockInterviews { get; set; }
     public CreditActivityModel Credits { get; set; }
+    public decimal WalletBalance { get; set; }
 }
 
 public record UpdateStatusModel : BaseNopModel

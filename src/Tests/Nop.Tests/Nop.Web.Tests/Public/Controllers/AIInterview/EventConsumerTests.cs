@@ -4,6 +4,7 @@ using Nop.Core.Domain.Customers;
 using Nop.Plugin.Misc.AIInterview;
 using Nop.Plugin.Misc.AIInterview.Infrastructure;
 using Nop.Plugin.Misc.AIInterview.Services;
+using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Web.Framework.Events;
 using Nop.Web.Framework.Models;
@@ -18,6 +19,7 @@ public class EventConsumerTests
     private Mock<ILocalizationService> _localizationService;
     private Mock<ICreditService> _creditService;
     private Mock<IWorkContext> _workContext;
+    private Mock<ICustomerService> _customerService;
     private AIInterviewSettings _settings;
     private EventConsumer _eventConsumer;
 
@@ -27,6 +29,7 @@ public class EventConsumerTests
         _localizationService = new Mock<ILocalizationService>();
         _creditService = new Mock<ICreditService>();
         _workContext = new Mock<IWorkContext>();
+        _customerService = new Mock<ICustomerService>();
         _settings = new AIInterviewSettings { Enabled = true };
 
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>()))
@@ -38,6 +41,7 @@ public class EventConsumerTests
             _localizationService.Object,
             _creditService.Object,
             _workContext.Object,
+            _customerService.Object,
             _settings);
     }
 

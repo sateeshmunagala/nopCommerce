@@ -2245,6 +2245,17 @@ public class SponsorInviteService : ISponsorInviteService
             .OrderByDescending(i => i.CreatedOnUtc));
     }
 
+    public async Task<SponsorInvite> GetAcceptedInviteByEmailAsync(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+
+        return (await _inviteRepository.GetAllAsync(query => query
+            .Where(i => i.Email == email && i.IsAccepted)
+            .OrderByDescending(i => i.CreatedOnUtc)))
+            .FirstOrDefault();
+    }
+
     public async Task DeactivateInviteAsync(int inviteId, int sponsorId)
     {
         var invite = await _inviteRepository.GetByIdAsync(inviteId);

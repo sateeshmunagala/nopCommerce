@@ -85,7 +85,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             AIInterviewDefaults.HomepageTopPerformersWidgetZone,
             "productdetails_before_collateral",
             AdminWidgetZones.ProductDetailsBlock,
-            "body_start_html_tag_after"
+            "body_start_html_tag_after",
+            "header_links_after"
         });
     }
 
@@ -105,6 +106,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (string.Equals(widgetZone, "body_start_html_tag_after",
             StringComparison.OrdinalIgnoreCase))
             return typeof(Components.AIInterviewInstituteRedirectViewComponent);
+
+        if (string.Equals(widgetZone, "header_links_after", StringComparison.OrdinalIgnoreCase))
+            return typeof(Components.VendorPortalHeaderLinksViewComponent);
 
         return typeof(Components.AIInterviewProductDetailsViewComponent);
     }

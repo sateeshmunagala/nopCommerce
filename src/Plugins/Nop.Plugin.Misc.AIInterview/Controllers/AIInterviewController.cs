@@ -75,6 +75,7 @@ public class AIInterviewController : BasePluginController
     private readonly ICreditService _creditService;
     private readonly ICreditActivityService _creditActivityService;
     private readonly IVendorService _vendorService;
+    private readonly IPictureService _pictureService;
     private readonly IRepository<GenericAttribute> _genericAttributeRepository;
     private readonly IRepository<CreditLedgerEntry> _creditLedgerRepository;
     private readonly ILogger<AIInterviewController> _logger;
@@ -109,6 +110,7 @@ public class AIInterviewController : BasePluginController
         ICreditService creditService = null,
         ICreditActivityService creditActivityService = null,
         IVendorService vendorService = null,
+        IPictureService pictureService = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
         IRepository<CreditLedgerEntry> creditLedgerRepository = null,
         ILogger<AIInterviewController> logger = null)
@@ -143,6 +145,7 @@ public class AIInterviewController : BasePluginController
         _creditService = creditService;
         _creditActivityService = creditActivityService;
         _vendorService = vendorService;
+        _pictureService = pictureService;
         _genericAttributeRepository = genericAttributeRepository;
         _creditLedgerRepository = creditLedgerRepository;
         _logger = logger;
@@ -175,6 +178,7 @@ public class AIInterviewController : BasePluginController
         ICreditService creditService = null,
         ICreditActivityService creditActivityService = null,
         IVendorService vendorService = null,
+        IPictureService pictureService = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
         IRepository<CreditLedgerEntry> creditLedgerRepository = null,
         ILogger<AIInterviewController> logger = null)
@@ -208,10 +212,26 @@ public class AIInterviewController : BasePluginController
             creditService,
             creditActivityService,
             vendorService,
+            pictureService,
             genericAttributeRepository,
             creditLedgerRepository,
             logger)
     {
+    }
+
+    private async Task SetVendorPortalHeaderAsync(Customer customer)
+    {
+        HttpContext.Items[AIInterviewDefaults.IsVendorPortalPageKey] = true;
+        if (customer?.VendorId > 0 && _vendorService != null && _pictureService != null)
+        {
+            var vendor = await _vendorService.GetVendorByIdAsync(customer.VendorId);
+            if (vendor?.PictureId > 0)
+            {
+                var logoUrl = await _pictureService.GetPictureUrlAsync(vendor.PictureId);
+                if (!string.IsNullOrEmpty(logoUrl))
+                    HttpContext.Items[AIInterviewDefaults.VendorPortalLogoUrlKey] = logoUrl;
+            }
+        }
     }
 
     protected virtual async Task<(DateTime? StartDateUtc, DateTime? EndDateUtc)> ConvertApplicationFilterDatesToUtcAsync(DateTime? startDate, DateTime? endDate)
@@ -930,10 +950,14 @@ public class AIInterviewController : BasePluginController
 
     protected virtual async Task<MyActivityPageModel> BuildMyActivityPageModelAsync(Customer customer, string tab, string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null, int page = 1, int pageSize = DefaultMyActivityPageSize)
     {
+        var walletBalance = _creditService != null
+            ? (await _creditService.GetOrCreateWalletAsync(customer.Id)).Balance
+            : 0m;
         var activeTab = NormalizeMyActivityTab(tab);
         var model = new MyActivityPageModel
         {
-            ActiveTab = activeTab
+            ActiveTab = activeTab,
+            WalletBalance = walletBalance
         };
 
         switch (activeTab)
@@ -965,6 +989,26 @@ public class AIInterviewController : BasePluginController
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (customer == null)
             return Challenge();
+
+        HttpContext.Items[AIInterviewDefaults.IsVendorPortalPageKey] = true;
+        if (_inviteService != null && _pictureService != null && _vendorService != null)
+        {
+            var sponsorInvite = await _inviteService.GetAcceptedInviteByEmailAsync(customer.Email);
+            if (sponsorInvite != null)
+            {
+                var sponsorCustomer = await _customerService.GetCustomerByIdAsync(sponsorInvite.SponsorId);
+                if (sponsorCustomer?.VendorId > 0)
+                {
+                    var sponsorVendor = await _vendorService.GetVendorByIdAsync(sponsorCustomer.VendorId);
+                    if (sponsorVendor?.PictureId > 0)
+                    {
+                        var logoUrl = await _pictureService.GetPictureUrlAsync(sponsorVendor.PictureId);
+                        if (!string.IsNullOrEmpty(logoUrl))
+                            HttpContext.Items[AIInterviewDefaults.VendorPortalLogoUrlKey] = logoUrl;
+                    }
+                }
+            }
+        }
 
         var model = await BuildMyActivityPageModelAsync(customer, tab, sortOrder, status, minScore, maxScore, page, pageSize);
         ViewData["IsMyActivity"] = true;
@@ -1067,6 +1111,7 @@ public class AIInterviewController : BasePluginController
         var model = await BuildEmployerDashboardPageModelAsync(customer, activeTab, applicationsModel, effectivePage, effectivePageSize);
         ViewData["EmployerDashboardRouteValues"] = BuildEmployerDashboardRouteValues(model.ActiveTab, model.Applications);
 
+        await SetVendorPortalHeaderAsync(customer);
         return View("~/Plugins/Misc.AIInterview/Views/EmployerDashboard.cshtml", model);
     }
 
@@ -1276,6 +1321,7 @@ public class AIInterviewController : BasePluginController
             return RedirectToRoute("Homepage");
 
         var model = await BuildInstituteDashboardPageModelAsync(customer, tab);
+        await SetVendorPortalHeaderAsync(customer);
         return InstituteTabResult(model);
     }
 
@@ -1388,6 +1434,7 @@ public class AIInterviewController : BasePluginController
             Sessions = sessions.OrderByDescending(s => s.CompletedOnUtc ?? s.CreatedOnUtc).ToList()
         };
 
+        await SetVendorPortalHeaderAsync(customer);
         return View("~/Plugins/Misc.AIInterview/Views/InstituteApplicantInterviews.cshtml", model);
     }
 
@@ -2667,6 +2714,7 @@ public class AIInterviewController : BasePluginController
         var customer = await _workContext.GetCurrentCustomerAsync();
         model = await BuildEmployerApplicationsModelAsync(customer, model, pageIndex, pageSize);
 
+        await SetVendorPortalHeaderAsync(customer);
         return View("~/Plugins/Misc.AIInterview/Views/EmployerApplications.cshtml", model);
     }
 

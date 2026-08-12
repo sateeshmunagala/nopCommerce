@@ -46,6 +46,11 @@
                    aria-current="@(Model.ActiveTab == AIInterviewDefaults.InstituteCandidatesTabKey ? "page" : null)">
                     Applicants
                 </a>
+                <span class="portal-credit-badge institute-credit-badge"
+                      aria-label="Available credits">
+                    <span class="portal-credit-badge-label">Credits</span>
+                    <strong class="portal-credit-badge-value">@Model.AvailableCredits.ToString("0")</strong>
+                </span>
             </nav>
 
             <section id="institute-dashboard-content" class="institute-dashboard-content" aria-live="polite">

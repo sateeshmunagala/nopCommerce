@@ -9070,3 +9070,132 @@ a.ai-home-performer-name:focus-visible {
         justify-content: center;
     }
 }
+
+/* Vendor Portal: top-right header username ---------------------------------- */
+.vp-username-item {
+    display: flex;
+    align-items: center;
+}
+.vp-username {
+    font-size: 13px;
+    font-weight: 600;
+    color: inherit;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+}
+@media (max-width: 767px) {
+    .vp-username {
+        max-width: 90px;
+        font-size: 11px;
+    }
+}
+
+/* Vendor Portal: top-right header credit badge ----------------------------- */
+.vp-credit-badge-item {
+    display: flex;
+    align-items: center;
+}
+.vp-credit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #fff8e1;
+    border: 1px solid #f59e0b;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #b45309;
+    text-decoration: none;
+    line-height: 1.4;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.vp-credit-badge:hover,
+.vp-credit-badge:focus {
+    background: #fef3c7;
+    color: #92400e;
+    text-decoration: none;
+}
+.vp-coin-icon {
+    flex-shrink: 0;
+}
+.vp-credit-balance {
+    font-variant-numeric: tabular-nums;
+}
+@media (max-width: 767px) {
+    .vp-credit-badge {
+        padding: 2px 7px;
+        font-size: 11px;
+        gap: 3px;
+    }
+    .vp-coin-icon {
+        width: 13px;
+        height: 13px;
+    }
+}
+
+/* Vendor Portal: header vendor logo ----------------------------------------- */
+.vp-vendor-logo {
+    max-height: 50px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+@media (max-width: 767px) {
+    .vp-vendor-logo {
+        max-height: 36px;
+    }
+}
+
+/* Portal tab-nav credit badge (institute + my-activity) -------------------- */
+.portal-credit-badge {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #e8f8f5;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a9c82;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.my-activity-credit-badge {
+    text-decoration: none;
+    cursor: pointer;
+}
+.my-activity-credit-badge:hover,
+.my-activity-credit-badge:focus {
+    background: #d1f3ed;
+    color: #147a66;
+    text-decoration: none;
+}
+.institute-credit-badge {
+    cursor: default;
+    user-select: none;
+}
+.portal-credit-badge-label {
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0.8;
+}
+.portal-credit-badge-value {
+    font-size: 14px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+@media (max-width: 767px) {
+    .portal-credit-badge {
+        padding: 3px 8px;
+        font-size: 11px;
+        gap: 4px;
+    }
+    .portal-credit-badge-value {
+        font-size: 12px;
+    }
+}
