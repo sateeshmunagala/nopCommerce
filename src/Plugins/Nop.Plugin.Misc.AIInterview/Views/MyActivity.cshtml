@@ -71,18 +71,6 @@
                    aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivityCreditsTabKey ? "page" : null)">
                     @T("Plugins.Misc.AIInterview.MyActivity.Tab.Credits")
                 </a>
-                <a class="my-activity-tab my-activity-credit-badge"
-                   href="@creditsUrl"
-                   data-my-activity-tab="@AIInterviewDefaults.MyActivityCreditsTabKey"
-                   aria-label="View your credits">
-                    <svg class="portal-credit-badge-coin" viewBox="0 0 16 16" width="14" height="14"
-                         fill="none" aria-hidden="true">
-                        <circle cx="8" cy="8" r="7" fill="var(--jb-accent-dark,#24b99a)" />
-                        <text x="8" y="12" text-anchor="middle" font-size="8" font-weight="700"
-                              fill="#fff" font-family="Arial,sans-serif">&#x20B5;</text>
-                    </svg>
-                    <strong class="portal-credit-badge-value">@Model.WalletBalance.ToString("0")</strong>
-                </a>
             </nav>
 
             <div id="my-activity-loading" class="my-activity-loading" aria-live="polite">

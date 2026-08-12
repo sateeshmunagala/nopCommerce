@@ -9072,11 +9072,12 @@ a.ai-home-performer-name:focus-visible {
 }
 
 /* Vendor Portal header: user name ------------------------------------------ */
-.vp-username-item {
+.header-links .vp-username-item {
     display: flex;
     align-items: center;
+    min-height: 64px;
 }
-.vp-username {
+.header-links .vp-username {
     display: inline-flex;
     align-items: center;
     min-height: 64px;
@@ -9090,10 +9091,15 @@ a.ai-home-performer-name:focus-visible {
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 180px;
+    line-height: 1.2;
+    box-sizing: border-box;
 }
 @media (max-width: 767px) {
-    .vp-username {
+    .header-links .vp-username-item,
+    .header-links .vp-username {
         min-height: 48px;
+    }
+    .header-links .vp-username {
         padding: 0 10px;
         font-size: 0.82rem;
         max-width: 110px;
@@ -9101,11 +9107,12 @@ a.ai-home-performer-name:focus-visible {
 }
 
 /* Vendor Portal header: credit badge ---------------------------------------- */
-.vp-credit-badge-item {
+.header-links .vp-credit-badge-item {
     display: flex;
     align-items: center;
+    min-height: 64px;
 }
-.vp-credit-badge {
+.header-links .vp-credit-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -9120,26 +9127,33 @@ a.ai-home-performer-name:focus-visible {
     text-decoration: none;
     white-space: nowrap;
     transition: color 0.15s;
+    line-height: 1.2;
+    box-sizing: border-box;
 }
-.vp-credit-badge:hover,
-.vp-credit-badge:focus {
+.header-links .vp-credit-badge:hover,
+.header-links .vp-credit-badge:focus {
     color: var(--jb-accent-dark, #24b99a);
     text-decoration: none;
 }
-.vp-coin-icon {
+.header-links .vp-coin-icon {
     flex-shrink: 0;
 }
-.vp-credit-balance {
+.header-links .vp-credit-balance {
+    display: inline-block;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
 }
 @media (max-width: 767px) {
-    .vp-credit-badge {
+    .header-links .vp-credit-badge-item,
+    .header-links .vp-credit-badge {
         min-height: 48px;
+    }
+    .header-links .vp-credit-badge {
         padding: 0 10px;
         font-size: 0.85rem;
         gap: 4px;
     }
-    .vp-coin-icon {
+    .header-links .vp-coin-icon {
         width: 15px;
         height: 15px;
     }
@@ -9180,11 +9194,6 @@ a.ai-home-performer-name:focus-visible {
     cursor: default;
     user-select: none;
     color: var(--jb-accent-dark, #24b99a);
-}
-/* My Activity tab badge: plain tab link, active indicator via parent rule */
-.my-activity-credit-badge {
-    margin-left: auto;
-    gap: 5px;
 }
 @media (max-width: 767px) {
     .portal-credit-badge-value {
