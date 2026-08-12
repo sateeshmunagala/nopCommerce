@@ -12542,6 +12542,564 @@ ACCOUNT PAGE SIDE-DRAWER LAYOUT (Phase 1)
     }
 }
 
+/* ===================================================
+   INSTITUTE DASHBOARD TABS + CREDIT POPUP
+   =================================================== */
+
+.html-aiinterview-institute-dashboard-page .institute-dashboard-shell,
+.html-aiinterview-institute-dashboard-page .institute-dashboard-content,
+.html-aiinterview-institute-dashboard-page .institute-dashboard-tab-panel {
+    overflow: visible;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-dashboard-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #dfe4ea;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-dashboard-tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 10px 16px;
+    color: #4b5563;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-dashboard-tab:hover {
+    color: var(--jb-accent-dark);
+    background: #f0fdfb;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-dashboard-tab.is-active {
+    color: var(--jb-accent-dark);
+    border-bottom-color: var(--jb-accent);
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-summary-card {
+    background: #ffffff;
+    border: 1px solid #e4e7eb;
+    border-radius: 6px;
+    padding: 18px 20px;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-summary-card span {
+    display: block;
+    color: #6b7280;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-summary-card strong {
+    display: block;
+    color: #111827;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.65rem;
+    line-height: 1;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-candidate-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #4b5563;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    position: relative;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-action-icon:hover,
+.html-aiinterview-institute-dashboard-page .institute-action-icon:focus-visible {
+    background: #f0fdfb;
+    color: var(--jb-accent-dark);
+    border-color: var(--jb-accent);
+    outline: none;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-candidate-edit {
+    /* kept for JS selector compatibility */
+}
+
+.html-aiinterview-institute-dashboard-page .institute-transfer-alert {
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-transfer-alert.is-success {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #047857;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-transfer-alert.is-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow: visible;
+}
+
+.html-aiinterview-institute-dashboard-page body.institute-credit-modal-open {
+    overflow: hidden;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal.is-open {
+    display: flex;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.42);
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-dialog {
+    position: relative;
+    z-index: 1;
+    width: min(680px, 100%);
+    max-height: calc(100vh - 40px);
+    overflow: visible;
+    background: #ffffff;
+    border: 1px solid #e4e7eb;
+    border-radius: 8px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-dialog:focus {
+    outline: none;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #e4e7eb;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-header h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.05rem;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-close {
+    border: 0;
+    background: transparent;
+    color: #4b5563;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-form {
+    padding: 20px;
+    overflow: visible;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+    overflow: visible;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-field {
+    min-width: 0;
+    overflow: visible;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-field--wide {
+    grid-column: 1 / -1;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-field label {
+    display: block;
+    color: #6b7280;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-field input,
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-field select {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #d7dde5;
+    border-radius: 4px;
+    padding: 8px 10px;
+    background: #ffffff;
+    color: #111827;
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal.is-open .institute-credit-modal-field select {
+    position: relative;
+    z-index: 10060;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-field input[readonly] {
+    background: #f7f8fa;
+    color: #4b5563;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-credit-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 18px;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10070;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.html-aiinterview-institute-dashboard-page body.institute-ledger-modal-open {
+    overflow: hidden;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal.is-open {
+    display: flex;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.46);
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal-dialog {
+    position: relative;
+    z-index: 1;
+    width: min(980px, 100%);
+    max-height: calc(100dvh - 40px);
+    overflow: auto;
+    background: #ffffff;
+    border: 1px solid #e4e7eb;
+    border-radius: 8px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal-dialog:focus {
+    outline: none;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #e4e7eb;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal-header h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.08rem;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal-header p {
+    margin: 5px 0 0;
+    color: #4b5563;
+    font-size: 0.86rem;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal-header p span {
+    color: #6b7280;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal-close {
+    border: 0;
+    background: transparent;
+    color: #4b5563;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    padding: 18px 20px 0;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-summary-card {
+    border: 1px solid #e4e7eb;
+    border-radius: 6px;
+    padding: 14px 16px;
+    background: #f9fafb;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-summary-card span {
+    display: block;
+    margin-bottom: 6px;
+    color: #6b7280;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-summary-card strong {
+    display: block;
+    color: #111827;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 1.35rem;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-empty {
+    margin: 18px 20px 0;
+    padding: 16px;
+    border: 1px dashed #d7dde5;
+    border-radius: 6px;
+    color: #6b7280;
+    background: #f9fafb;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-table-wrapper {
+    margin: 18px 20px 0;
+    overflow-x: auto;
+    border: 1px solid #e4e7eb;
+    border-radius: 6px;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+    font-size: 0.86rem;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-table th,
+.html-aiinterview-institute-dashboard-page .institute-ledger-table td {
+    padding: 11px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid #eef0f3;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-table th {
+    color: #6b7280;
+    background: #f7f8fa;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.76rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-table .is-positive {
+    color: #047857;
+    font-weight: 700;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-table .is-negative {
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-modal-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 20px 20px;
+}
+
+.html-aiinterview-institute-dashboard-page .institute-ledger-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    color: #4b5563;
+    font-size: 0.86rem;
+}
+
+@media (min-width: 641px) {
+    .html-aiinterview-institute-dashboard-page .ai-institute-candidates-page .institute-candidates-table,
+    .html-aiinterview-institute-dashboard-page .ai-institute-credits-page .institute-candidates-table {
+        display: table;
+    }
+
+    .html-aiinterview-institute-dashboard-page .ai-institute-candidates-page .institute-candidates-table thead,
+    .html-aiinterview-institute-dashboard-page .ai-institute-credits-page .institute-candidates-table thead {
+        display: table-header-group;
+    }
+
+    .html-aiinterview-institute-dashboard-page .ai-institute-candidates-page .institute-candidates-table tbody,
+    .html-aiinterview-institute-dashboard-page .ai-institute-credits-page .institute-candidates-table tbody {
+        display: table-row-group;
+    }
+
+    .html-aiinterview-institute-dashboard-page .ai-institute-candidates-page .institute-candidate-row,
+    .html-aiinterview-institute-dashboard-page .ai-institute-credits-page .institute-candidate-row {
+        display: table-row;
+    }
+
+    .html-aiinterview-institute-dashboard-page .ai-institute-candidates-page .institute-candidates-table td,
+    .html-aiinterview-institute-dashboard-page .ai-institute-credits-page .institute-candidates-table td {
+        display: table-cell;
+        width: auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .html-aiinterview-institute-dashboard-page .applications-table-wrap {
+        display: none;
+    }
+
+    .html-aiinterview-institute-dashboard-page .history-mobile-list {
+        display: grid;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-credit-summary-grid,
+    .html-aiinterview-institute-dashboard-page .institute-credit-modal-grid,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-credit-modal,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-modal {
+        align-items: flex-start;
+        padding: 12px;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-credit-modal-dialog,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-modal-dialog {
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-credit-modal-actions,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-modal-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-credit-modal-actions .button-1,
+    .html-aiinterview-institute-dashboard-page .institute-credit-modal-actions .button-2,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-modal-actions .button-1,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-modal-actions .button-2 {
+        width: 100%;
+        text-align: center;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-ledger-modal-header,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-summary-grid,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-modal-actions {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-ledger-table-wrapper {
+        margin-left: 16px;
+        margin-right: 16px;
+        overflow-x: visible;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-ledger-table thead {
+        display: none;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-ledger-table,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-table tbody,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-table tr,
+    .html-aiinterview-institute-dashboard-page .institute-ledger-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-ledger-table tr {
+        padding: 10px 0;
+        border-bottom: 1px solid #e4e7eb;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-ledger-table tr:last-child {
+        border-bottom: 0;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-ledger-table td {
+        padding: 5px 12px;
+        border-bottom: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-ledger-table td::before {
+        content: attr(data-label) ": ";
+        display: inline;
+        color: #6b7280;
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .html-aiinterview-institute-dashboard-page .institute-ledger-pagination {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+
 /* ============================================================
    VENDOR PORTAL - Complete Layout, Header & Theme
    One scoped section. No !important wars.
@@ -13038,4 +13596,47 @@ html.html-vendor-portal-page .header-logo a:not(.jb-brand) {
         width: 0 !important;
         overflow: hidden !important;
     }
+}
+
+/* Keep autocomplete suggestions visible while the header search is open. */
+body.jb-search-open .header-lower {
+    overflow: visible;
+}
+
+body.jb-search-open .store-search-box.jb-search-overlay .ui-autocomplete {
+    z-index: 1007 !important;
+    max-height: calc(100dvh - 120px);
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+html.html-vendor-portal-page body.jb-search-open header.header {
+    z-index: 1006;
+}
+
+/* Vendor portal account navigation: restrained separators and states. */
+html.html-vendor-portal-page.html-account-page .block-account-navigation .list > li {
+    margin: 0 !important;
+    padding: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+html.html-vendor-portal-page.html-account-page .block-account-navigation .list > li:last-child {
+    border-bottom: 0 !important;
+}
+
+html.html-vendor-portal-page.html-account-page .block-account-navigation .list > li > a {
+    border-bottom: 0;
+}
+
+html.html-vendor-portal-page.html-account-page .block-account-navigation .list > li.inactive > a:hover,
+html.html-vendor-portal-page.html-account-page .block-account-navigation .list > li.inactive > a:focus-visible {
+    background: #273548 !important;
+    color: #f1f5f9 !important;
+    border-left-color: transparent;
+}
+
+html.html-vendor-portal-page.html-account-page .block-account-navigation .list > li.customer-my-activity,
+html.html-vendor-portal-page.html-account-page .block-account-navigation .list > li.customer-my-activity.active {
+    margin-top: 0 !important;
 }
