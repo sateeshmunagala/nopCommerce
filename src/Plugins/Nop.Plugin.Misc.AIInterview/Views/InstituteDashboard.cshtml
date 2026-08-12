@@ -46,9 +46,13 @@
                    aria-current="@(Model.ActiveTab == AIInterviewDefaults.InstituteCandidatesTabKey ? "page" : null)">
                     Applicants
                 </a>
-                <span class="portal-credit-badge institute-credit-badge"
-                      aria-label="Available credits">
-                    <span class="portal-credit-badge-label">Credits</span>
+                <span class="portal-credit-badge institute-credit-badge" aria-label="Available credits">
+                    <svg class="portal-credit-badge-coin" viewBox="0 0 16 16" width="14" height="14"
+                         fill="none" aria-hidden="true">
+                        <circle cx="8" cy="8" r="7" fill="var(--jb-accent-dark,#24b99a)" />
+                        <text x="8" y="12" text-anchor="middle" font-size="8" font-weight="700"
+                              fill="#fff" font-family="Arial,sans-serif">&#x20B5;</text>
+                    </svg>
                     <strong class="portal-credit-badge-value">@Model.AvailableCredits.ToString("0")</strong>
                 </span>
             </nav>
