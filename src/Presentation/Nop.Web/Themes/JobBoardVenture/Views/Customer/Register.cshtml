@@ -22,29 +22,6 @@
                     @T("Account.YourPersonalDetails")
                 </h2>
                 <div class="form-fields">
-                    @if (Model.GenderEnabled)
-                    {
-                        <div class="inputs">
-                            <label class="jb-register-field-label" for="gender">@T("Account.Fields.Gender"):</label>
-                            <div id="gender" class="gender">
-                                <span class="male">
-                                    <input type="radio" asp-for="Gender" value="M" checked="@(Model.Gender == "M")" id="gender-male" />
-                                    <label class="forcheckbox" for="gender-male">@T("Account.Fields.Gender.Male")</label>
-                                </span>
-                                <span class="female">
-                                    <input type="radio" asp-for="Gender" value="F" checked="@(Model.Gender == "F")" id="gender-female" />
-                                    <label class="forcheckbox" for="gender-female">@T("Account.Fields.Gender.Female")</label>
-                                </span>
-                                @if (Model.NeutralGenderEnabled)
-                                {
-                                    <span class="Neutral">
-                                        <input type="radio" asp-for="Gender" value="N" checked="@(Model.Gender == "N")" id="gender-neutral" />
-                                        <label class="forcheckbox" for="gender-neutral">@T("Account.Fields.Gender.Neutral")</label>
-                                    </span>
-                                }
-                            </div>
-                        </div>
-                    }
                     @if (Model.FirstNameEnabled)
                     {
                         <div class="inputs">
@@ -69,28 +46,6 @@
                             <span asp-validation-for="LastName"></span>
                         </div>
                     }
-                    @if (Model.DateOfBirthEnabled)
-                    {
-                        <div class="inputs date-of-birth">
-                            <label class="jb-register-field-label">@T("Account.Fields.DateOfBirth"):</label>
-                            <div class="jb-auth-date-fields">
-                                <nop-date-picker asp-day-name="@Html.NameFor(x => x.DateOfBirthDay)"
-                                                 asp-month-name="@Html.NameFor(x => x.DateOfBirthMonth)"
-                                                 asp-year-name="@Html.NameFor(x => x.DateOfBirthYear)"
-                                                 asp-begin-year="@(DateTime.Now.AddYears(-110))"
-                                                 asp-end-year="@(DateTime.UtcNow)"
-                                                 asp-selected-date="@Model.ParseDateOfBirth()" />
-                            </div>
-
-                            @if (Model.DateOfBirthRequired)
-                            {
-                                <nop-required />
-                            }
-                            <span asp-validation-for="DateOfBirthDay"></span>
-                            <span asp-validation-for="DateOfBirthMonth"></span>
-                            <span asp-validation-for="DateOfBirthYear"></span>
-                        </div>
-                    }
                     <div class="inputs">
                         <label class="jb-register-field-label" for="@Html.IdFor(m => m.Email)">@T("Account.Fields.Email"):</label>
                         <input asp-for="Email" placeholder="@T("Account.Fields.Email")" />
@@ -106,162 +61,9 @@
                             <span asp-validation-for="ConfirmEmail"></span>
                         </div>
                     }
-                    @if (Model.UsernamesEnabled)
-                    {
-                        <div class="inputs">
-                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.Username)">@T("Account.Fields.Username"):</label>
-                            <input asp-for="Username" placeholder="@T("Account.Fields.Username")" />
-                            <nop-required />
-                            <span asp-validation-for="Username"></span>
-                            @if (Model.CheckUsernameAvailabilityEnabled)
-                            {
-                                @await Html.PartialAsync("_CheckUsernameAvailability")
-                            }
-                        </div>
-
-                    }
                 </div>
             </section>
-            @if (Model.CompanyEnabled || Model.DisplayVatNumber)
-            {
-                <section class="fieldset">
-                    <h2 class="title">
-                        @T("Account.CompanyDetails")
-                    </h2>
-                    <div class="form-fields">
-                        @if (Model.CompanyEnabled)
-                        {
-                            <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.Company)">@T("Account.Fields.Company"):</label>
-                                <input asp-for="Company" placeholder="@T("Account.Fields.Company")" />
-                                @if (Model.CompanyRequired)
-                                {
-                                    <nop-required />
-                                }
-                                <span asp-validation-for="Company"></span>
-                            </div>
-                        }
-                        @if (Model.DisplayVatNumber)
-                        {
-                            <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.VatNumber)">@T("Account.Fields.VatNumber"):</label>
-                                <input asp-for="VatNumber" placeholder="@T("Account.Fields.VatNumber")" />
-                                @if (Model.VatNumberRequired)
-                                {
-                                    <nop-required />
-                                }
-                                <span asp-validation-for="VatNumber"></span>
-                                <span class="vat-note"><em>@T("Account.Fields.VatNumber.Note")</em></span>
-                            </div>
-                        }
-                    </div>
-                </section>
-            }
-            @if (Model.StreetAddressEnabled ||
-                Model.StreetAddress2Enabled ||
-                Model.ZipPostalCodeEnabled ||
-                Model.CityEnabled ||
-                Model.CountyEnabled ||
-                Model.CountryEnabled)
-            {
-                <section class="fieldset">
-                    <h2 class="title">
-                        @T("Account.YourAddress")
-                    </h2>
-                    <div class="form-fields">
-                        @if (Model.StreetAddressEnabled)
-                        {
-                            <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.StreetAddress)">@T("Account.Fields.StreetAddress"):</label>
-                                <input asp-for="StreetAddress" placeholder="@T("Account.Fields.StreetAddress")" />
-                                @if (Model.StreetAddressRequired)
-                                {
-                                    <nop-required />
-                                }
-                                <span asp-validation-for="StreetAddress"></span>
-                            </div>
-                        }
-                        @if (Model.StreetAddress2Enabled)
-                        {
-                            <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.StreetAddress2)">@T("Account.Fields.StreetAddress2"):</label>
-                                <input asp-for="StreetAddress2" placeholder="@T("Account.Fields.StreetAddress2")" />
-                                @if (Model.StreetAddress2Required)
-                                {
-                                    <nop-required />
-                                }
-                                <span asp-validation-for="StreetAddress2"></span>
-                            </div>
-                        }
-                        @if (Model.ZipPostalCodeEnabled)
-                        {
-                            <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.ZipPostalCode)">@T("Account.Fields.ZipPostalCode"):</label>
-                                <input asp-for="ZipPostalCode" placeholder="@T("Account.Fields.ZipPostalCode")" />
-                                @if (Model.ZipPostalCodeRequired)
-                                {
-                                    <nop-required />
-                                }
-                                <span asp-validation-for="ZipPostalCode"></span>
-                            </div>
-                        }
-                        @if (Model.CountyEnabled)
-                        {
-                            <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.County)">@T("Account.Fields.County"):</label>
-                                <input asp-for="County" placeholder="@T("Account.Fields.County")" />
-                                @if (Model.CountyRequired)
-                                {
-                                    <nop-required />
-                                }
-                                <span asp-validation-for="County"></span>
-                            </div>
-                        }
-                        @if (Model.CityEnabled)
-                        {
-                            <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.City)">@T("Account.Fields.City"):</label>
-                                <input asp-for="City" placeholder="@T("Account.Fields.City")" />
-                                @if (Model.CityRequired)
-                                {
-                                    <nop-required />
-                                }
-                                <span asp-validation-for="City"></span>
-                            </div>
-                        }
-                        @if (Model.CountryEnabled)
-                        {
-                            <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.CountryId)">@T("Account.Fields.Country"):</label>
-                                <select asp-for="CountryId" asp-items="Model.AvailableCountries"
-                                        data-trigger="country-select"
-                                        data-url="@(Url.RouteUrl(NopRouteNames.Ajax.GET_STATES_BY_COUNTRY_ID))"
-                                        data-stateprovince="#@Html.IdFor(model => model.StateProvinceId)"
-                                        data-loading="#states-loading-progress"></select>
-                                @if (Model.CountryRequired)
-                                {
-                                    <nop-required />
-                                }
-                                <span asp-validation-for="CountryId"></span>
-                            </div>
-                        }
-                        @if (Model.CountryEnabled && Model.StateProvinceEnabled)
-                        {
-                            <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.StateProvinceId)">@T("Account.Fields.StateProvince"):</label>
-                                <select asp-for="StateProvinceId" asp-items="Model.AvailableStates"></select>
-                                @if (Model.StateProvinceRequired)
-                                {
-                                    <nop-required />
-                                }
-                                <span id="states-loading-progress" style="display: none;" class="please-wait">@T("Common.Wait")</span>
-                                <span asp-validation-for="StateProvinceId"></span>
-                            </div>
-                        }
-                    </div>
-                </section>
-            }
-            @if (Model.PhoneEnabled || Model.FaxEnabled)
+            @if (Model.PhoneEnabled)
             {
                 <section class="fieldset">
                     <h2 class="title">
@@ -285,68 +87,6 @@
                                 <span class="phone-info" style="color: var(--gray-color);">@T("Account.Register.OtpRegisterSmsText")</span>
                             }
                         }
-                        @if (Model.FaxEnabled)
-                        {
-                            <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.Fax)">@T("Account.Fields.Fax"):</label>
-                                <input asp-for="Fax" placeholder="@T("Account.Fields.Fax")" />
-                                @if (Model.FaxRequired)
-                                {
-                                    <nop-required />
-                                }
-                                <span asp-validation-for="Fax"></span>
-                            </div>
-                        }
-                    </div>
-                </section>
-            }
-            @if (Model.NewsletterEnabled && Model.NewsLetterSubscriptions.Count > 0)
-            {
-                <section class="fieldset">
-                    <h2 class="title">
-                        @T("Account.SubscribeToNewsletter")
-                    </h2>
-                    <div class="form-fields">
-                        <div class="inputs">
-                            <div class="attributes">
-                                <ul>
-                                    @for (int i = 0; i < Model.NewsLetterSubscriptions.Count; i++)
-                                    {
-                                        <li>
-                                            <label asp-for="NewsLetterSubscriptions[i].IsActive">@Model.NewsLetterSubscriptions[i].Name</label>
-                                            <input type="hidden" asp-for="NewsLetterSubscriptions[i].TypeId" />
-                                            <input class="form-check-input" type="checkbox" asp-for="NewsLetterSubscriptions[i].IsActive" />
-                                        </li>
-                                    }
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            }
-            @if (Model.CustomerAttributes.Count > 0)
-            {
-                <section class="fieldset">
-                    <h2 class="title">
-                        @T("Account.Options")
-                    </h2>
-                    <div class="form-fields">
-                        @await Html.PartialAsync("_CustomerAttributes", Model.CustomerAttributes)
-                    </div>
-                </section>
-            }
-            @if (Model.AllowCustomersToSetTimeZone)
-            {
-                <section class="fieldset">
-                    <h2 class="title">
-                        @T("Account.Preferences")
-                    </h2>
-                    <div class="form-fields">
-                        <div class="inputs">
-                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.TimeZoneId)">@T("Account.Fields.TimeZone"):</label>
-                            <select asp-for="TimeZoneId" asp-items="Model.AvailableTimeZones"></select>
-                            <span asp-validation-for="TimeZoneId"></span>
-                        </div>
                     </div>
                 </section>
             }
