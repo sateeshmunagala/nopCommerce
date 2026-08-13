@@ -7,6 +7,7 @@ using Nop.Services.Catalog;
 using Nop.Services.Cms;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
+using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
@@ -28,6 +29,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     #region Fields
 
     private readonly ILocalizationService _localizationService;
+    private readonly ICustomerService _customerService;
     private readonly ISettingService _settingService;
     private readonly IWebHelper _webHelper;
     private readonly IMessageTemplateService _messageTemplateService;
@@ -45,6 +47,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         ISettingService settingService,
         IWebHelper webHelper,
         IMessageTemplateService messageTemplateService,
+        ICustomerService customerService = null,
         IProductTemplateService productTemplateService = null,
         ICategoryTemplateService categoryTemplateService = null,
         WidgetSettings widgetSettings = null,
@@ -52,6 +55,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         IScheduleTaskService scheduleTaskService = null)
     {
         _localizationService = localizationService;
+        _customerService = customerService;
         _settingService = settingService;
         _webHelper = webHelper;
         _messageTemplateService = messageTemplateService;
@@ -190,6 +194,21 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             await _activityLogTypeRepository.DeleteAsync(existingTypes);
     }
 
+    private async Task EnsureEmployerRoleAsync()
+    {
+        var existing = await _customerService.GetCustomerRoleBySystemNameAsync("Employer");
+        if (existing != null)
+            return;
+
+        await _customerService.InsertCustomerRoleAsync(new Nop.Core.Domain.Customers.CustomerRole
+        {
+            Name = "Employer",
+            SystemName = "Employer",
+            Active = true,
+            IsSystemRole = false
+        });
+    }
+
     /// <summary>
     /// Install plugin
     /// </summary>
@@ -265,6 +284,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetRuntimeTourLocaleResources());
         await EnsureRuntimeActivityLogTypesAsync();
+        await EnsureEmployerRoleAsync();
 
         await base.UpdateAsync(currentVersion, targetVersion);
     }
@@ -1809,6 +1829,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         await EnsureCompletionRecoveryTaskAsync();
 
+        await EnsureEmployerRoleAsync();
         await base.InstallAsync();
     }
 

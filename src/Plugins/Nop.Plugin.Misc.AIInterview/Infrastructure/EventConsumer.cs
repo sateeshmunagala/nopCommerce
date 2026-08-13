@@ -45,11 +45,13 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     navigationModel.CustomerNavigationItems.Remove(legacyActivityItem);
 
                 var customer = await _workContext.GetCurrentCustomerAsync();
-                var isInstituteVendor = customer != null && customer.VendorId > 0
+                var isInstituteVendor = customer != null
                     && await _customerService.IsInCustomerRoleAsync(customer, "Institute", true);
+                var isEmployerVendor = customer != null
+                    && await _customerService.IsInCustomerRoleAsync(customer, "Employer", true);
 
-                // Only applicants (non-vendor customers) should see My Activity
-                if (customer == null || customer.VendorId == 0)
+                // My Activity is for applicants only - users with no portal role
+                if (customer == null || (!isInstituteVendor && !isEmployerVendor))
                 {
                     if (!navigationModel.CustomerNavigationItems.Any(item =>
                         string.Equals(item.RouteName, AIInterviewDefaults.MyActivityRouteName,
@@ -67,7 +69,7 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     }
                 }
 
-                if (customer != null && customer.VendorId > 0)
+                if (isEmployerVendor)
                 {
                     var legacyEmployerItems = navigationModel.CustomerNavigationItems
                         .Where(item =>
@@ -80,19 +82,16 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     foreach (var legacyEmployerItem in legacyEmployerItems)
                         navigationModel.CustomerNavigationItems.Remove(legacyEmployerItem);
 
-                    if (!isInstituteVendor)
+                    if (!navigationModel.CustomerNavigationItems.Any(item =>
+                        string.Equals(item.RouteName, AIInterviewDefaults.EmployerDashboardRouteName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        if (!navigationModel.CustomerNavigationItems.Any(item =>
-                            string.Equals(item.RouteName, AIInterviewDefaults.EmployerDashboardRouteName, StringComparison.OrdinalIgnoreCase)))
+                        navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
                         {
-                            navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
-                            {
-                                RouteName = AIInterviewDefaults.EmployerDashboardRouteName,
-                                Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Dashboard.Title"),
-                                Tab = AIInterviewDefaults.EmployerDashboardNavigationTab,
-                                ItemClass = "vendor-employer-dashboard"
-                            });
-                        }
+                            RouteName = AIInterviewDefaults.EmployerDashboardRouteName,
+                            Title = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Dashboard.Title"),
+                            Tab = AIInterviewDefaults.EmployerDashboardNavigationTab,
+                            ItemClass = "vendor-employer-dashboard"
+                        });
                     }
                 }
 
