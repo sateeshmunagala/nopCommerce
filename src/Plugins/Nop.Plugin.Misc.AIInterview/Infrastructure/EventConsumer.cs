@@ -98,7 +98,7 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     }
                 }
 
-                if (hasInstituteRole)
+                if (hasVendorRole && hasInstituteRole)
                 {
                     var legacyInstituteItems = navigationModel.CustomerNavigationItems
                         .Where(item =>
