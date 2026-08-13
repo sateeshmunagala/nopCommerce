@@ -222,6 +222,9 @@ public class AIInterviewController : BasePluginController
     private async Task SetVendorPortalHeaderAsync(Customer customer)
     {
         HttpContext.Items[AIInterviewDefaults.IsVendorPortalPageKey] = true;
+        if (customer == null)
+            return;
+
         var isPortalUser = _customerService != null
             && (await _customerService.IsInCustomerRoleAsync(customer, "Institute", true)
                 || await _customerService.IsInCustomerRoleAsync(customer, "Employer", true));
@@ -2144,9 +2147,8 @@ public class AIInterviewController : BasePluginController
     protected async Task<bool> IsAuthorizedForEmployerActionsAsync()
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
-        return customer != null
-            && (await _customerService.IsAdminAsync(customer)
-                || await _customerService.IsInCustomerRoleAsync(customer, "Employer", true));
+        return customer != null && (await _customerService.IsAdminAsync(customer)
+            || (customer.VendorId > 0 && await _customerService.IsInCustomerRoleAsync(customer, "Employer", true)));
     }
 
     protected virtual string BuildLoginRedirectUrl(ApplyModel model)

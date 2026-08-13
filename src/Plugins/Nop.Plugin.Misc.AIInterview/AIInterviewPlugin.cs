@@ -196,6 +196,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
     private async Task EnsureEmployerRoleAsync()
     {
+        if (_customerService == null)
+            return;
+
         var existing = await _customerService.GetCustomerRoleBySystemNameAsync("Employer");
         if (existing != null)
             return;

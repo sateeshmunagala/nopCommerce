@@ -51,7 +51,7 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     && await _customerService.IsInCustomerRoleAsync(customer, "Employer", true);
 
                 // My Activity is for applicants only - users with no portal role
-                if (customer == null || (!isInstituteVendor && !isEmployerVendor))
+                if (customer != null && customer.VendorId == 0 && !isInstituteVendor && !isEmployerVendor)
                 {
                     if (!navigationModel.CustomerNavigationItems.Any(item =>
                         string.Equals(item.RouteName, AIInterviewDefaults.MyActivityRouteName,
