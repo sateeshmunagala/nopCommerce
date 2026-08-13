@@ -61,6 +61,19 @@
                             <span asp-validation-for="ConfirmEmail"></span>
                         </div>
                     }
+                    @if (Model.UsernamesEnabled)
+                    {
+                        <div class="inputs">
+                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.Username)">@T("Account.Fields.Username"):</label>
+                            <input asp-for="Username" placeholder="@T("Account.Fields.Username")" />
+                            <nop-required />
+                            <span asp-validation-for="Username"></span>
+                            @if (Model.CheckUsernameAvailabilityEnabled)
+                            {
+                                @await Html.PartialAsync("_CheckUsernameAvailability")
+                            }
+                        </div>
+                    }
                 </div>
             </section>
             @if (Model.PhoneEnabled)

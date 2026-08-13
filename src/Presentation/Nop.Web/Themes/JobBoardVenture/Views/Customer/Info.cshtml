@@ -57,6 +57,29 @@
                             <span class="email-to-revalidate-note"><em>@T("Account.Fields.EmailToRevalidate.Note")</em></span>
                         </div>
                     }
+                    @if (Model.UsernamesEnabled)
+                    {
+                        if (Model.AllowUsersToChangeUsernames)
+                        {
+                            <div class="inputs">
+                                <label asp-for="Username" asp-postfix=":"></label>
+                                <input asp-for="Username" />
+                                <nop-required />
+                                <span asp-validation-for="Username"></span>
+                                @if (Model.CheckUsernameAvailabilityEnabled)
+                                {
+                                    @await Html.PartialAsync("_CheckUsernameAvailability")
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="inputs">
+                                <label asp-for="Username" asp-postfix=":"></label>
+                                <span class="readonly-username">@Model.Username</span>
+                            </div>
+                        }
+                    }
                 </div>
             </section>
             @if (Model.PhoneEnabled)
