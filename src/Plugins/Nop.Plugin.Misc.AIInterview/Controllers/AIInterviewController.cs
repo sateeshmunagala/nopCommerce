@@ -230,10 +230,10 @@ public class AIInterviewController : BasePluginController
 
         var hasVendorRole = await _customerService.IsVendorAsync(customer, true);
         var hasVendorAssociation = customer.VendorId > 0 || hasVendorRole;
-        var hasEmployerRole = await _customerService.IsInCustomerRoleAsync(
-            customer, AIInterviewDefaults.EmployerCustomerRoleSystemName, true);
-        var hasInstituteRole = await _customerService.IsInCustomerRoleAsync(
-            customer, AIInterviewDefaults.InstituteCustomerRoleSystemName, true);
+        var hasEmployerRole = await AIInterviewRoleHelper.IsInRoleAsync(
+            _customerService, customer, AIInterviewDefaults.EmployerCustomerRoleSystemName);
+        var hasInstituteRole = await AIInterviewRoleHelper.IsInRoleAsync(
+            _customerService, customer, AIInterviewDefaults.InstituteCustomerRoleSystemName);
         var isPortalUser = hasVendorAssociation && (hasEmployerRole || hasInstituteRole);
 
         if (isPortalUser && customer.VendorId > 0 && _vendorService != null && _pictureService != null)
@@ -1136,8 +1136,8 @@ public class AIInterviewController : BasePluginController
 
         var hasVendorRole = await _customerService.IsVendorAsync(customer, true);
         var hasVendorAssociation = customer.VendorId > 0 || hasVendorRole;
-        return hasVendorAssociation && await _customerService.IsInCustomerRoleAsync(
-            customer, AIInterviewDefaults.InstituteCustomerRoleSystemName, true);
+        return hasVendorAssociation && await AIInterviewRoleHelper.IsInRoleAsync(
+            _customerService, customer, AIInterviewDefaults.InstituteCustomerRoleSystemName);
     }
 
     protected static string BuildInstituteSlug(string vendorName)
@@ -2167,8 +2167,8 @@ public class AIInterviewController : BasePluginController
 
         var hasVendorRole = await _customerService.IsVendorAsync(customer, true);
         var hasVendorAssociation = customer.VendorId > 0 || hasVendorRole;
-        return hasVendorAssociation && await _customerService.IsInCustomerRoleAsync(
-            customer, AIInterviewDefaults.EmployerCustomerRoleSystemName, true);
+        return hasVendorAssociation && await AIInterviewRoleHelper.IsInRoleAsync(
+            _customerService, customer, AIInterviewDefaults.EmployerCustomerRoleSystemName);
     }
 
     protected virtual string BuildLoginRedirectUrl(ApplyModel model)

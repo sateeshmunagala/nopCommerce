@@ -50,9 +50,11 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                 var hasVendorAssociation = customer != null
                     && (customer.VendorId > 0 || hasVendorRole);
                 var hasEmployerRole = customer != null
-                    && await _customerService.IsInCustomerRoleAsync(customer, AIInterviewDefaults.EmployerCustomerRoleSystemName, true);
+                    && await AIInterviewRoleHelper.IsInRoleAsync(
+                        _customerService, customer, AIInterviewDefaults.EmployerCustomerRoleSystemName);
                 var hasInstituteRole = customer != null
-                    && await _customerService.IsInCustomerRoleAsync(customer, AIInterviewDefaults.InstituteCustomerRoleSystemName, true);
+                    && await AIInterviewRoleHelper.IsInRoleAsync(
+                        _customerService, customer, AIInterviewDefaults.InstituteCustomerRoleSystemName);
 
                 // My Activity is for applicants only - users with no portal role
                 if (customer != null && customer.VendorId == 0 && !hasInstituteRole && !hasEmployerRole)

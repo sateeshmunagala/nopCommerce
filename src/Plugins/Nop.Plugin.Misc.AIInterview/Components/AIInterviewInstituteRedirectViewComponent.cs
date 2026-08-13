@@ -60,8 +60,8 @@ public class AIInterviewInstituteRedirectViewComponent : NopViewComponent
         if (customer == null || customer.VendorId <= 0)
             return Content(string.Empty);
 
-        var isInstitute = await _customerService.IsInCustomerRoleAsync(
-            customer, AIInterviewDefaults.InstituteCustomerRoleSystemName, true);
+        var isInstitute = await AIInterviewRoleHelper.IsInRoleAsync(
+            _customerService, customer, AIInterviewDefaults.InstituteCustomerRoleSystemName);
 
         if (!isInstitute)
             return Content(string.Empty);

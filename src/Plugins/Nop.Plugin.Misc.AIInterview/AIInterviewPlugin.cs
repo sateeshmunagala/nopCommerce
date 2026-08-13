@@ -1,5 +1,6 @@
 ﻿using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Cms;
+using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Logging;
 using Nop.Core.Domain.ScheduleTasks;
 using Nop.Data;
@@ -36,6 +37,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     private readonly IProductTemplateService _productTemplateService;
     private readonly ICategoryTemplateService _categoryTemplateService;
     private readonly IRepository<ActivityLogType> _activityLogTypeRepository;
+    private readonly IRepository<CustomerCustomerRoleMapping> _customerCustomerRoleMappingRepository;
     private readonly WidgetSettings _widgetSettings;
     private readonly IScheduleTaskService _scheduleTaskService;
 
@@ -52,7 +54,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         ICategoryTemplateService categoryTemplateService = null,
         WidgetSettings widgetSettings = null,
         IRepository<ActivityLogType> activityLogTypeRepository = null,
-        IScheduleTaskService scheduleTaskService = null)
+        IScheduleTaskService scheduleTaskService = null,
+        IRepository<CustomerCustomerRoleMapping> customerCustomerRoleMappingRepository = null)
     {
         _localizationService = localizationService;
         _customerService = customerService;
@@ -62,6 +65,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         _productTemplateService = productTemplateService;
         _categoryTemplateService = categoryTemplateService;
         _activityLogTypeRepository = activityLogTypeRepository;
+        _customerCustomerRoleMappingRepository = customerCustomerRoleMappingRepository;
         _widgetSettings = widgetSettings;
         _scheduleTaskService = scheduleTaskService;
     }
@@ -196,54 +200,90 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
     private async Task EnsureEmployerRoleAsync()
     {
-        if (_customerService == null)
-            return;
-
-        var existing = await _customerService.GetCustomerRoleBySystemNameAsync(AIInterviewDefaults.EmployerCustomerRoleSystemName);
-        if (existing != null)
-        {
-            if (existing.Active && existing.Name == AIInterviewDefaults.EmployerCustomerRoleSystemName)
-                return;
-
-            existing.Active = true;
-            existing.Name = AIInterviewDefaults.EmployerCustomerRoleSystemName;
-            await _customerService.UpdateCustomerRoleAsync(existing);
-            return;
-        }
-
-        await _customerService.InsertCustomerRoleAsync(new Nop.Core.Domain.Customers.CustomerRole
-        {
-            Name = AIInterviewDefaults.EmployerCustomerRoleSystemName,
-            SystemName = AIInterviewDefaults.EmployerCustomerRoleSystemName,
-            Active = true,
-            IsSystemRole = false
-        });
+        await EnsureCustomerRoleAsync(AIInterviewDefaults.EmployerCustomerRoleSystemName);
     }
 
     private async Task EnsureInstituteRoleAsync()
     {
+        await EnsureCustomerRoleAsync(AIInterviewDefaults.InstituteCustomerRoleSystemName);
+    }
+
+    private async Task EnsureCustomerRoleAsync(string roleSystemName)
+    {
         if (_customerService == null)
             return;
 
-        var existing = await _customerService.GetCustomerRoleBySystemNameAsync(AIInterviewDefaults.InstituteCustomerRoleSystemName);
-        if (existing != null)
-        {
-            if (existing.Active && existing.Name == AIInterviewDefaults.InstituteCustomerRoleSystemName)
-                return;
+        var allRoles = await _customerService.GetAllCustomerRolesAsync(showHidden: true) ?? new List<CustomerRole>();
+        var canonicalRole = await _customerService.GetCustomerRoleBySystemNameAsync(roleSystemName)
+            ?? allRoles.FirstOrDefault(role => string.Equals(role.SystemName?.Trim(), roleSystemName, StringComparison.OrdinalIgnoreCase))
+            ?? allRoles.FirstOrDefault(role => string.Equals(role.Name?.Trim(), roleSystemName, StringComparison.OrdinalIgnoreCase));
 
-            existing.Active = true;
-            existing.Name = AIInterviewDefaults.InstituteCustomerRoleSystemName;
-            await _customerService.UpdateCustomerRoleAsync(existing);
+        if (canonicalRole == null)
+        {
+            canonicalRole = new CustomerRole
+            {
+                Name = roleSystemName,
+                SystemName = roleSystemName,
+                Active = true,
+                IsSystemRole = false
+            };
+            await _customerService.InsertCustomerRoleAsync(canonicalRole);
+        }
+        else if (!canonicalRole.Active
+            || !string.Equals(canonicalRole.Name, roleSystemName, StringComparison.Ordinal)
+            || !string.Equals(canonicalRole.SystemName, roleSystemName, StringComparison.Ordinal))
+        {
+            canonicalRole.Active = true;
+            canonicalRole.Name = roleSystemName;
+            canonicalRole.SystemName = roleSystemName;
+            await _customerService.UpdateCustomerRoleAsync(canonicalRole);
+        }
+
+        var duplicateRoles = allRoles
+            .Where(role => role.Id != canonicalRole.Id
+                && (string.Equals(role.SystemName?.Trim(), roleSystemName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(role.Name?.Trim(), roleSystemName, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        foreach (var duplicateRole in duplicateRoles)
+            await MigrateCustomerRoleMappingsAsync(canonicalRole, duplicateRole);
+    }
+
+    private async Task MigrateCustomerRoleMappingsAsync(CustomerRole canonicalRole, CustomerRole duplicateRole)
+    {
+        if (_customerCustomerRoleMappingRepository == null)
+            return;
+
+        var mappings = await _customerCustomerRoleMappingRepository.GetAllAsync(query => query.Where(mapping =>
+            mapping.CustomerRoleId == canonicalRole.Id || mapping.CustomerRoleId == duplicateRole.Id));
+        var canonicalCustomerIds = mappings
+            .Where(mapping => mapping.CustomerRoleId == canonicalRole.Id)
+            .Select(mapping => mapping.CustomerId)
+            .ToHashSet();
+
+        foreach (var duplicateMapping in mappings.Where(mapping => mapping.CustomerRoleId == duplicateRole.Id))
+        {
+            if (!canonicalCustomerIds.Add(duplicateMapping.CustomerId))
+            {
+                await _customerCustomerRoleMappingRepository.DeleteAsync(duplicateMapping);
+                continue;
+            }
+
+            duplicateMapping.CustomerRoleId = canonicalRole.Id;
+            await _customerCustomerRoleMappingRepository.UpdateAsync(duplicateMapping);
+        }
+
+        if (!duplicateRole.IsSystemRole)
+        {
+            await _customerService.DeleteCustomerRoleAsync(duplicateRole);
             return;
         }
 
-        await _customerService.InsertCustomerRoleAsync(new Nop.Core.Domain.Customers.CustomerRole
+        if (duplicateRole.Active)
         {
-            Name = AIInterviewDefaults.InstituteCustomerRoleSystemName,
-            SystemName = AIInterviewDefaults.InstituteCustomerRoleSystemName,
-            Active = true,
-            IsSystemRole = false
-        });
+            duplicateRole.Active = false;
+            await _customerService.UpdateCustomerRoleAsync(duplicateRole);
+        }
     }
 
     /// <summary>
@@ -1953,4 +1993,21 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     }
 
     #endregion
+}
+
+internal static class AIInterviewRoleHelper
+{
+    public static async Task<bool> IsInRoleAsync(ICustomerService customerService, Customer customer, string roleSystemName)
+    {
+        if (customerService == null || customer == null || string.IsNullOrWhiteSpace(roleSystemName))
+            return false;
+
+        if (await customerService.IsInCustomerRoleAsync(customer, roleSystemName, true))
+            return true;
+
+        var activeRoles = await customerService.GetCustomerRolesAsync(customer);
+        return activeRoles?.Any(role =>
+            string.Equals(role.SystemName?.Trim(), roleSystemName, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role.Name?.Trim(), roleSystemName, StringComparison.OrdinalIgnoreCase)) == true;
+    }
 }
