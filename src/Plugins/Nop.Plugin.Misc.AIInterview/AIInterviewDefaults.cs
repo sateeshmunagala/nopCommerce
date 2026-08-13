@@ -5,6 +5,10 @@ namespace Nop.Plugin.Misc.AIInterview;
 /// </summary>
 public static class AIInterviewDefaults
 {
+    public const string EmployerCustomerRoleSystemName = "Employer";
+    public const string InstituteCustomerRoleSystemName = "Institute";
+    public const string VendorCustomerRoleSystemName = "Vendors";
+
     /// <summary>
     /// Gets the plugin system name
     /// </summary>

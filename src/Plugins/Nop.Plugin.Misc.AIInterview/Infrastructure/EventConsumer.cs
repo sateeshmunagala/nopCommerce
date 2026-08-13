@@ -45,13 +45,15 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     navigationModel.CustomerNavigationItems.Remove(legacyActivityItem);
 
                 var customer = await _workContext.GetCurrentCustomerAsync();
-                var isInstituteVendor = customer != null
-                    && await _customerService.IsInCustomerRoleAsync(customer, "Institute", true);
-                var isEmployerVendor = customer != null
-                    && await _customerService.IsInCustomerRoleAsync(customer, "Employer", true);
+                var hasVendorRole = customer != null
+                    && await _customerService.IsVendorAsync(customer, true);
+                var hasEmployerRole = customer != null
+                    && await _customerService.IsInCustomerRoleAsync(customer, AIInterviewDefaults.EmployerCustomerRoleSystemName, true);
+                var hasInstituteRole = customer != null
+                    && await _customerService.IsInCustomerRoleAsync(customer, AIInterviewDefaults.InstituteCustomerRoleSystemName, true);
 
                 // My Activity is for applicants only - users with no portal role
-                if (customer != null && customer.VendorId == 0 && !isInstituteVendor && !isEmployerVendor)
+                if (customer != null && !hasVendorRole && !hasInstituteRole && !hasEmployerRole)
                 {
                     if (!navigationModel.CustomerNavigationItems.Any(item =>
                         string.Equals(item.RouteName, AIInterviewDefaults.MyActivityRouteName,
@@ -69,14 +71,15 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     }
                 }
 
-                if (isEmployerVendor)
+                if (hasVendorRole && hasEmployerRole)
                 {
                     var legacyEmployerItems = navigationModel.CustomerNavigationItems
                         .Where(item =>
                             string.Equals(item.RouteName, NopRouteNames.Standard.CUSTOMER_VENDOR_INFO, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(item.RouteName, AIInterviewDefaults.VendorScoreboardRouteName, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(item.RouteName, AIInterviewDefaults.EmployerApplicationsRouteName, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(item.RouteName, AIInterviewDefaults.MockEmployerManageRouteName, StringComparison.OrdinalIgnoreCase))
+                            string.Equals(item.RouteName, AIInterviewDefaults.MockEmployerManageRouteName, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(item.ItemClass, "customer-vendor-info", StringComparison.OrdinalIgnoreCase))
                         .ToList();
 
                     foreach (var legacyEmployerItem in legacyEmployerItems)
@@ -95,7 +98,7 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     }
                 }
 
-                if (isInstituteVendor)
+                if (hasInstituteRole)
                 {
                     var legacyInstituteItems = navigationModel.CustomerNavigationItems
                         .Where(item =>

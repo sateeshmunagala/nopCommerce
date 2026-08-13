@@ -225,10 +225,17 @@ public class AIInterviewController : BasePluginController
         if (customer == null)
             return;
 
-        var isPortalUser = _customerService != null
-            && (await _customerService.IsInCustomerRoleAsync(customer, "Institute", true)
-                || await _customerService.IsInCustomerRoleAsync(customer, "Employer", true));
-        if (isPortalUser && customer?.VendorId > 0 && _vendorService != null && _pictureService != null)
+        if (_customerService == null)
+            return;
+
+        var hasVendorRole = await _customerService.IsVendorAsync(customer, true);
+        var hasEmployerRole = await _customerService.IsInCustomerRoleAsync(
+            customer, AIInterviewDefaults.EmployerCustomerRoleSystemName, true);
+        var hasInstituteRole = await _customerService.IsInCustomerRoleAsync(
+            customer, AIInterviewDefaults.InstituteCustomerRoleSystemName, true);
+        var isPortalUser = hasVendorRole && (hasEmployerRole || hasInstituteRole);
+
+        if (isPortalUser && customer.VendorId > 0 && _vendorService != null && _pictureService != null)
         {
             var vendor = await _vendorService.GetVendorByIdAsync(customer.VendorId);
             if (vendor?.PictureId > 0)
@@ -1123,9 +1130,10 @@ public class AIInterviewController : BasePluginController
 
     protected virtual async Task<bool> IsInstituteVendorAsync(Nop.Core.Domain.Customers.Customer customer)
     {
-        if (customer == null || customer.VendorId <= 0)
-            return false;
-        return await _customerService.IsInCustomerRoleAsync(customer, "Institute", true);
+        return customer != null
+            && await _customerService.IsVendorAsync(customer, true)
+            && await _customerService.IsInCustomerRoleAsync(
+                customer, AIInterviewDefaults.InstituteCustomerRoleSystemName, true);
     }
 
     protected static string BuildInstituteSlug(string vendorName)
@@ -2148,7 +2156,9 @@ public class AIInterviewController : BasePluginController
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
         return customer != null && (await _customerService.IsAdminAsync(customer)
-            || (customer.VendorId > 0 && await _customerService.IsInCustomerRoleAsync(customer, "Employer", true)));
+            || (await _customerService.IsVendorAsync(customer, true)
+                && await _customerService.IsInCustomerRoleAsync(
+                    customer, AIInterviewDefaults.EmployerCustomerRoleSystemName, true)));
     }
 
     protected virtual string BuildLoginRedirectUrl(ApplyModel model)

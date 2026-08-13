@@ -199,14 +199,22 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (_customerService == null)
             return;
 
-        var existing = await _customerService.GetCustomerRoleBySystemNameAsync("Employer");
+        var existing = await _customerService.GetCustomerRoleBySystemNameAsync(AIInterviewDefaults.EmployerCustomerRoleSystemName);
         if (existing != null)
+        {
+            if (existing.Active && existing.Name == AIInterviewDefaults.EmployerCustomerRoleSystemName)
+                return;
+
+            existing.Active = true;
+            existing.Name = AIInterviewDefaults.EmployerCustomerRoleSystemName;
+            await _customerService.UpdateCustomerRoleAsync(existing);
             return;
+        }
 
         await _customerService.InsertCustomerRoleAsync(new Nop.Core.Domain.Customers.CustomerRole
         {
-            Name = "Employer",
-            SystemName = "Employer",
+            Name = AIInterviewDefaults.EmployerCustomerRoleSystemName,
+            SystemName = AIInterviewDefaults.EmployerCustomerRoleSystemName,
             Active = true,
             IsSystemRole = false
         });
