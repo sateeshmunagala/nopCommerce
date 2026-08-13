@@ -215,7 +215,12 @@ public partial class VendorModelFactory : IVendorModelFactory
         var vendor = await _workContext.GetCurrentVendorAsync();
         if (!excludeProperties)
         {
-            model.Description = vendor.Description;
+            model.Description = System.Net.WebUtility.HtmlDecode(System.Net.WebUtility.HtmlDecode(vendor.Description ?? string.Empty));
+            model.Description = model.Description
+                .Replace("<br />", Environment.NewLine, StringComparison.OrdinalIgnoreCase)
+                .Replace("<br>", Environment.NewLine, StringComparison.OrdinalIgnoreCase);
+            model.Description = System.Text.RegularExpressions.Regex.Replace(model.Description, "<[^>]+>", string.Empty);
+            model.Description = System.Net.WebUtility.HtmlDecode(model.Description).Trim();
             model.Email = vendor.Email;
             model.Name = vendor.Name;
         }
