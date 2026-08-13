@@ -2,11 +2,13 @@
 @using Nop.Services.Helpers
 @model CustomerInfoModel
 @inject IWebHelper webHelper
+@inject IWorkContext workContext
 @{
     Layout = "_ColumnsTwo";
     NopHtml.AddTitleParts(T("PageTitle.Account").Text);
     NopHtml.AppendPageCssClassParts("html-account-page");
     NopHtml.AppendPageCssClassParts("html-customer-info-page");
+    var hideCustomAttributesForVendor = (await workContext.GetCurrentVendorAsync()) != null;
 }
 
 @section left
@@ -110,7 +112,7 @@
                 </section>
             }
 
-            @if (Model.CustomerAttributes.Count > 0)
+            @if (!hideCustomAttributesForVendor && Model.CustomerAttributes.Count > 0)
             {
                 <section class="fieldset jb-account-panel">
                     <h2 class="title">@T("Account.Options")</h2>
