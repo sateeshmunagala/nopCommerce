@@ -220,6 +220,32 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         });
     }
 
+    private async Task EnsureInstituteRoleAsync()
+    {
+        if (_customerService == null)
+            return;
+
+        var existing = await _customerService.GetCustomerRoleBySystemNameAsync(AIInterviewDefaults.InstituteCustomerRoleSystemName);
+        if (existing != null)
+        {
+            if (existing.Active && existing.Name == AIInterviewDefaults.InstituteCustomerRoleSystemName)
+                return;
+
+            existing.Active = true;
+            existing.Name = AIInterviewDefaults.InstituteCustomerRoleSystemName;
+            await _customerService.UpdateCustomerRoleAsync(existing);
+            return;
+        }
+
+        await _customerService.InsertCustomerRoleAsync(new Nop.Core.Domain.Customers.CustomerRole
+        {
+            Name = AIInterviewDefaults.InstituteCustomerRoleSystemName,
+            SystemName = AIInterviewDefaults.InstituteCustomerRoleSystemName,
+            Active = true,
+            IsSystemRole = false
+        });
+    }
+
     /// <summary>
     /// Install plugin
     /// </summary>
@@ -296,6 +322,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetRuntimeTourLocaleResources());
         await EnsureRuntimeActivityLogTypesAsync();
         await EnsureEmployerRoleAsync();
+        await EnsureInstituteRoleAsync();
 
         await base.UpdateAsync(currentVersion, targetVersion);
     }
@@ -1841,6 +1868,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureCompletionRecoveryTaskAsync();
 
         await EnsureEmployerRoleAsync();
+        await EnsureInstituteRoleAsync();
         await base.InstallAsync();
     }
 

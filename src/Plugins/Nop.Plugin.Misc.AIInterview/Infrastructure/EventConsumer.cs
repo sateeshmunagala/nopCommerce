@@ -47,13 +47,15 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                 var customer = await _workContext.GetCurrentCustomerAsync();
                 var hasVendorRole = customer != null
                     && await _customerService.IsVendorAsync(customer, true);
+                var hasVendorAssociation = customer != null
+                    && (customer.VendorId > 0 || hasVendorRole);
                 var hasEmployerRole = customer != null
                     && await _customerService.IsInCustomerRoleAsync(customer, AIInterviewDefaults.EmployerCustomerRoleSystemName, true);
                 var hasInstituteRole = customer != null
                     && await _customerService.IsInCustomerRoleAsync(customer, AIInterviewDefaults.InstituteCustomerRoleSystemName, true);
 
                 // My Activity is for applicants only - users with no portal role
-                if (customer != null && !hasVendorRole && !hasInstituteRole && !hasEmployerRole)
+                if (customer != null && customer.VendorId == 0 && !hasInstituteRole && !hasEmployerRole)
                 {
                     if (!navigationModel.CustomerNavigationItems.Any(item =>
                         string.Equals(item.RouteName, AIInterviewDefaults.MyActivityRouteName,
@@ -71,7 +73,7 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     }
                 }
 
-                if (hasVendorRole && hasEmployerRole)
+                if (hasVendorAssociation && hasEmployerRole)
                 {
                     var legacyEmployerItems = navigationModel.CustomerNavigationItems
                         .Where(item =>
@@ -85,8 +87,15 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     foreach (var legacyEmployerItem in legacyEmployerItems)
                         navigationModel.CustomerNavigationItems.Remove(legacyEmployerItem);
 
-                    if (!navigationModel.CustomerNavigationItems.Any(item =>
-                        string.Equals(item.RouteName, AIInterviewDefaults.EmployerDashboardRouteName, StringComparison.OrdinalIgnoreCase)))
+                    var employerDashboardItems = navigationModel.CustomerNavigationItems
+                        .Where(item => string.Equals(item.RouteName, AIInterviewDefaults.EmployerDashboardRouteName,
+                            StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    foreach (var duplicateEmployerDashboardItem in employerDashboardItems.Skip(1))
+                        navigationModel.CustomerNavigationItems.Remove(duplicateEmployerDashboardItem);
+
+                    if (!employerDashboardItems.Any())
                     {
                         navigationModel.CustomerNavigationItems.Add(new Nop.Web.Models.Customer.CustomerNavigationItemModel
                         {
@@ -98,7 +107,7 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     }
                 }
 
-                if (hasVendorRole && hasInstituteRole)
+                if (hasVendorAssociation && hasInstituteRole)
                 {
                     var legacyInstituteItems = navigationModel.CustomerNavigationItems
                         .Where(item =>
@@ -111,10 +120,15 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     foreach (var legacyInstituteItem in legacyInstituteItems)
                         navigationModel.CustomerNavigationItems.Remove(legacyInstituteItem);
 
-                    if (!navigationModel.CustomerNavigationItems.Any(item =>
-                        string.Equals(item.RouteName,
-                            AIInterviewDefaults.InstituteDashboardRouteName,
-                            StringComparison.OrdinalIgnoreCase)))
+                    var instituteDashboardItems = navigationModel.CustomerNavigationItems
+                        .Where(item => string.Equals(item.RouteName, AIInterviewDefaults.InstituteDashboardRouteName,
+                            StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    foreach (var duplicateInstituteDashboardItem in instituteDashboardItems.Skip(1))
+                        navigationModel.CustomerNavigationItems.Remove(duplicateInstituteDashboardItem);
+
+                    if (!instituteDashboardItems.Any())
                     {
                         navigationModel.CustomerNavigationItems.Add(
                             new Nop.Web.Models.Customer.CustomerNavigationItemModel
