@@ -9388,6 +9388,11 @@ body.jb-filter-panel-open .product-filters {
 }
 
 /* Address, order history, and password form corrections. */
+.html-account-page .order-list-page .pager li.current-page span {
+    border-color: var(--jb-accent);
+    background-color: var(--jb-accent);
+}
+
 .html-account-page .address-list-page .address-item > .title,
 .html-account-page .order-list-page .order-item > .title {
     margin: 0;
