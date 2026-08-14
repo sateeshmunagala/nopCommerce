@@ -32,10 +32,4 @@ public partial class OtpSettings : ISettings
     /// Gets or sets the number of digits to use when generating one-time passwords (OTPs)
     /// </summary>
     public int OtpLength { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the existing login OTP may also be delivered by WhatsApp
-    /// </summary>
-    public bool WhatsAppOtpEnabled { get; set; }
-
 }

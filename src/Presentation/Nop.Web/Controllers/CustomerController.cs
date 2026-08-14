@@ -1,6 +1,5 @@
 ﻿using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using Nop.Core;
@@ -41,7 +40,6 @@ using Nop.Web.Framework.Mvc.Filters;
 using Nop.Web.Framework.Validators;
 using Nop.Web.Models.Customer;
 using PhoneNumbers;
-using System.Globalization;
 using ILogger = Nop.Services.Logging.ILogger;
 
 namespace Nop.Web.Controllers;
@@ -92,7 +90,6 @@ public partial class CustomerController : BasePublicController
     protected readonly ITaxService _taxService;
     protected readonly IWorkContext _workContext;
     protected readonly IWorkflowMessageService _workflowMessageService;
-    protected readonly IServiceProvider _serviceProvider;
     protected readonly LocalizationSettings _localizationSettings;
     protected readonly MediaSettings _mediaSettings;
     protected readonly MultiFactorAuthenticationSettings _multiFactorAuthenticationSettings;
@@ -151,8 +148,7 @@ public partial class CustomerController : BasePublicController
         MultiFactorAuthenticationSettings multiFactorAuthenticationSettings,
         OtpSettings otpSettings,
         StoreInformationSettings storeInformationSettings,
-        TaxSettings taxSettings,
-        IServiceProvider serviceProvider)
+        TaxSettings taxSettings)
     {
         _addressSettings = addressSettings;
         _captchaSettings = captchaSettings;
@@ -195,7 +191,6 @@ public partial class CustomerController : BasePublicController
         _taxService = taxService;
         _workContext = workContext;
         _workflowMessageService = workflowMessageService;
-        _serviceProvider = serviceProvider;
         _localizationSettings = localizationSettings;
         _mediaSettings = mediaSettings;
         _multiFactorAuthenticationSettings = multiFactorAuthenticationSettings;
@@ -224,51 +219,6 @@ public partial class CustomerController : BasePublicController
         catch
         {
             return string.Empty;
-        }
-    }
-
-    protected virtual async Task<bool> TrySendLoginOtpWhatsAppAsync(
-        Customer customer,
-        string phoneNumber,
-        string otpCode,
-        string messageText)
-    {
-        if (!_otpSettings.WhatsAppOtpEnabled || string.IsNullOrWhiteSpace(phoneNumber))
-            return false;
-
-        try
-        {
-            var whatsAppService = _serviceProvider?.GetService<IWhatsAppNotificationService>();
-            if (whatsAppService?.IsEnabled != true)
-                return false;
-
-            var isSent = await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
-            {
-                CustomerId = customer.Id,
-                PhoneNumber = phoneNumber,
-                MessageType = "Authentication.Otp",
-                MessageBody = messageText,
-                TemplateParameters = new List<string>
-                {
-                    otpCode,
-                    _otpSettings.OtpTimeLife.ToString(CultureInfo.InvariantCulture)
-                },
-                Tokens = new Dictionary<string, string>
-                {
-                    ["OtpCode"] = otpCode,
-                    ["ExpiresInSeconds"] = _otpSettings.OtpTimeLife.ToString(CultureInfo.InvariantCulture)
-                }
-            });
-
-            if (!isSent)
-                await _logger.WarningAsync($"Optional WhatsApp OTP delivery was not accepted for customer {customer.Id}.");
-
-            return isSent;
-        }
-        catch (Exception exception)
-        {
-            await _logger.WarningAsync($"Optional WhatsApp OTP delivery failed for customer {customer.Id}.", exception);
-            return false;
         }
     }
 
@@ -671,12 +621,10 @@ public partial class CustomerController : BasePublicController
         context.SentCount++;
         context.LastAttemptAtUtc = DateTime.UtcNow;
 
-        // Use the same OTP for all enabled delivery channels.
+        // Send SMS with OTP code using SMS service
         var text = string.Format(await _localizationService.GetResourceAsync("PhoneVerification.OtpCode.Message"), otpCode);
         var isSentSms = await _smsService.SendSmsAsync(phoneNumber, text);
-        var isSentWhatsApp = await TrySendLoginOtpWhatsAppAsync(customer, phoneNumber, otpCode, text);
-
-        if (!isSentSms && !isSentWhatsApp)
+        if (!isSentSms)
             return Json(new { success = false, message = await _localizationService.GetResourceAsync("PhoneVerification.OtpCode.Error.SendError") });
 
         await _genericAttributeService.SaveAttributeAsync(customer, NopCustomerDefaults.OtpContextAttribute, JsonConvert.SerializeObject(context));

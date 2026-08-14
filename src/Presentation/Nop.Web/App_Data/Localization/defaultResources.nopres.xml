@@ -7602,12 +7602,6 @@
   <LocaleResource Name="Admin.Configuration.Settings.CustomerUser.OtpTimeToRepeat.Hint">
     <Value>The time (in minutes) before the OTP code can be resent.</Value>
   </LocaleResource>
-  <LocaleResource Name="Admin.Configuration.Settings.CustomerUser.WhatsAppOtpEnabled">
-    <Value>Deliver login OTP by WhatsApp</Value>
-  </LocaleResource>
-  <LocaleResource Name="Admin.Configuration.Settings.CustomerUser.WhatsAppOtpEnabled.Hint">
-    <Value>Also use an installed and enabled WhatsApp provider to deliver the existing login OTP.</Value>
-  </LocaleResource>
   <LocaleResource Name="Admin.Configuration.Settings.CustomerUser.PasswordLifetime">
     <Value>Password lifetime</Value>
   </LocaleResource>
