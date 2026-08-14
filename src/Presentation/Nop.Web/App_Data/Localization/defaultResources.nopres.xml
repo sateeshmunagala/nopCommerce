@@ -7608,12 +7608,6 @@
   <LocaleResource Name="Admin.Configuration.Settings.CustomerUser.WhatsAppOtpEnabled.Hint">
     <Value>Also use an installed and enabled WhatsApp provider to deliver the existing login OTP.</Value>
   </LocaleResource>
-  <LocaleResource Name="Admin.Configuration.Settings.CustomerUser.WhatsAppPasswordRecoveryEnabled">
-    <Value>Deliver password recovery by WhatsApp</Value>
-  </LocaleResource>
-  <LocaleResource Name="Admin.Configuration.Settings.CustomerUser.WhatsAppPasswordRecoveryEnabled.Hint">
-    <Value>Also use an installed and enabled WhatsApp provider to deliver the existing password recovery link.</Value>
-  </LocaleResource>
   <LocaleResource Name="Admin.Configuration.Settings.CustomerUser.PasswordLifetime">
     <Value>Password lifetime</Value>
   </LocaleResource>

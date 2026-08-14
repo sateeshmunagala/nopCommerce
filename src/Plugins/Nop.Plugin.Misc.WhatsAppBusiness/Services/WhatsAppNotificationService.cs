@@ -57,7 +57,6 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
             "AIInterview.VendorCompletion" => _settings.VendorInterviewCompletionTemplateName,
             "AIInterview.ReportSharing" => _settings.InterviewReportSharingTemplateName,
             "Authentication.Otp" => _settings.OtpTemplateName,
-            "Authentication.PasswordRecovery" => _settings.PasswordRecoveryTemplateName,
             _ => string.Empty
         };
     }

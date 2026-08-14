@@ -38,8 +38,4 @@ public partial class OtpSettings : ISettings
     /// </summary>
     public bool WhatsAppOtpEnabled { get; set; }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether the existing password recovery link may also be delivered by WhatsApp
-    /// </summary>
-    public bool WhatsAppPasswordRecoveryEnabled { get; set; }
 }

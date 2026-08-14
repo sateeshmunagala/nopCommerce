@@ -48,8 +48,6 @@ public class WhatsAppBusinessSettings : ISettings
 
 	public string OtpTemplateName { get; set; } = "customer_login_otp";
 
-	public string PasswordRecoveryTemplateName { get; set; } = "customer_password_recovery";
-
 	public int PollingIntervalSeconds { get; set; } = WhatsAppBusinessDefaults.DefaultPollingIntervalSeconds;
 
 	public int MinDelayBetweenSendsSeconds { get; set; } = 10;

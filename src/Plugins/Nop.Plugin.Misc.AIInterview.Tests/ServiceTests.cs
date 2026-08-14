@@ -418,7 +418,7 @@ public class ServiceTests
         _messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync("AIInterview.VendorInterviewCompletion", 1))
             .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { vendorTemplate });
         _emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(It.IsAny<int>())).ReturnsAsync(emailAccount);
-        _webHelper.Setup(x => x.GetStoreLocation(false)).Returns("https://store.example/");
+        _webHelper.Setup(x => x.GetStoreLocation(It.IsAny<bool?>())).Returns("https://store.example/");
         serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService))).Returns(whatsAppService.Object);
         whatsAppService.SetupGet(x => x.IsEnabled).Returns(true);
         whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>())).ReturnsAsync(true);
@@ -509,7 +509,7 @@ public class ServiceTests
         _messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync("AIInterview.ApplicantInterviewCompletion", 1))
             .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { template });
         _emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(It.IsAny<int>())).ReturnsAsync(emailAccount);
-        _webHelper.Setup(x => x.GetStoreLocation(false)).Returns("https://store.example/");
+        _webHelper.Setup(x => x.GetStoreLocation(It.IsAny<bool?>())).Returns("https://store.example/");
 
         if (serviceProvider != null)
         {

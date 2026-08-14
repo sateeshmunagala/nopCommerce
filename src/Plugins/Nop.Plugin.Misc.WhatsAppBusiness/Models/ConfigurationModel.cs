@@ -29,7 +29,6 @@ public record ConfigurationModel : BaseNopModel
 	public string VendorInterviewCompletionTemplateName { get; set; } = string.Empty;
 	public string InterviewReportSharingTemplateName { get; set; } = string.Empty;
 	public string OtpTemplateName { get; set; } = string.Empty;
-	public string PasswordRecoveryTemplateName { get; set; } = string.Empty;
 	[Range(1, int.MaxValue)]
 	public int PollingIntervalSeconds { get; set; }
 	public int MinDelayBetweenSendsSeconds { get; set; }

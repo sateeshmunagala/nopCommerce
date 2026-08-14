@@ -127,7 +127,6 @@ public class WhatsAppBusinessPlugin : BasePlugin, IWidgetPlugin, IPlugin
 			["Plugins.Misc.WhatsAppBusiness.Fields.VendorInterviewCompletionTemplateName"] = "Vendor Interview Completion Template",
 			["Plugins.Misc.WhatsAppBusiness.Fields.InterviewReportSharingTemplateName"] = "Interview Report Sharing Template",
 			["Plugins.Misc.WhatsAppBusiness.Fields.OtpTemplateName"] = "Login OTP Template",
-			["Plugins.Misc.WhatsAppBusiness.Fields.PasswordRecoveryTemplateName"] = "Password Recovery Template",
 			["Plugins.Misc.WhatsAppBusiness.Fields.PollingIntervalSeconds"] = "Polling Interval (seconds)",
 			["Plugins.Misc.WhatsAppBusiness.Fields.MinDelayBetweenSendsSeconds"] = "Min Delay Between Sends (seconds)",
 			["Plugins.Misc.WhatsAppBusiness.Fields.MaxDelayBetweenSendsSeconds"] = "Max Delay Between Sends (seconds)",
