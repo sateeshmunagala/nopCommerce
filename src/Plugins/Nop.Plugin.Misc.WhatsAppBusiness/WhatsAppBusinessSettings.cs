@@ -16,7 +16,7 @@ public class WhatsAppBusinessSettings : ISettings
 
 	public string ApiVersion { get; set; } = "v23.0";
 
-	public bool IsEnabled { get; set; } = true;
+	public bool IsEnabled { get; set; }
 
 	public bool EnableOrderPlaced { get; set; } = true;
 
@@ -39,6 +39,16 @@ public class WhatsAppBusinessSettings : ISettings
 	public string ShipmentTrackingTemplateName { get; set; } = "shipment_tracking_notification";
 
 	public string DeliveryConfirmationTemplateName { get; set; } = "delivery_confirmation";
+
+	public string ApplicantInterviewCompletionTemplateName { get; set; } = "aiinterview_applicant_completion";
+
+	public string VendorInterviewCompletionTemplateName { get; set; } = "aiinterview_vendor_completion";
+
+	public string InterviewReportSharingTemplateName { get; set; } = "aiinterview_report_sharing";
+
+	public string OtpTemplateName { get; set; } = "customer_login_otp";
+
+	public string PasswordRecoveryTemplateName { get; set; } = "customer_password_recovery";
 
 	public int PollingIntervalSeconds { get; set; } = WhatsAppBusinessDefaults.DefaultPollingIntervalSeconds;
 

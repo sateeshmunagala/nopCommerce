@@ -17,7 +17,10 @@ using Nop.Services.Media;
 using Nop.Services.Vendors;
 using Nop.Services.Helpers;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Nop.Services.Common;
+using Nop.Services.Messages;
 using System.Globalization;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
@@ -39,6 +42,8 @@ public class ApplicationService : IApplicationService
     private readonly IStoreContext _storeContext;
     private readonly IWebHelper _webHelper;
     private readonly IDateTimeHelper _dateTimeHelper;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<ApplicationService> _logger;
 
     public ApplicationService(IRepository<JobApplication> applicationRepository,
         IRepository<Customer> customerRepository,
@@ -51,7 +56,9 @@ public class ApplicationService : IApplicationService
         EmailAccountSettings emailAccountSettings,
         IStoreContext storeContext,
         IWebHelper webHelper,
-        IDateTimeHelper dateTimeHelper)
+        IDateTimeHelper dateTimeHelper,
+        IServiceProvider serviceProvider = null,
+        ILogger<ApplicationService> logger = null)
     {
         _applicationRepository = applicationRepository;
         _customerRepository = customerRepository;
@@ -65,6 +72,8 @@ public class ApplicationService : IApplicationService
         _storeContext = storeContext;
         _webHelper = webHelper;
         _dateTimeHelper = dateTimeHelper;
+        _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
     public async Task SendApplicationSubmittedNotificationAsync(JobApplication application, int languageId)
@@ -95,16 +104,8 @@ public class ApplicationService : IApplicationService
     {
         var store = await _storeContext.GetCurrentStoreAsync();
         if (store == null) return;
-        var templates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationStatusUpdate", store.Id);
-        var template = templates.FirstOrDefault();
-        if (template == null) return;
-
         var customer = await _customerRepository.GetByIdAsync(application.CustomerId);
         if (customer == null) return;
-
-        var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(template.EmailAccountId > 0 ? template.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId);
-        if (emailAccount == null) emailAccount = (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
-        if (emailAccount == null) return;
 
         var tokens = new List<Nop.Services.Messages.Token>();
         await _messageTokenProvider.AddCustomerTokensAsync(tokens, customer);
@@ -113,9 +114,76 @@ public class ApplicationService : IApplicationService
         var customerTimeZone = await _dateTimeHelper.GetCustomerTimeZoneAsync(customer);
         var updateTimestamp = _dateTimeHelper.ConvertToUserTime(DateTime.UtcNow, TimeZoneInfo.Utc, customerTimeZone);
         tokens.Add(new Nop.Services.Messages.Token("AIInterview.UpdateTimestamp", updateTimestamp.ToString("g")));
-        tokens.Add(new Nop.Services.Messages.Token("AIInterview.MyApplicationsUrl", $"{_webHelper.GetStoreLocation()}aiinterview/my-applications"));
+        var storeLocation = (_webHelper.GetStoreLocation() ?? string.Empty).TrimEnd('/');
+        var candidateDashboardUrl = $"{storeLocation}/my-activity";
+        var session = await _sessionRepository.Table
+            .Where(item => item.JobApplicationId == application.Id && item.CompletedOnUtc.HasValue)
+            .OrderByDescending(item => item.CompletedOnUtc)
+            .FirstOrDefaultAsync();
+        var completionTimestamp = session?.CompletedOnUtc.HasValue == true
+            ? _dateTimeHelper.ConvertToUserTime(session.CompletedOnUtc.Value, TimeZoneInfo.Utc, customerTimeZone).ToString("g")
+            : string.Empty;
+        var reportUrl = session != null ? $"{storeLocation}/aiinterview/report/{session.Id}" : string.Empty;
+        var applicantName = string.Join(" ", new[] { customer.FirstName, customer.LastName }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
 
-        await _workflowMessageService.SendNotificationAsync(template, emailAccount, languageId, tokens, customer.Email, customer.FirstName + " " + customer.LastName);
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.InterviewName", application.JobTitle ?? string.Empty));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.ApplicantName", applicantName));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionTimestamp", completionTimestamp));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.ReportUrl", reportUrl));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.CandidateDashboardUrl", candidateDashboardUrl));
+        tokens.Add(new Nop.Services.Messages.Token("AIInterview.MyApplicationsUrl", $"{storeLocation}/aiinterview/my-applications"));
+
+        var templates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicationStatusUpdate", store.Id);
+        var template = templates.FirstOrDefault();
+        if (template != null && !string.IsNullOrWhiteSpace(customer.Email))
+        {
+            var emailAccount = await _emailAccountService.GetEmailAccountByIdAsync(template.EmailAccountId > 0 ? template.EmailAccountId : _emailAccountSettings.DefaultEmailAccountId);
+            if (emailAccount == null)
+                emailAccount = (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
+
+            if (emailAccount != null)
+                await _workflowMessageService.SendNotificationAsync(template, emailAccount, languageId, tokens, customer.Email, applicantName);
+        }
+
+        var whatsAppService = _serviceProvider?.GetService<IWhatsAppNotificationService>();
+        if (whatsAppService == null || string.IsNullOrWhiteSpace(customer.Phone))
+            return;
+
+        try
+        {
+            await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
+            {
+                CustomerId = customer.Id,
+                PhoneNumber = customer.Phone,
+                MessageType = string.IsNullOrWhiteSpace(reportUrl)
+                    ? "AIInterview.ApplicationStatusChanged"
+                    : "AIInterview.ReportSharing",
+                MessageBody = $"Hi {applicantName}, your {application.JobTitle} application status is now {application.Status}. View your dashboard: {candidateDashboardUrl}",
+                TemplateParameters = new List<string>
+                {
+                    application.JobTitle ?? string.Empty,
+                    applicantName,
+                    completionTimestamp,
+                    reportUrl,
+                    candidateDashboardUrl,
+                    application.Status ?? string.Empty
+                },
+                Tokens = new Dictionary<string, string>
+                {
+                    ["InterviewName"] = application.JobTitle ?? string.Empty,
+                    ["ApplicantName"] = applicantName,
+                    ["CompletionTimestamp"] = completionTimestamp,
+                    ["ReportUrl"] = reportUrl,
+                    ["CandidateDashboardUrl"] = candidateDashboardUrl,
+                    ["NewStatus"] = application.Status ?? string.Empty
+                }
+            });
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Optional WhatsApp application status notification failed for application {ApplicationId}.", application.Id);
+        }
     }
 
     public async Task InsertJobApplicationAsync(JobApplication application)
@@ -269,6 +337,8 @@ public class InterviewSessionService : IInterviewSessionService
     private readonly IRepository<StoreMapping> _storeMappingRepository;
     private readonly IRepository<GenericAttribute> _genericAttributeRepository;
     private readonly IPictureService _pictureService;
+    private readonly IAddressService _addressService;
+    private readonly IServiceProvider _serviceProvider;
 
     public InterviewSessionService(IRepository<InterviewSession> sessionRepository,
         ICustomerService customerService,
@@ -290,7 +360,9 @@ public class InterviewSessionService : IInterviewSessionService
         IRepository<Product> productRepository = null,
         IRepository<StoreMapping> storeMappingRepository = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
-        IPictureService pictureService = null)
+        IPictureService pictureService = null,
+        IAddressService addressService = null,
+        IServiceProvider serviceProvider = null)
     {
         _sessionRepository = sessionRepository;
         _customerService = customerService;
@@ -313,6 +385,8 @@ public class InterviewSessionService : IInterviewSessionService
         _storeMappingRepository = storeMappingRepository;
         _genericAttributeRepository = genericAttributeRepository;
         _pictureService = pictureService;
+        _addressService = addressService;
+        _serviceProvider = serviceProvider;
     }
 
     public async Task SendInterviewCompletionNotificationAsync(InterviewSession session, int languageId)
@@ -350,6 +424,22 @@ public class InterviewSessionService : IInterviewSessionService
             }
         }
 
+        var storeLocation = (_webHelper.GetStoreLocation() ?? string.Empty).TrimEnd('/');
+        var applicantName = string.Join(" ", new[] { customer.FirstName, customer.LastName }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+        var customerTimeZone = await _dateTimeHelper.GetCustomerTimeZoneAsync(customer);
+        var applicantCompletionTimestamp = session.CompletedOnUtc.HasValue
+            ? _dateTimeHelper.ConvertToUserTime(session.CompletedOnUtc.Value, TimeZoneInfo.Utc, customerTimeZone).ToString("g")
+            : string.Empty;
+        var vendorCompletionTimestamp = session.CompletedOnUtc.HasValue
+            ? _dateTimeHelper.ConvertToUserTime(session.CompletedOnUtc.Value, TimeZoneInfo.Utc, _dateTimeHelper.DefaultStoreTimeZone).ToString("g")
+            : string.Empty;
+        var reportShareToken = await EnsureReportShareTokenAsync(session);
+        var reportUrl = string.IsNullOrWhiteSpace(reportShareToken)
+            ? $"{storeLocation}/aiinterview/report/{session.Id}"
+            : $"{storeLocation}/aiinterview/report/share/{reportShareToken}";
+        var candidateDashboardUrl = $"{storeLocation}/my-activity";
+
         // Applicant Notification
         var applicantTemplates = await _messageTemplateService.GetMessageTemplatesByNameAsync("AIInterview.ApplicantInterviewCompletion", store.Id);
         var applicantTemplate = applicantTemplates.FirstOrDefault();
@@ -363,14 +453,14 @@ public class InterviewSessionService : IInterviewSessionService
                 await _messageTokenProvider.AddCustomerTokensAsync(tokens, customer);
                 tokens.Add(new Nop.Services.Messages.Token("AIInterview.JobTitle", jobTitle));
                 tokens.Add(new Nop.Services.Messages.Token("AIInterview.OverallScore", session.Score.ToString("N2")));
-                var customerTimeZone = await _dateTimeHelper.GetCustomerTimeZoneAsync(customer);
-                var applicantCompletionDate = session.CompletedOnUtc.HasValue
-                    ? _dateTimeHelper.ConvertToUserTime(session.CompletedOnUtc.Value, TimeZoneInfo.Utc, customerTimeZone).ToString("g")
-                    : null;
-                tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionDate", applicantCompletionDate));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionDate", applicantCompletionTimestamp));
                 tokens.Add(new Nop.Services.Messages.Token("AIInterview.QuestionSummary", session.QuestionScores ?? ""));
-                tokens.Add(new Nop.Services.Messages.Token("AIInterview.ReportUrl", $"{_webHelper.GetStoreLocation()}aiinterview/report/{session.Id}"));
-                tokens.Add(new Nop.Services.Messages.Token("AIInterview.MyApplicationsUrl", $"{_webHelper.GetStoreLocation()}aiinterview/my-applications"));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.InterviewName", jobTitle));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.ApplicantName", applicantName));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionTimestamp", applicantCompletionTimestamp));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.ReportUrl", reportUrl));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.CandidateDashboardUrl", candidateDashboardUrl));
+                tokens.Add(new Nop.Services.Messages.Token("AIInterview.MyApplicationsUrl", $"{storeLocation}/aiinterview/my-applications"));
 
                 await _workflowMessageService.SendNotificationAsync(applicantTemplate, emailAccount, languageId, tokens, customer.Email, customer.FirstName + " " + customer.LastName);
             }
@@ -392,16 +482,115 @@ public class InterviewSessionService : IInterviewSessionService
                     tokens.Add(new Nop.Services.Messages.Token("Vendor.Name", vendor.Name));
                     tokens.Add(new Nop.Services.Messages.Token("AIInterview.JobTitle", jobTitle));
                     tokens.Add(new Nop.Services.Messages.Token("AIInterview.OverallScore", session.Score.ToString("N2")));
-                    var vendorCompletionDate = session.CompletedOnUtc.HasValue
-                        ? _dateTimeHelper.ConvertToUserTime(session.CompletedOnUtc.Value, TimeZoneInfo.Utc, _dateTimeHelper.DefaultStoreTimeZone).ToString("g")
-                        : null;
-                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionDate", vendorCompletionDate));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionDate", vendorCompletionTimestamp));
                     tokens.Add(new Nop.Services.Messages.Token("AIInterview.QuestionSummary", session.QuestionScores ?? ""));
-                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.CandidateReportUrl", $"{_webHelper.GetStoreLocation()}aiinterview/report/{session.Id}"));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.InterviewName", jobTitle));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.ApplicantName", applicantName));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.CompletionTimestamp", vendorCompletionTimestamp));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.ReportUrl", reportUrl));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.CandidateReportUrl", reportUrl));
+                    tokens.Add(new Nop.Services.Messages.Token("AIInterview.CandidateDashboardUrl", candidateDashboardUrl));
 
                     await _workflowMessageService.SendNotificationAsync(vendorTemplate, emailAccount, languageId, tokens, vendor.Email, vendor.Name);
                 }
             }
+        }
+
+        await SendWhatsAppCompletionNotificationsAsync(
+            session,
+            customer,
+            vendor,
+            jobTitle,
+            applicantName,
+            applicantCompletionTimestamp,
+            vendorCompletionTimestamp,
+            reportUrl,
+            candidateDashboardUrl);
+    }
+
+    protected virtual async Task SendWhatsAppCompletionNotificationsAsync(
+        InterviewSession session,
+        Customer customer,
+        Vendor vendor,
+        string interviewName,
+        string applicantName,
+        string applicantCompletionTimestamp,
+        string vendorCompletionTimestamp,
+        string reportUrl,
+        string candidateDashboardUrl)
+    {
+        var whatsAppService = _serviceProvider?.GetService<IWhatsAppNotificationService>();
+        if (whatsAppService == null)
+            return;
+
+        var commonTokens = new Dictionary<string, string>
+        {
+            ["InterviewName"] = interviewName ?? string.Empty,
+            ["ApplicantName"] = applicantName ?? string.Empty,
+            ["CompletionTimestamp"] = applicantCompletionTimestamp ?? string.Empty,
+            ["ReportUrl"] = reportUrl ?? string.Empty,
+            ["CandidateDashboardUrl"] = candidateDashboardUrl ?? string.Empty
+        };
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(customer.Phone))
+            {
+                await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
+                {
+                    CustomerId = customer.Id,
+                    PhoneNumber = customer.Phone,
+                    MessageType = "AIInterview.ApplicantCompletion",
+                    MessageBody = $"Hi {applicantName}, your {interviewName} interview was completed on {applicantCompletionTimestamp}. Report: {reportUrl} Dashboard: {candidateDashboardUrl}",
+                    TemplateParameters = new List<string>
+                    {
+                        interviewName ?? string.Empty,
+                        applicantName ?? string.Empty,
+                        applicantCompletionTimestamp ?? string.Empty,
+                        reportUrl ?? string.Empty,
+                        candidateDashboardUrl ?? string.Empty
+                    },
+                    Tokens = new Dictionary<string, string>(commonTokens)
+                });
+            }
+
+            if (vendor != null)
+            {
+                var vendorAddress = _addressService != null && vendor.AddressId > 0
+                    ? await _addressService.GetAddressByIdAsync(vendor.AddressId)
+                    : null;
+                var vendorCustomer = vendor.PmCustomerId.HasValue
+                    ? await _customerService.GetCustomerByIdAsync(vendor.PmCustomerId.Value)
+                    : null;
+                var vendorPhone = vendorCustomer?.Phone ?? vendorAddress?.PhoneNumber;
+                if (!string.IsNullOrWhiteSpace(vendorPhone))
+                {
+                    var vendorTokens = new Dictionary<string, string>(commonTokens)
+                    {
+                        ["CompletionTimestamp"] = vendorCompletionTimestamp ?? string.Empty
+                    };
+                    await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
+                    {
+                        CustomerId = vendorCustomer?.Id ?? 0,
+                        PhoneNumber = vendorPhone,
+                        MessageType = "AIInterview.VendorCompletion",
+                        MessageBody = $"{applicantName} completed {interviewName} on {vendorCompletionTimestamp}. Report: {reportUrl} Candidate dashboard: {candidateDashboardUrl}",
+                        TemplateParameters = new List<string>
+                        {
+                            interviewName ?? string.Empty,
+                            applicantName ?? string.Empty,
+                            vendorCompletionTimestamp ?? string.Empty,
+                            reportUrl ?? string.Empty,
+                            candidateDashboardUrl ?? string.Empty
+                        },
+                        Tokens = vendorTokens
+                    });
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Optional WhatsApp interview completion notification failed for session {SessionId}.", session.Id);
         }
     }
 

@@ -24,5 +24,11 @@ public partial record OtpSettingsModel : BaseNopModel, ISettingsModel
     [NopResourceDisplayName("Admin.Configuration.Settings.CustomerUser.OtpLength")]
     public int OtpLength { get; set; }
 
+    [NopResourceDisplayName("Admin.Configuration.Settings.CustomerUser.WhatsAppOtpEnabled")]
+    public bool WhatsAppOtpEnabled { get; set; }
+
+    [NopResourceDisplayName("Admin.Configuration.Settings.CustomerUser.WhatsAppPasswordRecoveryEnabled")]
+    public bool WhatsAppPasswordRecoveryEnabled { get; set; }
+
     #endregion
 }

@@ -1,5 +1,6 @@
 ﻿using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using Nop.Core;
@@ -40,6 +41,7 @@ using Nop.Web.Framework.Mvc.Filters;
 using Nop.Web.Framework.Validators;
 using Nop.Web.Models.Customer;
 using PhoneNumbers;
+using System.Globalization;
 using ILogger = Nop.Services.Logging.ILogger;
 
 namespace Nop.Web.Controllers;
@@ -90,6 +92,7 @@ public partial class CustomerController : BasePublicController
     protected readonly ITaxService _taxService;
     protected readonly IWorkContext _workContext;
     protected readonly IWorkflowMessageService _workflowMessageService;
+    protected readonly IServiceProvider _serviceProvider;
     protected readonly LocalizationSettings _localizationSettings;
     protected readonly MediaSettings _mediaSettings;
     protected readonly MultiFactorAuthenticationSettings _multiFactorAuthenticationSettings;
@@ -148,7 +151,8 @@ public partial class CustomerController : BasePublicController
         MultiFactorAuthenticationSettings multiFactorAuthenticationSettings,
         OtpSettings otpSettings,
         StoreInformationSettings storeInformationSettings,
-        TaxSettings taxSettings)
+        TaxSettings taxSettings,
+        IServiceProvider serviceProvider)
     {
         _addressSettings = addressSettings;
         _captchaSettings = captchaSettings;
@@ -191,6 +195,7 @@ public partial class CustomerController : BasePublicController
         _taxService = taxService;
         _workContext = workContext;
         _workflowMessageService = workflowMessageService;
+        _serviceProvider = serviceProvider;
         _localizationSettings = localizationSettings;
         _mediaSettings = mediaSettings;
         _multiFactorAuthenticationSettings = multiFactorAuthenticationSettings;
@@ -621,10 +626,43 @@ public partial class CustomerController : BasePublicController
         context.SentCount++;
         context.LastAttemptAtUtc = DateTime.UtcNow;
 
-        // Send SMS with OTP code using SMS service
+        // Use the same OTP for all enabled delivery channels.
         var text = string.Format(await _localizationService.GetResourceAsync("PhoneVerification.OtpCode.Message"), otpCode);
         var isSentSms = await _smsService.SendSmsAsync(phoneNumber, text);
-        if (!isSentSms)
+        var isSentWhatsApp = false;
+        if (_otpSettings.WhatsAppOtpEnabled)
+        {
+            var whatsAppService = _serviceProvider.GetService<IWhatsAppNotificationService>();
+            if (whatsAppService != null)
+            {
+                try
+                {
+                    isSentWhatsApp = await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
+                    {
+                        CustomerId = customer.Id,
+                        PhoneNumber = phoneNumber,
+                        MessageType = "Authentication.Otp",
+                        MessageBody = text,
+                        TemplateParameters = new List<string>
+                        {
+                            otpCode,
+                            _otpSettings.OtpTimeLife.ToString(CultureInfo.InvariantCulture)
+                        },
+                        Tokens = new Dictionary<string, string>
+                        {
+                            ["OtpCode"] = otpCode,
+                            ["ExpiresInSeconds"] = _otpSettings.OtpTimeLife.ToString(CultureInfo.InvariantCulture)
+                        }
+                    });
+                }
+                catch (Exception exception)
+                {
+                    await _logger.WarningAsync($"Optional WhatsApp OTP delivery failed for customer {customer.Id}.", exception);
+                }
+            }
+        }
+
+        if (!isSentSms && !isSentWhatsApp)
             return Json(new { success = false, message = await _localizationService.GetResourceAsync("PhoneVerification.OtpCode.Error.SendError") });
 
         await _genericAttributeService.SaveAttributeAsync(customer, NopCustomerDefaults.OtpContextAttribute, JsonConvert.SerializeObject(context));
@@ -857,6 +895,43 @@ public partial class CustomerController : BasePublicController
                 //send email
                 await _workflowMessageService.SendCustomerPasswordRecoveryMessageAsync(customer,
                     (await _workContext.GetWorkingLanguageAsync()).Id);
+
+                if (_otpSettings.WhatsAppPasswordRecoveryEnabled && !string.IsNullOrWhiteSpace(customer.Phone))
+                {
+                    var whatsAppService = _serviceProvider.GetService<IWhatsAppNotificationService>();
+                    if (whatsAppService != null)
+                    {
+                        try
+                        {
+                            var recoveryUrl = Url.RouteUrl(
+                                NopRouteNames.Standard.PASSWORD_RECOVERY_CONFIRM,
+                                new { token = passwordRecoveryToken, guid = customer.CustomerGuid },
+                                Request.Scheme);
+                            var customerName = await _customerService.GetCustomerFullNameAsync(customer);
+                            await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
+                            {
+                                CustomerId = customer.Id,
+                                PhoneNumber = customer.Phone,
+                                MessageType = "Authentication.PasswordRecovery",
+                                MessageBody = $"Hi {customerName}, use this link to reset your password: {recoveryUrl}",
+                                TemplateParameters = new List<string>
+                                {
+                                    customerName,
+                                    recoveryUrl ?? string.Empty
+                                },
+                                Tokens = new Dictionary<string, string>
+                                {
+                                    ["CustomerName"] = customerName,
+                                    ["PasswordRecoveryUrl"] = recoveryUrl ?? string.Empty
+                                }
+                            });
+                        }
+                        catch (Exception exception)
+                        {
+                            await _logger.WarningAsync($"Optional WhatsApp password recovery delivery failed for customer {customer.Id}.", exception);
+                        }
+                    }
+                }
             }
 
             _notificationService.SuccessNotification(string.Format(await _localizationService.GetResourceAsync("Account.PasswordRecovery.SendEmailMessage"), model.Email), true);

@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <OutDir>$(OutputPath)</OutDir>
+    <Nullable>annotations</Nullable>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
 
     <OutputPath>$(MSBuildProjectDirectory)\..\..\Presentation\Nop.Web\Plugins\Misc.WhatsAppBusiness\</OutputPath>

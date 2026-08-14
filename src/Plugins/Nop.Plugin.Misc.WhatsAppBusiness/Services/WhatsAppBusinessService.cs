@@ -159,6 +159,9 @@ public class WhatsAppBusinessService : IWhatsAppBusinessService
 
 	private async Task<bool> SendPayloadAsync(int orderId, int customerId, string phoneNumber, string messageType, object payload, string? trackingNumber, string? templateUsed)
 	{
+		if (!_settings.IsEnabled)
+			return false;
+
 		string correlationId = ((orderId > 0) ? orderId.ToString() : Guid.NewGuid().ToString("N").Substring(0, 8));
 		string maskedTo = WhatsAppLogHelper.MaskPhone(phoneNumber);
 		if (string.IsNullOrWhiteSpace(phoneNumber))

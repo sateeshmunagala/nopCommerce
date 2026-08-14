@@ -13,6 +13,7 @@ using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Services.Messages;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using System.Transactions;
 using NUnit.Framework;
 
@@ -396,15 +397,19 @@ public class ServiceTests
         var productService = new Mock<Nop.Services.Catalog.IProductService>();
         var vendorService = new Mock<Nop.Services.Vendors.IVendorService>();
         var applicationService = new Mock<IApplicationService>();
-        var customer = new Customer { Id = 5, Email = "candidate@example.com", FirstName = "Casey", LastName = "Jones" };
+        var customer = new Customer { Id = 5, Email = "candidate@example.com", FirstName = "Casey", LastName = "Jones", Phone = "+15550000005" };
+        var vendorCustomer = new Customer { Id = 6, Phone = "+15550000006" };
         var product = new Product { Id = 9, Name = "Platform Engineer", VendorId = 3 };
-        var vendor = new Nop.Core.Domain.Vendors.Vendor { Id = 3, Name = "Example Vendor", Email = "vendor@example.com" };
+        var vendor = new Nop.Core.Domain.Vendors.Vendor { Id = 3, Name = "Example Vendor", Email = "vendor@example.com", PmCustomerId = 6 };
         var store = new Nop.Core.Domain.Stores.Store { Id = 1 };
         var applicantTemplate = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.ApplicantInterviewCompletion" };
         var vendorTemplate = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.VendorInterviewCompletion" };
         var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 1, Email = "store@example.com" };
+        var whatsAppService = new Mock<IWhatsAppNotificationService>();
+        var serviceProvider = new Mock<IServiceProvider>();
 
         customerService.Setup(x => x.GetCustomerByIdAsync(5)).ReturnsAsync(customer);
+        customerService.Setup(x => x.GetCustomerByIdAsync(6)).ReturnsAsync(vendorCustomer);
         productService.Setup(x => x.GetProductByIdAsync(9)).ReturnsAsync(product);
         vendorService.Setup(x => x.GetVendorByIdAsync(3)).ReturnsAsync(vendor);
         _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(store);
@@ -414,6 +419,8 @@ public class ServiceTests
             .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { vendorTemplate });
         _emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(It.IsAny<int>())).ReturnsAsync(emailAccount);
         _webHelper.Setup(x => x.GetStoreLocation(false)).Returns("https://store.example/");
+        serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService))).Returns(whatsAppService.Object);
+        whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>())).ReturnsAsync(true);
 
         var service = new InterviewSessionService(
             _sessionRepository.Object,
@@ -428,7 +435,8 @@ public class ServiceTests
             _storeContext.Object,
             _webHelper.Object,
             vendorService.Object,
-            _dateTimeHelper.Object);
+            _dateTimeHelper.Object,
+            serviceProvider: serviceProvider.Object);
 
         await service.SendInterviewCompletionNotificationAsync(new InterviewSession
         {
@@ -457,6 +465,17 @@ public class ServiceTests
             null,
             null,
             false), Times.Exactly(2));
+
+        whatsAppService.Verify(x => x.SendNotificationAsync(
+            It.Is<WhatsAppNotificationRequest>(request =>
+                request.MessageType == "AIInterview.ApplicantCompletion" &&
+                request.Tokens.ContainsKey("InterviewName") &&
+                request.Tokens.ContainsKey("ApplicantName") &&
+                request.Tokens.ContainsKey("CompletionTimestamp") &&
+                request.Tokens.ContainsKey("ReportUrl") &&
+                request.Tokens.ContainsKey("CandidateDashboardUrl"))), Times.Once);
+        whatsAppService.Verify(x => x.SendNotificationAsync(
+            It.Is<WhatsAppNotificationRequest>(request => request.MessageType == "AIInterview.VendorCompletion")), Times.Once);
     }
 
     [Test]

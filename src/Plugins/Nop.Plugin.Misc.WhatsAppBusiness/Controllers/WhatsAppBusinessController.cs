@@ -76,6 +76,11 @@ public class WhatsAppBusinessController : BasePluginController
 			OrderConfirmationTemplateName = _settings.OrderConfirmationTemplateName,
 			ShipmentTrackingTemplateName = _settings.ShipmentTrackingTemplateName,
 			DeliveryConfirmationTemplateName = _settings.DeliveryConfirmationTemplateName,
+			ApplicantInterviewCompletionTemplateName = _settings.ApplicantInterviewCompletionTemplateName,
+			VendorInterviewCompletionTemplateName = _settings.VendorInterviewCompletionTemplateName,
+			InterviewReportSharingTemplateName = _settings.InterviewReportSharingTemplateName,
+			OtpTemplateName = _settings.OtpTemplateName,
+			PasswordRecoveryTemplateName = _settings.PasswordRecoveryTemplateName,
 			PollingIntervalSeconds = _settings.PollingIntervalSeconds,
 			MinDelayBetweenSendsSeconds = _settings.MinDelayBetweenSendsSeconds,
 			MaxDelayBetweenSendsSeconds = _settings.MaxDelayBetweenSendsSeconds,
@@ -125,6 +130,11 @@ public class WhatsAppBusinessController : BasePluginController
 		_settings.OrderConfirmationTemplateName = model.OrderConfirmationTemplateName;
 		_settings.ShipmentTrackingTemplateName = model.ShipmentTrackingTemplateName;
 		_settings.DeliveryConfirmationTemplateName = model.DeliveryConfirmationTemplateName;
+		_settings.ApplicantInterviewCompletionTemplateName = model.ApplicantInterviewCompletionTemplateName;
+		_settings.VendorInterviewCompletionTemplateName = model.VendorInterviewCompletionTemplateName;
+		_settings.InterviewReportSharingTemplateName = model.InterviewReportSharingTemplateName;
+		_settings.OtpTemplateName = model.OtpTemplateName;
+		_settings.PasswordRecoveryTemplateName = model.PasswordRecoveryTemplateName;
 		_settings.PollingIntervalSeconds = model.PollingIntervalSeconds;
 		_settings.MinDelayBetweenSendsSeconds = model.MinDelayBetweenSendsSeconds;
 		_settings.MaxDelayBetweenSendsSeconds = model.MaxDelayBetweenSendsSeconds;
