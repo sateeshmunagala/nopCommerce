@@ -1,0 +1,151 @@
+@model SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Models.TrackingWidgetModel
+
+<div id="whatsapp-tracking" class="whatsapp-tracking-widget" style="margin: 24px 0; padding: 20px 24px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; font-family: inherit;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#25D366" style="flex-shrink: 0;">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 01-4.29-1.24l-.28-.17-3.05.8.82-2.98-.18-.29A8 8 0 1112 20z"/>
+            </svg>
+            <strong style="color: #075E54; font-size: 1.05em;">WhatsApp Order Tracking</strong>
+        </div>
+        <span style="font-size: 0.85em; color: #888;">@Model.CustomerPhone</span>
+    </div>
+
+    @{
+        var steps = new[] { "Order Placed", "Processing", "Shipped", "Delivered" };
+        var stepColors = new[] { "#25D366", "#25D366", "#25D366", "#25D366" };
+    }
+    <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 0 8px;">
+        @for (int i = 0; i < steps.Length; i++)
+        {
+            var isActive = i <= Model.CurrentStep;
+            var isCurrent = i == Model.CurrentStep;
+            var dotBg = isActive ? "#25D366" : "#ccc";
+            var labelWeight = isCurrent ? "700" : "400";
+            var labelColor = isActive ? "#075E54" : "#aaa";
+
+            <div style="display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; position: relative; z-index: 1;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: @dotBg; display: flex; align-items: center; justify-content: center;">
+                    @if (isActive)
+                    {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    }
+                </div>
+                <span style="font-size: 0.75em; margin-top: 6px; color: @labelColor; font-weight: @labelWeight; white-space: nowrap;">@steps[i]</span>
+            </div>
+
+            if (i < steps.Length - 1)
+            {
+                var lineBg = i < Model.CurrentStep ? "#25D366" : "#ddd";
+                <div style="flex: 1; height: 3px; background: @lineBg; margin: 0 -2px; align-self: flex-start; margin-top: 11px;"></div>
+            }
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.TrackingNumber))
+    {
+        <div style="padding: 12px 16px; background: #f8f9fa; border-radius: 6px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>
+                <span style="font-size: 0.85em; color: #666;">Carrier:</span>
+                <strong style="color: #333; margin-left: 4px;">@Model.CarrierName</strong>
+                <span style="margin: 0 8px; color: #ddd;">|</span>
+                <span style="font-size: 0.85em; color: #666;">Tracking:</span>
+                <strong style="color: #333; margin-left: 4px; font-family: monospace;">@Model.TrackingNumber</strong>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.TrackingUrl))
+            {
+                <a href="@Model.TrackingUrl" target="_blank" rel="noopener"
+                   style="padding: 6px 14px; background: #075E54; color: #fff; border-radius: 4px; text-decoration: none; font-size: 0.85em; font-weight: 600;">
+                    Track shipment
+                </a>
+            }
+        </div>
+    }
+
+    @if (Model.Notifications.Any())
+    {
+        <div style="margin-bottom: 16px;">
+            <strong style="font-size: 0.9em; color: #333; display: block; margin-bottom: 8px;">Notification History</strong>
+            <div style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px;">
+                @foreach (var n in Model.Notifications.OrderByDescending(x => x.SentAt))
+                {
+                    var statusIcon = n.Status?.ToLower() switch
+                    {
+                        "delivered" => "✓✓",
+                        "read" => "✓✓",
+                        "sent" => "✓",
+                        "failed" => "✗",
+                        _ => "•"
+                    };
+                    var statusColor = n.Status?.ToLower() switch
+                    {
+                        "delivered" => "#25D366",
+                        "read" => "#53bdeb",
+                        "sent" => "#999",
+                        "failed" => "#e74c3c",
+                        _ => "#999"
+                    };
+
+                    <div style="padding: 10px 14px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.85em; color: #333;">@n.MessageType</span>
+                            @if (!string.IsNullOrWhiteSpace(n.TrackingNumber))
+                            {
+                                <span style="font-size: 0.8em; color: #888; margin-left: 8px; font-family: monospace;">@n.TrackingNumber</span>
+                            }
+                        </div>
+                        <div style="text-align: right; flex-shrink: 0;">
+                            <span style="font-size: 0.8em; color: @statusColor; font-weight: 600;">@statusIcon @n.Status</span>
+                            <br />
+                            <span style="font-size: 0.75em; color: #aaa;">@n.SentAt.ToString("MMM dd, HH:mm")</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <span style="font-size: 0.8em; color: #888;">
+            Status: <strong style="color: #333;">@Model.OrderStatus</strong>
+        </span>
+        <button type="button" id="whatsapp-optout-btn"
+                style="padding: 6px 14px; background: none; color: #e74c3c; border: 1px solid #e74c3c; border-radius: 4px; font-size: 0.8em; cursor: pointer;">
+            Disable notifications
+        </button>
+    </div>
+</div>
+
+<script asp-location="Footer">
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('whatsapp-optout-btn');
+        if (!btn) return;
+
+        btn.addEventListener('click', function () {
+            if (!confirm('Stop receiving WhatsApp notifications for your orders?')) return;
+
+            btn.disabled = true;
+            btn.textContent = 'Disabling...';
+
+            fetch('/WhatsApp/OptOut', { method: 'POST' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        var widget = document.getElementById('whatsapp-tracking');
+                        widget.innerHTML =
+                            '<div style="padding:16px;text-align:center;color:#888;">' +
+                            '<p style="margin:0;">WhatsApp notifications have been disabled.</p>' +
+                            '<p style="margin:8px 0 0;font-size:0.85em;">You can re-enable them from the checkout page on your next order.</p></div>';
+                    } else {
+                        btn.disabled = false;
+                        btn.textContent = 'Disable notifications';
+                    }
+                })
+                .catch(function () {
+                    btn.disabled = false;
+                    btn.textContent = 'Disable notifications';
+                });
+        });
+    });
+</script>

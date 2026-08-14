@@ -1,0 +1,405 @@
+@{
+    Layout = "_ConfigurePlugin";
+}
+@model SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Models.ConfigurationModel
+@using Nop.Web.Framework
+
+<form asp-controller="WhatsAppBusiness" asp-action="Configure" method="post">
+    <div class="panel-group">
+
+        <!-- Global Enable -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">@T("Plugins.Misc.WhatsAppBusiness.Configuration")</h3>
+            </div>
+            <div class="panel-body">
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="IsEnabled" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="IsEnabled" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Credentials -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">@T("Plugins.Misc.WhatsAppBusiness.Configuration.ApiCredentials")</h3>
+            </div>
+            <div class="panel-body">
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="ApiKey" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="ApiKey" />
+                        <span asp-validation-for="ApiKey"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="PhoneNumberId" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="PhoneNumberId" />
+                        <span asp-validation-for="PhoneNumberId"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="BusinessAccountId" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="BusinessAccountId" />
+                        <span asp-validation-for="BusinessAccountId"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="AppId" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="AppId" />
+                        <span asp-validation-for="AppId"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="AppSecret" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="AppSecret" asp-type="Password" />
+                        <span asp-validation-for="AppSecret"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="ApiVersion" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="ApiVersion" />
+                        <span asp-validation-for="ApiVersion"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-9 col-md-offset-3">
+                        <button type="button" id="btn-test-connection" class="btn btn-info">
+                            @T("Plugins.Misc.WhatsAppBusiness.TestConnection")
+                        </button>
+                        <span id="test-connection-result" style="margin-left: 8px;"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Toggles -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">@T("Plugins.Misc.WhatsAppBusiness.Configuration.EventToggles")</h3>
+            </div>
+            <div class="panel-body">
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="EnableOrderPlaced" /></div>
+                    <div class="col-md-9"><nop-editor asp-for="EnableOrderPlaced" /></div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="EnableOrderProcessing" /></div>
+                    <div class="col-md-9"><nop-editor asp-for="EnableOrderProcessing" /></div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="EnableShipmentCreated" /></div>
+                    <div class="col-md-9"><nop-editor asp-for="EnableShipmentCreated" /></div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="EnableShipmentDelivered" /></div>
+                    <div class="col-md-9"><nop-editor asp-for="EnableShipmentDelivered" /></div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="EnableOrderCancelled" /></div>
+                    <div class="col-md-9"><nop-editor asp-for="EnableOrderCancelled" /></div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="EnableRefundIssued" /></div>
+                    <div class="col-md-9"><nop-editor asp-for="EnableRefundIssued" /></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Template Messages -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">@T("Plugins.Misc.WhatsAppBusiness.Configuration.TemplateSettings")</h3>
+            </div>
+            <div class="panel-body">
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="UseTemplateMessages" /></div>
+                    <div class="col-md-9"><nop-editor asp-for="UseTemplateMessages" /></div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="DefaultLanguageCode" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="DefaultLanguageCode" />
+                        <span asp-validation-for="DefaultLanguageCode"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="OrderConfirmationTemplateName" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="OrderConfirmationTemplateName" />
+                        <span asp-validation-for="OrderConfirmationTemplateName"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="ShipmentTrackingTemplateName" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="ShipmentTrackingTemplateName" />
+                        <span asp-validation-for="ShipmentTrackingTemplateName"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="DeliveryConfirmationTemplateName" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="DeliveryConfirmationTemplateName" />
+                        <span asp-validation-for="DeliveryConfirmationTemplateName"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Anti-Ban Dispatch Queue -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">@T("Plugins.Misc.WhatsAppBusiness.Configuration.DispatchSettings")</h3>
+            </div>
+            <div class="panel-body">
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="PollingIntervalSeconds" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="PollingIntervalSeconds" />
+                        <span asp-validation-for="PollingIntervalSeconds"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="MinDelayBetweenSendsSeconds" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="MinDelayBetweenSendsSeconds" />
+                        <span asp-validation-for="MinDelayBetweenSendsSeconds"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="MaxDelayBetweenSendsSeconds" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="MaxDelayBetweenSendsSeconds" />
+                        <span asp-validation-for="MaxDelayBetweenSendsSeconds"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="MaxMessagesPerBatch" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="MaxMessagesPerBatch" />
+                        <span asp-validation-for="MaxMessagesPerBatch"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="LookbackWindowDays" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="LookbackWindowDays" />
+                        <span asp-validation-for="LookbackWindowDays"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carrier Tracking -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">@T("Plugins.Misc.WhatsAppBusiness.Configuration.TrackingSettings")</h3>
+            </div>
+            <div class="panel-body">
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="DefaultTrackingUrlPattern" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="DefaultTrackingUrlPattern" />
+                        <span asp-validation-for="DefaultTrackingUrlPattern"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="CarrierTrackingUrls" /></div>
+                    <div class="col-md-9">
+                        <textarea asp-for="CarrierTrackingUrls" class="form-control" rows="4" style="font-family: monospace;"></textarea>
+                        <span asp-validation-for="CarrierTrackingUrls"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Webhook -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">@T("Plugins.Misc.WhatsAppBusiness.Configuration.WebhookSettings")</h3>
+            </div>
+            <div class="panel-body">
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="WebhookVerifyToken" /></div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="WebhookVerifyToken" />
+                        <span asp-validation-for="WebhookVerifyToken"></span>
+                    </div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.WebhookUrl))
+                {
+                    <div class="form-group row">
+                        <div class="col-md-3"><label>Webhook URL</label></div>
+                        <div class="col-md-9">
+                            <input type="text" class="form-control" value="@Model.WebhookUrl" readonly style="font-family: monospace; background: #f5f5f5;" />
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Customer Widget -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">@T("Plugins.Misc.WhatsAppBusiness.Configuration.WidgetSettings")</h3>
+            </div>
+            <div class="panel-body">
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="ShowOptInOnCheckoutCompleted" /></div>
+                    <div class="col-md-9"><nop-editor asp-for="ShowOptInOnCheckoutCompleted" /></div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3"><nop-label asp-for="ShowTrackingOnOrderDetails" /></div>
+                    <div class="col-md-9"><nop-editor asp-for="ShowTrackingOnOrderDetails" /></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save -->
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <div class="form-group row">
+                    <div class="col-md-9 col-md-offset-3">
+                        <input type="submit" name="save" class="btn btn-primary" value="@T("Admin.Common.Save")" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Log -->
+        @if (Model.RecentLogs.Count > 0)
+        {
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">@T("Plugins.Misc.WhatsAppBusiness.MessageLog")</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>@T("Plugins.Misc.WhatsAppBusiness.MessageLog.OrderId")</th>
+                                    <th>@T("Plugins.Misc.WhatsAppBusiness.MessageLog.PhoneNumber")</th>
+                                    <th>@T("Plugins.Misc.WhatsAppBusiness.MessageLog.MessageType")</th>
+                                    <th>@T("Plugins.Misc.WhatsAppBusiness.MessageLog.Status")</th>
+                                    <th>@T("Plugins.Misc.WhatsAppBusiness.MessageLog.SentAt")</th>
+                                    <th>@T("Plugins.Misc.WhatsAppBusiness.MessageLog.Error")</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in Model.RecentLogs)
+                                {
+                                    <tr>
+                                        <td>@log.OrderId</td>
+                                        <td>@log.PhoneNumber</td>
+                                        <td>@log.MessageType</td>
+                                        <td>
+                                            @{
+                                                var badgeClass = log.Status switch
+                                                {
+                                                    "Success" => "badge-success",
+                                                    "Failed" => "badge-danger",
+                                                    "delivered" => "badge-success",
+                                                    "read" => "badge-info",
+                                                    "sent" => "badge-secondary",
+                                                    _ => "badge-warning"
+                                                };
+                                            }
+                                            <span class="badge @badgeClass">@log.Status</span>
+                                        </td>
+                                        <td>@log.SentAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td>@log.Error</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Blacklist -->
+        @if (Model.BlacklistedNumbers.Count > 0)
+        {
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">@T("Plugins.Misc.WhatsAppBusiness.Blacklist")</h3>
+                </div>
+                <div class="panel-body">
+                    <table class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Phone</th>
+                                <th>Customer ID</th>
+                                <th>Reason</th>
+                                <th>Date</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var bl in Model.BlacklistedNumbers)
+                            {
+                                <tr>
+                                    <td>@bl.PhoneNumber</td>
+                                    <td>@bl.CustomerId</td>
+                                    <td>@bl.Reason</td>
+                                    <td>@bl.FailedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>
+                                        <a href="@Url.Action("RemoveBlacklist", "WhatsAppBusiness", new { id = bl.Id })"
+                                           class="btn btn-sm btn-danger"
+                                           onclick="return confirm('Remove this number from blacklist?');">
+                                            Remove
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</form>
+
+<script asp-location="Footer">
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('btn-test-connection');
+        if (!btn) return;
+
+        btn.addEventListener('click', function () {
+            var result = document.getElementById('test-connection-result');
+            btn.disabled = true;
+            result.textContent = 'Testing...';
+            result.style.color = '#666';
+
+            fetch('@Url.Action("TestConnection", "WhatsAppBusiness")', { method: 'POST' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        result.textContent = 'Connection successful!';
+                        result.style.color = '#28a745';
+                    } else {
+                        result.textContent = 'Failed: ' + (data.error || 'Unknown error');
+                        result.style.color = '#dc3545';
+                    }
+                    btn.disabled = false;
+                })
+                .catch(function () {
+                    result.textContent = 'Request failed';
+                    result.style.color = '#dc3545';
+                    btn.disabled = false;
+                });
+        });
+    });
+</script>
