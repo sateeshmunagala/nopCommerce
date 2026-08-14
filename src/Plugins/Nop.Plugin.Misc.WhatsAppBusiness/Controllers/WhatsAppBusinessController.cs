@@ -1,11 +1,15 @@
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
+using Nop.Core.Domain.ScheduleTasks;
 using Nop.Services.Configuration;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Security;
+using Nop.Services.ScheduleTasks;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Mvc.Filters;
 using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Models;
@@ -32,7 +36,9 @@ public class WhatsAppBusinessController : BasePluginController
 
 	private readonly IWebHelper _webHelper;
 
-	public WhatsAppBusinessController(WhatsAppBusinessSettings settings, ISettingService settingService, ILocalizationService localizationService, IPermissionService permissionService, INotificationService notificationService, IWhatsAppBusinessService whatsAppService, IWebHelper webHelper)
+	private readonly IScheduleTaskService _scheduleTaskService;
+
+	public WhatsAppBusinessController(WhatsAppBusinessSettings settings, ISettingService settingService, ILocalizationService localizationService, IPermissionService permissionService, INotificationService notificationService, IWhatsAppBusinessService whatsAppService, IWebHelper webHelper, IScheduleTaskService scheduleTaskService)
 	{
 		_settings = settings;
 		_settingService = settingService;
@@ -41,6 +47,7 @@ public class WhatsAppBusinessController : BasePluginController
 		_notificationService = notificationService;
 		_whatsAppService = whatsAppService;
 		_webHelper = webHelper;
+		_scheduleTaskService = scheduleTaskService;
 	}
 
 	public async Task<IActionResult> Configure()
@@ -130,6 +137,24 @@ public class WhatsAppBusinessController : BasePluginController
 		_settings.ShowTrackingOnOrderDetails = model.ShowTrackingOnOrderDetails;
 		_settings.RequireCustomerAccount = model.RequireCustomerAccount;
 		await _settingService.SaveSettingAsync<WhatsAppBusinessSettings>(_settings, 0);
+
+		var scheduleTasks = (await _scheduleTaskService.GetAllTasksAsync(showHidden: true) ?? new List<ScheduleTask>())
+			.Where(task => task.Type == WhatsAppBusinessDefaults.ScheduleTask.Type ||
+				task.Type == WhatsAppBusinessDefaults.LegacyScheduleTaskType)
+			.OrderBy(task => task.Id)
+			.ToList();
+		var scheduleTask = scheduleTasks
+			.FirstOrDefault(task => task.Type == WhatsAppBusinessDefaults.ScheduleTask.Type) ?? scheduleTasks.FirstOrDefault();
+		if (scheduleTask != null)
+		{
+			scheduleTask.Type = WhatsAppBusinessDefaults.ScheduleTask.Type;
+			scheduleTask.Seconds = _settings.PollingIntervalSeconds;
+			await _scheduleTaskService.UpdateTaskAsync(scheduleTask);
+
+			foreach (var duplicateTask in scheduleTasks.Where(task => !ReferenceEquals(task, scheduleTask)))
+				await _scheduleTaskService.DeleteTaskAsync(duplicateTask);
+		}
+
 		INotificationService notificationService = _notificationService;
 		notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"), true, 0);
 		return await Configure();

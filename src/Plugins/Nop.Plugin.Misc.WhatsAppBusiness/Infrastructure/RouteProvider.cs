@@ -10,7 +10,7 @@ public class RouteProvider : IRouteProvider
 
 	public void RegisterRoutes(IEndpointRouteBuilder endpointRouteBuilder)
 	{
-		endpointRouteBuilder.MapControllerRoute(WhatsAppBusinessDefaults.ConfigurationRouteName, "Plugins/WhatsAppBusiness/Configure", new
+		endpointRouteBuilder.MapControllerRoute(WhatsAppBusinessDefaults.ConfigurationRouteName, "Admin/WhatsAppBusiness/Configure", new
 		{
 			controller = "WhatsAppBusiness",
 			action = "Configure",

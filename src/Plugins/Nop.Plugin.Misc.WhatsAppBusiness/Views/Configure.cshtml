@@ -356,11 +356,14 @@
                                     <td>@bl.Reason</td>
                                     <td>@bl.FailedAt.ToString("yyyy-MM-dd HH:mm")</td>
                                     <td>
-                                        <a href="@Url.Action("RemoveBlacklist", "WhatsAppBusiness", new { id = bl.Id })"
-                                           class="btn btn-sm btn-danger"
-                                           onclick="return confirm('Remove this number from blacklist?');">
+                                        <button type="submit"
+                                                asp-controller="WhatsAppBusiness"
+                                                asp-action="RemoveBlacklist"
+                                                asp-route-id="@bl.Id"
+                                                class="btn btn-sm btn-danger"
+                                                onclick="return confirm('Remove this number from blacklist?');">
                                             Remove
-                                        </a>
+                                        </button>
                                     </td>
                                 </tr>
                             }

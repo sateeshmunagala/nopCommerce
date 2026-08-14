@@ -40,7 +40,7 @@ public class WhatsAppBusinessSettings : ISettings
 
 	public string DeliveryConfirmationTemplateName { get; set; } = "delivery_confirmation";
 
-	public int PollingIntervalSeconds { get; set; } = 300;
+	public int PollingIntervalSeconds { get; set; } = WhatsAppBusinessDefaults.DefaultPollingIntervalSeconds;
 
 	public int MinDelayBetweenSendsSeconds { get; set; } = 10;
 

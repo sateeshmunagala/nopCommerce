@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Nop.Core;
 using Nop.Core.Domain.ScheduleTasks;
@@ -65,11 +66,28 @@ public class WhatsAppBusinessPlugin : BasePlugin, IWidgetPlugin, IPlugin
 	{
 		await _settingService.SaveSettingAsync<WhatsAppBusinessSettings>(new WhatsAppBusinessSettings(), 0);
 		var (taskName, taskType, taskSeconds) = WhatsAppBusinessDefaults.ScheduleTask;
-		if (await _scheduleTaskService.GetTaskByTypeAsync(taskType) == null)
+		var scheduleTasks = (await _scheduleTaskService.GetAllTasksAsync(showHidden: true) ?? new List<ScheduleTask>())
+			.Where(IsWhatsAppScheduleTask)
+			.OrderBy(task => task.Id)
+			.ToList();
+		var scheduleTask = scheduleTasks.FirstOrDefault(task => task.Type == taskType) ?? scheduleTasks.FirstOrDefault();
+		if (scheduleTask != null)
+		{
+			if (scheduleTask.Type != taskType)
+			{
+				scheduleTask.Type = taskType;
+				await _scheduleTaskService.UpdateTaskAsync(scheduleTask);
+			}
+
+			foreach (var duplicateTask in scheduleTasks.Where(task => !ReferenceEquals(task, scheduleTask)))
+				await _scheduleTaskService.DeleteTaskAsync(duplicateTask);
+		}
+		else
 		{
 			await _scheduleTaskService.InsertTaskAsync(new ScheduleTask
 			{
 				Enabled = true,
+				StopOnError = false,
 				LastEnabledUtc = DateTime.UtcNow,
 				Seconds = taskSeconds,
 				Name = taskName,
@@ -204,13 +222,18 @@ public class WhatsAppBusinessPlugin : BasePlugin, IWidgetPlugin, IPlugin
 	public override async Task UninstallAsync()
 	{
 		await _settingService.DeleteSettingAsync<WhatsAppBusinessSettings>();
-		string item = WhatsAppBusinessDefaults.ScheduleTask.Type;
-		ScheduleTask val = await _scheduleTaskService.GetTaskByTypeAsync(item);
-		if (val != null)
-		{
-			await _scheduleTaskService.DeleteTaskAsync(val);
-		}
+		var scheduleTasks = (await _scheduleTaskService.GetAllTasksAsync(showHidden: true) ?? new List<ScheduleTask>())
+			.Where(IsWhatsAppScheduleTask)
+			.ToList();
+		foreach (var scheduleTask in scheduleTasks)
+			await _scheduleTaskService.DeleteTaskAsync(scheduleTask);
 		await _localizationService.DeleteLocaleResourcesAsync("Plugins.Misc.WhatsAppBusiness", (int?)null);
 		await base.UninstallAsync();
+	}
+
+	private static bool IsWhatsAppScheduleTask(ScheduleTask task)
+	{
+		return task.Type == WhatsAppBusinessDefaults.ScheduleTask.Type ||
+			task.Type == WhatsAppBusinessDefaults.LegacyScheduleTaskType;
 	}
 }

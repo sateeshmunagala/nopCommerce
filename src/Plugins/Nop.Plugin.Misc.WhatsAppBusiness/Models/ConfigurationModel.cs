@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using Nop.Web.Framework.Models;
 using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Domain;
 
@@ -24,6 +25,7 @@ public record ConfigurationModel : BaseNopModel
 	public string OrderConfirmationTemplateName { get; set; } = string.Empty;
 	public string ShipmentTrackingTemplateName { get; set; } = string.Empty;
 	public string DeliveryConfirmationTemplateName { get; set; } = string.Empty;
+	[Range(1, int.MaxValue)]
 	public int PollingIntervalSeconds { get; set; }
 	public int MinDelayBetweenSendsSeconds { get; set; }
 	public int MaxDelayBetweenSendsSeconds { get; set; }
