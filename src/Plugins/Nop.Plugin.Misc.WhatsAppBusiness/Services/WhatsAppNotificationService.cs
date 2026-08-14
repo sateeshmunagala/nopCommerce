@@ -18,6 +18,8 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
         _settings = settings;
     }
 
+    public bool IsEnabled => _settings.IsEnabled;
+
     public async Task<bool> SendNotificationAsync(WhatsAppNotificationRequest request)
     {
         if (!_settings.IsEnabled || request == null || string.IsNullOrWhiteSpace(request.PhoneNumber))

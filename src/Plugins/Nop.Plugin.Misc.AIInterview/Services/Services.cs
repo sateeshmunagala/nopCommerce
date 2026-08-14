@@ -146,13 +146,13 @@ public class ApplicationService : IApplicationService
                 await _workflowMessageService.SendNotificationAsync(template, emailAccount, languageId, tokens, customer.Email, applicantName);
         }
 
-        var whatsAppService = _serviceProvider?.GetService<IWhatsAppNotificationService>();
+        var whatsAppService = ResolveWhatsAppService();
         if (whatsAppService == null || string.IsNullOrWhiteSpace(customer.Phone))
             return;
 
         try
         {
-            await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
+            var sent = await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
             {
                 CustomerId = customer.Id,
                 PhoneNumber = customer.Phone,
@@ -179,10 +179,27 @@ public class ApplicationService : IApplicationService
                     ["NewStatus"] = application.Status ?? string.Empty
                 }
             });
+
+            if (!sent)
+                _logger?.LogWarning("Optional WhatsApp application status notification was not accepted for application {ApplicationId}.", application.Id);
         }
         catch (Exception exception)
         {
             _logger?.LogWarning(exception, "Optional WhatsApp application status notification failed for application {ApplicationId}.", application.Id);
+        }
+    }
+
+    protected virtual IWhatsAppNotificationService ResolveWhatsAppService()
+    {
+        try
+        {
+            var service = _serviceProvider?.GetService<IWhatsAppNotificationService>();
+            return service?.IsEnabled == true ? service : null;
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Optional WhatsApp provider could not be resolved for an AIInterview application notification.");
+            return null;
         }
     }
 
@@ -434,7 +451,15 @@ public class InterviewSessionService : IInterviewSessionService
         var vendorCompletionTimestamp = session.CompletedOnUtc.HasValue
             ? _dateTimeHelper.ConvertToUserTime(session.CompletedOnUtc.Value, TimeZoneInfo.Utc, _dateTimeHelper.DefaultStoreTimeZone).ToString("g")
             : string.Empty;
-        var reportShareToken = await EnsureReportShareTokenAsync(session);
+        string reportShareToken = null;
+        try
+        {
+            reportShareToken = await EnsureReportShareTokenAsync(session);
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "AIInterview report-share token was unavailable for session {SessionId}; notification processing will continue.", session.Id);
+        }
         var reportUrl = string.IsNullOrWhiteSpace(reportShareToken)
             ? $"{storeLocation}/aiinterview/report/{session.Id}"
             : $"{storeLocation}/aiinterview/report/share/{reportShareToken}";
@@ -519,7 +544,7 @@ public class InterviewSessionService : IInterviewSessionService
         string reportUrl,
         string candidateDashboardUrl)
     {
-        var whatsAppService = _serviceProvider?.GetService<IWhatsAppNotificationService>();
+        var whatsAppService = ResolveWhatsAppService();
         if (whatsAppService == null)
             return;
 
@@ -532,11 +557,11 @@ public class InterviewSessionService : IInterviewSessionService
             ["CandidateDashboardUrl"] = candidateDashboardUrl ?? string.Empty
         };
 
-        try
+        if (!string.IsNullOrWhiteSpace(customer.Phone))
         {
-            if (!string.IsNullOrWhiteSpace(customer.Phone))
-            {
-                await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
+            await TrySendWhatsAppNotificationAsync(
+                whatsAppService,
+                new WhatsAppNotificationRequest
                 {
                     CustomerId = customer.Id,
                     PhoneNumber = customer.Phone,
@@ -551,10 +576,14 @@ public class InterviewSessionService : IInterviewSessionService
                         candidateDashboardUrl ?? string.Empty
                     },
                     Tokens = new Dictionary<string, string>(commonTokens)
-                });
-            }
+                },
+                session.Id,
+                "applicant completion");
+        }
 
-            if (vendor != null)
+        if (vendor != null)
+        {
+            try
             {
                 var vendorAddress = _addressService != null && vendor.AddressId > 0
                     ? await _addressService.GetAddressByIdAsync(vendor.AddressId)
@@ -569,28 +598,63 @@ public class InterviewSessionService : IInterviewSessionService
                     {
                         ["CompletionTimestamp"] = vendorCompletionTimestamp ?? string.Empty
                     };
-                    await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
-                    {
-                        CustomerId = vendorCustomer?.Id ?? 0,
-                        PhoneNumber = vendorPhone,
-                        MessageType = "AIInterview.VendorCompletion",
-                        MessageBody = $"{applicantName} completed {interviewName} on {vendorCompletionTimestamp}. Report: {reportUrl} Candidate dashboard: {candidateDashboardUrl}",
-                        TemplateParameters = new List<string>
+                    await TrySendWhatsAppNotificationAsync(
+                        whatsAppService,
+                        new WhatsAppNotificationRequest
                         {
-                            interviewName ?? string.Empty,
-                            applicantName ?? string.Empty,
-                            vendorCompletionTimestamp ?? string.Empty,
-                            reportUrl ?? string.Empty,
-                            candidateDashboardUrl ?? string.Empty
+                            CustomerId = vendorCustomer?.Id ?? 0,
+                            PhoneNumber = vendorPhone,
+                            MessageType = "AIInterview.VendorCompletion",
+                            MessageBody = $"{applicantName} completed {interviewName} on {vendorCompletionTimestamp}. Report: {reportUrl} Candidate dashboard: {candidateDashboardUrl}",
+                            TemplateParameters = new List<string>
+                            {
+                                interviewName ?? string.Empty,
+                                applicantName ?? string.Empty,
+                                vendorCompletionTimestamp ?? string.Empty,
+                                reportUrl ?? string.Empty,
+                                candidateDashboardUrl ?? string.Empty
+                            },
+                            Tokens = vendorTokens
                         },
-                        Tokens = vendorTokens
-                    });
+                        session.Id,
+                        "vendor completion");
                 }
             }
+            catch (Exception exception)
+            {
+                _logger?.LogWarning(exception, "Optional WhatsApp vendor recipient resolution failed for session {SessionId}.", session.Id);
+            }
+        }
+    }
+
+    protected virtual IWhatsAppNotificationService ResolveWhatsAppService()
+    {
+        try
+        {
+            var service = _serviceProvider?.GetService<IWhatsAppNotificationService>();
+            return service?.IsEnabled == true ? service : null;
         }
         catch (Exception exception)
         {
-            _logger?.LogWarning(exception, "Optional WhatsApp interview completion notification failed for session {SessionId}.", session.Id);
+            _logger?.LogWarning(exception, "Optional WhatsApp provider could not be resolved for an AIInterview completion notification.");
+            return null;
+        }
+    }
+
+    protected virtual async Task TrySendWhatsAppNotificationAsync(
+        IWhatsAppNotificationService whatsAppService,
+        WhatsAppNotificationRequest request,
+        int sessionId,
+        string notificationKind)
+    {
+        try
+        {
+            if (!await whatsAppService.SendNotificationAsync(request))
+                _logger?.LogWarning("Optional WhatsApp {NotificationKind} notification was not accepted for session {SessionId}.", notificationKind, sessionId);
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Optional WhatsApp {NotificationKind} notification failed for session {SessionId}.", notificationKind, sessionId);
         }
     }
 

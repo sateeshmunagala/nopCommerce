@@ -6,6 +6,11 @@ namespace Nop.Services.Messages;
 public partial interface IWhatsAppNotificationService
 {
     /// <summary>
+    /// Gets a value indicating whether the provider is enabled for sending.
+    /// </summary>
+    bool IsEnabled { get; }
+
+    /// <summary>
     /// Sends a WhatsApp notification when the provider is enabled and configured.
     /// </summary>
     /// <param name="request">Notification data</param>

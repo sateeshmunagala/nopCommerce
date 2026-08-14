@@ -420,6 +420,7 @@ public class ServiceTests
         _emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(It.IsAny<int>())).ReturnsAsync(emailAccount);
         _webHelper.Setup(x => x.GetStoreLocation(false)).Returns("https://store.example/");
         serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService))).Returns(whatsAppService.Object);
+        whatsAppService.SetupGet(x => x.IsEnabled).Returns(true);
         whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>())).ReturnsAsync(true);
 
         var service = new InterviewSessionService(
@@ -476,6 +477,104 @@ public class ServiceTests
                 request.Tokens.ContainsKey("CandidateDashboardUrl"))), Times.Once);
         whatsAppService.Verify(x => x.SendNotificationAsync(
             It.Is<WhatsAppNotificationRequest>(request => request.MessageType == "AIInterview.VendorCompletion")), Times.Once);
+    }
+
+    [TestCase("missing")]
+    [TestCase("disabled")]
+    [TestCase("send-failure")]
+    [TestCase("send-exception")]
+    public async Task InterviewCompletion_Continues_WhenOptionalWhatsAppIsUnavailable(string providerMode)
+    {
+        var customerService = new Mock<ICustomerService>();
+        var productService = new Mock<IProductService>();
+        var vendorService = new Mock<Nop.Services.Vendors.IVendorService>();
+        var applicationService = new Mock<IApplicationService>();
+        var logger = new Mock<ILogger<InterviewSessionService>>();
+        var whatsAppService = new Mock<IWhatsAppNotificationService>();
+        var serviceProvider = providerMode == "missing" ? null : new Mock<IServiceProvider>();
+        var customer = new Customer
+        {
+            Id = 5,
+            Email = "candidate@example.com",
+            FirstName = "Casey",
+            LastName = "Jones",
+            Phone = "+15550000005"
+        };
+        var template = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.ApplicantInterviewCompletion" };
+        var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 1, Email = "store@example.com" };
+
+        customerService.Setup(x => x.GetCustomerByIdAsync(customer.Id)).ReturnsAsync(customer);
+        productService.Setup(x => x.GetProductByIdAsync(9)).ReturnsAsync(new Product { Id = 9, Name = "Platform Engineer" });
+        _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(new Nop.Core.Domain.Stores.Store { Id = 1 });
+        _messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync("AIInterview.ApplicantInterviewCompletion", 1))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { template });
+        _emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(It.IsAny<int>())).ReturnsAsync(emailAccount);
+        _webHelper.Setup(x => x.GetStoreLocation(false)).Returns("https://store.example/");
+
+        if (serviceProvider != null)
+        {
+            serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService))).Returns(whatsAppService.Object);
+            whatsAppService.SetupGet(x => x.IsEnabled).Returns(providerMode != "disabled");
+            if (providerMode == "send-exception")
+                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>())).ThrowsAsync(new InvalidOperationException("provider failed"));
+            else
+                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>())).ReturnsAsync(false);
+        }
+
+        var service = new InterviewSessionService(
+            _sessionRepository.Object,
+            customerService.Object,
+            applicationService.Object,
+            productService.Object,
+            _workflowMessageService.Object,
+            _messageTemplateService.Object,
+            _emailAccountService.Object,
+            _messageTokenProvider.Object,
+            _emailAccountSettings,
+            _storeContext.Object,
+            _webHelper.Object,
+            vendorService.Object,
+            _dateTimeHelper.Object,
+            logger.Object,
+            serviceProvider: serviceProvider?.Object);
+
+        var session = new InterviewSession
+        {
+            Id = 12,
+            CustomerId = customer.Id,
+            ProductId = 9,
+            CompletedOnUtc = DateTime.UtcNow
+        };
+
+        Assert.DoesNotThrowAsync(async () => await service.SendInterviewCompletionNotificationAsync(session, 1));
+
+        _workflowMessageService.Verify(x => x.SendNotificationAsync(
+            template,
+            emailAccount,
+            1,
+            It.IsAny<IList<Token>>(),
+            customer.Email,
+            It.IsAny<string>(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false), Times.Once);
+
+        if (providerMode is "missing" or "disabled")
+        {
+            whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()), Times.Never);
+        }
+        else
+        {
+            whatsAppService.Verify(x => x.SendNotificationAsync(
+                It.Is<WhatsAppNotificationRequest>(request =>
+                    request.Tokens["ReportUrl"] == "https://store.example/aiinterview/report/12")), Times.Once);
+            Assert.That(logger.Invocations.Any(invocation => invocation.Method.Name == nameof(ILogger.Log)), Is.True);
+        }
     }
 
     [Test]
