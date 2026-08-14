@@ -75,7 +75,7 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                         vendorProfileItem = new Nop.Web.Models.Customer.CustomerNavigationItemModel
                         {
                             RouteName = NopRouteNames.Standard.CUSTOMER_VENDOR_INFO,
-                            Title = hasEmployerRole
+                            Title = hasEmployerRole || hasInstituteRole
                                 ? "Employer Profile"
                                 : await _localizationService.GetResourceAsync("Account.VendorInfo"),
                             Tab = (int)Nop.Web.Models.Customer.CustomerNavigationEnum.VendorInfo,
@@ -87,7 +87,7 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     {
                         vendorProfileItem.RouteName = NopRouteNames.Standard.CUSTOMER_VENDOR_INFO;
                         vendorProfileItem.ItemClass = "customer-vendor-info";
-                        if (hasEmployerRole)
+                        if (hasEmployerRole || hasInstituteRole)
                             vendorProfileItem.Title = "Employer Profile";
                     }
                 }
