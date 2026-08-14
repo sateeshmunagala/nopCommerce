@@ -1,6 +1,5 @@
 using Moq;
 using Nop.Services.Logging;
-using Nop.Services.Messages;
 using NUnit.Framework;
 using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness;
 using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;

@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using System.Transactions;
 using NUnit.Framework;
+using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
 

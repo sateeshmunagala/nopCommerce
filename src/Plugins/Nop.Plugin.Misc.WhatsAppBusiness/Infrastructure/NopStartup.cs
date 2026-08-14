@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nop.Core.Infrastructure;
-using Nop.Services.Messages;
 using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
 namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Infrastructure;

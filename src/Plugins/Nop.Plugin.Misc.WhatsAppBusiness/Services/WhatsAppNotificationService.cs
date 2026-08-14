@@ -1,4 +1,3 @@
-using Nop.Services.Messages;
 using Nop.Services.Logging;
 
 namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
