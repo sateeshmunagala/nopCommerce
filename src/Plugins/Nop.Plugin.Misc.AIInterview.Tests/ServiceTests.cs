@@ -390,6 +390,124 @@ public class ServiceTests
             true), Times.Once);
     }
 
+    [TestCase("missing")]
+    [TestCase("resolution-null")]
+    [TestCase("resolution-exception")]
+    [TestCase("disabled")]
+    [TestCase("send-failure")]
+    [TestCase("send-exception")]
+    public async Task ApplicationStatusUpdate_Continues_WhenOptionalWhatsAppIsUnavailable(string providerMode)
+    {
+        var logger = new Mock<ILogger<ApplicationService>>();
+        var whatsAppService = new Mock<IWhatsAppNotificationService>();
+        var serviceProvider = providerMode == "missing" ? null : new Mock<IServiceProvider>();
+        var customer = new Customer
+        {
+            Id = 27,
+            Email = "candidate@example.com",
+            FirstName = "Casey",
+            LastName = "Jones",
+            Phone = "+15550000027"
+        };
+        var application = new JobApplication
+        {
+            Id = 91,
+            CustomerId = customer.Id,
+            JobTitle = "Platform Engineer",
+            Status = "Reviewed"
+        };
+        var template = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.ApplicationStatusUpdate" };
+        var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 1, Email = "store@example.com" };
+
+        _storeContext.Setup(x => x.GetCurrentStoreAsync()).ReturnsAsync(new Nop.Core.Domain.Stores.Store { Id = 1 });
+        _customerRepository.Setup(x => x.GetByIdAsync(customer.Id)).ReturnsAsync(customer);
+        _sessionRepository.SetupGet(x => x.Table).Returns(Array.Empty<InterviewSession>().AsQueryable());
+        _messageTokenProvider.Setup(x => x.AddCustomerTokensAsync(It.IsAny<IList<Token>>(), customer))
+            .Returns(Task.CompletedTask);
+        _messageTemplateService.Setup(x => x.GetMessageTemplatesByNameAsync("AIInterview.ApplicationStatusUpdate", 1))
+            .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { template });
+        _emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(It.IsAny<int>())).ReturnsAsync(emailAccount);
+        _workflowMessageService.Setup(x => x.SendNotificationAsync(
+                It.IsAny<Nop.Core.Domain.Messages.MessageTemplate>(),
+                It.IsAny<Nop.Core.Domain.Messages.EmailAccount>(),
+                It.IsAny<int>(),
+                It.IsAny<IList<Token>>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>()))
+            .ReturnsAsync(1);
+        _webHelper.Setup(x => x.GetStoreLocation(It.IsAny<bool?>())).Returns("https://store.example/");
+        _dateTimeHelper.Setup(x => x.GetCustomerTimeZoneAsync(customer)).ReturnsAsync(TimeZoneInfo.Utc);
+        _dateTimeHelper.Setup(x => x.ConvertToUserTime(It.IsAny<DateTime>(), It.IsAny<TimeZoneInfo>(), It.IsAny<TimeZoneInfo>()))
+            .Returns((DateTime value, TimeZoneInfo _, TimeZoneInfo _) => value);
+
+        if (serviceProvider != null)
+        {
+            var providerSetup = serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService)));
+            if (providerMode == "resolution-exception")
+                providerSetup.Throws(new InvalidOperationException("provider resolution failed"));
+            else
+                providerSetup.Returns(providerMode == "resolution-null" ? null : whatsAppService.Object);
+
+            whatsAppService.SetupGet(x => x.IsEnabled).Returns(providerMode != "disabled");
+            if (providerMode == "send-exception")
+                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()))
+                    .ThrowsAsync(new InvalidOperationException("provider failed"));
+            else
+                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()))
+                    .ReturnsAsync(false);
+        }
+
+        var service = new ApplicationService(
+            _applicationRepository.Object,
+            _customerRepository.Object,
+            _sessionRepository.Object,
+            _productRepository.Object,
+            _workflowMessageService.Object,
+            _messageTemplateService.Object,
+            _emailAccountService.Object,
+            _messageTokenProvider.Object,
+            _emailAccountSettings,
+            _storeContext.Object,
+            _webHelper.Object,
+            _dateTimeHelper.Object,
+            serviceProvider?.Object,
+            logger.Object);
+
+        Assert.DoesNotThrowAsync(async () => await service.SendApplicationStatusUpdateNotificationAsync(application, 1));
+
+        _workflowMessageService.Verify(x => x.SendNotificationAsync(
+            template,
+            emailAccount,
+            1,
+            It.IsAny<IList<Token>>(),
+            customer.Email,
+            "Casey Jones",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false), Times.Once);
+
+        if (providerMode is "missing" or "resolution-null" or "resolution-exception" or "disabled")
+            whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()), Times.Never);
+        else
+            whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()), Times.Once);
+
+        if (providerMode is "resolution-exception" or "send-failure" or "send-exception")
+            Assert.That(logger.Invocations.Any(invocation => invocation.Method.Name == nameof(ILogger.Log)), Is.True);
+    }
+
     [Test]
     public async Task InterviewCompletion_NotifiesApplicantAndVendor_WithReportLinks()
     {
@@ -481,6 +599,7 @@ public class ServiceTests
 
     [TestCase("missing")]
     [TestCase("resolution-null")]
+    [TestCase("resolution-exception")]
     [TestCase("disabled")]
     [TestCase("send-failure")]
     [TestCase("send-exception")]
@@ -514,8 +633,11 @@ public class ServiceTests
 
         if (serviceProvider != null)
         {
-            serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService)))
-                .Returns(providerMode == "resolution-null" ? null : whatsAppService.Object);
+            var providerSetup = serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService)));
+            if (providerMode == "resolution-exception")
+                providerSetup.Throws(new InvalidOperationException("provider resolution failed"));
+            else
+                providerSetup.Returns(providerMode == "resolution-null" ? null : whatsAppService.Object);
             whatsAppService.SetupGet(x => x.IsEnabled).Returns(providerMode != "disabled");
             if (providerMode == "send-exception")
                 whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>())).ThrowsAsync(new InvalidOperationException("provider failed"));
@@ -566,7 +688,7 @@ public class ServiceTests
             null,
             false), Times.Once);
 
-        if (providerMode is "missing" or "resolution-null" or "disabled")
+        if (providerMode is "missing" or "resolution-null" or "resolution-exception" or "disabled")
         {
             whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()), Times.Never);
         }
@@ -577,6 +699,9 @@ public class ServiceTests
                     request.Tokens["ReportUrl"] == "https://store.example/aiinterview/report/12")), Times.Once);
             Assert.That(logger.Invocations.Any(invocation => invocation.Method.Name == nameof(ILogger.Log)), Is.True);
         }
+
+        if (providerMode == "resolution-exception")
+            Assert.That(logger.Invocations.Any(invocation => invocation.Method.Name == nameof(ILogger.Log)), Is.True);
     }
 
     [Test]

@@ -1,4 +1,5 @@
 using Nop.Services.Messages;
+using Nop.Services.Logging;
 
 namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
@@ -9,13 +10,16 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
 {
     private readonly IWhatsAppBusinessService _whatsAppBusinessService;
     private readonly WhatsAppBusinessSettings _settings;
+    private readonly ILogger _logger;
 
     public WhatsAppNotificationService(
         IWhatsAppBusinessService whatsAppBusinessService,
-        WhatsAppBusinessSettings settings)
+        WhatsAppBusinessSettings settings,
+        ILogger logger = null)
     {
         _whatsAppBusinessService = whatsAppBusinessService;
         _settings = settings;
+        _logger = logger;
     }
 
     public bool IsEnabled => _settings.IsEnabled;
@@ -25,28 +29,38 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
         if (!_settings.IsEnabled || request == null || string.IsNullOrWhiteSpace(request.PhoneNumber))
             return false;
 
-        var templateName = string.IsNullOrWhiteSpace(request.TemplateName)
-            ? ResolveTemplateName(request.MessageType)
-            : request.TemplateName;
-
-        if (_settings.UseTemplateMessages && !string.IsNullOrWhiteSpace(templateName))
+        try
         {
-            return await _whatsAppBusinessService.SendTemplateMessageAsync(
-                0,
-                request.CustomerId,
-                request.PhoneNumber,
-                request.MessageType,
-                templateName,
-                string.IsNullOrWhiteSpace(request.LanguageCode) ? _settings.DefaultLanguageCode : request.LanguageCode,
-                request.TemplateParameters ?? new List<string>());
-        }
+            var templateName = string.IsNullOrWhiteSpace(request.TemplateName)
+                ? ResolveTemplateName(request.MessageType)
+                : request.TemplateName;
 
-        return await _whatsAppBusinessService.SendMessageAsync(
-            0,
-            request.CustomerId,
-            request.PhoneNumber,
-            request.MessageType,
-            request.MessageBody ?? string.Empty);
+            var isSent = _settings.UseTemplateMessages && !string.IsNullOrWhiteSpace(templateName)
+                ? await _whatsAppBusinessService.SendTemplateMessageAsync(
+                    0,
+                    request.CustomerId,
+                    request.PhoneNumber,
+                    request.MessageType,
+                    templateName,
+                    string.IsNullOrWhiteSpace(request.LanguageCode) ? _settings.DefaultLanguageCode : request.LanguageCode,
+                    request.TemplateParameters ?? new List<string>())
+                : await _whatsAppBusinessService.SendMessageAsync(
+                    0,
+                    request.CustomerId,
+                    request.PhoneNumber,
+                    request.MessageType,
+                    request.MessageBody ?? string.Empty);
+
+            if (!isSent)
+                await LogWarningAsync($"Optional WhatsApp {request.MessageType} delivery was not accepted for {WhatsAppLogHelper.MaskPhone(request.PhoneNumber)}.");
+
+            return isSent;
+        }
+        catch (Exception exception)
+        {
+            await LogWarningAsync($"Optional WhatsApp {request.MessageType} delivery failed for {WhatsAppLogHelper.MaskPhone(request.PhoneNumber)} ({exception.GetType().Name}).");
+            return false;
+        }
     }
 
     protected virtual string ResolveTemplateName(string messageType)
@@ -59,5 +73,20 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
             "Authentication.Otp" => _settings.OtpTemplateName,
             _ => string.Empty
         };
+    }
+
+    protected virtual async Task LogWarningAsync(string message)
+    {
+        if (_logger == null)
+            return;
+
+        try
+        {
+            await _logger.WarningAsync(message);
+        }
+        catch
+        {
+            // Optional notification delivery must not fail because diagnostic logging is unavailable.
+        }
     }
 }

@@ -150,9 +150,9 @@ public class ApplicationService : IApplicationService
         if (whatsAppService == null || string.IsNullOrWhiteSpace(customer.Phone))
             return;
 
-        try
-        {
-            var sent = await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
+        await TrySendWhatsAppNotificationAsync(
+            whatsAppService,
+            new WhatsAppNotificationRequest
             {
                 CustomerId = customer.Id,
                 PhoneNumber = customer.Phone,
@@ -178,15 +178,8 @@ public class ApplicationService : IApplicationService
                     ["CandidateDashboardUrl"] = candidateDashboardUrl,
                     ["NewStatus"] = application.Status ?? string.Empty
                 }
-            });
-
-            if (!sent)
-                _logger?.LogWarning("Optional WhatsApp application status notification was not accepted for application {ApplicationId}.", application.Id);
-        }
-        catch (Exception exception)
-        {
-            _logger?.LogWarning(exception, "Optional WhatsApp application status notification failed for application {ApplicationId}.", application.Id);
-        }
+            },
+            application.Id);
     }
 
     protected virtual IWhatsAppNotificationService ResolveWhatsAppService()
@@ -200,6 +193,25 @@ public class ApplicationService : IApplicationService
         {
             _logger?.LogWarning(exception, "Optional WhatsApp provider could not be resolved for an AIInterview application notification.");
             return null;
+        }
+    }
+
+    protected virtual async Task TrySendWhatsAppNotificationAsync(
+        IWhatsAppNotificationService whatsAppService,
+        WhatsAppNotificationRequest request,
+        int applicationId)
+    {
+        try
+        {
+            if (whatsAppService?.IsEnabled != true)
+                return;
+
+            if (!await whatsAppService.SendNotificationAsync(request))
+                _logger?.LogWarning("Optional WhatsApp application status notification was not accepted for application {ApplicationId}.", applicationId);
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Optional WhatsApp application status notification failed for application {ApplicationId}.", applicationId);
         }
     }
 
@@ -649,6 +661,9 @@ public class InterviewSessionService : IInterviewSessionService
     {
         try
         {
+            if (whatsAppService?.IsEnabled != true)
+                return;
+
             if (!await whatsAppService.SendNotificationAsync(request))
                 _logger?.LogWarning("Optional WhatsApp {NotificationKind} notification was not accepted for session {SessionId}.", notificationKind, sessionId);
         }
