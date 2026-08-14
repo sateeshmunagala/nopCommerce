@@ -21,7 +21,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nop.Services.Common;
 using Nop.Services.Messages;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
 using System.Globalization;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
@@ -153,7 +152,7 @@ public class ApplicationService : IApplicationService
 
         await TrySendWhatsAppNotificationAsync(
             whatsAppService,
-            new WhatsAppNotificationRequest
+            new AIInterviewWhatsAppNotificationRequest
             {
                 CustomerId = customer.Id,
                 PhoneNumber = customer.Phone,
@@ -183,11 +182,11 @@ public class ApplicationService : IApplicationService
             application.Id);
     }
 
-    protected virtual IWhatsAppNotificationService ResolveWhatsAppService()
+    protected virtual IOptionalWhatsAppNotificationService ResolveWhatsAppService()
     {
         try
         {
-            var service = _serviceProvider?.GetService<IWhatsAppNotificationService>();
+            var service = OptionalWhatsAppNotificationServiceResolver.Resolve(_serviceProvider);
             return service?.IsEnabled == true ? service : null;
         }
         catch (Exception exception)
@@ -198,8 +197,8 @@ public class ApplicationService : IApplicationService
     }
 
     protected virtual async Task TrySendWhatsAppNotificationAsync(
-        IWhatsAppNotificationService whatsAppService,
-        WhatsAppNotificationRequest request,
+        IOptionalWhatsAppNotificationService whatsAppService,
+        AIInterviewWhatsAppNotificationRequest request,
         int applicationId)
     {
         try
@@ -574,7 +573,7 @@ public class InterviewSessionService : IInterviewSessionService
         {
             await TrySendWhatsAppNotificationAsync(
                 whatsAppService,
-                new WhatsAppNotificationRequest
+                new AIInterviewWhatsAppNotificationRequest
                 {
                     CustomerId = customer.Id,
                     PhoneNumber = customer.Phone,
@@ -613,7 +612,7 @@ public class InterviewSessionService : IInterviewSessionService
                     };
                     await TrySendWhatsAppNotificationAsync(
                         whatsAppService,
-                        new WhatsAppNotificationRequest
+                        new AIInterviewWhatsAppNotificationRequest
                         {
                             CustomerId = vendorCustomer?.Id ?? 0,
                             PhoneNumber = vendorPhone,
@@ -640,11 +639,11 @@ public class InterviewSessionService : IInterviewSessionService
         }
     }
 
-    protected virtual IWhatsAppNotificationService ResolveWhatsAppService()
+    protected virtual IOptionalWhatsAppNotificationService ResolveWhatsAppService()
     {
         try
         {
-            var service = _serviceProvider?.GetService<IWhatsAppNotificationService>();
+            var service = OptionalWhatsAppNotificationServiceResolver.Resolve(_serviceProvider);
             return service?.IsEnabled == true ? service : null;
         }
         catch (Exception exception)
@@ -655,8 +654,8 @@ public class InterviewSessionService : IInterviewSessionService
     }
 
     protected virtual async Task TrySendWhatsAppNotificationAsync(
-        IWhatsAppNotificationService whatsAppService,
-        WhatsAppNotificationRequest request,
+        IOptionalWhatsAppNotificationService whatsAppService,
+        AIInterviewWhatsAppNotificationRequest request,
         int sessionId,
         string notificationKind)
     {

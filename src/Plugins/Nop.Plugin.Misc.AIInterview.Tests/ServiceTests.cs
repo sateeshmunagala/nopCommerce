@@ -16,7 +16,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using System.Transactions;
 using NUnit.Framework;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
 
@@ -106,6 +105,64 @@ public class ServiceTests
         var application = new JobApplication { JobTitle = "Software Engineer" };
         await _applicationService.InsertJobApplicationAsync(application);
         _applicationRepository.Verify(r => r.InsertAsync(application, true), Times.Once);
+    }
+
+    [Test]
+    public void OptionalWhatsAppResolver_ReturnsNull_WhenProviderAssemblyIsUnavailable()
+    {
+        var serviceProvider = new Mock<IServiceProvider>();
+        IOptionalWhatsAppNotificationService resolvedService = null;
+
+        Assert.DoesNotThrow(() => resolvedService = OptionalWhatsAppNotificationServiceResolver.ResolveLateBound(
+            serviceProvider.Object,
+            "Missing.WhatsApp.IProvider, Missing.WhatsApp.Assembly"));
+
+        Assert.That(resolvedService, Is.Null);
+        serviceProvider.VerifyNoOtherCalls();
+    }
+
+    [Test]
+    public void OptionalWhatsAppResolver_ReturnsNull_WhenProviderServiceIsUnavailable()
+    {
+        var serviceProvider = new Mock<IServiceProvider>();
+
+        IOptionalWhatsAppNotificationService resolvedService = null;
+        Assert.DoesNotThrow(() => resolvedService = OptionalWhatsAppNotificationServiceResolver.Resolve(serviceProvider.Object));
+
+        Assert.That(resolvedService, Is.Null);
+    }
+
+    [Test]
+    public async Task OptionalWhatsAppResolver_AdaptsInstalledProviderWithoutProductionReference()
+    {
+        var serviceProvider = new Mock<IServiceProvider>();
+        var provider = new Mock<SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services.IWhatsAppNotificationService>();
+        serviceProvider.Setup(x => x.GetService(typeof(IOptionalWhatsAppNotificationService))).Returns(null);
+        serviceProvider.Setup(x => x.GetService(typeof(SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services.IWhatsAppNotificationService)))
+            .Returns(provider.Object);
+        provider.SetupGet(x => x.IsEnabled).Returns(true);
+        provider.Setup(x => x.SendNotificationAsync(
+                It.IsAny<SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services.WhatsAppNotificationRequest>()))
+            .ReturnsAsync(true);
+
+        var resolvedService = OptionalWhatsAppNotificationServiceResolver.Resolve(serviceProvider.Object);
+        var isSent = await resolvedService.SendNotificationAsync(new AIInterviewWhatsAppNotificationRequest
+        {
+            CustomerId = 42,
+            PhoneNumber = "+15550000042",
+            MessageType = "AIInterview.ApplicantCompletion",
+            MessageBody = "Completed",
+            Tokens = new Dictionary<string, string> { ["InterviewName"] = "Platform Engineer" }
+        });
+
+        Assert.That(resolvedService.IsEnabled, Is.True);
+        Assert.That(isSent, Is.True);
+        provider.Verify(x => x.SendNotificationAsync(
+            It.Is<SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services.WhatsAppNotificationRequest>(request =>
+                request.CustomerId == 42 &&
+                request.PhoneNumber == "+15550000042" &&
+                request.MessageType == "AIInterview.ApplicantCompletion" &&
+                request.Tokens["InterviewName"] == "Platform Engineer")), Times.Once);
     }
 
     [Test]
@@ -400,7 +457,7 @@ public class ServiceTests
     public async Task ApplicationStatusUpdate_Continues_WhenOptionalWhatsAppIsUnavailable(string providerMode)
     {
         var logger = new Mock<ILogger<ApplicationService>>();
-        var whatsAppService = new Mock<IWhatsAppNotificationService>();
+        var whatsAppService = new Mock<IOptionalWhatsAppNotificationService>();
         var serviceProvider = providerMode == "missing" ? null : new Mock<IServiceProvider>();
         var customer = new Customer
         {
@@ -451,7 +508,7 @@ public class ServiceTests
 
         if (serviceProvider != null)
         {
-            var providerSetup = serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService)));
+            var providerSetup = serviceProvider.Setup(x => x.GetService(typeof(IOptionalWhatsAppNotificationService)));
             if (providerMode == "resolution-exception")
                 providerSetup.Throws(new InvalidOperationException("provider resolution failed"));
             else
@@ -459,10 +516,10 @@ public class ServiceTests
 
             whatsAppService.SetupGet(x => x.IsEnabled).Returns(providerMode != "disabled");
             if (providerMode == "send-exception")
-                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()))
+                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<AIInterviewWhatsAppNotificationRequest>()))
                     .ThrowsAsync(new InvalidOperationException("provider failed"));
             else
-                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()))
+                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<AIInterviewWhatsAppNotificationRequest>()))
                     .ReturnsAsync(false);
         }
 
@@ -501,9 +558,9 @@ public class ServiceTests
             false), Times.Once);
 
         if (providerMode is "missing" or "resolution-null" or "resolution-exception" or "disabled")
-            whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()), Times.Never);
+            whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<AIInterviewWhatsAppNotificationRequest>()), Times.Never);
         else
-            whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()), Times.Once);
+            whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<AIInterviewWhatsAppNotificationRequest>()), Times.Once);
 
         if (providerMode is "resolution-exception" or "send-failure" or "send-exception")
             Assert.That(logger.Invocations.Any(invocation => invocation.Method.Name == nameof(ILogger.Log)), Is.True);
@@ -524,7 +581,7 @@ public class ServiceTests
         var applicantTemplate = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.ApplicantInterviewCompletion" };
         var vendorTemplate = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.VendorInterviewCompletion" };
         var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 1, Email = "store@example.com" };
-        var whatsAppService = new Mock<IWhatsAppNotificationService>();
+        var whatsAppService = new Mock<IOptionalWhatsAppNotificationService>();
         var serviceProvider = new Mock<IServiceProvider>();
 
         customerService.Setup(x => x.GetCustomerByIdAsync(5)).ReturnsAsync(customer);
@@ -538,9 +595,9 @@ public class ServiceTests
             .ReturnsAsync(new List<Nop.Core.Domain.Messages.MessageTemplate> { vendorTemplate });
         _emailAccountService.Setup(x => x.GetEmailAccountByIdAsync(It.IsAny<int>())).ReturnsAsync(emailAccount);
         _webHelper.Setup(x => x.GetStoreLocation(It.IsAny<bool?>())).Returns("https://store.example/");
-        serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService))).Returns(whatsAppService.Object);
+        serviceProvider.Setup(x => x.GetService(typeof(IOptionalWhatsAppNotificationService))).Returns(whatsAppService.Object);
         whatsAppService.SetupGet(x => x.IsEnabled).Returns(true);
-        whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>())).ReturnsAsync(true);
+        whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<AIInterviewWhatsAppNotificationRequest>())).ReturnsAsync(true);
 
         var service = new InterviewSessionService(
             _sessionRepository.Object,
@@ -587,7 +644,7 @@ public class ServiceTests
             false), Times.Exactly(2));
 
         whatsAppService.Verify(x => x.SendNotificationAsync(
-            It.Is<WhatsAppNotificationRequest>(request =>
+            It.Is<AIInterviewWhatsAppNotificationRequest>(request =>
                 request.MessageType == "AIInterview.ApplicantCompletion" &&
                 request.Tokens.ContainsKey("InterviewName") &&
                 request.Tokens.ContainsKey("ApplicantName") &&
@@ -595,7 +652,7 @@ public class ServiceTests
                 request.Tokens.ContainsKey("ReportUrl") &&
                 request.Tokens.ContainsKey("CandidateDashboardUrl"))), Times.Once);
         whatsAppService.Verify(x => x.SendNotificationAsync(
-            It.Is<WhatsAppNotificationRequest>(request => request.MessageType == "AIInterview.VendorCompletion")), Times.Once);
+            It.Is<AIInterviewWhatsAppNotificationRequest>(request => request.MessageType == "AIInterview.VendorCompletion")), Times.Once);
     }
 
     [TestCase("missing")]
@@ -611,7 +668,7 @@ public class ServiceTests
         var vendorService = new Mock<Nop.Services.Vendors.IVendorService>();
         var applicationService = new Mock<IApplicationService>();
         var logger = new Mock<ILogger<InterviewSessionService>>();
-        var whatsAppService = new Mock<IWhatsAppNotificationService>();
+        var whatsAppService = new Mock<IOptionalWhatsAppNotificationService>();
         var serviceProvider = providerMode == "missing" ? null : new Mock<IServiceProvider>();
         var customer = new Customer
         {
@@ -634,16 +691,16 @@ public class ServiceTests
 
         if (serviceProvider != null)
         {
-            var providerSetup = serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService)));
+            var providerSetup = serviceProvider.Setup(x => x.GetService(typeof(IOptionalWhatsAppNotificationService)));
             if (providerMode == "resolution-exception")
                 providerSetup.Throws(new InvalidOperationException("provider resolution failed"));
             else
                 providerSetup.Returns(providerMode == "resolution-null" ? null : whatsAppService.Object);
             whatsAppService.SetupGet(x => x.IsEnabled).Returns(providerMode != "disabled");
             if (providerMode == "send-exception")
-                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>())).ThrowsAsync(new InvalidOperationException("provider failed"));
+                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<AIInterviewWhatsAppNotificationRequest>())).ThrowsAsync(new InvalidOperationException("provider failed"));
             else
-                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>())).ReturnsAsync(false);
+                whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<AIInterviewWhatsAppNotificationRequest>())).ReturnsAsync(false);
         }
 
         var service = new InterviewSessionService(
@@ -691,12 +748,12 @@ public class ServiceTests
 
         if (providerMode is "missing" or "resolution-null" or "resolution-exception" or "disabled")
         {
-            whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()), Times.Never);
+            whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<AIInterviewWhatsAppNotificationRequest>()), Times.Never);
         }
         else
         {
             whatsAppService.Verify(x => x.SendNotificationAsync(
-                It.Is<WhatsAppNotificationRequest>(request =>
+                It.Is<AIInterviewWhatsAppNotificationRequest>(request =>
                     request.Tokens["ReportUrl"] == "https://store.example/aiinterview/report/12")), Times.Once);
             Assert.That(logger.Invocations.Any(invocation => invocation.Method.Name == nameof(ILogger.Log)), Is.True);
         }
