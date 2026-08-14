@@ -120,6 +120,28 @@ public class CustomerControllerWhatsAppOtpTests
             NopCustomerDefaults.OtpContextAttribute,
             It.IsAny<string>(),
             0), Times.Once);
+        _logger.Verify(x => x.WarningAsync(
+            It.Is<string>(message => message.Contains("customer 42") && !message.Contains("+14155552671")),
+            null,
+            null), Times.Once);
+    }
+
+    [Test]
+    public async Task SendOtp_UsesSmsFallback_WhenWhatsAppProviderResolvesToNull()
+    {
+        _optionalServiceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService))).Returns(null);
+        var controller = CreateController(CreateEnabledOtpSettings());
+
+        var result = (JsonResult)await controller.SendOtp("+14155552671");
+
+        Assert.That(GetJsonProperty<bool>(result, "success"), Is.True);
+        _smsService.Verify(x => x.SendSmsAsync("+14155552671", It.IsAny<string>()), Times.Once);
+        _whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()), Times.Never);
+        _genericAttributeService.Verify(x => x.SaveAttributeAsync(
+            _customer,
+            NopCustomerDefaults.OtpContextAttribute,
+            It.IsAny<string>(),
+            0), Times.Once);
     }
 
     [Test]

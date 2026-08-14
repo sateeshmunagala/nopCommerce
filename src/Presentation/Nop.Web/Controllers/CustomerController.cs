@@ -242,7 +242,7 @@ public partial class CustomerController : BasePublicController
             if (whatsAppService?.IsEnabled != true)
                 return false;
 
-            return await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
+            var isSent = await whatsAppService.SendNotificationAsync(new WhatsAppNotificationRequest
             {
                 CustomerId = customer.Id,
                 PhoneNumber = phoneNumber,
@@ -259,6 +259,11 @@ public partial class CustomerController : BasePublicController
                     ["ExpiresInSeconds"] = _otpSettings.OtpTimeLife.ToString(CultureInfo.InvariantCulture)
                 }
             });
+
+            if (!isSent)
+                await _logger.WarningAsync($"Optional WhatsApp OTP delivery was not accepted for customer {customer.Id}.");
+
+            return isSent;
         }
         catch (Exception exception)
         {

@@ -480,6 +480,7 @@ public class ServiceTests
     }
 
     [TestCase("missing")]
+    [TestCase("resolution-null")]
     [TestCase("disabled")]
     [TestCase("send-failure")]
     [TestCase("send-exception")]
@@ -513,7 +514,8 @@ public class ServiceTests
 
         if (serviceProvider != null)
         {
-            serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService))).Returns(whatsAppService.Object);
+            serviceProvider.Setup(x => x.GetService(typeof(IWhatsAppNotificationService)))
+                .Returns(providerMode == "resolution-null" ? null : whatsAppService.Object);
             whatsAppService.SetupGet(x => x.IsEnabled).Returns(providerMode != "disabled");
             if (providerMode == "send-exception")
                 whatsAppService.Setup(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>())).ThrowsAsync(new InvalidOperationException("provider failed"));
@@ -564,7 +566,7 @@ public class ServiceTests
             null,
             false), Times.Once);
 
-        if (providerMode is "missing" or "disabled")
+        if (providerMode is "missing" or "resolution-null" or "disabled")
         {
             whatsAppService.Verify(x => x.SendNotificationAsync(It.IsAny<WhatsAppNotificationRequest>()), Times.Never);
         }
