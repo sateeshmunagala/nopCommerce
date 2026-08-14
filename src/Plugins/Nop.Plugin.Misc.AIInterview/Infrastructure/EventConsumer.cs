@@ -56,6 +56,42 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                     && await AIInterviewRoleHelper.IsInRoleAsync(
                         _customerService, customer, AIInterviewDefaults.InstituteCustomerRoleSystemName);
 
+                if (hasVendorAssociation)
+                {
+                    var vendorProfileItems = navigationModel.CustomerNavigationItems
+                        .Where(item =>
+                            string.Equals(item.RouteName, NopRouteNames.Standard.CUSTOMER_VENDOR_INFO, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(item.ItemClass, "customer-vendor-info", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                    var vendorProfileItem = vendorProfileItems.FirstOrDefault(item =>
+                        string.Equals(item.RouteName, NopRouteNames.Standard.CUSTOMER_VENDOR_INFO, StringComparison.OrdinalIgnoreCase))
+                        ?? vendorProfileItems.FirstOrDefault();
+
+                    foreach (var duplicateVendorProfileItem in vendorProfileItems.Where(item => item != vendorProfileItem))
+                        navigationModel.CustomerNavigationItems.Remove(duplicateVendorProfileItem);
+
+                    if (vendorProfileItem == null)
+                    {
+                        vendorProfileItem = new Nop.Web.Models.Customer.CustomerNavigationItemModel
+                        {
+                            RouteName = NopRouteNames.Standard.CUSTOMER_VENDOR_INFO,
+                            Title = hasEmployerRole
+                                ? "Employer Profile"
+                                : await _localizationService.GetResourceAsync("Account.VendorInfo"),
+                            Tab = (int)Nop.Web.Models.Customer.CustomerNavigationEnum.VendorInfo,
+                            ItemClass = "customer-vendor-info"
+                        };
+                        navigationModel.CustomerNavigationItems.Add(vendorProfileItem);
+                    }
+                    else
+                    {
+                        vendorProfileItem.RouteName = NopRouteNames.Standard.CUSTOMER_VENDOR_INFO;
+                        vendorProfileItem.ItemClass = "customer-vendor-info";
+                        if (hasEmployerRole)
+                            vendorProfileItem.Title = "Employer Profile";
+                    }
+                }
+
                 // My Activity is for applicants only - users with no portal role
                 if (customer != null && customer.VendorId == 0 && !hasInstituteRole && !hasEmployerRole)
                 {
@@ -79,11 +115,9 @@ public class EventConsumer : IConsumer<ModelPreparedEvent<BaseNopModel>>
                 {
                     var legacyEmployerItems = navigationModel.CustomerNavigationItems
                         .Where(item =>
-                            string.Equals(item.RouteName, NopRouteNames.Standard.CUSTOMER_VENDOR_INFO, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(item.RouteName, AIInterviewDefaults.VendorScoreboardRouteName, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(item.RouteName, AIInterviewDefaults.EmployerApplicationsRouteName, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(item.RouteName, AIInterviewDefaults.MockEmployerManageRouteName, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(item.ItemClass, "customer-vendor-info", StringComparison.OrdinalIgnoreCase))
+                            string.Equals(item.RouteName, AIInterviewDefaults.MockEmployerManageRouteName, StringComparison.OrdinalIgnoreCase))
                         .ToList();
 
                     foreach (var legacyEmployerItem in legacyEmployerItems)
