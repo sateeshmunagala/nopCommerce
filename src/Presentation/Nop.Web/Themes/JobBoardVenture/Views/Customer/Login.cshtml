@@ -11,6 +11,7 @@
     //page class
     NopHtml.AppendPageCssClassParts("html-login-page");
 
+    var loginUrl = Url.RouteUrl(NopRouteNames.General.LOGIN, new { returnUrl = this.Context.Request.Query["returnUrl"] }, webHelper.GetCurrentRequestProtocol());
     //register URL with return URL (if specified)
     var registerUrl = Url.RouteUrl(NopRouteNames.Standard.REGISTER, new { returnUrl = this.Context.Request.Query["returnUrl"] }, webHelper.GetCurrentRequestProtocol());
 }
@@ -20,8 +21,31 @@
     </div>
     @await Html.PartialAsync("_ExternalAuthentication.Errors")
     <div class="page-body">
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.LoginTop, additionalData = Model })
-        <div class="customer-blocks">
+        <div class="auth-split-container">
+            <section class="auth-left-panel" aria-labelledby="jb-auth-hero-title">
+                <div class="auth-hero-content" data-jb-auth-hero>
+                    <p class="auth-hero-eyebrow">AI-powered career journeys</p>
+                    <h2 class="auth-hero-title" id="jb-auth-hero-title">Make your next move with confidence.</h2>
+                    <p class="auth-hero-subtitle">
+                        Find your direction with
+                        <span class="auth-typing-target" id="jb-auth-phrase" data-jb-auth-phrase aria-hidden="true">practice that builds confidence.</span><span class="auth-typing-cursor" aria-hidden="true"></span>
+                        <span class="jb-auth-live-region" data-jb-auth-announcement aria-live="polite" aria-atomic="true">Practice that builds confidence.</span>
+                    </p>
+                    <ol class="auth-indicators" aria-label="Career journey highlights">
+                        <li><button type="button" class="auth-indicator is-active" data-jb-auth-phrase-index="0" aria-label="Show practice that builds confidence" aria-controls="jb-auth-phrase" aria-pressed="true"></button></li>
+                        <li><button type="button" class="auth-indicator" data-jb-auth-phrase-index="1" aria-label="Show opportunities shaped around skills" aria-controls="jb-auth-phrase" aria-pressed="false"></button></li>
+                        <li><button type="button" class="auth-indicator" data-jb-auth-phrase-index="2" aria-label="Show insights that sharpen your story" aria-controls="jb-auth-phrase" aria-pressed="false"></button></li>
+                    </ol>
+                </div>
+            </section>
+            <section class="auth-right-panel">
+                <nav class="auth-tabs" role="tablist" aria-label="Account access">
+                    <a class="auth-tab is-active" id="jb-auth-login-tab" href="@loginUrl" role="tab" aria-selected="true" aria-current="page" aria-controls="jb-auth-content-panel">@T("Account.Login")</a>
+                    <a class="auth-tab" id="jb-auth-register-tab" href="@registerUrl" role="tab" aria-selected="false" aria-controls="jb-auth-content-panel">@T("Account.Register")</a>
+                </nav>
+                <div class="auth-panel-content" id="jb-auth-content-panel" role="tabpanel" aria-labelledby="jb-auth-login-tab">
+                    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.LoginTop, additionalData = Model })
+                    <div class="customer-blocks">
             @if (Model.RegistrationType == UserRegistrationType.Disabled)
             {
                 <div class="new-wrapper">
@@ -121,12 +145,15 @@
                     </div>
                 </form>
             </div>
+                    </div>
+                    <div class="external-authentication">
+                        @await Component.InvokeAsync(typeof(ExternalMethodsViewComponent), "ExternalAuthentication")
+                    </div>
+                    @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "LoginRegistrationInfo" })
+                    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.LoginBottom, additionalData = Model })
+                </div>
+            </section>
         </div>
-        <div class="external-authentication">
-            @await Component.InvokeAsync(typeof(ExternalMethodsViewComponent), "ExternalAuthentication")
-        </div>
-        @await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "LoginRegistrationInfo" })
-        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.LoginBottom, additionalData = Model })
     </div>
 </div>
 

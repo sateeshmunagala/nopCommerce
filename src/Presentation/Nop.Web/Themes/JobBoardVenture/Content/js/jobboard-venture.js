@@ -189,11 +189,164 @@
         target.appendChild(clone);
     }
 
+    function initializeAuthHero() {
+        var hero = document.querySelector('[data-jb-auth-hero]');
+        if (!hero || hero.getAttribute('data-jb-auth-hero-initialized') === 'true') {
+            return;
+        }
+
+        var typingTarget = hero.querySelector('[data-jb-auth-phrase]');
+        var announcement = hero.querySelector('[data-jb-auth-announcement]');
+        var indicators = hero.querySelectorAll('[data-jb-auth-phrase-index]');
+        if (!typingTarget || !indicators.length) {
+            return;
+        }
+
+        hero.setAttribute('data-jb-auth-hero-initialized', 'true');
+
+        var phrases = [
+            'practice that builds confidence.',
+            'opportunities shaped around skills.',
+            'insights that sharpen your story.'
+        ];
+        var reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        var hiddenHeroQuery = window.matchMedia('(max-width: 768px)');
+        var activeIndex = 0;
+        var rotationTimer = 0;
+        var characterTimer = 0;
+
+        function clearAuthTimers() {
+            window.clearTimeout(rotationTimer);
+            window.clearTimeout(characterTimer);
+        }
+
+        function animationCanRun() {
+            return document.visibilityState !== 'hidden' && !hiddenHeroQuery.matches;
+        }
+
+        function synchronizeIndicators(index) {
+            activeIndex = index;
+            for (var i = 0; i < indicators.length; i++) {
+                var isActive = i === activeIndex;
+                indicators[i].classList.toggle('is-active', isActive);
+                indicators[i].setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            }
+        }
+
+        function announcePhrase(phrase) {
+            if (announcement) {
+                announcement.textContent = 'Career highlight: ' + phrase;
+            }
+        }
+
+        function scheduleNextPhrase() {
+            window.clearTimeout(rotationTimer);
+            if (!animationCanRun()) {
+                return;
+            }
+
+            rotationTimer = window.setTimeout(function () {
+                showPhrase((activeIndex + 1) % phrases.length, true, true);
+            }, 4000);
+        }
+
+        function typePhrase(phrase, position, shouldAnnounce) {
+            if (!animationCanRun()) {
+                clearAuthTimers();
+                return;
+            }
+
+            typingTarget.textContent = phrase.slice(0, position);
+            if (position < phrase.length) {
+                characterTimer = window.setTimeout(function () {
+                    typePhrase(phrase, position + 1, shouldAnnounce);
+                }, 48);
+                return;
+            }
+
+            if (shouldAnnounce) {
+                announcePhrase(phrase);
+            }
+            scheduleNextPhrase();
+        }
+
+        function deletePhrase(nextIndex, shouldAnnounce) {
+            if (!animationCanRun()) {
+                clearAuthTimers();
+                return;
+            }
+
+            var currentText = typingTarget.textContent || '';
+            if (currentText.length) {
+                typingTarget.textContent = currentText.slice(0, -1);
+                characterTimer = window.setTimeout(function () {
+                    deletePhrase(nextIndex, shouldAnnounce);
+                }, 24);
+                return;
+            }
+
+            synchronizeIndicators(nextIndex);
+            typePhrase(phrases[nextIndex], 1, shouldAnnounce);
+        }
+
+        function showPhrase(index, animate, shouldAnnounce) {
+            clearAuthTimers();
+            if (!animationCanRun()) {
+                return;
+            }
+
+            if (reducedMotionQuery.matches || !animate) {
+                synchronizeIndicators(index);
+                typingTarget.textContent = phrases[index];
+                if (shouldAnnounce) {
+                    announcePhrase(phrases[index]);
+                }
+                scheduleNextPhrase();
+                return;
+            }
+
+            deletePhrase(index, shouldAnnounce);
+        }
+
+        for (var i = 0; i < indicators.length; i++) {
+            indicators[i].addEventListener('click', function () {
+                var selectedIndex = Number(this.getAttribute('data-jb-auth-phrase-index'));
+                if (Number.isInteger(selectedIndex) && selectedIndex !== activeIndex) {
+                    showPhrase(selectedIndex, !reducedMotionQuery.matches, true);
+                }
+            });
+        }
+
+        function handleAnimationAvailabilityChange() {
+            clearAuthTimers();
+            if (animationCanRun()) {
+                showPhrase(activeIndex, false, false);
+            }
+        }
+
+        if (typeof reducedMotionQuery.addEventListener === 'function') {
+            reducedMotionQuery.addEventListener('change', handleAnimationAvailabilityChange);
+        } else if (typeof reducedMotionQuery.addListener === 'function') {
+            reducedMotionQuery.addListener(handleAnimationAvailabilityChange);
+        }
+
+        if (typeof hiddenHeroQuery.addEventListener === 'function') {
+            hiddenHeroQuery.addEventListener('change', handleAnimationAvailabilityChange);
+        } else if (typeof hiddenHeroQuery.addListener === 'function') {
+            hiddenHeroQuery.addListener(handleAnimationAvailabilityChange);
+        }
+
+        document.addEventListener('visibilitychange', handleAnimationAvailabilityChange);
+        showPhrase(0, false, false);
+    }
+
     function init() {
         if (document.body.getAttribute('data-jb-shell-init') === 'true') {
             return;
         }
         document.body.setAttribute('data-jb-shell-init', 'true');
+
+        initializeAuthHero();
 
         var menuToggle = document.querySelector('.jb-menu-toggle');
         var menuClose = document.querySelector('.jb-drawer-close');

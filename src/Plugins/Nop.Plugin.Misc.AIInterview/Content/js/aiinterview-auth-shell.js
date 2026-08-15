@@ -48,10 +48,13 @@
     var cursor = document.createElement('span');
     var indicators = document.createElement('ol');
     var tabs = document.createElement('nav');
+    var rightPanelId = 'aiinterview-auth-panel';
 
     shell.className = 'auth-split-container';
     leftPanel.className = 'auth-left-panel';
     rightPanel.className = 'auth-right-panel';
+    rightPanel.id = rightPanelId;
+    rightPanel.setAttribute('role', 'tabpanel');
     hero.className = 'auth-hero-content';
     eyebrow.className = 'auth-hero-eyebrow';
     title.className = 'auth-hero-title';
@@ -86,13 +89,15 @@
         indicators.appendChild(item);
     });
 
-    function createTab(label, href, isActive) {
+    function createTab(label, href, isActive, tabId) {
         var tab = document.createElement('a');
 
+        tab.id = tabId;
         tab.className = 'auth-tab' + (isActive ? ' is-active' : '');
         tab.href = href;
         tab.textContent = label;
         tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-controls', rightPanelId);
         tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
         if (isActive) {
             tab.setAttribute('aria-current', 'page');
@@ -101,8 +106,11 @@
         return tab;
     }
 
-    tabs.appendChild(createTab('Login', loginUrl, isLoginPage));
-    tabs.appendChild(createTab('Register', registerUrl, isRegistrationPage));
+    var loginTab = createTab('Login', loginUrl, isLoginPage, 'aiinterview-auth-login-tab');
+    var registerTab = createTab('Register', registerUrl, isRegistrationPage, 'aiinterview-auth-register-tab');
+    tabs.appendChild(loginTab);
+    tabs.appendChild(registerTab);
+    rightPanel.setAttribute('aria-labelledby', isLoginPage ? loginTab.id : registerTab.id);
     hero.appendChild(eyebrow);
     hero.appendChild(title);
     hero.appendChild(subtitle);
