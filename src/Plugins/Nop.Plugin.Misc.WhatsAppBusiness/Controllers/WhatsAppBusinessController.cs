@@ -107,16 +107,38 @@ public class WhatsAppBusinessController : BasePluginController
 		{
 			return ((ControllerBase)(object)this).Content("Access denied");
 		}
-		if (!((ControllerBase)this).ModelState.IsValid)
+		// Credential validation is conditional so unrelated settings remain independently saveable.
+		ClearModelStateErrors(
+			nameof(model.ApiKey),
+			nameof(model.PhoneNumberId),
+			nameof(model.BusinessAccountId),
+			nameof(model.AppId),
+			nameof(model.AppSecret),
+			nameof(model.ApiVersion),
+			nameof(model.WebhookVerifyToken));
+		if (model.IsEnabled)
 		{
-			return await Configure();
+			if (string.IsNullOrWhiteSpace(model.ApiKey))
+				ModelState.AddModelError(nameof(model.ApiKey), "API Key is required when WhatsApp messaging is enabled.");
+			if (string.IsNullOrWhiteSpace(model.PhoneNumberId))
+				ModelState.AddModelError(nameof(model.PhoneNumberId), "Phone Number ID is required when WhatsApp messaging is enabled.");
 		}
-		_settings.ApiKey = model.ApiKey;
-		_settings.PhoneNumberId = model.PhoneNumberId;
-		_settings.BusinessAccountId = model.BusinessAccountId;
-		_settings.AppId = model.AppId;
-		_settings.AppSecret = model.AppSecret;
-		_settings.ApiVersion = model.ApiVersion;
+
+		if (!ModelState.IsValid)
+		{
+			model.WebhookUrl = _webHelper.GetStoreLocation((bool?)null) + WhatsAppBusinessDefaults.WebhookPath;
+			model.RecentLogs = await _whatsAppService.GetRecentLogsAsync();
+			model.BlacklistedNumbers = await _whatsAppService.GetBlacklistAsync();
+			return View("~/Plugins/Misc.WhatsAppBusiness/Views/Configure.cshtml", model);
+		}
+		_settings.ApiKey = model.ApiKey?.Trim() ?? string.Empty;
+		_settings.PhoneNumberId = model.PhoneNumberId?.Trim() ?? string.Empty;
+		_settings.BusinessAccountId = model.BusinessAccountId?.Trim() ?? string.Empty;
+		_settings.AppId = model.AppId?.Trim() ?? string.Empty;
+		var appSecret = model.AppSecret?.Trim();
+		if (!string.IsNullOrEmpty(appSecret))
+			_settings.AppSecret = appSecret;
+		_settings.ApiVersion = model.ApiVersion?.Trim() ?? string.Empty;
 		_settings.IsEnabled = model.IsEnabled;
 		_settings.EnableOrderPlaced = model.EnableOrderPlaced;
 		_settings.EnableOrderProcessing = model.EnableOrderProcessing;
@@ -125,22 +147,22 @@ public class WhatsAppBusinessController : BasePluginController
 		_settings.EnableOrderCancelled = model.EnableOrderCancelled;
 		_settings.EnableRefundIssued = model.EnableRefundIssued;
 		_settings.UseTemplateMessages = model.UseTemplateMessages;
-		_settings.DefaultLanguageCode = model.DefaultLanguageCode;
-		_settings.OrderConfirmationTemplateName = model.OrderConfirmationTemplateName;
-		_settings.ShipmentTrackingTemplateName = model.ShipmentTrackingTemplateName;
-		_settings.DeliveryConfirmationTemplateName = model.DeliveryConfirmationTemplateName;
-		_settings.ApplicantInterviewCompletionTemplateName = model.ApplicantInterviewCompletionTemplateName;
-		_settings.VendorInterviewCompletionTemplateName = model.VendorInterviewCompletionTemplateName;
-		_settings.InterviewReportSharingTemplateName = model.InterviewReportSharingTemplateName;
-		_settings.OtpTemplateName = model.OtpTemplateName;
+		_settings.DefaultLanguageCode = model.DefaultLanguageCode?.Trim() ?? string.Empty;
+		_settings.OrderConfirmationTemplateName = model.OrderConfirmationTemplateName?.Trim() ?? string.Empty;
+		_settings.ShipmentTrackingTemplateName = model.ShipmentTrackingTemplateName?.Trim() ?? string.Empty;
+		_settings.DeliveryConfirmationTemplateName = model.DeliveryConfirmationTemplateName?.Trim() ?? string.Empty;
+		_settings.ApplicantInterviewCompletionTemplateName = model.ApplicantInterviewCompletionTemplateName?.Trim() ?? string.Empty;
+		_settings.VendorInterviewCompletionTemplateName = model.VendorInterviewCompletionTemplateName?.Trim() ?? string.Empty;
+		_settings.InterviewReportSharingTemplateName = model.InterviewReportSharingTemplateName?.Trim() ?? string.Empty;
+		_settings.OtpTemplateName = model.OtpTemplateName?.Trim() ?? string.Empty;
 		_settings.PollingIntervalSeconds = model.PollingIntervalSeconds;
 		_settings.MinDelayBetweenSendsSeconds = model.MinDelayBetweenSendsSeconds;
 		_settings.MaxDelayBetweenSendsSeconds = model.MaxDelayBetweenSendsSeconds;
 		_settings.MaxMessagesPerBatch = model.MaxMessagesPerBatch;
 		_settings.LookbackWindowDays = model.LookbackWindowDays;
-		_settings.WebhookVerifyToken = model.WebhookVerifyToken;
-		_settings.DefaultTrackingUrlPattern = model.DefaultTrackingUrlPattern;
-		_settings.CarrierTrackingUrls = model.CarrierTrackingUrls;
+		_settings.WebhookVerifyToken = model.WebhookVerifyToken?.Trim() ?? string.Empty;
+		_settings.DefaultTrackingUrlPattern = model.DefaultTrackingUrlPattern?.Trim() ?? string.Empty;
+		_settings.CarrierTrackingUrls = model.CarrierTrackingUrls?.Trim() ?? string.Empty;
 		_settings.ShowOptInOnCheckoutCompleted = model.ShowOptInOnCheckoutCompleted;
 		_settings.ShowTrackingOnOrderDetails = model.ShowTrackingOnOrderDetails;
 		_settings.RequireCustomerAccount = model.RequireCustomerAccount;
@@ -166,6 +188,15 @@ public class WhatsAppBusinessController : BasePluginController
 		INotificationService notificationService = _notificationService;
 		notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"), true, 0);
 		return await Configure();
+	}
+
+	private void ClearModelStateErrors(params string[] propertyNames)
+	{
+		foreach (var propertyName in propertyNames)
+		{
+			if (ModelState.TryGetValue(propertyName, out var entry))
+				entry.Errors.Clear();
+		}
 	}
 
 	[HttpPost]
