@@ -11873,6 +11873,166 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     outline-offset: -3px;
 }
 
+/* Desktop homepage correction: compact, left-aligned hierarchy. */
+@media (min-width: 1025px) {
+    .jb-home-landing .jb-home-hero-content,
+    .jb-home-landing .jb-home-hero-text,
+    .jb-home-landing .jb-home-section-head,
+    .jb-home-landing .jb-home-final-cta > div:first-child {
+        align-items: start;
+        justify-items: start;
+        text-align: left;
+    }
+
+    .jb-home-landing .jb-home-hero-content {
+        gap: 1.25rem;
+        max-width: 720px;
+        margin-right: auto;
+        margin-left: 0;
+    }
+
+    .jb-home-landing .jb-home-hero-text {
+        gap: 0.75rem;
+    }
+
+    .jb-home-landing .jb-home-badge,
+    .jb-home-landing .jb-home-eyebrow {
+        justify-content: flex-start;
+    }
+
+    .jb-home-landing .jb-home-hero h1,
+    .jb-home-landing .jb-home-hero-copy {
+        text-align: left;
+    }
+
+    .jb-home-landing .jb-home-hero h1 {
+        max-width: 18ch;
+        font-size: clamp(2.25rem, 3.8vw, 3.4rem);
+        line-height: 1.15;
+    }
+
+    .jb-home-landing .jb-home-hero-copy {
+        max-width: 56ch;
+        line-height: 1.6;
+    }
+
+    .jb-home-landing .jb-home-search-form {
+        max-width: 680px;
+        margin-right: auto;
+        margin-left: 0;
+    }
+
+    .jb-home-landing .jb-home-section-head {
+        max-width: 760px;
+        margin: 0 0 1.5rem;
+    }
+
+    .jb-home-landing .jb-home-section-head h2,
+    .jb-home-landing .jb-home-final-cta h2 {
+        max-width: 30ch;
+        font-size: clamp(1.65rem, 2vw, 2.15rem);
+    }
+
+    .jb-home-landing .jb-home-feature-card h3,
+    .jb-home-landing .jb-home-step-card h3,
+    .jb-home-landing .jb-home-products-component .product-title,
+    .jb-home-landing .jb-home-category-component .title {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.3;
+        max-height: 2.6em;
+    }
+
+    .jb-home-landing .jb-home-section,
+    .jb-home-landing .jb-home-topic-faq,
+    .jb-home-landing .jb-home-hero-shell {
+        padding: 2rem 1.5rem;
+    }
+
+    .jb-home-landing .jb-home-section,
+    .jb-home-landing .jb-home-topic-faq,
+    .jb-home-landing .jb-home-filters,
+    .jb-home-landing .jb-home-native-components {
+        margin-top: 1.5rem;
+    }
+
+    .jb-home-landing .jb-home-feature-grid,
+    .jb-home-landing .jb-home-steps {
+        gap: 0.875rem;
+    }
+
+    .jb-home-landing .jb-home-action-row {
+        gap: 0.75rem;
+    }
+
+    .jb-home-landing .jb-home-feature-card,
+    .jb-home-landing .jb-home-step-card {
+        gap: 0.625rem;
+        padding: 1.125rem;
+    }
+
+    .jb-home-landing .jb-home-trust-pills {
+        justify-content: flex-start;
+    }
+
+    .jb-home-landing .jb-home-category-component .item-grid,
+    .jb-home-landing .jb-home-products-component .item-grid,
+    .jb-home-landing .jb-home-bestsellers-component .item-grid {
+        gap: 1rem;
+    }
+
+    .jb-home-landing .jb-home-category-component .item-box,
+    .jb-home-landing .jb-home-products-component .product-item,
+    .jb-home-landing .jb-home-bestsellers-component .product-item {
+        min-height: 0;
+    }
+
+    .jb-home-landing .jb-home-category-component .picture a {
+        aspect-ratio: 16 / 9;
+    }
+
+    .jb-home-landing .jb-home-category-component .title,
+    .jb-home-landing .jb-home-products-component .product-item,
+    .jb-home-landing .jb-home-bestsellers-component .product-item {
+        padding: 1.25rem;
+    }
+
+    .jb-home-landing .jb-home-category-component .title {
+        box-sizing: content-box;
+    }
+
+    .jb-home-landing .jb-home-products-component .product-item,
+    .jb-home-landing .jb-home-bestsellers-component .product-item {
+        grid-template-columns: minmax(0, 1fr) minmax(120px, 36%);
+        align-items: start;
+        gap: 1rem;
+    }
+
+    .jb-home-landing .jb-home-products-component .product-item .picture,
+    .jb-home-landing .jb-home-bestsellers-component .product-item .picture {
+        min-height: 150px;
+        padding: 0.5rem;
+    }
+
+    .jb-home-landing .jb-home-products-component .product-item .details,
+    .jb-home-landing .jb-home-bestsellers-component .product-item .details {
+        gap: 0.625rem;
+    }
+
+    .jb-home-landing .jb-home-products-component .product-item .sku,
+    .jb-home-landing .jb-home-products-component .product-item .description,
+    .jb-home-landing .jb-home-bestsellers-component .product-item .sku,
+    .jb-home-landing .jb-home-bestsellers-component .product-item .description {
+        line-height: 1.5;
+    }
+
+    .jb-home-landing .jb-home-final-cta {
+        gap: 1.5rem;
+    }
+}
+
 @media (max-width: 1024px) {
     .jb-home-landing .page-body {
         padding-right: 1.5rem;
