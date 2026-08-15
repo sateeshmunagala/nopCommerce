@@ -9052,8 +9052,8 @@ body.jb-filter-panel-open .product-filters {
     box-sizing: border-box;
     display: flex;
     min-width: 0;
-    align-items: center;
-    padding: clamp(42px, 6vw, 84px);
+    align-items: flex-start;
+    padding: 20px;
     overflow: hidden;
     background:
         radial-gradient(circle at 15% 15%, color-mix(in srgb, var(--jb-accent) 28%, transparent), transparent 42%),
@@ -9095,7 +9095,7 @@ body.jb-filter-panel-open .product-filters {
     margin: 0;
     color: var(--jb-white);
     font-family: "Fjalla One", Arial, sans-serif;
-    font-size: clamp(2.5rem, 5vw, 4.8rem);
+    font-size: clamp(1.25rem, 2.5vw, 2.4rem);
     font-weight: 400;
     line-height: 1.02;
     text-transform: uppercase;
@@ -9203,7 +9203,7 @@ body.jb-filter-panel-open .product-filters {
 .html-registration-page .auth-right-panel {
     box-sizing: border-box;
     min-width: 0;
-    padding: clamp(32px, 5vw, 68px);
+    padding: 12px 18px 24px;
     background: var(--jb-white);
 }
 
@@ -9211,7 +9211,7 @@ body.jb-filter-panel-open .product-filters {
 .html-registration-page .auth-tabs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin: 0 0 36px;
+    margin: 0 0 10px;
     border-bottom: 1px solid var(--jb-border);
 }
 
@@ -9284,10 +9284,119 @@ body.jb-filter-panel-open .product-filters {
 .html-login-page .auth-panel-content .new-wrapper,
 .html-login-page .auth-panel-content .returning-wrapper,
 .html-registration-page .auth-panel-content .fieldset {
+    border-left: 0;
+    padding-top: 10px;
     padding-right: 0;
+    padding-bottom: 10px;
     padding-left: 0;
     background: transparent;
     box-shadow: none;
+}
+
+.html-login-page .auth-panel-content .returning-wrapper .form-fields,
+.html-login-page .auth-panel-content .returning-wrapper .inputs:not(.reversed) {
+    text-align: left !important;
+}
+
+.html-login-page .auth-panel-content .returning-wrapper .inputs:not(.reversed) > label:first-child {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 0 4px !important;
+    text-align: left !important;
+}
+
+.html-registration-page .auth-panel-content form {
+    gap: 8px;
+}
+
+.html-registration-page .auth-panel-content .jb-auth-name-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    min-width: 0;
+}
+
+.html-registration-page .auth-panel-content .jb-auth-name-row > .inputs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    min-width: 0;
+}
+
+.html-registration-page .auth-panel-content .jb-auth-name-row > .inputs:only-child {
+    grid-column: 1 / -1;
+}
+
+.html-registration-page .auth-panel-content .jb-auth-name-row > .inputs > label[for] {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+}
+
+.html-registration-page .auth-panel-content .jb-auth-name-row > .inputs > input {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100%;
+    min-width: 0;
+}
+
+.html-registration-page .auth-panel-content .jb-auth-name-row > .inputs > nop-required,
+.html-registration-page .auth-panel-content .jb-auth-name-row > .inputs > .required {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.html-registration-page .auth-panel-content .jb-auth-name-row > .inputs > .field-validation-error,
+.html-registration-page .auth-panel-content .jb-auth-name-row > .inputs > .field-validation-valid {
+    grid-column: 1 / -1;
+    grid-row: 3;
+}
+
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    column-gap: 4px;
+    row-gap: 6px;
+    align-items: center;
+    min-width: 0;
+}
+
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > label[for] {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+}
+
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > nop-required,
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > .required {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    justify-self: start;
+    margin: 0 !important;
+}
+
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > select,
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > textarea,
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > .form-input-wrapper {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    width: 100%;
+    min-width: 0;
+}
+
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > .field-validation-error,
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > .field-validation-valid,
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > .vat-note,
+.html-registration-page .auth-panel-content .inputs:not(.accept-consent) > .please-wait {
+    grid-column: 1 / -1 !important;
+    grid-row: 3 !important;
+    margin-top: 0;
 }
 
 .html-login-page .auth-panel-content .external-authentication,
@@ -9295,19 +9404,24 @@ body.jb-filter-panel-open .product-filters {
     max-width: none;
 }
 
-.html-login-page .auth-panel-content input:focus-visible,
-.html-login-page .auth-panel-content select:focus-visible,
-.html-login-page .auth-panel-content textarea:focus-visible,
+.html-login-page .auth-panel-content input:focus,
+.html-login-page .auth-panel-content select:focus,
+.html-login-page .auth-panel-content textarea:focus,
+.html-registration-page .auth-panel-content input:focus,
+.html-registration-page .auth-panel-content select:focus,
+.html-registration-page .auth-panel-content textarea:focus {
+    border-color: var(--jb-accent);
+    outline: 0;
+    box-shadow: none;
+}
+
 .html-login-page .auth-panel-content button:focus-visible,
 .html-login-page .auth-panel-content a:focus-visible,
-.html-registration-page .auth-panel-content input:focus-visible,
-.html-registration-page .auth-panel-content select:focus-visible,
-.html-registration-page .auth-panel-content textarea:focus-visible,
 .html-registration-page .auth-panel-content button:focus-visible,
 .html-registration-page .auth-panel-content a:focus-visible {
     outline: 2px solid var(--jb-accent);
     outline-offset: 3px;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--jb-accent) 24%, transparent);
+    box-shadow: none;
 }
 
 @media (min-width: 769px) and (max-width: 1000px) {
@@ -9318,12 +9432,12 @@ body.jb-filter-panel-open .product-filters {
 
     .html-login-page .auth-left-panel,
     .html-registration-page .auth-left-panel {
-        padding: 36px;
+        padding: 20px;
     }
 
     .html-login-page .auth-hero-title,
     .html-registration-page .auth-hero-title {
-        font-size: clamp(2.2rem, 5vw, 3.4rem);
+        font-size: clamp(1.1rem, 2.5vw, 1.7rem);
     }
 }
 
@@ -9345,19 +9459,23 @@ body.jb-filter-panel-open .product-filters {
     .html-registration-page .auth-right-panel {
         width: 100%;
         min-height: 0;
-        padding: 32px 24px;
+        padding: 12px 16px 24px;
+    }
+
+    .html-registration-page .auth-panel-content .jb-auth-name-row {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
 @media (max-width: 480px) {
     .html-login-page .auth-right-panel,
     .html-registration-page .auth-right-panel {
-        padding: 26px 16px;
+        padding: 10px 12px 20px;
     }
 
     .html-login-page .auth-tabs,
     .html-registration-page .auth-tabs {
-        margin-bottom: 24px;
+        margin-bottom: 8px;
     }
 
     .html-login-page .auth-panel-content .inputs,
@@ -11788,6 +11906,80 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     }
 }
 
+/* Compact Register fields override the legacy three-column registration grid. */
+.html-registration-page .registration-page .auth-panel-content form {
+    gap: 0;
+}
+
+.html-registration-page .registration-page .auth-panel-content .fieldset {
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    column-gap: 0;
+    row-gap: 4px;
+    margin: 0 0 4px;
+}
+
+.html-registration-page .registration-page .auth-panel-content form > .buttons {
+    margin: 4px 0 0;
+    padding-top: 0;
+}
+
+.html-registration-page .registration-page .auth-panel-content .jb-auth-field-label {
+    grid-column: 1;
+    grid-row: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    gap: 4px;
+    width: auto;
+    min-width: 0;
+}
+
+.html-registration-page .registration-page .auth-panel-content .jb-auth-field-label .jb-register-field-label {
+    position: static !important;
+    display: inline !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+}
+
+.html-registration-page .registration-page .auth-panel-content .jb-auth-field-label nop-required,
+.html-registration-page .registration-page .auth-panel-content .jb-auth-field-label .required {
+    position: static;
+    display: inline;
+    width: auto;
+    margin: 0;
+    text-align: left;
+}
+
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > select,
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > textarea,
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > .gender,
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > .jb-auth-date-fields,
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > .form-input-wrapper {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100%;
+    min-width: 0;
+}
+
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > .field-validation-error,
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > .field-validation-valid,
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > .vat-note,
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > .phone-info,
+.html-registration-page .registration-page .auth-panel-content .inputs:not(.accept-consent) > .please-wait {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+    margin-top: 0;
+}
+
 /* Order details invoice layout. */
 .html-order-details-page .order-details-page .page-body {
     padding-top: 0;
@@ -14204,4 +14396,25 @@ html.html-account-page.html-vendorinfo-page .account-page.vendorinfo-page .field
     .html-vendorinfo-page .vendorinfo-page .buttons .save-vendorinfo-button {
         width: 100%;
     }
+}
+
+/* Keep Login credential labels flush with their text fields. */
+html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs[data-mode] > label[for] {
+    position: static !important;
+    display: block !important;
+    float: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    margin: 0 0 4px !important;
+    padding: 0 !important;
+    text-align: left !important;
+    justify-self: start !important;
+    transform: none !important;
+}
+
+html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed .forgot-password,
+html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed .forgot-password a {
+    white-space: nowrap !important;
 }

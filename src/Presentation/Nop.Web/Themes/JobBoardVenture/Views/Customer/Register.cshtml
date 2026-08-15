@@ -21,16 +21,16 @@
             <section class="auth-left-panel" aria-labelledby="jb-auth-hero-title">
                 <div class="auth-hero-content" data-jb-auth-hero>
                     <p class="auth-hero-eyebrow">AI-powered career journeys</p>
-                    <h2 class="auth-hero-title" id="jb-auth-hero-title">Make your next move with confidence.</h2>
+                    <p class="auth-hero-title" id="jb-auth-hero-title">Make your next move with confidence.</p>
                     <p class="auth-hero-subtitle">
                         Find your direction with
-                        <span class="auth-typing-target" id="jb-auth-phrase" data-jb-auth-phrase aria-hidden="true">practice that builds confidence.</span><span class="auth-typing-cursor" aria-hidden="true"></span>
-                        <span class="jb-auth-live-region" data-jb-auth-announcement aria-live="polite" aria-atomic="true">Practice that builds confidence.</span>
+                        <br />
+                        <span class="auth-typing-target" id="jb-auth-phrase" data-jb-auth-phrase aria-hidden="true">Get AI-powered feedback to make your resume stand out to recruiters.</span><span class="auth-typing-cursor" aria-hidden="true"></span>
+                        <span class="jb-auth-live-region" data-jb-auth-announcement aria-live="polite" aria-atomic="true">Get AI-powered feedback to make your resume stand out to recruiters.</span>
                     </p>
                     <ol class="auth-indicators" aria-label="Career journey highlights">
-                        <li><button type="button" class="auth-indicator is-active" data-jb-auth-phrase-index="0" aria-label="Show practice that builds confidence" aria-controls="jb-auth-phrase" aria-pressed="true"></button></li>
-                        <li><button type="button" class="auth-indicator" data-jb-auth-phrase-index="1" aria-label="Show opportunities shaped around skills" aria-controls="jb-auth-phrase" aria-pressed="false"></button></li>
-                        <li><button type="button" class="auth-indicator" data-jb-auth-phrase-index="2" aria-label="Show insights that sharpen your story" aria-controls="jb-auth-phrase" aria-pressed="false"></button></li>
+                        <li><button type="button" class="auth-indicator is-active" data-jb-auth-phrase-index="0" aria-label="Show AI-powered resume feedback message" aria-controls="jb-auth-phrase" aria-pressed="true"></button></li>
+                        <li><button type="button" class="auth-indicator" data-jb-auth-phrase-index="1" aria-label="Show skills-aligned opportunities message" aria-controls="jb-auth-phrase" aria-pressed="false"></button></li>
                     </ol>
                 </div>
             </section>
@@ -44,55 +44,70 @@
                     <form asp-route="@NopRouteNames.Standard.REGISTER" asp-route-returnurl="@Context.Request.Query["ReturnUrl"]" method="post" autocomplete="off">
             <div asp-validation-summary="ModelOnly" class="message-error"></div>
             <section class="fieldset">
-                <h2 class="title">
+                @* <h2 class="title">
                     @T("Account.YourPersonalDetails")
-                </h2>
+                </h2> *@
                 <div class="form-fields">
-                    @if (Model.FirstNameEnabled)
+                    @if (Model.FirstNameEnabled || Model.LastNameEnabled)
                     {
-                        <div class="inputs">
-                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.FirstName)">@T("Account.Fields.FirstName"):</label>
-                            <input asp-for="FirstName" placeholder="@T("Account.Fields.FirstName")" autofocus="autofocus" />
-                            @if (Model.FirstNameRequired)
+                        <div class="jb-auth-name-row">
+                            @if (Model.FirstNameEnabled)
                             {
-                                <nop-required />
+                                <div class="inputs">
+                                    <div class="jb-auth-field-label">
+                                        <label class="jb-register-field-label" for="@Html.IdFor(m => m.FirstName)">@T("Account.Fields.FirstName"):</label>
+                                        @if (Model.FirstNameRequired)
+                                        {
+                                            <nop-required />
+                                        }
+                                    </div>
+                                    <input asp-for="FirstName" placeholder="@T("Account.Fields.FirstName")" autofocus="autofocus" />
+                                    <span asp-validation-for="FirstName"></span>
+                                </div>
                             }
-                            <span asp-validation-for="FirstName"></span>
-                        </div>
-                    }
-                    @if (Model.LastNameEnabled)
-                    {
-                        <div class="inputs">
-                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.LastName)">@T("Account.Fields.LastName"):</label>
-                            <input asp-for="LastName" placeholder="@T("Account.Fields.LastName")" autofocus="@(!Model.FirstNameEnabled)" />
-                            @if (Model.LastNameRequired)
+                            @if (Model.LastNameEnabled)
                             {
-                                <nop-required />
+                                <div class="inputs">
+                                    <div class="jb-auth-field-label">
+                                        <label class="jb-register-field-label" for="@Html.IdFor(m => m.LastName)">@T("Account.Fields.LastName"):</label>
+                                        @if (Model.LastNameRequired)
+                                        {
+                                            <nop-required />
+                                        }
+                                    </div>
+                                    <input asp-for="LastName" placeholder="@T("Account.Fields.LastName")" autofocus="@(!Model.FirstNameEnabled)" />
+                                    <span asp-validation-for="LastName"></span>
+                                </div>
                             }
-                            <span asp-validation-for="LastName"></span>
                         </div>
                     }
                     <div class="inputs">
-                        <label class="jb-register-field-label" for="@Html.IdFor(m => m.Email)">@T("Account.Fields.Email"):</label>
+                        <div class="jb-auth-field-label">
+                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.Email)">@T("Account.Fields.Email"):</label>
+                            <nop-required />
+                        </div>
                         <input asp-for="Email" placeholder="@T("Account.Fields.Email")" autofocus="@(!Model.FirstNameEnabled && !Model.LastNameEnabled)" />
-                        <nop-required />
                         <span asp-validation-for="Email"></span>
                     </div>
                     @if (Model.EnteringEmailTwice)
                     {
                         <div class="inputs">
-                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.ConfirmEmail)">@T("Account.Fields.ConfirmEmail"):</label>
+                            <div class="jb-auth-field-label">
+                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.ConfirmEmail)">@T("Account.Fields.ConfirmEmail"):</label>
+                                <nop-required />
+                            </div>
                             <input asp-for="ConfirmEmail" placeholder="@T("Account.Fields.ConfirmEmail")" />
-                            <nop-required />
                             <span asp-validation-for="ConfirmEmail"></span>
                         </div>
                     }
                     @if (Model.UsernamesEnabled)
                     {
                         <div class="inputs">
-                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.Username)">@T("Account.Fields.Username"):</label>
+                            <div class="jb-auth-field-label">
+                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.Username)">@T("Account.Fields.Username"):</label>
+                                <nop-required />
+                            </div>
                             <input asp-for="Username" placeholder="@T("Account.Fields.Username")" />
-                            <nop-required />
                             <span asp-validation-for="Username"></span>
                             @if (Model.CheckUsernameAvailabilityEnabled)
                             {
@@ -105,19 +120,21 @@
             @if (Model.PhoneEnabled)
             {
                 <section class="fieldset">
-                    <h2 class="title">
+                   @*  <h2 class="title">
                         @T("Account.YourContactInformation")
-                    </h2>
+                    </h2> *@
                     <div class="form-fields">
                         @if (Model.PhoneEnabled)
                         {
                             <div class="inputs">
-                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.Phone)">@T("Account.Fields.Phone"):</label>
+                                <div class="jb-auth-field-label">
+                                    <label class="jb-register-field-label" for="@Html.IdFor(m => m.Phone)">@T("Account.Fields.Phone"):</label>
+                                    @if (Model.PhoneRequired)
+                                    {
+                                        <nop-required />
+                                    }
+                                </div>
                                 <input asp-for="Phone" placeholder="@T("PhoneVerification.Placeholder")" />
-                                @if (Model.PhoneRequired)
-                                {
-                                    <nop-required />
-                                }
                                 <span asp-validation-for="Phone"></span>
                                 
                             </div>
@@ -130,20 +147,24 @@
                 </section>
             }
             <section class="fieldset">
-                <h2 class="title">
+               @*  <h2 class="title">
                     @T("Account.YourPassword")
-                </h2>
+                </h2> *@
                 <div class="form-fields">
                     <div class="inputs">
-                        <label class="jb-register-field-label" for="@Html.IdFor(m => m.Password)">@T("Account.Fields.Password"):</label>
+                        <div class="jb-auth-field-label">
+                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.Password)">@T("Account.Fields.Password"):</label>
+                            <nop-required />
+                        </div>
                         <input asp-for="Password" placeholder="@T("Account.Fields.Password")" />
-                        <nop-required />
                         <span asp-validation-for="Password"></span>
                     </div>
                     <div class="inputs">
-                        <label class="jb-register-field-label" for="@Html.IdFor(m => m.ConfirmPassword)">@T("Account.Fields.ConfirmPassword"):</label>
+                        <div class="jb-auth-field-label">
+                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.ConfirmPassword)">@T("Account.Fields.ConfirmPassword"):</label>
+                            <nop-required />
+                        </div>
                         <input asp-for="ConfirmPassword" placeholder="@T("Account.Fields.ConfirmPassword")" />
-                        <nop-required />
                         <span asp-validation-for="ConfirmPassword"></span>
                     </div>
                     @if (Model.DisplayCaptcha)
@@ -160,9 +181,9 @@
             @if (Model.AcceptPrivacyPolicyEnabled || Model.GdprConsents.Count > 0)
             {
                 <section class="fieldset">
-                    <h2 class="title">
+                   @*  <h2 class="title">
                         @T("Account.UserAgreement")
-                    </h2>
+                    </h2> *@
                     <div class="form-fields">
                         @if (Model.AcceptPrivacyPolicyEnabled)
                         {

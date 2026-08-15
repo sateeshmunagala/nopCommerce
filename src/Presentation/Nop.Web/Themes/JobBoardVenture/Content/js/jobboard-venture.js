@@ -269,9 +269,8 @@
         hero.setAttribute('data-jb-auth-hero-initialized', 'true');
 
         var phrases = [
-            'practice that builds confidence.',
-            'opportunities shaped around skills.',
-            'insights that sharpen your story.'
+            'Get AI-powered feedback to make your resume stand out to recruiters.',
+            'Find opportunities that perfectly align with your skills and career goals.'
         ];
         var reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
         var hiddenHeroQuery = window.matchMedia('(max-width: 768px)');
