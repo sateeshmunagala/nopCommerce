@@ -116,11 +116,18 @@ public class WhatsAppBusinessController : BasePluginController
 			nameof(model.AppSecret),
 			nameof(model.ApiVersion),
 			nameof(model.WebhookVerifyToken));
+		var apiKey = NormalizeOrKeepExisting(model.ApiKey, _settings.ApiKey);
+		var phoneNumberId = NormalizeOrKeepExisting(model.PhoneNumberId, _settings.PhoneNumberId);
+		var businessAccountId = NormalizeOrKeepExisting(model.BusinessAccountId, _settings.BusinessAccountId);
+		var appId = NormalizeOrKeepExisting(model.AppId, _settings.AppId);
+		var apiVersion = NormalizeOrKeepExisting(model.ApiVersion, _settings.ApiVersion);
+		var webhookVerifyToken = NormalizeOrKeepExisting(model.WebhookVerifyToken, _settings.WebhookVerifyToken);
+		var appSecret = NormalizeSecretOrKeepExisting(model.AppSecret, _settings.AppSecret);
 		if (model.IsEnabled)
 		{
-			if (string.IsNullOrWhiteSpace(model.ApiKey))
+			if (string.IsNullOrWhiteSpace(apiKey))
 				ModelState.AddModelError(nameof(model.ApiKey), "API Key is required when WhatsApp messaging is enabled.");
-			if (string.IsNullOrWhiteSpace(model.PhoneNumberId))
+			if (string.IsNullOrWhiteSpace(phoneNumberId))
 				ModelState.AddModelError(nameof(model.PhoneNumberId), "Phone Number ID is required when WhatsApp messaging is enabled.");
 		}
 
@@ -131,14 +138,12 @@ public class WhatsAppBusinessController : BasePluginController
 			model.BlacklistedNumbers = await _whatsAppService.GetBlacklistAsync();
 			return View("~/Plugins/Misc.WhatsAppBusiness/Views/Configure.cshtml", model);
 		}
-		_settings.ApiKey = model.ApiKey?.Trim() ?? string.Empty;
-		_settings.PhoneNumberId = model.PhoneNumberId?.Trim() ?? string.Empty;
-		_settings.BusinessAccountId = model.BusinessAccountId?.Trim() ?? string.Empty;
-		_settings.AppId = model.AppId?.Trim() ?? string.Empty;
-		var appSecret = model.AppSecret?.Trim();
-		if (!string.IsNullOrEmpty(appSecret))
-			_settings.AppSecret = appSecret;
-		_settings.ApiVersion = model.ApiVersion?.Trim() ?? string.Empty;
+		_settings.ApiKey = apiKey;
+		_settings.PhoneNumberId = phoneNumberId;
+		_settings.BusinessAccountId = businessAccountId;
+		_settings.AppId = appId;
+		_settings.AppSecret = appSecret;
+		_settings.ApiVersion = apiVersion;
 		_settings.IsEnabled = model.IsEnabled;
 		_settings.EnableOrderPlaced = model.EnableOrderPlaced;
 		_settings.EnableOrderProcessing = model.EnableOrderProcessing;
@@ -160,7 +165,7 @@ public class WhatsAppBusinessController : BasePluginController
 		_settings.MaxDelayBetweenSendsSeconds = model.MaxDelayBetweenSendsSeconds;
 		_settings.MaxMessagesPerBatch = model.MaxMessagesPerBatch;
 		_settings.LookbackWindowDays = model.LookbackWindowDays;
-		_settings.WebhookVerifyToken = model.WebhookVerifyToken?.Trim() ?? string.Empty;
+		_settings.WebhookVerifyToken = webhookVerifyToken;
 		_settings.DefaultTrackingUrlPattern = model.DefaultTrackingUrlPattern?.Trim() ?? string.Empty;
 		_settings.CarrierTrackingUrls = model.CarrierTrackingUrls?.Trim() ?? string.Empty;
 		_settings.ShowOptInOnCheckoutCompleted = model.ShowOptInOnCheckoutCompleted;
@@ -197,6 +202,18 @@ public class WhatsAppBusinessController : BasePluginController
 			if (ModelState.TryGetValue(propertyName, out var entry))
 				entry.Errors.Clear();
 		}
+	}
+
+	private static string NormalizeOrKeepExisting(string? postedValue, string? existingValue)
+	{
+		return postedValue is null ? existingValue ?? string.Empty : postedValue.Trim();
+	}
+
+	private static string NormalizeSecretOrKeepExisting(string? postedValue, string? existingValue)
+	{
+		var normalizedValue = postedValue?.Trim();
+		// Password editors post blank when unchanged; blank AppSecret values must never erase the stored secret.
+		return string.IsNullOrEmpty(normalizedValue) ? existingValue ?? string.Empty : normalizedValue;
 	}
 
 	[HttpPost]
