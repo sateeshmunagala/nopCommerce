@@ -9262,6 +9262,19 @@ body.jb-filter-panel-open .product-filters {
 .html-login-page .auth-panel-content,
 .html-registration-page .auth-panel-content {
     min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.html-login-page .auth-panel-content form,
+.html-registration-page .auth-panel-content form,
+.html-login-page .auth-panel-content .fieldset,
+.html-registration-page .auth-panel-content .fieldset,
+.html-login-page .auth-panel-content .form-fields,
+.html-registration-page .auth-panel-content .form-fields {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .html-login-page .auth-panel-content .customer-blocks {
@@ -9280,6 +9293,21 @@ body.jb-filter-panel-open .product-filters {
 .html-login-page .auth-panel-content .external-authentication,
 .html-registration-page .auth-panel-content .external-authentication {
     max-width: none;
+}
+
+.html-login-page .auth-panel-content input:focus-visible,
+.html-login-page .auth-panel-content select:focus-visible,
+.html-login-page .auth-panel-content textarea:focus-visible,
+.html-login-page .auth-panel-content button:focus-visible,
+.html-login-page .auth-panel-content a:focus-visible,
+.html-registration-page .auth-panel-content input:focus-visible,
+.html-registration-page .auth-panel-content select:focus-visible,
+.html-registration-page .auth-panel-content textarea:focus-visible,
+.html-registration-page .auth-panel-content button:focus-visible,
+.html-registration-page .auth-panel-content a:focus-visible {
+    outline: 2px solid var(--jb-accent);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--jb-accent) 24%, transparent);
 }
 
 @media (min-width: 769px) and (max-width: 1000px) {
@@ -9330,6 +9358,29 @@ body.jb-filter-panel-open .product-filters {
     .html-login-page .auth-tabs,
     .html-registration-page .auth-tabs {
         margin-bottom: 24px;
+    }
+
+    .html-login-page .auth-panel-content .inputs,
+    .html-registration-page .auth-panel-content .inputs {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .html-login-page .auth-panel-content input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .html-login-page .auth-panel-content select,
+    .html-login-page .auth-panel-content textarea,
+    .html-registration-page .auth-panel-content input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .html-registration-page .auth-panel-content select,
+    .html-registration-page .auth-panel-content textarea {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .html-login-page .auth-panel-content .inputs.reversed {
+        flex-wrap: wrap;
+        row-gap: 10px;
     }
 
     .html-login-page .auth-tab,

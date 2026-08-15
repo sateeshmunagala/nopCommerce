@@ -40,8 +40,8 @@
             </section>
             <section class="auth-right-panel">
                 <nav class="auth-tabs" role="tablist" aria-label="Account access">
-                    <a class="auth-tab is-active" id="jb-auth-login-tab" href="@loginUrl" role="tab" aria-selected="true" aria-current="page" aria-controls="jb-auth-content-panel">@T("Account.Login")</a>
-                    <a class="auth-tab" id="jb-auth-register-tab" href="@registerUrl" role="tab" aria-selected="false" aria-controls="jb-auth-content-panel">@T("Account.Register")</a>
+                    <a class="auth-tab is-active" id="jb-auth-login-tab" href="@loginUrl" role="tab" tabindex="0" data-jb-auth-tab aria-selected="true" aria-current="page" aria-controls="jb-auth-content-panel">@T("Account.Login")</a>
+                    <a class="auth-tab" id="jb-auth-register-tab" href="@registerUrl" role="tab" tabindex="0" data-jb-auth-tab aria-selected="false" aria-controls="jb-auth-content-panel">@T("Account.Register")</a>
                 </nav>
                 <div class="auth-panel-content" id="jb-auth-content-panel" role="tabpanel" aria-labelledby="jb-auth-login-tab">
                     @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.LoginTop, additionalData = Model })

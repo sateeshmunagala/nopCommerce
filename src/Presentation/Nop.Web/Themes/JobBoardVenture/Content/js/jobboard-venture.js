@@ -189,6 +189,70 @@
         target.appendChild(clone);
     }
 
+    function initializeAuthTabs() {
+        var tablists = document.querySelectorAll('.auth-tabs[role="tablist"]');
+
+        function bindTablist(tablist) {
+            if (tablist.getAttribute('data-jb-auth-tabs-initialized') === 'true') {
+                return;
+            }
+
+            var tabs = tablist.querySelectorAll('[data-jb-auth-tab]');
+            if (!tabs.length) {
+                return;
+            }
+
+            tablist.setAttribute('data-jb-auth-tabs-initialized', 'true');
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].setAttribute('tabindex', tabs[i].getAttribute('aria-selected') === 'true' ? '0' : '-1');
+            }
+
+            tablist.addEventListener('keydown', function (event) {
+                var currentTab = event.target;
+                if (!currentTab || !currentTab.hasAttribute('data-jb-auth-tab')) {
+                    return;
+                }
+
+                var currentIndex = -1;
+                for (var index = 0; index < tabs.length; index++) {
+                    if (tabs[index] === currentTab) {
+                        currentIndex = index;
+                        break;
+                    }
+                }
+
+                if (currentIndex < 0) {
+                    return;
+                }
+
+                var targetIndex = currentIndex;
+                var isRtl = document.documentElement.getAttribute('dir') === 'rtl';
+                if (event.key === 'ArrowRight') {
+                    targetIndex = currentIndex + (isRtl ? -1 : 1);
+                } else if (event.key === 'ArrowLeft') {
+                    targetIndex = currentIndex + (isRtl ? 1 : -1);
+                } else if (event.key === 'Home') {
+                    targetIndex = 0;
+                } else if (event.key === 'End') {
+                    targetIndex = tabs.length - 1;
+                } else {
+                    return;
+                }
+
+                event.preventDefault();
+                targetIndex = (targetIndex + tabs.length) % tabs.length;
+                for (var tabIndex = 0; tabIndex < tabs.length; tabIndex++) {
+                    tabs[tabIndex].setAttribute('tabindex', tabIndex === targetIndex ? '0' : '-1');
+                }
+                tabs[targetIndex].focus();
+            });
+        }
+
+        for (var i = 0; i < tablists.length; i++) {
+            bindTablist(tablists[i]);
+        }
+    }
+
     function initializeAuthHero() {
         var hero = document.querySelector('[data-jb-auth-hero]');
         if (!hero || hero.getAttribute('data-jb-auth-hero-initialized') === 'true') {
@@ -346,6 +410,7 @@
         }
         document.body.setAttribute('data-jb-shell-init', 'true');
 
+        initializeAuthTabs();
         initializeAuthHero();
 
         var menuToggle = document.querySelector('.jb-menu-toggle');
