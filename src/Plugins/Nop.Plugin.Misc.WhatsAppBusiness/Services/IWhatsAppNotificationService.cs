@@ -1,4 +1,4 @@
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
 /// <summary>
 /// Represents the optional WhatsApp notification provider exposed by this plugin.

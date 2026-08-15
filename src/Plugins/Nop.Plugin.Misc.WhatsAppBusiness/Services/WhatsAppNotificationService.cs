@@ -1,6 +1,6 @@
 using Nop.Services.Logging;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
 /// <summary>
 /// Adapts the plugin-specific sender to nopCommerce's optional WhatsApp contract.

@@ -4,7 +4,7 @@
   "SystemName": "Misc.WhatsAppBusiness",
   "Version": "1.00",
   "SupportedVersions": [ "5.00" ],
-  "Author": "SplatDev Ltda",
+  "Author": "Plugin Contributors",
   "DisplayOrder": 1,
   "FileName": "Nop.Plugin.Misc.WhatsAppBusiness.dll",
   "Description": "Sends order status updates to customers via WhatsApp Business Cloud API"

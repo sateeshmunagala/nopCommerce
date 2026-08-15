@@ -13,9 +13,9 @@ using Nop.Core.Caching;
 using Nop.Core.Domain.Customers;
 using Nop.Data;
 using Nop.Services.Logging;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Domain;
+using Nop.Plugin.Misc.WhatsAppBusiness.Domain;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
 public class WhatsAppBusinessService : IWhatsAppBusinessService
 {

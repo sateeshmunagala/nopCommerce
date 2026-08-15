@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Nop.Web.Framework.Models;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Domain;
+using Nop.Plugin.Misc.WhatsAppBusiness.Domain;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Models;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Models;
 
 public record ConfigurationModel : BaseNopModel
 {

@@ -1,6 +1,6 @@
 using Nop.Web.Framework.Models;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Models;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Models;
 
 public record OptInModel : BaseNopModel
 {

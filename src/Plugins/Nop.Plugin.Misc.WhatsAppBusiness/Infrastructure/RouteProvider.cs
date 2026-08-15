@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Nop.Web.Framework.Mvc.Routing;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Infrastructure;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Infrastructure;
 
 public class RouteProvider : IRouteProvider
 {

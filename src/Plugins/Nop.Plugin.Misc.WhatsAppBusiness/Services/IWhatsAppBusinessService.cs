@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Domain;
+using Nop.Plugin.Misc.WhatsAppBusiness.Domain;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
 public interface IWhatsAppBusinessService
 {

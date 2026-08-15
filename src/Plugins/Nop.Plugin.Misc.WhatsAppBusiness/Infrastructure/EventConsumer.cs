@@ -12,9 +12,9 @@ using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Events;
 using Nop.Services.Orders;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+using Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Infrastructure;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Infrastructure;
 
 public class EventConsumer : IConsumer<OrderPlacedEvent>, IConsumer<ShipmentSentEvent>, IConsumer<ShipmentDeliveredEvent>
 {

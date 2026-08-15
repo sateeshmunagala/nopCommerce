@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
 public static class PiiMask
 {

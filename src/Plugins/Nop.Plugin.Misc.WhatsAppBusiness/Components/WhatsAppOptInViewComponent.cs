@@ -7,9 +7,9 @@ using Nop.Core.Domain.Orders;
 using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Orders;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Models;
+using Nop.Plugin.Misc.WhatsAppBusiness.Models;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Components;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Components;
 
 [ViewComponent(Name = "WhatsAppOptIn")]
 public class WhatsAppOptInViewComponent : ViewComponent

@@ -15,9 +15,9 @@ using Nop.Services.Configuration;
 using Nop.Services.Customers;
 using Nop.Services.ScheduleTasks;
 using Nop.Services.Shipping;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+using Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Infrastructure;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Infrastructure;
 
 public class WhatsAppScheduleTask : IScheduleTask
 {

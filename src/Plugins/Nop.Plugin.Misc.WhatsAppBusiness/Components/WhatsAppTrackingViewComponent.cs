@@ -11,11 +11,11 @@ using Nop.Core.Domain.Shipping;
 using Nop.Services.Common;
 using Nop.Services.Orders;
 using Nop.Services.Shipping;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Domain;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Models;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+using Nop.Plugin.Misc.WhatsAppBusiness.Domain;
+using Nop.Plugin.Misc.WhatsAppBusiness.Models;
+using Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Components;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Components;
 
 [ViewComponent(Name = "WhatsAppTracking")]
 public class WhatsAppTrackingViewComponent : ViewComponent

@@ -12,10 +12,10 @@ using Nop.Services.Security;
 using Nop.Services.ScheduleTasks;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Mvc.Filters;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Models;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+using Nop.Plugin.Misc.WhatsAppBusiness.Models;
+using Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Controllers;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Controllers;
 
 [AuthorizeAdmin(false)]
 [Area("Admin")]

@@ -1,4 +1,4 @@
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness;
+namespace Nop.Plugin.Misc.WhatsAppBusiness;
 
 public static class WhatsAppBusinessDefaults
 {
@@ -21,7 +21,7 @@ public static class WhatsAppBusinessDefaults
 
 	public static string LastProcessedUtcKey => "WhatsAppBusiness.LastProcessedUtc";
 
-	public static string HttpClientName => "SplatDev.WhatsAppBusiness";
+	public static string HttpClientName => "Nop.Plugin.Misc.WhatsAppBusiness.HttpClient";
 
 	public static string CustomerOptInAttribute => "WhatsApp.OptIn";
 

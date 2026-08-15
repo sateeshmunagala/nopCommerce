@@ -1,8 +1,8 @@
 using FluentMigrator.Builders.Create.Table;
 using Nop.Data.Mapping.Builders;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Domain;
+using Nop.Plugin.Misc.WhatsAppBusiness.Domain;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Data;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Data;
 
 public class WhatsAppBlacklistBuilder : NopEntityBuilder<WhatsAppBlacklist>
 {

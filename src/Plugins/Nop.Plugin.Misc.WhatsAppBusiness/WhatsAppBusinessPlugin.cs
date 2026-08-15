@@ -11,9 +11,9 @@ using Nop.Services.Localization;
 using Nop.Services.Plugins;
 using Nop.Services.ScheduleTasks;
 using Nop.Web.Framework.Infrastructure;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Components;
+using Nop.Plugin.Misc.WhatsAppBusiness.Components;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness;
+namespace Nop.Plugin.Misc.WhatsAppBusiness;
 
 public class WhatsAppBusinessPlugin : BasePlugin, IWidgetPlugin, IPlugin
 {

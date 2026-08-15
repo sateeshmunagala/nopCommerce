@@ -1,6 +1,6 @@
 using Nop.Core.Configuration;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness;
+namespace Nop.Plugin.Misc.WhatsAppBusiness;
 
 public class WhatsAppBusinessSettings : ISettings
 {

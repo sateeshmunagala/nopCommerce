@@ -6,9 +6,9 @@ using Nop.Core.Domain.Orders;
 using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Orders;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+using Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Controllers;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Controllers;
 
 [Route("WhatsApp")]
 [AutoValidateAntiforgeryToken]

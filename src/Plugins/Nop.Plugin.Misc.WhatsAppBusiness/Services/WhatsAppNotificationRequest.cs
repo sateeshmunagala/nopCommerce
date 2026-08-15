@@ -1,4 +1,4 @@
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
 /// <summary>
 /// Contains provider-neutral WhatsApp notification data.

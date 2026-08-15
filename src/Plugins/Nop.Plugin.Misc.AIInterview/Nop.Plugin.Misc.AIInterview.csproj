@@ -319,6 +319,8 @@
 
   <!-- This target execute after "Build" target -->
   <Target Name="NopTarget" AfterTargets="Build">
+    <!-- Remove artifacts left by the former hard reference to the optional WhatsApp plugin. -->
+    <Delete Files="$(OutDir)Nop.Plugin.Misc.WhatsAppBusiness.dll;$(OutDir)Nop.Plugin.Misc.WhatsAppBusiness.pdb" />
     <!-- Delete unnecessary libraries from plugins path -->
     <MSBuild Projects="@(ClearPluginAssemblies)" Properties="PluginPath=$(OutDir)" Targets="NopClear" />
   </Target>

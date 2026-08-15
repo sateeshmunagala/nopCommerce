@@ -1,7 +1,7 @@
 using System;
 using Nop.Core;
 
-namespace SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Domain;
+namespace Nop.Plugin.Misc.WhatsAppBusiness.Domain;
 
 public class WhatsAppMessageLog : BaseEntity
 {

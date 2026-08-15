@@ -136,13 +136,13 @@ public class ServiceTests
     public async Task OptionalWhatsAppResolver_AdaptsInstalledProviderWithoutProductionReference()
     {
         var serviceProvider = new Mock<IServiceProvider>();
-        var provider = new Mock<SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services.IWhatsAppNotificationService>();
+        var provider = new Mock<Nop.Plugin.Misc.WhatsAppBusiness.Services.IWhatsAppNotificationService>();
         serviceProvider.Setup(x => x.GetService(typeof(IOptionalWhatsAppNotificationService))).Returns(null);
-        serviceProvider.Setup(x => x.GetService(typeof(SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services.IWhatsAppNotificationService)))
+        serviceProvider.Setup(x => x.GetService(typeof(Nop.Plugin.Misc.WhatsAppBusiness.Services.IWhatsAppNotificationService)))
             .Returns(provider.Object);
         provider.SetupGet(x => x.IsEnabled).Returns(true);
         provider.Setup(x => x.SendNotificationAsync(
-                It.IsAny<SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services.WhatsAppNotificationRequest>()))
+                It.IsAny<Nop.Plugin.Misc.WhatsAppBusiness.Services.WhatsAppNotificationRequest>()))
             .ReturnsAsync(true);
 
         var resolvedService = OptionalWhatsAppNotificationServiceResolver.Resolve(serviceProvider.Object);
@@ -158,7 +158,7 @@ public class ServiceTests
         Assert.That(resolvedService.IsEnabled, Is.True);
         Assert.That(isSent, Is.True);
         provider.Verify(x => x.SendNotificationAsync(
-            It.Is<SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services.WhatsAppNotificationRequest>(request =>
+            It.Is<Nop.Plugin.Misc.WhatsAppBusiness.Services.WhatsAppNotificationRequest>(request =>
                 request.CustomerId == 42 &&
                 request.PhoneNumber == "+15550000042" &&
                 request.MessageType == "AIInterview.ApplicantCompletion" &&

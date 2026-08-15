@@ -40,7 +40,7 @@ public class AIInterviewWhatsAppNotificationRequest
 public static class OptionalWhatsAppNotificationServiceResolver
 {
     public const string ProviderTypeName =
-        "SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services.IWhatsAppNotificationService, Nop.Plugin.Misc.WhatsAppBusiness";
+        "Nop.Plugin.Misc.WhatsAppBusiness.Services.IWhatsAppNotificationService, Nop.Plugin.Misc.WhatsAppBusiness";
 
     public static IOptionalWhatsAppNotificationService Resolve(IServiceProvider serviceProvider)
     {

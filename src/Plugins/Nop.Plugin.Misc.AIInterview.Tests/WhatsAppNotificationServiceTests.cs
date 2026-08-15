@@ -1,8 +1,8 @@
 using Moq;
 using Nop.Services.Logging;
 using NUnit.Framework;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness;
-using SplatDev.Nop.Plugin.Misc.WhatsAppBusiness.Services;
+using Nop.Plugin.Misc.WhatsAppBusiness;
+using Nop.Plugin.Misc.WhatsAppBusiness.Services;
 
 namespace Nop.Plugin.Misc.AIInterview.Tests;
 
