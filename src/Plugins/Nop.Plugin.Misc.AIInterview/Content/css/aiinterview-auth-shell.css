@@ -13,9 +13,7 @@
 .html-login-page .header-menu,
 .html-registration-page .header-menu,
 .html-login-page .jb-menu-toggle,
-.html-registration-page .jb-menu-toggle,
-.html-login-page .jb-drawer-overlay,
-.html-registration-page .jb-drawer-overlay {
+.html-registration-page .jb-menu-toggle {
     display: none !important;
 }
 
@@ -281,6 +279,27 @@
     }
 }
 
+@media (max-width: 768px) {
+    .html-login-page .auth-split-container,
+    .html-registration-page .auth-split-container {
+        grid-template-columns: minmax(0, 1fr);
+        min-height: 0;
+    }
+
+    .html-login-page .auth-left-panel,
+    .html-registration-page .auth-left-panel {
+        display: none;
+        min-height: 0;
+        padding: 0;
+    }
+
+    .html-login-page .auth-right-panel,
+    .html-registration-page .auth-right-panel {
+        width: 100%;
+        min-height: 0;
+    }
+}
+
 @media (max-width: 640px) {
     .html-login-page .login-page,
     .html-registration-page .registration-page {
@@ -288,16 +307,9 @@
         padding-left: 12px;
     }
 
-    .html-login-page .auth-left-panel,
-    .html-registration-page .auth-left-panel,
     .html-login-page .auth-right-panel,
     .html-registration-page .auth-right-panel {
         padding: 32px 22px;
-    }
-
-    .html-login-page .auth-left-panel,
-    .html-registration-page .auth-left-panel {
-        min-height: 300px;
     }
 
     .html-login-page .auth-tabs,

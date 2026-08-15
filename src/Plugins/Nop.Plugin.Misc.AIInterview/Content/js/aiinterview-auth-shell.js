@@ -31,6 +31,7 @@
 
     config.remove();
 
+    var mobileHiddenLeftQuery = window.matchMedia('(max-width: 768px)');
     var phrases = [
         'practice that builds confidence.',
         'opportunities shaped around skills.',
@@ -62,6 +63,7 @@
     indicators.className = 'auth-indicators';
     indicators.setAttribute('aria-label', 'Career journey highlights');
     tabs.className = 'auth-tabs';
+    tabs.setAttribute('role', 'tablist');
     tabs.setAttribute('aria-label', 'Account access');
 
     eyebrow.textContent = 'AI-powered career journeys';
@@ -90,6 +92,8 @@
         tab.className = 'auth-tab' + (isActive ? ' is-active' : '');
         tab.href = href;
         tab.textContent = label;
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
         if (isActive) {
             tab.setAttribute('aria-current', 'page');
         }
@@ -135,14 +139,27 @@
         window.clearTimeout(characterTimer);
     }
 
+    function animationCanRun() {
+        return document.visibilityState !== 'hidden' && !mobileHiddenLeftQuery.matches;
+    }
+
     function scheduleNext() {
         window.clearTimeout(animationTimer);
+        if (!animationCanRun()) {
+            return;
+        }
+
         animationTimer = window.setTimeout(function () {
             showPhrase((activeIndex + 1) % phrases.length, true);
         }, 4000);
     }
 
     function typePhrase(phrase, position) {
+        if (!animationCanRun()) {
+            clearTimers();
+            return;
+        }
+
         typingTarget.textContent = phrase.slice(0, position);
         if (position < phrase.length) {
             characterTimer = window.setTimeout(function () {
@@ -155,6 +172,11 @@
     }
 
     function deletePhrase(nextIndex) {
+        if (!animationCanRun()) {
+            clearTimers();
+            return;
+        }
+
         var currentText = typingTarget.textContent || '';
         if (currentText.length > 0) {
             typingTarget.textContent = currentText.slice(0, -1);
@@ -170,6 +192,10 @@
 
     function showPhrase(index, animate) {
         clearTimers();
+
+        if (!animationCanRun()) {
+            return;
+        }
 
         if (reducedMotionQuery.matches || !animate) {
             synchronize(index);
@@ -194,11 +220,26 @@
         showPhrase(activeIndex, false);
     }
 
+    function handleAnimationAvailabilityChange() {
+        clearTimers();
+        if (animationCanRun()) {
+            showPhrase(activeIndex, false);
+        }
+    }
+
     if (typeof reducedMotionQuery.addEventListener === 'function') {
         reducedMotionQuery.addEventListener('change', handleMotionPreferenceChange);
     } else if (typeof reducedMotionQuery.addListener === 'function') {
         reducedMotionQuery.addListener(handleMotionPreferenceChange);
     }
+
+    if (typeof mobileHiddenLeftQuery.addEventListener === 'function') {
+        mobileHiddenLeftQuery.addEventListener('change', handleAnimationAvailabilityChange);
+    } else if (typeof mobileHiddenLeftQuery.addListener === 'function') {
+        mobileHiddenLeftQuery.addListener(handleAnimationAvailabilityChange);
+    }
+
+    document.addEventListener('visibilitychange', handleAnimationAvailabilityChange);
 
     showPhrase(0, false);
 }());
