@@ -11,9 +11,7 @@
 }
 
 .html-login-page .header-menu,
-.html-registration-page .header-menu,
-.html-login-page .jb-menu-toggle,
-.html-registration-page .jb-menu-toggle {
+.html-registration-page .header-menu {
     display: none !important;
 }
 
