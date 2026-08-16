@@ -118,10 +118,13 @@ public class InlineFilterModelService : IInlineFilterModelService
         foreach (var productOverview in overviewModels)
         {
             var picture = productOverview.PictureModels.FirstOrDefault();
+            var product = products.FirstOrDefault(item => item.Id == productOverview.Id);
             model.Products.Add(new InlineFilterProductModel
             {
                 ProductOverview = productOverview,
-                ProductUrl = UrlForProduct(productOverview),
+                ProductUrl = product == null
+                    ? string.Empty
+                    : await _nopUrlHelper.RouteGenericUrlAsync(product) ?? string.Empty,
                 Summary = NormalizePlainText(productOverview.ShortDescription),
                 PictureUrl = picture?.ImageUrl ?? string.Empty,
                 PictureAlt = string.IsNullOrWhiteSpace(picture?.AlternateText)
@@ -226,11 +229,6 @@ public class InlineFilterModelService : IInlineFilterModelService
         return productTemplate != null &&
             (string.Equals(productTemplate.Name, SkillfinderInlineFilterDefaults.AiInterviewJobTemplateName, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(productTemplate.ViewPath, SkillfinderInlineFilterDefaults.AiInterviewJobTemplateViewPath, StringComparison.OrdinalIgnoreCase));
-    }
-
-    protected virtual string UrlForProduct(Nop.Web.Models.Catalog.ProductOverviewModel product)
-    {
-        return string.IsNullOrWhiteSpace(product?.SeName) ? string.Empty : $"/{product.SeName}";
     }
 
     protected virtual string NormalizePlainText(string value)
