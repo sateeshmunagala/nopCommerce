@@ -21,13 +21,13 @@
 
     @if (Model.Categories.Any())
     {
-        <div class="sfi-category-pills"
+        <div class="sfi-category-pills sfi-category-tabs"
              role="group"
              aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.CategoriesLabel")">
             @foreach (var category in Model.Categories)
             {
                 <button type="button"
-                        class="sfi-category-pill @(category.IsSelected ? "is-selected" : null)"
+                        class="sfi-category-pill sfi-category-tab @(category.IsSelected ? "is-selected" : null)"
                         aria-pressed="@category.IsSelected.ToString().ToLowerInvariant()"
                         aria-controls="@resultsId"
                         hx-get="@Url.RouteUrl(SkillfinderInlineFilterDefaults.RouteName, new { categorySeName = category.SeName })"

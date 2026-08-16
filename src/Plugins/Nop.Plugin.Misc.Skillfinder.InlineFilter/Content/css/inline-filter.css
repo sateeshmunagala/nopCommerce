@@ -1,11 +1,12 @@
 :root {
-    --sfi-venture-teal: #12877f;
-    --sfi-venture-teal-dark: #0b625d;
-    --sfi-border: #d8e4e3;
-    --sfi-surface: #ffffff;
-    --sfi-soft: #eff8f7;
-    --sfi-ink: #18302e;
-    --sfi-muted: #5b706e;
+    --sfi-venture-teal: var(--jb-accent, #35d6b4);
+    --sfi-venture-teal-dark: #0d7568;
+    --sfi-border: #cfdad9;
+    --sfi-control-border: #aebfbd;
+    --sfi-surface: var(--jb-white, #ffffff);
+    --sfi-soft: #f3faf8;
+    --sfi-ink: var(--jb-ink, #2c2c2c);
+    --sfi-muted: #536664;
 }
 
 /* The plugin occupies HomepageBeforeProducts and replaces these two Venture-only blocks. */
@@ -17,23 +18,23 @@
 .sfi-inline-filter {
     box-sizing: border-box;
     width: min(1180px, calc(100% - 32px));
-    margin: 32px auto;
-    padding: clamp(22px, 3vw, 36px);
+    margin: 24px auto 28px;
+    padding: clamp(24px, 2.5vw, 32px);
     border: 1px solid var(--sfi-border);
-    border-top: 4px solid var(--sfi-venture-teal);
-    border-radius: 18px;
-    background: var(--sfi-surface);
-    box-shadow: 0 16px 40px rgba(24, 48, 46, 0.08);
+    border-top: 3px solid var(--sfi-venture-teal);
+    border-radius: 12px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--sfi-venture-teal) 4%, var(--sfi-surface)), var(--sfi-surface) 180px);
+    box-shadow: 0 14px 36px rgba(24, 48, 46, 0.07);
     color: var(--sfi-ink);
 }
 
 .sfi-heading {
     max-width: 720px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .sfi-heading h2 {
-    margin: 4px 0 8px;
+    margin: 3px 0 6px;
     color: var(--sfi-ink);
     font-size: clamp(1.55rem, 3vw, 2.2rem);
     line-height: 1.15;
@@ -42,7 +43,7 @@
 .sfi-heading p {
     margin: 0;
     color: var(--sfi-muted);
-    line-height: 1.6;
+    line-height: 1.55;
 }
 
 .sfi-eyebrow {
@@ -56,15 +57,16 @@
 .sfi-category-pills {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    column-gap: 10px;
+    row-gap: 8px;
     margin: 0;
 }
 
 .sfi-category-pill {
-    min-height: 42px;
-    padding: 9px 16px;
-    border: 1px solid var(--sfi-border);
-    border-radius: 999px;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid var(--sfi-control-border);
+    border-radius: 6px;
     background: var(--sfi-surface);
     color: var(--sfi-ink);
     cursor: pointer;
@@ -72,34 +74,44 @@
     font-size: 0.92rem;
     font-weight: 650;
     line-height: 1.2;
-    transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+    box-shadow: inset 0 0 0 1px transparent;
+    transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 200ms ease;
 }
 
 .sfi-category-pill:hover {
-    transform: translateY(-1px);
     border-color: var(--sfi-venture-teal);
+    background: var(--sfi-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sfi-venture-teal) 22%, transparent);
 }
 
 .sfi-category-pill.is-selected {
+    border-color: var(--sfi-venture-teal-dark);
+    background: var(--sfi-venture-teal-dark);
+    color: #ffffff;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 4px 12px rgba(13, 117, 104, 0.2);
+}
+
+.sfi-category-pill.is-selected:hover {
     border-color: var(--sfi-venture-teal);
-    background: var(--sfi-soft);
-    color: var(--sfi-venture-teal-dark);
+    background: var(--sfi-venture-teal-dark);
+    color: #ffffff;
 }
 
 .sfi-category-pill:focus-visible,
 .sfi-view-more:focus-visible,
 .sfi-view-job:focus-visible,
 .sfi-fallback-card a:focus-visible {
-    outline: 3px solid rgba(18, 135, 127, 0.32);
+    outline: 3px solid color-mix(in srgb, var(--sfi-venture-teal) 42%, transparent);
     outline-offset: 3px;
 }
 
 .sfi-loading {
-    min-height: 24px;
-    margin: 12px 0 4px;
+    min-height: 20px;
+    margin: 8px 0 3px;
     color: var(--sfi-venture-teal-dark);
     font-size: 0.9rem;
     font-weight: 650;
+    line-height: 20px;
     opacity: 0;
     transition: opacity 120ms ease;
 }
@@ -121,11 +133,19 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(0, 1fr));
-    gap: 18px;
+    grid-auto-rows: 1fr;
+    align-items: stretch;
+    gap: 16px;
 }
 
-.sfi-grid-cell,
+.sfi-grid-cell {
+    display: flex;
+    min-width: 0;
+    height: 100%;
+}
+
 .sfi-grid-cell > .product-item {
+    width: 100%;
     min-width: 0;
     height: 100%;
 }
@@ -135,23 +155,22 @@
     box-sizing: border-box;
     margin: 0;
     border: 1px solid var(--sfi-border);
-    border-left: 3px solid var(--sfi-venture-teal);
-    border-radius: 14px;
+    border-radius: 10px;
     background: var(--sfi-surface);
-    box-shadow: 0 8px 20px rgba(24, 48, 46, 0.06);
-    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    box-shadow: 0 7px 18px rgba(24, 48, 46, 0.055);
+    transition: transform 220ms cubic-bezier(0.2, 0.75, 0.3, 1), border-color 180ms ease, box-shadow 240ms ease;
 }
 
 .sfi-products-grid .ai-job-product-card:hover,
 .sfi-fallback-card:hover {
     transform: translateY(-3px);
-    border-color: var(--sfi-venture-teal);
-    box-shadow: 0 13px 28px rgba(24, 48, 46, 0.11);
+    border-color: #35d6b4;
+    box-shadow: 0 13px 28px rgba(24, 48, 46, 0.105);
 }
 
 .sfi-fallback-card {
     display: flex;
-    min-height: 260px;
+    min-height: 250px;
     overflow: hidden;
 }
 
@@ -206,7 +225,7 @@
 
 .sfi-no-results {
     margin: 0;
-    padding: 28px;
+    padding: 24px;
     border: 1px dashed var(--sfi-border);
     border-radius: 12px;
     background: var(--sfi-soft);
@@ -215,7 +234,7 @@
 }
 
 .sfi-view-more-wrap {
-    margin-top: 22px;
+    margin-top: 18px;
     text-align: center;
 }
 
@@ -225,8 +244,9 @@
     align-items: center;
     justify-content: center;
     padding: 10px 22px;
-    border: 1px solid var(--sfi-venture-teal);
-    border-radius: 999px;
+    border: 1px solid var(--sfi-venture-teal-dark);
+    border-radius: 6px;
+    background: var(--sfi-surface);
     color: var(--sfi-venture-teal-dark);
     font-weight: 750;
     text-decoration: none;
@@ -235,7 +255,8 @@
 
 .sfi-view-more:hover {
     transform: translateY(-1px);
-    background: var(--sfi-venture-teal);
+    border-color: var(--sfi-venture-teal-dark);
+    background: var(--sfi-venture-teal-dark);
     color: #fff;
 }
 
@@ -243,15 +264,16 @@
     .sfi-products-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-rows: none;
+        grid-auto-rows: 1fr;
     }
 }
 
 @media (max-width: 600px) {
     .sfi-inline-filter {
         width: min(100% - 20px, 1180px);
-        margin: 20px auto;
+        margin: 16px auto 20px;
         padding: 20px 16px;
-        border-radius: 14px;
+        border-radius: 10px;
     }
 
     .sfi-category-pills {
@@ -270,6 +292,7 @@
 
     .sfi-products-grid {
         grid-template-columns: minmax(0, 1fr);
+        grid-auto-rows: auto;
         gap: 14px;
     }
 
