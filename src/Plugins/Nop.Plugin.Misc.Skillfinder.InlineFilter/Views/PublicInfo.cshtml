@@ -31,6 +31,7 @@
                             class="sfi-category-pill sfi-category-tab @(category.IsSelected ? "is-selected" : null)"
                             aria-pressed="@category.IsSelected.ToString().ToLowerInvariant()"
                             aria-controls="@resultsId"
+                            data-sfi-category-tab
                             data-sfi-view-more-url="@categoryViewMoreUrl"
                             hx-get="@Url.RouteUrl(SkillfinderInlineFilterDefaults.RouteName, new { categorySeName = category.SeName })"
                             hx-target="#@resultsId"

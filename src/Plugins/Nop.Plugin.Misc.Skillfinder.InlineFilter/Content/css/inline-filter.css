@@ -38,6 +38,7 @@
     color: var(--sfi-ink);
     font-size: clamp(1.55rem, 3vw, 2.2rem);
     line-height: 1.15;
+    text-transform: none;
 }
 
 .sfi-heading p {
@@ -51,7 +52,7 @@
     font-size: 0.78rem;
     font-weight: 750;
     letter-spacing: 0.09em;
-    text-transform: uppercase;
+    text-transform: capitalize;
 }
 
 .sfi-category-pills {
@@ -76,7 +77,7 @@
     min-height: 36px;
     padding: 6px 12px;
     border: 1px solid var(--sfi-control-border);
-    border-radius: 6px;
+    border-radius: 4px;
     background: var(--sfi-surface);
     color: var(--sfi-ink);
     cursor: pointer;
@@ -165,6 +166,7 @@
     box-sizing: border-box;
     width: 100%;
     height: 100%;
+    min-height: 220px;
     margin: 0;
     border: 1px solid var(--sfi-border);
     border-radius: 10px;
@@ -183,28 +185,42 @@
 .sfi-ai-card-shell > .ai-job-product-card {
     width: 100%;
     height: 100%;
+    min-height: 220px;
     margin: 0;
-    border: 0;
+    border: 0 !important;
     border-radius: 9px;
     background: transparent;
-    box-shadow: none;
+    box-shadow: none !important;
+    transform: none !important;
 }
 
 .sfi-fallback-card {
     display: flex;
-    min-height: 250px;
+    min-height: 220px;
     overflow: hidden;
 }
 
 .sfi-fallback-card-media {
-    flex: 0 0 92px;
-    padding: 20px 0 20px 18px;
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 48px;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    margin: 18px 0 18px 18px;
+    padding: 5px;
+    border: 1px solid var(--sfi-border);
+    border-radius: 7px;
+    background: var(--sfi-soft);
+    overflow: hidden;
 }
 
 .sfi-fallback-card-media img {
-    width: 72px;
-    height: 72px;
-    border-radius: 12px;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
     object-fit: contain;
 }
 
@@ -213,7 +229,7 @@
     min-width: 0;
     flex: 1;
     flex-direction: column;
-    padding: 20px;
+    padding: 18px;
 }
 
 .sfi-fallback-card h3 {
@@ -223,8 +239,15 @@
 }
 
 .sfi-fallback-card h3 a {
+    display: -webkit-box;
+    min-height: 2.7em;
+    overflow: hidden;
     color: var(--sfi-ink);
     text-decoration: none;
+    text-overflow: ellipsis;
+    text-transform: none;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .sfi-fallback-card p {

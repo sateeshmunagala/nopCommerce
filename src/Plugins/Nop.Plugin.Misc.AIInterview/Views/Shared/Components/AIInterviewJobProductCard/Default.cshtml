@@ -26,12 +26,14 @@
     var experienceLevelLabel = T("Plugins.Misc.AIInterview.JobCard.ExperienceLevel").Text;
     var postedText = string.Format(T("Plugins.Misc.AIInterview.JobCard.Posted").Text, Model.PostedDateText);
     var appliedCountText = string.Format(T("Plugins.Misc.AIInterview.JobCard.AppliedCount").Text, Model.AppliedCount);
+    var showSummary = !string.IsNullOrWhiteSpace(Model.Summary) &&
+        !string.Equals(Model.Summary.Trim(), Model.JobTitle?.Trim(), StringComparison.OrdinalIgnoreCase);
 
     string BuildAccessibleSpecText(string label, string value) => $"{label}: {value}";
 }
 
 <article class="product-item ai-job-product-card" data-productid="@Model.Id">
-    <div class="ai-job-card-media">
+    <figure class="ai-job-card-media">
         @if (Model.UseImagePlaceholder)
         {
             <div class="ai-job-card-logo ai-job-card-logo-placeholder" aria-label="@Model.ImageAlt" title="@Model.ImageAlt">
@@ -40,9 +42,9 @@
         }
         else
         {
-            <img class="ai-job-card-logo" src="@Model.ImageUrl" alt="@Model.ImageAlt" />
+            <img class="ai-job-card-logo" src="@Model.ImageUrl" alt="@Model.ImageAlt" loading="lazy" />
         }
-    </div>
+    </figure>
     <div class="ai-job-card-body ai-job-card-content">
         @if (Model.CanSaveJob)
         {
@@ -81,7 +83,7 @@
             <div class="ai-job-card-company">@Model.CompanyName</div>
         }
 
-        @if (!string.IsNullOrWhiteSpace(Model.Summary))
+        @if (showSummary)
         {
             <div class="ai-job-card-summary" title="@Model.Summary">@Model.Summary</div>
         }

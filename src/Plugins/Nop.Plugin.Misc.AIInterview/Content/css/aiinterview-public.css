@@ -1723,14 +1723,24 @@ body.aiinterview-report-drawer-open {
 
 .ai-job-product-card {
     display: grid;
-    grid-template-columns: 68px minmax(0, 1fr);
-    gap: 12px;
-    align-items: start;
-    padding: 12px 14px;
-    border: 1px solid #d8dee4;
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 14px;
+    align-items: stretch;
+    min-height: 220px;
+    padding: 16px;
+    border: 1px solid #cfdad9;
     border-radius: 8px;
     background: #ffffff;
     box-sizing: border-box;
+    box-shadow: 0 7px 20px rgba(24, 48, 46, 0.07);
+    transition: transform 200ms ease, border-color 180ms ease, box-shadow 220ms ease;
+}
+
+.ai-job-product-card:hover,
+.ai-job-product-card:focus-within {
+    transform: translateY(-3px);
+    border-color: #35d6b4;
+    box-shadow: 0 12px 26px rgba(24, 48, 46, 0.11);
 }
 
 .ai-job-card-media,
@@ -1742,18 +1752,28 @@ body.aiinterview-report-drawer-open {
 
 .ai-job-card-media {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    width: 48px;
+    height: 48px;
+    margin: 0;
+    padding: 5px;
+    border: 1px solid #d8e2e0;
+    border-radius: 7px;
+    background: #f6f9f8;
+    overflow: hidden;
+    align-self: start;
 }
 
 .ai-job-card-logo {
     display: block;
-    width: 68px;
-    height: 68px;
-    border: 1px solid #d8dee4;
-    border-radius: 8px;
-    object-fit: cover;
-    background: #f6f8fa;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 4px;
+    object-fit: contain;
+    background: transparent;
 }
 
 .ai-job-card-logo-placeholder {
@@ -1776,6 +1796,7 @@ body.aiinterview-report-drawer-open {
 
 .ai-job-card-body {
     position: relative;
+    height: 100%;
     grid-template-rows: auto auto auto minmax(0, 1fr) auto;
 }
 
@@ -1813,6 +1834,7 @@ body.aiinterview-report-drawer-open {
     appearance: none;
     display: -webkit-box;
     width: 100%;
+    min-height: 2.3em;
     padding: 0;
     border: 0;
     background: transparent;
@@ -1821,8 +1843,9 @@ body.aiinterview-report-drawer-open {
     font-size: 1.08rem;
     line-height: 1.15;
     text-align: left;
-    text-transform: uppercase;
+    text-transform: none;
     cursor: pointer;
+    text-overflow: ellipsis;
     overflow: hidden;
     white-space: normal;
     -webkit-box-orient: vertical;
@@ -2288,14 +2311,14 @@ body.ai-job-preview-open .item-box {
     }
 
     .ai-job-product-card {
-        grid-template-columns: 60px minmax(0, 1fr);
+        grid-template-columns: 48px minmax(0, 1fr);
         gap: 10px;
         padding: 12px;
     }
 
-    .ai-job-card-logo {
-        width: 60px;
-        height: 60px;
+    .ai-job-card-media {
+        width: 48px;
+        height: 48px;
     }
 
     .ai-job-card-title-link {
@@ -8792,7 +8815,7 @@ body.ai-job-preview-open .item-box {
     font-size: 1.65rem;
     font-weight: 400;
     line-height: 1.2;
-    text-transform: uppercase;
+    text-transform: none;
 }
 
 .ai-home-performers-controls {
@@ -8981,7 +9004,7 @@ a.ai-home-performer-name:focus-visible {
     font-size: 0.72rem;
     line-height: 1.2;
     text-align: left;
-    text-transform: uppercase;
+    text-transform: capitalize;
     white-space: nowrap;
 }
 
@@ -9260,4 +9283,30 @@ a.ai-home-performer-name:focus-visible {
     background-repeat: no-repeat;
     background-size: 16px 16px;
     vertical-align: middle;
+}
+
+/* Public typography keeps branded display faces while preserving natural casing. */
+.job-shell h1,
+.job-shell h2,
+.job-shell h3,
+.job-shell h4,
+.job-shell h5,
+.job-shell h6,
+.job-ai-panel h2,
+.job-ai-panel h3,
+.ai-job-preview-drawer h1,
+.ai-job-preview-drawer h2,
+.ai-job-preview-drawer h3 {
+    text-transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-job-product-card {
+        transition: none;
+    }
+
+    .ai-job-product-card:hover,
+    .ai-job-product-card:focus-within {
+        transform: none;
+    }
 }

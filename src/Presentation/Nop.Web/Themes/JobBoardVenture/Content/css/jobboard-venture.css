@@ -11,7 +11,7 @@
 body {
     background-color: var(--jb-bg);
     color: var(--jb-ink);
-    font-family: "Lato", Arial, sans-serif;
+    font-family: "Inter", Arial, sans-serif;
 }
 
 h1,
@@ -121,7 +121,7 @@ h6,
     border: 1px solid var(--jb-border);
     padding: 8px 12px;
     border-radius: 4px;
-    font-family: "Lato", sans-serif;
+    font-family: "Inter", sans-serif;
     color: var(--jb-ink);
     outline: none;
     width: 250px;
@@ -4325,6 +4325,7 @@ body.jb-search-open .jb-drawer-overlay {
         min-height: 64px !important;
         margin: 0 !important;
         padding: 0 !important;
+        gap: 1.25rem !important;
     }
 
     .header-menu.jb-header-nav .menu-container .menu__item,
@@ -4350,7 +4351,7 @@ body.jb-search-open .jb-drawer-overlay {
         height: 64px !important;
         min-height: 64px !important;
         margin: 0 !important;
-        padding: 0 14px !important;
+        padding: 0 !important;
         line-height: 64px !important;
         white-space: nowrap !important;
         border-left: 1px solid transparent;
@@ -4359,6 +4360,7 @@ body.jb-search-open .jb-drawer-overlay {
         font-size: 0.95rem;
         text-decoration: none;
         text-align: center;
+        text-transform: capitalize;
     }
 
     .header-menu.jb-header-nav .menu-container .menu__item:first-child .menu__link,
@@ -10425,24 +10427,25 @@ body.jb-filter-panel-open .product-filters {
 .html-search-page .product-item.ai-job-product-card,
 .html-home-page .home-page .product-item.ai-job-product-card {
     display: grid;
-    grid-template-columns: 64px minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 14px;
     align-items: start;
-    padding: 10px 12px;
-    min-height: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
+    min-height: 220px;
+    padding: 14px 16px;
+    border: 1px solid #cfdad9;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 7px 20px rgba(24, 48, 46, 0.07);
 }
 
-/* AI interview job cards sit inside item-box wrappers on listing pages, so suppress the inner card chrome to avoid double borders. */
+/* Keep the logo frame compact so content never crowds or clips against the media edge. */
 .html-category-page .product-item.ai-job-product-card .ai-job-card-media,
 .html-search-page .product-item.ai-job-product-card .ai-job-card-media,
 .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-media {
-    flex: 0 0 64px;
-    width: 64px;
-    max-width: 64px;
+    flex: 0 0 48px;
+    width: 48px;
+    max-width: 48px;
+    height: 48px;
 }
 
 .html-category-page .product-item.ai-job-product-card .ai-job-card-logo,
@@ -10451,8 +10454,9 @@ body.jb-filter-panel-open .product-filters {
 .html-search-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
 .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo,
 .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder {
-    width: 64px;
-    height: 64px;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .html-category-page .product-item.ai-job-product-card .ai-job-card-body,
@@ -10592,17 +10596,18 @@ body.jb-filter-panel-open .product-filters {
     .html-category-page .product-item.ai-job-product-card,
     .html-search-page .product-item.ai-job-product-card,
     .html-home-page .home-page .product-item.ai-job-product-card {
-        grid-template-columns: 54px minmax(0, 1fr);
-        gap: 8px;
-        padding: 9px 10px;
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 10px;
+        padding: 12px;
     }
 
     .html-category-page .product-item.ai-job-product-card .ai-job-card-media,
     .html-search-page .product-item.ai-job-product-card .ai-job-card-media,
     .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-media {
-        flex-basis: 54px;
-        width: 54px;
-        max-width: 54px;
+        flex-basis: 48px;
+        width: 48px;
+        max-width: 48px;
+        height: 48px;
     }
 
     .html-category-page .product-item.ai-job-product-card .ai-job-card-logo,
@@ -10611,8 +10616,8 @@ body.jb-filter-panel-open .product-filters {
     .html-search-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
     .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo,
     .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-logo-placeholder {
-        width: 54px;
-        height: 54px;
+        width: 100%;
+        height: 100%;
     }
 
     .html-category-page .product-item.ai-job-product-card .ai-job-card-meta,
@@ -14861,4 +14866,85 @@ html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs[
 html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed .forgot-password,
 html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed .forgot-password a {
     white-space: nowrap !important;
+}
+
+/* Homepage and catalog typography/card polish. */
+button,
+input,
+select,
+textarea,
+.header-menu.jb-header-nav .menu__link,
+.header-menu.jb-header-nav .menu__item-toggle,
+.jb-home-landing .jb-home-hero-copy,
+.jb-home-landing .jb-home-section-head p,
+.jb-home-landing .jb-home-feature-card p,
+.jb-home-landing .jb-home-step-card p,
+.jb-home-landing .jb-home-topic-faq p,
+.jb-home-landing .jb-home-topic-faq li,
+.jb-home-landing .jb-home-final-cta p,
+.jb-home-landing .jb-home-search-form .search-box-text,
+.jb-home-landing .jb-home-button {
+    font-family: "Inter", Arial, sans-serif;
+}
+
+body h1,
+body h2,
+body h3,
+body h4,
+body h5,
+body h6,
+.home-page .title,
+.home-page .product-title,
+.html-category-page .product-title,
+.html-search-page .product-title {
+    text-transform: none;
+}
+
+.header-menu.jb-header-nav .menu__link,
+.header-menu.jb-header-nav .menu__item-toggle,
+.jb-home-landing .jb-home-button,
+.jb-home-landing .jb-home-feature-card h3,
+.jb-home-landing .jb-home-step-card h3 {
+    text-transform: capitalize;
+}
+
+.jb-home-landing .jb-home-hero h1,
+.jb-home-landing .jb-home-section-head h2,
+.jb-home-landing .jb-home-feature-card h3,
+.jb-home-landing .jb-home-step-card h3,
+.jb-home-landing .jb-home-final-cta h2 {
+    font-family: "Fjalla One", Arial, sans-serif;
+}
+
+.html-category-page .product-title a,
+.html-search-page .product-title a,
+.html-home-page .home-page .product-title a {
+    display: -webkit-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.html-category-page .product-item.ai-job-product-card:hover,
+.html-category-page .product-item.ai-job-product-card:focus-within,
+.html-search-page .product-item.ai-job-product-card:hover,
+.html-search-page .product-item.ai-job-product-card:focus-within,
+.html-home-page .home-page .product-item.ai-job-product-card:hover,
+.html-home-page .home-page .product-item.ai-job-product-card:focus-within {
+    transform: translateY(-3px);
+    border-color: #35d6b4;
+    box-shadow: 0 12px 26px rgba(24, 48, 46, 0.11);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .html-category-page .product-item.ai-job-product-card:hover,
+    .html-category-page .product-item.ai-job-product-card:focus-within,
+    .html-search-page .product-item.ai-job-product-card:hover,
+    .html-search-page .product-item.ai-job-product-card:focus-within,
+    .html-home-page .home-page .product-item.ai-job-product-card:hover,
+    .html-home-page .home-page .product-item.ai-job-product-card:focus-within {
+        transform: none;
+    }
 }

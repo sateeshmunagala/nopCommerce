@@ -8,6 +8,8 @@
     <div class="sfi-products-grid">
         @foreach (var item in Model.Products.Take(SkillfinderInlineFilterDefaults.ResultCount))
         {
+            var showSummary = !string.IsNullOrWhiteSpace(item.Summary) &&
+                !string.Equals(item.Summary.Trim(), item.ProductOverview.Name?.Trim(), StringComparison.OrdinalIgnoreCase);
             <div class="sfi-grid-cell">
                 @if (Model.UseAiInterviewCards)
                 {
@@ -26,7 +28,7 @@
                         }
                         <div class="sfi-fallback-card-body">
                             <h3><a href="@item.ProductUrl">@item.ProductOverview.Name</a></h3>
-                            @if (!string.IsNullOrWhiteSpace(item.Summary))
+                            @if (showSummary)
                             {
                                 <p>@item.Summary</p>
                             }
