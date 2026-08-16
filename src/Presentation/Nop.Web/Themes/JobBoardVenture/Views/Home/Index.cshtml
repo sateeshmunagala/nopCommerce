@@ -58,13 +58,13 @@
                         <h1 id="jb-home-hero-title">Find jobs faster with AI interviews</h1>
                         <p class="jb-home-hero-copy">Search roles, apply with confidence, and prove your skills through AI-powered interview reports.</p>
                     </div>
-                    <form class="jb-home-search-form" action="/search" method="get" role="search">
+                    @* <form class="jb-home-search-form" action="/search" method="get" role="search">
                         <label class="jb-home-search-label" for="jb-home-search-term">Search jobs</label>
                         <div class="jb-home-search-control">
                             <input class="search-box-text" id="jb-home-search-term" name="q" type="search" placeholder="Search jobs, skills, or locations" />
                             <button class="search-box-button" type="submit">Search</button>
                         </div>
-                    </form>
+                    </form> *@
                     <div class="jb-home-action-row jb-home-hero-actions" aria-label="Primary actions">
                         <a class="button-1 jb-home-button jb-home-button-primary" href="/jobs">Browse jobs</a>
                         <a class="button-2 jb-home-button jb-home-button-secondary" href="@mockPracticeUrl">AI interview</a>
@@ -78,7 +78,7 @@
             @Html.Raw(homepageTopContent)
         }
 
-        <section class="jb-home-section jb-home-card jb-home-card--accent jb-home-trust-strip" aria-labelledby="jb-home-trust-title">
+        @* <section class="jb-home-section jb-home-card jb-home-card--accent jb-home-trust-strip" aria-labelledby="jb-home-trust-title">
             <div class="jb-home-section-head">
                 <span class="jb-home-eyebrow">Trusted workflow</span>
                 <h2 id="jb-home-trust-title">Prepare with clarity before you apply</h2>
@@ -90,7 +90,7 @@
                 <span>Interview feedback</span>
                 <span>Application progress</span>
             </div>
-        </section>
+        </section> *@
 
         @if (!string.IsNullOrWhiteSpace(homepageBeforeCategoriesContent))
         {

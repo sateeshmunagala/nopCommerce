@@ -11,7 +11,9 @@
             <div class="sfi-grid-cell">
                 @if (Model.UseAiInterviewCards)
                 {
-                    @await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = item.ProductOverview })
+                    <div class="sfi-ai-card-shell">
+                        @await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = item.ProductOverview })
+                    </div>
                 }
                 else
                 {
