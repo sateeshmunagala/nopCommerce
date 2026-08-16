@@ -4356,11 +4356,12 @@ body.jb-search-open .jb-drawer-overlay {
         white-space: nowrap !important;
         border-left: 1px solid transparent;
         color: #7d7d7d;
-        font-family: "Fjalla One", Arial, sans-serif;
+        font-family: "Inter", Arial, sans-serif;
         font-size: 0.95rem;
+        letter-spacing: normal;
         text-decoration: none;
         text-align: center;
-        text-transform: capitalize;
+        text-transform: none;
     }
 
     .header-menu.jb-header-nav .menu-container .menu__item:first-child .menu__link,
@@ -14887,21 +14888,23 @@ textarea,
     font-family: "Inter", Arial, sans-serif;
 }
 
-body h1,
-body h2,
-body h3,
-body h4,
-body h5,
-body h6,
+.html-home-page .home-page .jb-home-hero h1,
+.html-home-page .home-page .jb-home-section-head h2,
+.html-home-page .home-page .jb-home-feature-card h3,
+.html-home-page .home-page .jb-home-step-card h3,
+.html-home-page .home-page .jb-home-final-cta h2,
+.html-home-page .ai-home-performers-header h2,
 .home-page .title,
 .home-page .product-title,
 .html-category-page .product-title,
-.html-search-page .product-title {
+.html-search-page .product-title,
+.html-category-page .ai-job-card-title-link,
+.html-search-page .ai-job-card-title-link,
+.html-home-page .home-page .ai-job-card-title-link {
     text-transform: none;
+    letter-spacing: normal;
 }
 
-.header-menu.jb-header-nav .menu__link,
-.header-menu.jb-header-nav .menu__item-toggle,
 .jb-home-landing .jb-home-button,
 .jb-home-landing .jb-home-feature-card h3,
 .jb-home-landing .jb-home-step-card h3 {
@@ -14912,8 +14915,44 @@ body h6,
 .jb-home-landing .jb-home-section-head h2,
 .jb-home-landing .jb-home-feature-card h3,
 .jb-home-landing .jb-home-step-card h3,
-.jb-home-landing .jb-home-final-cta h2 {
-    font-family: "Fjalla One", Arial, sans-serif;
+.jb-home-landing .jb-home-final-cta h2,
+.html-home-page .ai-home-performers-header h2 {
+    font-family: "Inter", Arial, sans-serif;
+}
+
+.home-page .title,
+.home-page .product-title,
+.html-category-page .product-title,
+.html-search-page .product-title,
+.html-category-page .ai-job-card-title-link,
+.html-search-page .ai-job-card-title-link,
+.html-home-page .home-page .ai-job-card-title-link {
+    font-family: "Inter", Arial, sans-serif;
+}
+
+@media (min-width: 1001px) {
+    .header-menu.jb-header-nav .menu-container .menu {
+        gap: 1.25rem !important;
+    }
+
+    .header-menu.jb-header-nav .menu__link,
+    .header-menu.jb-header-nav .menu__item-toggle {
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+    }
+}
+
+@media (max-width: 1000px) {
+    .header-menu.jb-header-nav .jb-drawer-content .menu__link,
+    .header-menu.jb-header-nav .jb-drawer-content .menu__item > a,
+    .header-menu.jb-header-nav .jb-drawer-content .menu__item-toggle,
+    .header-menu.jb-header-nav .jb-drawer-account-links a {
+        padding-right: 1.25rem !important;
+        padding-left: 1.25rem !important;
+        font-family: "Inter", Arial, sans-serif;
+        letter-spacing: normal;
+        text-transform: none;
+    }
 }
 
 .html-category-page .product-title a,

@@ -9286,6 +9286,26 @@ a.ai-home-performer-name:focus-visible {
 }
 
 /* Public typography keeps branded display faces while preserving natural casing. */
+.ai-job-card-title-link,
+.ai-job-card-company,
+.ai-job-card-summary,
+.ai-job-card-spec,
+.ai-job-card-spec-value {
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.ai-job-card-title-link {
+    font-family: "Inter", Arial, sans-serif;
+}
+
+.job-title h1,
+.ai-home-performers-header h2 {
+    font-family: "Inter", Arial, sans-serif;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
 .job-shell h1,
 .job-shell h2,
 .job-shell h3,
@@ -9297,6 +9317,7 @@ a.ai-home-performer-name:focus-visible {
 .ai-job-preview-drawer h1,
 .ai-job-preview-drawer h2,
 .ai-job-preview-drawer h3 {
+    letter-spacing: normal;
     text-transform: none;
 }
 
