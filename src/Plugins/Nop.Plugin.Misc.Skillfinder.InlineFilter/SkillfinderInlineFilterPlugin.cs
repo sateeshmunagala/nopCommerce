@@ -51,7 +51,7 @@ public class SkillfinderInlineFilterPlugin : BasePlugin, IWidgetPlugin
             [$"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Description"] = "Choose a skill area to see current opportunities without leaving the page.",
             [$"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Loading"] = "Looking for matching paths",
             [$"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ViewMore"] = "View More",
-            [$"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.NoResults"] = "No matching jobs are available in this category yet.",
+            [$"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.NoResults"] = "No exact matches found. Try broadening your filter options.",
             [$"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ResultsLabel"] = "Matching jobs",
             [$"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.CategoriesLabel"] = "Job categories",
             [$"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ViewJob"] = "View job"

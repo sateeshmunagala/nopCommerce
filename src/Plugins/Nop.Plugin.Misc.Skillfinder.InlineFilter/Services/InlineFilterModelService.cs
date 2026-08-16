@@ -15,9 +15,7 @@ public interface IInlineFilterModelService
 {
     Task<PublicInfoModel> PreparePublicInfoModelAsync(string selectedCategorySeName = null);
 
-    Task<FilteredProductsGridModel> PrepareFilteredProductsGridModelAsync(
-        string selectedCategorySeName = null,
-        int? categoryId = null);
+    Task<FilteredProductsGridModel> PrepareFilteredProductsGridModelAsync(string selectedCategorySeName = null);
 }
 
 public class InlineFilterModelService : IInlineFilterModelService
@@ -60,14 +58,14 @@ public class InlineFilterModelService : IInlineFilterModelService
     public async Task<PublicInfoModel> PreparePublicInfoModelAsync(string selectedCategorySeName = null)
     {
         var categories = await GetAvailableCategoriesAsync();
-        var selectedCategory = await ResolveSelectedCategoryAsync(categories, selectedCategorySeName, null);
+        var selectedCategory = await ResolveSelectedCategoryAsync(categories, selectedCategorySeName);
         var selectedSeName = selectedCategory == null
             ? null
             : await _urlRecordService.GetSeNameAsync(selectedCategory);
 
         var model = new PublicInfoModel
         {
-            Results = await PrepareFilteredProductsGridModelAsync(selectedSeName, selectedCategory?.Id)
+            Results = await PrepareFilteredProductsGridModelAsync(selectedSeName)
         };
 
         foreach (var category in categories)
@@ -87,16 +85,12 @@ public class InlineFilterModelService : IInlineFilterModelService
         return model;
     }
 
-    public async Task<FilteredProductsGridModel> PrepareFilteredProductsGridModelAsync(
-        string selectedCategorySeName = null,
-        int? categoryId = null)
+    public async Task<FilteredProductsGridModel> PrepareFilteredProductsGridModelAsync(string selectedCategorySeName = null)
     {
         var store = await _storeContext.GetCurrentStoreAsync();
         var categories = await GetAvailableCategoriesAsync();
 
-        // SeName is the public selector. Any supplied identifier is accepted only as an
-        // internal hint and is replaced by the authorized category resolved from SeName.
-        var selectedCategory = await ResolveSelectedCategoryAsync(categories, selectedCategorySeName, categoryId);
+        var selectedCategory = await ResolveSelectedCategoryAsync(categories, selectedCategorySeName);
         var resolvedSeName = selectedCategory == null
             ? null
             : await _urlRecordService.GetSeNameAsync(selectedCategory);
@@ -150,8 +144,7 @@ public class InlineFilterModelService : IInlineFilterModelService
 
     protected virtual async Task<Category> ResolveSelectedCategoryAsync(
         IList<Category> categories,
-        string selectedCategorySeName,
-        int? categoryId)
+        string selectedCategorySeName)
     {
         if (!string.IsNullOrWhiteSpace(selectedCategorySeName))
         {
@@ -164,9 +157,6 @@ public class InlineFilterModelService : IInlineFilterModelService
 
             return categories.FirstOrDefault();
         }
-
-        if (categoryId.HasValue)
-            return categories.FirstOrDefault(category => category.Id == categoryId.Value) ?? categories.FirstOrDefault();
 
         return categories.FirstOrDefault();
     }

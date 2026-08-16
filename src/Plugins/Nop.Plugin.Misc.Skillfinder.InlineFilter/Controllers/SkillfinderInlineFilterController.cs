@@ -14,9 +14,9 @@ public class SkillfinderInlineFilterController : BasePluginController
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetFilteredResults(string categorySeName = null, int? categoryId = null)
+    public async Task<IActionResult> GetFilteredResults(string categorySeName = null)
     {
-        var model = await _inlineFilterModelService.PrepareFilteredProductsGridModelAsync(categorySeName, categoryId);
+        var model = await _inlineFilterModelService.PrepareFilteredProductsGridModelAsync(categorySeName);
         return PartialView(
             "~/Plugins/Misc.Skillfinder.InlineFilter/Views/_FilteredProductsGrid.cshtml",
             model);
