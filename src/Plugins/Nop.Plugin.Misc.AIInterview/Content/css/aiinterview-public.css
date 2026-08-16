@@ -8758,12 +8758,23 @@ body.ai-job-preview-open .item-box {
     gap: 2px;
 }
 
+.ai-home-performers-spacing {
+    box-sizing: border-box;
+    width: 100%;
+    padding-top: 24px;
+}
+
 .ai-home-performers {
     box-sizing: border-box;
     width: 100%;
     max-width: 1200px;
     margin: 0 auto 32px;
-    padding: 0 12px;
+    padding: 24px;
+    border: 1px solid #cfdad9;
+    border-top: 3px solid #35d6b4;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 14px 36px rgba(24, 48, 46, 0.07);
 }
 
 .ai-home-performers-header {
@@ -8795,16 +8806,25 @@ body.ai-job-preview-open .item-box {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-    min-height: 40px;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
     border: 1px solid #cfd8d5;
     border-radius: 8px;
     background: #ffffff;
     color: #24323a;
     cursor: pointer;
+    font-size: 0.75rem;
+    line-height: 1;
     transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ai-home-performers-control i {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1;
 }
 
 .ai-home-performers-control:hover,
@@ -8860,7 +8880,7 @@ body.ai-job-preview-open .item-box {
     min-width: 280px;
     min-height: 150px;
     padding: 18px;
-    border: 1px solid #d8e0de;
+    border: 1px solid #cfdad9;
     border-radius: 8px;
     background: #ffffff;
     scroll-snap-align: start;
@@ -8977,7 +8997,7 @@ a.ai-home-performer-name:focus-visible {
 
 @media (max-width: 760px) {
     .ai-home-performers {
-        padding: 0 10px;
+        padding: 18px 14px;
     }
 
     .ai-home-performers-header {

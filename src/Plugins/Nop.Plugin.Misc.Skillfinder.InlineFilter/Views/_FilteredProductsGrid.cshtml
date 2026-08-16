@@ -44,12 +44,3 @@ else
 {
     <p class="sfi-no-results">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.NoResults")</p>
 }
-
-@if (!string.IsNullOrWhiteSpace(Model.ViewMoreUrl) && !string.IsNullOrWhiteSpace(Model.SelectedCategorySeName))
-{
-    <div class="sfi-view-more-wrap">
-        <a class="sfi-view-more" href="@Model.ViewMoreUrl">
-            @T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ViewMore")
-        </a>
-    </div>
-}

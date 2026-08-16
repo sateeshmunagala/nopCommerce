@@ -11886,7 +11886,7 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 
     .jb-home-landing .jb-home-hero-content {
         gap: 1.25rem;
-        max-width: 720px;
+        max-width: none;
         margin-right: auto;
         margin-left: 0;
     }
@@ -11906,9 +11906,10 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     }
 
     .jb-home-landing .jb-home-hero h1 {
-        max-width: 18ch;
+        max-width: none;
         font-size: clamp(2.25rem, 3.8vw, 3.4rem);
         line-height: 1.15;
+        white-space: nowrap;
     }
 
     .jb-home-landing .jb-home-hero-copy {
@@ -11931,6 +11932,15 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
         max-width: 26ch;
         font-size: clamp(1.65rem, 2vw, 2.15rem);
         line-height: 1.2;
+    }
+
+    .jb-home-landing .jb-home-steps-section .jb-home-section-head,
+    .jb-home-landing .jb-home-steps-section .jb-home-section-head h2 {
+        max-width: none;
+    }
+
+    .jb-home-landing .jb-home-steps-section .jb-home-section-head h2 {
+        white-space: nowrap;
     }
 
     .jb-home-landing .jb-home-section-head p {

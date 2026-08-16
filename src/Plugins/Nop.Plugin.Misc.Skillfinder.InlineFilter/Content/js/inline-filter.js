@@ -7,6 +7,11 @@
             pill.classList.toggle('is-selected', isSelected);
             pill.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
         });
+
+        var viewMore = root.querySelector('[data-sfi-view-more]');
+        var viewMoreUrl = selectedPill.getAttribute('data-sfi-view-more-url');
+        if (viewMore && viewMoreUrl)
+            viewMore.setAttribute('href', viewMoreUrl);
     }
 
     document.addEventListener('click', function (event) {

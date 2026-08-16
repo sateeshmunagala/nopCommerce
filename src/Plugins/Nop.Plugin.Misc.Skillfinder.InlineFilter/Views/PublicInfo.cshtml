@@ -16,26 +16,38 @@
     <header class="sfi-heading">
         <span class="sfi-eyebrow">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Eyebrow")</span>
         <h2 id="skillfinder-inline-filter-title">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Title")</h2>
-        <p>@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Description")</p>
     </header>
 
     @if (Model.Categories.Any())
     {
-        <div class="sfi-category-pills sfi-category-tabs"
-             role="group"
-             aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.CategoriesLabel")">
-            @foreach (var category in Model.Categories)
+        <div class="sfi-filter-actions">
+            <div class="sfi-category-pills sfi-category-tabs"
+                 role="group"
+                 aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.CategoriesLabel")">
+                @foreach (var category in Model.Categories)
+                {
+                    var categoryViewMoreUrl = Url.RouteUrl("Category", new { SeName = category.SeName });
+                    <button type="button"
+                            class="sfi-category-pill sfi-category-tab @(category.IsSelected ? "is-selected" : null)"
+                            aria-pressed="@category.IsSelected.ToString().ToLowerInvariant()"
+                            aria-controls="@resultsId"
+                            data-sfi-view-more-url="@categoryViewMoreUrl"
+                            hx-get="@Url.RouteUrl(SkillfinderInlineFilterDefaults.RouteName, new { categorySeName = category.SeName })"
+                            hx-target="#@resultsId"
+                            hx-swap="innerHTML"
+                            hx-indicator="#@loadingId">
+                        @category.Name
+                    </button>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Results.ViewMoreUrl) && !string.IsNullOrWhiteSpace(Model.Results.SelectedCategorySeName))
             {
-                <button type="button"
-                        class="sfi-category-pill sfi-category-tab @(category.IsSelected ? "is-selected" : null)"
-                        aria-pressed="@category.IsSelected.ToString().ToLowerInvariant()"
-                        aria-controls="@resultsId"
-                        hx-get="@Url.RouteUrl(SkillfinderInlineFilterDefaults.RouteName, new { categorySeName = category.SeName })"
-                        hx-target="#@resultsId"
-                        hx-swap="innerHTML"
-                        hx-indicator="#@loadingId">
-                    @category.Name
-                </button>
+                <div class="sfi-view-more-wrap">
+                    <a class="sfi-view-more" href="@Model.Results.ViewMoreUrl" data-sfi-view-more>
+                        @T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ViewMore")
+                    </a>
+                </div>
             }
         </div>
     }
