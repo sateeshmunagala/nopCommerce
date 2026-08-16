@@ -1,0 +1,54 @@
+@model PublicInfoModel
+@{
+    Layout = "";
+    var resultsId = "skillfinder-inline-results";
+    var loadingId = "skillfinder-inline-loading";
+
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.Skillfinder.InlineFilter/Content/css/inline-filter.css");
+}
+
+<script src="~/lib_npm/htmx.org/dist/htmx.min.js"
+        asp-location="Footer"
+        onerror="this.onerror=null;this.src='@Url.Content("~/Plugins/Misc.Skillfinder.InlineFilter/Content/js/htmx.min.js")';"></script>
+<script src="~/Plugins/Misc.Skillfinder.InlineFilter/Content/js/inline-filter.js" asp-location="Footer"></script>
+
+<section class="sfi-inline-filter" aria-labelledby="skillfinder-inline-filter-title" data-sfi-inline-filter>
+    <header class="sfi-heading">
+        <span class="sfi-eyebrow">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Eyebrow")</span>
+        <h2 id="skillfinder-inline-filter-title">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Title")</h2>
+        <p>@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Description")</p>
+    </header>
+
+    @if (Model.Categories.Any())
+    {
+        <div class="sfi-category-pills"
+             role="group"
+             aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.CategoriesLabel")">
+            @foreach (var category in Model.Categories)
+            {
+                <button type="button"
+                        class="sfi-category-pill @(category.IsSelected ? "is-selected" : null)"
+                        aria-pressed="@category.IsSelected.ToString().ToLowerInvariant()"
+                        aria-controls="@resultsId"
+                        hx-get="@Url.RouteUrl(SkillfinderInlineFilterDefaults.RouteName, new { categorySeName = category.SeName })"
+                        hx-target="#@resultsId"
+                        hx-swap="innerHTML"
+                        hx-indicator="#@loadingId">
+                    @category.Name
+                </button>
+            }
+        </div>
+    }
+
+    <div id="@loadingId" class="sfi-loading htmx-indicator" role="status" aria-live="polite">
+        @T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Loading")
+    </div>
+
+    <div id="@resultsId"
+         class="sfi-results"
+         aria-live="polite"
+         aria-busy="false"
+         aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ResultsLabel")">
+        @await Html.PartialAsync("~/Plugins/Misc.Skillfinder.InlineFilter/Views/_FilteredProductsGrid.cshtml", Model.Results)
+    </div>
+</section>

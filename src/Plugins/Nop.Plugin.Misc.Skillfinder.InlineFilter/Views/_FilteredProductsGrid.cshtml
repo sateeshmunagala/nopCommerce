@@ -1,0 +1,53 @@
+@model FilteredProductsGridModel
+@{
+    Layout = "";
+}
+
+@if (Model.Products.Any())
+{
+    <div class="sfi-products-grid">
+        @foreach (var item in Model.Products.Take(SkillfinderInlineFilterDefaults.ResultCount))
+        {
+            <div class="sfi-grid-cell">
+                @if (Model.UseAiInterviewCards)
+                {
+                    @await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = item.ProductOverview })
+                }
+                else
+                {
+                    <article class="sfi-fallback-card product-item">
+                        @if (!string.IsNullOrWhiteSpace(item.PictureUrl))
+                        {
+                            <a class="sfi-fallback-card-media" href="@item.ProductUrl" tabindex="-1" aria-hidden="true">
+                                <img src="@item.PictureUrl" alt="@item.PictureAlt" loading="lazy" />
+                            </a>
+                        }
+                        <div class="sfi-fallback-card-body">
+                            <h3><a href="@item.ProductUrl">@item.ProductOverview.Name</a></h3>
+                            @if (!string.IsNullOrWhiteSpace(item.Summary))
+                            {
+                                <p>@item.Summary</p>
+                            }
+                            <a class="sfi-view-job" href="@item.ProductUrl">
+                                @T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ViewJob")
+                            </a>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    <p class="sfi-no-results">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.NoResults")</p>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.ViewMoreUrl) && !string.IsNullOrWhiteSpace(Model.SelectedCategorySeName))
+{
+    <div class="sfi-view-more-wrap">
+        <a class="sfi-view-more" href="@Model.ViewMoreUrl">
+            @T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ViewMore")
+        </a>
+    </div>
+}

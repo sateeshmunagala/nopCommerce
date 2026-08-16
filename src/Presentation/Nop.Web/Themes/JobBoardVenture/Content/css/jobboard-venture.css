@@ -9038,7 +9038,7 @@ body.jb-filter-panel-open .product-filters {
 .html-registration-page .auth-split-container {
     display: grid;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-    min-height: 640px;
+    min-height: 440px;
     overflow: hidden;
     border: 1px solid var(--jb-border);
     background: var(--jb-white);
