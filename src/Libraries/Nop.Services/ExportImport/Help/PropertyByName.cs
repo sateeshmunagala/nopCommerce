@@ -123,7 +123,8 @@ public partial class PropertyByName<T>
         get
         {
             if (!TryGetDecimalValue(out var rez))
-                return default;
+                return decimal.Zero;
+
             return rez;
         }
     }
@@ -137,33 +138,11 @@ public partial class PropertyByName<T>
         {
             if (!TryGetDecimalValue(out var rez))
                 return null;
+
             return rez;
         }
     }
-
-    /// <summary>
-    /// Converts the property value to decimal
-    /// </summary>
-    /// <param name="value">The converted value, or the default one when the value cannot be converted</param>
-    /// <returns>Whether the property value could be converted</returns>
-    protected virtual bool TryGetDecimalValue(out decimal value)
-    {
-        value = default;
-        var propertyValue = PropertyValue;
-
-        //a numeric spreadsheet cell must be converted from its underlying number: ToString() formats it
-        //with the current culture ("43,5" under de-DE), and the invariant parse below would then read the
-        //decimal separator as a group separator and silently turn 43.5 into 435
-        if (propertyValue is XLCellValue { IsNumber: true } cellValue)
-            //formatted round-trip rather than a cast, so that a number outside the decimal range reports
-            //failure instead of throwing OverflowException and aborting the whole import
-            return decimal.TryParse(cellValue.GetNumber().ToString("R", CultureInfo.InvariantCulture),
-                NumberStyles.Float, CultureInfo.InvariantCulture, out value);
-
-        return propertyValue != null &&
-               decimal.TryParse(propertyValue.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out value);
-    }
-
+    
     /// <summary>
     /// Converted property value to double
     /// </summary>
@@ -263,4 +242,27 @@ public partial class PropertyByName<T>
     /// Is caption
     /// </summary>
     public bool IsCaption => PropertyName == StringValue || PropertyName == _propertyValue.ToString();
+
+    /// <summary>
+    /// Converts the property value to decimal
+    /// </summary>
+    /// <param name="value">The converted value, or the default one when the value cannot be converted</param>
+    /// <returns>Whether the property value could be converted</returns>
+    protected virtual bool TryGetDecimalValue(out decimal value)
+    {
+        value = decimal.Zero;
+
+        //a numeric spreadsheet cell must be converted from its underlying number: ToString() formats it
+        //with the current culture ("43,5" under de-DE), and the invariant parse below would then read the
+        //decimal separator as a group separator and silently turn 43.5 into 435
+        if (PropertyValue is XLCellValue { IsNumber: true } cellValue)
+        {
+            //formatted round-trip rather than a cast, so that a number outside the decimal range reports
+            //failure instead of throwing OverflowException and aborting the whole import
+            return decimal.TryParse(cellValue.GetNumber().ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+        }
+
+        return PropertyValue != null && decimal.TryParse(PropertyValue.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out value);
+    }
 }

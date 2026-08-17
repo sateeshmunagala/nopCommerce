@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using AwesomeAssertions;
 using ClosedXML.Excel;
 using Nop.Core.Domain.Orders;
