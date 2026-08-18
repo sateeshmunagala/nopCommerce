@@ -38,7 +38,9 @@ public class JobRequirementService : IJobRequirementService
             return false;
 
         return string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(productTemplate.Name, AIInterviewDefaults.JobProductTemplateName, StringComparison.OrdinalIgnoreCase);
+            string.Equals(productTemplate.Name, AIInterviewDefaults.JobProductTemplateName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(productTemplate.ViewPath, AIInterviewDefaults.FixedQuestionProductTemplateViewPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(productTemplate.Name, AIInterviewDefaults.FixedQuestionProductTemplateName, StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<JobRequirementsModel> GetRequirementsAsync(Product product)
@@ -55,7 +57,11 @@ public class JobRequirementService : IJobRequirementService
         model.ResumeRequired = await _genericAttributeService.GetAttributeAsync<bool>(product, AIInterviewDefaults.JobResumeRequiredAttributeName, defaultValue: false);
         model.InterviewRequired = await _genericAttributeService.GetAttributeAsync<bool>(product, AIInterviewDefaults.JobInterviewRequiredAttributeName, defaultValue: false);
         model.MinimumScore = await _genericAttributeService.GetAttributeAsync<decimal>(product, AIInterviewDefaults.JobMinimumScoreAttributeName, defaultValue: _aiInterviewSettings?.MinimumScore ?? 0);
-        model.QuestionCount = NormalizeQuestionCount(await _genericAttributeService.GetAttributeAsync<int>(product, AIInterviewDefaults.JobQuestionCountAttributeName, defaultValue: DefaultQuestionCount));
+        var storedQuestionCount = await _genericAttributeService.GetAttributeAsync<int>(product, AIInterviewDefaults.JobQuestionCountAttributeName, defaultValue: DefaultQuestionCount);
+        var interviewMode = await _genericAttributeService.GetAttributeAsync<string>(product, AIInterviewDefaults.JobInterviewModeAttributeName);
+        model.QuestionCount = string.Equals(interviewMode, AIInterviewDefaults.InterviewModeFixedQuestionBased, StringComparison.Ordinal)
+            ? Math.Clamp(storedQuestionCount <= 0 ? 1 : storedQuestionCount, 1, MaxQuestionCount)
+            : NormalizeQuestionCount(storedQuestionCount);
 
         return model;
     }

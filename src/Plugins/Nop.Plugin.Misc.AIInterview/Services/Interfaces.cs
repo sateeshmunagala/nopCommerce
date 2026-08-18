@@ -123,6 +123,19 @@ public interface IAIInterviewClient
     Task<AIInterviewStrengthsSummaryResponse> GenerateStrengthsSummaryAsync(AIInterviewStrengthsSummaryRequest request);
 }
 
+public sealed record FixedQuestionSetDetails(FixedQuestionSet QuestionSet, IList<FixedQuestionSetItem> Items);
+
+public interface IFixedQuestionSetService
+{
+    Task<IList<FixedQuestionSetDetails>> GetAllAsync(int vendorId, bool includeInactive = false);
+    Task<FixedQuestionSetDetails> GetByIdAsync(int vendorId, int questionSetId, bool includeInactive = false);
+    Task<FixedQuestionSetDetails> CreateAsync(int vendorId, string name, IList<FixedQuestionSetItem> items);
+    Task<FixedQuestionSetDetails> UpdateAsync(int vendorId, int questionSetId, string name, IList<FixedQuestionSetItem> items);
+    Task DeleteAsync(int vendorId, int questionSetId);
+    Task<FixedQuestionSetDetails> CloneAsync(int vendorId, int questionSetId, string name = null);
+    Task ReorderAsync(int vendorId, int questionSetId, IReadOnlyDictionary<int, int> itemSequences);
+}
+
 public interface IAzureOpenAiChatCompletionAdapter
 {
     Task<AzureOpenAiChatCompletionResult> CompleteChatAsync(AzureOpenAiChatCompletionRequest request);

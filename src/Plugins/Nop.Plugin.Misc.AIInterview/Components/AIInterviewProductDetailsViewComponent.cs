@@ -79,18 +79,23 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
             return Content("");
 
         var productTemplate = await _productTemplateService.GetProductTemplateByIdAsync(product.ProductTemplateId);
-        if (productTemplate == null ||
-            !string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase))
+        var isFixedQuestionJob = string.Equals(productTemplate?.ViewPath, AIInterviewDefaults.FixedQuestionProductTemplateViewPath, StringComparison.OrdinalIgnoreCase);
+        if (productTemplate == null || (!isFixedQuestionJob &&
+            !string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase)))
             return Content("");
 
-        await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
-        await EnsureDifficultyAttributeModelAsync(model, productId);
+        if (!isFixedQuestionJob)
+        {
+            await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
+            await EnsureDifficultyAttributeModelAsync(model, productId);
+        }
 
         var jobRequirements = _jobRequirementService == null
             ? new JobRequirementsModel()
             : await _jobRequirementService.GetRequirementsAsync(product);
         ViewBag.ResumeRequired = jobRequirements.ResumeRequired;
         ViewBag.InterviewRequired = jobRequirements.InterviewRequired;
+        ViewBag.IsLaunchOnly = isFixedQuestionJob;
 
         var customer = await _workContext.GetCurrentCustomerAsync();
         var isAuthenticated = customer != null &&

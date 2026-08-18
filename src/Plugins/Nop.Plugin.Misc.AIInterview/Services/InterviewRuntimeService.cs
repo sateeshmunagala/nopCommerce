@@ -22,6 +22,7 @@ using Nop.Plugin.Misc.AIInterview.Events;
 using Nop.Plugin.Misc.AIInterview.Models;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
+using Nop.Services.Common;
 using Nop.Services.Localization;
 using NopLogger = Nop.Services.Logging.ILogger;
 using Nop.Core.Events;
@@ -1636,6 +1637,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     private readonly ICustomerActivityService _customerActivityService;
     private readonly ILogger<InterviewRuntimeService> _logger;
     private readonly INopDataProvider _dataProvider;
+    private readonly IGenericAttributeService _genericAttributeService;
+    private readonly IFixedQuestionSetService _fixedQuestionSetService;
 
     public InterviewRuntimeService(
         IInterviewSessionService sessionService,
@@ -1655,7 +1658,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         NopLogger nopLogger = null,
         ILogger<InterviewRuntimeService> logger = null,
         ICustomerActivityService customerActivityService = null,
-        INopDataProvider dataProvider = null)
+        INopDataProvider dataProvider = null,
+        IGenericAttributeService genericAttributeService = null,
+        IFixedQuestionSetService fixedQuestionSetService = null)
     {
         _sessionService = sessionService;
         _turnService = turnService;
@@ -1675,6 +1680,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         _logger = logger;
         _customerActivityService = customerActivityService;
         _dataProvider = dataProvider;
+        _genericAttributeService = genericAttributeService;
+        _fixedQuestionSetService = fixedQuestionSetService;
     }
 
     protected virtual Task LogRuntimeIssueAsync(NopLogLevel level, string shortMessage, string fullMessage = "", Customer customer = null)
@@ -2292,6 +2299,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             var firstTurnResult = await EnsureFirstQuestionTurnAsync(session, await _turnService.GetTurnsBySessionIdAsync(session.Id), customer, sessionLockHeld: true);
             if (!string.IsNullOrWhiteSpace(firstTurnResult.FailureReason))
                 return null;
+
+            maxQuestions = GetMaxQuestions(session);
 
             var normalizedTurns = await EnsureSingleActiveTurnAsync(session, firstTurnResult.Turns, customer);
             preparedTurns = normalizedTurns.Turns
@@ -3938,6 +3947,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> EnsureFirstQuestionTurnAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null, bool sessionLockHeld = false)
     {
+        var fixedQuestionPlan = await TryEnsureFixedQuestionPlanAsync(session, turns);
+        if (fixedQuestionPlan.IsFixedMode)
+            return (fixedQuestionPlan.Turns, fixedQuestionPlan.FailureReason);
+
         turns ??= new List<InterviewTurn>();
         var maxQuestions = GetMaxQuestions(session);
         var orderedTurns = (turns ?? new List<InterviewTurn>())
@@ -4076,6 +4089,10 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> EnsureQuestionPlanAsync(InterviewSession session, IList<InterviewTurn> turns, Customer customer = null, bool skipAnsweredPlanReset = false)
     {
+        var fixedQuestionPlan = await TryEnsureFixedQuestionPlanAsync(session, turns);
+        if (fixedQuestionPlan.IsFixedMode)
+            return (fixedQuestionPlan.Turns, fixedQuestionPlan.FailureReason);
+
         turns ??= new List<InterviewTurn>();
         var maxQuestions = GetMaxQuestions(session);
         var orderedTurns = turns
@@ -4118,6 +4135,82 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             .OrderBy(turn => turn.SequenceNumber)
             .ThenBy(turn => turn.Id)
             .ToList(), null);
+    }
+
+    protected virtual async Task<(bool IsFixedMode, IList<InterviewTurn> Turns, string FailureReason)> TryEnsureFixedQuestionPlanAsync(
+        InterviewSession session,
+        IList<InterviewTurn> turns)
+    {
+        if (session?.ProductId <= 0 || _genericAttributeService == null)
+            return (false, turns ?? new List<InterviewTurn>(), null);
+
+        var product = await _productService.GetProductByIdAsync(session.ProductId);
+        if (product == null)
+            return (false, turns ?? new List<InterviewTurn>(), null);
+
+        var interviewMode = await _genericAttributeService.GetAttributeAsync<string>(product, AIInterviewDefaults.JobInterviewModeAttributeName);
+        if (!string.Equals(interviewMode, AIInterviewDefaults.InterviewModeFixedQuestionBased, StringComparison.Ordinal))
+            return (false, turns ?? new List<InterviewTurn>(), null);
+
+        if (session.StartedOnUtc.HasValue && turns?.Any() == true)
+        {
+            var snapshotTurns = turns.OrderBy(turn => turn.SequenceNumber).ThenBy(turn => turn.Id).ToList();
+            return (true, snapshotTurns, ValidatePersistedQuestionPlan(snapshotTurns, GetMaxQuestions(session)));
+        }
+
+        if (_fixedQuestionSetService == null || product.VendorId <= 0)
+            return (true, turns ?? new List<InterviewTurn>(), "The configured interview questions are unavailable.");
+
+        var questionSetId = await _genericAttributeService.GetAttributeAsync<int>(product, AIInterviewDefaults.JobQuestionSetIdAttributeName);
+        var questionSet = await _fixedQuestionSetService.GetByIdAsync(product.VendorId, questionSetId);
+        var fixedItems = questionSet?.Items
+            .Where(item => item.IsActive && !string.IsNullOrWhiteSpace(item.QuestionText))
+            .OrderBy(item => item.SequenceNumber)
+            .ThenBy(item => item.Id)
+            .Take(10)
+            .ToList() ?? new List<FixedQuestionSetItem>();
+        if (!fixedItems.Any())
+            return (true, turns ?? new List<InterviewTurn>(), "The configured interview questions are unavailable.");
+
+        turns ??= new List<InterviewTurn>();
+        var orderedTurns = turns.OrderBy(turn => turn.SequenceNumber).ThenBy(turn => turn.Id).ToList();
+        if (!session.StartedOnUtc.HasValue && orderedTurns.Any() && orderedTurns.All(turn => string.IsNullOrWhiteSpace(turn.AnswerText)))
+        {
+            await _turnService.DeleteInterviewTurnsAsync(orderedTurns);
+            orderedTurns.Clear();
+        }
+
+        if (!session.StartedOnUtc.HasValue && session.QuestionCount != fixedItems.Count)
+        {
+            session.QuestionCount = fixedItems.Count;
+            await _sessionService.UpdateInterviewSessionAsync(session);
+        }
+
+        var existingSequenceNumbers = orderedTurns.Select(turn => turn.SequenceNumber).ToHashSet();
+        var now = DateTime.UtcNow;
+        foreach (var item in fixedItems.Where(item => !existingSequenceNumbers.Contains(item.SequenceNumber)))
+        {
+            var turn = await _turnService.InsertInterviewTurnAsync(new InterviewTurn
+            {
+                InterviewSessionId = session.Id,
+                SequenceNumber = item.SequenceNumber,
+                QuestionId = item.Id,
+                QuestionText = item.QuestionText.Trim(),
+                RubricJson = JsonSerializer.Serialize(new
+                {
+                    rubricHint = item.RubricHint,
+                    expectedSignals = item.ExpectedSignalNotes
+                }, StorageSerializerOptions),
+                RawAIResponseJson = string.Empty,
+                AskedOnUtc = now,
+                CreatedOnUtc = now
+            });
+            orderedTurns.Add(turn);
+            existingSequenceNumbers.Add(turn.SequenceNumber);
+        }
+
+        orderedTurns = orderedTurns.OrderBy(turn => turn.SequenceNumber).ThenBy(turn => turn.Id).ToList();
+        return (true, orderedTurns, ValidatePersistedQuestionPlan(orderedTurns, fixedItems.Count));
     }
 
     protected virtual async Task<(IList<InterviewTurn> Turns, string FailureReason)> GenerateQuestionPlanTurnsAsync(InterviewSession session, Customer customer = null, IList<InterviewTurn> existingTurns = null, IList<int> targetSequenceNumbers = null)

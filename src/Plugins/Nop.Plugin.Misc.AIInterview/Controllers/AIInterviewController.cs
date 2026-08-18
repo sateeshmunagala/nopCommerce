@@ -78,6 +78,7 @@ public class AIInterviewController : BasePluginController
     private readonly IPictureService _pictureService;
     private readonly IRepository<GenericAttribute> _genericAttributeRepository;
     private readonly IRepository<CreditLedgerEntry> _creditLedgerRepository;
+    private readonly IFixedQuestionSetService _fixedQuestionSetService;
     private readonly ILogger<AIInterviewController> _logger;
 
     public AIInterviewController(IApplicationService applicationService,
@@ -113,7 +114,8 @@ public class AIInterviewController : BasePluginController
         IPictureService pictureService = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
         IRepository<CreditLedgerEntry> creditLedgerRepository = null,
-        ILogger<AIInterviewController> logger = null)
+        ILogger<AIInterviewController> logger = null,
+        IFixedQuestionSetService fixedQuestionSetService = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -148,6 +150,7 @@ public class AIInterviewController : BasePluginController
         _pictureService = pictureService;
         _genericAttributeRepository = genericAttributeRepository;
         _creditLedgerRepository = creditLedgerRepository;
+        _fixedQuestionSetService = fixedQuestionSetService;
         _logger = logger;
     }
 
@@ -181,7 +184,8 @@ public class AIInterviewController : BasePluginController
         IPictureService pictureService = null,
         IRepository<GenericAttribute> genericAttributeRepository = null,
         IRepository<CreditLedgerEntry> creditLedgerRepository = null,
-        ILogger<AIInterviewController> logger = null)
+        ILogger<AIInterviewController> logger = null,
+        IFixedQuestionSetService fixedQuestionSetService = null)
         : this(applicationService,
             interviewSessionService,
             aiInterviewSettings,
@@ -215,7 +219,8 @@ public class AIInterviewController : BasePluginController
             pictureService,
             genericAttributeRepository,
             creditLedgerRepository,
-            logger)
+            logger,
+            fixedQuestionSetService)
     {
     }
 
@@ -278,8 +283,8 @@ public class AIInterviewController : BasePluginController
             return NotFound(notFoundText);
 
         var productTemplate = await _productTemplateService.GetProductTemplateByIdAsync(product.ProductTemplateId);
-        if (productTemplate == null ||
-            !string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase))
+        if (productTemplate == null || (!string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(productTemplate.ViewPath, AIInterviewDefaults.FixedQuestionProductTemplateViewPath, StringComparison.OrdinalIgnoreCase)))
         {
             return NotFound(invalidJobText);
         }
@@ -2270,6 +2275,25 @@ public class AIInterviewController : BasePluginController
         EnsureSalaryLpaOption(model.AvailableSalaryLpaOptions, model.SalaryMinCtcPa);
         EnsureSalaryLpaOption(model.AvailableSalaryLpaOptions, model.SalaryMaxCtcPa);
 
+        if (_fixedQuestionSetService != null)
+        {
+            var customer = await _workContext.GetCurrentCustomerAsync();
+            if (customer?.VendorId > 0)
+            {
+                var sets = await _fixedQuestionSetService.GetAllAsync(customer.VendorId);
+                model.AvailableQuestionSets = sets.Select(MapFixedQuestionSetModel).ToList();
+                if (model.QuestionSetId > 0 && !model.QuestionItems.Any())
+                {
+                    var selectedSet = sets.FirstOrDefault(set => set.QuestionSet.Id == model.QuestionSetId);
+                    if (selectedSet != null)
+                    {
+                        model.QuestionSetName = selectedSet.QuestionSet.Name;
+                        model.QuestionItems = selectedSet.Items.Select(MapFixedQuestionItemModel).ToList();
+                    }
+                }
+            }
+        }
+
         if (_specificationAttributeService == null)
             return;
 
@@ -2313,6 +2337,30 @@ public class AIInterviewController : BasePluginController
             model.AvailableJobLocations = BuildSelectList(
                 await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(jobLocationAttribute.Id),
                 model.JobLocationOptionId);
+    }
+
+    protected static FixedQuestionSetModel MapFixedQuestionSetModel(FixedQuestionSetDetails details)
+    {
+        return new FixedQuestionSetModel
+        {
+            Id = details.QuestionSet.Id,
+            Name = details.QuestionSet.Name,
+            IsActive = details.QuestionSet.IsActive,
+            Items = details.Items.Select(MapFixedQuestionItemModel).ToList()
+        };
+    }
+
+    protected static FixedQuestionItemModel MapFixedQuestionItemModel(FixedQuestionSetItem item)
+    {
+        return new FixedQuestionItemModel
+        {
+            Id = item.Id,
+            SequenceNumber = item.SequenceNumber,
+            QuestionText = item.QuestionText,
+            RubricHint = item.RubricHint,
+            ExpectedSignalNotes = item.ExpectedSignalNotes,
+            IsActive = item.IsActive
+        };
     }
 
     protected virtual IList<SelectListItem> BuildSalaryLpaSelectList(string selectText)
@@ -3012,6 +3060,26 @@ public class AIInterviewController : BasePluginController
         }
 
         var customer = await _workContext.GetCurrentCustomerAsync();
+        FixedQuestionSetDetails fixedQuestionSet = null;
+        if (string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeFixedQuestionBased, StringComparison.Ordinal))
+        {
+            try
+            {
+                fixedQuestionSet = await SaveVendorQuestionSetAsync(customer.VendorId, model);
+                model.QuestionSetId = fixedQuestionSet.QuestionSet.Id;
+                model.QuestionSetName = fixedQuestionSet.QuestionSet.Name;
+                model.QuestionItems = fixedQuestionSet.Items.Select(MapFixedQuestionItemModel).ToList();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                ModelState.AddModelError(nameof(model.QuestionSetId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.Invalid"));
+                if (existingProduct != null)
+                    model.PublicJobUrl = await BuildProductRedirectUrlAsync(existingProduct);
+                await PrepareVendorJobModelAsync(model);
+                return View("~/Plugins/Misc.AIInterview/Views/VendorJobCreation.cshtml", model);
+            }
+        }
+
         var now = DateTime.UtcNow;
         var isEditMode = existingProduct != null;
         var product = existingProduct ?? new Product
@@ -3029,6 +3097,7 @@ public class AIInterviewController : BasePluginController
         };
 
         product.Name = model.Name;
+        product.ProductTemplateId = productTemplate.Id;
         product.ShortDescription = model.ShortDescription;
         product.FullDescription = model.FullDescription;
         product.Sku = string.IsNullOrWhiteSpace(model.Sku)
@@ -3046,11 +3115,22 @@ public class AIInterviewController : BasePluginController
         await SaveJobSalaryAttributesAsync(product, model);
         await ReplaceVendorJobSpecificationAttributesAsync(product, model, salaryRangeOptionId);
 
-        if (_jobInterviewExperienceService != null)
+        if (_jobInterviewExperienceService != null &&
+            string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeAiResumeBased, StringComparison.Ordinal))
             await _jobInterviewExperienceService.EnsureInterviewDifficultyAttributeAsync(product);
 
         if (_jobRequirementService != null)
-            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, 0m, 3);
+            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, true, 0m,
+                fixedQuestionSet?.Items.Count ?? model.QuestionCount);
+
+        if (_genericAttributeService != null)
+        {
+            await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobInterviewModeAttributeName, model.InterviewMode);
+            await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobQuestionSetIdAttributeName,
+                fixedQuestionSet?.QuestionSet.Id ?? 0);
+            if (fixedQuestionSet != null)
+                await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobQuestionCountAttributeName, fixedQuestionSet.Items.Count);
+        }
 
         var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
         await _urlRecordService.SaveSlugAsync(product, seName, 0);
@@ -3061,6 +3141,38 @@ public class AIInterviewController : BasePluginController
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync(successKey));
 
         return RedirectToRoute(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardJobsTabKey });
+    }
+
+    protected virtual async Task<FixedQuestionSetDetails> SaveVendorQuestionSetAsync(int vendorId, VendorJobModel model)
+    {
+        var items = model.QuestionItems.Select(item => new FixedQuestionSetItem
+        {
+            Id = item.Id,
+            SequenceNumber = item.SequenceNumber,
+            QuestionText = item.QuestionText,
+            RubricHint = item.RubricHint,
+            ExpectedSignalNotes = item.ExpectedSignalNotes,
+            IsActive = item.IsActive
+        }).ToList();
+
+        if (string.Equals(model.QuestionSetWorkflow, AIInterviewDefaults.QuestionSetWorkflowCreate, StringComparison.Ordinal))
+            return await _fixedQuestionSetService.CreateAsync(vendorId, model.QuestionSetName, items);
+
+        if (string.Equals(model.QuestionSetWorkflow, AIInterviewDefaults.QuestionSetWorkflowClone, StringComparison.Ordinal))
+        {
+            var cloned = await _fixedQuestionSetService.CloneAsync(vendorId, model.QuestionSetId, model.QuestionSetName);
+            return items.Any(item => item.IsActive && !string.IsNullOrWhiteSpace(item.QuestionText))
+                ? await _fixedQuestionSetService.UpdateAsync(vendorId, cloned.QuestionSet.Id, cloned.QuestionSet.Name, items)
+                : cloned;
+        }
+
+        var selected = await _fixedQuestionSetService.GetByIdAsync(vendorId, model.QuestionSetId)
+            ?? throw new InvalidOperationException("Question set was not found for this vendor.");
+        if (items.Any(item => item.IsActive && !string.IsNullOrWhiteSpace(item.QuestionText)))
+            return await _fixedQuestionSetService.UpdateAsync(vendorId, selected.QuestionSet.Id,
+                string.IsNullOrWhiteSpace(model.QuestionSetName) ? selected.QuestionSet.Name : model.QuestionSetName, items);
+
+        return selected;
     }
 
     protected virtual async Task<(ProductTemplate ProductTemplate, int SalaryRangeOptionId)> ValidateVendorJobModelAsync(VendorJobModel model, bool isCreate)
@@ -3080,15 +3192,60 @@ public class AIInterviewController : BasePluginController
         if (model.SalaryMinCtcPa.HasValue && model.SalaryMaxCtcPa.HasValue && model.SalaryMaxCtcPa.Value < model.SalaryMinCtcPa.Value)
             ModelState.AddModelError(nameof(model.SalaryMaxCtcPa), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange.Invalid"));
 
-        if (_urlRecordService == null || _productTemplateService == null)
+        var validInterviewMode = string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeAiResumeBased, StringComparison.Ordinal) ||
+            string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeFixedQuestionBased, StringComparison.Ordinal);
+        if (!validInterviewMode)
+            ModelState.AddModelError(nameof(model.InterviewMode), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.InterviewMode.Invalid"));
+
+        if (_urlRecordService == null || _productTemplateService == null || _genericAttributeService == null)
             ModelState.AddModelError(string.Empty, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Unavailable"));
 
+        var expectedTemplatePath = string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeFixedQuestionBased, StringComparison.Ordinal)
+            ? AIInterviewDefaults.FixedQuestionProductTemplateViewPath
+            : AIInterviewDefaults.JobProductTemplateViewPath;
         var productTemplate = _productTemplateService == null
             ? null
             : ((await _productTemplateService.GetAllProductTemplatesAsync()) ?? new List<ProductTemplate>()).FirstOrDefault(template =>
-                string.Equals(template.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase));
-        if (isCreate && productTemplate == null)
+                string.Equals(template.ViewPath, expectedTemplatePath, StringComparison.OrdinalIgnoreCase));
+        if (productTemplate == null)
             ModelState.AddModelError(string.Empty, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Unavailable"));
+
+        if (string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeAiResumeBased, StringComparison.Ordinal) && !model.ResumeRequired)
+            ModelState.AddModelError(nameof(model.ResumeRequired), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.ResumeRequired.AiMode"));
+
+        if (string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeFixedQuestionBased, StringComparison.Ordinal))
+        {
+            if (_fixedQuestionSetService == null)
+                ModelState.AddModelError(nameof(model.QuestionSetId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.Unavailable"));
+            else
+            {
+                var workflowValid = string.Equals(model.QuestionSetWorkflow, AIInterviewDefaults.QuestionSetWorkflowExisting, StringComparison.Ordinal) ||
+                    string.Equals(model.QuestionSetWorkflow, AIInterviewDefaults.QuestionSetWorkflowCreate, StringComparison.Ordinal) ||
+                    string.Equals(model.QuestionSetWorkflow, AIInterviewDefaults.QuestionSetWorkflowClone, StringComparison.Ordinal);
+                if (!workflowValid)
+                    ModelState.AddModelError(nameof(model.QuestionSetWorkflow), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.Workflow.Invalid"));
+
+                var customer = await _workContext.GetCurrentCustomerAsync();
+                var selectedSet = customer?.VendorId > 0 && model.QuestionSetId > 0
+                    ? await _fixedQuestionSetService.GetByIdAsync(customer.VendorId, model.QuestionSetId)
+                    : null;
+                var requiresSelectedSet = !string.Equals(model.QuestionSetWorkflow, AIInterviewDefaults.QuestionSetWorkflowCreate, StringComparison.Ordinal);
+                if (requiresSelectedSet && selectedSet == null)
+                    ModelState.AddModelError(nameof(model.QuestionSetId), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.Required"));
+
+                if (!string.Equals(model.QuestionSetWorkflow, AIInterviewDefaults.QuestionSetWorkflowExisting, StringComparison.Ordinal) &&
+                    string.IsNullOrWhiteSpace(model.QuestionSetName))
+                {
+                    ModelState.AddModelError(nameof(model.QuestionSetName), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSetName.Required"));
+                }
+
+                var activeQuestions = model.QuestionItems.Count(item => item.IsActive && !string.IsNullOrWhiteSpace(item.QuestionText));
+                if (string.Equals(model.QuestionSetWorkflow, AIInterviewDefaults.QuestionSetWorkflowCreate, StringComparison.Ordinal) && activeQuestions == 0)
+                    ModelState.AddModelError(nameof(model.QuestionItems), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItems.Required"));
+                if (activeQuestions > 10)
+                    ModelState.AddModelError(nameof(model.QuestionItems), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItems.Range"));
+            }
+        }
 
         var experienceAttribute = await GetExperienceLevelSpecificationAttributeAsync();
         var workModeAttribute = await GetWorkArrangementSpecificationAttributeAsync();
@@ -3136,12 +3293,29 @@ public class AIInterviewController : BasePluginController
         model.ApplyUntilUtc = product.AvailableEndDateTimeUtc?.Date;
         model.PublicJobUrl = await BuildProductRedirectUrlAsync(product);
 
+        if (_genericAttributeService != null)
+        {
+            model.InterviewMode = await _genericAttributeService.GetAttributeAsync<string>(product, AIInterviewDefaults.JobInterviewModeAttributeName);
+            if (string.IsNullOrWhiteSpace(model.InterviewMode))
+            {
+                var template = _productTemplateService == null ? null : await _productTemplateService.GetProductTemplateByIdAsync(product.ProductTemplateId);
+                model.InterviewMode = string.Equals(template?.ViewPath, AIInterviewDefaults.FixedQuestionProductTemplateViewPath, StringComparison.OrdinalIgnoreCase)
+                    ? AIInterviewDefaults.InterviewModeFixedQuestionBased
+                    : AIInterviewDefaults.InterviewModeAiResumeBased;
+            }
+
+            model.QuestionSetId = await _genericAttributeService.GetAttributeAsync<int>(product, AIInterviewDefaults.JobQuestionSetIdAttributeName);
+        }
+
         if (_jobRequirementService != null)
         {
             var requirements = await _jobRequirementService.GetRequirementsAsync(product);
             model.ResumeRequired = requirements?.ResumeRequired ?? false;
             model.InterviewRequired = requirements?.InterviewRequired ?? false;
+            model.QuestionCount = requirements?.QuestionCount ?? model.QuestionCount;
         }
+
+        model.QuestionSetWorkflow = AIInterviewDefaults.QuestionSetWorkflowExisting;
 
         await LoadVendorJobSpecificationSelectionsAsync(model, product.Id);
         await LoadJobSalaryAttributesAsync(product, model);
@@ -3379,8 +3553,28 @@ public class AIInterviewController : BasePluginController
         model.Sku = model.Sku?.Trim();
         model.ShortDescription = model.ShortDescription?.Trim();
         model.FullDescription = model.FullDescription?.Trim();
+        model.InterviewMode = model.InterviewMode?.Trim();
+        model.QuestionSetWorkflow = model.QuestionSetWorkflow?.Trim()?.ToLowerInvariant();
+        model.QuestionSetName = model.QuestionSetName?.Trim();
+        model.QuestionItems ??= new List<FixedQuestionItemModel>();
+        model.QuestionItems = model.QuestionItems
+            .Where(item => item != null)
+            .OrderBy(item => item.SequenceNumber > 0 ? item.SequenceNumber : int.MaxValue)
+            .ThenBy(item => item.Id)
+            .Select((item, index) => item with
+            {
+                SequenceNumber = index + 1,
+                QuestionText = item.QuestionText?.Trim(),
+                RubricHint = item.RubricHint?.Trim(),
+                ExpectedSignalNotes = item.ExpectedSignalNotes?.Trim()
+            })
+            .ToList();
+        model.InterviewRequired = true;
+        model.ResumeRequired = string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeAiResumeBased, StringComparison.Ordinal);
         model.MinimumScore = 0m;
-        model.QuestionCount = 3;
+        model.QuestionCount = string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeFixedQuestionBased, StringComparison.Ordinal)
+            ? Math.Clamp(model.QuestionItems.Count(item => item.IsActive && !string.IsNullOrWhiteSpace(item.QuestionText)), 1, 10)
+            : 3;
     }
 
     protected virtual async Task<string> GetEmployerChargeModeLabelAsync(bool isCompanySponsored)

@@ -56,7 +56,9 @@ public class AIInterviewAdminProductRequirementsViewComponent : NopViewComponent
             var productTemplate = await _productTemplateService.GetProductTemplateByIdAsync(model.ProductTemplateId);
             isJobTemplate = productTemplate != null &&
                 (string.Equals(productTemplate.ViewPath, AIInterviewDefaults.JobProductTemplateViewPath, StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(productTemplate.Name, AIInterviewDefaults.JobProductTemplateName, StringComparison.OrdinalIgnoreCase));
+                 string.Equals(productTemplate.Name, AIInterviewDefaults.JobProductTemplateName, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(productTemplate.ViewPath, AIInterviewDefaults.FixedQuestionProductTemplateViewPath, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(productTemplate.Name, AIInterviewDefaults.FixedQuestionProductTemplateName, StringComparison.OrdinalIgnoreCase));
 
             if (!isJobTemplate)
                 return Content(string.Empty);

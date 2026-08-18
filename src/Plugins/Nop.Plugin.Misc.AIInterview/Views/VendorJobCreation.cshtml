@@ -45,6 +45,8 @@
     }
 
     var salaryGroups = BuildSalaryGroups().ToList();
+    var questionSetsJson = System.Text.Json.JsonSerializer.Serialize(Model.AvailableQuestionSets,
+        new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
 }
 
 @section left
@@ -220,30 +222,18 @@
                         <section class="vendor-job-form-section">
                             <div class="vendor-job-form-section-heading">
                                 <h3 class="vendor-job-form-section-title">@interviewSettingsText</h3>
-                                <p class="vendor-job-form-section-copy">Keep the application gate, publish state, and interview requirements aligned before going live.</p>
+                                <p class="vendor-job-form-section-copy">Choose how interview questions are prepared and keep reusable employer question sets organized.</p>
                             </div>
-                            <div class="vendor-job-form-simple-grid vendor-job-form-interview-grid vendor-job-form-checkbox-list">
+                            <input asp-for="ResumeRequired" type="hidden" />
+                            <input asp-for="InterviewRequired" type="hidden" value="true" />
+                            <div class="vendor-job-form-simple-grid vendor-job-form-interview-grid">
                                 <div class="vendor-job-form-field">
-                                    <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.ResumeRequired)">
-                                        <input type="hidden" name="@Html.NameFor(model => model.ResumeRequired)" value="false" />
-                                        <input type="checkbox"
-                                               id="@Html.IdFor(model => model.ResumeRequired)"
-                                               name="@Html.NameFor(model => model.ResumeRequired)"
-                                               value="true"
-                                               checked="@(Model.ResumeRequired ? "checked" : null)" />
-                                        <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.ResumeRequired")</span>
-                                    </label>
-                                </div>
-                                <div class="vendor-job-form-field">
-                                    <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.InterviewRequired)">
-                                        <input type="hidden" name="@Html.NameFor(model => model.InterviewRequired)" value="false" />
-                                        <input type="checkbox"
-                                               id="@Html.IdFor(model => model.InterviewRequired)"
-                                               name="@Html.NameFor(model => model.InterviewRequired)"
-                                               value="true"
-                                               checked="@(Model.InterviewRequired ? "checked" : null)" />
-                                        <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired")</span>
-                                    </label>
+                                    <label asp-for="InterviewMode" asp-postfix=":"></label>
+                                    <select asp-for="InterviewMode" data-interview-mode="true">
+                                        <option value="@AIInterviewDefaults.InterviewModeAiResumeBased">@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewMode.AiResumeBased")</option>
+                                        <option value="@AIInterviewDefaults.InterviewModeFixedQuestionBased">@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewMode.FixedQuestionBased")</option>
+                                    </select>
+                                    <span asp-validation-for="InterviewMode"></span>
                                 </div>
                                 <div class="vendor-job-form-field">
                                     <label asp-for="ApplyUntilUtc" asp-postfix=":"></label>
@@ -263,6 +253,75 @@
                                     </label>
                                 </div>
                             </div>
+
+                            <div class="vendor-fixed-question-panel" data-fixed-question-panel="true" hidden>
+                                <div class="vendor-job-form-simple-grid">
+                                    <div class="vendor-job-form-field">
+                                        <label for="QuestionSetWorkflow">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.Action")</label>
+                                        <select asp-for="QuestionSetWorkflow" data-question-set-workflow="true">
+                                            <option value="@AIInterviewDefaults.QuestionSetWorkflowExisting">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.ChooseExisting")</option>
+                                            <option value="@AIInterviewDefaults.QuestionSetWorkflowCreate">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.CreateNew")</option>
+                                            <option value="@AIInterviewDefaults.QuestionSetWorkflowClone">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.CloneExisting")</option>
+                                        </select>
+                                        <span asp-validation-for="QuestionSetWorkflow"></span>
+                                    </div>
+                                    <div class="vendor-job-form-field" data-question-set-selector="true">
+                                        <label asp-for="QuestionSetId" asp-postfix=":"></label>
+                                        <select asp-for="QuestionSetId" data-question-set-id="true">
+                                            <option value="0">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.Select")</option>
+                                            @foreach (var set in Model.AvailableQuestionSets)
+                                            {
+                                                <option value="@set.Id">@set.Name</option>
+                                            }
+                                        </select>
+                                        <span asp-validation-for="QuestionSetId"></span>
+                                    </div>
+                                    <div class="vendor-job-form-field vendor-job-form-field-wide">
+                                        <label asp-for="QuestionSetName" asp-postfix=":"></label>
+                                        <input asp-for="QuestionSetName" data-question-set-name="true" maxlength="300" />
+                                        <span asp-validation-for="QuestionSetName"></span>
+                                    </div>
+                                </div>
+
+                                <div class="vendor-question-editor" data-question-editor="true">
+                                    <div class="vendor-question-editor-heading">
+                                        <div>
+                                            <h4>@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItems")</h4>
+                                            <p>@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItems.Hint")</p>
+                                        </div>
+                                        <button type="button" class="button-2" data-add-question="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Add")</button>
+                                    </div>
+                                    <div class="vendor-question-list" data-question-list="true">
+                                        @for (var index = 0; index < Model.QuestionItems.Count; index++)
+                                        {
+                                            var item = Model.QuestionItems[index];
+                                            <article class="vendor-question-item" draggable="true" data-question-item="true">
+                                                <input asp-for="QuestionItems[index].Id" type="hidden" data-item-id="true" />
+                                                <input asp-for="QuestionItems[index].SequenceNumber" type="hidden" data-sequence="true" />
+                                                <input asp-for="QuestionItems[index].IsActive" type="hidden" value="true" data-active="true" />
+                                                <div class="vendor-question-item-header">
+                                                    <button type="button" class="vendor-question-drag" data-drag-handle="true" aria-label="@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Move")">&#x2630;</button>
+                                                    <strong data-question-number="true">@(index + 1)</strong>
+                                                    <button type="button" class="vendor-question-remove" data-remove-question="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Remove")</button>
+                                                </div>
+                                                <label asp-for="QuestionItems[index].QuestionText">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Text")</label>
+                                                <textarea asp-for="QuestionItems[index].QuestionText" rows="3" maxlength="2000" data-question-text="true"></textarea>
+                                                <div class="vendor-question-notes-grid">
+                                                    <div>
+                                                        <label asp-for="QuestionItems[index].RubricHint">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.RubricHint")</label>
+                                                        <textarea asp-for="QuestionItems[index].RubricHint" rows="2" maxlength="2000" data-rubric-hint="true"></textarea>
+                                                    </div>
+                                                    <div>
+                                                        <label asp-for="QuestionItems[index].ExpectedSignalNotes">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.ExpectedSignals")</label>
+                                                        <textarea asp-for="QuestionItems[index].ExpectedSignalNotes" rows="2" maxlength="2000" data-expected-signals="true"></textarea>
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        }
+                                    </div>
+                                    <span asp-validation-for="QuestionItems"></span>
+                                </div>
+                            </div>
                         </section>
 
                         <div class="vendor-job-form-actions">
@@ -275,3 +334,121 @@
         </div>
     </div>
 </div>
+
+<script asp-location="Footer">
+    (() => {
+        const form = document.querySelector('.vendor-job-form-shell');
+        if (!form)
+            return;
+
+        const fixedMode = '@AIInterviewDefaults.InterviewModeFixedQuestionBased';
+        const createWorkflow = '@AIInterviewDefaults.QuestionSetWorkflowCreate';
+        const modeSelect = form.querySelector('[data-interview-mode="true"]');
+        const workflowSelect = form.querySelector('[data-question-set-workflow="true"]');
+        const setSelect = form.querySelector('[data-question-set-id="true"]');
+        const setSelector = form.querySelector('[data-question-set-selector="true"]');
+        const setName = form.querySelector('[data-question-set-name="true"]');
+        const panel = form.querySelector('[data-fixed-question-panel="true"]');
+        const list = form.querySelector('[data-question-list="true"]');
+        const questionSets = @Html.Raw(questionSetsJson);
+        let draggedItem = null;
+
+        const escapeValue = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+        const questionMarkup = (item = {}) => `
+            <article class="vendor-question-item" draggable="true" data-question-item="true">
+                <input type="hidden" value="${escapeValue(item.id || 0)}" data-item-id="true" />
+                <input type="hidden" value="${escapeValue(item.sequenceNumber || 0)}" data-sequence="true" />
+                <input type="hidden" value="true" data-active="true" />
+                <div class="vendor-question-item-header">
+                    <button type="button" class="vendor-question-drag" data-drag-handle="true" aria-label="@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Move")">&#x2630;</button>
+                    <strong data-question-number="true"></strong>
+                    <button type="button" class="vendor-question-remove" data-remove-question="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Remove")</button>
+                </div>
+                <label>@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Text")</label>
+                <textarea rows="3" maxlength="2000" data-question-text="true">${escapeValue(item.questionText)}</textarea>
+                <div class="vendor-question-notes-grid">
+                    <div><label>@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.RubricHint")</label><textarea rows="2" maxlength="2000" data-rubric-hint="true">${escapeValue(item.rubricHint)}</textarea></div>
+                    <div><label>@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.ExpectedSignals")</label><textarea rows="2" maxlength="2000" data-expected-signals="true">${escapeValue(item.expectedSignalNotes)}</textarea></div>
+                </div>
+            </article>`;
+
+        const normalize = () => {
+            [...list.querySelectorAll('[data-question-item="true"]')].forEach((item, index) => {
+                const prefix = `QuestionItems[${index}]`;
+                item.querySelector('[data-question-number="true"]').textContent = `${index + 1}.`;
+                item.querySelector('[data-item-id="true"]').name = `${prefix}.Id`;
+                item.querySelector('[data-sequence="true"]').name = `${prefix}.SequenceNumber`;
+                item.querySelector('[data-sequence="true"]').value = index + 1;
+                item.querySelector('[data-active="true"]').name = `${prefix}.IsActive`;
+                item.querySelector('[data-question-text="true"]').name = `${prefix}.QuestionText`;
+                item.querySelector('[data-rubric-hint="true"]').name = `${prefix}.RubricHint`;
+                item.querySelector('[data-expected-signals="true"]').name = `${prefix}.ExpectedSignalNotes`;
+            });
+        };
+
+        const loadSet = () => {
+            const selected = questionSets.find(set => String(set.id) === setSelect.value);
+            if (!selected)
+                return;
+            setName.value = selected.name || '';
+            list.innerHTML = (selected.items || []).map(questionMarkup).join('');
+            normalize();
+        };
+
+        const updateWorkflow = () => {
+            const creating = workflowSelect.value === createWorkflow;
+            setSelector.hidden = creating;
+            setSelect.disabled = creating;
+            if (creating && !list.querySelector('[data-question-item="true"]')) {
+                setName.value = '';
+                list.insertAdjacentHTML('beforeend', questionMarkup());
+            }
+            else if (!creating && setSelect.value !== '0')
+                loadSet();
+            normalize();
+        };
+
+        const updateMode = () => {
+            const fixed = modeSelect.value === fixedMode;
+            panel.hidden = !fixed;
+            panel.querySelectorAll('input, select, textarea, button').forEach(control => control.disabled = !fixed);
+            form.querySelector('[name="ResumeRequired"]').value = fixed ? 'false' : 'true';
+            if (fixed)
+                updateWorkflow();
+        };
+
+        form.querySelector('[data-add-question="true"]').addEventListener('click', () => {
+            if (list.querySelectorAll('[data-question-item="true"]').length >= 10)
+                return;
+            list.insertAdjacentHTML('beforeend', questionMarkup());
+            normalize();
+        });
+        list.addEventListener('click', event => {
+            if (!event.target.closest('[data-remove-question="true"]'))
+                return;
+            event.target.closest('[data-question-item="true"]').remove();
+            normalize();
+        });
+        list.addEventListener('dragstart', event => {
+            draggedItem = event.target.closest('[data-question-item="true"]');
+            if (draggedItem)
+                event.dataTransfer.effectAllowed = 'move';
+        });
+        list.addEventListener('dragover', event => {
+            const target = event.target.closest('[data-question-item="true"]');
+            if (!draggedItem || !target || target === draggedItem)
+                return;
+            event.preventDefault();
+            const bounds = target.getBoundingClientRect();
+            target.parentNode.insertBefore(draggedItem, event.clientY < bounds.top + bounds.height / 2 ? target : target.nextSibling);
+        });
+        list.addEventListener('drop', event => { event.preventDefault(); normalize(); });
+        list.addEventListener('dragend', () => { draggedItem = null; normalize(); });
+        setSelect.addEventListener('change', loadSet);
+        workflowSelect.addEventListener('change', updateWorkflow);
+        modeSelect.addEventListener('change', updateMode);
+        form.addEventListener('submit', normalize);
+        updateMode();
+        normalize();
+    })();
+</script>

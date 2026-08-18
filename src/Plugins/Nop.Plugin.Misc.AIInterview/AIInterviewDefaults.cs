@@ -124,6 +124,10 @@ public static class AIInterviewDefaults
 
     public static string JobProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.JobDetails.cshtml";
 
+    public static string FixedQuestionProductTemplateName => "AI Interview Fixed Question Job Details";
+
+    public static string FixedQuestionProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.FixedQuestionJobDetails.cshtml";
+
     public static string MockPracticeProductTemplateName => "AI Interview Practice";
 
     public static string MockPracticeProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.MockPractice.cshtml";
@@ -131,6 +135,16 @@ public static class AIInterviewDefaults
     public static string InterviewTypeJob => "Job";
 
     public static string InterviewTypeMockPractice => "MockPractice";
+
+    public const string InterviewModeAiResumeBased = "AIResumeBased";
+
+    public const string InterviewModeFixedQuestionBased = "FixedQuestionBased";
+
+    public const string QuestionSetWorkflowExisting = "existing";
+
+    public const string QuestionSetWorkflowCreate = "create";
+
+    public const string QuestionSetWorkflowClone = "clone";
 
     public static string PricingCategoryTemplateName => "Pricing Category";
 
@@ -140,6 +154,8 @@ public static class AIInterviewDefaults
     public static string JobInterviewRequiredAttributeName => "AIInterview.Job.InterviewRequired";
     public static string JobMinimumScoreAttributeName => "AIInterview.Job.MinimumScore";
     public static string JobQuestionCountAttributeName => "AIInterview.Job.QuestionCount";
+    public static string JobInterviewModeAttributeName => "AIInterview.Job.InterviewMode";
+    public static string JobQuestionSetIdAttributeName => "AIInterview.Job.QuestionSetId";
     public static string JobSalaryMinCtcPaAttributeName => "AIInterview.Job.SalaryMinCtcPa";
     public static string JobSalaryMaxCtcPaAttributeName => "AIInterview.Job.SalaryMaxCtcPa";
     public static string JobSalaryCurrencyCodeAttributeName => "AIInterview.Job.SalaryCurrencyCode";

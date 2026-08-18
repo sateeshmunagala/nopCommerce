@@ -1197,6 +1197,105 @@ body.html-aiinterview-vendor-job-creation-page {
     font-size: 0.85rem;
 }
 
+.vendor-fixed-question-panel {
+    margin-top: 22px;
+    padding: 20px;
+    border: 1px solid #dbe3ee;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.vendor-question-editor {
+    margin-top: 20px;
+}
+
+.vendor-question-editor-heading,
+.vendor-question-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.vendor-question-editor-heading h4,
+.vendor-question-editor-heading p {
+    margin: 0;
+}
+
+.vendor-question-editor-heading p {
+    margin-top: 4px;
+    color: #64748b;
+}
+
+.vendor-question-list {
+    display: grid;
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.vendor-question-item {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid #dbe3ee;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.vendor-question-item textarea {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-height: 86px;
+    resize: vertical;
+    overflow-wrap: anywhere;
+}
+
+.vendor-question-item-header {
+    justify-content: flex-start;
+    margin-bottom: 12px;
+}
+
+.vendor-question-drag,
+.vendor-question-remove {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.vendor-question-drag {
+    padding: 6px 8px;
+    color: #475569;
+    font-size: 18px;
+    touch-action: none;
+}
+
+.vendor-question-remove {
+    margin-left: auto;
+    color: #b42318;
+}
+
+.vendor-question-notes-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 12px;
+}
+
+@media (max-width: 767px) {
+    .vendor-fixed-question-panel {
+        padding: 14px;
+    }
+
+    .vendor-question-editor-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .vendor-question-notes-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .ai-report-share-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 380px;

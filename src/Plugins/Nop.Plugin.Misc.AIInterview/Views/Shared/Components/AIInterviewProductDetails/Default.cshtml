@@ -6,6 +6,7 @@
     bool isAuthenticated = ViewBag.IsAuthenticated != null && (bool)ViewBag.IsAuthenticated;
     bool alreadyApplied = ViewBag.AlreadyApplied != null && (bool)ViewBag.AlreadyApplied;
     bool resumeRequired = ViewBag.ResumeRequired != null && (bool)ViewBag.ResumeRequired;
+    bool isLaunchOnly = ViewBag.IsLaunchOnly != null && (bool)ViewBag.IsLaunchOnly;
     int productId = ViewBag.ProductId != null ? (int)ViewBag.ProductId : 0;
     string sponsorToken = ViewBag.SponsorToken as string;
     string creditPurchasePageUrl = ViewBag.CreditPurchasePageUrl as string ?? "/pricing";
@@ -61,44 +62,54 @@
         }
 
         <div class="job-ai-card">
-            <h3>@T("Plugins.Misc.AIInterview.Apply.Title")</h3>
+            <h3>@(isLaunchOnly ? T("Plugins.Misc.AIInterview.Interview.Title") : T("Plugins.Misc.AIInterview.Apply.Title"))</h3>
             <div id="@applyPanelId">
                 <input type="hidden" name="ProductId" value="@productId" />
                 <input type="hidden" name="JobTitle" value="@Model.Name" />
                 @if (isAuthenticated)
                 {
-                    @if (resumeRequired)
+                    @if (!isLaunchOnly && resumeRequired)
                     {
                         <p class="job-ai-note job-ai-note-required">@T("Plugins.Misc.AIInterview.Apply.ResumeRequired")</p>
                     }
-                    <label for="@resumeInputId">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
-                    <input id="@resumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
-                    @if (availableResumes.Any())
+                    @if (!isLaunchOnly)
                     {
-                        <label for="@existingResumeSelectId">@T("Plugins.Misc.AIInterview.Apply.PreviousResume")</label>
-                        <select id="@existingResumeSelectId" name="SelectedResumeDownloadId">
-                            <option value="0">@T("Plugins.Misc.AIInterview.Apply.PreviousResume.Placeholder")</option>
-                            @foreach (var option in availableResumes)
-                            {
-                                <option value="@option.Value">@option.Text</option>
-                            }
-                        </select>
+                        <label for="@resumeInputId">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
+                        <input id="@resumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                        @if (availableResumes.Any())
+                        {
+                            <label for="@existingResumeSelectId">@T("Plugins.Misc.AIInterview.Apply.PreviousResume")</label>
+                            <select id="@existingResumeSelectId" name="SelectedResumeDownloadId">
+                                <option value="0">@T("Plugins.Misc.AIInterview.Apply.PreviousResume.Placeholder")</option>
+                                @foreach (var option in availableResumes)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
+                        }
+                        <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
                     }
-                    <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
+                    else
+                    {
+                        <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Interview.LaunchReady")</p>
+                    }
                 }
                 else
                 {
                     <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
                 }
                 <div class="job-ai-actions">
+                    @if (!isLaunchOnly)
+                    {
+                        <button type="button"
+                                class="job-ai-action job-ai-action-primary apply-btn"
+                                id="@applyButtonId"
+                                data-job-ai-action="apply"
+                                title="@T("Plugins.Misc.AIInterview.Index.ApplyNow")"
+                                @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                    }
                     <button type="button"
-                            class="job-ai-action job-ai-action-primary apply-btn"
-                            id="@applyButtonId"
-                            data-job-ai-action="apply"
-                            title="@T("Plugins.Misc.AIInterview.Index.ApplyNow")"
-                            @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
-                    <button type="button"
-                            class="job-ai-action job-ai-action-secondary start-interview-btn"
+                            class="job-ai-action @(isLaunchOnly ? "job-ai-action-primary" : "job-ai-action-secondary") start-interview-btn"
                             id="@startButtonId"
                             data-job-ai-action="start"
                             title="@T("Plugins.Misc.AIInterview.Index.StartInterview")"

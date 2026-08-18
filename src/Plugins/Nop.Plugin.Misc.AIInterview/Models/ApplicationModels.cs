@@ -231,6 +231,21 @@ public record VendorJobModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.QuestionCount")]
     public int QuestionCount { get; set; } = 3;
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.InterviewMode")]
+    public string InterviewMode { get; set; } = AIInterviewDefaults.InterviewModeAiResumeBased;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet")]
+    public int QuestionSetId { get; set; }
+
+    public string QuestionSetWorkflow { get; set; } = AIInterviewDefaults.QuestionSetWorkflowExisting;
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSetName")]
+    public string QuestionSetName { get; set; }
+
+    public IList<FixedQuestionItemModel> QuestionItems { get; set; } = new List<FixedQuestionItemModel>();
+
+    public IList<FixedQuestionSetModel> AvailableQuestionSets { get; set; } = new List<FixedQuestionSetModel>();
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.ExperienceLevel")]
     public int? ExperienceLevelOptionId { get; set; }
 
@@ -264,6 +279,22 @@ public record VendorJobModel : BaseNopModel
     public IList<SelectListItem> AvailableEmploymentTypes { get; set; } = new List<SelectListItem>();
 
     public IList<SelectListItem> AvailableJobLocations { get; set; } = new List<SelectListItem>();
+}
+
+public record FixedQuestionSetModel : BaseNopEntityModel
+{
+    public string Name { get; set; }
+    public bool IsActive { get; set; }
+    public IList<FixedQuestionItemModel> Items { get; set; } = new List<FixedQuestionItemModel>();
+}
+
+public record FixedQuestionItemModel : BaseNopEntityModel
+{
+    public int SequenceNumber { get; set; }
+    public string QuestionText { get; set; }
+    public string RubricHint { get; set; }
+    public string ExpectedSignalNotes { get; set; }
+    public bool IsActive { get; set; } = true;
 }
 
 public record RuntimeErrorModel : BaseNopModel

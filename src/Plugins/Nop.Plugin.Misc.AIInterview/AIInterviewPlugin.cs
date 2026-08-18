@@ -351,6 +351,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         await _settingService.SaveSettingAsync(settings);
         await EnsureJobProductTemplateAsync();
+        await EnsureFixedQuestionProductTemplateAsync();
         await EnsureMockPracticeProductTemplateAsync();
         await EnsurePricingCategoryTemplateAsync();
         await EnsureWidgetActiveAsync();
@@ -996,8 +997,76 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Title"] = "Create a Job",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.EditTitle"] = "Edit Job",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.BackToJobs"] = "Back to Jobs",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ViewJob"] = "View Job"
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ViewJob"] = "View Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.InterviewMode"] = "Interview mode",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.InterviewMode.AiResumeBased"] = "AI Resume-Based",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.InterviewMode.FixedQuestionBased"] = "Fixed-Question Based",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.InterviewMode.Invalid"] = "Select a valid interview mode.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ResumeRequired.AiMode"] = "AI Resume-Based interviews require the applicant resume flow.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSet"] = "Question set",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSet.Action"] = "Question set action",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSet.ChooseExisting"] = "Choose existing",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSet.CreateNew"] = "Create new",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSet.CloneExisting"] = "Clone existing",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSet.Select"] = "Select a question set",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSet.Required"] = "Select a question set owned by your employer account.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSet.Invalid"] = "The question set could not be saved. Review the set and try again.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSet.Unavailable"] = "Question set management is temporarily unavailable.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSet.Workflow.Invalid"] = "Select a valid question set action.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSetName"] = "Question set name",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSetName.Required"] = "Question set name is required.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems"] = "Questions",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.Hint"] = "Drag questions into the required order. Sequence values are normalized when the job is saved.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.Required"] = "Add at least one active question.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.Range"] = "A question set can contain up to 10 active questions.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.Add"] = "Add question",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.Remove"] = "Remove",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.Move"] = "Move question",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.Text"] = "Question text",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.RubricHint"] = "Rubric hint (optional)",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.ExpectedSignals"] = "Expected-signal notes (optional)",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.LaunchReady"] = "You can apply or start the interview when ready."
         };
+    }
+
+    protected async Task EnsureFixedQuestionProductTemplateAsync()
+    {
+        if (_productTemplateService == null)
+            return;
+
+        var templates = await _productTemplateService.GetAllProductTemplatesAsync();
+        var template = templates.FirstOrDefault(item =>
+            string.Equals(item.ViewPath, AIInterviewDefaults.FixedQuestionProductTemplateViewPath, StringComparison.OrdinalIgnoreCase)) ??
+            templates.FirstOrDefault(item =>
+                string.Equals(item.Name, AIInterviewDefaults.FixedQuestionProductTemplateName, StringComparison.OrdinalIgnoreCase));
+
+        if (template == null)
+        {
+            await _productTemplateService.InsertProductTemplateAsync(new ProductTemplate
+            {
+                Name = AIInterviewDefaults.FixedQuestionProductTemplateName,
+                ViewPath = AIInterviewDefaults.FixedQuestionProductTemplateViewPath,
+                DisplayOrder = 21,
+                IgnoredProductTypes = ((int)ProductType.GroupedProduct).ToString()
+            });
+            return;
+        }
+
+        var changed = false;
+        if (!string.Equals(template.Name, AIInterviewDefaults.FixedQuestionProductTemplateName, StringComparison.Ordinal))
+        {
+            template.Name = AIInterviewDefaults.FixedQuestionProductTemplateName;
+            changed = true;
+        }
+
+        if (!string.Equals(template.ViewPath, AIInterviewDefaults.FixedQuestionProductTemplateViewPath, StringComparison.Ordinal))
+        {
+            template.ViewPath = AIInterviewDefaults.FixedQuestionProductTemplateViewPath;
+            changed = true;
+        }
+
+        if (changed)
+            await _productTemplateService.UpdateProductTemplateAsync(template);
     }
 
     protected static Dictionary<string, string> GetMyActivityCreditLocaleResources()
@@ -1491,6 +1560,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _settingService.SaveSettingAsync(mockSettings);
 
         await EnsureJobProductTemplateAsync();
+        await EnsureFixedQuestionProductTemplateAsync();
         await EnsureMockPracticeProductTemplateAsync();
         await EnsurePricingCategoryTemplateAsync();
         await EnsureWidgetActiveAsync();
