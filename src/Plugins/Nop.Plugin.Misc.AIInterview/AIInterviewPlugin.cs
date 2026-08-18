@@ -1016,16 +1016,18 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSetName"] = "Question set name",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionSetName.Required"] = "Question set name is required.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems"] = "Questions",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.Hint"] = "Drag questions into the required order. Sequence values are normalized when the job is saved.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.Required"] = "Add at least one active question.",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.Range"] = "A question set can contain up to 10 active questions.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.Hint"] = "Create or clone a set with exactly 5 or 10 active questions. Drag questions into the required order.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.Required"] = "Add exactly 5 or 10 active questions.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.Range"] = "A question set must contain exactly 5 or 10 active questions.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.Count"] = "Fixed question sets must contain exactly 5 or 10 active questions.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItems.ExistingReadOnly"] = "Existing reusable sets are linked without changes. Choose Clone existing to edit a private copy.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.Add"] = "Add question",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.Remove"] = "Remove",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.Move"] = "Move question",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.Text"] = "Question text",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.RubricHint"] = "Rubric hint (optional)",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionItem.ExpectedSignals"] = "Expected-signal notes (optional)",
-            [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.LaunchReady"] = "You can apply or start the interview when ready."
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Interview.LaunchReady"] = "You can start the interview when ready."
         };
     }
 

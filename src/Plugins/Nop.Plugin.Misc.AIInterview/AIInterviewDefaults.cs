@@ -146,6 +146,13 @@ public static class AIInterviewDefaults
 
     public const string QuestionSetWorkflowClone = "clone";
 
+    public const int FixedQuestionCountStandard = 5;
+
+    public const int FixedQuestionCountExtended = 10;
+
+    public static bool IsSupportedFixedQuestionCount(int questionCount) =>
+        questionCount is FixedQuestionCountStandard or FixedQuestionCountExtended;
+
     public static string PricingCategoryTemplateName => "Pricing Category";
 
     public static string PricingCategoryTemplateViewPath => "CategoryTemplate.Pricing";

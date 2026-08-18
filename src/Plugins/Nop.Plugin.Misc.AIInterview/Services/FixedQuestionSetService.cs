@@ -5,7 +5,6 @@ namespace Nop.Plugin.Misc.AIInterview.Services;
 
 public class FixedQuestionSetService : IFixedQuestionSetService
 {
-    private const int MaxQuestionCount = 10;
     private readonly IRepository<FixedQuestionSet> _questionSetRepository;
     private readonly IRepository<FixedQuestionSetItem> _questionItemRepository;
     private readonly INopDataProvider _dataProvider;
@@ -118,6 +117,7 @@ public class FixedQuestionSetService : IFixedQuestionSetService
         var set = await GetAuthorizedSetAsync(vendorId, questionSetId)
             ?? throw new InvalidOperationException("Question set was not found for this vendor.");
         var items = await GetAuthorizedItemsAsync(vendorId, set.Id, true);
+        EnsureSupportedQuestionCount(items.Count(item => item.IsActive && !string.IsNullOrWhiteSpace(item.QuestionText)));
         if (itemSequences == null || itemSequences.Count != items.Count ||
             items.Any(item => !itemSequences.ContainsKey(item.Id)))
         {
@@ -167,11 +167,14 @@ public class FixedQuestionSetService : IFixedQuestionSetService
 
     protected virtual IList<FixedQuestionSetItem> NormalizeItems(IEnumerable<FixedQuestionSetItem> items)
     {
-        var normalized = (items ?? Enumerable.Empty<FixedQuestionSetItem>())
+        var activeItems = (items ?? Enumerable.Empty<FixedQuestionSetItem>())
             .Where(item => item != null && item.IsActive && !string.IsNullOrWhiteSpace(item.QuestionText))
             .OrderBy(item => item.SequenceNumber > 0 ? item.SequenceNumber : int.MaxValue)
             .ThenBy(item => item.Id)
-            .Take(MaxQuestionCount)
+            .ToList();
+        EnsureSupportedQuestionCount(activeItems.Count);
+
+        return activeItems
             .Select((item, index) => new FixedQuestionSetItem
             {
                 SequenceNumber = index + 1,
@@ -181,11 +184,6 @@ public class FixedQuestionSetService : IFixedQuestionSetService
                 IsActive = true
             })
             .ToList();
-
-        if (!normalized.Any())
-            throw new ArgumentException("At least one active question is required.", nameof(items));
-
-        return normalized;
     }
 
     protected virtual string NormalizeName(string name)
@@ -200,6 +198,12 @@ public class FixedQuestionSetService : IFixedQuestionSetService
     {
         if (vendorId <= 0)
             throw new ArgumentOutOfRangeException(nameof(vendorId));
+    }
+
+    protected static void EnsureSupportedQuestionCount(int questionCount)
+    {
+        if (!AIInterviewDefaults.IsSupportedFixedQuestionCount(questionCount))
+            throw new ArgumentException("Fixed question sets must contain exactly five or ten active questions.");
     }
 
     protected static string Truncate(string value, int maxLength)

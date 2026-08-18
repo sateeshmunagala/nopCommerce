@@ -60,7 +60,7 @@ public class JobRequirementService : IJobRequirementService
         var storedQuestionCount = await _genericAttributeService.GetAttributeAsync<int>(product, AIInterviewDefaults.JobQuestionCountAttributeName, defaultValue: DefaultQuestionCount);
         var interviewMode = await _genericAttributeService.GetAttributeAsync<string>(product, AIInterviewDefaults.JobInterviewModeAttributeName);
         model.QuestionCount = string.Equals(interviewMode, AIInterviewDefaults.InterviewModeFixedQuestionBased, StringComparison.Ordinal)
-            ? Math.Clamp(storedQuestionCount <= 0 ? 1 : storedQuestionCount, 1, MaxQuestionCount)
+            ? (storedQuestionCount > 0 ? storedQuestionCount : DefaultQuestionCount)
             : NormalizeQuestionCount(storedQuestionCount);
 
         return model;
@@ -83,7 +83,11 @@ public class JobRequirementService : IJobRequirementService
         await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobResumeRequiredAttributeName, resumeRequired);
         await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobInterviewRequiredAttributeName, interviewRequired);
         await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobMinimumScoreAttributeName, minimumScore);
-        await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobQuestionCountAttributeName, NormalizeQuestionCount(questionCount));
+        var interviewMode = await _genericAttributeService.GetAttributeAsync<string>(product, AIInterviewDefaults.JobInterviewModeAttributeName);
+        var normalizedQuestionCount = string.Equals(interviewMode, AIInterviewDefaults.InterviewModeFixedQuestionBased, StringComparison.Ordinal)
+            ? NormalizeFixedQuestionCount(questionCount)
+            : NormalizeQuestionCount(questionCount);
+        await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobQuestionCountAttributeName, normalizedQuestionCount);
     }
 
     public async Task SaveRequirementsAsync(int productId, bool resumeRequired, bool interviewRequired, decimal minimumScore = 0, int questionCount = DefaultQuestionCount)
@@ -101,5 +105,13 @@ public class JobRequirementService : IJobRequirementService
     protected virtual int NormalizeQuestionCount(int questionCount)
     {
         return Math.Clamp(questionCount <= 0 ? DefaultQuestionCount : questionCount, MinQuestionCount, MaxQuestionCount);
+    }
+
+    protected virtual int NormalizeFixedQuestionCount(int questionCount)
+    {
+        if (!AIInterviewDefaults.IsSupportedFixedQuestionCount(questionCount))
+            throw new ArgumentOutOfRangeException(nameof(questionCount), "Fixed question count must be exactly five or ten.");
+
+        return questionCount;
     }
 }

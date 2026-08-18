@@ -291,6 +291,9 @@
                                         </div>
                                         <button type="button" class="button-2" data-add-question="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Add")</button>
                                     </div>
+                                    <p class="vendor-question-readonly-note" data-existing-set-note="true" hidden>
+                                        @T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItems.ExistingReadOnly")
+                                    </p>
                                     <div class="vendor-question-list" data-question-list="true">
                                         @for (var index = 0; index < Model.QuestionItems.Count; index++)
                                         {
@@ -304,15 +307,15 @@
                                                     <strong data-question-number="true">@(index + 1)</strong>
                                                     <button type="button" class="vendor-question-remove" data-remove-question="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Remove")</button>
                                                 </div>
-                                                <label asp-for="QuestionItems[index].QuestionText">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Text")</label>
+                                                <label asp-for="QuestionItems[index].QuestionText" data-question-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Text")</label>
                                                 <textarea asp-for="QuestionItems[index].QuestionText" rows="3" maxlength="2000" data-question-text="true"></textarea>
                                                 <div class="vendor-question-notes-grid">
                                                     <div>
-                                                        <label asp-for="QuestionItems[index].RubricHint">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.RubricHint")</label>
+                                                        <label asp-for="QuestionItems[index].RubricHint" data-rubric-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.RubricHint")</label>
                                                         <textarea asp-for="QuestionItems[index].RubricHint" rows="2" maxlength="2000" data-rubric-hint="true"></textarea>
                                                     </div>
                                                     <div>
-                                                        <label asp-for="QuestionItems[index].ExpectedSignalNotes">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.ExpectedSignals")</label>
+                                                        <label asp-for="QuestionItems[index].ExpectedSignalNotes" data-signals-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.ExpectedSignals")</label>
                                                         <textarea asp-for="QuestionItems[index].ExpectedSignalNotes" rows="2" maxlength="2000" data-expected-signals="true"></textarea>
                                                     </div>
                                                 </div>
@@ -342,6 +345,7 @@
             return;
 
         const fixedMode = '@AIInterviewDefaults.InterviewModeFixedQuestionBased';
+        const existingWorkflow = '@AIInterviewDefaults.QuestionSetWorkflowExisting';
         const createWorkflow = '@AIInterviewDefaults.QuestionSetWorkflowCreate';
         const modeSelect = form.querySelector('[data-interview-mode="true"]');
         const workflowSelect = form.querySelector('[data-question-set-workflow="true"]');
@@ -349,7 +353,10 @@
         const setSelector = form.querySelector('[data-question-set-selector="true"]');
         const setName = form.querySelector('[data-question-set-name="true"]');
         const panel = form.querySelector('[data-fixed-question-panel="true"]');
+        const editor = form.querySelector('[data-question-editor="true"]');
         const list = form.querySelector('[data-question-list="true"]');
+        const addQuestionButton = form.querySelector('[data-add-question="true"]');
+        const existingSetNote = form.querySelector('[data-existing-set-note="true"]');
         const questionSets = @Html.Raw(questionSetsJson);
         let draggedItem = null;
 
@@ -364,11 +371,11 @@
                     <strong data-question-number="true"></strong>
                     <button type="button" class="vendor-question-remove" data-remove-question="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Remove")</button>
                 </div>
-                <label>@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Text")</label>
+                <label data-question-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Text")</label>
                 <textarea rows="3" maxlength="2000" data-question-text="true">${escapeValue(item.questionText)}</textarea>
                 <div class="vendor-question-notes-grid">
-                    <div><label>@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.RubricHint")</label><textarea rows="2" maxlength="2000" data-rubric-hint="true">${escapeValue(item.rubricHint)}</textarea></div>
-                    <div><label>@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.ExpectedSignals")</label><textarea rows="2" maxlength="2000" data-expected-signals="true">${escapeValue(item.expectedSignalNotes)}</textarea></div>
+                    <div><label data-rubric-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.RubricHint")</label><textarea rows="2" maxlength="2000" data-rubric-hint="true">${escapeValue(item.rubricHint)}</textarea></div>
+                    <div><label data-signals-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.ExpectedSignals")</label><textarea rows="2" maxlength="2000" data-expected-signals="true">${escapeValue(item.expectedSignalNotes)}</textarea></div>
                 </div>
             </article>`;
 
@@ -380,9 +387,18 @@
                 item.querySelector('[data-sequence="true"]').name = `${prefix}.SequenceNumber`;
                 item.querySelector('[data-sequence="true"]').value = index + 1;
                 item.querySelector('[data-active="true"]').name = `${prefix}.IsActive`;
-                item.querySelector('[data-question-text="true"]').name = `${prefix}.QuestionText`;
-                item.querySelector('[data-rubric-hint="true"]').name = `${prefix}.RubricHint`;
-                item.querySelector('[data-expected-signals="true"]').name = `${prefix}.ExpectedSignalNotes`;
+                const questionText = item.querySelector('[data-question-text="true"]');
+                const rubricHint = item.querySelector('[data-rubric-hint="true"]');
+                const expectedSignals = item.querySelector('[data-expected-signals="true"]');
+                questionText.name = `${prefix}.QuestionText`;
+                questionText.id = `fixed-question-${index}-text`;
+                item.querySelector('[data-question-label="true"]').htmlFor = questionText.id;
+                rubricHint.name = `${prefix}.RubricHint`;
+                rubricHint.id = `fixed-question-${index}-rubric`;
+                item.querySelector('[data-rubric-label="true"]').htmlFor = rubricHint.id;
+                expectedSignals.name = `${prefix}.ExpectedSignalNotes`;
+                expectedSignals.id = `fixed-question-${index}-signals`;
+                item.querySelector('[data-signals-label="true"]').htmlFor = expectedSignals.id;
             });
         };
 
@@ -390,22 +406,47 @@
             const selected = questionSets.find(set => String(set.id) === setSelect.value);
             if (!selected)
                 return;
-            setName.value = selected.name || '';
+            setName.value = workflowSelect.value === existingWorkflow
+                ? selected.name || ''
+                : `${selected.name || ''} - Copy`;
             list.innerHTML = (selected.items || []).map(questionMarkup).join('');
             normalize();
         };
 
-        const updateWorkflow = () => {
+        const updateEditorState = () => {
+            const editable = workflowSelect.value !== existingWorkflow;
+            setName.disabled = !editable;
+            addQuestionButton.disabled = !editable;
+            existingSetNote.hidden = editable;
+            editor.classList.toggle('is-readonly', !editable);
+            list.querySelectorAll('[data-question-item="true"]').forEach(item => {
+                item.draggable = editable;
+                item.setAttribute('aria-disabled', String(!editable));
+                item.querySelectorAll('input, textarea, button').forEach(control => control.disabled = !editable);
+            });
+        };
+
+        const addInitialQuestions = () => {
+            for (let index = 0; index < @AIInterviewDefaults.FixedQuestionCountStandard; index++)
+                list.insertAdjacentHTML('beforeend', questionMarkup());
+        };
+
+        const updateWorkflow = (resetCreate = false) => {
             const creating = workflowSelect.value === createWorkflow;
             setSelector.hidden = creating;
             setSelect.disabled = creating;
-            if (creating && !list.querySelector('[data-question-item="true"]')) {
-                setName.value = '';
-                list.insertAdjacentHTML('beforeend', questionMarkup());
+            if (creating) {
+                if (resetCreate) {
+                    setName.value = '';
+                    list.innerHTML = '';
+                }
+                if (!list.querySelector('[data-question-item="true"]'))
+                    addInitialQuestions();
             }
             else if (!creating && setSelect.value !== '0')
                 loadSet();
             normalize();
+            updateEditorState();
         };
 
         const updateMode = () => {
@@ -417,22 +458,25 @@
                 updateWorkflow();
         };
 
-        form.querySelector('[data-add-question="true"]').addEventListener('click', () => {
-            if (list.querySelectorAll('[data-question-item="true"]').length >= 10)
+        addQuestionButton.addEventListener('click', () => {
+            if (addQuestionButton.disabled || list.querySelectorAll('[data-question-item="true"]').length >= @AIInterviewDefaults.FixedQuestionCountExtended)
                 return;
             list.insertAdjacentHTML('beforeend', questionMarkup());
             normalize();
         });
         list.addEventListener('click', event => {
-            if (!event.target.closest('[data-remove-question="true"]'))
+            const removeButton = event.target.closest('[data-remove-question="true"]');
+            if (!removeButton || removeButton.disabled)
                 return;
             event.target.closest('[data-question-item="true"]').remove();
             normalize();
         });
         list.addEventListener('dragstart', event => {
             draggedItem = event.target.closest('[data-question-item="true"]');
-            if (draggedItem)
+            if (draggedItem?.draggable)
                 event.dataTransfer.effectAllowed = 'move';
+            else
+                draggedItem = null;
         });
         list.addEventListener('dragover', event => {
             const target = event.target.closest('[data-question-item="true"]');
@@ -444,8 +488,8 @@
         });
         list.addEventListener('drop', event => { event.preventDefault(); normalize(); });
         list.addEventListener('dragend', () => { draggedItem = null; normalize(); });
-        setSelect.addEventListener('change', loadSet);
-        workflowSelect.addEventListener('change', updateWorkflow);
+        setSelect.addEventListener('change', () => { loadSet(); updateEditorState(); });
+        workflowSelect.addEventListener('change', () => updateWorkflow(true));
         modeSelect.addEventListener('change', updateMode);
         form.addEventListener('submit', normalize);
         updateMode();

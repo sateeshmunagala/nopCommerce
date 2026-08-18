@@ -4155,7 +4155,25 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         if (session.StartedOnUtc.HasValue && turns?.Any() == true)
         {
             var snapshotTurns = turns.OrderBy(turn => turn.SequenceNumber).ThenBy(turn => turn.Id).ToList();
-            return (true, snapshotTurns, ValidatePersistedQuestionPlan(snapshotTurns, GetMaxQuestions(session)));
+            var snapshotQuestionCount = snapshotTurns
+                .Where(turn => turn.SequenceNumber > 0 && !string.IsNullOrWhiteSpace(turn.QuestionText))
+                .Select(turn => turn.SequenceNumber)
+                .Distinct()
+                .Count();
+            if (!AIInterviewDefaults.IsSupportedFixedQuestionCount(snapshotQuestionCount))
+            {
+                return (true, snapshotTurns, await GetLocalizedTextAsync(
+                    "Plugins.Misc.AIInterview.VendorJobCreation.QuestionItems.Count",
+                    "Fixed question sets must contain exactly five or ten active questions."));
+            }
+
+            if (session.QuestionCount != snapshotQuestionCount)
+            {
+                session.QuestionCount = snapshotQuestionCount;
+                await _sessionService.UpdateInterviewSessionAsync(session);
+            }
+
+            return (true, snapshotTurns, ValidatePersistedQuestionPlan(snapshotTurns, snapshotQuestionCount));
         }
 
         if (_fixedQuestionSetService == null || product.VendorId <= 0)
@@ -4167,10 +4185,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             .Where(item => item.IsActive && !string.IsNullOrWhiteSpace(item.QuestionText))
             .OrderBy(item => item.SequenceNumber)
             .ThenBy(item => item.Id)
-            .Take(10)
             .ToList() ?? new List<FixedQuestionSetItem>();
-        if (!fixedItems.Any())
-            return (true, turns ?? new List<InterviewTurn>(), "The configured interview questions are unavailable.");
+        if (!AIInterviewDefaults.IsSupportedFixedQuestionCount(fixedItems.Count))
+        {
+            return (true, turns ?? new List<InterviewTurn>(), await GetLocalizedTextAsync(
+                "Plugins.Misc.AIInterview.VendorJobCreation.QuestionItems.Count",
+                "Fixed question sets must contain exactly five or ten active questions."));
+        }
 
         turns ??= new List<InterviewTurn>();
         var orderedTurns = turns.OrderBy(turn => turn.SequenceNumber).ThenBy(turn => turn.Id).ToList();

@@ -1233,6 +1233,26 @@ body.html-aiinterview-vendor-job-creation-page {
     margin-top: 16px;
 }
 
+.vendor-question-readonly-note {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    border-left: 3px solid #64748b;
+    background: #eef2f6;
+    color: #334155;
+}
+
+.vendor-question-editor.is-readonly .vendor-question-item {
+    background: #f8fafc;
+}
+
+.vendor-question-editor.is-readonly textarea:disabled {
+    border-color: #dbe3ee;
+    background: #fff;
+    color: #334155;
+    opacity: 1;
+    -webkit-text-fill-color: #334155;
+}
+
 .vendor-question-item {
     min-width: 0;
     padding: 16px;
