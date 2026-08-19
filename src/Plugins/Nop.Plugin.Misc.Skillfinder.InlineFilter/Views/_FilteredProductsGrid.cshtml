@@ -1,45 +1,75 @@
 @model FilteredProductsGridModel
 @{
     Layout = "";
+    var carouselId = $"sfi-products-{Guid.NewGuid():N}";
 }
 
 @if (Model.Products.Any())
 {
-    <div class="sfi-products-grid">
-        @foreach (var item in Model.Products.Take(SkillfinderInlineFilterDefaults.ResultCount))
-        {
-            var showSummary = !string.IsNullOrWhiteSpace(item.Summary) &&
-                !string.Equals(item.Summary.Trim(), item.ProductOverview.Name?.Trim(), StringComparison.OrdinalIgnoreCase);
-            <div class="sfi-grid-cell">
-                @if (Model.UseAiInterviewCards)
+    <div class="sfi-products-carousel" data-sfi-products-carousel>
+        <div class="sfi-carousel-controls">
+            <button type="button"
+                    class="sfi-carousel-control sfi-carousel-previous"
+                    data-sfi-carousel-scroll="-1"
+                    aria-controls="@carouselId"
+                    aria-label="@T("Pager.Previous")"
+                    title="@T("Pager.Previous")"
+                    disabled>
+                <span aria-hidden="true">&lsaquo;</span>
+            </button>
+            <button type="button"
+                    class="sfi-carousel-control sfi-carousel-next"
+                    data-sfi-carousel-scroll="1"
+                    aria-controls="@carouselId"
+                    aria-label="@T("Pager.Next")"
+                    title="@T("Pager.Next")"
+                    disabled>
+                <span aria-hidden="true">&rsaquo;</span>
+            </button>
+        </div>
+
+        <div class="sfi-products-viewport"
+             id="@carouselId"
+             tabindex="0"
+             role="region"
+             aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ResultsLabel")">
+            <div class="sfi-products-grid">
+                @foreach (var item in Model.Products.Take(SkillfinderInlineFilterDefaults.ResultCount))
                 {
-                    <div class="sfi-ai-card-shell">
-                        @await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = item.ProductOverview })
+                    var showSummary = !string.IsNullOrWhiteSpace(item.Summary) &&
+                        !string.Equals(item.Summary.Trim(), item.ProductOverview.Name?.Trim(), StringComparison.OrdinalIgnoreCase);
+                    <div class="sfi-grid-cell">
+                        @if (Model.UseAiInterviewCards)
+                        {
+                            <div class="sfi-ai-card-shell">
+                                @await Component.InvokeAsync("AIInterviewJobProductCard", new { productOverview = item.ProductOverview })
+                            </div>
+                        }
+                        else
+                        {
+                            <article class="sfi-fallback-card product-item">
+                                @if (!string.IsNullOrWhiteSpace(item.PictureUrl))
+                                {
+                                    <a class="sfi-fallback-card-media" href="@item.ProductUrl" tabindex="-1" aria-hidden="true">
+                                        <img src="@item.PictureUrl" alt="@item.PictureAlt" loading="lazy" />
+                                    </a>
+                                }
+                                <div class="sfi-fallback-card-body">
+                                    <h3><a href="@item.ProductUrl">@item.ProductOverview.Name</a></h3>
+                                    @if (showSummary)
+                                    {
+                                        <p>@item.Summary</p>
+                                    }
+                                    <a class="sfi-view-job" href="@item.ProductUrl">
+                                        @T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ViewJob")
+                                    </a>
+                                </div>
+                            </article>
+                        }
                     </div>
                 }
-                else
-                {
-                    <article class="sfi-fallback-card product-item">
-                        @if (!string.IsNullOrWhiteSpace(item.PictureUrl))
-                        {
-                            <a class="sfi-fallback-card-media" href="@item.ProductUrl" tabindex="-1" aria-hidden="true">
-                                <img src="@item.PictureUrl" alt="@item.PictureAlt" loading="lazy" />
-                            </a>
-                        }
-                        <div class="sfi-fallback-card-body">
-                            <h3><a href="@item.ProductUrl">@item.ProductOverview.Name</a></h3>
-                            @if (showSummary)
-                            {
-                                <p>@item.Summary</p>
-                            }
-                            <a class="sfi-view-job" href="@item.ProductUrl">
-                                @T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ViewJob")
-                            </a>
-                        </div>
-                    </article>
-                }
             </div>
-        }
+        </div>
     </div>
 }
 else

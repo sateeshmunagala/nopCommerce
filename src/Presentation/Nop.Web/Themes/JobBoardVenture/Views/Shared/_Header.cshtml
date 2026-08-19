@@ -22,6 +22,9 @@
         HasVisibleContent(currencySelector) ||
         HasVisibleContent(languageSelector) ||
         HasVisibleContent(selectorWidgets);
+    var isMyAccountPage = NopHtml.GeneratePageCssClasses()
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Contains("html-account-page", StringComparer.OrdinalIgnoreCase);
 }
 
 <header class="header">
@@ -47,9 +50,16 @@
         </div>
 
         <div class="header-logo">
-            <a href="@Url.RouteUrl(NopRouteNames.General.HOMEPAGE)" class="jb-brand">
-                @await Component.InvokeAsync(typeof(LogoViewComponent))
-            </a>
+            @if (isMyAccountPage)
+            {
+                @await Component.InvokeAsync("VendorPortalLogo")
+            }
+            else
+            {
+                <a href="@Url.RouteUrl(NopRouteNames.General.HOMEPAGE)" class="jb-brand">
+                    @await Component.InvokeAsync(typeof(LogoViewComponent))
+                </a>
+            }
         </div>
 
         <div class="header-menu jb-mobile-drawer jb-header-nav" id="jb-mobile-menu-drawer" aria-hidden="true">

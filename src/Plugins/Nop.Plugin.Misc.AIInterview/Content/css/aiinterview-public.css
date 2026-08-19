@@ -5024,6 +5024,7 @@ body.ai-job-preview-open .item-box {
 
 .ai-report-share-page .ai-report-share-layout {
     width: 100%;
+    margin: 10px auto 0;
     grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
     gap: 24px;
 }

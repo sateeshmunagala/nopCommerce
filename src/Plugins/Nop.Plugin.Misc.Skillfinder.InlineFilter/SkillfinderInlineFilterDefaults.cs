@@ -8,7 +8,7 @@ public static class SkillfinderInlineFilterDefaults
     public const string AiInterviewSystemName = "Misc.AIInterview";
     public const string AiInterviewJobTemplateName = "AI Interview Job Details";
     public const string AiInterviewJobTemplateViewPath = "~/Plugins/Misc.AIInterview/Views/ProductTemplate.JobDetails.cshtml";
-    public const int ResultCount = 6;
+    public const int ResultCount = 18;
     public const int SearchPageSize = 24;
     public const string LocalizationPrefix = "Plugins.Misc.Skillfinder.InlineFilter";
 }
