@@ -4999,6 +4999,297 @@ body.ai-job-preview-open .item-box {
     }
 }
 
+/* Shared interview report: resilient spacing, wrapping, and responsive controls. */
+.ai-report-share-page,
+.ai-report-share-page *,
+.ai-report-share-page *::before,
+.ai-report-share-page *::after {
+    box-sizing: border-box;
+}
+
+.ai-report-share-page,
+.ai-report-share-page .page-body,
+.ai-report-share-page .ai-report-share-layout,
+.ai-report-share-page .ai-report-share-left,
+.ai-report-share-page .ai-report-share-right {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.ai-report-share-page {
+    width: 100%;
+    overflow-x: clip;
+    text-align: left;
+}
+
+.ai-report-share-page .ai-report-share-layout {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    gap: 24px;
+}
+
+.ai-report-share-page .ai-report-share-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+}
+
+.ai-report-share-page .ai-report-context-header {
+    display: flex;
+    flex: 1 1 420px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    margin: 0 0 16px;
+    padding: 16px 20px;
+}
+
+.ai-report-share-page .ai-report-candidate-name {
+    flex: 1 1 200px;
+    min-width: 0;
+    margin: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+}
+
+.ai-report-share-page .ai-report-context-meta {
+    flex: 0 1 auto;
+    gap: 12px;
+    min-width: 0;
+}
+
+.ai-report-share-page .ai-report-type-badge,
+.ai-report-share-page .ai-report-context-line {
+    max-width: 100%;
+    line-height: 1.5;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+}
+
+.ai-report-share-page .ai-report-actions {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    min-width: 0;
+    margin: 0 0 16px;
+}
+
+.ai-report-share-page .ai-report-actions .ai-report-action,
+.ai-report-share-page .ai-report-actions .ai-icon-action {
+    display: inline-flex;
+    flex: 0 1 auto !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto !important;
+    min-width: 44px !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 44px !important;
+    max-height: none !important;
+    margin: 0;
+    padding: 8px 16px !important;
+    line-height: 1.25;
+    white-space: normal;
+}
+
+.ai-report-share-page .ai-report-actions .ai-report-action i {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.ai-report-share-page .ai-report-action-label {
+    min-width: 0;
+    overflow-wrap: break-word;
+}
+
+.ai-report-share-page .ai-report-section {
+    flex: 1 0 100%;
+    width: 100%;
+    min-width: 0;
+    margin: 0 0 16px;
+    overflow: hidden;
+}
+
+.ai-report-share-page .ai-report-section-toggle {
+    min-width: 0;
+    min-height: 52px;
+    padding: 16px 20px;
+    line-height: 1.5;
+}
+
+.ai-report-share-page .ai-report-section-toggle > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+}
+
+.ai-report-share-page .ai-report-section-toggle > i {
+    flex: 0 0 auto;
+}
+
+.ai-report-share-page .ai-report-section > .ai-report-hero,
+.ai-report-share-page .ai-report-section > .ai-report-card {
+    min-width: 0;
+    max-width: 100%;
+    padding: 20px;
+    overflow: visible;
+}
+
+.ai-report-share-page .ai-report-hero h2,
+.ai-report-share-page .ai-report-card h3,
+.ai-report-share-page .ai-report-video-panel h3 {
+    max-width: 100%;
+    margin: 0 0 16px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+}
+
+.ai-report-share-page .ai-report-grid {
+    width: 100%;
+    min-width: 0;
+}
+
+.ai-report-share-page .ai-report-stat {
+    min-width: 0;
+    padding: 16px;
+}
+
+.ai-report-share-page .ai-report-stat-label,
+.ai-report-share-page .ai-report-stat-value {
+    max-width: 100%;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+}
+
+.ai-report-share-page .ai-report-stat-label {
+    margin-bottom: 8px;
+}
+
+.ai-report-share-page .ai-report-turn {
+    min-width: 0;
+    max-width: 100%;
+    gap: 16px;
+    margin: 0 0 16px;
+    padding: 20px;
+    overflow: visible;
+}
+
+.ai-report-share-page .ai-report-turn:last-child {
+    margin-bottom: 0;
+}
+
+.ai-report-share-page .ai-report-turn-title {
+    min-width: 0;
+    max-width: 100%;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+}
+
+.ai-report-share-page .ai-report-answer,
+.ai-report-share-page .ai-report-feedback,
+.ai-report-share-page .report-data {
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    padding: 16px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+}
+
+.ai-report-share-page .ai-report-answer {
+    border-left: 3px solid #9dd7cb;
+    background: #f8fbfa;
+}
+
+.ai-report-share-page .ai-report-feedback {
+    border-left: 3px solid #cbd5e1;
+    background: #f8fafc;
+}
+
+.ai-report-share-page .ai-report-meta {
+    min-width: 0;
+    padding-top: 4px;
+    line-height: 1.5;
+}
+
+.ai-report-share-page .ai-report-meta > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+}
+
+.ai-report-share-page .ai-report-share-right,
+.ai-report-share-page .ai-report-video-panel,
+.ai-report-share-page .ai-report-video {
+    width: 100%;
+}
+
+.ai-report-share-page .ai-report-video-panel {
+    padding: 20px;
+}
+
+.ai-report-share-page .ai-report-video-actions {
+    gap: 12px;
+}
+
+.ai-report-share-page .ai-report-video-actions .button-2 {
+    min-height: 44px;
+    padding: 8px 16px;
+    line-height: 1.25;
+    white-space: normal;
+}
+
+@media (max-width: 900px) {
+    .ai-report-share-page .ai-report-share-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .ai-report-share-page .ai-report-context-header {
+        flex-basis: 100%;
+        align-items: flex-start;
+        padding: 16px;
+    }
+
+    .ai-report-share-page .ai-report-context-meta {
+        flex: 1 0 100%;
+    }
+
+    .ai-report-share-page .ai-report-actions {
+        flex: 1 0 100%;
+        width: 100%;
+    }
+
+    .ai-report-share-page .ai-report-actions .ai-report-action,
+    .ai-report-share-page .ai-report-actions .ai-icon-action {
+        flex: 1 1 180px !important;
+    }
+
+    .ai-report-share-page .ai-report-section-toggle,
+    .ai-report-share-page .ai-report-section > .ai-report-hero,
+    .ai-report-share-page .ai-report-section > .ai-report-card,
+    .ai-report-share-page .ai-report-turn,
+    .ai-report-share-page .ai-report-video-panel {
+        padding: 16px;
+    }
+}
+
 .job-details-page {
     --job-bg: #f0f0f0;
     --job-card: #ffffff;
