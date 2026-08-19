@@ -13,6 +13,10 @@
 
     //register URL with return URL (if specified)
     var registerUrl = Url.RouteUrl(NopRouteNames.Standard.REGISTER, new { returnUrl = this.Context.Request.Query["returnUrl"] }, webHelper.GetCurrentRequestProtocol());
+    var returnUrl = Context.Request.Query["returnUrl"].ToString();
+    var interviewNotice = Context.Request.Query["interviewNotice"].ToString();
+    var showSponsoredInterviewNotice = string.Equals(interviewNotice, "companySponsored", StringComparison.OrdinalIgnoreCase)
+        || returnUrl.StartsWith("/mockaiinterview/create-invite", StringComparison.OrdinalIgnoreCase);
 }
 <div class="page login-page">
     <div class="page-title">
@@ -20,6 +24,12 @@
     </div>
     @await Html.PartialAsync("_ExternalAuthentication.Errors")
     <div class="page-body">
+        @if (showSponsoredInterviewNotice)
+        {
+            <div class="alert alert-info company-sponsored-login-notice" role="alert">
+                @T("Plugins.Misc.AIInterview.Login.CompanySponsoredNotice")
+            </div>
+        }
         @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.LoginTop, additionalData = Model })
         <div class="customer-blocks">
             @if (Model.RegistrationType == UserRegistrationType.Disabled)
@@ -63,7 +73,11 @@
                 </div> *@
             }
             <div class="returning-wrapper fieldset">
-                <form asp-route="@NopRouteNames.General.LOGIN" asp-route-returnurl="@Context.Request.Query["ReturnUrl"]" method="post" autocomplete="off">
+                <form asp-route="@NopRouteNames.General.LOGIN"
+                      asp-route-returnurl="@returnUrl"
+                      asp-route-interviewnotice="@interviewNotice"
+                      method="post"
+                      autocomplete="off">
                     <div asp-validation-summary="ModelOnly" class="message-error">@T("Account.Login.Unsuccessful")</div>
                     @* <h2 class="title">
                         @T("Account.Login.ReturningCustomer")

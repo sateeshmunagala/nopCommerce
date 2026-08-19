@@ -117,6 +117,7 @@ public class MockAiInterviewController : BasePluginController
     private readonly IDownloadService _downloadService;
     private readonly AIInterviewSettings _aiInterviewSettings;
     private readonly IInterviewStartCreditService _interviewStartCreditService;
+    private readonly INotificationService _notificationService;
 
     public MockAiInterviewController(IInterviewSessionService interviewSessionService,
         ILocalizationService localizationService,
@@ -145,7 +146,8 @@ public class MockAiInterviewController : BasePluginController
         ICustomerActivityService customerActivityService = null,
         IDownloadService downloadService = null,
         AIInterviewSettings aiInterviewSettings = null,
-        IInterviewStartCreditService interviewStartCreditService = null)
+        IInterviewStartCreditService interviewStartCreditService = null,
+        INotificationService notificationService = null)
     {
         _interviewSessionService = interviewSessionService;
         _localizationService = localizationService;
@@ -175,6 +177,7 @@ public class MockAiInterviewController : BasePluginController
         _downloadService = downloadService;
         _aiInterviewSettings = aiInterviewSettings ?? new AIInterviewSettings();
         _interviewStartCreditService = interviewStartCreditService;
+        _notificationService = notificationService;
     }
 
     protected virtual async Task<Customer> ResolveLogCustomerAsync(InterviewSession session = null, Customer customer = null)
@@ -453,8 +456,8 @@ public class MockAiInterviewController : BasePluginController
 
     protected virtual async Task<string> BuildStartLoginRedirectUrlAsync(int productId, string sponsorToken = null)
     {
-        var returnUrl = Request?.Headers?.Referer.ToString();
-        if (string.IsNullOrWhiteSpace(returnUrl) && productId > 0)
+        string returnUrl = null;
+        if (productId > 0)
         {
             var product = await _productService.GetProductByIdAsync(productId);
             if (product != null)
@@ -469,7 +472,60 @@ public class MockAiInterviewController : BasePluginController
         if (string.IsNullOrWhiteSpace(returnUrl))
             returnUrl = Url?.RouteUrl(AIInterviewDefaults.IndexRouteName);
 
-        return Url?.RouteUrl(global::Nop.Core.Http.NopRouteNames.General.LOGIN, new { returnUrl });
+        return Url?.RouteUrl(global::Nop.Core.Http.NopRouteNames.General.LOGIN, new
+        {
+            returnUrl,
+            interviewNotice = string.IsNullOrWhiteSpace(sponsorToken) ? null : "companySponsored"
+        });
+    }
+
+    protected virtual string BuildCreateInviteLoginRedirectUrl()
+    {
+        var returnUrl = Url?.RouteUrl(AIInterviewDefaults.MockCreateInvitePageRouteName)
+            ?? "/mockaiinterview/create-invite";
+        return Url?.RouteUrl(global::Nop.Core.Http.NopRouteNames.General.LOGIN, new
+        {
+            returnUrl,
+            interviewNotice = "companySponsored"
+        }) ?? QueryHelpers.AddQueryString("/login", new Dictionary<string, string>
+        {
+            ["returnUrl"] = returnUrl,
+            ["interviewNotice"] = "companySponsored"
+        });
+    }
+
+    protected virtual bool IsAjaxRequest()
+    {
+        return string.Equals(Request?.Headers?.XRequestedWith.ToString(), "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+    }
+
+    protected virtual IActionResult InviteMutationResult(bool success, string message)
+    {
+        if (IsAjaxRequest())
+        {
+            if (success)
+                return Json(new { success = true, message });
+
+            return Json(new { success = false, error = message });
+        }
+
+        if (success)
+            _notificationService?.SuccessNotification(message);
+        else
+            _notificationService?.ErrorNotification(message);
+
+        var referer = Request?.Headers?.Referer.ToString();
+        if (Uri.TryCreate(referer, UriKind.Absolute, out var absoluteReferer) &&
+            Request?.Host.HasValue == true &&
+            string.Equals(absoluteReferer.Authority, Request.Host.Value, StringComparison.OrdinalIgnoreCase))
+        {
+            return Redirect(absoluteReferer.PathAndQuery);
+        }
+
+        if (!string.IsNullOrWhiteSpace(referer) && Uri.TryCreate(referer, UriKind.Relative, out _))
+            return Redirect(referer);
+
+        return RedirectToRoute(AIInterviewDefaults.MockEmployerManageRouteName);
     }
 
     protected virtual async Task<string> BuildRecordingShareUrlAsync(InterviewSession session)
@@ -1678,7 +1734,7 @@ public class MockAiInterviewController : BasePluginController
             return Json(new CompletionStatusResponseModel
             {
                 Success = true,
-                Message = "Your report is ready.",
+                Message = "Your report & video recording link have been sent to your email and saved in My Profile -> My Activity -> AI Interviews.",
                 ReportReady = !string.IsNullOrWhiteSpace(reportUrl),
                 ReportGenerationInProgress = false,
                 ReportGenerationFailed = string.IsNullOrWhiteSpace(reportUrl),
@@ -2177,35 +2233,44 @@ public class MockAiInterviewController : BasePluginController
         return View("~/Plugins/Misc.AIInterview/Views/MockAiInterview/EmployerManage.cshtml", invites);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> CreateInvitePage()
+    {
+        if (!await IsAuthorizedAsync())
+            return Redirect(BuildCreateInviteLoginRedirectUrl());
+
+        return await EmployerManage();
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateInvite(string email, int productId, int maxAttempts, DateTime? expiryDateUtc)
     {
         if (!await IsAuthorizedAsync())
-            return Challenge();
+            return Redirect(BuildCreateInviteLoginRedirectUrl());
 
         if (string.IsNullOrWhiteSpace(email))
-            return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.EmailRequired") });
+            return InviteMutationResult(false, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.EmailRequired"));
 
         if (maxAttempts <= 0)
-            return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidAttempts") });
+            return InviteMutationResult(false, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidAttempts"));
 
         expiryDateUtc = NormalizeInviteExpiryDateUtc(expiryDateUtc);
 
         if (expiryDateUtc.HasValue && expiryDateUtc.Value <= DateTime.UtcNow)
-            return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidExpiry") });
+            return InviteMutationResult(false, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidExpiry"));
 
         try
         {
             var customer = await _workContext.GetCurrentCustomerAsync();
             var product = await _productService.GetProductByIdAsync(productId);
             if (product == null)
-                return Json(new { success = false, error = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound", "Product not found.") });
+                return InviteMutationResult(false, await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound", "Product not found."));
 
             if (customer?.VendorId > 0 && product.VendorId != customer.VendorId)
-                return Json(new { success = false, error = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound", "Product not found.") });
+                return InviteMutationResult(false, await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.ProductNotFound", "Product not found."));
 
             if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
-                return Json(new { success = false, error = await GetLocalizedTextAsync("Common.NotAvailable", "The requested job is not available.") });
+                return InviteMutationResult(false, await GetLocalizedTextAsync("Common.NotAvailable", "The requested job is not available."));
 
             var emails = email.Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
                               .Select(e => e.Trim())
@@ -2243,18 +2308,15 @@ public class MockAiInterviewController : BasePluginController
             if (createdCount == 0)
             {
                 if (failureMessages.Count == 1)
-                    return Json(new { success = false, error = failureMessages[0] });
+                    return InviteMutationResult(false, failureMessages[0]);
 
                 if (invalidCount > 0 && failureMessages.Count == 0)
-                    return Json(new
-                    {
-                        success = false,
-                        error = await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.EmailInvalid", "Enter a valid email address.")
-                    });
+                    return InviteMutationResult(false,
+                        await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.Invite.EmailInvalid", "Enter a valid email address."));
 
                 var noInvitesMessage = failureMessages.FirstOrDefault()
                     ?? $"No invites were created. {invalidCount} email(s) were invalid.";
-                return Json(new { success = false, error = noInvitesMessage });
+                return InviteMutationResult(false, noInvitesMessage);
             }
 
             var bulkSuccessMessageFormat = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.BulkSuccess");
@@ -2262,15 +2324,15 @@ public class MockAiInterviewController : BasePluginController
             if (failureMessages.Count > 0)
                 message = $"{message} {failureMessages.Count} invite(s) failed: {string.Join("; ", failureMessages.Distinct())}";
 
-            return Json(new { success = true, message = message });
+            return InviteMutationResult(true, message);
         }
         catch (NopException ex)
         {
-            return Json(new { error = ex.Message });
+            return InviteMutationResult(false, ex.Message);
         }
         catch (Exception)
         {
-            return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Error") });
+            return InviteMutationResult(false, await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Error"));
         }
     }
 

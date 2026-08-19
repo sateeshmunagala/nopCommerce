@@ -67,6 +67,7 @@ public static class AIInterviewDefaults
     public static string MyApplicationsRouteName => "Plugin.Misc.AIInterview.MyApplications";
 
     public static string MyActivityRouteName => "Plugin.Misc.AIInterview.MyActivity";
+    public static string DeleteInterviewRouteName => "Plugin.Misc.AIInterview.DeleteInterview";
 
     public const string VendorPortalLogoUrlKey = "VendorPortalLogoUrl";
 
@@ -263,6 +264,8 @@ Allowed categories: skill, project_scenario, job_fit, behavioral
     public static string MockAcknowledgeGuidelinesRouteName => "Plugin.Misc.AIInterview.Mock.AcknowledgeGuidelines";
     public static string MockRuntimeClientEventRouteName => "Plugin.Misc.AIInterview.Mock.RuntimeClientEvent";
     public static string MockHistoryRouteName => "Plugin.Misc.AIInterview.Mock.History";
+    public static string MockCreateInvitePageRouteName => "Plugin.Misc.AIInterview.Mock.CreateInvitePage";
+    public static string MockCreateInviteRouteName => "Plugin.Misc.AIInterview.Mock.CreateInvite";
     public static string MockReportRouteName => "Plugin.Misc.AIInterview.Mock.Report";
     public static string MockEmployerManageRouteName => "Plugin.Misc.AIInterview.Mock.EmployerManage";
 

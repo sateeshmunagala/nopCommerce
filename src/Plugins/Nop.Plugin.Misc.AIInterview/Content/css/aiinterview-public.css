@@ -1197,6 +1197,32 @@ body.html-aiinterview-vendor-job-creation-page {
     font-size: 0.85rem;
 }
 
+.job-ai-credit-notice {
+    margin: 10px 0 0;
+    padding: 10px 12px;
+    border-left: 3px solid #35d6b4;
+    background: #f2fbf9;
+    color: #285b53;
+    font-size: 0.86rem;
+}
+
+.ai-interview-delete-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.html-aiinterview-view-page .ai-interview-delete-button {
+    border-color: #e2b8b8;
+    color: #a62929;
+}
+
+.html-aiinterview-view-page .ai-interview-delete-button:hover,
+.html-aiinterview-view-page .ai-interview-delete-button:focus-visible {
+    border-color: #c83d3d;
+    background: #fff1f1;
+    color: #8f1f1f;
+}
+
 .vendor-fixed-question-panel {
     margin-top: 22px;
     padding: 20px;
@@ -5711,6 +5737,11 @@ body.ai-job-preview-open .item-box {
     color: var(--job-muted);
     font-size: 10px;
     line-height: 1.4;
+}
+
+.practice-start-form .job-ai-credit-notice {
+    margin-top: 10px;
+    font-size: 0.82rem;
 }
 
 .practice-start-form .job-ai-actions {

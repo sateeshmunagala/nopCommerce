@@ -91,6 +91,10 @@ public class RouteProvider : IRouteProvider
             pattern: "my-activity",
             defaults: new { controller = "AIInterview", action = "MyActivity" });
 
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.DeleteInterviewRouteName,
+            pattern: "my-activity/interviews/{sessionId:int}/delete",
+            defaults: new { controller = "AIInterview", action = "DeleteInterview" });
+
         endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MyApplicationsRouteName,
             pattern: "aiinterview/my-applications",
             defaults: new { controller = "AIInterview", action = "MyApplications" });
@@ -230,7 +234,11 @@ public class RouteProvider : IRouteProvider
             pattern: "mockaiinterview/employer-manage",
             defaults: new { controller = "MockAiInterview", action = "EmployerManage" });
 
-        endpointRouteBuilder.MapControllerRoute(name: "Plugin.Misc.AIInterview.Mock.CreateInvite",
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockCreateInvitePageRouteName,
+            pattern: "mockaiinterview/create-invite",
+            defaults: new { controller = "MockAiInterview", action = "CreateInvitePage" });
+
+        endpointRouteBuilder.MapControllerRoute(name: AIInterviewDefaults.MockCreateInviteRouteName,
             pattern: "mockaiinterview/create-invite",
             defaults: new { controller = "MockAiInterview", action = "CreateInvite" });
 

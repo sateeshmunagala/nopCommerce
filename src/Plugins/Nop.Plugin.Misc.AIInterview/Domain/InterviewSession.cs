@@ -65,6 +65,7 @@ public class InterviewSession : BaseEntity
     public string CandidateFeedbackComment { get; set; }
     public int CandidateFeedbackAttachmentDownloadId { get; set; }
     public DateTime? CandidateFeedbackSubmittedOnUtc { get; set; }
+    public bool Deleted { get; set; }
     public DateTime CreatedOnUtc { get; set; }
     public DateTime? StartedOnUtc { get; set; }
     public DateTime? CompletedOnUtc { get; set; }

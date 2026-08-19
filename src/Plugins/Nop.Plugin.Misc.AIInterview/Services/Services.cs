@@ -747,6 +747,7 @@ public class InterviewSessionService : IInterviewSessionService
 
         return (await _sessionRepository.GetAllAsync(query => query
             .Where(s => s.CustomerId == customerId &&
+                !s.Deleted &&
                 (s.ProductId == productId || (s.ProductId == 0 && legacyApplicationIds.Contains(s.JobApplicationId))) &&
                 s.CompletedOnUtc.HasValue)
             .OrderByDescending(s => s.CompletedOnUtc)))
@@ -761,6 +762,7 @@ public class InterviewSessionService : IInterviewSessionService
             .ToList();
         var sessions = await _sessionRepository.Table
             .Where(s => s.CustomerId == customerId &&
+                !s.Deleted &&
                 (s.ProductId == productId || (s.ProductId == 0 && legacyApplicationIds.Contains(s.JobApplicationId))) &&
                 s.CompletedOnUtc.HasValue)
             .ToListAsync();
@@ -783,7 +785,7 @@ public class InterviewSessionService : IInterviewSessionService
         if (string.IsNullOrEmpty(sessionKey))
             return null;
 
-        return (await _sessionRepository.GetAllAsync(query => query.Where(s => s.SessionKey == sessionKey))).FirstOrDefault();
+        return (await _sessionRepository.GetAllAsync(query => query.Where(s => !s.Deleted && s.SessionKey == sessionKey))).FirstOrDefault();
     }
 
     public async Task<InterviewSession> GetSessionByTokenAsync(string token)
@@ -791,7 +793,7 @@ public class InterviewSessionService : IInterviewSessionService
         if (string.IsNullOrEmpty(token))
             return null;
 
-        return (await _sessionRepository.GetAllAsync(query => query.Where(s => s.Token == token))).FirstOrDefault();
+        return (await _sessionRepository.GetAllAsync(query => query.Where(s => !s.Deleted && s.Token == token))).FirstOrDefault();
     }
 
     public async Task<InterviewSession> GetSessionByRecordingShareTokenAsync(string token)
@@ -800,6 +802,7 @@ public class InterviewSessionService : IInterviewSessionService
             return null;
 
         return (await _sessionRepository.GetAllAsync(query => query.Where(session =>
+            !session.Deleted &&
             session.RecordingShareEnabled &&
             session.RecordingShareToken == token))).FirstOrDefault();
     }
@@ -810,6 +813,7 @@ public class InterviewSessionService : IInterviewSessionService
             return null;
 
         return (await _sessionRepository.GetAllAsync(query => query.Where(session =>
+            !session.Deleted &&
             session.ReportShareEnabled &&
             session.ReportShareToken == token))).FirstOrDefault();
     }
@@ -817,7 +821,7 @@ public class InterviewSessionService : IInterviewSessionService
     public async Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId)
     {
         return await _sessionRepository.GetAllAsync(query => query
-            .Where(s => s.CustomerId == customerId)
+            .Where(s => s.CustomerId == customerId && !s.Deleted)
             .OrderByDescending(s => s.CreatedOnUtc));
     }
 
@@ -827,6 +831,7 @@ public class InterviewSessionService : IInterviewSessionService
         {
             var eligibleSessions = query.Where(session =>
                 session.CustomerId == customerId &&
+                !session.Deleted &&
                 session.ResumeDownloadId > 0);
 
             // Keep only the newest row for each resume without materializing customer history.
@@ -905,6 +910,7 @@ public class InterviewSessionService : IInterviewSessionService
                     : application != null ? application.ProductId : 0
             join product in _productRepository.Table on productId equals product.Id
             where session.CompletedOnUtc.HasValue &&
+                !session.Deleted &&
                 session.CompletedOnUtc.Value >= completedFromUtc &&
                 session.CompletedOnUtc.Value <= utcNow &&
                 customer.Active &&
@@ -1136,6 +1142,7 @@ public class InterviewSessionService : IInterviewSessionService
 
         return await _sessionRepository.GetAllAsync(query => query
             .Where(session =>
+                !session.Deleted &&
                 (session.CompletionState == InterviewCompletionStates.Queued &&
                     (!session.CompletionNextAttemptOnUtc.HasValue ||
                      session.CompletionNextAttemptOnUtc <= utcNow)) ||
@@ -1158,7 +1165,7 @@ public class InterviewSessionService : IInterviewSessionService
 
     public async Task<string> EnsureRecordingShareTokenAsync(InterviewSession session)
     {
-        if (session == null || string.IsNullOrWhiteSpace(session.RecordingUrl))
+        if (session == null || session.Deleted || string.IsNullOrWhiteSpace(session.RecordingUrl))
             return null;
 
         if (!string.IsNullOrWhiteSpace(session.RecordingShareToken) && session.RecordingShareEnabled)
@@ -1179,7 +1186,7 @@ public class InterviewSessionService : IInterviewSessionService
 
     public async Task<string> EnsureReportShareTokenAsync(InterviewSession session)
     {
-        if (session == null ||
+        if (session == null || session.Deleted ||
             (string.IsNullOrWhiteSpace(session.ReportData) && string.IsNullOrWhiteSpace(session.RecordingUrl)))
         {
             return null;
@@ -1206,12 +1213,35 @@ public class InterviewSessionService : IInterviewSessionService
         await _sessionRepository.UpdateAsync(session);
     }
 
+    public async Task<bool> SoftDeleteInterviewSessionAsync(int sessionId, int customerId)
+    {
+        if (sessionId <= 0 || customerId <= 0)
+            return false;
+
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null || session.Deleted || session.CustomerId != customerId || !session.CompletedOnUtc.HasValue)
+            return false;
+
+        session.Deleted = true;
+        session.IsActive = false;
+        session.RecordingShareEnabled = false;
+        session.ReportShareEnabled = false;
+        await _sessionRepository.UpdateAsync(session);
+        return true;
+    }
+
     public async Task<bool> CanAccessReportAsync(int customerId, int sessionId)
     {
         var session = await GetInterviewSessionByIdAsync(sessionId);
         if (session == null)
         {
             LogCanAccessReportResult(false, "session not found", customerId, sessionId, null, null);
+            return false;
+        }
+
+        if (session.Deleted)
+        {
+            LogCanAccessReportResult(false, "session deleted", customerId, sessionId, session, null);
             return false;
         }
 
@@ -2488,7 +2518,7 @@ public class SponsorInviteService : ISponsorInviteService
                 new("AIInterview.InviteUrl", inviteUrl),
                 new("AIInterview.InviteCode", invite.InviteCode ?? string.Empty),
                 new("AIInterview.MaxAttempts", invite.MaxAttempts),
-                new("AIInterview.ExpiryDate", invite.ExpiryDateUtc?.ToString("u") ?? string.Empty)
+                new("AIInterview.ExpiryDate", invite.ExpiryDateUtc?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? string.Empty)
             };
 
             await _workflowMessageService.SendNotificationAsync(

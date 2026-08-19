@@ -1038,6 +1038,31 @@ public class AIInterviewController : BasePluginController
         return View("~/Plugins/Misc.AIInterview/Views/MyActivity.cshtml", model);
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteInterview(int sessionId)
+    {
+        var customer = await _workContext.GetCurrentCustomerAsync();
+        if (customer == null || !await _customerService.IsRegisteredAsync(customer))
+            return Challenge();
+
+        var deleted = await _interviewSessionService.SoftDeleteInterviewSessionAsync(sessionId, customer.Id);
+        var resourceKey = deleted
+            ? "Plugins.Misc.AIInterview.History.Deleted"
+            : "Plugins.Misc.AIInterview.History.DeleteNotAllowed";
+        var message = await _localizationService.GetResourceAsync(resourceKey);
+
+        if (deleted)
+            _notificationService.SuccessNotification(message);
+        else
+            _notificationService.ErrorNotification(message);
+
+        return RedirectToRoute(AIInterviewDefaults.MyActivityRouteName, new
+        {
+            tab = AIInterviewDefaults.MyActivityMockInterviewsTabKey
+        });
+    }
+
     protected virtual string NormalizeEmployerDashboardTab(string tab)
     {
         return (tab ?? string.Empty).Trim().ToLowerInvariant() switch

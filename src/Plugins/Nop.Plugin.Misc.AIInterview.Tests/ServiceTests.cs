@@ -216,6 +216,7 @@ public class ServiceTests
         var emailAccount = new Nop.Core.Domain.Messages.EmailAccount { Id = 7, Email = "store@example.com", DisplayName = "Store" };
         var template = new Nop.Core.Domain.Messages.MessageTemplate { Name = "AIInterview.SponsorInviteCreated", EmailAccountId = 0, IsActive = true };
         var store = new Nop.Core.Domain.Stores.Store { Id = 22, DefaultLanguageId = 5 };
+        var expiryDateUtc = new DateTime(2026, 8, 20, 23, 59, 59, DateTimeKind.Utc);
 
         productService.Setup(x => x.GetProductByIdAsync(11)).ReturnsAsync(product);
         customerService.Setup(x => x.GetCustomerByIdAsync(2)).ReturnsAsync(sponsor);
@@ -239,7 +240,8 @@ public class ServiceTests
                     tokens.Any(token => token.Key == "AIInterview.InviteUrl" && !token.Value.ToString().Contains("/aiinterview/mock/start")) &&
                     tokens.Any(token => token.Key == "AIInterview.InviteCode") &&
                     tokens.Any(token => token.Key == "AIInterview.MaxAttempts" && Equals(token.Value, 3)) &&
-                    tokens.Any(token => token.Key == "AIInterview.ExpiryDate")),
+                    tokens.Any(token => token.Key == "AIInterview.ExpiryDate" &&
+                        Equals(token.Value, "2026-08-20 23:59:59"))),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
@@ -264,7 +266,7 @@ public class ServiceTests
             storeContext.Object,
             webHelper.Object);
 
-        await service.CreateInviteAsync(2, "candidate@example.com", 11, 3, DateTime.UtcNow.AddDays(3));
+        await service.CreateInviteAsync(2, "candidate@example.com", 11, 3, expiryDateUtc);
 
         inviteRepository.Verify(x => x.InsertAsync(It.IsAny<SponsorInvite>(), true), Times.Once);
         workflowMessageService.Verify(x => x.SendNotificationAsync(
@@ -799,6 +801,74 @@ public class ServiceTests
         Assert.That(sessions[0].RecordingShareCreatedOnUtc, Is.Not.Null);
         _sessionRepository.Verify(x => x.UpdateAsync(It.Is<InterviewSession>(session =>
             session.RecordingShareToken == firstToken && session.RecordingShareEnabled), true), Times.Once);
+    }
+
+    [Test]
+    public async Task InterviewSessionService_SoftDeleteInterviewSessionAsync_UpdatesCompletedOwnedSession()
+    {
+        var session = new InterviewSession
+        {
+            Id = 12,
+            CustomerId = 7,
+            IsActive = true,
+            CompletedOnUtc = DateTime.UtcNow,
+            RecordingShareEnabled = true,
+            ReportShareEnabled = true
+        };
+        _sessionRepository.Setup(repository => repository.GetByIdAsync(12, null, true, false))
+            .ReturnsAsync(session);
+        _sessionRepository.Setup(repository => repository.UpdateAsync(session, true))
+            .Returns(Task.CompletedTask);
+        var service = CreateInterviewSessionService(new Mock<IApplicationService>().Object);
+
+        var result = await service.SoftDeleteInterviewSessionAsync(12, 7);
+
+        Assert.That(result, Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(session.Deleted, Is.True);
+            Assert.That(session.IsActive, Is.False);
+            Assert.That(session.RecordingShareEnabled, Is.False);
+            Assert.That(session.ReportShareEnabled, Is.False);
+        });
+        _sessionRepository.Verify(repository => repository.UpdateAsync(session, true), Times.Once);
+    }
+
+    [TestCase(8, true, Description = "A different customer cannot delete the session.")]
+    [TestCase(7, false, Description = "An incomplete session cannot be deleted.")]
+    public async Task InterviewSessionService_SoftDeleteInterviewSessionAsync_RejectsInvalidDelete(int customerId, bool completed)
+    {
+        var session = new InterviewSession
+        {
+            Id = 12,
+            CustomerId = 7,
+            CompletedOnUtc = completed ? DateTime.UtcNow : null
+        };
+        _sessionRepository.Setup(repository => repository.GetByIdAsync(12, null, true, false))
+            .ReturnsAsync(session);
+        var service = CreateInterviewSessionService(new Mock<IApplicationService>().Object);
+
+        var result = await service.SoftDeleteInterviewSessionAsync(12, customerId);
+
+        Assert.That(result, Is.False);
+        Assert.That(session.Deleted, Is.False);
+        _sessionRepository.Verify(repository => repository.UpdateAsync(It.IsAny<InterviewSession>(), It.IsAny<bool>()), Times.Never);
+    }
+
+    [Test]
+    public async Task InterviewSessionService_GetSessionsByCustomerIdAsync_FiltersSoftDeletedRows()
+    {
+        SetupRepositoryQuery(_sessionRepository, new List<InterviewSession>
+        {
+            new() { Id = 1, CustomerId = 7, CreatedOnUtc = DateTime.UtcNow.AddMinutes(-1) },
+            new() { Id = 2, CustomerId = 7, Deleted = true, CreatedOnUtc = DateTime.UtcNow },
+            new() { Id = 3, CustomerId = 8, CreatedOnUtc = DateTime.UtcNow }
+        });
+        var service = CreateInterviewSessionService(new Mock<IApplicationService>().Object);
+
+        var result = await service.GetSessionsByCustomerIdAsync(7);
+
+        Assert.That(result.Select(session => session.Id), Is.EqualTo(new[] { 1 }));
     }
 
     [Test]

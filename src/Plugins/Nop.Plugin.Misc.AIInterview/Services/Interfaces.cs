@@ -69,6 +69,7 @@ public interface IInterviewSessionService
     Task<string> EnsureReportShareTokenAsync(InterviewSession session);
     Task<InterviewSession> GetSessionByReportShareTokenAsync(string token);
     Task UpdateInterviewSessionAsync(InterviewSession session);
+    Task<bool> SoftDeleteInterviewSessionAsync(int sessionId, int customerId);
     Task<bool> CanAccessReportAsync(int customerId, int sessionId);
 }
 

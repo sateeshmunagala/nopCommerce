@@ -2,10 +2,10 @@
 @using Nop.Services.Helpers
 @inject IDateTimeHelper dateTimeHelper
 @{
-    async Task<string> FormatUtcDateAsync(DateTime utcDateTime)
+    async Task<string> FormatUtcDateTimeAsync(DateTime utcDateTime)
     {
         var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(utcDateTime, DateTimeKind.Utc);
-        return userDateTime.ToString("yyyy-MM-dd");
+        return userDateTime.ToString("yyyy-MM-dd HH:mm:ss");
     }
 
     string FormatInterviewScore(decimal score) => $"{Math.Round(score):N0}/100";
@@ -20,6 +20,8 @@
     var practiceRecordingTitleFormat = T("Plugins.Misc.AIInterview.History.PracticeRecordingTitle").Text;
     var openPracticeReportFormat = T("Plugins.Misc.AIInterview.History.OpenPracticeReport").Text;
     var openPracticeRecordingFormat = T("Plugins.Misc.AIInterview.History.OpenPracticeRecording").Text;
+    var deleteInterviewText = T("Plugins.Misc.AIInterview.History.Delete").Text;
+    var deleteInterviewConfirmText = T("Plugins.Misc.AIInterview.History.DeleteConfirm").Text;
 }
 
 <div class="applications-card">
@@ -35,6 +37,7 @@
                         <th class="col-completed">@T("Plugins.Misc.AIInterview.History.Date")</th>
                         <th class="col-report">@T("Plugins.Misc.AIInterview.Report.Title")</th>
                         <th class="col-recording">@T("Plugins.Misc.AIInterview.Report.Recording")</th>
+                        <th class="col-actions">@T("Plugins.Misc.AIInterview.Employer.Invite.Actions")</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -49,11 +52,11 @@
                         <tr>
                             <td class="col-job">
                                 <div><strong>@session.JobTitle</strong></div>
-                                <div class="applications-footnote">@(await FormatUtcDateAsync(session.CreatedOnUtc))</div>
+                                <div class="applications-footnote">@(await FormatUtcDateTimeAsync(session.CompletedOnUtc ?? session.CreatedOnUtc))</div>
                             </td>
                             <td class="col-score"><span class="score-chip">@FormatInterviewScore(session.Score)</span></td>
                             <td class="col-status"><span class="status-pill">@session.Status</span></td>
-                            <td class="col-completed">@(await FormatUtcDateAsync(session.CreatedOnUtc))</td>
+                            <td class="col-completed">@(await FormatUtcDateTimeAsync(session.CompletedOnUtc ?? session.CreatedOnUtc))</td>
                             <td class="col-report">
                                 @if (!string.IsNullOrWhiteSpace(session.InterviewReportUrl))
                                 {
@@ -101,6 +104,25 @@
                                     <span>-</span>
                                 }
                             </td>
+                            <td class="col-actions">
+                                @if (session.CompletedOnUtc.HasValue)
+                                {
+                                    <form asp-route="@AIInterviewDefaults.DeleteInterviewRouteName"
+                                          asp-route-sessionId="@session.SessionId"
+                                          method="post"
+                                          class="ai-interview-delete-form"
+                                          data-confirm-message="@deleteInterviewConfirmText"
+                                          onsubmit="return window.confirm(this.dataset.confirmMessage);">
+                                        <button type="submit"
+                                                class="button-2 ai-icon-action ai-interview-delete-button"
+                                                aria-label="@deleteInterviewText"
+                                                title="@deleteInterviewText">
+                                            <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                                            <span class="sr-only">@deleteInterviewText</span>
+                                        </button>
+                                    </form>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -120,7 +142,7 @@
                     <div class="responsive-data-card-head">
                         <div class="responsive-data-card-head-copy">
                             <strong class="responsive-data-card-title">@session.JobTitle</strong>
-                            <div class="applications-footnote">@(await FormatUtcDateAsync(session.CreatedOnUtc))</div>
+                            <div class="applications-footnote">@(await FormatUtcDateTimeAsync(session.CompletedOnUtc ?? session.CreatedOnUtc))</div>
                         </div>
                         <div class="responsive-data-card-chip-group">
                             <span class="score-chip">@FormatInterviewScore(session.Score)</span>
@@ -130,7 +152,7 @@
                     <div class="responsive-data-card-grid">
                         <div class="responsive-data-card-item">
                             <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Date")</span>
-                            <span class="responsive-data-card-value">@(await FormatUtcDateAsync(session.CreatedOnUtc))</span>
+                            <span class="responsive-data-card-value">@(await FormatUtcDateTimeAsync(session.CompletedOnUtc ?? session.CreatedOnUtc))</span>
                         </div>
                         <div class="responsive-data-card-item">
                             <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.History.Score")</span>
@@ -175,6 +197,23 @@
                                     </noscript>
                                 }
                             </div>
+                        }
+                        @if (session.CompletedOnUtc.HasValue)
+                        {
+                            <form asp-route="@AIInterviewDefaults.DeleteInterviewRouteName"
+                                  asp-route-sessionId="@session.SessionId"
+                                  method="post"
+                                  class="ai-interview-delete-form"
+                                  data-confirm-message="@deleteInterviewConfirmText"
+                                  onsubmit="return window.confirm(this.dataset.confirmMessage);">
+                                <button type="submit"
+                                        class="button-2 ai-icon-action ai-interview-delete-button"
+                                        aria-label="@deleteInterviewText"
+                                        title="@deleteInterviewText">
+                                    <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                                    <span>@deleteInterviewText</span>
+                                </button>
+                            </form>
                         }
                     </div>
                 </article>

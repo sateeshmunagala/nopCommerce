@@ -295,8 +295,11 @@
                                     <div class="message-error practice-start-error aiinterview-hidden" data-practice-start-error="true" role="alert" aria-live="polite"></div>
 
                                     <div class="job-ai-actions">
-                                        <button type="submit" class="button-1" data-practice-start-submit="true">Start AI Interview</button>
+                                        <button type="submit" class="button-1" data-practice-start-submit="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
                                     </div>
+                                    <p class="job-ai-note job-ai-credit-notice">
+                                        @T("Plugins.Misc.AIInterview.Interview.StartCreditNotice")
+                                    </p>
                                     <div class="practice-start-progress aiinterview-hidden" data-practice-start-progress="true" role="status" aria-live="polite" style="min-height: 48px; margin-top: 12px;">
                                         <div data-practice-start-progress-message="true"></div>
                                         <strong data-practice-start-progress-elapsed="true">00:00</strong>
@@ -323,7 +326,7 @@
         const progressMessage = form.querySelector('[data-practice-start-progress-message="true"]');
         const progressElapsed = form.querySelector('[data-practice-start-progress-elapsed="true"]');
         const safeRequestError = 'Unable to start the practice interview. Please try again.';
-        const originalButtonText = button?.textContent || 'Start AI Interview';
+        const originalButtonText = button?.textContent || 'Start Interview';
         let progressTimer = null;
         let progressStartedAt = 0;
 

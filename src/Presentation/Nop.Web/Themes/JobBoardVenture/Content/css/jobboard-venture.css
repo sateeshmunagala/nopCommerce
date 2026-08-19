@@ -9527,6 +9527,18 @@ body.jb-filter-panel-open .product-filters {
     }
 }
 
+.login-page .company-sponsored-login-notice {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    border: 1px solid #9adfd2;
+    border-left: 4px solid #24b99a;
+    background: #eefaf7;
+    color: #174f47;
+    line-height: 1.5;
+}
+
 /* =========================================
    SECONDARY ACCOUNT PAGES
    ========================================= */
@@ -14943,6 +14955,39 @@ textarea,
 }
 
 @media (max-width: 1000px) {
+    #jb-mobile-menu-drawer > .jb-drawer-header {
+        position: relative;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 62px;
+        padding: 10px 15px;
+        text-align: right;
+    }
+
+    #jb-mobile-menu-drawer > .jb-drawer-header > .jb-drawer-close {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        margin: 0 !important;
+    }
+
+    body.jb-account-nav-enhanced #jb-account-navigation > .jb-account-nav-header {
+        position: relative;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    body.jb-account-nav-enhanced #jb-account-navigation > .jb-account-nav-header > .title {
+        padding-right: 78px;
+    }
+
+    body.jb-account-nav-enhanced #jb-account-navigation > .jb-account-nav-header > .jb-account-nav-close {
+        position: absolute;
+        top: 5px;
+        right: 15px;
+        margin: 0 !important;
+    }
+
     .header-menu.jb-header-nav .jb-drawer-content .menu__link,
     .header-menu.jb-header-nav .jb-drawer-content .menu__item > a,
     .header-menu.jb-header-nav .jb-drawer-content .menu__item-toggle,

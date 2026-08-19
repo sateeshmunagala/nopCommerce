@@ -78,6 +78,7 @@ public class EmployerTests
 
         _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>(), It.IsAny<bool>())).ReturnsAsync(false);
         _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>())).ReturnsAsync(false);
+        _customerService.Setup(x => x.IsRegisteredAsync(_employer)).ReturnsAsync(true);
         _workContext.Setup(x => x.GetWorkingLanguageAsync()).ReturnsAsync(new global::Nop.Core.Domain.Localization.Language { Id = 1 });
         _localizationService.Setup(x => x.GetResourceAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<bool>()))
             .ReturnsAsync((string key, int _, bool __, string ___, bool ____) => key);
@@ -129,7 +130,8 @@ public class EmployerTests
             _customerService.Object,
             _productService.Object,
             new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
-            _applicationService.Object);
+            _applicationService.Object,
+            notificationService: _notificationService.Object);
     }
 
     [Test]
@@ -371,10 +373,9 @@ public class EmployerTests
         var result = await _mockAiController.CreateInvite("invited@test.com", 10, 1, null);
 
         _inviteService.Verify(x => x.CreateInviteAsync(123, "invited@test.com", 10, 1, null), Times.Once);
-        Assert.That(result, Is.TypeOf<JsonResult>());
-        var json = (JsonResult)result;
-        var success = (bool)json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
-        Assert.That(success, Is.True);
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        Assert.That(((RedirectToRouteResult)result).RouteName, Is.EqualTo(AIInterviewDefaults.MockEmployerManageRouteName));
+        _notificationService.Verify(service => service.SuccessNotification(It.IsAny<string>(), true, 0), Times.Once);
     }
 
     [Test]
@@ -404,12 +405,8 @@ public class EmployerTests
 
         var result = await _mockAiController.CreateInvite("not-an-email", 10, 1, null);
 
-        Assert.That(result, Is.TypeOf<JsonResult>());
-        var json = (JsonResult)result;
-        var success = (bool)json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
-        var error = (string)json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
-        Assert.That(success, Is.False);
-        Assert.That(error, Is.EqualTo("Enter a valid email address."));
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        _notificationService.Verify(service => service.ErrorNotification("Enter a valid email address.", true, 0), Times.Once);
         _inviteService.Verify(x => x.CreateInviteAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<DateTime?>()), Times.Never);
     }
 
@@ -424,12 +421,8 @@ public class EmployerTests
 
         var result = await _mockAiController.CreateInvite("invited@test.com", 10, 1, null);
 
-        Assert.That(result, Is.TypeOf<JsonResult>());
-        var json = (JsonResult)result;
-        var success = (bool)json.Value.GetType().GetProperty("success").GetValue(json.Value, null);
-        var error = (string)json.Value.GetType().GetProperty("error").GetValue(json.Value, null);
-        Assert.That(success, Is.False);
-        Assert.That(error, Is.EqualTo("Product is not owned by the sponsor."));
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        _notificationService.Verify(service => service.ErrorNotification("Product is not owned by the sponsor.", true, 0), Times.Once);
     }
 
     [Test]
@@ -442,12 +435,30 @@ public class EmployerTests
     }
 
     [Test]
-    public async Task CreateInvite_Unauthorized_ReturnsChallenge()
+    public async Task CreateInvite_Unauthorized_RedirectsToLoginWithReturnUrl()
     {
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(new Customer { Id = 456, VendorId = 0 });
         _customerService.Setup(x => x.IsAdminAsync(It.IsAny<Customer>())).ReturnsAsync(false);
         var result = await _mockAiController.CreateInvite("invited@test.com", 10, 1, null);
-        Assert.That(result, Is.TypeOf<ChallengeResult>());
+        Assert.That(result, Is.TypeOf<RedirectResult>());
+        Assert.That(((RedirectResult)result).Url, Does.Contain("returnUrl=%2Fmockaiinterview%2Fcreate-invite"));
+        Assert.That(((RedirectResult)result).Url, Does.Contain("interviewNotice=companySponsored"));
+    }
+
+    [Test]
+    public async Task DeleteInterview_CompletedOwnedSession_SoftDeletesAndRefreshesInterviewTab()
+    {
+        _interviewSessionService.Setup(service => service.SoftDeleteInterviewSessionAsync(44, _employer.Id))
+            .ReturnsAsync(true);
+
+        var result = await _controller.DeleteInterview(44);
+
+        _interviewSessionService.Verify(service => service.SoftDeleteInterviewSessionAsync(44, _employer.Id), Times.Once);
+        Assert.That(result, Is.TypeOf<RedirectToRouteResult>());
+        var redirect = (RedirectToRouteResult)result;
+        Assert.That(redirect.RouteName, Is.EqualTo(AIInterviewDefaults.MyActivityRouteName));
+        Assert.That(redirect.RouteValues?["tab"], Is.EqualTo(AIInterviewDefaults.MyActivityMockInterviewsTabKey));
+        _notificationService.Verify(service => service.SuccessNotification(It.IsAny<string>(), true, 0), Times.Once);
     }
 
     [Test]
