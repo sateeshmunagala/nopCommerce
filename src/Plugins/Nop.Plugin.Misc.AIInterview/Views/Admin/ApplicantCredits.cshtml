@@ -130,7 +130,13 @@
             </div>
         </div>
 
-        <form asp-controller="AIInterviewAdmin" asp-action="ApplicantCredits" method="post" class="aiinterview-admin-form-shell">
+        <form asp-controller="AIInterviewAdmin"
+              asp-action="ApplicantCredits"
+              method="post"
+              id="applicant-credit-adjustment-form"
+              class="aiinterview-admin-form-shell"
+              data-wallet-balance="@Model.WalletBalance.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+              data-balance-url="@Url.Action("ApplicantCreditBalance", "AIInterviewAdmin")">
             <input type="hidden" id="SelectedCustomerId" name="CustomerId" value="@Model.CustomerId" />
 
             <div class="card card-default aiinterview-admin-card">
@@ -159,11 +165,17 @@
                     </div>
                     <div class="form-group row">
                         <div class="col-md-3">@T("Plugins.Misc.AIInterview.Admin.Credits.Activity.WalletBalance")</div>
-                        <div class="col-md-9"><strong>@Model.WalletBalance</strong></div>
+                        <div class="col-md-9"><strong id="selected-applicant-wallet-balance">@Model.WalletBalance</strong></div>
                     </div>
                     <div class="form-group row">
                         <div class="col-md-3">@T("Plugins.Misc.AIInterview.Admin.Credits.Credits")</div>
-                        <div class="col-md-6"><nop-editor asp-for="Amount" /></div>
+                        <div class="col-md-6">
+                            <nop-editor asp-for="Amount" />
+                            <span id="applicant-credit-amount-error"
+                                  class="text-danger field-validation-error d-none"
+                                  data-invalid-message="@T("Plugins.Misc.AIInterview.Admin.TopUp.InvalidAmount").Text"
+                                  data-insufficient-message="@T("Plugins.Misc.AIInterview.Admin.Credits.Deduction.InsufficientBalance").Text"></span>
+                        </div>
                         <div class="col-md-3">
                             <button type="submit" class="btn btn-primary aiinterview-admin-action-button" aria-label="@T("Plugins.Misc.AIInterview.Admin.Credits.TopUp")" title="@T("Plugins.Misc.AIInterview.Admin.Credits.TopUp")">@T("Plugins.Misc.AIInterview.Admin.Credits.TopUp")</button>
                         </div>
@@ -224,6 +236,106 @@
 </section>
 
 <script>
+    (function () {
+        var form = document.getElementById('applicant-credit-adjustment-form');
+        var amountInput = document.getElementById('Amount');
+        var errorElement = document.getElementById('applicant-credit-amount-error');
+        var customerIdInput = document.getElementById('SelectedCustomerId');
+        var balanceElement = document.getElementById('selected-applicant-wallet-balance');
+        var submitButton = form ? form.querySelector('button[type="submit"]') : null;
+        var balanceRequestPending = false;
+        var submitting = false;
+
+        if (!form || !amountInput || !errorElement || !customerIdInput) {
+            return;
+        }
+
+        // Decimal editor defaults can vary by browser. Explicitly allow signed values.
+        amountInput.setAttribute('step', 'any');
+        amountInput.removeAttribute('min');
+        amountInput.setAttribute('required', 'required');
+
+        function clearAmountError() {
+            amountInput.setCustomValidity('');
+            errorElement.textContent = '';
+            errorElement.classList.add('d-none');
+        }
+
+        function showAmountError(message) {
+            amountInput.setCustomValidity(message);
+            errorElement.textContent = message;
+            errorElement.classList.remove('d-none');
+            amountInput.reportValidity();
+        }
+
+        amountInput.addEventListener('input', clearAmountError);
+        form.addEventListener('submit', async function (event) {
+            clearAmountError();
+
+            if (submitting || balanceRequestPending) {
+                event.preventDefault();
+                return;
+            }
+
+            var amount = Number(amountInput.value);
+            if (!amountInput.value.trim() || !Number.isFinite(amount) || amount === 0) {
+                event.preventDefault();
+                showAmountError(errorElement.dataset.invalidMessage);
+                return;
+            }
+
+            if (amount >= 0) {
+                submitting = true;
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
+                return;
+            }
+
+            event.preventDefault();
+            balanceRequestPending = true;
+
+            try {
+                var selectedCustomerId = Number(customerIdInput.value);
+                var balanceUrl = new URL(form.dataset.balanceUrl, window.location.origin);
+                balanceUrl.searchParams.set('customerId', selectedCustomerId);
+
+                var response = await fetch(balanceUrl.toString(), {
+                    method: 'GET',
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' }
+                });
+                var result = response.ok ? await response.json() : null;
+
+                if (!result || !result.success || Number(result.customerId) !== selectedCustomerId) {
+                    throw new Error('Unable to refresh the selected applicant wallet.');
+                }
+
+                var walletBalance = Number(result.walletBalance);
+                form.dataset.walletBalance = String(walletBalance);
+                if (balanceElement) {
+                    balanceElement.textContent = result.walletBalance;
+                }
+
+                if (Math.abs(amount) > walletBalance) {
+                    showAmountError(errorElement.dataset.insufficientMessage);
+                    return;
+                }
+            } catch (error) {
+                // The POST handler performs the authoritative balance validation.
+            } finally {
+                balanceRequestPending = false;
+            }
+
+            submitting = true;
+            if (submitButton) {
+                submitButton.disabled = true;
+            }
+            form.submit();
+        });
+    })();
+
     function applicantCreditEncodeHtml(value) {
         if (value === null || value === undefined) {
             return '';

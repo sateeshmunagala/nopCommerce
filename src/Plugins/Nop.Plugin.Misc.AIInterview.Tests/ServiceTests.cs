@@ -1032,6 +1032,39 @@ public class ServiceTests
     }
 
     [Test]
+    public async Task CreditService_AuthorizeAndChargeAsync_Records_Admin_Withdrawal_Without_Overdrawing()
+    {
+        var wallet = new CreditWallet { Id = 17, CustomerId = 55, Balance = 20 };
+        var ledgerEntries = new List<CreditLedgerEntry>();
+        var walletRepository = new Mock<IRepository<CreditWallet>>();
+        var ledgerRepository = new Mock<IRepository<CreditLedgerEntry>>();
+
+        walletRepository.Setup(x => x.GetAllAsync(It.IsAny<Func<IQueryable<CreditWallet>, IQueryable<CreditWallet>>>(), It.IsAny<Func<ICacheKeyService, CacheKey>>(), true))
+            .ReturnsAsync(new List<CreditWallet> { wallet });
+        walletRepository.Setup(x => x.UpdateAsync(It.IsAny<CreditWallet>(), true)).Returns(Task.CompletedTask);
+        ledgerRepository.Setup(x => x.InsertAsync(It.IsAny<CreditLedgerEntry>(), true))
+            .Callback<CreditLedgerEntry, bool>((entry, _) => ledgerEntries.Add(entry))
+            .Returns(Task.CompletedTask);
+
+        var service = new CreditService(walletRepository.Object, ledgerRepository.Object);
+
+        var deducted = await service.AuthorizeAndChargeAsync(55, 17, "Admin deduction", CreditLedgerSources.Adjustment);
+        var overdrawn = await service.AuthorizeAndChargeAsync(55, 4, "Admin deduction", CreditLedgerSources.Adjustment);
+
+        Assert.That(deducted, Is.True);
+        Assert.That(overdrawn, Is.False);
+        Assert.That(wallet.Balance, Is.EqualTo(3));
+        Assert.That(ledgerEntries, Has.Count.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(ledgerEntries[0].Amount, Is.EqualTo(-17));
+            Assert.That(ledgerEntries[0].TransactionType, Is.EqualTo("Withdrawal"));
+            Assert.That(ledgerEntries[0].LedgerSource, Is.EqualTo(CreditLedgerSources.Adjustment));
+            Assert.That(ledgerEntries[0].Remarks, Is.EqualTo("Admin deduction"));
+        });
+    }
+
+    [Test]
     public async Task InterviewStartCreditService_ParallelSponsorStartsChargeOnceAndRefundOnce()
     {
         var wallet = new CreditWallet { Id = 17, CustomerId = 99, Balance = 2 };

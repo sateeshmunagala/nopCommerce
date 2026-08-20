@@ -156,7 +156,7 @@
             {
                 <div class="job-company">
                     <img class="job-company-logo" src="@vendorPictureUrl" alt="@vendorDisplayName" />
-                    <div>
+                    <div class="job-company-copy">
                         <div class="job-company-label">@hiringCompanyText</div>
                         <div class="job-company-name">@vendorDisplayName</div>
                     </div>
@@ -293,7 +293,9 @@
                 }
                 else
                 {
-                    <p>@skillsFallbackText</p>
+                    <ul class="job-skills-fallback">
+                        <li>@skillsFallbackText</li>
+                    </ul>
                 }
             </section>
 

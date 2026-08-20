@@ -627,10 +627,30 @@ public class AIInterviewAdminController : BasePluginController
         return await HandleCreditTopUpAsync(model, "Plugins.Misc.AIInterview.Admin.Credits.VendorTitle");
     }
 
+    [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> ApplicantCredits(int? customerId = null)
     {
         var model = await PrepareCreditModelAsync("Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle", customerId, false);
         return View("~/Plugins/Misc.AIInterview/Views/Admin/ApplicantCredits.cshtml", model);
+    }
+
+    [HttpGet]
+    [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
+    public async Task<IActionResult> ApplicantCreditBalance(int customerId)
+    {
+        var customer = await _customerService.GetCustomerByIdAsync(customerId);
+        if (customer == null || customer.Deleted || customer.VendorId > 0)
+            return NotFound();
+
+        var wallet = (await _walletRepository.GetAllAsync(query => query.Where(item => item.CustomerId == customerId)))
+            .OrderBy(item => item.Id)
+            .FirstOrDefault();
+        return Json(new
+        {
+            success = true,
+            customerId,
+            walletBalance = wallet?.Balance ?? 0
+        });
     }
 
     [HttpPost]
@@ -1721,25 +1741,66 @@ public class AIInterviewAdminController : BasePluginController
             return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, false));
         }
 
-        if (model.Amount <= 0)
+        var amountModelStateIsInvalid = ModelState.TryGetValue(nameof(CreditManagementModel.Amount), out var amountModelState) &&
+                                        amountModelState.Errors.Count > 0;
+        if (amountModelStateIsInvalid || model.Amount == 0 || (isVendorScope && model.Amount < 0) || model.Amount == decimal.MinValue)
         {
             _notificationService.ErrorNotification(await GetLocalizedTextAsync("Plugins.Misc.AIInterview.Admin.TopUp.InvalidAmount", "Invalid top-up amount."));
             return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, false));
         }
 
-        var remarks = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Remarks");
-        await _creditService.AddCreditAsync(model.CustomerId, model.Amount, remarks);
-        if (_creditDepositNotificationService != null)
+        if (model.Amount < 0)
         {
-            await _creditDepositNotificationService.SendCreditDepositedNotificationAsync(new CreditDepositNotificationRequest
+            var deductionAmount = decimal.Abs(model.Amount);
+            var selectedApplicantWallet = await _creditService.GetOrCreateWalletAsync(model.CustomerId);
+            if (selectedApplicantWallet.Balance < deductionAmount)
             {
-                CustomerId = model.CustomerId,
-                CreditsDeposited = model.Amount,
-                DepositSource = CreditDepositSources.ViaAdminTopUp,
-                Remarks = remarks
-            });
+                _notificationService.ErrorNotification(await GetLocalizedTextAsync(
+                    "Plugins.Misc.AIInterview.Admin.Credits.Deduction.InsufficientBalance",
+                    "The deduction exceeds the applicant's current wallet balance."));
+                return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, false));
+            }
+
+            var deductionRemarks = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Credits.Deduction.Remarks");
+            var deducted = await _creditService.AuthorizeAndChargeAsync(
+                model.CustomerId,
+                deductionAmount,
+                deductionRemarks,
+                CreditLedgerSources.Adjustment);
+
+            if (!deducted)
+            {
+                _notificationService.ErrorNotification(await GetLocalizedTextAsync(
+                    "Plugins.Misc.AIInterview.Admin.Credits.Deduction.InsufficientBalance",
+                    "The deduction exceeds the applicant's current wallet balance."));
+                return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, false));
+            }
+
+            ModelState.Clear();
+            _notificationService.SuccessNotification(await GetLocalizedTextAsync(
+                "Plugins.Misc.AIInterview.Admin.Credits.Deduction.Success",
+                "Credits deducted successfully."));
+
+            return RedirectToAction(nameof(ApplicantCredits), new { customerId = model.CustomerId });
         }
-        _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Success"));
+        else
+        {
+            var remarks = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Remarks");
+            await _creditService.AddCreditAsync(model.CustomerId, model.Amount, remarks);
+            if (_creditDepositNotificationService != null)
+            {
+                await _creditDepositNotificationService.SendCreditDepositedNotificationAsync(new CreditDepositNotificationRequest
+                {
+                    CustomerId = model.CustomerId,
+                    CreditsDeposited = model.Amount,
+                    DepositSource = CreditDepositSources.ViaAdminTopUp,
+                    Remarks = remarks
+                });
+            }
+
+            ModelState.Clear();
+            _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.TopUp.Success"));
+        }
 
         return View(viewPath, await PrepareCreditModelAsync(scopeTitleResourceKey, model.CustomerId, true));
     }

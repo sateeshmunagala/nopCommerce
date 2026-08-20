@@ -1088,6 +1088,85 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public async Task ApplicantCredits_Negative_Amount_Records_Admin_Deduction()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, VendorId = 0 });
+        _creditService.Setup(x => x.GetOrCreateWalletAsync(202))
+            .ReturnsAsync(new CreditWallet { Id = 2, CustomerId = 202, Balance = 25 });
+        _creditService.Setup(x => x.AuthorizeAndChargeAsync(
+                202,
+                17,
+                "Plugins.Misc.AIInterview.Admin.Credits.Deduction.Remarks",
+                CreditLedgerSources.Adjustment,
+                0,
+                0))
+            .ReturnsAsync(true);
+
+        var result = await _controller.ApplicantCredits(new CreditManagementModel
+        {
+            CustomerId = 202,
+            Amount = -17
+        });
+
+        Assert.That(result, Is.InstanceOf<RedirectToActionResult>());
+        var redirect = (RedirectToActionResult)result;
+        Assert.That(redirect.ActionName, Is.EqualTo(nameof(AIInterviewAdminController.ApplicantCredits)));
+        Assert.That(redirect.RouteValues["customerId"], Is.EqualTo(202));
+        _creditService.Verify(x => x.GetOrCreateWalletAsync(202), Times.AtLeastOnce);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(
+            202,
+            17,
+            "Plugins.Misc.AIInterview.Admin.Credits.Deduction.Remarks",
+            CreditLedgerSources.Adjustment,
+            0,
+            0), Times.Once);
+        _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        _creditDepositNotificationService.Verify(x => x.SendCreditDepositedNotificationAsync(It.IsAny<CreditDepositNotificationRequest>()), Times.Never);
+        _notificationService.Verify(x => x.SuccessNotification("Credits deducted successfully.", true), Times.Once);
+    }
+
+    [Test]
+    public async Task ApplicantCredits_Deduction_Above_Balance_Returns_Error()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, VendorId = 0 });
+        _creditService.Setup(x => x.GetOrCreateWalletAsync(202))
+            .ReturnsAsync(new CreditWallet { Id = 2, CustomerId = 202, Balance = 16 });
+
+        await _controller.ApplicantCredits(new CreditManagementModel
+        {
+            CustomerId = 202,
+            Amount = -17
+        });
+
+        _notificationService.Verify(x => x.ErrorNotification(
+            "The deduction exceeds the applicant's current wallet balance.", true, 0), Times.Once);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(
+            It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+        _creditDepositNotificationService.Verify(x => x.SendCreditDepositedNotificationAsync(It.IsAny<CreditDepositNotificationRequest>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ApplicantCreditBalance_SwitchingApplicants_Loads_Selected_Wallet()
+    {
+        _customerService.Setup(x => x.GetCustomerByIdAsync(201))
+            .ReturnsAsync(new Customer { Id = 201, VendorId = 0 });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(202))
+            .ReturnsAsync(new Customer { Id = 202, VendorId = 0 });
+        _wallets.Add(new CreditWallet { Id = 21, CustomerId = 201, Balance = 3 });
+        _wallets.Add(new CreditWallet { Id = 22, CustomerId = 202, Balance = 41 });
+
+        var firstResult = (JsonResult)await _controller.ApplicantCreditBalance(201);
+        var selectedResult = (JsonResult)await _controller.ApplicantCreditBalance(202);
+
+        Assert.That(firstResult.Value.GetType().GetProperty("walletBalance")?.GetValue(firstResult.Value), Is.EqualTo(3));
+        Assert.That(selectedResult.Value.GetType().GetProperty("customerId")?.GetValue(selectedResult.Value), Is.EqualTo(202));
+        Assert.That(selectedResult.Value.GetType().GetProperty("walletBalance")?.GetValue(selectedResult.Value), Is.EqualTo(41));
+        _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Test]
     public async Task ApplicantCredits_Invalid_TopUp_Amount_Does_Not_Send_Deposit_Notification()
     {
         _customerService.Setup(x => x.GetCustomerByIdAsync(202))
