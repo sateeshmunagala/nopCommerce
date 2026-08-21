@@ -5800,13 +5800,13 @@ body.ai-job-preview-open .item-box {
 }
 
 .job-details-page {
-    --job-bg: #f0f0f0;
-    --job-card: #ffffff;
+    --job-bg: var(--jb-bg);
+    --job-card: var(--jb-white);
     --job-border: #d8d8d8;
     --job-text: #111827;
     --job-muted: #6b7280;
     --job-primary: #22d1b2;
-    --job-primary-strong: #0f766e;
+    --job-primary-strong: var(--jb-action-secondary-foreground);
     --job-secondary: var(--jb-action-secondary-hover-background);
     --job-shadow: none;
 }
@@ -6309,7 +6309,7 @@ body.ai-job-preview-open .item-box {
 
 .practice-details-page {
     --job-bg: #f4f6f8;
-    --job-card: #ffffff;
+    --job-card: var(--jb-white);
     --job-border: #d7dfe5;
     --job-text: #18212b;
     --job-muted: #5b6776;
@@ -6464,7 +6464,7 @@ body.ai-job-preview-open .item-box {
     padding: 10px 12px;
     border: 1px solid #d6dde4;
     border-radius: 6px;
-    background: #fff;
+    background: var(--jb-action-secondary-background);
     color: var(--job-text);
     font-size: 14px;
     line-height: 1.4;
@@ -6520,7 +6520,7 @@ body.ai-job-preview-open .item-box {
     padding: 12px 14px;
     border: 1px solid #d6dde4;
     border-radius: 6px;
-    background: #fff;
+    background: var(--jb-action-secondary-background);
 }
 
 .practice-start-form .option-list label {
@@ -9934,7 +9934,13 @@ body.ai-job-preview-open .item-box {
     color: var(--jb-action-secondary-foreground);
 }
 
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-media {
+    background: var(--jb-action-secondary-hover-background);
+}
+
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .job-shell {
+    --job-card: var(--jb-white);
+    --job-primary-strong: var(--jb-action-secondary-foreground);
     --job-secondary: var(--jb-action-secondary-hover-background);
 }
 
