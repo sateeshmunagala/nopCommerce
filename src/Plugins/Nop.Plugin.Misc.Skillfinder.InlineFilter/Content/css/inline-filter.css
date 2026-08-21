@@ -4,7 +4,7 @@
     --sfi-border: #cfdad9;
     --sfi-control-border: var(--jb-action-secondary-border);
     --sfi-surface: var(--jb-white, #ffffff);
-    --sfi-soft: #f3faf8;
+    --sfi-soft: var(--jb-action-secondary-hover-background);
     --sfi-ink: var(--jb-ink, #2c2c2c);
     --sfi-muted: #536664;
     --sfi-action-primary-background: var(--jb-action-primary-background);
@@ -36,7 +36,7 @@
     border: 1px solid var(--sfi-border);
     border-top: 3px solid var(--sfi-venture-teal);
     border-radius: 12px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--sfi-venture-teal) 4%, var(--sfi-surface)), var(--sfi-surface) 180px);
+    background: linear-gradient(180deg, var(--sfi-soft), var(--sfi-surface) 180px);
     box-shadow: 0 14px 36px rgba(24, 48, 46, 0.07);
     color: var(--sfi-ink);
 }

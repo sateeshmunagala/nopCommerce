@@ -11680,9 +11680,9 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     align-items: center;
     min-height: 36px;
     padding: 0.5rem 0.75rem;
-    border: 1px solid #cee4de;
+    border: 1px solid var(--jb-action-secondary-border);
     border-radius: 999px;
-    background: #f5fbf9;
+    background: var(--jb-action-secondary-hover-background);
     color: var(--jb-home-badge-text);
     font-family: "Lato", Arial, sans-serif;
     font-size: 0.78rem;
