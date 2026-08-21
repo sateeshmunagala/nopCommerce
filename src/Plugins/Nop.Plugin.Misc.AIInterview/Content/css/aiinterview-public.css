@@ -10037,6 +10037,17 @@ body.ai-job-preview-open .item-box {
     color: var(--jb-action-active-foreground);
 }
 
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close:disabled,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-fallback-link.disabled,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-fallback-link[aria-disabled="true"] {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
+    opacity: 0.58;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-card select,
 .html-aiinterview-mock-start-page .mock-start select,
 .html-aiinterview-mock-practice-product-page .practice-start-form select {

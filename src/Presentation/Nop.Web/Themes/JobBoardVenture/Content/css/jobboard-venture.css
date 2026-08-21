@@ -6065,7 +6065,7 @@ body.jb-search-open .jb-drawer-overlay {
     color: var(--jb-action-secondary-foreground);
 }
 
-.html-category-page .product-item .buttons .product-box-add-to-cart-button:hover,
+.html-category-page .product-item .buttons .product-box-add-to-cart-button:hover:not(:disabled),
 .html-category-page .product-item .buttons .product-box-add-to-cart-button:focus-visible {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-hover-background);
@@ -6082,6 +6082,15 @@ body.jb-search-open .jb-drawer-overlay {
     border-color: var(--jb-action-active-background);
     background: var(--jb-action-active-background);
     color: var(--jb-action-active-foreground);
+}
+
+.html-category-page .product-item .buttons .product-box-add-to-cart-button:disabled {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
+    opacity: 0.58;
+    box-shadow: none;
+    cursor: not-allowed;
 }
 
 .html-category-page .product-item .buttons .jb-view-job-button:hover {
