@@ -3,10 +3,10 @@
     --sfi-venture-teal-dark: var(--jb-action-active-background);
     --sfi-border: var(--jb-border);
     --sfi-control-border: var(--jb-action-secondary-border);
-    --sfi-surface: var(--jb-white, #ffffff);
+    --sfi-surface: var(--jb-white);
     --sfi-soft: var(--jb-action-secondary-hover-background);
-    --sfi-ink: var(--jb-ink, #2c2c2c);
-    --sfi-muted: #536664;
+    --sfi-ink: var(--jb-ink);
+    --sfi-muted: var(--jb-muted);
     --sfi-action-primary-background: var(--jb-action-primary-background);
     --sfi-action-primary-foreground: var(--jb-action-primary-foreground);
     --sfi-action-primary-border: var(--jb-action-primary-border);
