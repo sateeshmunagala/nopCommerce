@@ -301,6 +301,7 @@
     border: 1px solid var(--sfi-border);
     border-radius: 10px;
     background: var(--sfi-surface);
+    color: var(--sfi-ink);
     box-shadow: 0 7px 18px color-mix(in srgb, var(--sfi-ink) 5.5%, transparent);
     transition: transform 220ms cubic-bezier(0.2, 0.75, 0.3, 1), border-color 180ms ease, box-shadow 240ms ease;
 }

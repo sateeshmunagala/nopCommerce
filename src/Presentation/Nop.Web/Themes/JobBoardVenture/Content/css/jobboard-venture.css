@@ -1335,6 +1335,15 @@ body.jb-menu-open .jb-mobile-drawer {
     color: var(--jb-action-secondary-foreground);
 }
 
+.html-category-page .product-item .buttons .product-box-add-to-cart-button:focus-visible {
+    background: var(--jb-action-secondary-hover-background);
+    border-color: var(--jb-action-secondary-border);
+    color: var(--jb-action-secondary-foreground);
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
+}
+
 .html-search-page .product-item .buttons .product-box-add-to-cart-button:hover {
     background: #e5f2ee;
     border-color: #b2d0c6;
@@ -6062,18 +6071,6 @@ body.jb-search-open .jb-drawer-overlay {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-background);
     color: var(--jb-action-secondary-foreground);
-}
-
-.html-category-page .product-item .buttons .product-box-add-to-cart-button:focus-visible {
-    border-color: var(--jb-action-secondary-border);
-    background: var(--jb-action-secondary-hover-background);
-    color: var(--jb-action-secondary-foreground);
-}
-
-.html-category-page .product-item .buttons .product-box-add-to-cart-button:focus-visible {
-    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
-    outline-offset: var(--jb-action-focus-offset);
-    box-shadow: none;
 }
 
 .html-category-page .product-item .buttons .product-box-add-to-cart-button:active:not(:disabled) {

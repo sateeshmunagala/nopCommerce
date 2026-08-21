@@ -2285,7 +2285,7 @@ body.aiinterview-report-drawer-open {
 .ai-job-preview-drawer-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(15, 23, 42, 0.54);
+    background: color-mix(in srgb, var(--jb-ink) 54%, transparent);
     opacity: 0;
     transition: opacity 0.2s ease;
 }
