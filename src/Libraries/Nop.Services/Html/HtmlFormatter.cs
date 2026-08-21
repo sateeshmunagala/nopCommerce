@@ -35,7 +35,7 @@ public partial class HtmlFormatter : IHtmlFormatter
         if (string.IsNullOrEmpty(text))
             return string.Empty;
 
-        const string allowedTags = "br,hr,b,i,u,a,div,ol,ul,li,blockquote,img,span,p,em,strong,font,pre,h1,h2,h3,h4,h5,h6,address,cite";
+        const string allowedTags = "br,hr,b,i,u,a,div,ol,ul,li,blockquote,img,span,p,em,strong,font,pre,h1,h2,h3,h4,h5,h6,address,cite,code";
 
         var m = Regex.Matches(text, "<.*?>", RegexOptions.IgnoreCase);
             

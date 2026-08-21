@@ -1279,13 +1279,17 @@ public partial class ForumService : IForumService
             {
                 text = _htmlFormatter.FormatText(text, false, true, false, false, false, false);
             }
-
                 break;
             case EditorType.BBCodeEditor:
             {
                 text = _htmlFormatter.FormatText(text, false, true, false, true, false, false);
             }
-
+                break;
+            case EditorType.MarkdownEditor:
+            {
+                text = Markdig.Markdown.ToHtml(Html.CodeFormatter.CodeFormatHelper.FormatTextSimple(text));
+                text = _htmlFormatter.FormatText(text, false, false, true, false, false, false);
+            }
                 break;
             default:
                 break;
