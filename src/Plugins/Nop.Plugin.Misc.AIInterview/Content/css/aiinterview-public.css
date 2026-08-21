@@ -9922,10 +9922,11 @@ body.ai-job-preview-open .item-box {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-background);
     color: var(--jb-action-secondary-foreground);
+    box-shadow: none;
 }
 
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:hover:not(.is-saved):not([aria-pressed="true"]),
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:focus-visible:not(.is-saved):not([aria-pressed="true"]) {
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:hover:not(:disabled):not(.is-saved):not([aria-pressed="true"]),
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:focus-visible:not(:disabled):not(.is-saved):not([aria-pressed="true"]) {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-hover-background);
     color: var(--jb-action-secondary-foreground);
@@ -9933,19 +9934,39 @@ body.ai-job-preview-open .item-box {
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved,
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"],
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved:hover,
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved:focus-visible,
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"]:hover,
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"]:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved:hover:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved:focus-visible:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"]:hover:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"]:focus-visible:not(:disabled),
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:active:not(:disabled) {
     border-color: var(--jb-action-active-background);
     background: var(--jb-action-active-background);
     color: var(--jb-action-active-foreground);
+    box-shadow: none;
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:focus-visible {
     outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
     outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:disabled:not(.is-saved):not([aria-pressed="true"]) {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
+    opacity: 0.58;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved:disabled,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"]:disabled {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
+    opacity: 0.58;
+    cursor: not-allowed;
     box-shadow: none;
 }
 

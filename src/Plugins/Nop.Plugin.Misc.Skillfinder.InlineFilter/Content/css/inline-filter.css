@@ -201,6 +201,7 @@
     border-radius: 8px;
     background: var(--sfi-action-secondary-background);
     color: var(--sfi-action-secondary-foreground);
+    box-shadow: none;
     cursor: pointer;
     transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
 }
@@ -212,8 +213,7 @@
     line-height: 1;
 }
 
-.sfi-carousel-control:hover:not(:disabled),
-.sfi-carousel-control:focus-visible {
+.sfi-carousel-control:hover:not(:disabled) {
     border-color: var(--sfi-control-border);
     background: var(--sfi-action-secondary-hover-background);
     color: var(--sfi-action-secondary-foreground);
@@ -223,9 +223,18 @@
     border-color: var(--sfi-action-active-background);
     background: var(--sfi-action-active-background);
     color: var(--sfi-action-active-foreground);
+    box-shadow: none;
 }
 
-.sfi-carousel-control:focus-visible,
+.sfi-carousel-control:focus-visible {
+    border-color: var(--sfi-control-border);
+    background: var(--sfi-action-secondary-hover-background);
+    color: var(--sfi-action-secondary-foreground);
+    outline: var(--sfi-action-focus-width) solid var(--sfi-action-focus-color);
+    outline-offset: var(--sfi-action-focus-offset);
+    box-shadow: none;
+}
+
 .sfi-products-viewport:focus-visible {
     outline: var(--sfi-action-focus-width) solid var(--sfi-action-focus-color);
     outline-offset: var(--sfi-action-focus-offset);
