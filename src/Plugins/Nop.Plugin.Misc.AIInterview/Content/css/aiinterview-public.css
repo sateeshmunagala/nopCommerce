@@ -1992,7 +1992,6 @@ body.aiinterview-report-drawer-open {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--jb-action-secondary-foreground);
     font-family: "Fjalla One", Arial, sans-serif;
     font-size: 1.16rem;
     letter-spacing: 0.04em;
@@ -2035,7 +2034,6 @@ body.aiinterview-report-drawer-open {
 }
 
 .ai-job-card-kicker {
-    color: var(--jb-muted);
     font-family: "Fjalla One", Arial, sans-serif;
     font-size: 0.84rem;
     line-height: 1.1;
@@ -2050,7 +2048,6 @@ body.aiinterview-report-drawer-open {
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--jb-ink);
     font-family: "Fjalla One", Arial, sans-serif;
     font-size: 1.08rem;
     line-height: 1.15;
@@ -2064,13 +2061,7 @@ body.aiinterview-report-drawer-open {
     -webkit-line-clamp: 2;
 }
 
-.ai-job-card-title-link:hover,
-.ai-job-card-title-link:focus-visible {
-    color: var(--jb-action-secondary-foreground);
-}
-
 .ai-job-card-company {
-    color: var(--jb-ink);
     font-size: 0.88rem;
     font-weight: 700;
     line-height: 1.35;
@@ -2078,7 +2069,6 @@ body.aiinterview-report-drawer-open {
 
 .ai-job-card-summary,
 .ai-job-preview-description {
-    color: var(--jb-muted);
     line-height: 1.5;
 }
 
@@ -2117,7 +2107,6 @@ body.aiinterview-report-drawer-open {
     border: 0;
     border-radius: 0;
     background: transparent;
-    color: var(--jb-ink);
     font-size: 0.82rem;
     line-height: 1.35;
     box-sizing: border-box;
@@ -2125,7 +2114,6 @@ body.aiinterview-report-drawer-open {
 
 .ai-job-card-spec-label {
     flex: 0 0 auto;
-    color: var(--jb-muted);
     font-size: 0.74rem;
     font-weight: 700;
     letter-spacing: 0;
@@ -2145,21 +2133,40 @@ body.aiinterview-report-drawer-open {
     flex: 1 1 auto;
     overflow-wrap: anywhere;
     word-break: break-word;
-    color: var(--jb-ink);
     font-weight: 600;
 }
 
 .ai-job-card-spec-stat .ai-job-card-spec-value {
-    color: var(--jb-muted);
     font-weight: 500;
 }
 
 .ai-job-card-spec-icon {
-    color: var(--jb-action-secondary-foreground);
     flex: 0 0 auto;
     width: 14px;
     margin-top: 2px;
     font-size: 0.78rem;
+}
+
+.ai-job-card-title-link,
+.ai-job-card-company,
+.ai-job-card-spec,
+.ai-job-card-spec-value {
+    color: var(--jb-ink);
+}
+
+.ai-job-card-kicker,
+.ai-job-card-summary,
+.ai-job-preview-description,
+.ai-job-card-spec-label,
+.ai-job-card-spec-stat .ai-job-card-spec-value {
+    color: var(--jb-muted);
+}
+
+.ai-job-card-logo-placeholder,
+.ai-job-card-spec-icon,
+.ai-job-card-title-link:hover,
+.ai-job-card-title-link:focus-visible {
+    color: var(--jb-action-secondary-foreground);
 }
 
 .ai-job-card-actions {
@@ -2333,7 +2340,7 @@ body.aiinterview-report-drawer-open {
     gap: 12px;
     padding: 14px 18px;
     border-bottom: 1px solid var(--jb-border);
-    background: color-mix(in srgb, var(--jb-white) 96%, transparent);
+    background: var(--jb-white);
 }
 
 .ai-job-preview-drawer-close {
@@ -5418,7 +5425,7 @@ body.ai-job-preview-open .item-box {
     margin: 0;
     padding: 16px 24px;
     border-top: 1px solid var(--job-border);
-    background: color-mix(in srgb, var(--jb-white) 98%, transparent);
+    background: var(--job-card);
     box-shadow: 0 -10px 24px rgba(15, 23, 42, 0.1);
     backdrop-filter: blur(8px);
 }
@@ -6464,8 +6471,8 @@ body.ai-job-preview-open .item-box {
     padding: 10px 12px;
     border: 1px solid var(--job-border);
     border-radius: 6px;
-    background: var(--jb-action-secondary-background);
-    color: var(--job-text);
+    background: var(--jb-white);
+    color: var(--jb-ink);
     font-size: 14px;
     line-height: 1.4;
     min-width: 0;
@@ -6520,7 +6527,7 @@ body.ai-job-preview-open .item-box {
     padding: 12px 14px;
     border: 1px solid var(--job-border);
     border-radius: 6px;
-    background: var(--jb-action-secondary-background);
+    background: var(--jb-white);
 }
 
 .practice-start-form .option-list label {

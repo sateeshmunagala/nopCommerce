@@ -409,7 +409,7 @@
 }
 
 .sfi-view-job:hover {
-    border-color: var(--sfi-action-primary-hover-background);
+    border-color: var(--jb-action-primary-hover-border);
     background: var(--sfi-action-primary-hover-background);
     color: var(--sfi-action-primary-hover-foreground);
 }
