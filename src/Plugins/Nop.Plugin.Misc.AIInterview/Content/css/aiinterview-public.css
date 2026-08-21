@@ -5803,8 +5803,8 @@ body.ai-job-preview-open .item-box {
     --job-bg: var(--jb-bg);
     --job-card: var(--jb-white);
     --job-border: var(--jb-border);
-    --job-text: #111827;
-    --job-muted: #6b7280;
+    --job-text: var(--jb-ink);
+    --job-muted: var(--jb-muted);
     --job-primary: #22d1b2;
     --job-primary-strong: var(--jb-action-secondary-foreground);
     --job-secondary: var(--jb-action-secondary-hover-background);
@@ -6308,11 +6308,11 @@ body.ai-job-preview-open .item-box {
 }
 
 .practice-details-page {
-    --job-bg: #f4f6f8;
+    --job-bg: var(--jb-bg);
     --job-card: var(--jb-white);
     --job-border: var(--jb-border);
-    --job-text: #18212b;
-    --job-muted: #5b6776;
+    --job-text: var(--jb-ink);
+    --job-muted: var(--jb-muted);
     --job-primary: #20b486;
     --job-primary-strong: #14805f;
     --job-secondary: var(--jb-action-secondary-hover-background);
@@ -9931,8 +9931,23 @@ body.ai-job-preview-open .item-box {
 
 :is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-hero,
 :is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-company-logo,
+:is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-pill,
 :is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-highlight-pills span {
     background: var(--job-card);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-title-link,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-company,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-spec,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-spec-value {
+    color: var(--jb-ink);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-kicker,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-summary,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-spec-label,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-spec-stat .ai-job-card-spec-value {
+    color: var(--jb-muted);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
@@ -9947,12 +9962,29 @@ body.ai-job-preview-open .item-box {
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card {
     border-color: var(--jb-border);
+    background: var(--jb-white);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .job-shell {
     --job-card: var(--jb-white);
+    --job-text: var(--jb-ink);
+    --job-muted: var(--jb-muted);
     --job-primary-strong: var(--jb-action-secondary-foreground);
     --job-secondary: var(--jb-action-secondary-hover-background);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-toolbar {
+    background: var(--jb-white);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .job-company,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .job-company-logo {
+    background: var(--job-card);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-description,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .job-meta-item .job-fact-label {
+    color: var(--jb-muted);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-card-kicker,
