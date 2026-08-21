@@ -9976,6 +9976,39 @@ body.ai-job-preview-open .item-box {
     text-underline-offset: 3px;
 }
 
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-ai-actions .job-ai-action-secondary {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-ai-actions .job-ai-action-secondary:hover:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-ai-actions .job-ai-action-secondary:focus-visible {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-ai-actions .job-ai-action-secondary:active:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-ai-actions .job-ai-action-secondary.is-selected,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-ai-actions .job-ai-action-secondary[aria-pressed="true"] {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-ai-actions .job-ai-action-secondary:focus-visible {
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-ai-actions .job-ai-action-secondary:disabled:not(.is-selected):not([aria-pressed="true"]) {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-action-link:not(.is-saved) {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-background);
@@ -9995,9 +10028,23 @@ body.ai-job-preview-open .item-box {
     color: var(--jb-action-active-foreground);
 }
 
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-action-link.is-saved,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-action-link[aria-pressed="true"] {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
+}
+
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-action-link:focus-visible {
     outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
     outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) button.job-action-link:not(.is-saved):disabled {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) button.job-action-link:disabled {
