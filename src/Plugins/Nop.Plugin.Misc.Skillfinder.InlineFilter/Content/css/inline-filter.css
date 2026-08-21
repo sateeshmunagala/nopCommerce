@@ -308,7 +308,7 @@
 .sfi-ai-card-shell:hover,
 .sfi-fallback-card:hover {
     transform: translateY(-3px);
-    border-color: #35d6b4;
+    border-color: var(--sfi-venture-teal);
     box-shadow: 0 13px 28px rgba(24, 48, 46, 0.105);
 }
 

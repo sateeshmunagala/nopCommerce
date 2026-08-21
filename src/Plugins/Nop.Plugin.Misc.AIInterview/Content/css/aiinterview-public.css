@@ -9919,11 +9919,14 @@ body.ai-job-preview-open .item-box {
 
 /* Approved customer secondary controls share the Venture action contract. */
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-credit-notice {
+    border-left-color: var(--jb-action-primary-border);
     background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
 }
 
 :is(.html-job-details-page, .html-aiinterview-job-details-page) .job-skills span {
     background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
@@ -9940,6 +9943,15 @@ body.ai-job-preview-open .item-box {
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .job-skills span {
     background: var(--jb-action-secondary-hover-background);
     color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .job-skills span {
+    border-color: var(--jb-action-secondary-border);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card:hover,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card:focus-within {
+    border-color: var(--jb-action-primary-border);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save {
