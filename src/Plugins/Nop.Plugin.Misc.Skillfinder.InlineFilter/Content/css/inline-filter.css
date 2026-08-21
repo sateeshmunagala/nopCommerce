@@ -1,7 +1,7 @@
 :root {
     --sfi-venture-teal: var(--jb-accent, #35d6b4);
     --sfi-venture-teal-dark: var(--jb-action-active-background);
-    --sfi-border: #cfdad9;
+    --sfi-border: var(--jb-border);
     --sfi-control-border: var(--jb-action-secondary-border);
     --sfi-surface: var(--jb-white, #ffffff);
     --sfi-soft: var(--jb-action-secondary-hover-background);

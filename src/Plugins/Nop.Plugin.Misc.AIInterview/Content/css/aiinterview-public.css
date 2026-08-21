@@ -5802,7 +5802,7 @@ body.ai-job-preview-open .item-box {
 .job-details-page {
     --job-bg: var(--jb-bg);
     --job-card: var(--jb-white);
-    --job-border: #d8d8d8;
+    --job-border: var(--jb-border);
     --job-text: #111827;
     --job-muted: #6b7280;
     --job-primary: #22d1b2;
@@ -6310,7 +6310,7 @@ body.ai-job-preview-open .item-box {
 .practice-details-page {
     --job-bg: #f4f6f8;
     --job-card: var(--jb-white);
-    --job-border: #d7dfe5;
+    --job-border: var(--jb-border);
     --job-text: #18212b;
     --job-muted: #5b6776;
     --job-primary: #20b486;
@@ -9929,13 +9929,24 @@ body.ai-job-preview-open .item-box {
     color: var(--jb-action-secondary-foreground);
 }
 
+:is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-hero,
+:is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-company-logo,
+:is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-highlight-pills span {
+    background: var(--job-card);
+}
+
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-logo-placeholder,
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-spec-icon {
     color: var(--jb-action-secondary-foreground);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-media {
+    border-color: var(--jb-border);
     background: var(--jb-action-secondary-hover-background);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card {
+    border-color: var(--jb-border);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .job-shell {

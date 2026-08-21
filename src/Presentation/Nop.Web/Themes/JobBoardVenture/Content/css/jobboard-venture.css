@@ -4783,7 +4783,6 @@ body.jb-search-open .jb-drawer-overlay {
 .html-category-page .product-item .buttons .jb-view-job-button:hover,
 .html-search-page .product-item .buttons .jb-view-job-button:hover,
 .home-page .product-item .buttons .product-box-add-to-cart-button:hover,
-.html-category-page .product-item .buttons .product-box-add-to-cart-button:hover,
 .html-search-page .product-item .buttons .product-box-add-to-cart-button:hover {
     background: var(--jb-accent-dark);
     border-color: var(--jb-accent-dark);
