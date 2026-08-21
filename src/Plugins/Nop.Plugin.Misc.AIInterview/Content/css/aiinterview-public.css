@@ -1261,9 +1261,9 @@ body.html-aiinterview-vendor-job-creation-page {
 .job-ai-credit-notice {
     margin: 10px 0 0;
     padding: 10px 12px;
-    border-left: 3px solid #35d6b4;
-    background: #f2fbf9;
-    color: #285b53;
+    border-left: 3px solid var(--jb-action-primary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
     font-size: 0.86rem;
 }
 
@@ -6313,8 +6313,8 @@ body.ai-job-preview-open .item-box {
     --job-border: var(--jb-border);
     --job-text: var(--jb-ink);
     --job-muted: var(--jb-muted);
-    --job-primary: #20b486;
-    --job-primary-strong: #14805f;
+    --job-primary: var(--jb-action-primary-background);
+    --job-primary-strong: var(--jb-action-secondary-foreground);
     --job-secondary: var(--jb-action-secondary-hover-background);
     --job-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
 }
@@ -6362,7 +6362,7 @@ body.ai-job-preview-open .item-box {
 .practice-shell .job-highlight-pills span {
     padding: 10px 15px;
     border-radius: 999px;
-    background: #fff;
+    background: var(--job-card);
     color: var(--job-text);
     font-size: 14px;
     font-weight: 700;
@@ -6462,7 +6462,7 @@ body.ai-job-preview-open .item-box {
     box-sizing: border-box;
     min-height: 36px;
     padding: 10px 12px;
-    border: 1px solid #d6dde4;
+    border: 1px solid var(--job-border);
     border-radius: 6px;
     background: var(--jb-action-secondary-background);
     color: var(--job-text);
@@ -6499,8 +6499,8 @@ body.ai-job-preview-open .item-box {
 .practice-start-form input[type="text"]:focus,
 .practice-start-form input[type="file"]:focus,
 .practice-start-form textarea:focus {
-    border-color: #20b486;
-    box-shadow: 0 0 0 3px rgba(32, 180, 134, 0.16);
+    border-color: var(--jb-action-focus-color);
+    box-shadow: 0 0 0 var(--jb-action-focus-width) color-mix(in srgb, var(--jb-action-focus-color) 16%, transparent);
     outline: 0;
 }
 
@@ -6518,7 +6518,7 @@ body.ai-job-preview-open .item-box {
     gap: 10px;
     min-height: 48px;
     padding: 12px 14px;
-    border: 1px solid #d6dde4;
+    border: 1px solid var(--job-border);
     border-radius: 6px;
     background: var(--jb-action-secondary-background);
 }
@@ -10376,7 +10376,7 @@ a.ai-home-performer-name:focus-visible {
     justify-content: flex-start;
     gap: 8px;
     min-width: 0;
-    color: #1b4e46;
+    color: var(--jb-action-secondary-foreground);
 }
 
 .ai-home-performer-score-value {
