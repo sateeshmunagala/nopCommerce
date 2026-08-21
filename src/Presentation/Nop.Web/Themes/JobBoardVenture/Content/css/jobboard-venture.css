@@ -6043,6 +6043,33 @@ body.jb-search-open .jb-drawer-overlay {
     box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.22);
 }
 
+.html-category-page .product-item .buttons .jb-view-job-button {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+.html-category-page .product-item .buttons .jb-view-job-button:hover {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+.html-category-page .product-item .buttons .jb-view-job-button:active {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
+}
+
+.html-category-page .product-item .buttons .jb-view-job-button:focus-visible {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
+}
+
 .html-category-page .pager,
 .html-search-page .pager {
     text-align: left;
@@ -11508,6 +11535,12 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
 }
 
 .jb-home-landing .jb-home-button-secondary:not(.disabled):not([aria-disabled="true"]):hover {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+.jb-home-landing .jb-home-button-secondary:focus-visible {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-hover-background);
     color: var(--jb-action-secondary-foreground);

@@ -9833,10 +9833,7 @@ body.ai-job-preview-open .item-box {
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-secondary,
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .start-interview-btn.job-ai-action,
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action,
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-secondary:focus-visible,
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .start-interview-btn.job-ai-action:focus-visible,
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:focus-visible {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-background);
     color: var(--jb-action-secondary-foreground);
@@ -9844,7 +9841,10 @@ body.ai-job-preview-open .item-box {
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-secondary:hover:not(:disabled),
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .start-interview-btn.job-ai-action:hover:not(:disabled),
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:hover:not(:disabled) {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:hover:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-secondary:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .start-interview-btn.job-ai-action:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:focus-visible {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-hover-background);
     color: var(--jb-action-secondary-foreground);
@@ -9889,6 +9889,133 @@ body.ai-job-preview-open .item-box {
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job:focus-visible {
     outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
     outline-offset: var(--jb-action-focus-offset);
+}
+
+/* Approved customer secondary controls share the Venture action contract. */
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:hover:not(.is-saved):not([aria-pressed="true"]),
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:focus-visible:not(.is-saved):not([aria-pressed="true"]) {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"],
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved:hover,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"]:hover,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"]:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:active:not(:disabled) {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:focus-visible {
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-title-link:hover,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-title-link[aria-expanded="true"] {
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-title-link:focus-visible {
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-title-link:active {
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-action-link:not(.is-saved) {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-action-link:not(.is-saved):hover:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-action-link:not(.is-saved):focus-visible {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-action-link:not(.is-saved):active:not(:disabled) {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) .job-action-link:focus-visible {
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close:hover {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close:focus-visible {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close:active {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-card select,
+.html-aiinterview-mock-start-page .mock-start select,
+.html-aiinterview-mock-practice-product-page .practice-start-form select {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-card select:focus-visible,
+.html-aiinterview-mock-start-page .mock-start select:focus-visible,
+.html-aiinterview-mock-practice-product-page .practice-start-form select:focus-visible {
+    border-color: var(--jb-action-secondary-border);
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
 }
 
 .ai-home-performers-control:focus-visible {
