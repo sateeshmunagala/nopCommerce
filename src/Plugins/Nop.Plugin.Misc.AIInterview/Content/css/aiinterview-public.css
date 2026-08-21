@@ -6095,7 +6095,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .practice-start-form label {
-    color: var(--job-text);
+    color: var(--jb-ink);
     font-weight: 600;
 }
 
@@ -6158,7 +6158,7 @@ body.ai-job-preview-open .item-box {
     align-items: center;
     gap: 5px 8px;
     min-width: 0;
-    color: var(--job-text);
+    color: var(--jb-ink);
     font-size: 14px;
     font-weight: 800;
     line-height: 1.35;
@@ -6411,7 +6411,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .practice-start-panel .job-ai-lead {
-    color: var(--job-muted);
+    color: var(--jb-muted);
     font-size: 10px;
     line-height: 1.4;
 }
@@ -6449,7 +6449,7 @@ body.ai-job-preview-open .item-box {
 
 .practice-start-form .attributes .text-prompt,
 .practice-start-form label {
-    color: var(--job-text);
+    color: var(--jb-ink);
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -6532,7 +6532,7 @@ body.ai-job-preview-open .item-box {
 
 .practice-start-form .option-list label {
     margin: 0;
-    color: var(--job-text);
+    color: var(--jb-ink);
     font-size: 15px;
     font-weight: 600;
     letter-spacing: 0;
@@ -6541,7 +6541,7 @@ body.ai-job-preview-open .item-box {
 
 .practice-start-form .job-ai-note {
     margin: 0;
-    color: var(--job-muted);
+    color: var(--jb-muted);
     font-size: 10px;
     line-height: 1.4;
 }
