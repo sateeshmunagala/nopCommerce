@@ -2333,7 +2333,7 @@ body.aiinterview-report-drawer-open {
     gap: 12px;
     padding: 14px 18px;
     border-bottom: 1px solid var(--jb-border);
-    background: rgba(255, 255, 255, 0.96);
+    background: color-mix(in srgb, var(--jb-white) 96%, transparent);
 }
 
 .ai-job-preview-drawer-close {
@@ -5418,7 +5418,7 @@ body.ai-job-preview-open .item-box {
     margin: 0;
     padding: 16px 24px;
     border-top: 1px solid var(--job-border);
-    background: rgba(255, 255, 255, 0.98);
+    background: color-mix(in srgb, var(--jb-white) 98%, transparent);
     box-shadow: 0 -10px 24px rgba(15, 23, 42, 0.1);
     backdrop-filter: blur(8px);
 }
@@ -5902,7 +5902,7 @@ body.ai-job-preview-open .item-box {
     padding: 12px 16px;
     border: 1px solid var(--job-border);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.98);
+    background: color-mix(in srgb, var(--job-card) 98%, transparent);
     box-shadow: none;
 }
 
@@ -6019,7 +6019,7 @@ body.ai-job-preview-open .item-box {
     padding: 16px 18px;
     border: 1px solid var(--job-border);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.95);
+    background: color-mix(in srgb, var(--job-card) 95%, transparent);
     box-shadow: none;
 }
 
@@ -6316,7 +6316,7 @@ body.ai-job-preview-open .item-box {
     --job-primary: var(--jb-action-primary-background);
     --job-primary-strong: var(--jb-action-secondary-foreground);
     --job-secondary: var(--jb-action-secondary-hover-background);
-    --job-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+    --job-shadow: 0 18px 40px color-mix(in srgb, var(--job-text) 6%, transparent);
 }
 
 .practice-details-page .page-body {
@@ -9776,7 +9776,7 @@ body.ai-job-preview-open .item-box {
     border-top: 3px solid var(--jb-accent);
     border-radius: 12px;
     background: var(--jb-white);
-    box-shadow: 0 14px 36px rgba(24, 48, 46, 0.07);
+    box-shadow: 0 14px 36px color-mix(in srgb, var(--jb-ink) 7%, transparent);
 }
 
 .ai-home-performers-header {
@@ -9986,6 +9986,7 @@ body.ai-job-preview-open .item-box {
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card {
     border-color: var(--jb-border);
     background: var(--jb-white);
+    box-shadow: 0 7px 20px color-mix(in srgb, var(--jb-ink) 7%, transparent);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .job-shell {
@@ -10025,6 +10026,7 @@ body.ai-job-preview-open .item-box {
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card:hover,
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card:focus-within {
     border-color: var(--jb-action-primary-border);
+    box-shadow: 0 12px 26px color-mix(in srgb, var(--jb-ink) 11%, transparent);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save {
@@ -10245,7 +10247,7 @@ body.ai-job-preview-open .item-box {
 
 .ai-home-performers-control:focus-visible {
     outline: 0;
-    box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.22);
+    box-shadow: 0 0 0 var(--jb-action-focus-width) color-mix(in srgb, var(--jb-accent) 22%, transparent);
 }
 
 .ai-home-performers-viewport {
@@ -10267,7 +10269,7 @@ body.ai-job-preview-open .item-box {
 
 .ai-home-performers-viewport:focus-visible {
     outline: 0;
-    box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.22);
+    box-shadow: 0 0 0 var(--jb-action-focus-width) color-mix(in srgb, var(--jb-accent) 22%, transparent);
 }
 
 .ai-home-performers-track {
@@ -10304,7 +10306,7 @@ body.ai-job-preview-open .item-box {
 
 .ai-home-performer-media-link:focus-visible {
     outline: 0;
-    box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.22);
+    box-shadow: 0 0 0 var(--jb-action-focus-width) color-mix(in srgb, var(--jb-accent) 22%, transparent);
 }
 
 .ai-home-performer-avatar {
@@ -10352,7 +10354,7 @@ a.ai-home-performer-name:focus-visible {
 
 a.ai-home-performer-name:focus-visible {
     outline: 0;
-    box-shadow: 0 2px 0 #35d6b4;
+    box-shadow: 0 2px 0 var(--jb-accent);
 }
 
 .ai-home-performer-skill {
