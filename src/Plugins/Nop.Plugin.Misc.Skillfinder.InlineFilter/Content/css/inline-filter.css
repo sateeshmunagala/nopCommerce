@@ -1,5 +1,5 @@
 :root {
-    --sfi-venture-teal: var(--jb-accent, #35d6b4);
+    --sfi-venture-teal: var(--jb-accent);
     --sfi-venture-teal-dark: var(--jb-action-active-background);
     --sfi-border: var(--jb-border);
     --sfi-control-border: var(--jb-action-secondary-border);

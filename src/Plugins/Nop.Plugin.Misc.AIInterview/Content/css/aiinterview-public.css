@@ -6340,8 +6340,8 @@ body.ai-job-preview-open .item-box {
 
 .practice-shell .job-kicker {
     padding: 8px 14px;
-    background: #e9f1ff;
-    color: #113c7a;
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
     font-size: 12px;
     line-height: 1.2;
 }
@@ -9969,6 +9969,7 @@ body.ai-job-preview-open .item-box {
     --job-card: var(--jb-white);
     --job-text: var(--jb-ink);
     --job-muted: var(--jb-muted);
+    --job-primary: var(--jb-action-primary-hover-background);
     --job-primary-strong: var(--jb-action-secondary-foreground);
     --job-secondary: var(--jb-action-secondary-hover-background);
 }
