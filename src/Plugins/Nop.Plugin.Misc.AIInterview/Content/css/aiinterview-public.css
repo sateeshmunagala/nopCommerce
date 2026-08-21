@@ -9974,6 +9974,12 @@ body.ai-job-preview-open .item-box {
     outline-offset: var(--jb-action-focus-offset);
 }
 
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page) button.job-action-link:disabled {
+    opacity: 0.58;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close,
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-fallback-link {
     border-color: var(--jb-action-secondary-border);
