@@ -1,25 +1,25 @@
 :root {
     --sfi-venture-teal: var(--jb-accent, #35d6b4);
-    --sfi-venture-teal-dark: var(--jb-action-active-background, #0f766e);
+    --sfi-venture-teal-dark: var(--jb-action-active-background);
     --sfi-border: #cfdad9;
-    --sfi-control-border: var(--jb-action-secondary-border, #0f766e);
+    --sfi-control-border: var(--jb-action-secondary-border);
     --sfi-surface: var(--jb-white, #ffffff);
     --sfi-soft: #f3faf8;
     --sfi-ink: var(--jb-ink, #2c2c2c);
     --sfi-muted: #536664;
-    --sfi-action-primary-background: var(--jb-action-primary-background, #35d6b4);
-    --sfi-action-primary-foreground: var(--jb-action-primary-foreground, #173c33);
-    --sfi-action-primary-border: var(--jb-action-primary-border, #35d6b4);
-    --sfi-action-primary-hover-background: var(--jb-action-primary-hover-background, #24b99a);
-    --sfi-action-primary-hover-foreground: var(--jb-action-primary-hover-foreground, #173c33);
-    --sfi-action-secondary-background: var(--jb-action-secondary-background, #ffffff);
-    --sfi-action-secondary-foreground: var(--jb-action-secondary-foreground, #0f766e);
-    --sfi-action-secondary-hover-background: var(--jb-action-secondary-hover-background, #eefaf7);
-    --sfi-action-active-background: var(--jb-action-active-background, #0f766e);
-    --sfi-action-active-foreground: var(--jb-action-active-foreground, #ffffff);
-    --sfi-action-focus-color: var(--jb-action-focus-color, #0f766e);
-    --sfi-action-focus-width: var(--jb-action-focus-width, 3px);
-    --sfi-action-focus-offset: var(--jb-action-focus-offset, 3px);
+    --sfi-action-primary-background: var(--jb-action-primary-background);
+    --sfi-action-primary-foreground: var(--jb-action-primary-foreground);
+    --sfi-action-primary-border: var(--jb-action-primary-border);
+    --sfi-action-primary-hover-background: var(--jb-action-primary-hover-background);
+    --sfi-action-primary-hover-foreground: var(--jb-action-primary-hover-foreground);
+    --sfi-action-secondary-background: var(--jb-action-secondary-background);
+    --sfi-action-secondary-foreground: var(--jb-action-secondary-foreground);
+    --sfi-action-secondary-hover-background: var(--jb-action-secondary-hover-background);
+    --sfi-action-active-background: var(--jb-action-active-background);
+    --sfi-action-active-foreground: var(--jb-action-active-foreground);
+    --sfi-action-focus-color: var(--jb-action-focus-color);
+    --sfi-action-focus-width: var(--jb-action-focus-width);
+    --sfi-action-focus-offset: var(--jb-action-focus-offset);
 }
 
 /* The plugin occupies HomepageBeforeProducts and replaces these two Venture-only blocks. */
