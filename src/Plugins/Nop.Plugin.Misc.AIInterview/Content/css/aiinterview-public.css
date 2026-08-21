@@ -209,6 +209,66 @@ body.html-aiinterview-vendor-job-creation-page {
     cursor: not-allowed;
 }
 
+/* Approved customer pages share the Venture action color contract. */
+.aiinterview-public-page:not(.ai-interview-runtime-error-page) .button-1,
+.html-aiinterview-mock-start-page .button-1 {
+    border-color: var(--jb-action-primary-border, #35d6b4);
+    background: var(--jb-action-primary-background, #35d6b4);
+    color: var(--jb-action-primary-foreground, #173c33);
+}
+
+.aiinterview-public-page:not(.ai-interview-runtime-error-page) .button-1:focus-visible,
+.html-aiinterview-mock-start-page .button-1:focus-visible {
+    border-color: var(--jb-action-primary-border, #35d6b4);
+    background: var(--jb-action-primary-background, #35d6b4);
+    color: var(--jb-action-primary-foreground, #173c33);
+}
+
+.aiinterview-public-page:not(.ai-interview-runtime-error-page) .button-1:hover,
+.html-aiinterview-mock-start-page .button-1:hover {
+    border-color: var(--jb-action-primary-hover-border, #24b99a);
+    background: var(--jb-action-primary-hover-background, #24b99a);
+    color: var(--jb-action-primary-hover-foreground, #173c33);
+}
+
+.aiinterview-public-page:not(.ai-interview-runtime-error-page) .button-1:active,
+.html-aiinterview-mock-start-page .button-1:active {
+    border-color: var(--jb-action-active-background, #0f766e);
+    background: var(--jb-action-active-background, #0f766e);
+    color: var(--jb-action-active-foreground, #ffffff);
+}
+
+.aiinterview-public-page:not(.ai-interview-runtime-error-page) .button-2,
+.html-aiinterview-mock-start-page .button-2,
+.aiinterview-public-page:not(.ai-interview-runtime-error-page) .button-2:focus-visible,
+.html-aiinterview-mock-start-page .button-2:focus-visible {
+    border-color: var(--jb-action-secondary-border, #0f766e);
+    background: var(--jb-action-secondary-background, #ffffff);
+    color: var(--jb-action-secondary-foreground, #0f766e);
+}
+
+.aiinterview-public-page:not(.ai-interview-runtime-error-page) .button-2:hover,
+.html-aiinterview-mock-start-page .button-2:hover {
+    border-color: var(--jb-action-secondary-border, #0f766e);
+    background: var(--jb-action-secondary-hover-background, #eefaf7);
+    color: var(--jb-action-secondary-foreground, #0f766e);
+}
+
+.aiinterview-public-page:not(.ai-interview-runtime-error-page) .button-2:active,
+.html-aiinterview-mock-start-page .button-2:active {
+    border-color: var(--jb-action-active-background, #0f766e);
+    background: var(--jb-action-active-background, #0f766e);
+    color: var(--jb-action-active-foreground, #ffffff);
+}
+
+.aiinterview-public-page:not(.ai-interview-runtime-error-page) .button-1:focus-visible,
+.aiinterview-public-page:not(.ai-interview-runtime-error-page) .button-2:focus-visible,
+.html-aiinterview-mock-start-page .button-1:focus-visible,
+.html-aiinterview-mock-start-page .button-2:focus-visible {
+    outline: var(--jb-action-focus-width, 3px) solid var(--jb-action-focus-color, #0f766e);
+    outline-offset: var(--jb-action-focus-offset, 3px);
+}
+
 .applications-toolbar,
 .results-toolbar {
     display: flex;
@@ -9721,6 +9781,87 @@ body.ai-job-preview-open .item-box {
     color: #0f766e;
 }
 
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-primary,
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .apply-btn.job-ai-action {
+    border-color: var(--jb-action-primary-border, #35d6b4);
+    background: var(--jb-action-primary-background, #35d6b4);
+    color: var(--jb-action-primary-foreground, #173c33);
+}
+
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-primary:focus-visible,
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .apply-btn.job-ai-action:focus-visible {
+    border-color: var(--jb-action-primary-border, #35d6b4);
+    background: var(--jb-action-primary-background, #35d6b4);
+    color: var(--jb-action-primary-foreground, #173c33);
+}
+
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-primary:hover:not(:disabled),
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .apply-btn.job-ai-action:hover:not(:disabled) {
+    border-color: var(--jb-action-primary-hover-border, #24b99a);
+    background: var(--jb-action-primary-hover-background, #24b99a);
+    color: var(--jb-action-primary-hover-foreground, #173c33);
+}
+
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-secondary,
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .start-interview-btn.job-ai-action,
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action,
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-secondary:focus-visible,
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .start-interview-btn.job-ai-action:focus-visible,
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:focus-visible {
+    border-color: var(--jb-action-secondary-border, #0f766e);
+    background: var(--jb-action-secondary-background, #ffffff);
+    color: var(--jb-action-secondary-foreground, #0f766e);
+}
+
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-secondary:hover:not(:disabled),
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .start-interview-btn.job-ai-action:hover:not(:disabled),
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:hover:not(:disabled) {
+    border-color: var(--jb-action-secondary-border, #0f766e);
+    background: var(--jb-action-secondary-hover-background, #eefaf7);
+    color: var(--jb-action-secondary-foreground, #0f766e);
+}
+
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action:active:not(:disabled) {
+    border-color: var(--jb-action-active-background, #0f766e);
+    background: var(--jb-action-active-background, #0f766e);
+    color: var(--jb-action-active-foreground, #ffffff);
+}
+
+:is(.html-home-page, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action:focus-visible {
+    outline: var(--jb-action-focus-width, 3px) solid var(--jb-action-focus-color, #0f766e);
+    outline-offset: var(--jb-action-focus-offset, 3px);
+}
+
+:is(.html-home-page, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job {
+    display: inline-flex;
+    border-color: var(--jb-action-primary-border, #35d6b4);
+    background: var(--jb-action-primary-background, #35d6b4);
+    color: var(--jb-action-primary-foreground, #173c33);
+}
+
+:is(.html-home-page, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job:focus-visible {
+    border-color: var(--jb-action-primary-border, #35d6b4);
+    background: var(--jb-action-primary-background, #35d6b4);
+    color: var(--jb-action-primary-foreground, #173c33);
+}
+
+:is(.html-home-page, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job:hover {
+    border-color: var(--jb-action-primary-hover-border, #24b99a);
+    background: var(--jb-action-primary-hover-background, #24b99a);
+    color: var(--jb-action-primary-hover-foreground, #173c33);
+}
+
+:is(.html-home-page, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job:active {
+    border-color: var(--jb-action-active-background, #0f766e);
+    background: var(--jb-action-active-background, #0f766e);
+    color: var(--jb-action-active-foreground, #ffffff);
+}
+
+:is(.html-home-page, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job:focus-visible {
+    outline: var(--jb-action-focus-width, 3px) solid var(--jb-action-focus-color, #0f766e);
+    outline-offset: var(--jb-action-focus-offset, 3px);
+}
+
 .ai-home-performers-control:focus-visible {
     outline: 0;
     box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.22);
@@ -10039,8 +10180,12 @@ a.ai-home-performer-name:focus-visible {
 }
 .header-links .vp-credit-badge:hover,
 .header-links .vp-credit-badge:focus {
-    color: var(--jb-accent-dark, #24b99a);
+    color: var(--jb-action-secondary-foreground, #0f766e);
     text-decoration: none;
+}
+.header-links .vp-credit-badge:focus-visible {
+    outline: var(--jb-action-focus-width, 3px) solid var(--jb-action-focus-color, #0f766e);
+    outline-offset: var(--jb-action-focus-offset, 3px);
 }
 .header-links .vp-coin-icon {
     flex-shrink: 0;

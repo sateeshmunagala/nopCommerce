@@ -1,12 +1,25 @@
 :root {
     --sfi-venture-teal: var(--jb-accent, #35d6b4);
-    --sfi-venture-teal-dark: #0d7568;
+    --sfi-venture-teal-dark: var(--jb-action-active-background, #0f766e);
     --sfi-border: #cfdad9;
-    --sfi-control-border: #aebfbd;
+    --sfi-control-border: var(--jb-action-secondary-border, #0f766e);
     --sfi-surface: var(--jb-white, #ffffff);
     --sfi-soft: #f3faf8;
     --sfi-ink: var(--jb-ink, #2c2c2c);
     --sfi-muted: #536664;
+    --sfi-action-primary-background: var(--jb-action-primary-background, #35d6b4);
+    --sfi-action-primary-foreground: var(--jb-action-primary-foreground, #173c33);
+    --sfi-action-primary-border: var(--jb-action-primary-border, #35d6b4);
+    --sfi-action-primary-hover-background: var(--jb-action-primary-hover-background, #24b99a);
+    --sfi-action-primary-hover-foreground: var(--jb-action-primary-hover-foreground, #173c33);
+    --sfi-action-secondary-background: var(--jb-action-secondary-background, #ffffff);
+    --sfi-action-secondary-foreground: var(--jb-action-secondary-foreground, #0f766e);
+    --sfi-action-secondary-hover-background: var(--jb-action-secondary-hover-background, #eefaf7);
+    --sfi-action-active-background: var(--jb-action-active-background, #0f766e);
+    --sfi-action-active-foreground: var(--jb-action-active-foreground, #ffffff);
+    --sfi-action-focus-color: var(--jb-action-focus-color, #0f766e);
+    --sfi-action-focus-width: var(--jb-action-focus-width, 3px);
+    --sfi-action-focus-offset: var(--jb-action-focus-offset, 3px);
 }
 
 /* The plugin occupies HomepageBeforeProducts and replaces these two Venture-only blocks. */
@@ -78,8 +91,8 @@
     padding: 6px 12px;
     border: 1px solid var(--sfi-control-border);
     border-radius: 4px;
-    background: var(--sfi-surface);
-    color: var(--sfi-ink);
+    background: var(--sfi-action-secondary-background);
+    color: var(--sfi-action-secondary-foreground);
     cursor: pointer;
     font: inherit;
     font-size: 0.875rem;
@@ -90,30 +103,30 @@
 }
 
 .sfi-category-pill:hover {
-    border-color: var(--sfi-venture-teal);
-    background: var(--sfi-soft);
+    border-color: var(--sfi-control-border);
+    background: var(--sfi-action-secondary-hover-background);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sfi-venture-teal) 22%, transparent);
 }
 
 .sfi-category-pill.is-selected {
-    border-color: var(--sfi-venture-teal-dark);
-    background: var(--sfi-venture-teal-dark);
-    color: #ffffff;
+    border-color: var(--sfi-action-active-background);
+    background: var(--sfi-action-active-background);
+    color: var(--sfi-action-active-foreground);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 4px 12px rgba(13, 117, 104, 0.2);
 }
 
 .sfi-category-pill.is-selected:hover {
-    border-color: var(--sfi-venture-teal);
-    background: var(--sfi-venture-teal-dark);
-    color: #ffffff;
+    border-color: var(--sfi-action-active-background);
+    background: var(--sfi-action-active-background);
+    color: var(--sfi-action-active-foreground);
 }
 
 .sfi-category-pill:focus-visible,
 .sfi-view-more:focus-visible,
 .sfi-view-job:focus-visible,
 .sfi-fallback-card a:focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--sfi-venture-teal) 42%, transparent);
-    outline-offset: 3px;
+    outline: var(--sfi-action-focus-width) solid var(--sfi-action-focus-color);
+    outline-offset: var(--sfi-action-focus-offset);
 }
 
 .sfi-loading {
@@ -166,8 +179,8 @@
     padding: 0;
     border: 1px solid var(--sfi-control-border);
     border-radius: 8px;
-    background: var(--sfi-surface);
-    color: var(--sfi-ink);
+    background: var(--sfi-action-secondary-background);
+    color: var(--sfi-action-secondary-foreground);
     cursor: pointer;
     transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
 }
@@ -181,15 +194,15 @@
 
 .sfi-carousel-control:hover:not(:disabled),
 .sfi-carousel-control:focus-visible {
-    border-color: var(--sfi-venture-teal);
-    background: var(--sfi-soft);
-    color: var(--sfi-venture-teal-dark);
+    border-color: var(--sfi-control-border);
+    background: var(--sfi-action-secondary-hover-background);
+    color: var(--sfi-action-secondary-foreground);
 }
 
 .sfi-carousel-control:focus-visible,
 .sfi-products-viewport:focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--sfi-venture-teal) 42%, transparent);
-    outline-offset: 3px;
+    outline: var(--sfi-action-focus-width) solid var(--sfi-action-focus-color);
+    outline-offset: var(--sfi-action-focus-offset);
 }
 
 .sfi-carousel-control:disabled {
@@ -338,11 +351,32 @@
 }
 
 .sfi-view-job {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     align-self: flex-start;
+    min-height: 38px;
     margin-top: auto;
-    color: var(--sfi-venture-teal-dark);
+    padding: 8px 14px;
+    border: 1px solid var(--sfi-action-primary-border);
+    border-radius: 4px;
+    background: var(--sfi-action-primary-background);
+    color: var(--sfi-action-primary-foreground);
     font-weight: 750;
     text-decoration: none;
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.sfi-view-job:hover {
+    border-color: var(--sfi-action-primary-hover-background);
+    background: var(--sfi-action-primary-hover-background);
+    color: var(--sfi-action-primary-hover-foreground);
+}
+
+.sfi-view-job:active {
+    border-color: var(--sfi-action-active-background);
+    background: var(--sfi-action-active-background);
+    color: var(--sfi-action-active-foreground);
 }
 
 .sfi-no-results {
@@ -368,10 +402,10 @@
     align-items: center;
     justify-content: center;
     padding: 6px 14px;
-    border: 1px solid var(--sfi-venture-teal-dark);
+    border: 1px solid var(--sfi-control-border);
     border-radius: 6px;
-    background: var(--sfi-surface);
-    color: var(--sfi-venture-teal-dark);
+    background: var(--sfi-action-secondary-background);
+    color: var(--sfi-action-secondary-foreground);
     font-size: 0.875rem;
     font-weight: 750;
     text-decoration: none;
@@ -380,9 +414,15 @@
 
 .sfi-view-more:hover {
     transform: translateY(-1px);
-    border-color: var(--sfi-venture-teal-dark);
-    background: var(--sfi-venture-teal-dark);
-    color: #fff;
+    border-color: var(--sfi-control-border);
+    background: var(--sfi-action-secondary-hover-background);
+    color: var(--sfi-action-secondary-foreground);
+}
+
+.sfi-view-more:active {
+    border-color: var(--sfi-action-active-background);
+    background: var(--sfi-action-active-background);
+    color: var(--sfi-action-active-foreground);
 }
 
 @media (max-width: 900px) {
