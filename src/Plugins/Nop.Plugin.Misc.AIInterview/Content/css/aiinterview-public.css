@@ -142,9 +142,9 @@ body.html-aiinterview-vendor-job-creation-page {
 .aiinterview-public-page .button-2,
 .html-aiinterview-view-page .button-2,
 .job-ai-actions .button-2 {
-    border-color: #b9c7c3;
-    background: #f9fbfb;
-    color: #1b4e46;
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
 }
 
 .aiinterview-public-page .button-1:hover,
@@ -164,9 +164,9 @@ body.html-aiinterview-vendor-job-creation-page {
 .html-aiinterview-view-page .button-2:focus-visible,
 .job-ai-actions .button-2:hover,
 .job-ai-actions .button-2:focus-visible {
-    border-color: #35d6b4;
-    background: #eefaf7;
-    color: #0f766e;
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
 }
 
 .aiinterview-public-page .button-1:active,
@@ -180,9 +180,9 @@ body.html-aiinterview-vendor-job-creation-page {
 .aiinterview-public-page .button-2:active,
 .html-aiinterview-view-page .button-2:active,
 .job-ai-actions .button-2:active {
-    border-color: #24b99a;
-    background: #e6f7f3;
-    color: #0f766e;
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
 }
 
 .aiinterview-public-page .button-1:focus-visible,
@@ -194,8 +194,9 @@ body.html-aiinterview-vendor-job-creation-page {
 .job-ai-actions .job-ai-action:focus-visible,
 .ai-job-card-save:focus-visible,
 .ai-job-preview-drawer-close:focus-visible {
-    outline: 0;
-    box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.22);
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
 }
 
 .aiinterview-public-page .button-1:disabled,
@@ -1691,16 +1692,22 @@ details[open] .fa-chevron-down {
 }
 
 .job-ai-actions .job-ai-action-secondary {
-    border-color: #b9c7c3;
-    background: #ffffff;
-    color: #0f766e;
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
 }
 
 .job-ai-actions .job-ai-action-secondary:hover:not(:disabled),
 .job-ai-actions .job-ai-action-secondary:focus-visible {
-    border-color: #35d6b4;
-    background: #eefaf7;
-    color: #0f766e;
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
+.job-ai-actions .job-ai-action-secondary:active:not(:disabled) {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
 }
 
 .job-ai-actions .job-ai-action:disabled {
@@ -2182,41 +2189,47 @@ body.aiinterview-report-drawer-open {
     width: 38px;
     height: 38px;
     padding: 0;
-    border: 1px solid transparent;
+    border: 1px solid var(--jb-action-secondary-border);
     border-radius: 4px;
-    background: transparent;
-    color: #334155;
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
     cursor: pointer;
     transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .ai-job-card-save:hover,
 .ai-job-card-save:focus-visible {
-    border-color: #188f78;
-    background: #eefaf7;
-    color: #188f78;
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
 }
 
 .ai-job-card-save.is-saved {
-    border-color: transparent;
-    background: transparent;
-    color: #188f78;
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
     box-shadow: none;
 }
 
 .ai-job-card-save[aria-pressed="true"] {
-    border-color: transparent;
-    background: transparent;
-    color: #188f78;
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
 }
 
 .ai-job-card-save.is-saved:hover,
 .ai-job-card-save.is-saved:focus-visible,
 .ai-job-card-save[aria-pressed="true"]:hover,
 .ai-job-card-save[aria-pressed="true"]:focus-visible {
-    border-color: transparent;
-    background: transparent;
-    color: #188f78;
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
+}
+
+.ai-job-card-save:focus-visible {
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
 }
 
 .ai-job-card-save-icon-filled {
@@ -5109,22 +5122,35 @@ body.ai-job-preview-open .item-box {
     min-height: 48px;
     margin: 0;
     padding: 12px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--jb-action-secondary-border);
     border-radius: 8px;
-    background: #20252b;
-    color: #ffffff;
+    background: var(--jb-action-secondary-background);
+    color: var(--jb-action-secondary-foreground);
     cursor: pointer;
     font-size: 1.1rem;
     line-height: 1;
     transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, color 180ms ease;
 }
 
-.ai-job-preview-drawer .ai-job-preview-drawer-close:hover,
+.ai-job-preview-drawer .ai-job-preview-drawer-close:hover {
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+}
+
 .ai-job-preview-drawer .ai-job-preview-drawer-close:focus-visible {
-    border-color: #0f766e;
-    background: #0f766e;
-    color: #ffffff;
-    box-shadow: 0 0 0 3px rgba(53, 214, 180, 0.22);
+    border-color: var(--jb-action-secondary-border);
+    background: var(--jb-action-secondary-hover-background);
+    color: var(--jb-action-secondary-foreground);
+    outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
+    outline-offset: var(--jb-action-focus-offset);
+    box-shadow: none;
+}
+
+.ai-job-preview-drawer .ai-job-preview-drawer-close:active {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
 }
 
 .ai-job-preview-drawer .ai-job-preview-drawer-body {
