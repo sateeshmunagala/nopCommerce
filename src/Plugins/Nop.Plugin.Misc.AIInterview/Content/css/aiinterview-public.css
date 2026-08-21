@@ -9974,19 +9974,22 @@ body.ai-job-preview-open .item-box {
     outline-offset: var(--jb-action-focus-offset);
 }
 
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close {
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-fallback-link {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-background);
     color: var(--jb-action-secondary-foreground);
 }
 
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close:hover {
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close:hover,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-fallback-link:hover {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-hover-background);
     color: var(--jb-action-secondary-foreground);
 }
 
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close:focus-visible {
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-fallback-link:focus-visible {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-hover-background);
     color: var(--jb-action-secondary-foreground);
@@ -9995,7 +9998,8 @@ body.ai-job-preview-open .item-box {
     box-shadow: none;
 }
 
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close:active {
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-drawer-close:active,
+:is(.html-home-page .sfi-inline-filter, .html-category-page) .ai-job-preview-drawer .ai-job-preview-fallback-link:active {
     border-color: var(--jb-action-active-background);
     background: var(--jb-action-active-background);
     color: var(--jb-action-active-foreground);

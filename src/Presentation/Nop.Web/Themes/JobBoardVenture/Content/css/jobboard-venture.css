@@ -6055,12 +6055,6 @@ body.jb-search-open .jb-drawer-overlay {
     color: var(--jb-action-secondary-foreground);
 }
 
-.html-category-page .product-item .buttons .jb-view-job-button:active {
-    border-color: var(--jb-action-active-background);
-    background: var(--jb-action-active-background);
-    color: var(--jb-action-active-foreground);
-}
-
 .html-category-page .product-item .buttons .jb-view-job-button:focus-visible {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-hover-background);
@@ -6068,6 +6062,12 @@ body.jb-search-open .jb-drawer-overlay {
     outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
     outline-offset: var(--jb-action-focus-offset);
     box-shadow: none;
+}
+
+.html-category-page .product-item .buttons .jb-view-job-button:active {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
 }
 
 .html-category-page .pager,
