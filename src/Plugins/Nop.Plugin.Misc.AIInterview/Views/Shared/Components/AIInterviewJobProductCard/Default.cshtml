@@ -80,7 +80,7 @@
 
         @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
         {
-            <div class="ai-job-card-company">@Model.CompanyName</div>
+            @* <div class="ai-job-card-company">@Model.CompanyName</div> *@
         }
 
         @if (showSummary)
@@ -124,14 +124,14 @@
                     <span class="ai-job-card-spec-value">@Model.Specifications.ExperienceLevel</span>
                 </span>
             }
-            <span class="ai-job-card-spec ai-job-card-spec-stat" title="@postedText" aria-label="@postedText">
+            @* <span class="ai-job-card-spec ai-job-card-spec-stat" title="@postedText" aria-label="@postedText">
                 <i class="fa-regular fa-clock ai-job-card-spec-icon" aria-hidden="true"></i>
                 <span class="ai-job-card-spec-value">@postedText</span>
-            </span>
-            <span class="ai-job-card-spec ai-job-card-spec-stat" title="@appliedCountText" aria-label="@appliedCountText">
+            </span> *@
+            @* <span class="ai-job-card-spec ai-job-card-spec-stat" title="@appliedCountText" aria-label="@appliedCountText">
                 <i class="fa-solid fa-user-group ai-job-card-spec-icon" aria-hidden="true"></i>
                 <span class="ai-job-card-spec-value">@appliedCountText</span>
-            </span>
+            </span> *@
         </div>
 
         <div class="ai-job-card-actions">
