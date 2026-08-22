@@ -2009,22 +2009,23 @@ body.aiinterview-report-drawer-open {
     display: grid;
     grid-template-columns: 48px minmax(0, 1fr) auto;
     gap: 12px;
-    align-items: center;
+    align-items: start;
     width: 100%;
 }
 
 .ai-job-card-identity {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0;
     min-width: 0;
+    padding-top: 2px;
 }
 
 .ai-job-card-company {
     color: var(--jb-muted);
-    font-size: 0.82rem;
-    font-weight: 600;
-    line-height: 1.3;
+    font-size: 0.72rem;
+    font-weight: 400;
+    line-height: 1.35;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2230,51 +2231,59 @@ body.aiinterview-report-drawer-open {
     text-decoration: none;
 }
 
+.ai-job-card-view-job:active {
+    border-color: var(--jb-action-active-background);
+    background: var(--jb-action-active-background);
+    color: var(--jb-action-active-foreground);
+}
+
 .ai-job-card-save {
     appearance: none;
     position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex: 0 0 38px;
     width: 38px;
     height: 38px;
+    min-height: 38px;
     padding: 0;
-    border: 1px solid var(--jb-action-secondary-border);
+    border: 0;
     border-radius: 4px;
-    background: var(--jb-action-secondary-background);
-    color: var(--jb-action-secondary-foreground);
+    background: transparent;
+    color: var(--jb-muted);
     cursor: pointer;
+    font-size: 1.05rem;
     flex-shrink: 0;
-    transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+    transition: color 0.18s ease;
 }
 
 .ai-job-card-save:hover,
 .ai-job-card-save:focus-visible {
-    border-color: var(--jb-action-secondary-border);
-    background: var(--jb-action-secondary-hover-background);
-    color: var(--jb-action-secondary-foreground);
+    border: 0;
+    background: transparent;
+    color: var(--jb-accent-dark, #24b99a);
 }
 
-.ai-job-card-save.is-saved {
-    border-color: var(--jb-action-active-background);
-    background: var(--jb-action-active-background);
-    color: var(--jb-action-active-foreground);
-    box-shadow: none;
-}
-
-.ai-job-card-save[aria-pressed="true"] {
-    border-color: var(--jb-action-active-background);
-    background: var(--jb-action-active-background);
-    color: var(--jb-action-active-foreground);
-}
-
+.ai-job-card-save.is-saved,
+.ai-job-card-save[aria-pressed="true"],
 .ai-job-card-save.is-saved:hover,
 .ai-job-card-save.is-saved:focus-visible,
 .ai-job-card-save[aria-pressed="true"]:hover,
 .ai-job-card-save[aria-pressed="true"]:focus-visible {
-    border-color: var(--jb-action-active-background);
-    background: var(--jb-action-active-background);
-    color: var(--jb-action-active-foreground);
+    border: 0;
+    background: transparent;
+    color: var(--jb-accent-dark, #24b99a);
+    box-shadow: none;
+}
+
+@media (pointer: coarse) {
+    .ai-job-card-save {
+        flex: 0 0 44px;
+        width: 44px;
+        height: 44px;
+        min-height: 44px;
+    }
 }
 
 .ai-job-card-save:focus-visible {
@@ -10049,33 +10058,6 @@ body.ai-job-preview-open .item-box {
     box-shadow: 0 4px 14px rgba(24, 48, 46, 0.09);
 }
 
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save {
-    border-color: var(--jb-action-secondary-border);
-    background: var(--jb-action-secondary-background);
-    color: var(--jb-action-secondary-foreground);
-    box-shadow: none;
-}
-
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:hover:not(:disabled):not(.is-saved):not([aria-pressed="true"]),
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:focus-visible:not(:disabled):not(.is-saved):not([aria-pressed="true"]) {
-    border-color: var(--jb-action-secondary-border);
-    background: var(--jb-action-secondary-hover-background);
-    color: var(--jb-action-secondary-foreground);
-}
-
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved,
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"],
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved:hover:not(:disabled),
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved:focus-visible:not(:disabled),
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"]:hover:not(:disabled),
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"]:focus-visible:not(:disabled),
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:active:not(:disabled) {
-    border-color: var(--jb-action-active-background);
-    background: var(--jb-action-active-background);
-    color: var(--jb-action-active-foreground);
-    box-shadow: none;
-}
-
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:focus-visible {
     outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
     outline-offset: var(--jb-action-focus-offset);
@@ -10083,9 +10065,6 @@ body.ai-job-preview-open .item-box {
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save:disabled:not(.is-saved):not([aria-pressed="true"]) {
-    border-color: var(--jb-action-secondary-border);
-    background: var(--jb-action-secondary-background);
-    color: var(--jb-action-secondary-foreground);
     opacity: 0.58;
     cursor: not-allowed;
     box-shadow: none;
@@ -10093,9 +10072,6 @@ body.ai-job-preview-open .item-box {
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save.is-saved:disabled,
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-save[aria-pressed="true"]:disabled {
-    border-color: var(--jb-action-active-background);
-    background: var(--jb-action-active-background);
-    color: var(--jb-action-active-foreground);
     opacity: 0.58;
     cursor: not-allowed;
     box-shadow: none;
@@ -10121,10 +10097,10 @@ body.ai-job-preview-open .item-box {
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-title-link:active {
-    background: var(--jb-action-active-background);
-    color: var(--jb-action-active-foreground);
+    background: transparent;
+    color: var(--jb-ink);
     text-decoration: underline;
-    text-decoration-thickness: 2px;
+    text-decoration-thickness: 1px;
     text-underline-offset: 3px;
 }
 
@@ -10767,11 +10743,15 @@ a.ai-home-performer-name:focus-visible {
 .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-save,
 .html-home-page .sfi-inline-filter .product-item.ai-job-product-card .ai-job-card-save,
 .html-category-page .product-item.ai-job-product-card .ai-job-card-save,
-.html-search-page .product-item.ai-job-product-card .ai-job-card-save {
+.html-search-page .product-item.ai-job-product-card .ai-job-card-save,
+.html-aiinterview-my-activity-page .product-item.ai-job-product-card .ai-job-card-save {
     flex: 0 0 38px !important;
     width: 38px !important;
     height: 38px !important;
-    align-self: center !important;
+    min-height: 38px !important;
+    border: 0 !important;
+    background: transparent !important;
+    align-self: start !important;
 }
 
 .html-home-page .home-page .product-item.ai-job-product-card:hover,
@@ -10795,6 +10775,19 @@ a.ai-home-performer-name:focus-visible {
     .html-category-page .product-item.ai-job-product-card .ai-job-card-meta,
     .html-search-page .product-item.ai-job-product-card .ai-job-card-meta {
         grid-template-columns: minmax(0, 1fr) !important;
+    }
+}
+
+@media (pointer: coarse) {
+    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-save,
+    .html-home-page .sfi-inline-filter .product-item.ai-job-product-card .ai-job-card-save,
+    .html-category-page .product-item.ai-job-product-card .ai-job-card-save,
+    .html-search-page .product-item.ai-job-product-card .ai-job-card-save,
+    .html-aiinterview-my-activity-page .product-item.ai-job-product-card .ai-job-card-save {
+        flex: 0 0 44px !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
     }
 }
 

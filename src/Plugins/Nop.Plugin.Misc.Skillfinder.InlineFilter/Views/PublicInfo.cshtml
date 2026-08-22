@@ -55,15 +55,16 @@
         </div>
     }
 
-    <div id="@loadingId" class="sfi-loading htmx-indicator" role="status" aria-live="polite">
-        @T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Loading")
-    </div>
-
-    <div id="@resultsId"
-         class="sfi-results"
-         aria-live="polite"
-         aria-busy="false"
-         aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ResultsLabel")">
-        @await Html.PartialAsync("~/Plugins/Misc.Skillfinder.InlineFilter/Views/_FilteredProductsGrid.cshtml", Model.Results)
+    <div class="sfi-results-shell">
+        <div id="@loadingId" class="sfi-loading htmx-indicator" role="status" aria-live="polite">
+            <span class="sfi-loading-text">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Loading")</span>
+        </div>
+        <div id="@resultsId"
+             class="sfi-results"
+             aria-live="polite"
+             aria-busy="false"
+             aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ResultsLabel")">
+            @await Html.PartialAsync("~/Plugins/Misc.Skillfinder.InlineFilter/Views/_FilteredProductsGrid.cshtml", Model.Results)
+        </div>
     </div>
 </section>

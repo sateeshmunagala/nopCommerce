@@ -117,6 +117,7 @@
     justify-content: space-between;
     gap: 16px;
     border-bottom: 1px solid var(--sfi-border);
+    margin-bottom: 12px;
 }
 
 .sfi-category-tab {
@@ -125,9 +126,9 @@
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
-    min-height: 38px;
+    min-height: 38px !important;
     height: 100%;
-    padding: 6px 0 8px;
+    padding: 6px 0 6px;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -186,24 +187,36 @@
     outline-offset: var(--sfi-action-focus-offset);
 }
 
+.sfi-results-shell {
+    position: relative;
+    min-width: 0;
+}
+
 .sfi-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    height: auto;
     min-height: 0;
-    height: 0;
     margin: 0;
-    overflow: hidden;
+    padding-top: 48px;
+    background: color-mix(in srgb, var(--sfi-surface) 72%, transparent);
     color: var(--sfi-venture-teal-dark);
     font-size: 0.9rem;
     font-weight: 650;
-    line-height: 20px;
     opacity: 0;
-    transition: height 120ms ease, opacity 120ms ease;
+    pointer-events: none;
+    visibility: hidden;
+    transition: opacity 120ms ease;
 }
 
 .sfi-loading.htmx-request,
 .htmx-request .sfi-loading {
-    height: 20px;
-    margin: 6px 0 2px;
     opacity: 1;
+    visibility: visible;
 }
 
 .sfi-results[aria-busy="true"] {
@@ -549,11 +562,12 @@
     }
 
     .sfi-category-tab {
-        min-height: 44px;
+        min-height: 44px !important;
     }
 
     .sfi-filter-actions {
         gap: 10px;
+        margin-bottom: 10px;
     }
 
     .sfi-view-more {
@@ -581,7 +595,7 @@
 
 @media (pointer: coarse) {
     .sfi-category-tab {
-        min-height: 44px;
+        min-height: 44px !important;
     }
 }
 

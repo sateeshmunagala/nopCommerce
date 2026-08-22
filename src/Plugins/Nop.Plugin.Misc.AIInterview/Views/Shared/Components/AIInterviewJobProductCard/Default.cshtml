@@ -14,6 +14,7 @@
     var saveLabel = T("Plugins.Misc.AIInterview.JobCard.SaveJob").Text;
     var removeSavedLabel = T("Plugins.Misc.AIInterview.JobCard.RemoveSavedJob").Text;
     var viewJobText = T("Plugins.Misc.AIInterview.JobCard.ViewJob").Text;
+    var viewText = T("Plugins.Misc.AIInterview.JobCard.View").Text;
     var previewText = T("Plugins.Misc.AIInterview.JobCard.JobPreview").Text;
     var closePreviewText = T("Plugins.Misc.AIInterview.JobCard.CloseJobPreview").Text;
     var loadingJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.LoadingJobDetails").Text;
@@ -128,9 +129,9 @@
                     <span class="ai-job-card-salary-value">@Model.Specifications.SalaryRange</span>
                 </span>
             }
-            <a class="ai-job-card-view-job" href="@productUrl" title="@viewJobText">
+            <a class="ai-job-card-view-job" href="@productUrl" title="@viewJobText" aria-label="@viewJobText">
                 <i class="fa-regular fa-eye" aria-hidden="true"></i>
-                <span>@viewJobText</span>
+                <span>@viewText</span>
             </a>
         </div>
 
