@@ -31,8 +31,8 @@
 .sfi-inline-filter {
     box-sizing: border-box;
     width: min(1180px, calc(100% - 32px));
-    margin: 24px auto 28px;
-    padding: clamp(24px, 2.5vw, 32px);
+    margin: 16px auto 20px;
+    padding: 18px clamp(16px, 2vw, 24px) 20px;
     border: 1px solid var(--sfi-border);
     border-top: 3px solid var(--sfi-venture-teal);
     border-radius: 12px;
@@ -43,11 +43,11 @@
 
 .sfi-heading {
     max-width: 720px;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
 }
 
 .sfi-heading h2 {
-    margin: 3px 0 6px;
+    margin: 0 0 2px;
     color: var(--sfi-ink);
     font-size: clamp(1.55rem, 3vw, 2.2rem);
     line-height: 1.15;
@@ -93,11 +93,12 @@
 
 .sfi-category-tabs {
     display: flex;
-    gap: 28px;
+    gap: 24px;
+    align-self: stretch;
     min-width: 0;
     flex: 1 1 auto;
     margin: 0;
-    padding: 0 0 1px;
+    padding: 0;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
@@ -112,7 +113,7 @@
 
 .sfi-filter-actions {
     display: flex;
-    align-items: flex-end;
+    align-items: stretch;
     justify-content: space-between;
     gap: 16px;
     border-bottom: 1px solid var(--sfi-border);
@@ -124,8 +125,9 @@
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
-    min-height: 44px;
-    padding: 8px 0 12px;
+    min-height: 38px;
+    height: 100%;
+    padding: 6px 0 8px;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -185,18 +187,22 @@
 }
 
 .sfi-loading {
-    min-height: 20px;
-    margin: 8px 0 3px;
+    min-height: 0;
+    height: 0;
+    margin: 0;
+    overflow: hidden;
     color: var(--sfi-venture-teal-dark);
     font-size: 0.9rem;
     font-weight: 650;
     line-height: 20px;
     opacity: 0;
-    transition: opacity 120ms ease;
+    transition: height 120ms ease, opacity 120ms ease;
 }
 
 .sfi-loading.htmx-request,
 .htmx-request .sfi-loading {
+    height: 20px;
+    margin: 6px 0 2px;
     opacity: 1;
 }
 
@@ -214,11 +220,15 @@
 }
 
 .sfi-carousel-controls {
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
+}
+
+.sfi-products-carousel.is-scrollable .sfi-carousel-controls {
+    display: flex;
 }
 
 .sfi-carousel-control {
@@ -281,7 +291,7 @@
 
 .sfi-products-viewport {
     max-width: 100%;
-    padding: 2px 2px 12px;
+    padding: 2px 2px 6px;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-inline: contain;
@@ -300,10 +310,10 @@
 .sfi-products-grid {
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: calc((100% - 32px) / 3);
-    grid-template-rows: repeat(2, minmax(180px, auto));
+    grid-auto-columns: calc((100% - 24px) / 3);
+    grid-template-rows: repeat(2, minmax(150px, auto));
     align-items: stretch;
-    gap: 16px;
+    gap: 12px;
     min-width: 0;
 }
 
@@ -325,7 +335,7 @@
     display: flex;
     width: 100%;
     height: 100%;
-    min-height: 180px;
+    min-height: 150px;
     margin: 0;
     border: 0;
     background: transparent;
@@ -345,7 +355,7 @@
     gap: 12px;
     width: 100%;
     height: 100%;
-    min-height: 180px;
+    min-height: 150px;
     margin: 0;
     padding: 16px;
     border: 1px solid var(--sfi-border);
@@ -467,8 +477,10 @@
 }
 
 .sfi-view-more-wrap {
+    display: flex;
+    align-items: center;
     flex: 0 0 auto;
-    margin: 0 0 8px;
+    margin: 0 0 6px;
     text-align: center;
 }
 
@@ -520,7 +532,7 @@
 
 @media (max-width: 900px) {
     .sfi-products-grid {
-        grid-auto-columns: calc((100% - 16px) / 2);
+        grid-auto-columns: calc((100% - 12px) / 2);
     }
 }
 
@@ -528,7 +540,7 @@
     .sfi-inline-filter {
         width: min(100% - 20px, 1180px);
         margin: 16px auto 20px;
-        padding: 20px 16px;
+        padding: 18px 16px 20px;
         border-radius: 10px;
     }
 
@@ -537,7 +549,7 @@
     }
 
     .sfi-category-tab {
-        min-height: 44px;
+        min-height: 38px;
     }
 
     .sfi-filter-actions {
@@ -552,7 +564,7 @@
 
     .sfi-products-grid {
         grid-auto-columns: 100%;
-        gap: 16px;
+        gap: 12px;
     }
 
     .sfi-carousel-control {
@@ -563,7 +575,7 @@
     }
 
     .sfi-fallback-card {
-        min-height: 180px;
+        min-height: 150px;
     }
 }
 

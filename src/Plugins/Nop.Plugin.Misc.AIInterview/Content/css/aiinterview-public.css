@@ -1975,6 +1975,7 @@ body.aiinterview-report-drawer-open {
     background: var(--jb-action-secondary-hover-background);
     overflow: hidden;
     align-self: start;
+    flex-shrink: 0;
 }
 
 .ai-job-card-logo {
@@ -2177,6 +2178,7 @@ body.aiinterview-report-drawer-open {
     background: var(--jb-action-secondary-background);
     color: var(--jb-action-secondary-foreground);
     cursor: pointer;
+    flex-shrink: 0;
     transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -10704,6 +10706,42 @@ a.ai-home-performer-name:focus-visible {
 .ai-job-preview-drawer h3 {
     letter-spacing: normal;
     text-transform: none;
+}
+
+.html-home-page .home-page .product-item.ai-job-product-card,
+.html-home-page .sfi-inline-filter .product-item.ai-job-product-card,
+.html-category-page .product-item.ai-job-product-card,
+.html-search-page .product-item.ai-job-product-card,
+.html-aiinterview-my-activity-page .product-item.ai-job-product-card {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    gap: 10px !important;
+    min-height: 0 !important;
+    padding: 14px !important;
+    box-shadow: none !important;
+}
+
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-meta,
+.html-home-page .sfi-inline-filter .product-item.ai-job-product-card .ai-job-card-meta,
+.html-category-page .product-item.ai-job-product-card .ai-job-card-meta,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-meta {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 4px !important;
+}
+
+.html-home-page .home-page .product-item.ai-job-product-card:hover,
+.html-home-page .home-page .product-item.ai-job-product-card:focus-within,
+.html-home-page .sfi-inline-filter .product-item.ai-job-product-card:hover,
+.html-home-page .sfi-inline-filter .product-item.ai-job-product-card:focus-within,
+.html-category-page .product-item.ai-job-product-card:hover,
+.html-category-page .product-item.ai-job-product-card:focus-within,
+.html-search-page .product-item.ai-job-product-card:hover,
+.html-search-page .product-item.ai-job-product-card:focus-within,
+.html-aiinterview-my-activity-page .product-item.ai-job-product-card:hover,
+.html-aiinterview-my-activity-page .product-item.ai-job-product-card:focus-within {
+    border-color: var(--jb-action-primary-border) !important;
+    box-shadow: 0 4px 14px rgba(24, 48, 46, 0.09) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
