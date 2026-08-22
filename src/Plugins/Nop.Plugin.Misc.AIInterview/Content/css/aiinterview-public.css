@@ -1945,6 +1945,7 @@ body.aiinterview-report-drawer-open {
     border-radius: 8px;
     background: var(--jb-white);
     box-shadow: none;
+    text-align: left;
     transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
@@ -2195,7 +2196,7 @@ body.aiinterview-report-drawer-open {
     min-width: 0;
     color: var(--jb-ink);
     font-size: 0.86rem;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .ai-job-card-salary-value {

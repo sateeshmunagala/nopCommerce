@@ -39,6 +39,7 @@
     background: linear-gradient(180deg, var(--sfi-soft), var(--sfi-surface) 180px);
     box-shadow: 0 14px 36px color-mix(in srgb, var(--sfi-ink) 7%, transparent);
     color: var(--sfi-ink);
+    text-align: left;
 }
 
 .sfi-heading {
@@ -207,6 +208,7 @@
     color: var(--sfi-venture-teal-dark);
     font-size: 0.9rem;
     font-weight: 650;
+    text-align: center;
     opacity: 0;
     pointer-events: none;
     visibility: hidden;
@@ -581,11 +583,8 @@
         gap: 12px;
     }
 
-    .sfi-carousel-control {
-        width: 40px;
-        min-width: 40px;
-        height: 40px !important;
-        min-height: 40px !important;
+    .sfi-products-carousel.is-scrollable .sfi-carousel-controls {
+        display: none;
     }
 
     .sfi-fallback-card {
