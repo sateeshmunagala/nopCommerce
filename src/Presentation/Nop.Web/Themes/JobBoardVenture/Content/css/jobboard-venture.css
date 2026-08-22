@@ -1539,6 +1539,11 @@ body.jb-menu-open .jb-mobile-drawer {
 }
 
 @media (max-width: 600px) {
+    .html-home-page .page-body {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
     .html-category-page .item-grid,
     .html-search-page .item-grid {
         margin: 0;

@@ -555,7 +555,7 @@
     .sfi-inline-filter {
         width: 100%;
         margin: 16px auto 20px;
-        padding: 18px 16px 20px;
+        padding: 14px 8px 16px;
         border-radius: 10px;
     }
 
@@ -573,9 +573,9 @@
     }
 
     .sfi-view-more {
-        min-height: 40px;
-        padding-right: 12px;
-        padding-left: 12px;
+        min-height: 32px;
+        padding: 5px 10px;
+        font-size: 0.8rem;
     }
 
     .sfi-products-grid {

@@ -2196,7 +2196,7 @@ body.aiinterview-report-drawer-open {
     min-width: 0;
     color: var(--jb-ink);
     font-size: 0.86rem;
-    font-weight: 600;
+    font-weight: 400;
 }
 
 .ai-job-card-salary-value {
@@ -2599,11 +2599,6 @@ body.ai-job-preview-open .item-box {
 
     .ai-job-card-title-link {
         font-size: 1rem;
-    }
-
-    .ai-job-card-meta {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 6px;
     }
 
     .ai-job-preview-drawer-panel {
@@ -10785,11 +10780,18 @@ a.ai-home-performer-name:focus-visible {
 }
 
 @media (max-width: 600px) {
-    .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-meta,
-    .html-home-page .sfi-inline-filter .product-item.ai-job-product-card .ai-job-card-meta,
-    .html-category-page .product-item.ai-job-product-card .ai-job-card-meta,
-    .html-search-page .product-item.ai-job-product-card .ai-job-card-meta {
-        grid-template-columns: minmax(0, 1fr) !important;
+    .ai-job-card-actions {
+        padding-top: 8px;
+    }
+
+    .ai-job-card-view-job {
+        min-height: 32px;
+        padding: 6px 12px;
+        font-size: 0.82rem;
+    }
+
+    .ai-job-card-salary {
+        font-size: 0.82rem;
     }
 }
 
