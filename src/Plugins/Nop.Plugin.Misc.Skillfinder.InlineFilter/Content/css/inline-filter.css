@@ -549,7 +549,7 @@
     }
 
     .sfi-category-tab {
-        min-height: 38px;
+        min-height: 44px;
     }
 
     .sfi-filter-actions {
@@ -576,6 +576,12 @@
 
     .sfi-fallback-card {
         min-height: 150px;
+    }
+}
+
+@media (pointer: coarse) {
+    .sfi-category-tab {
+        min-height: 44px;
     }
 }
 
