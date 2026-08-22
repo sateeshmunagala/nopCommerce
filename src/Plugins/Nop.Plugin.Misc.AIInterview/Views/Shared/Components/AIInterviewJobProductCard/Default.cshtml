@@ -121,7 +121,9 @@
         <div class="ai-job-card-actions">
             @if (!string.IsNullOrWhiteSpace(Model.Specifications.SalaryRange))
             {
-                <span class="ai-job-card-salary" title="@BuildAccessibleSpecText(salaryRangeText, Model.Specifications.SalaryRange)">
+                <span class="ai-job-card-salary"
+                      title="@BuildAccessibleSpecText(salaryRangeText, Model.Specifications.SalaryRange)"
+                      aria-label="@BuildAccessibleSpecText(salaryRangeText, Model.Specifications.SalaryRange)">
                     <i class="fa-solid fa-wallet ai-job-card-spec-icon" aria-hidden="true"></i>
                     <span class="ai-job-card-salary-value">@Model.Specifications.SalaryRange</span>
                 </span>

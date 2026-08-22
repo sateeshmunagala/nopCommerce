@@ -2159,10 +2159,18 @@ body.aiinterview-report-drawer-open {
 }
 
 .ai-job-card-logo-placeholder,
-.ai-job-card-spec-icon,
-.ai-job-card-title-link:hover,
-.ai-job-card-title-link:focus-visible {
+.ai-job-card-spec-icon {
     color: var(--jb-action-secondary-foreground);
+}
+
+.ai-job-card-title-link:hover,
+.ai-job-card-title-link:focus-visible,
+.ai-job-card-title-link[aria-expanded="true"] {
+    background: transparent;
+    color: var(--jb-ink);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
 }
 
 .ai-job-card-actions {
@@ -2196,14 +2204,30 @@ body.aiinterview-report-drawer-open {
 .ai-job-card-view-job {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     flex: 0 0 auto;
     min-width: 0;
     min-height: 38px;
     padding: 8px 14px;
+    border: 1px solid var(--jb-action-primary-border);
+    border-radius: 4px;
+    background: var(--jb-action-primary-background);
+    color: var(--jb-action-primary-foreground);
     font-size: 0.88rem;
+    font-weight: 700;
     letter-spacing: 0.03em;
+    text-decoration: none;
     margin-left: auto;
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.ai-job-card-view-job:hover,
+.ai-job-card-view-job:focus-visible {
+    border-color: var(--jb-action-primary-hover-border);
+    background: var(--jb-action-primary-hover-background);
+    color: var(--jb-action-primary-hover-foreground);
+    text-decoration: none;
 }
 
 .ai-job-card-save {
@@ -9908,31 +9932,6 @@ body.ai-job-preview-open .item-box {
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action:focus-visible {
     outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
     outline-offset: var(--jb-action-focus-offset);
-}
-
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job {
-    display: inline-flex;
-    border-color: var(--jb-action-primary-border);
-    background: var(--jb-action-primary-background);
-    color: var(--jb-action-primary-foreground);
-}
-
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job:focus-visible {
-    border-color: var(--jb-action-primary-border);
-    background: var(--jb-action-primary-background);
-    color: var(--jb-action-primary-foreground);
-}
-
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job:hover {
-    border-color: var(--jb-action-primary-hover-border);
-    background: var(--jb-action-primary-hover-background);
-    color: var(--jb-action-primary-hover-foreground);
-}
-
-:is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job:active {
-    border-color: var(--jb-action-active-background);
-    background: var(--jb-action-active-background);
-    color: var(--jb-action-active-foreground);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page) .product-item.ai-job-product-card .ai-job-card-view-job:focus-visible {
