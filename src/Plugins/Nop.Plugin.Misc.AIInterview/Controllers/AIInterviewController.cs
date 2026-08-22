@@ -773,9 +773,10 @@ public class AIInterviewController : BasePluginController
 
         var applicationModels = await Task.WhenAll(applications.Select(async application =>
         {
-            var appSessions = sessions.Where(session => SessionMatchesApplication(session, application)).ToList();
+            var appSessions = sessions
+                .Where(session => SessionMatchesApplication(session, application) && session.CompletedOnUtc.HasValue)
+                .ToList();
             var latestSession = appSessions
-                .Where(session => session.CompletedOnUtc.HasValue)
                 .OrderByDescending(session => session.CompletedOnUtc)
                 .ThenByDescending(session => session.Id)
                 .FirstOrDefault();
@@ -859,7 +860,8 @@ public class AIInterviewController : BasePluginController
     {
         var fallbackInterviewTitle = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Common.Interview");
         var sessions = ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
-            .Where(session => string.Equals(session.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
+            .Where(session => session.CompletedOnUtc.HasValue &&
+                string.Equals(session.InterviewType, AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         var model = await Task.WhenAll(sessions.Select(async session =>
@@ -873,9 +875,7 @@ public class AIInterviewController : BasePluginController
                 JobTitle = product?.Name ?? fallbackInterviewTitle,
                 CreatedOnUtc = session.CreatedOnUtc,
                 CompletedOnUtc = session.CompletedOnUtc,
-                Status = session.CompletedOnUtc.HasValue
-                    ? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Completed")
-                    : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Active"),
+                Status = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Completed"),
                 Score = session.Score,
                 InterviewReportUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
                     ? Url?.RouteUrl(AIInterviewDefaults.ReportRouteName, new { sessionId = session.Id })
@@ -2491,12 +2491,16 @@ public class AIInterviewController : BasePluginController
             {
                 var appCustomer = customers.FirstOrDefault(entry => entry.Id == application.CustomerId);
                 var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
-                var appSessions = sessions.Where(session => SessionMatchesApplication(session, application)).ToList();
+                var appSessions = sessions
+                    .Where(session => SessionMatchesApplication(session, application) && session.CompletedOnUtc.HasValue)
+                    .ToList();
                 var latestCompletedSession = appSessions
-                    .Where(session => session.CompletedOnUtc.HasValue)
                     .OrderByDescending(session => session.CompletedOnUtc)
                     .ThenByDescending(session => session.Id)
                     .FirstOrDefault();
+                if (latestCompletedSession == null)
+                    return (ApplicationModel)null;
+
                 var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
                 var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : string.Empty;
 
@@ -2517,7 +2521,7 @@ public class AIInterviewController : BasePluginController
             }));
 
         var pagedApplications = ApplyInMemoryPaging(
-            recentApplications.ToList(),
+            recentApplications.Where(application => application != null).ToList(),
             page,
             pageSize,
             DefaultEmployerDashboardTablePageSize,
@@ -2577,9 +2581,10 @@ public class AIInterviewController : BasePluginController
         {
             var appCustomer = customers.FirstOrDefault(entry => entry.Id == application.CustomerId);
             var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId) ?? new List<InterviewSession>();
-            var appSessions = sessions.Where(session => SessionMatchesApplication(session, application)).ToList();
+            var appSessions = sessions
+                .Where(session => SessionMatchesApplication(session, application) && session.CompletedOnUtc.HasValue)
+                .ToList();
             var session = appSessions
-                .Where(entry => entry.CompletedOnUtc.HasValue)
                 .OrderByDescending(entry => entry.CompletedOnUtc)
                 .ThenByDescending(entry => entry.Id)
                 .FirstOrDefault();
@@ -2932,8 +2937,12 @@ public class AIInterviewController : BasePluginController
         {
             var appCustomer = customers.FirstOrDefault(c => c.Id == a.CustomerId);
             var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(a.CustomerId);
-            var appSessions = sessions.Where(s => SessionMatchesApplication(s, a)).ToList();
-            var session = appSessions.OrderByDescending(s => s.CompletedOnUtc).FirstOrDefault(s => s.CompletedOnUtc.HasValue);
+            var appSessions = sessions
+                .Where(s => SessionMatchesApplication(s, a) && s.CompletedOnUtc.HasValue)
+                .ToList();
+            var session = appSessions.OrderByDescending(s => s.CompletedOnUtc).FirstOrDefault();
+            if (session == null)
+                continue;
 
             var candidateName = appCustomer != null ? (appCustomer.FirstName + " " + appCustomer.LastName).Trim() : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");
             var email = appCustomer?.Email ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Common.Unknown");

@@ -2061,7 +2061,8 @@ public class MockAiInterviewController : BasePluginController
 
         var fallbackInterviewTitle = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Common.Interview");
         var sessions = ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
-            .Where(session => string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
+            .Where(session => session.CompletedOnUtc.HasValue &&
+                string.Equals(NormalizeInterviewType(session), AIInterviewDefaults.InterviewTypeMockPractice, StringComparison.OrdinalIgnoreCase))
             .ToList();
         var model = await Task.WhenAll((sessions ?? new List<InterviewSession>()).Select(async session =>
         {
@@ -2074,9 +2075,7 @@ public class MockAiInterviewController : BasePluginController
                 JobTitle = product?.Name ?? fallbackInterviewTitle,
                 CreatedOnUtc = session.CreatedOnUtc,
                 CompletedOnUtc = session.CompletedOnUtc,
-                Status = session.CompletedOnUtc.HasValue
-                    ? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Completed")
-                    : await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Active"),
+                Status = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Status.Completed"),
                 Score = session.Score,
                 InterviewReportUrl = session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData)
                     ? GetMockReportUrl(session.Id)

@@ -165,6 +165,21 @@ public class AIInterviewAdminController : BasePluginController
         return localDateTime.ToString(AdminDateTimeDisplayFormat, CultureInfo.InvariantCulture);
     }
 
+    protected virtual async Task LogSkippedNonCompletedSessionsAsync(IQueryable<int> sessionIds, string filterContext)
+    {
+        if (!_logger.IsEnabled(LogLevel.Debug))
+            return;
+
+        var skippedSessionIds = await sessionIds.Distinct().Take(20).ToListAsync();
+        foreach (var sessionId in skippedSessionIds)
+        {
+            _logger.LogDebug(
+                "Skipped non-completed interview session {SessionId} during {FilterContext} list preparation.",
+                sessionId,
+                filterContext);
+        }
+    }
+
     protected virtual async Task<(DateTime? StartUtc, DateTime? EndUtcExclusive)> ConvertLocalDateRangeToUtcAsync(DateTime? localDateFrom, DateTime? localDateTo)
     {
         var currentTimeZone = await _dateTimeHelper.GetCurrentTimeZoneAsync();
@@ -753,6 +768,11 @@ public class AIInterviewAdminController : BasePluginController
         else if (searchModel.HasAttachment == false)
             query = query.Where(item => item.Session.CandidateFeedbackAttachmentDownloadId <= 0);
 
+        await LogSkippedNonCompletedSessionsAsync(
+            query.Where(item => !item.Session.CompletedOnUtc.HasValue).Select(item => item.Session.Id),
+            "FeedbackReports");
+        query = query.Where(item => item.Session.CompletedOnUtc.HasValue);
+
         query = query
             .OrderByDescending(item => item.Session.CandidateFeedbackSubmittedOnUtc ?? item.Session.CreatedOnUtc)
             .ThenByDescending(item => item.Session.Id);
@@ -813,7 +833,6 @@ public class AIInterviewAdminController : BasePluginController
         var customerKeyword = searchModel.CustomerKeyword?.Trim();
         var productKeyword = searchModel.ProductKeyword?.Trim();
         var normalizedDifficulty = searchModel.Difficulty?.Trim();
-        var normalizedStatus = searchModel.Status?.Trim();
         var (dateFromUtc, dateToExclusiveUtc) = await ConvertLocalDateRangeToUtcAsync(searchModel.DateFrom, searchModel.DateTo);
 
         var query =
@@ -850,11 +869,6 @@ public class AIInterviewAdminController : BasePluginController
         if (!string.IsNullOrWhiteSpace(normalizedDifficulty))
             query = query.Where(item => (item.Session.Difficulty ?? string.Empty) == normalizedDifficulty);
 
-        if (string.Equals(normalizedStatus, "Active", StringComparison.OrdinalIgnoreCase))
-            query = query.Where(item => item.Session.IsActive && !item.Session.CompletedOnUtc.HasValue);
-        else if (string.Equals(normalizedStatus, "Completed", StringComparison.OrdinalIgnoreCase))
-            query = query.Where(item => item.Session.CompletedOnUtc.HasValue);
-
         if (searchModel.HasResume == true)
             query = query.Where(item => item.Session.ResumeDownloadId > 0);
         else if (searchModel.HasResume == false)
@@ -875,6 +889,11 @@ public class AIInterviewAdminController : BasePluginController
         if (dateToExclusiveUtc.HasValue)
             query = query.Where(item => item.Session.CreatedOnUtc < dateToExclusiveUtc.Value);
 
+        await LogSkippedNonCompletedSessionsAsync(
+            query.Where(item => !item.Session.CompletedOnUtc.HasValue).Select(item => item.Session.Id),
+            "MockPracticeSessions");
+        query = query.Where(item => item.Session.CompletedOnUtc.HasValue);
+
         query = query
             .OrderByDescending(item => item.Session.CreatedOnUtc)
             .ThenByDescending(item => item.Session.Id);
@@ -885,7 +904,6 @@ public class AIInterviewAdminController : BasePluginController
             .Take(searchModel.Length)
             .ToListAsync();
 
-        var activeStatusText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.Active");
         var completedStatusText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.Completed");
         var pagedList = new Nop.Core.PagedList<object>(pageItems.Cast<object>().ToList(), Math.Max(searchModel.Page - 1, 0), searchModel.PageSize, totalCount);
 
@@ -902,7 +920,7 @@ public class AIInterviewAdminController : BasePluginController
                 ProductId = item.ProductId,
                 ProductName = item.ProductName ?? string.Empty,
                 Difficulty = item.Session.Difficulty ?? string.Empty,
-                Status = item.Session.CompletedOnUtc.HasValue ? completedStatusText : (item.Session.IsActive ? activeStatusText : string.Empty),
+                Status = completedStatusText,
                 HasResume = item.Session.ResumeDownloadId > 0,
                 QuestionCount = item.Session.QuestionCount,
                 Score = item.Session.Score,
@@ -942,7 +960,7 @@ public class AIInterviewAdminController : BasePluginController
         var sb = new StringBuilder();
         sb.AppendLine("SessionId,Candidate,Email,Vendor,Job,Status,Score,CompletedOnUtc,ReportUrl");
 
-        foreach (var row in prepared.Rows)
+        foreach (var row in prepared.Rows.Where(row => row.CompletedOnUtc.HasValue))
         {
             sb.AppendLine(string.Join(",",
                 row.SessionId,
@@ -962,8 +980,16 @@ public class AIInterviewAdminController : BasePluginController
     public async Task<IActionResult> CandidateDetails(int sessionId, int applicationId = 0)
     {
         var session = await _sessionService.GetInterviewSessionByIdAsync(sessionId);
-        if (session == null)
+        if (session == null || !session.CompletedOnUtc.HasValue)
         {
+            if (session != null)
+            {
+                _logger.LogDebug(
+                    "Skipped non-completed interview session {SessionId} during {FilterContext} detail preparation.",
+                    session.Id,
+                    "CandidateDetails");
+            }
+
             _notificationService.ErrorNotification("Candidate assessment session was not found.");
             return RedirectToRoute(AIInterviewDefaults.AdminScoreboardRouteName);
         }
@@ -1280,10 +1306,13 @@ public class AIInterviewAdminController : BasePluginController
 
     protected virtual async Task<string> GetCandidateDetailsStatusAsync(JobApplication application, InterviewSession session)
     {
+        if (session?.CompletedOnUtc.HasValue != true)
+            return string.Empty;
+
         if (application != null && !string.IsNullOrWhiteSpace(application.Status))
             return await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{JobApplicationStatuses.Normalize(application.Status)}");
 
-        return session.CompletedOnUtc.HasValue ? "Completed" : session.IsActive ? "Active" : "Pending";
+        return "Completed";
     }
 
     protected virtual decimal? CalculateAverageRubricScore(IList<InterviewTurn> turns, string propertyName)
@@ -1298,28 +1327,19 @@ public class AIInterviewAdminController : BasePluginController
 
     protected virtual string BuildLifecycleState(InterviewSession session)
     {
-        if (session.CompletedOnUtc.HasValue)
-            return "Completed";
-
-        if (session.StartedOnUtc.HasValue || session.IsActive)
-            return "In Progress";
-
-        return "Pending";
+        return session?.CompletedOnUtc.HasValue == true ? "Completed" : string.Empty;
     }
 
     protected virtual string BuildLifecycleBadgeClass(InterviewSession session)
     {
-        if (session.CompletedOnUtc.HasValue)
-            return "is-success";
-
-        if (session.StartedOnUtc.HasValue || session.IsActive)
-            return "is-warning";
-
-        return "is-pending";
+        return session?.CompletedOnUtc.HasValue == true ? "is-success" : string.Empty;
     }
 
     protected virtual string BuildComplianceState(InterviewSession session, IList<InterviewTurn> turns)
     {
+        if (session?.CompletedOnUtc.HasValue != true)
+            return string.Empty;
+
         if (session.CompletedOnUtc.HasValue && turns.Any(turn => !string.IsNullOrWhiteSpace(turn.AnswerText)))
             return "Passed";
 
@@ -1331,6 +1351,9 @@ public class AIInterviewAdminController : BasePluginController
 
     protected virtual string BuildComplianceBadgeClass(InterviewSession session, IList<InterviewTurn> turns)
     {
+        if (session?.CompletedOnUtc.HasValue != true)
+            return string.Empty;
+
         if (session.CompletedOnUtc.HasValue && turns.Any(turn => !string.IsNullOrWhiteSpace(turn.AnswerText)))
             return "is-success";
 
@@ -1342,6 +1365,9 @@ public class AIInterviewAdminController : BasePluginController
 
     protected virtual string BuildSystemState(InterviewSession session)
     {
+        if (session?.CompletedOnUtc.HasValue != true)
+            return string.Empty;
+
         if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
             return "Processed";
 
@@ -1353,6 +1379,9 @@ public class AIInterviewAdminController : BasePluginController
 
     protected virtual string BuildSystemBadgeClass(InterviewSession session)
     {
+        if (session?.CompletedOnUtc.HasValue != true)
+            return string.Empty;
+
         if (session.CompletedOnUtc.HasValue && !string.IsNullOrWhiteSpace(session.ReportData))
             return "is-success";
 
@@ -1364,6 +1393,9 @@ public class AIInterviewAdminController : BasePluginController
 
     protected virtual string BuildStatusBadgeClass(string status, InterviewSession session)
     {
+        if (session?.CompletedOnUtc.HasValue != true)
+            return string.Empty;
+
         var normalizedStatus = JobApplicationStatuses.Normalize(status);
         if (normalizedStatus.Contains("shortlist", StringComparison.OrdinalIgnoreCase)
             || normalizedStatus.Contains("complete", StringComparison.OrdinalIgnoreCase)
@@ -1831,20 +1863,31 @@ public class AIInterviewAdminController : BasePluginController
         foreach (var application in filteredApplications)
         {
             var customer = customerLookup.GetValueOrDefault(application.CustomerId);
-            var sessions = await _sessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
+            var sessions = (await _sessionService.GetSessionsByCustomerIdAsync(application.CustomerId))
+                ?.Where(item => item.ProductId == application.ProductId || item.JobApplicationId == application.Id)
+                .ToList() ?? new List<InterviewSession>();
+            foreach (var skippedSession in sessions.Where(item => !item.CompletedOnUtc.HasValue))
+            {
+                _logger.LogDebug(
+                    "Skipped non-completed interview session {SessionId} during {FilterContext} list preparation.",
+                    skippedSession.Id,
+                    "Scoreboard");
+            }
+
             var session = sessions
-                .Where(item => item.ProductId == application.ProductId || (item.JobApplicationId == application.Id))
                 .Where(item => item.CompletedOnUtc.HasValue)
                 .OrderByDescending(item => item.CompletedOnUtc)
                 .ThenByDescending(item => item.Id)
                 .FirstOrDefault();
+            if (session == null)
+                continue;
 
             var product = products.FirstOrDefault(item => item.Id == application.ProductId);
             var vendor = product != null && product.VendorId > 0 && vendors.TryGetValue(product.VendorId, out var foundVendor) ? foundVendor : null;
 
             var row = new ScoreboardRowModel
             {
-                SessionId = session?.Id ?? 0,
+                SessionId = session.Id,
                 ApplicationId = application.Id,
                 ProductId = application.ProductId,
                 VendorId = product?.VendorId ?? 0,
@@ -1857,10 +1900,10 @@ public class AIInterviewAdminController : BasePluginController
                 JobTitle = application.JobTitle,
                 ProductAdminUrl = product != null ? BuildProductAdminUrl(product.Id) : string.Empty,
                 Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{JobApplicationStatuses.Normalize(application.Status)}"),
-                Score = session?.Score ?? 0,
-                CompletedOnUtc = session?.CompletedOnUtc,
-                CompletedOn = await FormatAdminLocalDateTimeAsync(session?.CompletedOnUtc, "-"),
-                ReportUrl = session != null ? Url.RouteUrl(AIInterviewDefaults.ReportRouteName, new { sessionId = session.Id }) : string.Empty
+                Score = session.Score,
+                CompletedOnUtc = session.CompletedOnUtc,
+                CompletedOn = await FormatAdminLocalDateTimeAsync(session.CompletedOnUtc, "-"),
+                ReportUrl = Url.RouteUrl(AIInterviewDefaults.ReportRouteName, new { sessionId = session.Id })
             };
 
             rows.Add(row);
@@ -1881,10 +1924,10 @@ public class AIInterviewAdminController : BasePluginController
         }
 
         if (startDateUtc.HasValue)
-            rows = rows.Where(row => row.CompletedOnUtc.HasValue ? row.CompletedOnUtc.Value >= startDateUtc.Value : true).ToList();
+            rows = rows.Where(row => row.CompletedOnUtc.Value >= startDateUtc.Value).ToList();
 
         if (endDateUtcExclusive.HasValue)
-            rows = rows.Where(row => row.CompletedOnUtc.HasValue ? row.CompletedOnUtc.Value < endDateUtcExclusive.Value : true).ToList();
+            rows = rows.Where(row => row.CompletedOnUtc.Value < endDateUtcExclusive.Value).ToList();
 
         if (!string.IsNullOrWhiteSpace(filter.Vendor))
             rows = rows.Where(row => row.VendorName.Contains(filter.Vendor, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -2280,7 +2323,7 @@ public class AIInterviewAdminController : BasePluginController
         if (_sessionRepository != null)
         {
             var issues = await _sessionRepository.Table
-                .Where(session => session.CandidateFeedbackIssue != null && session.CandidateFeedbackIssue != string.Empty)
+                .Where(session => session.CompletedOnUtc.HasValue && session.CandidateFeedbackIssue != null && session.CandidateFeedbackIssue != string.Empty)
                 .Select(session => session.CandidateFeedbackIssue)
                 .Distinct()
                 .ToListAsync();
@@ -2336,7 +2379,6 @@ public class AIInterviewAdminController : BasePluginController
         return new List<SelectListItem>
         {
             new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.All"), Value = string.Empty, Selected = string.IsNullOrWhiteSpace(selectedStatus) },
-            new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.Active"), Value = "Active", Selected = string.Equals(selectedStatus, "Active", StringComparison.OrdinalIgnoreCase) },
             new() { Text = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.MockPracticeSessions.Status.Completed"), Value = "Completed", Selected = string.Equals(selectedStatus, "Completed", StringComparison.OrdinalIgnoreCase) }
         };
     }
@@ -2366,7 +2408,7 @@ public class AIInterviewAdminController : BasePluginController
         if (_sessionRepository != null)
         {
             var existingValues = await _sessionRepository.Table
-                .Where(session => session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice && session.Difficulty != null && session.Difficulty != string.Empty)
+                .Where(session => session.CompletedOnUtc.HasValue && session.InterviewType == AIInterviewDefaults.InterviewTypeMockPractice && session.Difficulty != null && session.Difficulty != string.Empty)
                 .Select(session => session.Difficulty)
                 .Distinct()
                 .ToListAsync();
@@ -2394,10 +2436,7 @@ public class AIInterviewAdminController : BasePluginController
 
     protected virtual string BuildMockPracticeSessionStatus(InterviewSession session)
     {
-        if (session?.CompletedOnUtc.HasValue == true)
-            return "Completed";
-
-        return session?.IsActive == true ? "Active" : string.Empty;
+        return session?.CompletedOnUtc.HasValue == true ? "Completed" : string.Empty;
     }
 
     protected virtual string BuildCustomerDisplayName(Customer customer)
