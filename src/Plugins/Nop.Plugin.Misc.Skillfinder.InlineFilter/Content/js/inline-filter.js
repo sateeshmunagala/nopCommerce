@@ -65,6 +65,14 @@
         });
     }
 
+    function updateCategoryTabsScrollability() {
+        document.querySelectorAll('.sfi-category-tabs').forEach(function (tabs) {
+            var wrapper = tabs.closest('.sfi-category-tabs-wrap');
+            if (wrapper)
+                wrapper.classList.toggle('is-scrollable', tabs.scrollWidth > tabs.clientWidth + 1);
+        });
+    }
+
     function getColumnScrollAmount(carousel) {
         var cell = carousel.querySelector('.sfi-grid-cell');
         var track = carousel.querySelector('.sfi-products-grid');
@@ -119,6 +127,7 @@
 
     document.addEventListener('htmx:afterSwap', function (event) {
         initializeCarousels(event.target);
+        updateCategoryTabsScrollability();
     });
 
     var resizeFrame;
@@ -126,11 +135,17 @@
         window.cancelAnimationFrame(resizeFrame);
         resizeFrame = window.requestAnimationFrame(function () {
             initializeCarousels(document);
+            updateCategoryTabsScrollability();
         });
     }, { passive: true });
 
-    if (document.readyState === 'loading')
-        document.addEventListener('DOMContentLoaded', function () { initializeCarousels(document); });
-    else
+    function initialize() {
         initializeCarousels(document);
+        updateCategoryTabsScrollability();
+    }
+
+    if (document.readyState === 'loading')
+        document.addEventListener('DOMContentLoaded', initialize);
+    else
+        initialize();
 })();
