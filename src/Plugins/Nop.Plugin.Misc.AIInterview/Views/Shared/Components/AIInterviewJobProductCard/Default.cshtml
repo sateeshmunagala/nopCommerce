@@ -24,8 +24,6 @@
     var jobLocationLabel = T("Plugins.Misc.AIInterview.JobCard.JobLocation").Text;
     var salaryRangeLabel = T("Plugins.Misc.AIInterview.JobCard.SalaryRange").Text;
     var experienceLevelLabel = T("Plugins.Misc.AIInterview.JobCard.ExperienceLevel").Text;
-    var postedText = string.Format(T("Plugins.Misc.AIInterview.JobCard.Posted").Text, Model.PostedDateText);
-    var appliedCountText = string.Format(T("Plugins.Misc.AIInterview.JobCard.AppliedCount").Text, Model.AppliedCount);
     var showSummary = !string.IsNullOrWhiteSpace(Model.Summary) &&
         !string.Equals(Model.Summary.Trim(), Model.JobTitle?.Trim(), StringComparison.OrdinalIgnoreCase);
 
@@ -33,55 +31,51 @@
 }
 
 <article class="product-item ai-job-product-card" data-productid="@Model.Id">
-    <figure class="ai-job-card-media">
-        @if (Model.UseImagePlaceholder)
-        {
-            <div class="ai-job-card-logo ai-job-card-logo-placeholder" aria-label="@Model.ImageAlt" title="@Model.ImageAlt">
-                <span>@Model.ImagePlaceholderText</span>
-            </div>
-        }
-        else
-        {
-            <img class="ai-job-card-logo" src="@Model.ImageUrl" alt="@Model.ImageAlt" loading="lazy" />
-        }
-    </figure>
-    <div class="ai-job-card-body ai-job-card-content">
+    <div class="ai-job-card-header">
+        <figure class="ai-job-card-media">
+            @if (Model.UseImagePlaceholder)
+            {
+                <div class="ai-job-card-logo ai-job-card-logo-placeholder" aria-label="@Model.ImageAlt" title="@Model.ImageAlt">
+                    <span>@Model.ImagePlaceholderText</span>
+                </div>
+            }
+            else
+            {
+                <img class="ai-job-card-logo" src="@Model.ImageUrl" alt="@Model.ImageAlt" loading="lazy" />
+            }
+        </figure>
         @if (Model.CanSaveJob)
         {
-            <div class="ai-job-card-topline">
-                <button type="button"
-                        class="ai-job-card-save @(Model.IsSavedJob ? "is-saved" : null)"
-                        data-product-id="@Model.Id"
-                        data-toggle-url="@saveToggleUrl"
-                        data-wishlist-item-id="@Model.WishlistItemId"
-                        data-is-saved="@Model.IsSavedJob.ToString().ToLowerInvariant()"
-                        data-save-label="@saveLabel"
-                        data-remove-label="@removeSavedLabel"
-                        data-saved-text="@T("Plugins.Misc.AIInterview.JobCard.SavedToSavedJobs")"
-                        data-removed-text="@T("Plugins.Misc.AIInterview.JobCard.RemovedFromSavedJobs")"
-                        aria-pressed="@Model.IsSavedJob.ToString().ToLowerInvariant()"
-                        aria-label="@(Model.IsSavedJob ? removeSavedLabel : saveLabel)"
-                        title="@(Model.IsSavedJob ? removeSavedLabel : saveLabel)">
-                    <i class="fa-regular fa-bookmark ai-job-card-save-icon ai-job-card-save-icon-outline" aria-hidden="true"></i>
-                    <i class="fa-solid fa-bookmark ai-job-card-save-icon ai-job-card-save-icon-filled" aria-hidden="true"></i>
-                    <span class="ai-job-card-visually-hidden">@(Model.IsSavedJob ? removeSavedLabel : saveLabel)</span>
-                </button>
-            </div>
+            <button type="button"
+                    class="ai-job-card-save @(Model.IsSavedJob ? "is-saved" : null)"
+                    data-product-id="@Model.Id"
+                    data-toggle-url="@saveToggleUrl"
+                    data-wishlist-item-id="@Model.WishlistItemId"
+                    data-is-saved="@Model.IsSavedJob.ToString().ToLowerInvariant()"
+                    data-save-label="@saveLabel"
+                    data-remove-label="@removeSavedLabel"
+                    data-saved-text="@T("Plugins.Misc.AIInterview.JobCard.SavedToSavedJobs")"
+                    data-removed-text="@T("Plugins.Misc.AIInterview.JobCard.RemovedFromSavedJobs")"
+                    aria-pressed="@Model.IsSavedJob.ToString().ToLowerInvariant()"
+                    aria-label="@(Model.IsSavedJob ? removeSavedLabel : saveLabel)"
+                    title="@(Model.IsSavedJob ? removeSavedLabel : saveLabel)">
+                <i class="fa-regular fa-bookmark ai-job-card-save-icon ai-job-card-save-icon-outline" aria-hidden="true"></i>
+                <i class="fa-solid fa-bookmark ai-job-card-save-icon ai-job-card-save-icon-filled" aria-hidden="true"></i>
+                <span class="ai-job-card-visually-hidden">@(Model.IsSavedJob ? removeSavedLabel : saveLabel)</span>
+            </button>
         }
+    </div>
 
+    <div class="ai-job-card-body ai-job-card-content">
         <button type="button"
                 class="ai-job-card-title-link"
                 data-ai-job-preview-open="@drawerId"
                 aria-controls="@drawerId"
                 aria-expanded="false"
-                aria-label="@($"{Model.JobTitle} - {previewText}")">
+                aria-label="@($"{Model.JobTitle} - {previewText}")"
+                title="@Model.JobTitle">
             @Model.JobTitle
         </button>
-
-        @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
-        {
-            @* <div class="ai-job-card-company">@Model.CompanyName</div> *@
-        }
 
         @if (showSummary)
         {
@@ -124,14 +118,6 @@
                     <span class="ai-job-card-spec-value">@Model.Specifications.ExperienceLevel</span>
                 </span>
             }
-            @* <span class="ai-job-card-spec ai-job-card-spec-stat" title="@postedText" aria-label="@postedText">
-                <i class="fa-regular fa-clock ai-job-card-spec-icon" aria-hidden="true"></i>
-                <span class="ai-job-card-spec-value">@postedText</span>
-            </span> *@
-            @* <span class="ai-job-card-spec ai-job-card-spec-stat" title="@appliedCountText" aria-label="@appliedCountText">
-                <i class="fa-solid fa-user-group ai-job-card-spec-icon" aria-hidden="true"></i>
-                <span class="ai-job-card-spec-value">@appliedCountText</span>
-            </span> *@
         </div>
 
         <div class="ai-job-card-actions">

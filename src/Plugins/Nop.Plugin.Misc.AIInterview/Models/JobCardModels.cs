@@ -19,16 +19,12 @@ public partial record AIInterviewJobProductCardModel : BaseNopEntityModel
     public string PreviewDescription { get; set; }
     public string SeName { get; set; }
     public string ProductUrl { get; set; }
-    public string PostedDateText { get; set; }
-
     public string ImageUrl { get; set; }
     public string ImageAlt { get; set; }
     public bool UseImagePlaceholder { get; set; }
     public string ImagePlaceholderText { get; set; }
 
     public DateTime CreatedOnUtc { get; set; }
-    public int AppliedCount { get; set; }
-
     public bool CanSaveJob { get; set; }
     public bool IsSavedJob { get; set; }
     public int WishlistItemId { get; set; }

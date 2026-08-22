@@ -116,8 +116,6 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
         if (string.IsNullOrWhiteSpace(previewDescription))
             previewDescription = summary;
 
-        var appliedCount = await _applicationService.GetApplicationCountAsync(productId: product.Id);
-
         return new AIInterviewJobProductCardModel
         {
             Id = product.Id,
@@ -127,13 +125,11 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             PreviewDescription = previewDescription,
             SeName = productOverviewModel.SeName,
             ProductUrl = await ResolveProductUrlAsync(product),
-            PostedDateText = await FormatPostedDateAsync(product.CreatedOnUtc),
             ImageUrl = imageModel.ImageUrl,
             ImageAlt = imageModel.ImageAlt,
             UseImagePlaceholder = imageModel.UsePlaceholder,
             ImagePlaceholderText = imageModel.PlaceholderText,
             CreatedOnUtc = product.CreatedOnUtc,
-            AppliedCount = appliedCount,
             CanSaveJob = !productOverviewModel.ProductPrice.DisableWishlistButton,
             IsSavedJob = wishlistItem != null,
             WishlistItemId = wishlistItem?.Id ?? 0,

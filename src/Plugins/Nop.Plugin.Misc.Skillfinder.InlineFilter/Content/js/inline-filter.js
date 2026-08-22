@@ -2,7 +2,7 @@
     'use strict';
 
     function setSelectedPill(root, selectedPill) {
-        root.querySelectorAll('.sfi-category-pill').forEach(function (pill) {
+        root.querySelectorAll('.sfi-category-tab').forEach(function (pill) {
             var isSelected = pill === selectedPill;
             pill.classList.toggle('is-selected', isSelected);
             pill.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
@@ -94,7 +94,7 @@
             return;
         }
 
-        var pill = event.target.closest('.sfi-category-pill');
+        var pill = event.target.closest('.sfi-category-tab');
         if (!pill)
             return;
 

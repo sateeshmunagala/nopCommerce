@@ -21,25 +21,27 @@
     @if (Model.Categories.Any())
     {
         <div class="sfi-filter-actions">
-            <div class="sfi-category-pills sfi-category-tabs"
-                 role="group"
-                 aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.CategoriesLabel")">
-                @foreach (var category in Model.Categories)
-                {
-                    var categoryViewMoreUrl = Url.RouteUrl("Category", new { SeName = category.SeName });
-                    <button type="button"
-                            class="sfi-category-pill sfi-category-tab @(category.IsSelected ? "is-selected" : null)"
-                            aria-pressed="@category.IsSelected.ToString().ToLowerInvariant()"
-                            aria-controls="@resultsId"
-                            data-sfi-category-tab
-                            data-sfi-view-more-url="@categoryViewMoreUrl"
-                            hx-get="@Url.RouteUrl(SkillfinderInlineFilterDefaults.RouteName, new { categorySeName = category.SeName })"
-                            hx-target="#@resultsId"
-                            hx-swap="innerHTML"
-                            hx-indicator="#@loadingId">
-                        @category.Name
-                    </button>
-                }
+            <div class="sfi-category-tabs-wrap">
+                <div class="sfi-category-tabs"
+                     role="group"
+                     aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.CategoriesLabel")">
+                    @foreach (var category in Model.Categories)
+                    {
+                        var categoryViewMoreUrl = Url.RouteUrl("Category", new { SeName = category.SeName });
+                        <button type="button"
+                                class="sfi-category-tab @(category.IsSelected ? "is-selected" : null)"
+                                aria-pressed="@category.IsSelected.ToString().ToLowerInvariant()"
+                                aria-controls="@resultsId"
+                                data-sfi-category-tab
+                                data-sfi-view-more-url="@categoryViewMoreUrl"
+                                hx-get="@Url.RouteUrl(SkillfinderInlineFilterDefaults.RouteName, new { categorySeName = category.SeName })"
+                                hx-target="#@resultsId"
+                                hx-swap="innerHTML"
+                                hx-indicator="#@loadingId">
+                            @category.Name
+                        </button>
+                    }
+                </div>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(Model.Results.ViewMoreUrl) && !string.IsNullOrWhiteSpace(Model.Results.SelectedCategorySeName))
