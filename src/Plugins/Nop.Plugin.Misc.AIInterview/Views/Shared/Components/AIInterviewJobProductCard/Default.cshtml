@@ -46,15 +46,15 @@
             }
         </figure>
         <div class="ai-job-card-identity">
-            <button type="button"
-                    class="ai-job-card-title-link"
-                    data-ai-job-preview-open="@drawerId"
-                    aria-controls="@drawerId"
-                    aria-expanded="false"
-                    aria-label="@($"{Model.JobTitle} - {previewText}")"
-                    title="@Model.JobTitle">
+            <a class="ai-job-card-title-link"
+               href="@productUrl"
+               data-ai-job-preview-open="@drawerId"
+               aria-controls="@drawerId"
+               aria-expanded="false"
+               aria-label="@($"{Model.JobTitle} - {previewText}")"
+               title="@Model.JobTitle">
                 @Model.JobTitle
-            </button>
+            </a>
             @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
             {
                 <div class="ai-job-card-company" title="@Model.CompanyName">@Model.CompanyName</div>

@@ -2059,13 +2059,15 @@ body.aiinterview-report-drawer-open {
     display: block;
     width: 100%;
     min-height: 0;
+    margin: 0;
     padding: 0;
     border: 0;
     background: transparent;
-    font-size: 1.02rem;
+    color: var(--jb-ink);
     font-weight: 700;
-    line-height: 1.3;
+    line-height: 1.25;
     text-align: left;
+    text-decoration: none;
     text-transform: none;
     cursor: pointer;
     white-space: nowrap;
@@ -10738,6 +10740,17 @@ a.ai-home-performer-name:focus-visible {
 .html-search-page .product-item.ai-job-product-card .ai-job-card-meta {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 4px 12px !important;
+}
+
+.html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-company,
+.html-home-page .sfi-inline-filter .product-item.ai-job-product-card .ai-job-card-company,
+.html-category-page .product-item.ai-job-product-card .ai-job-card-company,
+.html-search-page .product-item.ai-job-product-card .ai-job-card-company,
+.html-aiinterview-my-activity-page .product-item.ai-job-product-card .ai-job-card-company {
+    font-size: 0.72rem !important;
+    font-weight: 400 !important;
+    line-height: 1.3 !important;
+    color: var(--jb-muted) !important;
 }
 
 .html-home-page .home-page .product-item.ai-job-product-card .ai-job-card-save,

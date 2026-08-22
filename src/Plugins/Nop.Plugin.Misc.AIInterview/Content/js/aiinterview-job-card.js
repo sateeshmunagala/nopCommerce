@@ -332,6 +332,9 @@
     document.addEventListener('click', function (event) {
         var openTrigger = event.target.closest('[data-ai-job-preview-open]');
         if (openTrigger) {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
+                return;
+
             event.preventDefault();
             var drawer = document.getElementById(openTrigger.getAttribute('data-ai-job-preview-open'));
             openDrawer(drawer, openTrigger);

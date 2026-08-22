@@ -261,7 +261,7 @@
                 </section>
             }
 
-            <section class="job-card">
+            @* <section class="job-card">
                 <h2 class="job-section-title">@roleHighlightsText</h2>
                 @if (highlights.Any())
                 {
@@ -276,7 +276,7 @@
                 {
                     <p>@roleHighlightsFallbackText</p>
                 }
-            </section>
+            </section> *@
         </div>
 
         <div class="job-main">
@@ -299,7 +299,7 @@
                 }
             </section>
 
-            <section class="job-card">
+            @* <section class="job-card">
                 <h2 class="job-section-title">@jobDetailsSectionText</h2>
                 @if (filteredSpecificationGroups.Any())
                 {
@@ -350,7 +350,7 @@
                 {
                     @await Html.PartialAsync("_ProductTags", Model.ProductTags)
                 }
-            </section>
+            </section> *@
         </div>
     </section>
 </article>
