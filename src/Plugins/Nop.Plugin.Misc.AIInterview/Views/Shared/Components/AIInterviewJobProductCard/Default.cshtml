@@ -22,7 +22,7 @@
     var workArrangementLabel = T("Plugins.Misc.AIInterview.JobCard.WorkArrangement").Text;
     var employmentTypeLabel = T("Plugins.Misc.AIInterview.JobCard.EmploymentType").Text;
     var jobLocationLabel = T("Plugins.Misc.AIInterview.JobCard.JobLocation").Text;
-    var salaryRangeLabel = T("Plugins.Misc.AIInterview.JobCard.SalaryRange").Text;
+    var salaryRangeText = T("Plugins.Misc.AIInterview.JobCard.SalaryRange").Text;
     var experienceLevelLabel = T("Plugins.Misc.AIInterview.JobCard.ExperienceLevel").Text;
     var showSummary = !string.IsNullOrWhiteSpace(Model.Summary) &&
         !string.Equals(Model.Summary.Trim(), Model.JobTitle?.Trim(), StringComparison.OrdinalIgnoreCase);
@@ -44,6 +44,21 @@
                 <img class="ai-job-card-logo" src="@Model.ImageUrl" alt="@Model.ImageAlt" loading="lazy" />
             }
         </figure>
+        <div class="ai-job-card-identity">
+            <button type="button"
+                    class="ai-job-card-title-link"
+                    data-ai-job-preview-open="@drawerId"
+                    aria-controls="@drawerId"
+                    aria-expanded="false"
+                    aria-label="@($"{Model.JobTitle} - {previewText}")"
+                    title="@Model.JobTitle">
+                @Model.JobTitle
+            </button>
+            @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
+            {
+                <div class="ai-job-card-company" title="@Model.CompanyName">@Model.CompanyName</div>
+            }
+        </div>
         @if (Model.CanSaveJob)
         {
             <button type="button"
@@ -67,16 +82,6 @@
     </div>
 
     <div class="ai-job-card-body ai-job-card-content">
-        <button type="button"
-                class="ai-job-card-title-link"
-                data-ai-job-preview-open="@drawerId"
-                aria-controls="@drawerId"
-                aria-expanded="false"
-                aria-label="@($"{Model.JobTitle} - {previewText}")"
-                title="@Model.JobTitle">
-            @Model.JobTitle
-        </button>
-
         @if (showSummary)
         {
             <div class="ai-job-card-summary" title="@Model.Summary">@Model.Summary</div>
@@ -104,13 +109,6 @@
                     <span class="ai-job-card-spec-value">@Model.Specifications.JobLocation</span>
                 </span>
             }
-            @if (!string.IsNullOrWhiteSpace(Model.Specifications.SalaryRange))
-            {
-                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(salaryRangeLabel, Model.Specifications.SalaryRange)" aria-label="@BuildAccessibleSpecText(salaryRangeLabel, Model.Specifications.SalaryRange)">
-                    <i class="fa-solid fa-wallet ai-job-card-spec-icon" aria-hidden="true"></i>
-                    <span class="ai-job-card-spec-value">@Model.Specifications.SalaryRange</span>
-                </span>
-            }
             @if (!string.IsNullOrWhiteSpace(Model.Specifications.ExperienceLevel))
             {
                 <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(experienceLevelLabel, Model.Specifications.ExperienceLevel)" aria-label="@BuildAccessibleSpecText(experienceLevelLabel, Model.Specifications.ExperienceLevel)">
@@ -121,7 +119,17 @@
         </div>
 
         <div class="ai-job-card-actions">
-            <a class="button-2 jb-view-job-button ai-job-card-view-job" href="@productUrl" title="@viewJobText">@viewJobText</a>
+            @if (!string.IsNullOrWhiteSpace(Model.Specifications.SalaryRange))
+            {
+                <span class="ai-job-card-salary" title="@BuildAccessibleSpecText(salaryRangeText, Model.Specifications.SalaryRange)">
+                    <i class="fa-solid fa-wallet ai-job-card-spec-icon" aria-hidden="true"></i>
+                    <span class="ai-job-card-salary-value">@Model.Specifications.SalaryRange</span>
+                </span>
+            }
+            <a class="ai-job-card-view-job" href="@productUrl" title="@viewJobText">
+                <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                <span>@viewJobText</span>
+            </a>
         </div>
 
         <span class="ai-job-card-status ai-job-card-visually-hidden" aria-live="polite" data-ai-job-save-status="@Model.Id"></span>

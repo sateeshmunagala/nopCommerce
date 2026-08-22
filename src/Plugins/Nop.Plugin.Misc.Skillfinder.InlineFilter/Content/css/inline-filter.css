@@ -30,7 +30,7 @@
 
 .sfi-inline-filter {
     box-sizing: border-box;
-    width: min(1180px, calc(100% - 32px));
+    width: 100%;
     margin: 16px auto 20px;
     padding: 18px clamp(16px, 2vw, 24px) 20px;
     border: 1px solid var(--sfi-border);
@@ -238,8 +238,8 @@
     justify-content: center;
     width: 32px;
     min-width: 32px;
-    height: 32px;
-    min-height: 32px;
+    height: 32px !important;
+    min-height: 32px !important;
     margin: 0;
     padding: 0;
     border: 1px solid var(--sfi-control-border);
@@ -538,7 +538,7 @@
 
 @media (max-width: 600px) {
     .sfi-inline-filter {
-        width: min(100% - 20px, 1180px);
+        width: 100%;
         margin: 16px auto 20px;
         padding: 18px 16px 20px;
         border-radius: 10px;
@@ -570,8 +570,8 @@
     .sfi-carousel-control {
         width: 40px;
         min-width: 40px;
-        height: 40px;
-        min-height: 40px;
+        height: 40px !important;
+        min-height: 40px !important;
     }
 
     .sfi-fallback-card {
