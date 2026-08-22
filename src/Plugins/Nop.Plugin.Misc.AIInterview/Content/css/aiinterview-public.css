@@ -2064,6 +2064,7 @@ body.aiinterview-report-drawer-open {
     border: 0;
     background: transparent;
     color: var(--jb-ink);
+    font-size: 1.02rem;
     font-weight: 700;
     line-height: 1.25;
     text-align: left;
