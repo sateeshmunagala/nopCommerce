@@ -2252,10 +2252,12 @@ public class AIInterviewController : BasePluginController
         try
         {
             var language = await _workContext.GetWorkingLanguageAsync();
-            var description = await _artificialIntelligenceService.CreateProductDescriptionAsync(
+            var rawDescription = await _artificialIntelligenceService.CreateProductDescriptionAsync(
                 model.JobTitle, model.Keywords,
                 (Nop.Core.Domain.ArtificialIntelligence.ToneOfVoiceType)model.ToneOfVoiceId,
                 model.Instructions, model.CustomToneOfVoice, language.Id);
+
+            var description = ConvertAiHtmlDescriptionToPlainText(rawDescription, maxLines: 5);
 
             return Json(new { success = true, description });
         }
@@ -2271,6 +2273,32 @@ public class AIInterviewController : BasePluginController
 
             return Json(new { success = false, message = ex.Message });
         }
+    }
+
+    protected virtual string ConvertAiHtmlDescriptionToPlainText(string html, int maxLines)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+            return string.Empty;
+
+        var text = html;
+        text = System.Text.RegularExpressions.Regex.Replace(text, "<li[^>]*>", "- ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        text = System.Text.RegularExpressions.Regex.Replace(text, "</li>", "\n", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        text = System.Text.RegularExpressions.Regex.Replace(text, "<br\\s*/?>", "\n", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        text = System.Text.RegularExpressions.Regex.Replace(text, "</p>|</div>|</h[1-6]>", "\n\n", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        text = System.Text.RegularExpressions.Regex.Replace(text, "<.*?>", string.Empty);
+        text = System.Net.WebUtility.HtmlDecode(text);
+
+        var lines = text
+            .Replace("\r\n", "\n")
+            .Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .ToList();
+
+        if (maxLines > 0 && lines.Count > maxLines)
+            lines = lines.Take(maxLines).ToList();
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     protected virtual string BuildLoginRedirectUrl(ApplyModel model)
