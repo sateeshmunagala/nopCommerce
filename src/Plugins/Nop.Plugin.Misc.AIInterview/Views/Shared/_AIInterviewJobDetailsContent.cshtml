@@ -8,6 +8,7 @@
 @using Nop.Plugin.Misc.AIInterview.Services
 @using Nop.Services.Helpers
 @using Nop.Services.Html
+@using Nop.Services.Common
 @using Nop.Services.Media
 @using Nop.Services.Orders
 @using Nop.Services.Stores
@@ -23,6 +24,7 @@
 @inject IVendorService vendorService
 @inject IPictureService pictureService
 @inject IAIInterviewJobDisplayService aiInterviewJobDisplayService
+@inject IGenericAttributeService genericAttributeService
 
 @{
     var isDrawer = string.Equals(ViewData["RenderMode"] as string, "Drawer", StringComparison.OrdinalIgnoreCase);
@@ -75,6 +77,7 @@
     var skillsText = T("Plugins.Misc.AIInterview.JobDetails.Skills").Text;
     var skillsFallbackText = T("Plugins.Misc.AIInterview.JobDetails.SkillsFallback").Text;
     var jobDetailsSectionText = T("Plugins.Misc.AIInterview.JobDetails.JobDetails").Text;
+    var numberOfPositions = await genericAttributeService.GetAttributeAsync<Product, int?>(Model.Id, AIInterviewDefaults.JobNumberOfPositionsAttributeName);
     var heroMetadata = new List<(string Label, string Value)>
     {
         (T("Plugins.Misc.AIInterview.JobCard.ExperienceLevel").Text, compactSpecifications.ExperienceLevel),
@@ -82,7 +85,8 @@
         (T("Plugins.Misc.AIInterview.JobCard.EmploymentType").Text, compactSpecifications.EmploymentType),
         (T("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc").Text, applyUntil),
         (T("Plugins.Misc.AIInterview.JobCard.JobLocation").Text, compactSpecifications.JobLocation),
-        (T("Plugins.Misc.AIInterview.JobCard.SalaryRange").Text, compactSpecifications.SalaryRange)
+        (T("Plugins.Misc.AIInterview.JobCard.SalaryRange").Text, compactSpecifications.SalaryRange),
+        (T("Plugins.Misc.AIInterview.JobDetails.NumberOfPositions").Text, numberOfPositions?.ToString())
     }.Where(item => !string.IsNullOrWhiteSpace(item.Value)).ToList();
 
     var filteredSpecificationGroups = specificationGroups

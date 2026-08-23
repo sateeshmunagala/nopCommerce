@@ -2449,7 +2449,7 @@ public class AIInterviewController : BasePluginController
         options.Insert(insertIndex, newOption);
     }
 
-    protected async Task InsertProductSpecificationAttributeAsync(int productId, int optionId, SpecificationAttributeType attributeType = SpecificationAttributeType.Option, string customValue = null, int displayOrder = 0)
+    protected async Task InsertProductSpecificationAttributeAsync(int productId, int optionId, SpecificationAttributeType attributeType = SpecificationAttributeType.Option, string customValue = null, int displayOrder = 0, bool allowFiltering = true)
     {
         if (_specificationAttributeService == null || optionId <= 0)
             return;
@@ -2461,7 +2461,7 @@ public class AIInterviewController : BasePluginController
             AttributeType = attributeType,
             CustomValue = customValue,
             ShowOnProductPage = true,
-            AllowFiltering = false,
+            AllowFiltering = allowFiltering,
             DisplayOrder = displayOrder
         });
     }
@@ -3158,6 +3158,8 @@ public class AIInterviewController : BasePluginController
             await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobInterviewModeAttributeName, model.InterviewMode);
             await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobQuestionSetIdAttributeName,
                 fixedQuestionSet?.QuestionSet.Id ?? 0);
+            await _genericAttributeService.SaveAttributeAsync(product, AIInterviewDefaults.JobNumberOfPositionsAttributeName,
+                model.NumberOfPositions);
         }
 
         if (_jobRequirementService != null)
@@ -3233,6 +3235,9 @@ public class AIInterviewController : BasePluginController
 
         if (model.SalaryMinCtcPa.HasValue && model.SalaryMaxCtcPa.HasValue && model.SalaryMaxCtcPa.Value < model.SalaryMinCtcPa.Value)
             ModelState.AddModelError(nameof(model.SalaryMaxCtcPa), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.SalaryRange.Invalid"));
+
+        if (model.NumberOfPositions.HasValue && model.NumberOfPositions.Value < 1)
+            ModelState.AddModelError(nameof(model.NumberOfPositions), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.NumberOfPositions.Invalid"));
 
         var validInterviewMode = string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeAiResumeBased, StringComparison.Ordinal) ||
             string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeFixedQuestionBased, StringComparison.Ordinal);
@@ -3354,6 +3359,7 @@ public class AIInterviewController : BasePluginController
             }
 
             model.QuestionSetId = await _genericAttributeService.GetAttributeAsync<int>(product, AIInterviewDefaults.JobQuestionSetIdAttributeName);
+            model.NumberOfPositions = await _genericAttributeService.GetAttributeAsync<int?>(product, AIInterviewDefaults.JobNumberOfPositionsAttributeName);
         }
 
         if (_jobRequirementService != null)
@@ -3441,7 +3447,7 @@ public class AIInterviewController : BasePluginController
         if (!string.IsNullOrWhiteSpace(model.SalaryRange))
         {
             await InsertProductSpecificationAttributeAsync(product.Id, salaryRangeOptionId,
-                SpecificationAttributeType.CustomText, model.SalaryRange, 4);
+                SpecificationAttributeType.CustomText, model.SalaryRange, 4, allowFiltering: false);
         }
     }
 

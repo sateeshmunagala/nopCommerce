@@ -216,6 +216,9 @@ public record VendorJobModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Sku")]
     public string Sku { get; set; }
 
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.NumberOfPositions")]
+    public int? NumberOfPositions { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Published")]
     public bool Published { get; set; } = true;
 

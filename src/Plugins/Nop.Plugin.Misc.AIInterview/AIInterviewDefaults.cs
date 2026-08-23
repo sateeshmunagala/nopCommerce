@@ -164,6 +164,7 @@ public static class AIInterviewDefaults
     public static string JobQuestionCountAttributeName => "AIInterview.Job.QuestionCount";
     public static string JobInterviewModeAttributeName => "AIInterview.Job.InterviewMode";
     public static string JobQuestionSetIdAttributeName => "AIInterview.Job.QuestionSetId";
+    public static string JobNumberOfPositionsAttributeName => "AIInterview.Job.NumberOfPositions";
     public static string JobSalaryMinCtcPaAttributeName => "AIInterview.Job.SalaryMinCtcPa";
     public static string JobSalaryMaxCtcPaAttributeName => "AIInterview.Job.SalaryMaxCtcPa";
     public static string JobSalaryCurrencyCodeAttributeName => "AIInterview.Job.SalaryCurrencyCode";
