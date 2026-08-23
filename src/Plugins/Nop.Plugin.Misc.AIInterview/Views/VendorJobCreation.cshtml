@@ -219,9 +219,71 @@
 
                                 <div class="vendor-job-form-field vendor-job-form-field-wide">
                                     <label asp-for="FullDescription" asp-postfix=":"></label>
+                                    @if (Model.AiDescriptionGenerationAvailable)
+                                    {
+                                        <button type="button"
+                                                class="vendor-job-form-ai-generate-button"
+                                                id="open-ai-description-modal"
+                                                title="@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.GenerateButton")">
+                                            <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                                            <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.GenerateButton")</span>
+                                        </button>
+                                    }
                                     <textarea asp-for="FullDescription" rows="8"></textarea>
                                     <span asp-validation-for="FullDescription"></span>
                                 </div>
+
+                                @if (Model.AiDescriptionGenerationAvailable)
+                                {
+                                    <div class="vendor-job-form-ai-modal-backdrop" id="ai-description-modal-backdrop" hidden>
+                                        <div class="vendor-job-form-ai-modal" role="dialog" aria-modal="true">
+                                            <div class="vendor-job-form-ai-modal-header">
+                                                <h3>@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.ModalTitle")</h3>
+                                                <button type="button" class="vendor-job-form-ai-modal-close" id="close-ai-description-modal">&times;</button>
+                                            </div>
+                                            <div class="vendor-job-form-ai-modal-body">
+                                                <p class="vendor-job-form-ai-modal-error" id="ai-description-error" hidden></p>
+                                                <div class="vendor-job-form-field">
+                                                    <label for="ai-description-keywords">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Keywords")</label>
+                                                    <textarea id="ai-description-keywords" rows="3"></textarea>
+                                                </div>
+                                                <div class="vendor-job-form-field">
+                                                    <label for="ai-description-tone">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Tone")</label>
+                                                    <select id="ai-description-tone">
+                                                        <option value="0">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Tone.Expert")</option>
+                                                        <option value="1">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Tone.Supportive")</option>
+                                                        <option value="2">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Tone.Custom")</option>
+                                                    </select>
+                                                </div>
+                                                <div class="vendor-job-form-field" id="ai-description-custom-tone-field" hidden>
+                                                    <label for="ai-description-custom-tone">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.CustomTone")</label>
+                                                    <input id="ai-description-custom-tone" type="text" />
+                                                </div>
+                                                <div class="vendor-job-form-field">
+                                                    <label for="ai-description-instructions">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Instructions")</label>
+                                                    <textarea id="ai-description-instructions" rows="2"></textarea>
+                                                </div>
+                                                <div class="vendor-job-form-field">
+                                                    <button type="button" class="job-ai-action job-ai-action-secondary" id="generate-ai-description-button">
+                                                        @T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Generate")
+                                                    </button>
+                                                </div>
+                                                <div class="vendor-job-form-field" id="ai-description-preview-field" hidden>
+                                                    <label>@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Preview")</label>
+                                                    <div class="vendor-job-form-ai-preview" id="ai-description-preview"></div>
+                                                </div>
+                                            </div>
+                                            <div class="vendor-job-form-ai-modal-footer">
+                                                <button type="button" class="job-ai-action job-ai-action-secondary" id="cancel-ai-description-button">
+                                                    @T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Cancel")
+                                                </button>
+                                                <button type="button" class="job-ai-action job-ai-action-primary" id="use-ai-description-button" hidden>
+                                                    @T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Use")
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         </section>
 
@@ -513,3 +575,90 @@
         normalize();
     })();
 </script>
+
+@section Scripts
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var openButton = document.getElementById('open-ai-description-modal');
+            var closeButton = document.getElementById('close-ai-description-modal');
+            var cancelButton = document.getElementById('cancel-ai-description-button');
+            var generateButton = document.getElementById('generate-ai-description-button');
+            var useButton = document.getElementById('use-ai-description-button');
+            var backdrop = document.getElementById('ai-description-modal-backdrop');
+            var toneSelect = document.getElementById('ai-description-tone');
+            var customToneField = document.getElementById('ai-description-custom-tone-field');
+            var errorText = document.getElementById('ai-description-error');
+            var previewField = document.getElementById('ai-description-preview-field');
+            var previewBox = document.getElementById('ai-description-preview');
+            var titleInput = document.querySelector('[name="Name"]');
+            var shortDescriptionInput = document.querySelector('[name="ShortDescription"]');
+            var fullDescriptionInput = document.querySelector('[name="FullDescription"]');
+            var keywordsField = document.getElementById('ai-description-keywords');
+
+            if (!openButton || !backdrop) {
+                return;
+            }
+
+            function closeModal() {
+                backdrop.hidden = true;
+            }
+
+            openButton.addEventListener('click', function () {
+                errorText.hidden = true;
+                previewField.hidden = true;
+                useButton.hidden = true;
+                if (!keywordsField.value) {
+                    var titleText = titleInput ? titleInput.value : '';
+                    var summaryText = shortDescriptionInput ? shortDescriptionInput.value : '';
+                    keywordsField.value = [titleText, summaryText].filter(Boolean).join(', ');
+                }
+                backdrop.hidden = false;
+            });
+
+            closeButton.addEventListener('click', closeModal);
+            cancelButton.addEventListener('click', closeModal);
+
+            toneSelect.addEventListener('change', function () {
+                customToneField.hidden = toneSelect.value !== '2';
+            });
+
+            generateButton.addEventListener('click', function () {
+                errorText.hidden = true;
+                var payload = new URLSearchParams();
+                payload.append('JobTitle', titleInput ? titleInput.value : '');
+                payload.append('Keywords', keywordsField.value || '');
+                payload.append('ToneOfVoiceId', toneSelect.value);
+                payload.append('CustomToneOfVoice', document.getElementById('ai-description-custom-tone').value || '');
+                payload.append('Instructions', document.getElementById('ai-description-instructions').value || '');
+
+                fetch('@Url.Action("GenerateJobDescription", "AIInterview")', {
+                    method: 'POST',
+                    body: payload
+                })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        previewBox.textContent = data.description;
+                        previewField.hidden = false;
+                        useButton.hidden = false;
+                    } else {
+                        errorText.textContent = data.message;
+                        errorText.hidden = false;
+                    }
+                })
+                .catch(function () {
+                    errorText.textContent = 'Unable to reach the AI service.';
+                    errorText.hidden = false;
+                });
+            });
+
+            useButton.addEventListener('click', function () {
+                if (fullDescriptionInput) {
+                    fullDescriptionInput.value = previewBox.textContent;
+                }
+                closeModal();
+            });
+        });
+    </script>
+}

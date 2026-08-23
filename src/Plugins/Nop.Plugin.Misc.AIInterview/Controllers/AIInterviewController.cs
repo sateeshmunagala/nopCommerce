@@ -79,6 +79,8 @@ public class AIInterviewController : BasePluginController
     private readonly IRepository<GenericAttribute> _genericAttributeRepository;
     private readonly IRepository<CreditLedgerEntry> _creditLedgerRepository;
     private readonly IFixedQuestionSetService _fixedQuestionSetService;
+    private readonly Nop.Services.ArtificialIntelligence.IArtificialIntelligenceService _artificialIntelligenceService;
+    private readonly Nop.Core.Domain.ArtificialIntelligence.ArtificialIntelligenceSettings _artificialIntelligenceSettings;
     private readonly ILogger<AIInterviewController> _logger;
 
     public AIInterviewController(IApplicationService applicationService,
@@ -115,7 +117,9 @@ public class AIInterviewController : BasePluginController
         IRepository<GenericAttribute> genericAttributeRepository = null,
         IRepository<CreditLedgerEntry> creditLedgerRepository = null,
         ILogger<AIInterviewController> logger = null,
-        IFixedQuestionSetService fixedQuestionSetService = null)
+        IFixedQuestionSetService fixedQuestionSetService = null,
+        Nop.Services.ArtificialIntelligence.IArtificialIntelligenceService artificialIntelligenceService = null,
+        Nop.Core.Domain.ArtificialIntelligence.ArtificialIntelligenceSettings artificialIntelligenceSettings = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -151,6 +155,8 @@ public class AIInterviewController : BasePluginController
         _genericAttributeRepository = genericAttributeRepository;
         _creditLedgerRepository = creditLedgerRepository;
         _fixedQuestionSetService = fixedQuestionSetService;
+        _artificialIntelligenceService = artificialIntelligenceService;
+        _artificialIntelligenceSettings = artificialIntelligenceSettings;
         _logger = logger;
     }
 
@@ -2223,6 +2229,39 @@ public class AIInterviewController : BasePluginController
             _customerService, customer, AIInterviewDefaults.EmployerCustomerRoleSystemName);
     }
 
+    [HttpPost]
+    public virtual async Task<IActionResult> GenerateJobDescription(GenerateJobDescriptionModel model)
+    {
+        if (!await IsAuthorizedForEmployerActionsAsync())
+            return Json(new { success = false, message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Unauthorized") });
+
+        if (_artificialIntelligenceService == null || _artificialIntelligenceSettings == null ||
+            !_artificialIntelligenceSettings.Enabled || !_artificialIntelligenceSettings.AllowProductDescriptionGeneration)
+        {
+            return Json(new { success = false, message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.NotConfigured") });
+        }
+
+        if (string.IsNullOrWhiteSpace(model?.JobTitle) || string.IsNullOrWhiteSpace(model?.Keywords))
+        {
+            return Json(new { success = false, message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.MissingFields") });
+        }
+
+        try
+        {
+            var language = await _workContext.GetWorkingLanguageAsync();
+            var description = await _artificialIntelligenceService.CreateProductDescriptionAsync(
+                model.JobTitle, model.Keywords,
+                (Nop.Core.Domain.ArtificialIntelligence.ToneOfVoiceType)model.ToneOfVoiceId,
+                model.Instructions, model.CustomToneOfVoice, language.Id);
+
+            return Json(new { success = true, description });
+        }
+        catch (Nop.Core.NopException ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
     protected virtual string BuildLoginRedirectUrl(ApplyModel model)
     {
         var returnUrl = Request?.Headers?.Referer.ToString();
@@ -2316,6 +2355,11 @@ public class AIInterviewController : BasePluginController
     {
         if (model == null)
             return;
+
+        model.AiDescriptionGenerationAvailable = _artificialIntelligenceService != null &&
+            _artificialIntelligenceSettings != null &&
+            _artificialIntelligenceSettings.Enabled &&
+            _artificialIntelligenceSettings.AllowProductDescriptionGeneration;
 
         var selectText = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.Select");
         model.AvailableSalaryLpaOptions = BuildSalaryLpaSelectList(selectText);

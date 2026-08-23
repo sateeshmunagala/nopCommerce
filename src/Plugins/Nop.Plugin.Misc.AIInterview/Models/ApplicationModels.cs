@@ -214,6 +214,8 @@ public record VendorJobModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.FullDescription")]
     public string FullDescription { get; set; }
 
+    public bool AiDescriptionGenerationAvailable { get; set; }
+
     [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Sku")]
     public string Sku { get; set; }
 
@@ -357,4 +359,13 @@ public record EmployerDashboardPageModel : BaseNopModel
     public EmployerDashboardJobsTabModel Jobs { get; set; } = new();
     public ApplicationListModel Applications { get; set; } = new();
     public EmployerDashboardInvitesTabModel Invites { get; set; } = new();
+}
+
+public record GenerateJobDescriptionModel : BaseNopModel
+{
+    public string JobTitle { get; set; }
+    public string Keywords { get; set; }
+    public int ToneOfVoiceId { get; set; }
+    public string CustomToneOfVoice { get; set; }
+    public string Instructions { get; set; }
 }

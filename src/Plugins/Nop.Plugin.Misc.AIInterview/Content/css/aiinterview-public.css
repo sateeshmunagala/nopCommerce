@@ -5125,6 +5125,61 @@ body.ai-job-preview-open .item-box {
     }
 }
 
+.vendor-job-form-ai-generate-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--jb-ink, #ccc);
+    background: transparent;
+    cursor: pointer;
+}
+
+.vendor-job-form-ai-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    padding: 16px;
+}
+
+.vendor-job-form-ai-modal {
+    background: #fff;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.vendor-job-form-ai-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.vendor-job-form-ai-preview {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 576px) {
+    .vendor-job-form-ai-modal {
+        max-width: 100%;
+        padding: 12px;
+    }
+}
+
 /* Job preview drawer: mirrors the Job Details visual system. */
 .ai-job-preview-drawer,
 .ai-job-preview-drawer *,
