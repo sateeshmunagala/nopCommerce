@@ -3214,7 +3214,7 @@ public class AIInterviewController : BasePluginController
         }
 
         if (_jobRequirementService != null)
-            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, true, 0m,
+            await _jobRequirementService.SaveRequirementsAsync(product, model.ResumeRequired, model.InterviewRequired, 0m,
                 fixedQuestionSet?.Items.Count ?? model.QuestionCount);
 
         var seName = await _urlRecordService.ValidateSeNameAsync(product, string.Empty, product.Name, true);
@@ -3675,7 +3675,6 @@ public class AIInterviewController : BasePluginController
                 ExpectedSignalNotes = item.ExpectedSignalNotes?.Trim()
             })
             .ToList();
-        model.InterviewRequired = true;
         model.ResumeRequired = string.Equals(model.InterviewMode, AIInterviewDefaults.InterviewModeAiResumeBased, StringComparison.Ordinal);
         model.MinimumScore = 0m;
         var fixedQuestionCount = model.QuestionItems.Count(item => item.IsActive && !string.IsNullOrWhiteSpace(item.QuestionText));

@@ -231,7 +231,6 @@
                                 <p class="vendor-job-form-section-copy">Choose how interview questions are prepared and keep reusable employer question sets organized.</p>
                             </div>
                             <input asp-for="ResumeRequired" type="hidden" />
-                            <input asp-for="InterviewRequired" type="hidden" value="true" />
                             <div class="vendor-job-form-simple-grid vendor-job-form-interview-grid">
                                 <div class="vendor-job-form-field">
                                     <label asp-for="InterviewMode" asp-postfix=":"></label>
@@ -256,6 +255,18 @@
                                                checked="@(Model.Published ? "checked" : null)" />
                                         <input type="hidden" name="@Html.NameFor(model => model.Published)" value="false" />
                                         <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.Published")</span>
+                                    </label>
+                                </div>
+                                <div class="vendor-job-form-field">
+                                    <label class="vendor-job-form-field-label">@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired")</label>
+                                    <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.InterviewRequired)">
+                                        <input type="checkbox"
+                                               id="@Html.IdFor(model => model.InterviewRequired)"
+                                               name="@Html.NameFor(model => model.InterviewRequired)"
+                                               value="true"
+                                               checked="@(Model.InterviewRequired ? "checked" : null)" />
+                                        <input type="hidden" name="@Html.NameFor(model => model.InterviewRequired)" value="false" />
+                                        <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired")</span>
                                     </label>
                                 </div>
                             </div>
