@@ -2196,7 +2196,7 @@ body.aiinterview-report-drawer-open {
     min-width: 0;
     color: var(--jb-ink);
     font-size: 0.86rem;
-    font-weight: 400;
+    font-weight: 300;
 }
 
 .ai-job-card-salary-value {
