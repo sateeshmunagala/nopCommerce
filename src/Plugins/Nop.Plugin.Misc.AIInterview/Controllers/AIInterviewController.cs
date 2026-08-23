@@ -2084,26 +2084,26 @@ public class AIInterviewController : BasePluginController
                     ?? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Error")
             };
 
+        InterviewSession selectedInterviewSession = null;
         if (jobRequirements.InterviewRequired)
         {
-            var legacyApplicationIds = allApplications
-                .Where(application => application.ProductId == model.ProductId)
-                .Select(application => application.Id)
-                .ToList();
-            var completedSessions = ((await _interviewSessionService.GetSessionsByCustomerIdAsync(customer.Id)) ?? new List<InterviewSession>())
-                .Where(s => s.CompletedOnUtc.HasValue &&
-                    (s.ProductId == model.ProductId ||
-                        (s.ProductId == 0 && legacyApplicationIds.Contains(s.JobApplicationId))))
-                .ToList();
-            if (!completedSessions.Any())
+            var reusableSessions = (await _interviewSessionService.GetReusableCompletedSessionsAsync(customer.Id)) ?? new List<InterviewSession>();
+            if (!reusableSessions.Any())
             {
                 var message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.InterviewRequired");
                 _notificationService.ErrorNotification(message);
                 return new ApplySubmissionResult { Success = false, Message = message };
             }
 
-            var highestScore = await _interviewSessionService.GetHighestScoreByCustomerIdAndProductIdAsync(customer.Id, model.ProductId);
-            if (highestScore < jobRequirements.MinimumScore)
+            selectedInterviewSession = reusableSessions.FirstOrDefault(session => session.Id == model.SelectedInterviewSessionId);
+            if (selectedInterviewSession == null)
+            {
+                var message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.InterviewRecord.Required");
+                _notificationService.ErrorNotification(message);
+                return new ApplySubmissionResult { Success = false, Message = message };
+            }
+
+            if (selectedInterviewSession.Score < jobRequirements.MinimumScore)
             {
                 var message = string.Format(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Apply.MinimumScoreNotReached"), jobRequirements.MinimumScore);
                 _notificationService.ErrorNotification(message);
@@ -2157,6 +2157,8 @@ public class AIInterviewController : BasePluginController
             CreatedOnUtc = DateTime.UtcNow
         };
         await _applicationService.InsertJobApplicationAsync(jobApplication);
+        if (selectedInterviewSession != null && _genericAttributeService != null)
+            await _genericAttributeService.SaveAttributeAsync(jobApplication, AIInterviewDefaults.ApplicationReusedInterviewSessionIdAttributeName, selectedInterviewSession.Id);
         if (jobApplication.ResumeDownloadId > 0 && _resumeProfileService != null)
             await _resumeProfileService.EnsureResumeProfileAsync(jobApplication, product, forceRegenerate: model.ResumeFile != null);
 

@@ -825,6 +825,17 @@ public class InterviewSessionService : IInterviewSessionService
             .OrderByDescending(s => s.CreatedOnUtc));
     }
 
+    public async Task<IList<InterviewSession>> GetReusableCompletedSessionsAsync(int customerId, int windowDays = AIInterviewDefaults.InterviewReuseWindowDays)
+    {
+        var cutoffUtc = DateTime.UtcNow.AddDays(-windowDays);
+        return await _sessionRepository.GetAllAsync(query => query
+            .Where(s => s.CustomerId == customerId &&
+                !s.Deleted &&
+                s.CompletedOnUtc.HasValue &&
+                s.CompletedOnUtc.Value >= cutoffUtc)
+            .OrderByDescending(s => s.CompletedOnUtc));
+    }
+
     public async Task<IList<InterviewSession>> GetPreviousResumeSourceSessionsAsync(int customerId)
     {
         return await _sessionRepository.GetAllAsync(query =>

@@ -7,12 +7,15 @@
     bool alreadyApplied = ViewBag.AlreadyApplied != null && (bool)ViewBag.AlreadyApplied;
     bool resumeRequired = ViewBag.ResumeRequired != null && (bool)ViewBag.ResumeRequired;
     bool isLaunchOnly = ViewBag.IsLaunchOnly != null && (bool)ViewBag.IsLaunchOnly;
+    bool interviewRecordRequired = ViewBag.InterviewRecordRequired != null && (bool)ViewBag.InterviewRecordRequired;
+    var availableInterviewSessions = ViewBag.AvailableInterviewSessions as IList<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
     int productId = ViewBag.ProductId != null ? (int)ViewBag.ProductId : 0;
     string sponsorToken = ViewBag.SponsorToken as string;
     string creditPurchasePageUrl = ViewBag.CreditPurchasePageUrl as string ?? "/pricing";
     string interviewError = Context?.Request?.Query["interviewError"].ToString();
     string productFormId = ViewBag.ProductFormId as string ?? "product-details-form";
     string jobAiContextId = ViewBag.JobAiContextId as string ?? $"job-{productId}";
+    string interviewSessionSelectId = $"job-interview-session-{jobAiContextId}";
     string resumeInputId = $"job-resume-file-{jobAiContextId}";
     string existingResumeSelectId = $"job-existing-resume-{jobAiContextId}";
     string applyPanelId = $"job-apply-panel-{jobAiContextId}";
@@ -89,6 +92,25 @@
                         }
                         <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
                     }
+                    @if (!isLaunchOnly && isAuthenticated)
+                    {
+                        @if (interviewRecordRequired)
+                        {
+                            <p class="job-ai-note job-ai-note-required">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.None")</p>
+                        }
+                        else if (availableInterviewSessions.Any())
+                        {
+                            <label for="@interviewSessionSelectId">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord")</label>
+                            <select id="@interviewSessionSelectId" name="SelectedInterviewSessionId" required>
+                                <option value="0">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.Placeholder")</option>
+                                @foreach (var option in availableInterviewSessions)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
+                            <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.Help")</p>
+                        }
+                    }
                     else
                     {
                         <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Interview.LaunchReady")</p>
@@ -106,7 +128,7 @@
                                 id="@applyButtonId"
                                 data-job-ai-action="apply"
                                 title="@T("Plugins.Misc.AIInterview.Index.ApplyNow")"
-                                @(alreadyApplied ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                                @(alreadyApplied || interviewRecordRequired ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
                     }
                     <button type="button"
                             class="job-ai-action @(isLaunchOnly ? "job-ai-action-primary" : "job-ai-action-secondary") start-interview-btn"

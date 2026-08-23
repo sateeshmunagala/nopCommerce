@@ -97,6 +97,32 @@ public class AIInterviewProductDetailsViewComponent : NopViewComponent
         ViewBag.InterviewRequired = jobRequirements.InterviewRequired;
         ViewBag.IsLaunchOnly = isFixedQuestionJob;
 
+        var interviewSessionOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+        if (jobRequirements.InterviewRequired && _interviewSessionService != null)
+        {
+            var currentCustomerForSessions = await _workContext.GetCurrentCustomerAsync();
+            var isCustomerAuthenticated = currentCustomerForSessions != null &&
+                await _customerService.IsRegisteredAsync(currentCustomerForSessions) &&
+                !string.IsNullOrWhiteSpace(currentCustomerForSessions.Email);
+            if (isCustomerAuthenticated)
+            {
+                var reusableSessions = (await _interviewSessionService.GetReusableCompletedSessionsAsync(currentCustomerForSessions.Id)) ?? new List<Domain.InterviewSession>();
+                foreach (var reusableSession in reusableSessions)
+                {
+                    var reusableProduct = reusableSession.ProductId > 0 ? await _productService.GetProductByIdAsync(reusableSession.ProductId) : null;
+                    var label = reusableProduct != null ? reusableProduct.Name : "Mock Practice";
+                    var completedOnLabel = reusableSession.CompletedOnUtc.HasValue ? reusableSession.CompletedOnUtc.Value.ToString("yyyy-MM-dd") : "";
+                    interviewSessionOptions.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                    {
+                        Value = reusableSession.Id.ToString(),
+                        Text = $"{label} - Score {reusableSession.Score} - {completedOnLabel}"
+                    });
+                }
+            }
+        }
+        ViewBag.AvailableInterviewSessions = interviewSessionOptions;
+        ViewBag.InterviewRecordRequired = jobRequirements.InterviewRequired && !interviewSessionOptions.Any();
+
         var customer = await _workContext.GetCurrentCustomerAsync();
         var isAuthenticated = customer != null &&
             await _customerService.IsRegisteredAsync(customer) &&

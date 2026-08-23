@@ -79,6 +79,8 @@ public static class AIInterviewDefaults
 
     public const int HomepageTopPerformersFreshnessDays = 30;
 
+    public const int InterviewReuseWindowDays = 180;
+
     public static string DefaultAvatarImageUrl => "~/Plugins/Misc.AIInterview/Content/images/default-avatar.svg";
 
     public static string HomepageTopPerformersTitleResourceKey => $"{LocalizationPrefix}.Homepage.TopPerformers.Title";
@@ -165,6 +167,7 @@ public static class AIInterviewDefaults
     public static string JobInterviewModeAttributeName => "AIInterview.Job.InterviewMode";
     public static string JobQuestionSetIdAttributeName => "AIInterview.Job.QuestionSetId";
     public static string JobNumberOfPositionsAttributeName => "AIInterview.Job.NumberOfPositions";
+    public static string ApplicationReusedInterviewSessionIdAttributeName => "AIInterview.Application.ReusedInterviewSessionId";
     public static string JobSalaryMinCtcPaAttributeName => "AIInterview.Job.SalaryMinCtcPa";
     public static string JobSalaryMaxCtcPaAttributeName => "AIInterview.Job.SalaryMaxCtcPa";
     public static string JobSalaryCurrencyCodeAttributeName => "AIInterview.Job.SalaryCurrencyCode";

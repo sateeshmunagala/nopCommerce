@@ -21,4 +21,11 @@ public record ApplyModel : BaseNopModel
     public bool ResumeRequired { get; set; }
 
     public IList<SelectListItem> AvailableResumes { get; set; } = new List<SelectListItem>();
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.Apply.InterviewRecord")]
+    public int SelectedInterviewSessionId { get; set; }
+
+    public bool InterviewRecordRequired { get; set; }
+
+    public IList<SelectListItem> AvailableInterviewSessions { get; set; } = new List<SelectListItem>();
 }
