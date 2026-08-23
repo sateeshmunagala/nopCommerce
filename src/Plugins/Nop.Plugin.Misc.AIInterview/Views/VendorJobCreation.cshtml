@@ -576,10 +576,8 @@
     })();
 </script>
 
-@section Scripts
-{
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
+<script asp-location="Footer">
+    document.addEventListener('DOMContentLoaded', function () {
             var openButton = document.getElementById('open-ai-description-modal');
             var closeButton = document.getElementById('close-ai-description-modal');
             var cancelButton = document.getElementById('cancel-ai-description-button');
@@ -659,6 +657,5 @@
                 }
                 closeModal();
             });
-        });
-    </script>
-}
+    });
+</script>
