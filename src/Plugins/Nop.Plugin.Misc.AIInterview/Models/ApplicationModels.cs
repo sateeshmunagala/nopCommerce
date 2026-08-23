@@ -52,6 +52,7 @@ public record ApplicationModel : BaseNopModel
     public string QuestionScores { get; set; }
     public IList<decimal> QuestionScoreValues { get; set; } = new List<decimal>();
     public string InterviewReportUrl { get; set; }
+    public bool IsReusedInterview { get; set; }
     public string InterviewReportPanelUrl { get; set; }
     public int ResumeDownloadId { get; set; }
     public bool HasResume { get; set; }

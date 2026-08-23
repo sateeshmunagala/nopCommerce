@@ -164,6 +164,10 @@
                                         @if (app.InterviewScore.HasValue)
                                         {
                                             <span class="score-badge">@FormatInterviewScore(app.InterviewScore)</span>
+                                            @if (app.IsReusedInterview)
+                                            {
+                                                <span class="status-pill status-pill-muted">@T("Plugins.Misc.AIInterview.Employer.Applications.ReusedInterview")</span>
+                                            }
                                         }
                                         else
                                         {
@@ -249,6 +253,10 @@
                                 @if (app.InterviewScore.HasValue)
                                 {
                                     <span class="score-badge">@FormatInterviewScore(app.InterviewScore)</span>
+                                    @if (app.IsReusedInterview)
+                                    {
+                                        <span class="status-pill status-pill-muted">@T("Plugins.Misc.AIInterview.Employer.Applications.ReusedInterview")</span>
+                                    }
                                 }
                                 else
                                 {

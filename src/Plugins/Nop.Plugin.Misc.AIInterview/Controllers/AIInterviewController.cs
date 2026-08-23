@@ -428,6 +428,19 @@ public class AIInterviewController : BasePluginController
             (session.JobApplicationId == 0 && application.ProductId > 0 && session.ProductId == application.ProductId);
     }
 
+    protected async Task<InterviewSession> GetReusedInterviewSessionAsync(JobApplication application)
+    {
+        if (application == null || _genericAttributeService == null || _interviewSessionService == null)
+            return null;
+
+        var reusedSessionId = await _genericAttributeService.GetAttributeAsync<int?>(application, AIInterviewDefaults.ApplicationReusedInterviewSessionIdAttributeName);
+        if (!reusedSessionId.HasValue || reusedSessionId.Value <= 0)
+            return null;
+
+        var sessions = (await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId)) ?? new List<InterviewSession>();
+        return sessions.FirstOrDefault(session => session.Id == reusedSessionId.Value && session.CompletedOnUtc.HasValue);
+    }
+
     protected async Task<IList<JobApplication>> GetApplicationsForJobAsync(int customerId, int productId, string jobTitle)
     {
         if (productId <= 0)
@@ -780,6 +793,12 @@ public class AIInterviewController : BasePluginController
                 .OrderByDescending(session => session.CompletedOnUtc)
                 .ThenByDescending(session => session.Id)
                 .FirstOrDefault();
+            var isReusedInterview = false;
+            if (latestSession == null)
+            {
+                latestSession = await GetReusedInterviewSessionAsync(application);
+                isReusedInterview = latestSession != null;
+            }
             var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
             var questionScores = ParseQuestionScores(latestSession?.QuestionScores);
             var reportSections = SplitReportSections(latestSession?.ReportData);
@@ -794,6 +813,7 @@ public class AIInterviewController : BasePluginController
                 JobTitle = application.JobTitle,
                 InterviewScore = latestSession?.Score,
                 InterviewReportUrl = latestSession != null ? BuildAuthenticatedReportUrl(latestSession.Id) : null,
+                IsReusedInterview = isReusedInterview,
                 InterviewReportPanelUrl = latestSession != null ? BuildReportPanelUrl(latestSession.Id) : null,
                 RecordingUrl = BuildAuthenticatedRecordingUrl(latestSession),
                 RecordingShareUrl = latestSession != null ? await BuildReportShareUrlAsync(latestSession) : null,
@@ -2482,9 +2502,17 @@ public class AIInterviewController : BasePluginController
         foreach (var application in applications)
         {
             var sessions = await _interviewSessionService.GetSessionsByCustomerIdAsync(application.CustomerId);
-            completedScores.AddRange(sessions
+            var matchingSessions = sessions
                 .Where(s => SessionMatchesApplication(s, application) && s.CompletedOnUtc.HasValue)
-                .Select(s => s.Score));
+                .ToList();
+            if (matchingSessions.Any())
+                completedScores.AddRange(matchingSessions.Select(s => s.Score));
+            else
+            {
+                var reusedSession = await GetReusedInterviewSessionAsync(application);
+                if (reusedSession != null)
+                    completedScores.Add(reusedSession.Score);
+            }
         }
 
         var recentApplications = await Task.WhenAll(applications
@@ -2500,6 +2528,12 @@ public class AIInterviewController : BasePluginController
                     .OrderByDescending(session => session.CompletedOnUtc)
                     .ThenByDescending(session => session.Id)
                     .FirstOrDefault();
+                var isReusedInterview = false;
+                if (latestCompletedSession == null)
+                {
+                    latestCompletedSession = await GetReusedInterviewSessionAsync(application);
+                    isReusedInterview = latestCompletedSession != null;
+                }
                 if (latestCompletedSession == null)
                     return (ApplicationModel)null;
 
@@ -2516,6 +2550,7 @@ public class AIInterviewController : BasePluginController
                     Status = await _localizationService.GetResourceAsync($"{AIInterviewDefaults.LocalizationPrefix}.Status.{normalizedStatus}"),
                     InterviewScore = latestCompletedSession?.Score,
                     InterviewReportUrl = latestCompletedSession != null ? Url?.Action("Report", "AIInterview", new { sessionId = latestCompletedSession.Id }) : null,
+                    IsReusedInterview = isReusedInterview,
                     RecordingUrl = latestCompletedSession?.RecordingUrl,
                     CreatedOn = application.CreatedOnUtc,
                     CompletedOn = latestCompletedSession?.CompletedOnUtc
@@ -2590,6 +2625,12 @@ public class AIInterviewController : BasePluginController
                 .OrderByDescending(entry => entry.CompletedOnUtc)
                 .ThenByDescending(entry => entry.Id)
                 .FirstOrDefault();
+            var isReusedInterview = false;
+            if (session == null)
+            {
+                session = await GetReusedInterviewSessionAsync(application);
+                isReusedInterview = session != null;
+            }
             var normalizedStatus = JobApplicationStatuses.Normalize(application.Status);
             var questionScores = ParseQuestionScores(session?.QuestionScores);
             var reportSections = SplitReportSections(session?.ReportData);
@@ -2609,6 +2650,7 @@ public class AIInterviewController : BasePluginController
                 ResumeDownloadUrl = application.ResumeDownloadId > 0 ? Url.RouteUrl(AIInterviewDefaults.EmployerDownloadResumeRouteName, new { applicationId = application.Id }) : null,
                 InterviewScore = session?.Score,
                 InterviewReportUrl = session != null ? Url.Action("Report", "AIInterview", new { sessionId = session.Id }) : null,
+                IsReusedInterview = isReusedInterview,
                 InterviewReportPanelUrl = session != null ? BuildReportPanelUrl(session.Id) : null,
                 CreatedOn = application.CreatedOnUtc,
                 AttemptCount = appSessions.Count,
@@ -2943,6 +2985,12 @@ public class AIInterviewController : BasePluginController
                 .Where(s => SessionMatchesApplication(s, a) && s.CompletedOnUtc.HasValue)
                 .ToList();
             var session = appSessions.OrderByDescending(s => s.CompletedOnUtc).FirstOrDefault();
+            var isReusedInterview = false;
+            if (session == null)
+            {
+                session = await GetReusedInterviewSessionAsync(a);
+                isReusedInterview = session != null;
+            }
             if (session == null)
                 continue;
 
@@ -2956,6 +3004,7 @@ public class AIInterviewController : BasePluginController
                 CandidateEmail = email,
                 Status = status,
                 InterviewScore = session?.Score,
+                IsReusedInterview = isReusedInterview,
                 CreatedOn = a.CreatedOnUtc,
                 JobTitle = a.JobTitle ?? string.Empty,
                 ChargeMode = await GetEmployerChargeModeLabelAsync(session != null && session.SponsorInviteId > 0),
