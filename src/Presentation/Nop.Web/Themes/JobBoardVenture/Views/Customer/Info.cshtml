@@ -11,6 +11,22 @@
     var hideCustomAttributesForVendor = (await workContext.GetCurrentVendorAsync()) != null;
 }
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/css/intlTelInput.css" />
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/js/intlTelInput.min.js"></script>
+<style>
+    .html-customer-info-page .iti,
+    .html-customer-info-page .iti__tel-input {
+        width: 100%;
+    }
+
+    .html-customer-info-page .iti__search-input {
+        box-sizing: border-box;
+        width: 100%;
+        height: 32px;
+        padding-left: 10px;
+    }
+</style>
+
 @section left
 {
     @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = CustomerNavigationEnum.Info })
@@ -93,7 +109,7 @@
                         {
                             <div class="inputs">
                                 <label asp-for="Phone" asp-postfix=":"></label>
-                                <input asp-for="Phone" placeholder="@T("PhoneVerification.Placeholder")" />
+                                <input asp-for="Phone" type="tel" placeholder="@T("PhoneVerification.Placeholder")" />
                                 @if (Model.PhoneRequired) { <nop-required /> }
                                 <span asp-validation-for="Phone"></span>
                                 @if (!Model.PhoneSmsVerified)
@@ -252,4 +268,36 @@
         }
         return false;
     }
+</script>
+
+<script asp-location="Footer">
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('@Html.IdFor(m => m.Phone)');
+        if (!input || !window.intlTelInput) {
+            return;
+        }
+
+        const phoneInput = window.intlTelInput(input, {
+            initialCountry: 'in',
+            strictMode: true,
+            countryOrder: ['in', 'us', 'ca', 'au', 'gb'],
+            preferredCountries: ['in', 'us', 'ca', 'au', 'gb'],
+            separateDialCode: true,
+            nationalMode: true,
+            formatOnDisplay: false,
+            loadUtilsOnInit: 'https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/js/utils.js'
+        });
+
+        const form = input.closest('form');
+        if (!form) {
+            return;
+        }
+
+        form.addEventListener('submit', function () {
+            const number = phoneInput.getNumber();
+            if (number) {
+                input.value = number;
+            }
+        });
+    });
 </script>

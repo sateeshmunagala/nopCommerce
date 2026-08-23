@@ -12,6 +12,22 @@
     var registerUrl = Url.RouteUrl(NopRouteNames.Standard.REGISTER, new { returnUrl = Context.Request.Query["ReturnUrl"] });
 }
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/css/intlTelInput.css" />
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/js/intlTelInput.min.js"></script>
+<style>
+    .html-registration-page .iti,
+    .html-registration-page .iti__tel-input {
+        width: 100%;
+    }
+
+    .html-registration-page .iti__search-input {
+        box-sizing: border-box;
+        width: 100%;
+        height: 32px;
+        padding-left: 10px;
+    }
+</style>
+
 <div class="page registration-page">
     <div class="page-title">
         <h1>@T("Account.Register")</h1>
@@ -134,7 +150,7 @@
                                         <nop-required />
                                     }
                                 </div>
-                                <input asp-for="Phone" placeholder="@T("PhoneVerification.Placeholder")" />
+                                <input asp-for="Phone" type="tel" placeholder="@T("PhoneVerification.Placeholder")" />
                                 <span asp-validation-for="Phone"></span>
                                 
                             </div>
@@ -270,3 +286,35 @@
         </div>
     </div>
 </div>
+
+<script asp-location="Footer">
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('@Html.IdFor(m => m.Phone)');
+        if (!input || !window.intlTelInput) {
+            return;
+        }
+
+        const phoneInput = window.intlTelInput(input, {
+            initialCountry: 'in',
+            strictMode: true,
+            countryOrder: ['in', 'us', 'ca', 'au', 'gb'],
+            preferredCountries: ['in', 'us', 'ca', 'au', 'gb'],
+            separateDialCode: true,
+            nationalMode: true,
+            formatOnDisplay: false,
+            loadUtilsOnInit: 'https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/js/utils.js'
+        });
+
+        const form = input.closest('form');
+        if (!form) {
+            return;
+        }
+
+        form.addEventListener('submit', function () {
+            const number = phoneInput.getNumber();
+            if (number) {
+                input.value = number;
+            }
+        });
+    });
+</script>
