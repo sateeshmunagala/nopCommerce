@@ -5129,18 +5129,23 @@ body.ai-job-preview-open .item-box {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin: 6px 0;
-    padding: 6px 12px;
+    padding: 6px 14px;
     border-radius: 6px;
-    border: 1px solid var(--jb-ink, #ccc);
-    background: transparent;
+    border: 1px solid var(--jb-action-secondary-border, #0f766e);
+    background: var(--jb-action-secondary-background, #ffffff);
+    color: var(--jb-action-secondary-foreground, #0f766e);
+    font-weight: 600;
     cursor: pointer;
+}
+
+.vendor-job-form-ai-generate-button:hover {
+    background: var(--jb-action-secondary-hover-background, #eefaf7);
 }
 
 .vendor-job-form-ai-modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(20, 30, 28, 0.55);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5149,28 +5154,87 @@ body.ai-job-preview-open .item-box {
 }
 
 .vendor-job-form-ai-modal {
-    background: #fff;
-    border-radius: 8px;
+    background: var(--jb-white, #ffffff);
+    color: var(--jb-ink, #2c2c2c);
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 10px;
     width: 100%;
     max-width: 560px;
     max-height: 90vh;
     overflow-y: auto;
-    padding: 16px;
+    padding: 20px;
 }
 
 .vendor-job-form-ai-modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    border-bottom: 1px solid var(--jb-border, #dedede);
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+}
+
+.vendor-job-form-ai-modal-body .vendor-job-form-field {
+    margin-bottom: 14px;
+}
+
+.vendor-job-form-ai-modal-error {
+    background: #fdecea;
+    color: #b3261e;
+    border: 1px solid #f3c2bd;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+}
+
+.vendor-job-form-ai-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid var(--jb-border, #dedede);
+    padding-top: 14px;
+    margin-top: 6px;
+}
+
+.vendor-job-form-ai-modal-footer .job-ai-action {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.vendor-job-form-ai-modal-footer .job-ai-action-primary,
+#generate-ai-description-button.job-ai-action-secondary {
+    background: var(--jb-action-primary-background, #35d6b4);
+    color: var(--jb-action-primary-foreground, #173c33);
+    border: 1px solid var(--jb-action-primary-border, #35d6b4);
+}
+
+.vendor-job-form-ai-modal-footer .job-ai-action-secondary {
+    background: var(--jb-action-secondary-background, #ffffff);
+    color: var(--jb-action-secondary-foreground, #0f766e);
+    border: 1px solid var(--jb-action-secondary-border, #0f766e);
 }
 
 .vendor-job-form-ai-preview {
-    border: 1px solid #ddd;
+    border: 1px solid var(--jb-border, #dedede);
+    background: var(--jb-bg, #f0f0f0);
+    color: var(--jb-ink, #2c2c2c);
     border-radius: 6px;
     padding: 10px;
     max-height: 200px;
     overflow-y: auto;
     white-space: pre-wrap;
+}
+
+#generate-ai-description-button.job-ai-action-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
 }
 
 @media (max-width: 576px) {

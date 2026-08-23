@@ -81,6 +81,7 @@ public class AIInterviewController : BasePluginController
     private readonly IFixedQuestionSetService _fixedQuestionSetService;
     private readonly Nop.Services.ArtificialIntelligence.IArtificialIntelligenceService _artificialIntelligenceService;
     private readonly Nop.Core.Domain.ArtificialIntelligence.ArtificialIntelligenceSettings _artificialIntelligenceSettings;
+    private readonly Nop.Services.Logging.ILogger _nopLoggingService;
     private readonly ILogger<AIInterviewController> _logger;
 
     public AIInterviewController(IApplicationService applicationService,
@@ -119,7 +120,8 @@ public class AIInterviewController : BasePluginController
         ILogger<AIInterviewController> logger = null,
         IFixedQuestionSetService fixedQuestionSetService = null,
         Nop.Services.ArtificialIntelligence.IArtificialIntelligenceService artificialIntelligenceService = null,
-        Nop.Core.Domain.ArtificialIntelligence.ArtificialIntelligenceSettings artificialIntelligenceSettings = null)
+        Nop.Core.Domain.ArtificialIntelligence.ArtificialIntelligenceSettings artificialIntelligenceSettings = null,
+        Nop.Services.Logging.ILogger nopLoggingService = null)
     {
         _applicationService = applicationService;
         _interviewSessionService = interviewSessionService;
@@ -157,6 +159,7 @@ public class AIInterviewController : BasePluginController
         _fixedQuestionSetService = fixedQuestionSetService;
         _artificialIntelligenceService = artificialIntelligenceService;
         _artificialIntelligenceSettings = artificialIntelligenceSettings;
+        _nopLoggingService = nopLoggingService;
         _logger = logger;
     }
 
@@ -2258,6 +2261,14 @@ public class AIInterviewController : BasePluginController
         }
         catch (Nop.Core.NopException ex)
         {
+            if (_nopLoggingService != null)
+            {
+                var currentCustomer = await _workContext.GetCurrentCustomerAsync();
+                await _nopLoggingService.ErrorAsync(
+                    $"AIInterview job description generation failed for job title '{model?.JobTitle}'.",
+                    ex, currentCustomer);
+            }
+
             return Json(new { success = false, message = ex.Message });
         }
     }
@@ -2766,7 +2777,8 @@ public class AIInterviewController : BasePluginController
                 Published = product.Published,
                 SalaryRange = AIInterviewJobDisplayService.SanitizeSalaryDisplay(salarySnapshot?.SalaryRange),
                 CreatedOnUtc = product.CreatedOnUtc,
-                ApplicationCount = await _applicationService.GetApplicationCountAsync(productId: product.Id)
+                ApplicationCount = await _applicationService.GetApplicationCountAsync(productId: product.Id),
+                PublicJobUrl = await BuildProductRedirectUrlAsync(product)
             });
         }
 

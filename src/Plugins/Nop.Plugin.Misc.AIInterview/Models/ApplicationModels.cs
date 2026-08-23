@@ -327,6 +327,7 @@ public record EmployerDashboardJobModel : BaseNopModel
     public string SalaryRange { get; set; }
     public DateTime CreatedOnUtc { get; set; }
     public int ApplicationCount { get; set; }
+    public string PublicJobUrl { get; set; }
 }
 
 public record EmployerDashboardJobsTabModel : BaseNopModel

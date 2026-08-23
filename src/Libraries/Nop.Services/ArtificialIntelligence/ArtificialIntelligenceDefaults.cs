@@ -24,7 +24,7 @@ public partial class ArtificialIntelligenceDefaults
     /// <summary>
     /// Gets base Gemini API URL
     /// </summary>
-    public static string GeminiBaseApiUrl => "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+    public static string GeminiBaseApiUrl => "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 
     /// <summary>
     /// Gets a header of the API key authorization
