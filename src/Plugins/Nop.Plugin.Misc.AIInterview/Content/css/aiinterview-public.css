@@ -6096,6 +6096,7 @@ body.ai-job-preview-open .item-box {
 .job-hero {
     display: grid;
     grid-template-columns: minmax(0, 1.3fr) minmax(330px, 420px);
+    align-items: start;
     gap: 28px;
     padding: 32px;
     border: 1px solid var(--job-border);
@@ -6126,6 +6127,7 @@ body.ai-job-preview-open .item-box {
 .job-company-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     flex-wrap: wrap;
     gap: 12px;
 }
@@ -6185,6 +6187,10 @@ body.ai-job-preview-open .item-box {
     color: var(--job-text);
     font-size: 26px;
     line-height: 1.08;
+}
+
+.job-company-row + .job-title {
+    margin-top: -10px;
 }
 
 .job-summary {

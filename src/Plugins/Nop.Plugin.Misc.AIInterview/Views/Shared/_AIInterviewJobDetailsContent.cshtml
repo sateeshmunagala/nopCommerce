@@ -106,8 +106,11 @@
         .ToList();
     var currentCustomer = await workContext.GetCurrentCustomerAsync();
     var currentStore = await storeContext.GetCurrentStoreAsync();
-    var isSavedJob = currentCustomer != null
-        && (await shoppingCartService.GetShoppingCartAsync(currentCustomer, ShoppingCartType.Wishlist, currentStore.Id, Model.Id, customWishlistId: 0)).Any();
+    var savedJobCartItem = currentCustomer != null
+        ? (await shoppingCartService.GetShoppingCartAsync(currentCustomer, ShoppingCartType.Wishlist, currentStore.Id, Model.Id, customWishlistId: 0)).FirstOrDefault()
+        : null;
+    var savedJobCartItemId = savedJobCartItem?.Id ?? 0;
+    var isSavedJob = savedJobCartItem != null;
 
     var highlights = System.Text.RegularExpressions.Regex.Matches(Model.FullDescription ?? string.Empty, "<li>(.*?)</li>", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
         .Select(match => htmlFormatter.StripTags(match.Groups[1].Value).Trim())
@@ -185,7 +188,8 @@
                                     data-default-text="@saveJobText"
                                     data-save-first-text="@saveFirstForWishlistText"
                                     data-url="@Url.RouteUrl(NopRouteNames.Ajax.ADD_PRODUCT_TO_CART_DETAILS, new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.Wishlist, customwishlistid = customWishlistId })"
-                                    @(isSavedJob ? "disabled" : null)>
+                                    data-cart-item-id="@savedJobCartItemId"
+                                    data-remove-url="@Url.RouteUrl(NopRouteNames.General.WISHLIST)">
                                 <i class="fa-solid fa-bookmark" aria-hidden="true"></i><span class="sr-only">@(isSavedJob ? savedJobText : saveJobText)</span>
                             </button>
                         }
@@ -375,6 +379,7 @@
             const saveButton = document.getElementById('job-save-button');
             const customWishlistButton = document.getElementById('job-custom-wishlist-button');
             const shareButtonScreenReaderText = shareButton?.querySelector('.sr-only');
+            const saveButtonScreenReaderText = saveButton?.querySelector('.sr-only');
             const defaultShareText = shareButton?.dataset.defaultText || shareButtonScreenReaderText?.textContent || '';
             const defaultShareLabel = shareButton?.getAttribute('aria-label') || defaultShareText;
             const defaultShareTitle = shareButton?.getAttribute('title') || defaultShareLabel;
@@ -384,9 +389,11 @@
                 if (!saveButton)
                     return;
 
-                saveButton.textContent = saveButton.dataset.savedText || saveButton.textContent || '';
+                if (saveButtonScreenReaderText)
+                    saveButtonScreenReaderText.textContent = saveButton.dataset.savedText || saveButtonScreenReaderText.textContent || '';
+
                 saveButton.classList.add('is-saved');
-                saveButton.disabled = true;
+                saveButton.removeAttribute('disabled');
 
                 if (customWishlistButton)
                     customWishlistButton.disabled = false;
@@ -412,6 +419,48 @@
 
             if (saveButton) {
                 saveButton.addEventListener('click', () => {
+                    if (saveButton.classList.contains('is-saved')) {
+                        const cartItemId = saveButton.dataset.cartItemId;
+                        const removeUrl = saveButton.dataset.removeUrl;
+                        if (!cartItemId || cartItemId === '0' || !removeUrl)
+                            return false;
+
+                        const requestBody = new URLSearchParams();
+                        requestBody.append('removefromcart', cartItemId);
+                        requestBody.append('updatecart', 'true');
+
+                        const verificationToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                        if (verificationToken)
+                            requestBody.append('__RequestVerificationToken', verificationToken);
+
+                        saveButton.disabled = true;
+                        fetch(removeUrl, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                            },
+                            body: requestBody
+                        }).then(response => {
+                            if (!response.ok)
+                                throw new Error('Unable to remove saved job.');
+
+                            saveButton.classList.remove('is-saved');
+                            saveButton.removeAttribute('disabled');
+                            saveButton.dataset.cartItemId = '0';
+
+                            if (saveButtonScreenReaderText)
+                                saveButtonScreenReaderText.textContent = saveButton.dataset.defaultText || saveButtonScreenReaderText.textContent || '';
+
+                            if (customWishlistButton)
+                                customWishlistButton.disabled = true;
+                        }).catch(() => {
+                            saveButton.removeAttribute('disabled');
+                        });
+
+                        return false;
+                    }
+
                     window.__jobSavePending = true;
                     AjaxCart.addproducttocart_details(saveButton.dataset.url, '#product-details-form');
                     return false;
