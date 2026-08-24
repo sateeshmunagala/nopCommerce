@@ -10772,11 +10772,13 @@ body.jb-filter-panel-open .product-filters {
     margin: 0;
     padding: 0 28px 10px 0;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
     color: #202020;
     font-family: "Fjalla One", Arial, sans-serif;
     font-size: 1rem;
     font-weight: 400;
     line-height: 1;
+    outline: none;
     text-transform: uppercase;
     list-style: none;
 }
@@ -10825,6 +10827,11 @@ body.jb-filter-panel-open .product-filters {
     list-style: none;
 }
 
+.html-category-page .jb-skills-filter .select2-container,
+.html-search-page .jb-skills-filter .select2-container {
+    margin-top: 4px;
+}
+
 .html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-values .item,
 .html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-values .item {
     padding: 4px 0;
@@ -10860,6 +10867,11 @@ body.jb-filter-panel-open .product-filters {
     .html-category-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-values,
     .html-search-page .product-spec-filter.product-spec-filter-groups .jb-spec-filter-values {
         margin-top: 10px;
+    }
+
+    .html-category-page .jb-skills-filter .select2-container,
+    .html-search-page .jb-skills-filter .select2-container {
+        margin-top: 4px;
     }
 }
 

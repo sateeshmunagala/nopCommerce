@@ -566,8 +566,9 @@ body.html-aiinterview-vendor-job-creation-page {
 }
 
 .ai-skills-select2 .select2-selection__choice {
-    background: #eef2f5 !important;
+    background: #e6f9f5 !important;
     background-image: none !important;
+    border: 1px solid var(--jb-accent) !important;
     color: #30363c !important;
     border-radius: 4px !important;
     box-shadow: none !important;

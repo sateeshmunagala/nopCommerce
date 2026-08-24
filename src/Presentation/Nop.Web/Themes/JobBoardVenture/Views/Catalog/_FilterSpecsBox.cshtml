@@ -1,5 +1,6 @@
 @model SpecificationFilterModel
 @{
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
     var skillsAliases = System.AppDomain.CurrentDomain.GetAssemblies()
         .Select(assembly => assembly.GetType("Nop.Plugin.Misc.AIInterview.Services.AIInterviewJobDisplayService"))
         .Where(type => type != null)
