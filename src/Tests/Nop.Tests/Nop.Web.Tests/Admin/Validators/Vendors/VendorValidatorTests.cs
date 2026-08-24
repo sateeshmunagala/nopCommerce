@@ -1,4 +1,5 @@
 ﻿using FluentValidation.TestHelper;
+using Nop.Core.Domain.Common;
 using Nop.Services.Localization;
 using Nop.Web.Areas.Admin.Models.Vendors;
 using Nop.Web.Areas.Admin.Validators.Vendors;
@@ -14,7 +15,7 @@ public class VendorValidatorTests : BaseNopTest
     [OneTimeSetUp]
     public void Setup()
     {
-        _validator = new VendorValidator(GetService<ILocalizationService>());
+        _validator = new VendorValidator(GetService<AddressSettings>(), GetService<ILocalizationService>());
     }
 
     [Test]
