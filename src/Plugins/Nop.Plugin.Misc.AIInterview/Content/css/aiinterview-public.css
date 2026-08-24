@@ -6236,7 +6236,7 @@ body.ai-job-preview-open .item-box {
 
 .job-content-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.9fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 24px;
 }
 

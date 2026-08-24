@@ -255,35 +255,6 @@
 
     <section class="job-content-grid">
         <div class="job-main">
-            @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
-            {
-                <section class="job-card">
-                    <h2 class="job-section-title">@jobDescriptionText</h2>
-                    <div class="full-description">
-                        @Html.Raw(Model.FullDescription)
-                    </div>
-                </section>
-            }
-
-            @* <section class="job-card">
-                <h2 class="job-section-title">@roleHighlightsText</h2>
-                @if (highlights.Any())
-                {
-                    <ul>
-                        @foreach (var highlight in highlights)
-                        {
-                            <li>@highlight</li>
-                        }
-                    </ul>
-                }
-                else
-                {
-                    <p>@roleHighlightsFallbackText</p>
-                }
-            </section> *@
-        </div>
-
-        <div class="job-main">
             <section class="job-card">
                 <h2 class="job-section-title">@skillsText</h2>
                 @if (skills.Any())
@@ -303,7 +274,7 @@
                 }
             </section>
 
-            @* <section class="job-card">
+            <section class="job-card">
                 <h2 class="job-section-title">@jobDetailsSectionText</h2>
                 @if (filteredSpecificationGroups.Any())
                 {
@@ -353,6 +324,33 @@
                 @if (!isDrawer)
                 {
                     @await Html.PartialAsync("_ProductTags", Model.ProductTags)
+                }
+            </section>
+
+            @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
+            {
+                <section class="job-card">
+                    <h2 class="job-section-title">@jobDescriptionText</h2>
+                    <div class="full-description">
+                        @Html.Raw(Model.FullDescription)
+                    </div>
+                </section>
+            }
+
+            @* <section class="job-card">
+                <h2 class="job-section-title">@roleHighlightsText</h2>
+                @if (highlights.Any())
+                {
+                    <ul>
+                        @foreach (var highlight in highlights)
+                        {
+                            <li>@highlight</li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p>@roleHighlightsFallbackText</p>
                 }
             </section> *@
         </div>
