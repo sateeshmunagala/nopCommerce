@@ -504,7 +504,6 @@ body.html-aiinterview-vendor-job-creation-page {
 
 .job-ai-note {
     font-size: 12px;
-    font-style: italic;
 }
 
 .job-ai-note-required {
@@ -1276,7 +1275,8 @@ body.html-aiinterview-vendor-job-creation-page {
 .candidate-recording-actions .ai-icon-action,
 .ai-report-actions .ai-icon-action {
     min-height: 38px;
-    padding: 0;
+    min-width: 160px;
+    padding: 10px 16px;
 }
 
 .ai-report-turn,
@@ -6128,7 +6128,7 @@ body.ai-job-preview-open .item-box {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 12px;
 }
 
@@ -6151,6 +6151,7 @@ body.ai-job-preview-open .item-box {
     align-items: center;
     gap: 14px;
     width: fit-content;
+    min-width: 0;
     max-width: 100%;
     padding: 12px 16px;
     border: 1px solid var(--job-border);
@@ -6177,9 +6178,12 @@ body.ai-job-preview-open .item-box {
 }
 
 .job-company-name {
+    overflow: hidden;
     color: var(--job-text);
     font-size: 15px;
     font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .job-title h1 {
@@ -6190,7 +6194,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .job-company-row + .job-title {
-    margin-top: -10px;
+    margin-top: -14px;
 }
 
 .job-summary {
@@ -7549,6 +7553,10 @@ body.ai-job-preview-open .item-box {
 }
 
 @media (max-width: 720px) {
+    .job-company-row {
+        flex-wrap: wrap;
+    }
+
     .html-job-details-page .master-wrapper-content > .breadcrumb,
     .html-aiinterview-job-details-page .master-wrapper-content > .breadcrumb,
     .html-job-details-page .breadcrumb,
@@ -10446,6 +10454,12 @@ body.ai-job-preview-open .item-box {
 :is(.html-job-details-page, .html-aiinterview-job-details-page) .job-ai-card select {
     background: var(--jb-action-secondary-background);
     color: var(--jb-action-secondary-foreground);
+}
+
+:is(.html-job-details-page, .html-aiinterview-job-details-page) .job-ai-card select,
+:is(.html-job-details-page, .html-aiinterview-job-details-page) .job-ai-card input[type="file"] {
+    min-height: 34px;
+    padding: 6px 10px;
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-aiinterview-mock-practice-product-page) .job-ai-card select:focus-visible,

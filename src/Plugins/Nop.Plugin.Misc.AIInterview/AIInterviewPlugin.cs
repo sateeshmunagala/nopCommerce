@@ -933,6 +933,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.EmailAFriend"] = "Email a friend",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.SaveJob"] = "Save job",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.SavedJob"] = "Saved job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.JobRemovedFromSaved"] = "Removed from your saved jobs",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.UnableToRemoveSavedJob"] = "Unable to remove this saved job right now, please try again.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.SaveToCustomWishlist"] = "Save to custom wishlist",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.SaveFirstForWishlist"] = "Save the job first, then choose a custom wishlist.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobDetails.JobDescription"] = "Job description",

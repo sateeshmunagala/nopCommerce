@@ -70,6 +70,8 @@
     var emailFriendText = T("Plugins.Misc.AIInterview.JobDetails.EmailAFriend").Text;
     var saveJobText = T("Plugins.Misc.AIInterview.JobDetails.SaveJob").Text;
     var savedJobText = T("Plugins.Misc.AIInterview.JobDetails.SavedJob").Text;
+    var removedJobText = T("Plugins.Misc.AIInterview.JobDetails.JobRemovedFromSaved").Text;
+    var removeJobErrorText = T("Plugins.Misc.AIInterview.JobDetails.UnableToRemoveSavedJob").Text;
     var saveToCustomWishlistText = T("Plugins.Misc.AIInterview.JobDetails.SaveToCustomWishlist").Text;
     var saveFirstForWishlistText = T("Plugins.Misc.AIInterview.JobDetails.SaveFirstForWishlist").Text;
     var jobDescriptionText = T("Plugins.Misc.AIInterview.JobDetails.JobDescription").Text;
@@ -187,6 +189,8 @@
                                     data-saved-text="@savedJobText"
                                     data-default-text="@saveJobText"
                                     data-save-first-text="@saveFirstForWishlistText"
+                                    data-removed-text="@removedJobText"
+                                    data-remove-error-text="@removeJobErrorText"
                                     data-url="@Url.RouteUrl(NopRouteNames.Ajax.ADD_PRODUCT_TO_CART_DETAILS, new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.Wishlist, customwishlistid = customWishlistId })"
                                     data-cart-item-id="@savedJobCartItemId"
                                     data-remove-url="@Url.RouteUrl(NopRouteNames.General.WISHLIST)">
@@ -429,7 +433,8 @@
                         requestBody.append('removefromcart', cartItemId);
                         requestBody.append('updatecart', 'true');
 
-                        const verificationToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                        const verificationToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                            || document.querySelector('meta[name="request-verification-token"]')?.content;
                         if (verificationToken)
                             requestBody.append('__RequestVerificationToken', verificationToken);
 
@@ -454,8 +459,11 @@
 
                             if (customWishlistButton)
                                 customWishlistButton.disabled = true;
+
+                            displayBarNotification(saveButton.dataset.removedText || '', 'success', 3500);
                         }).catch(() => {
                             saveButton.removeAttribute('disabled');
+                            displayBarNotification(saveButton.dataset.removeErrorText || '', 'error', 3500);
                         });
 
                         return false;
