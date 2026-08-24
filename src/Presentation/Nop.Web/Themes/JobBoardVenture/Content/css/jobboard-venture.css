@@ -2557,6 +2557,10 @@ body.jb-search-open .jb-drawer-overlay {
     margin-right: auto;
 }
 
+.footer-upper {
+    border-bottom: 0;
+}
+
 .footer-main {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
