@@ -274,7 +274,7 @@
                 }
             </section>
 
-            <section class="job-card">
+            @* <section class="job-card">
                 <h2 class="job-section-title">@jobDetailsSectionText</h2>
                 @if (filteredSpecificationGroups.Any())
                 {
@@ -325,7 +325,7 @@
                 {
                     @await Html.PartialAsync("_ProductTags", Model.ProductTags)
                 }
-            </section>
+            </section> *@
 
             @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
             {

@@ -445,6 +445,8 @@
 
         jQuery('.vendor-job-skills-select').select2({
             tags: true,
+            containerCssClass: 'ai-skills-select2',
+            dropdownCssClass: 'ai-skills-select2-dropdown',
             width: '100%',
             placeholder: '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.VendorJobCreation.Skills.Placeholder").Text)',
             createTag: function (params) {

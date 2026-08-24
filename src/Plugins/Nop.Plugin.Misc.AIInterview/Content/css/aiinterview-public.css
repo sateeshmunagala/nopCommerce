@@ -554,6 +554,48 @@ body.html-aiinterview-vendor-job-creation-page {
     min-width: 0;
 }
 
+.ai-skills-select2 .select2-selection--multiple {
+    background: #fff;
+    border: 1px solid #d5d9dd;
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+.ai-skills-select2 .select2-selection__choice {
+    background: #eef2f5;
+    background-image: none;
+    color: #30363c;
+    border-radius: 4px;
+    box-shadow: none;
+}
+
+.ai-skills-select2 .select2-selection__choice__remove {
+    color: #6c757d;
+}
+
+.ai-skills-select2 .select2-selection__choice__remove:hover {
+    color: var(--jb-accent-dark);
+}
+
+.select2-dropdown.ai-skills-select2-dropdown {
+    background: #fff;
+    border: 1px solid #d5d9dd;
+}
+
+.ai-skills-select2-dropdown .select2-results__option {
+    background: #fff;
+    color: #30363c;
+}
+
+.ai-skills-select2-dropdown .select2-results__option--highlighted[aria-selected] {
+    background: var(--jb-accent, #35d6b4);
+    color: #fff;
+}
+
+.ai-skills-select2-dropdown .select2-search__field:focus {
+    border-color: var(--jb-accent);
+}
+
 .vendor-job-form-field > label {
     color: #30363c;
     font-family: "Fjalla One", Arial, sans-serif;
