@@ -502,6 +502,11 @@ body.html-aiinterview-vendor-job-creation-page {
     line-height: 1.55;
 }
 
+.job-ai-note {
+    font-size: 12px;
+    font-style: italic;
+}
+
 .job-ai-note-required {
     margin-bottom: 10px;
     color: #1f5c55;
@@ -6125,6 +6130,20 @@ body.ai-job-preview-open .item-box {
     gap: 12px;
 }
 
+.job-company-row .job-action-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
+    border: 1px solid var(--job-border);
+    border-radius: 10px;
+}
+
 .job-company {
     display: inline-flex;
     align-items: center;
@@ -6173,6 +6192,10 @@ body.ai-job-preview-open .item-box {
     color: var(--job-muted);
     font-size: 14px;
     line-height: 1.8;
+}
+
+.job-title + .job-summary {
+    margin-top: -10px;
 }
 
 .job-overview-meta,

@@ -25,6 +25,7 @@
 @inject IPictureService pictureService
 @inject IAIInterviewJobDisplayService aiInterviewJobDisplayService
 @inject IGenericAttributeService genericAttributeService
+@inject ShoppingCartSettings shoppingCartSettings
 
 @{
     var isDrawer = string.Equals(ViewData["RenderMode"] as string, "Drawer", StringComparison.OrdinalIgnoreCase);
@@ -175,10 +176,6 @@
                     }
                     else
                     {
-                        @if (!string.IsNullOrWhiteSpace(emailFriendUrl))
-                        {
-                            <a class="job-action-link" href="@emailFriendUrl"><i class="fa-regular fa-paper-plane" aria-hidden="true"></i><span class="sr-only">@emailFriendText</span></a>
-                        }
                         @if (!Model.AddToCart.DisableWishlistButton)
                         {
                             <button type="button"
@@ -191,13 +188,6 @@
                                     @(isSavedJob ? "disabled" : null)>
                                 <i class="fa-solid fa-bookmark" aria-hidden="true"></i><span class="sr-only">@(isSavedJob ? savedJobText : saveJobText)</span>
                             </button>
-                            @await Html.PartialAsync("~/Views/Shared/_MoveToWishlistModal.cshtml", Model.AddToCart.ProductToWishlist)
-                            <button type="button"
-                                    id="job-custom-wishlist-button"
-                                    class="job-action-link"
-                                    @(isSavedJob ? null : "disabled")>
-                                @saveToCustomWishlistText
-                            </button>
                         }
                         <button type="button"
                                 class="job-action-link ai-icon-action"
@@ -209,6 +199,23 @@
                                 data-copy-prompt-text="@copyShareLinkText"
                                 aria-label="@shareJobLabel"
                                 title="@shareJobLabel"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span class="sr-only">@shareJobText</span></button>
+                        @if (!string.IsNullOrWhiteSpace(emailFriendUrl))
+                        {
+                            <a class="job-action-link" href="@emailFriendUrl"><i class="fa-regular fa-paper-plane" aria-hidden="true"></i><span class="sr-only">@emailFriendText</span></a>
+                        }
+                        @if (!Model.AddToCart.DisableWishlistButton)
+                        {
+                            @if (shoppingCartSettings.AllowMultipleWishlist)
+                            {
+                                @await Html.PartialAsync("~/Views/Shared/_MoveToWishlistModal.cshtml", Model.AddToCart.ProductToWishlist)
+                                <button type="button"
+                                        id="job-custom-wishlist-button"
+                                        class="job-action-link"
+                                        @(isSavedJob ? null : "disabled")>
+                                    @saveToCustomWishlistText
+                                </button>
+                            }
+                        }
                     }
                 </div>
             </div>
