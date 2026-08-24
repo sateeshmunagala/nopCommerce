@@ -156,16 +156,63 @@
 <article data-productid="@Model.Id" class="job-shell @(isDrawer ? "job-shell-drawer" : null)">
     <section class="job-hero">
         <div class="job-hero-copy">
-            @if (!string.IsNullOrWhiteSpace(vendorDisplayName))
-            {
-                <div class="job-company">
-                    <img class="job-company-logo" src="@vendorPictureUrl" alt="@vendorDisplayName" />
-                    <div class="job-company-copy">
-                        <div class="job-company-label">@hiringCompanyText</div>
-                        <div class="job-company-name">@vendorDisplayName</div>
+            <div class="job-company-row">
+                @if (!string.IsNullOrWhiteSpace(vendorDisplayName))
+                {
+                    <div class="job-company">
+                        <img class="job-company-logo" src="@vendorPictureUrl" alt="@vendorDisplayName" />
+                        <div class="job-company-copy">
+                            <div class="job-company-label">@hiringCompanyText</div>
+                            <div class="job-company-name">@vendorDisplayName</div>
+                        </div>
                     </div>
+                }
+
+                <div class="job-action-links @(isDrawer ? "job-action-links-drawer" : null)">
+                    @if (isDrawer)
+                    {
+                        <a class="job-action-link" href="@productPageUrl">@viewJobText</a>
+                    }
+                    else
+                    {
+                        @if (!string.IsNullOrWhiteSpace(emailFriendUrl))
+                        {
+                            <a class="job-action-link" href="@emailFriendUrl"><i class="fa-regular fa-paper-plane" aria-hidden="true"></i><span class="sr-only">@emailFriendText</span></a>
+                        }
+                        @if (!Model.AddToCart.DisableWishlistButton)
+                        {
+                            <button type="button"
+                                    id="job-save-button"
+                                    class="job-action-link @(isSavedJob ? "is-saved" : null)"
+                                    data-saved-text="@savedJobText"
+                                    data-default-text="@saveJobText"
+                                    data-save-first-text="@saveFirstForWishlistText"
+                                    data-url="@Url.RouteUrl(NopRouteNames.Ajax.ADD_PRODUCT_TO_CART_DETAILS, new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.Wishlist, customwishlistid = customWishlistId })"
+                                    @(isSavedJob ? "disabled" : null)>
+                                <i class="fa-solid fa-bookmark" aria-hidden="true"></i><span class="sr-only">@(isSavedJob ? savedJobText : saveJobText)</span>
+                            </button>
+                            @await Html.PartialAsync("~/Views/Shared/_MoveToWishlistModal.cshtml", Model.AddToCart.ProductToWishlist)
+                            <button type="button"
+                                    id="job-custom-wishlist-button"
+                                    class="job-action-link"
+                                    @(isSavedJob ? null : "disabled")>
+                                @saveToCustomWishlistText
+                            </button>
+                        }
+                        <button type="button"
+                                class="job-action-link ai-icon-action"
+                                id="share-job-button"
+                                data-share-url="@productPageUrl"
+                                data-share-title="@Model.Name"
+                                data-default-text="@shareJobText"
+                                data-link-copied-text="@linkCopiedText"
+                                data-copy-prompt-text="@copyShareLinkText"
+                                aria-label="@shareJobLabel"
+                                title="@shareJobLabel"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span class="sr-only">@shareJobText</span></button>
+                    }
                 </div>
-            }
+            </div>
+
             <div class="job-title">
                 <h1>@Model.Name</h1>
             </div>
@@ -183,50 +230,6 @@
             {
                 @await Html.PartialAsync("_ProductReviewOverview", Model.ProductReviewOverview)
             }
-
-            <div class="job-action-links @(isDrawer ? "job-action-links-drawer" : null)">
-                @if (isDrawer)
-                {
-                    <a class="job-action-link" href="@productPageUrl">@viewJobText</a>
-                }
-                else
-                {
-                    @if (!string.IsNullOrWhiteSpace(emailFriendUrl))
-                    {
-                        <a class="job-action-link" href="@emailFriendUrl">@emailFriendText</a>
-                    }
-                    @if (!Model.AddToCart.DisableWishlistButton)
-                    {
-                        <button type="button"
-                                id="job-save-button"
-                                class="job-action-link @(isSavedJob ? "is-saved" : null)"
-                                data-saved-text="@savedJobText"
-                                data-default-text="@saveJobText"
-                                data-save-first-text="@saveFirstForWishlistText"
-                                data-url="@Url.RouteUrl(NopRouteNames.Ajax.ADD_PRODUCT_TO_CART_DETAILS, new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.Wishlist, customwishlistid = customWishlistId })"
-                                @(isSavedJob ? "disabled" : null)>
-                            @(isSavedJob ? savedJobText : saveJobText)
-                        </button>
-                        @await Html.PartialAsync("~/Views/Shared/_MoveToWishlistModal.cshtml", Model.AddToCart.ProductToWishlist)
-                        <button type="button"
-                                id="job-custom-wishlist-button"
-                                class="job-action-link"
-                                @(isSavedJob ? null : "disabled")>
-                            @saveToCustomWishlistText
-                        </button>
-                    }
-                    <button type="button"
-                            class="job-action-link ai-icon-action"
-                            id="share-job-button"
-                            data-share-url="@productPageUrl"
-                            data-share-title="@Model.Name"
-                            data-default-text="@shareJobText"
-                            data-link-copied-text="@linkCopiedText"
-                            data-copy-prompt-text="@copyShareLinkText"
-                            aria-label="@shareJobLabel"
-                            title="@shareJobLabel"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i><span class="sr-only">@shareJobText</span></button>
-                }
-            </div>
 
             @if (heroMetadata.Any())
             {
