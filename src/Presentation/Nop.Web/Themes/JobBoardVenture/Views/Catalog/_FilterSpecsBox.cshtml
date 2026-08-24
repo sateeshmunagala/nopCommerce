@@ -1,5 +1,12 @@
-@using Nop.Plugin.Misc.AIInterview.Services
 @model SpecificationFilterModel
+@{
+    var skillsAliases = System.AppDomain.CurrentDomain.GetAssemblies()
+        .Select(assembly => assembly.GetType("Nop.Plugin.Misc.AIInterview.Services.AIInterviewJobDisplayService"))
+        .Where(type => type != null)
+        .Select(type => type.GetField("SkillsAliases")?.GetValue(null) as string[])
+        .FirstOrDefault(aliases => aliases != null)
+        ?? new[] { "Skills", "Skill Set", "Key Skills", "Required Skills" };
+}
 
 <link rel="stylesheet" href="~/lib_npm/admin-lte/plugins/select2/css/select2.min.css" />
 <script asp-location="Footer" src="~/lib_npm/admin-lte/plugins/select2/js/select2.full.min.js"></script>
@@ -7,7 +14,7 @@
 <div class="product-filter product-spec-filter product-spec-filter-groups">
     @foreach (var attr in Model.Attributes)
     {
-        var isSkillsAttribute = AIInterviewJobDisplayService.SkillsAliases.Any(alias =>
+        var isSkillsAttribute = skillsAliases.Any(alias =>
             string.Equals(attr.Name, alias, StringComparison.OrdinalIgnoreCase));
         <details class="group product-spec-group jb-spec-filter-group @(!attr.Values.Any() ? "jb-spec-filter-group-empty" : null) @(attr.Values.Any(x => !string.IsNullOrEmpty(x.ColorSquaresRgb)) ? "product-spec-color" : null) @(isSkillsAttribute ? "jb-skills-filter" : null)" open>
             <summary class="name jb-spec-filter-summary">
