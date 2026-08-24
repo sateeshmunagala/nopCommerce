@@ -193,7 +193,8 @@
                                     data-remove-error-text="@removeJobErrorText"
                                     data-url="@Url.RouteUrl(NopRouteNames.Ajax.ADD_PRODUCT_TO_CART_DETAILS, new { productId = Model.Id, shoppingCartTypeId = (int)ShoppingCartType.Wishlist, customwishlistid = customWishlistId })"
                                     data-cart-item-id="@savedJobCartItemId"
-                                    data-remove-url="@Url.RouteUrl(NopRouteNames.General.WISHLIST)">
+                                    data-remove-url="@Url.RouteUrl(NopRouteNames.General.WISHLIST)"
+                                    data-product-se-name="@productPageSeName">
                                 <i class="fa-solid fa-bookmark" aria-hidden="true"></i><span class="sr-only">@(isSavedJob ? savedJobText : saveJobText)</span>
                             </button>
                         }
@@ -260,15 +261,6 @@
             }
         </div>
 
-        <div>
-            @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
-            {
-                widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
-                additionalData = Model,
-                formDomId = productFormId,
-                contextId = jobAiContextId
-            })
-        </div>
     </section>
 
     <section class="job-content-grid">
@@ -373,6 +365,18 @@
             </section> *@
         </div>
     </section>
+
+    <section class="job-card">
+        <div>
+            @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
+            {
+                widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
+                additionalData = Model,
+                formDomId = productFormId,
+                contextId = jobAiContextId
+            })
+        </div>
+    </section>
 </article>
 
 @if (!isDrawer)
@@ -389,6 +393,37 @@
             const defaultShareTitle = shareButton?.getAttribute('title') || defaultShareLabel;
             let shareFeedbackTimer = null;
 
+            const refreshSavedCartItemId = () => {
+                const removeUrl = saveButton?.dataset.removeUrl;
+                const productSeName = saveButton?.dataset.productSeName;
+                if (!removeUrl || !productSeName)
+                    return;
+
+                fetch(removeUrl, {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                }).then(response => {
+                    if (!response.ok)
+                        return null;
+
+                    return response.text();
+                }).then(html => {
+                    if (!html)
+                        return;
+
+                    const wishlistDocument = new DOMParser().parseFromString(html, 'text/html');
+                    const productLink = Array.from(wishlistDocument.querySelectorAll('a[href]')).find(link =>
+                        (link.getAttribute('href') || '').includes(productSeName));
+                    const productRow = productLink?.closest('tr');
+                    const removeInput = productRow?.querySelector('input[name="removefromcart"]');
+                    const cartItemId = removeInput?.value;
+
+                    if (/^\d+$/.test(cartItemId || ''))
+                        saveButton.dataset.cartItemId = cartItemId;
+                }).catch(() => {
+                });
+            };
+
             const markSaved = () => {
                 if (!saveButton)
                     return;
@@ -401,6 +436,8 @@
 
                 if (customWishlistButton)
                     customWishlistButton.disabled = false;
+
+                refreshSavedCartItemId();
             };
 
             const setShareButtonFeedback = (text, accessibleLabel) => {
