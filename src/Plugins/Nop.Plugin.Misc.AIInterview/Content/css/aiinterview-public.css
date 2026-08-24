@@ -555,45 +555,45 @@ body.html-aiinterview-vendor-job-creation-page {
 }
 
 .ai-skills-select2 .select2-selection--multiple {
-    background: #fff;
-    border: 1px solid #d5d9dd;
-    border-radius: 6px;
-    box-shadow: none;
+    background: #fff !important;
+    border: 1px solid #d5d9dd !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
 }
 
 .ai-skills-select2 .select2-selection__choice {
-    background: #eef2f5;
-    background-image: none;
-    color: #30363c;
-    border-radius: 4px;
-    box-shadow: none;
+    background: #eef2f5 !important;
+    background-image: none !important;
+    color: #30363c !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
 }
 
 .ai-skills-select2 .select2-selection__choice__remove {
-    color: #6c757d;
+    color: #6c757d !important;
 }
 
 .ai-skills-select2 .select2-selection__choice__remove:hover {
-    color: var(--jb-accent-dark);
+    color: var(--jb-accent-dark) !important;
 }
 
 .select2-dropdown.ai-skills-select2-dropdown {
-    background: #fff;
-    border: 1px solid #d5d9dd;
+    background: #fff !important;
+    border: 1px solid #d5d9dd !important;
 }
 
 .ai-skills-select2-dropdown .select2-results__option {
-    background: #fff;
-    color: #30363c;
+    background: #fff !important;
+    color: #30363c !important;
 }
 
 .ai-skills-select2-dropdown .select2-results__option--highlighted[aria-selected] {
-    background: var(--jb-accent, #35d6b4);
-    color: #fff;
+    background: var(--jb-accent, #35d6b4) !important;
+    color: #fff !important;
 }
 
 .ai-skills-select2-dropdown .select2-search__field:focus {
-    border-color: var(--jb-accent);
+    border-color: var(--jb-accent) !important;
 }
 
 .vendor-job-form-field > label {
