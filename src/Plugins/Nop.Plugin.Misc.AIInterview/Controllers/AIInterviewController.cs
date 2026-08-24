@@ -2343,6 +2343,11 @@ public class AIInterviewController : BasePluginController
             names.Any(name => string.Equals(AIInterviewJobDisplayService.NormalizeSpecificationAttributeName(specificationAttribute.Name), AIInterviewJobDisplayService.NormalizeSpecificationAttributeName(name), StringComparison.OrdinalIgnoreCase)));
     }
 
+    protected async Task<SpecificationAttribute> GetSpecificationAttributeByNameWithAliasesAsync(IEnumerable<string> aliases)
+    {
+        return await GetSpecificationAttributeByNameAsync(aliases?.ToArray() ?? []);
+    }
+
     protected static string[] GetExperienceLevelAttributeAliases() => AIInterviewJobDisplayService.ExperienceLevelAliases;
 
     protected static string[] GetWorkArrangementAttributeAliases() => AIInterviewJobDisplayService.WorkArrangementAliases;
@@ -2350,6 +2355,8 @@ public class AIInterviewController : BasePluginController
     protected static string[] GetEmploymentTypeAttributeAliases() => AIInterviewJobDisplayService.EmploymentTypeAliases;
 
     protected static string[] GetJobLocationAttributeAliases() => AIInterviewJobDisplayService.JobLocationAliases;
+
+    protected static string[] GetSkillsAttributeAliases() => AIInterviewJobDisplayService.SkillsAliases;
 
     protected static string[] GetSalaryRangeAttributeAliases() => AIInterviewJobDisplayService.SalaryRangeAliases;
 
@@ -2371,6 +2378,26 @@ public class AIInterviewController : BasePluginController
     protected async Task<SpecificationAttribute> GetJobLocationSpecificationAttributeAsync()
     {
         return await GetSpecificationAttributeByNameAsync(GetJobLocationAttributeAliases());
+    }
+
+    protected async Task<SpecificationAttribute> GetSkillsSpecificationAttributeAsync()
+    {
+        return await GetSpecificationAttributeByNameWithAliasesAsync(GetSkillsAttributeAliases());
+    }
+
+    protected async Task<SpecificationAttribute> GetOrCreateSkillsSpecificationAttributeAsync()
+    {
+        var attribute = await GetSkillsSpecificationAttributeAsync();
+        if (attribute != null || _specificationAttributeService == null)
+            return attribute;
+
+        attribute = new SpecificationAttribute
+        {
+            Name = GetSkillsAttributeAliases()[0]
+        };
+        await _specificationAttributeService.InsertSpecificationAttributeAsync(attribute);
+
+        return attribute;
     }
 
     protected async Task<int> ResolveSalaryRangeSpecificationOptionIdAsync()
@@ -2467,6 +2494,31 @@ public class AIInterviewController : BasePluginController
             model.AvailableJobLocations = BuildSelectList(
                 await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(jobLocationAttribute.Id),
                 model.JobLocationOptionId);
+
+        var skillsAttribute = await GetSkillsSpecificationAttributeAsync();
+        if (skillsAttribute != null)
+        {
+            var skillsOptions = await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(skillsAttribute.Id);
+            model.AvailableSkills = skillsOptions.Select(option => new SelectListItem
+            {
+                Text = option.Name,
+                Value = option.Name,
+                Selected = model.SelectedSkills.Contains(option.Name, StringComparer.OrdinalIgnoreCase)
+            }).ToList();
+        }
+
+        foreach (var skill in model.SelectedSkills)
+        {
+            if (model.AvailableSkills.Any(item => string.Equals(item.Value, skill, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            model.AvailableSkills.Add(new SelectListItem
+            {
+                Text = skill,
+                Value = skill,
+                Selected = true
+            });
+        }
     }
 
     protected static FixedQuestionSetModel MapFixedQuestionSetModel(FixedQuestionSetDetails details)
@@ -3526,6 +3578,8 @@ public class AIInterviewController : BasePluginController
                 model.EmploymentTypeOptionId = mapping.Option?.Id;
             else if (IsSpecificationAliasMatch(attributeName, GetJobLocationAttributeAliases()))
                 model.JobLocationOptionId = mapping.Option?.Id;
+            else if (IsSpecificationAliasMatch(attributeName, GetSkillsAttributeAliases()) && !string.IsNullOrWhiteSpace(mapping.Option?.Name))
+                model.SelectedSkills.Add(mapping.Option.Name);
         }
     }
 
@@ -3583,6 +3637,36 @@ public class AIInterviewController : BasePluginController
         {
             await InsertProductSpecificationAttributeAsync(product.Id, salaryRangeOptionId,
                 SpecificationAttributeType.CustomText, model.SalaryRange, 4, allowFiltering: false);
+        }
+
+        if (model.SelectedSkills?.Any(skill => !string.IsNullOrWhiteSpace(skill?.Trim())) == true)
+        {
+            var skillsAttribute = await GetOrCreateSkillsSpecificationAttributeAsync();
+            var skillsOptions = (await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(skillsAttribute.Id)).ToList();
+            var processedSkills = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var displayOrder = 5;
+
+            foreach (var selectedSkill in model.SelectedSkills)
+            {
+                var skill = selectedSkill?.Trim();
+                if (string.IsNullOrWhiteSpace(skill) || !processedSkills.Add(skill))
+                    continue;
+
+                var option = skillsOptions.FirstOrDefault(existingOption =>
+                    string.Equals(existingOption.Name, skill, StringComparison.OrdinalIgnoreCase));
+                if (option == null)
+                {
+                    option = new SpecificationAttributeOption
+                    {
+                        SpecificationAttributeId = skillsAttribute.Id,
+                        Name = skill
+                    };
+                    await _specificationAttributeService.InsertSpecificationAttributeOptionAsync(option);
+                    skillsOptions.Add(option);
+                }
+
+                await InsertProductSpecificationAttributeAsync(product.Id, option.Id, displayOrder: displayOrder++);
+            }
         }
     }
 
@@ -3720,6 +3804,7 @@ public class AIInterviewController : BasePluginController
             IsSpecificationAliasMatch(attributeName, GetWorkArrangementAttributeAliases()) ||
             IsSpecificationAliasMatch(attributeName, GetEmploymentTypeAttributeAliases()) ||
             IsSpecificationAliasMatch(attributeName, GetJobLocationAttributeAliases()) ||
+            IsSpecificationAliasMatch(attributeName, GetSkillsAttributeAliases()) ||
             IsSpecificationAliasMatch(attributeName, GetSalaryRangeAttributeAliases());
     }
 

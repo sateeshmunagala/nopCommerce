@@ -23,6 +23,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
     public static readonly string[] WorkArrangementAliases = ["Work Arrangement", "Work Mode", "Work Type", "Workplace Type", "Workplace", "Work Setup", "Work Location Type", "Remote Type"];
     public static readonly string[] EmploymentTypeAliases = ["Employment Type", "Job Type", "Contract Type", "Employment Basis"];
     public static readonly string[] JobLocationAliases = ["Job Location", "Location", "Office Location", "Work Location", "City", "Region"];
+    public static readonly string[] SkillsAliases = ["Skills", "Skill Set", "Key Skills", "Required Skills"];
     public static readonly string[] SalaryRangeAliases = ["Salary Range", "Compensation", "Pay Range", "Salary", "Compensation Range"];
     public static readonly string[] ExperienceLevelAliases = ["Experience Level", "Experience", "Seniority", "Seniority Level", "Level"];
 
@@ -30,6 +31,7 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
         WorkArrangementAliases
             .Concat(EmploymentTypeAliases)
             .Concat(JobLocationAliases)
+            .Concat(SkillsAliases)
             .Concat(SalaryRangeAliases)
             .Concat(ExperienceLevelAliases)
             .Select(NormalizeSpecificationAttributeName),

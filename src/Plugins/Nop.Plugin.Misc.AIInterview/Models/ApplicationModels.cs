@@ -285,6 +285,11 @@ public record VendorJobModel : BaseNopModel
     public IList<SelectListItem> AvailableEmploymentTypes { get; set; } = new List<SelectListItem>();
 
     public IList<SelectListItem> AvailableJobLocations { get; set; } = new List<SelectListItem>();
+
+    [NopResourceDisplayName("Plugins.Misc.AIInterview.VendorJobCreation.Skills")]
+    public IList<string> SelectedSkills { get; set; } = new List<string>();
+
+    public IList<SelectListItem> AvailableSkills { get; set; } = new List<SelectListItem>();
 }
 
 public record FixedQuestionSetModel : BaseNopEntityModel

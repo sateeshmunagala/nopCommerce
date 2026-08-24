@@ -49,6 +49,8 @@
         new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
 }
 
+<link rel="stylesheet" href="~/lib_npm/admin-lte/plugins/select2/css/select2.min.css" />
+
 @section left
 {
     @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.EmployerDashboardNavigationTab })
@@ -212,6 +214,13 @@
                                         <div class="vendor-job-form-unsupported">@T("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Unsupported")</div>
                                     }
                                     <span asp-validation-for="JobLocationOptionId"></span>
+                                </div>
+
+                                <div class="vendor-job-form-field vendor-job-form-field-wide">
+                                    <label asp-for="SelectedSkills" asp-postfix=":"></label>
+                                    <select asp-for="SelectedSkills" asp-items="Model.AvailableSkills" multiple class="vendor-job-skills-select"></select>
+                                    <span class="vendor-job-form-hint">@T("Plugins.Misc.AIInterview.VendorJobCreation.Skills.Hint")</span>
+                                    <span asp-validation-for="SelectedSkills"></span>
                                 </div>
                             </div>
                         </section>
@@ -427,6 +436,31 @@
         </div>
     </div>
 </div>
+
+<script asp-location="Footer" src="~/lib_npm/admin-lte/plugins/select2/js/select2.full.min.js"></script>
+<script asp-location="Footer">
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.select2)
+            return;
+
+        jQuery('.vendor-job-skills-select').select2({
+            tags: true,
+            width: '100%',
+            placeholder: '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.VendorJobCreation.Skills.Placeholder").Text)',
+            createTag: function (params) {
+                var term = jQuery.trim(params.term);
+                if (!term)
+                    return null;
+
+                return {
+                    id: term,
+                    text: term,
+                    newTag: true
+                };
+            }
+        });
+    });
+</script>
 
 <script asp-location="Footer">
     (() => {

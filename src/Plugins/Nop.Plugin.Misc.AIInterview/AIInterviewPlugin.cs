@@ -667,6 +667,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     {
         return new Dictionary<string, string>
         {
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Skills"] = "Skills",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Skills.Placeholder"] = "Type or pick a skill",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Skills.Hint"] = "New skills you type are saved automatically.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeFile.Help"] = "Upload a PDF or DOCX file up to 5 MB. If you already used a resume before, you can select it below.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.ResumeRequired"] = "Resume required",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Apply.PreviousResume"] = "Use a previous resume",

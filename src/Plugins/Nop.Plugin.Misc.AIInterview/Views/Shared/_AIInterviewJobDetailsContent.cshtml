@@ -117,7 +117,7 @@
     if (!highlights.Any() && !string.IsNullOrWhiteSpace(Model.ShortDescription))
         highlights.Add(htmlFormatter.StripTags(Model.ShortDescription));
 
-    var skillValues = GetSpecificationValue(FindSpecificationAttribute("Skills", "Skill Set"));
+    var skillValues = GetSpecificationValue(FindSpecificationAttribute(AIInterviewJobDisplayService.SkillsAliases));
     var skills = !string.IsNullOrWhiteSpace(skillValues)
         ? skillValues.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
         : Model.ProductTags.Select(tag => tag.Name).Where(name => !string.IsNullOrWhiteSpace(name)).ToList();

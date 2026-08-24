@@ -549,6 +549,11 @@ body.html-aiinterview-vendor-job-creation-page {
     grid-column: span 2;
 }
 
+.html-aiinterview-vendor-job-creation-page .vendor-job-form-field .select2-container {
+    width: 100% !important;
+    min-width: 0;
+}
+
 .vendor-job-form-field > label {
     color: #30363c;
     font-family: "Fjalla One", Arial, sans-serif;
@@ -2558,6 +2563,10 @@ body.ai-job-preview-open .item-box {
 
     .vendor-job-form-field-wide {
         grid-column: auto;
+    }
+
+    .html-aiinterview-vendor-job-creation-page .vendor-job-form-field .select2-container {
+        max-width: 100%;
     }
 
     .html-aiinterview-employer-applications-page .status-form {
