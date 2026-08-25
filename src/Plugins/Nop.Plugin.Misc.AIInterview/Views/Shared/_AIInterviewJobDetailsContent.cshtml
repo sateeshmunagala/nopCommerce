@@ -263,17 +263,13 @@
 
         @if (!isDrawer)
         {
-            <section class="job-card">
-                <div>
-                    @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
-                    {
-                        widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
-                        additionalData = Model,
-                        formDomId = productFormId,
-                        contextId = jobAiContextId
-                    })
-                </div>
-            </section>
+            @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
+            {
+                widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
+                additionalData = Model,
+                formDomId = productFormId,
+                contextId = jobAiContextId
+            })
         }
     </section>
 
@@ -382,17 +378,13 @@
 
     @if (isDrawer)
     {
-        <section class="job-card">
-            <div>
-                @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
-                {
-                    widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
-                    additionalData = Model,
-                    formDomId = productFormId,
-                    contextId = jobAiContextId
-                })
-            </div>
-        </section>
+        @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
+        {
+            widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
+            additionalData = Model,
+            formDomId = productFormId,
+            contextId = jobAiContextId
+        })
     }
 </article>
 
