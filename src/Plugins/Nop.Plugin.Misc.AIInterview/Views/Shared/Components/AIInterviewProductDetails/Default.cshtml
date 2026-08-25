@@ -128,14 +128,14 @@
                                 id="@applyButtonId"
                                 data-job-ai-action="apply"
                                 title="@T("Plugins.Misc.AIInterview.Index.ApplyNow")"
-                                @(alreadyApplied || interviewRecordRequired ? "disabled" : null)>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                                @(alreadyApplied || interviewRecordRequired ? "disabled" : null)><i class="fa-regular fa-file-lines" aria-hidden="true"></i>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
                     }
                     <button type="button"
                             class="job-ai-action @(isLaunchOnly ? "job-ai-action-primary" : "job-ai-action-secondary") start-interview-btn"
                             id="@startButtonId"
                             data-job-ai-action="start"
                             title="@T("Plugins.Misc.AIInterview.Index.StartInterview")"
-                            data-start-interview-button="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                            data-start-interview-button="true"><i class="fa-solid fa-bolt" aria-hidden="true"></i>@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
                 </div>
                 <p class="job-ai-note job-ai-credit-notice">
                     @T("Plugins.Misc.AIInterview.Interview.StartCreditNotice")

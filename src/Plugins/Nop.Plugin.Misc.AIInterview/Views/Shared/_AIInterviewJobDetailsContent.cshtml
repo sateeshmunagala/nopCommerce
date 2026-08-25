@@ -177,7 +177,7 @@
                 <div class="job-action-links @(isDrawer ? "job-action-links-drawer" : null)">
                     @if (isDrawer)
                     {
-                        <a class="job-action-link" href="@productPageUrl">@viewJobText</a>
+                        <a class="job-action-link" href="@productPageUrl">@viewJobText<i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
                     }
                     else
                     {
@@ -261,6 +261,20 @@
             }
         </div>
 
+        @if (!isDrawer)
+        {
+            <section class="job-card">
+                <div>
+                    @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
+                    {
+                        widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
+                        additionalData = Model,
+                        formDomId = productFormId,
+                        contextId = jobAiContextId
+                    })
+                </div>
+            </section>
+        }
     </section>
 
     <section class="job-content-grid">
@@ -366,17 +380,20 @@
         </div>
     </section>
 
-    <section class="job-card">
-        <div>
-            @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
-            {
-                widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
-                additionalData = Model,
-                formDomId = productFormId,
-                contextId = jobAiContextId
-            })
-        </div>
-    </section>
+    @if (isDrawer)
+    {
+        <section class="job-card">
+            <div>
+                @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new
+                {
+                    widgetZone = PublicWidgetZones.ProductDetailsBeforeCollateral,
+                    additionalData = Model,
+                    formDomId = productFormId,
+                    contextId = jobAiContextId
+                })
+            </div>
+        </section>
+    }
 </article>
 
 @if (!isDrawer)
