@@ -14995,18 +14995,18 @@ html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs[
     transform: none !important;
 }
 
-html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed {
+html.html-login-page .login-page .returning-wrapper .inputs.reversed {
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
 }
 
-html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed > input[type="checkbox"] {
+html.html-login-page .login-page .returning-wrapper .inputs.reversed > input[type="checkbox"] {
     flex: 0 0 auto;
     margin: 0 6px 0 0 !important;
 }
 
-html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed > label {
+html.html-login-page .login-page .returning-wrapper .inputs.reversed > label {
     display: inline-flex !important;
     align-items: center;
     width: auto !important;
@@ -15014,21 +15014,21 @@ html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.
     white-space: nowrap;
 }
 
-html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed > .forgot-password {
+html.html-login-page .login-page .returning-wrapper .inputs.reversed > .forgot-password {
     display: inline-flex !important;
     align-items: center;
     margin: 0 0 0 auto !important;
     white-space: nowrap !important;
 }
 
-html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed .forgot-password,
-html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed .forgot-password a {
+html.html-login-page .login-page .returning-wrapper .inputs.reversed .forgot-password,
+html.html-login-page .login-page .returning-wrapper .inputs.reversed .forgot-password a {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
     white-space: nowrap !important;
 }
 
-html.html-login-page .login-page .auth-panel-content .returning-wrapper .inputs.reversed .forgot-password a {
+html.html-login-page .login-page .returning-wrapper .inputs.reversed .forgot-password a {
     display: inline !important;
     margin-right: 0 !important;
     margin-left: 0 !important;
