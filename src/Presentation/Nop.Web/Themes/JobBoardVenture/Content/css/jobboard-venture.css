@@ -15062,6 +15062,17 @@ textarea,
 }
 
 @media (min-width: 1001px) {
+    .header-menu.jb-header-nav .menu__link,
+    .header-menu.jb-header-nav .menu__item-toggle {
+        font-family: "Fjalla One", Arial, sans-serif !important;
+    }
+
+    .header-links a,
+    .jb-inline-selectors select,
+    .header-selectors-wrapper select {
+        font-family: "Fjalla One", Arial, sans-serif;
+    }
+
     .header-logo {
         display: flex !important;
         align-items: center;
