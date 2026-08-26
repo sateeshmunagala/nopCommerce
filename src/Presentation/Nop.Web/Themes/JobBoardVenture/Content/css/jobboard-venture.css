@@ -15060,14 +15060,24 @@ textarea,
 }
 
 @media (min-width: 1001px) {
+    .header-logo,
+    .header-logo a {
+        display: flex !important;
+        align-items: center;
+    }
+
+    .header-logo img {
+        display: block;
+    }
+
     .header-menu.jb-header-nav .menu-container .menu {
         gap: 1.25rem !important;
     }
 
     .header-menu.jb-header-nav .menu__link,
     .header-menu.jb-header-nav .menu__item-toggle {
-        padding-right: 0 !important;
-        padding-left: 0 !important;
+        padding-right: 12px !important;
+        padding-left: 12px !important;
     }
 }
 
