@@ -1967,7 +1967,7 @@ body {
     align-items: center;
     gap: 18px;
     height: 64px;
-    max-width: 1200px;
+    max-width: none;
     margin: 0 auto;
     padding: 0 0 0 12px;
 }
