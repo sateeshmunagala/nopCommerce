@@ -4302,7 +4302,8 @@ body.jb-search-open .jb-drawer-overlay {
         height: 64px !important;
         min-height: 64px !important;
         margin: 0 !important;
-        padding: 0 14px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
         line-height: 1 !important;
         white-space: nowrap !important;
         color: #7d7d7d;
@@ -4393,7 +4394,8 @@ body.jb-search-open .jb-drawer-overlay {
         height: 64px !important;
         min-height: 64px !important;
         margin: 0 !important;
-        padding: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
         line-height: 64px !important;
         white-space: nowrap !important;
         border-left: 1px solid transparent;
@@ -15060,22 +15062,34 @@ textarea,
 }
 
 @media (min-width: 1001px) {
-    .header-logo,
+    .header-logo {
+        display: flex !important;
+        align-items: center;
+        align-self: center;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+
     .header-logo a {
         display: flex !important;
         align-items: center;
+        margin-top: 0;
+        margin-bottom: 0;
+        line-height: 0;
     }
 
     .header-logo img {
         display: block;
+        margin-top: 0;
+        margin-bottom: 0;
     }
 
     .header-menu.jb-header-nav .menu-container .menu {
         gap: 1.25rem !important;
     }
 
-    .header-menu.jb-header-nav .menu__link,
-    .header-menu.jb-header-nav .menu__item-toggle {
+    .header-menu.jb-header-nav .menu-container .menu__link,
+    .header-menu.jb-header-nav .menu-container .menu__item-toggle {
         padding-right: 12px !important;
         padding-left: 12px !important;
     }
