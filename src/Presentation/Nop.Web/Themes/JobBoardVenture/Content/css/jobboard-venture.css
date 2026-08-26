@@ -8875,6 +8875,25 @@ body.jb-filter-panel-open .product-filters {
     background: var(--jb-accent-dark);
 }
 
+.html-password-recovery-page .password-recovery-page .password-recovery-button {
+    min-height: 44px;
+    border: 1px solid var(--jb-accent);
+    border-radius: 0;
+    padding: 10px 24px;
+    background: var(--jb-accent);
+    color: var(--jb-white);
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.92rem;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.html-password-recovery-page .password-recovery-page .password-recovery-button:hover,
+.html-password-recovery-page .password-recovery-page .password-recovery-button:focus-visible {
+    border-color: var(--jb-accent-dark);
+    background: var(--jb-accent-dark);
+}
+
 .html-login-page .login-page .external-authentication,
 .html-registration-page .registration-page .external-authentication {
     max-width: 720px;
