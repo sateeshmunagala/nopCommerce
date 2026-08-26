@@ -7271,7 +7271,7 @@ label, label + * {
 
 
   .header {
-    width: 980px;
+    width: 100%;
     margin: auto;
   }
 
@@ -8187,7 +8187,7 @@ label, label + * {
 
 
   .header {
-    width: 1200px;
+    width: 100%;
   }
 
 
