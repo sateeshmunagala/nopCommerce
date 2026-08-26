@@ -1,15 +1,11 @@
 @using System.Globalization
 @using Nop.Core
 @using Nop.Core.Domain.Catalog
-@using Nop.Core.Domain.Customers
-@using Nop.Services.Common
 @using Nop.Services.Customers
 @using Nop.Services.Themes
 
 @inject CatalogSettings catalogSettings
 @inject ICustomerService customerService
-@inject IGenericAttributeService genericAttributeService
-@inject IStoreContext storeContext
 @inject IThemeContext themeContext
 @inject IWorkContext workContext
 
@@ -19,9 +15,6 @@
     var supportRtl = await Html.ShouldUseRtlThemeAsync();
     var currentCustomer = await workContext.GetCurrentCustomerAsync();
     var isRegisteredCustomer = await customerService.IsRegisteredAsync(currentCustomer);
-    var currentStore = await storeContext.GetCurrentStoreAsync();
-    var analyticsConsentAvailable = await genericAttributeService.GetAttributeAsync<bool>(currentCustomer,
-        NopCustomerDefaults.EuCookieLawAcceptedAttribute, currentStore.Id);
     var clarityCustomerId = currentCustomer.Id.ToString(CultureInfo.InvariantCulture);
     var clarityCustomerRole = isRegisteredCustomer ? "registered" : "guest";
 
@@ -53,19 +46,16 @@
     NopHtml.AppendCssFileParts("~/lib_npm/jquery-ui-dist/jquery-ui.min.css");
 }
 
-@if (analyticsConsentAvailable)
-{
-    <script>
-        (function (c, l, a, r, i, t, y) {
-            c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
-            t = l.createElement(r);
-            t.async = 1;
-            t.src = "https://www.clarity.ms/tag/" + i;
-            y = l.getElementsByTagName(r)[0];
-            y.parentNode.insertBefore(t, y);
-        })(window, document, "clarity", "script", "y4tv27kfzg");
+<script>
+    (function (c, l, a, r, i, t, y) {
+        c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+        t = l.createElement(r);
+        t.async = 1;
+        t.src = "https://www.clarity.ms/tag/" + i;
+        y = l.getElementsByTagName(r)[0];
+        y.parentNode.insertBefore(t, y);
+    })(window, document, "clarity", "script", "y4tv27kfzg");
 
-        clarity("identify", "@clarityCustomerId");
-        clarity("set", "customer_role", "@clarityCustomerRole");
-    </script>
-}
+    clarity("identify", "@clarityCustomerId");
+    clarity("set", "customer_role", "@clarityCustomerRole");
+</script>
