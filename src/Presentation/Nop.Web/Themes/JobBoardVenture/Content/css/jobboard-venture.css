@@ -8875,7 +8875,8 @@ body.jb-filter-panel-open .product-filters {
     background: var(--jb-accent-dark);
 }
 
-.html-password-recovery-page .password-recovery-page .password-recovery-button {
+.html-password-recovery-page .password-recovery-page .password-recovery-button,
+.html-apply-vendor-page .apply-vendor-page .apply-vendor-button {
     min-height: 44px;
     border: 1px solid var(--jb-accent);
     border-radius: 0;
@@ -8889,7 +8890,9 @@ body.jb-filter-panel-open .product-filters {
 }
 
 .html-password-recovery-page .password-recovery-page .password-recovery-button:hover,
-.html-password-recovery-page .password-recovery-page .password-recovery-button:focus-visible {
+.html-password-recovery-page .password-recovery-page .password-recovery-button:focus-visible,
+.html-apply-vendor-page .apply-vendor-page .apply-vendor-button:hover,
+.html-apply-vendor-page .apply-vendor-page .apply-vendor-button:focus-visible {
     border-color: var(--jb-accent-dark);
     background: var(--jb-accent-dark);
 }
