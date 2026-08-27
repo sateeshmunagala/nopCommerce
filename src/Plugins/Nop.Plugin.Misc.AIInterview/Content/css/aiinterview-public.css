@@ -2087,6 +2087,22 @@ body.aiinterview-report-drawer-open {
     text-overflow: ellipsis;
 }
 
+.ai-job-card-posted-badge {
+    color: var(--jb-muted);
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.ai-job-card-posted-badge-aging {
+    color: #b45309;
+}
+
+.ai-job-card-posted-badge-stale {
+    color: #b91c1c;
+}
+
 .ai-job-card-body {
     position: static;
     display: flex;

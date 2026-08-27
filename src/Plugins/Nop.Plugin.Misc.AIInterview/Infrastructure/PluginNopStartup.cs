@@ -33,6 +33,7 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<IAIInterviewClient, InterviewAiClient>();
         services.AddScoped<IInterviewRuntimeService, InterviewRuntimeService>();
         services.AddScoped<InterviewCompletionRecoveryTask>();
+        services.AddScoped<JobAutoExpiryTask>();
         services.AddScoped<ICreditService, CreditService>();
         services.AddScoped<IInterviewStartCreditService, InterviewStartCreditService>();
         services.AddScoped<ICreditActivityService, CreditActivityService>();

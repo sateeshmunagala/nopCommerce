@@ -356,6 +356,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsurePricingCategoryTemplateAsync();
         await EnsureWidgetActiveAsync();
         await EnsureMessageTemplatesAsync();
+        await EnsureJobAutoExpiryTaskAsync();
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
@@ -915,6 +916,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.ViewJob"] = "View job",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.View"] = "View",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.SaveJob"] = "Save job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.PostedToday"] = "Posted today",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.PostedDaysAgo"] = "Posted {0} days ago",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.RemoveSavedJob"] = "Remove from saved jobs",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.SavedToSavedJobs"] = "Saved to saved jobs",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.RemovedFromSavedJobs"] = "Removed from saved jobs",
@@ -1997,6 +2000,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.ViewJob"] = "View job",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.View"] = "View",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.SaveJob"] = "Save job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.PostedToday"] = "Posted today",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.PostedDaysAgo"] = "Posted {0} days ago",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.RemoveSavedJob"] = "Remove from saved jobs",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.SavedToSavedJobs"] = "Saved to saved jobs",
             [$"{AIInterviewDefaults.LocalizationPrefix}.JobCard.RemovedFromSavedJobs"] = "Removed from saved jobs",
@@ -2034,6 +2039,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureRuntimeActivityLogTypesAsync();
 
         await EnsureCompletionRecoveryTaskAsync();
+        await EnsureJobAutoExpiryTaskAsync();
 
         await EnsureEmployerRoleAsync();
         await EnsureInstituteRoleAsync();
@@ -2077,6 +2083,28 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             Seconds = AIInterviewDefaults.CompletionRecoveryTaskPeriodSeconds,
             Name = AIInterviewDefaults.CompletionRecoveryTaskName,
             Type = AIInterviewDefaults.CompletionRecoveryTaskType
+        });
+    }
+
+    private async Task EnsureJobAutoExpiryTaskAsync()
+    {
+        if (_scheduleTaskService == null)
+            return;
+
+        var autoExpiryTask = (await _scheduleTaskService.GetAllTasksAsync(showHidden: true) ?? new List<ScheduleTask>())
+            .FirstOrDefault(task => string.Equals(task.Type, AIInterviewDefaults.JobAutoExpiryTaskType, StringComparison.Ordinal));
+
+        if (autoExpiryTask != null)
+            return;
+
+        await _scheduleTaskService.InsertTaskAsync(new ScheduleTask
+        {
+            Enabled = true,
+            StopOnError = false,
+            LastEnabledUtc = DateTime.UtcNow,
+            Seconds = AIInterviewDefaults.JobAutoExpiryTaskPeriodSeconds,
+            Name = AIInterviewDefaults.JobAutoExpiryTaskName,
+            Type = AIInterviewDefaults.JobAutoExpiryTaskType
         });
     }
 

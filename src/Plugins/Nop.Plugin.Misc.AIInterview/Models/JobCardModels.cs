@@ -25,6 +25,10 @@ public partial record AIInterviewJobProductCardModel : BaseNopEntityModel
     public string ImagePlaceholderText { get; set; }
 
     public DateTime CreatedOnUtc { get; set; }
+    public int PostedDaysAgo { get; set; } = 0;
+    public string PostedLabel { get; set; } = string.Empty;
+    public bool IsAgingJob { get; set; } = false;
+    public bool IsStaleJob { get; set; } = false;
     public bool CanSaveJob { get; set; }
     public bool IsSavedJob { get; set; }
     public int WishlistItemId { get; set; }

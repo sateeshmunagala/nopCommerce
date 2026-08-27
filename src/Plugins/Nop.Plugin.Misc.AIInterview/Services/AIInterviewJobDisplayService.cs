@@ -118,6 +118,11 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
         if (string.IsNullOrWhiteSpace(previewDescription))
             previewDescription = summary;
 
+        var postedDaysAgo = Math.Max(0, (DateTime.UtcNow.Date - product.CreatedOnUtc.Date).Days);
+        var postedLabel = postedDaysAgo == 0
+            ? await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.PostedToday")
+            : string.Format(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.JobCard.PostedDaysAgo"), postedDaysAgo);
+
         return new AIInterviewJobProductCardModel
         {
             Id = product.Id,
@@ -132,6 +137,10 @@ public class AIInterviewJobDisplayService : IAIInterviewJobDisplayService
             UseImagePlaceholder = imageModel.UsePlaceholder,
             ImagePlaceholderText = imageModel.PlaceholderText,
             CreatedOnUtc = product.CreatedOnUtc,
+            PostedDaysAgo = postedDaysAgo,
+            PostedLabel = postedLabel,
+            IsAgingJob = postedDaysAgo >= 30,
+            IsStaleJob = postedDaysAgo >= 60,
             CanSaveJob = !productOverviewModel.ProductPrice.DisableWishlistButton,
             IsSavedJob = wishlistItem != null,
             WishlistItemId = wishlistItem?.Id ?? 0,

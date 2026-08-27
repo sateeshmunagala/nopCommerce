@@ -59,6 +59,10 @@
             {
                 <div class="ai-job-card-company" title="@Model.CompanyName">@Model.CompanyName</div>
             }
+            @if (!string.IsNullOrWhiteSpace(Model.PostedLabel))
+            {
+                <span class="ai-job-card-posted-badge@(Model.IsStaleJob ? " ai-job-card-posted-badge-stale" : Model.IsAgingJob ? " ai-job-card-posted-badge-aging" : string.Empty)">@Model.PostedLabel</span>
+            }
         </div>
         @if (Model.CanSaveJob)
         {
