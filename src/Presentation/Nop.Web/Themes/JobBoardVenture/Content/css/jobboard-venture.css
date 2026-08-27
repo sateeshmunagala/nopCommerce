@@ -81,6 +81,23 @@ h6,
     flex: 0 0 auto;
 }
 
+.jb-account-home-link {
+    display: inline-flex;
+    align-items: center;
+    color: #7d7d7d;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.jb-account-home-link:hover {
+    color: #1f2937;
+}
+
+.jb-account-home-link:focus-visible {
+    outline: 2px solid #1f2937;
+    outline-offset: 2px;
+}
+
 .header-logo a {
     display: block;
 }
