@@ -3,6 +3,8 @@
 
 @{
     var deactivateInviteText = T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate.Tooltip").Text;
+    var inviteExpiryMin = DateTime.UtcNow.ToString("yyyy-MM-dd");
+    var inviteExpiryMax = DateTime.UtcNow.AddDays(60).ToString("yyyy-MM-dd");
     var pagerModel = new MyActivityPagerModel
     {
         Page = Model.Page,
@@ -57,7 +59,7 @@
                             <div class="invite-form-row">
                                 <div class="inputs invite-field invite-field-expiry">
                                     <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
-                                    <input id="expiryDateUtc" type="date" name="expiryDateUtc" value="@(Model.ExpiryDateUtc?.ToString("yyyy-MM-dd"))" class="form-control" />
+                                    <input id="expiryDateUtc" type="date" name="expiryDateUtc" value="@(Model.ExpiryDateUtc?.ToString("yyyy-MM-dd"))" class="form-control" min="@inviteExpiryMin" max="@inviteExpiryMax" />
                                 </div>
                                 <div class="inputs invite-field invite-field-action">
                                     <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
