@@ -3180,6 +3180,7 @@ public class AIInterviewController : BasePluginController
             return Challenge();
 
         var model = new VendorJobModel();
+        model.ApplyUntilUtc = DateTime.UtcNow.Date.AddDays(60);
         await PrepareVendorJobModelAsync(model);
         return View("~/Plugins/Misc.AIInterview/Views/VendorJobCreation.cshtml", model);
     }
@@ -3269,6 +3270,15 @@ public class AIInterviewController : BasePluginController
     protected virtual async Task<IActionResult> SaveVendorJobAsync(VendorJobModel model, Product existingProduct = null)
     {
         NormalizeVendorJobModel(model);
+
+        if (existingProduct == null)
+        {
+            model.ApplyUntilUtc ??= DateTime.UtcNow.Date.AddDays(60);
+
+            if (model.ApplyUntilUtc.Value.Date > DateTime.UtcNow.Date.AddDays(60))
+                ModelState.AddModelError(nameof(model.ApplyUntilUtc), await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.VendorJobCreation.ApplyUntilUtc.Maximum"));
+        }
+
         var (productTemplate, salaryRangeOptionId) = await ValidateVendorJobModelAsync(model, existingProduct == null);
 
         if (!ModelState.IsValid)

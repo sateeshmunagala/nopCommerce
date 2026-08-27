@@ -13,6 +13,8 @@
     var requirementsText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.Requirements").Text;
     var jobContentText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent").Text;
     var interviewSettingsText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings").Text;
+    var applyUntilMin = DateTime.UtcNow.Date.ToString("yyyy-MM-dd");
+    var applyUntilMax = DateTime.UtcNow.Date.AddDays(60).ToString("yyyy-MM-dd");
     NopHtml.AddTitleParts(pageTitle);
     NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
     NopHtml.AppendPageCssClassParts("html-account-page");
@@ -324,7 +326,7 @@
                                 </div>
                                 <div class="vendor-job-form-field">
                                     <label asp-for="ApplyUntilUtc" asp-postfix=":"></label>
-                                    <input asp-for="ApplyUntilUtc" type="date" />
+                                    <input asp-for="ApplyUntilUtc" type="date" min="@applyUntilMin" max="@applyUntilMax" />
                                     <span asp-validation-for="ApplyUntilUtc"></span>
                                 </div>
                                 <div class="vendor-job-form-field">

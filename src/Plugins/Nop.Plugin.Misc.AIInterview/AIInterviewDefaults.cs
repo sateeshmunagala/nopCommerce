@@ -197,9 +197,6 @@ public static class AIInterviewDefaults
     public const string CompletionRecoveryTaskType = "Nop.Plugin.Misc.AIInterview.Services.InterviewCompletionRecoveryTask";
     public const string LegacyCompletionRecoveryTaskType = "Nop.Plugin.Misc.AIInterview.Services.InterviewCompletionRecoveryTask, Nop.Plugin.Misc.AIInterview";
     public const int CompletionRecoveryTaskPeriodSeconds = 30;
-    public const string JobAutoExpiryTaskName = "AI Interview job auto-expiry";
-    public const string JobAutoExpiryTaskType = "Nop.Plugin.Misc.AIInterview.Services.JobAutoExpiryTask";
-    public const int JobAutoExpiryTaskPeriodSeconds = 3600;
     public const int CompletionMaxAttempts = 3;
     public const int CompletionFirstRetryDelayMinutes = 1;
     public const int CompletionSecondRetryDelayMinutes = 5;

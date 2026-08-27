@@ -355,8 +355,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureMockPracticeProductTemplateAsync();
         await EnsurePricingCategoryTemplateAsync();
         await EnsureWidgetActiveAsync();
+        await DeleteJobAutoExpiryTasksAsync();
         await EnsureMessageTemplatesAsync();
-        await EnsureJobAutoExpiryTaskAsync();
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
@@ -1011,6 +1011,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Settings"] = "Settings",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.Select"] = "Select",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ApplyUntilUtc.Past"] = "Apply until date cannot be in the past.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ApplyUntilUtc.Maximum"] = "Application closing date cannot be more than 60 days from today.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.MinimumScore.Range"] = "Minimum score must be between 0 and 100.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.QuestionCount.Range"] = "Question count must be between 1 and 10 when interview is required.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ExperienceLevel.Invalid"] = "Select a valid experience level.",
@@ -2032,6 +2033,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ShortDescription"] = "Short Summary",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.FullDescription"] = "Job Description",
             [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.JobLocation.Invalid"] = "Select a valid job location.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorJobCreation.ApplyUntilUtc.Maximum"] = "Application closing date cannot be more than 60 days from today.",
         });
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
@@ -2039,7 +2041,6 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureRuntimeActivityLogTypesAsync();
 
         await EnsureCompletionRecoveryTaskAsync();
-        await EnsureJobAutoExpiryTaskAsync();
 
         await EnsureEmployerRoleAsync();
         await EnsureInstituteRoleAsync();
@@ -2086,28 +2087,6 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         });
     }
 
-    private async Task EnsureJobAutoExpiryTaskAsync()
-    {
-        if (_scheduleTaskService == null)
-            return;
-
-        var autoExpiryTask = (await _scheduleTaskService.GetAllTasksAsync(showHidden: true) ?? new List<ScheduleTask>())
-            .FirstOrDefault(task => string.Equals(task.Type, AIInterviewDefaults.JobAutoExpiryTaskType, StringComparison.Ordinal));
-
-        if (autoExpiryTask != null)
-            return;
-
-        await _scheduleTaskService.InsertTaskAsync(new ScheduleTask
-        {
-            Enabled = true,
-            StopOnError = false,
-            LastEnabledUtc = DateTime.UtcNow,
-            Seconds = AIInterviewDefaults.JobAutoExpiryTaskPeriodSeconds,
-            Name = AIInterviewDefaults.JobAutoExpiryTaskName,
-            Type = AIInterviewDefaults.JobAutoExpiryTaskType
-        });
-    }
-
     private async Task DeleteCompletionRecoveryTasksAsync()
     {
         if (_scheduleTaskService == null)
@@ -2121,6 +2100,20 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         foreach (var completionTask in completionTasks)
             await _scheduleTaskService.DeleteTaskAsync(completionTask);
+    }
+
+    private async Task DeleteJobAutoExpiryTasksAsync()
+    {
+        if (_scheduleTaskService == null)
+            return;
+
+        const string jobAutoExpiryTaskType = "Nop.Plugin.Misc.AIInterview.Services.JobAutoExpiryTask";
+        var autoExpiryTasks = (await _scheduleTaskService.GetAllTasksAsync(showHidden: true) ?? new List<ScheduleTask>())
+            .Where(task => string.Equals(task.Type, jobAutoExpiryTaskType, StringComparison.Ordinal))
+            .ToList();
+
+        foreach (var autoExpiryTask in autoExpiryTasks)
+            await _scheduleTaskService.DeleteTaskAsync(autoExpiryTask);
     }
 
     /// <summary>
@@ -2144,6 +2137,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await DeleteRuntimeActivityLogTypesAsync();
 
         await DeleteCompletionRecoveryTasksAsync();
+        await DeleteJobAutoExpiryTasksAsync();
 
         await base.UninstallAsync();
     }
