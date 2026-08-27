@@ -1190,6 +1190,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.ProductRequirements.MinimumScore.Hint"] = "Set the minimum interview score required for this job. Leave 0 to use the default fallback.",
             ["Plugins.Misc.AIInterview.Admin.ProductRequirements.QuestionCount"] = "Question Count",
             ["Plugins.Misc.AIInterview.Admin.ProductRequirements.QuestionCount.Hint"] = "Set how many interview questions this job should ask. Allowed range: 1 to 10.",
+            ["Plugins.Misc.AIInterview.Admin.Invite.ExpiryTooFar"] = "Expiry date cannot be more than 60 days in the future.",
             ["Plugins.Misc.AIInterview.Admin.AiService.Title"] = "AI Interview Service Settings",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiEndpointUrl"] = "Azure OpenAI Endpoint URL",
             ["Plugins.Misc.AIInterview.Admin.AiService.AzureOpenAiEndpointUrl.Hint"] = "Use the Azure OpenAI resource endpoint, for example https://your-resource.openai.azure.com/. Do not include /openai/deployments or query-string API versions.",
@@ -1835,6 +1836,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.InvalidOwnership"] = "Product is not owned by the sponsor.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.InvalidAttempts"] = "Invalid max attempts.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.InvalidExpiry"] = "Invalid expiry date.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.ExpiryTooFar"] = "Expiry date cannot be more than 60 days in the future.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.UnexpectedError"] = "An unexpected error occurred.",
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Title"] = "Employer Interview Invites",

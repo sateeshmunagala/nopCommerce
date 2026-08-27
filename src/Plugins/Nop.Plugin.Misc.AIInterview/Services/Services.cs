@@ -2472,8 +2472,13 @@ public class SponsorInviteService : ISponsorInviteService
         if (maxAttempts <= 0)
             throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidAttempts"));
 
+        expiryDateUtc ??= DateTime.UtcNow.AddDays(7);
+
         if (expiryDateUtc.HasValue && expiryDateUtc.Value <= DateTime.UtcNow)
             throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InvalidExpiry"));
+
+        if (expiryDateUtc.HasValue && expiryDateUtc.Value > DateTime.UtcNow.AddDays(60))
+            throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.ExpiryTooFar"));
 
         var invite = new SponsorInvite
         {

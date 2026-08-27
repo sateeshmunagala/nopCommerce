@@ -11,6 +11,8 @@
     NopHtml.AppendPageCssClassParts("html-aiinterview-employer-manage-page");
     var inviteStatuses = ViewBag.SponsorInviteStatuses as IDictionary<int, string> ?? new Dictionary<int, string>();
     var availableProducts = ViewBag.AvailableProducts as IList<SelectListItem> ?? new List<SelectListItem>();
+    var inviteExpiryMin = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm");
+    var inviteExpiryMax = DateTime.UtcNow.AddDays(60).ToString("yyyy-MM-ddTHH:mm");
 }
 
 @section left {
@@ -53,7 +55,7 @@
                         </div>
                         <div class="inputs invite-field">
                             <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
-                            <input id="expiryDateUtc" type="datetime-local" name="expiryDateUtc" class="form-control" />
+                            <input id="expiryDateUtc" type="datetime-local" name="expiryDateUtc" class="form-control" min="@inviteExpiryMin" max="@inviteExpiryMax" />
                         </div>
                     </div>
                     </div>
