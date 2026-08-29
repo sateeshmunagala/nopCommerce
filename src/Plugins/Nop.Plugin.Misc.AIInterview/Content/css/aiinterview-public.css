@@ -603,25 +603,18 @@ body.html-aiinterview-vendor-job-creation-page {
     border-color: var(--jb-accent) !important;
 }
 
-.sfi-skills-filter {
-    display: grid;
-    flex: 1 1 auto;
-    gap: 8px;
-    min-width: 0;
-    padding-bottom: 12px;
-}
-
-.sfi-selected-skills {
+.jb-skills-filter .jb-selected-skills {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    margin: 10px 0 8px;
 }
 
-.sfi-selected-skills:empty {
+.jb-skills-filter .jb-selected-skills:empty {
     display: none;
 }
 
-.sfi-skill-badge {
+.jb-skills-filter .jb-selected-skill {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -633,7 +626,7 @@ body.html-aiinterview-vendor-job-creation-page {
     font-size: 0.82rem;
 }
 
-.sfi-skill-badge-remove {
+.jb-skills-filter .jb-selected-skill-remove {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -641,13 +634,18 @@ body.html-aiinterview-vendor-job-creation-page {
     height: 24px;
     min-height: 24px;
     padding: 0;
+    border: 1px solid var(--jb-action-secondary-border, #0f766e);
     border-radius: 50%;
+    background: #ffffff;
+    color: var(--jb-action-secondary-foreground, #0f766e);
+    cursor: pointer;
 }
 
-.sfi-skill-search {
+.jb-skills-filter .jb-skills-search {
     box-sizing: border-box;
     width: 100%;
     min-height: 40px;
+    margin-bottom: 8px;
     padding: 8px 10px;
     border: 1px solid var(--jb-border, #dedede);
     border-radius: 6px;
@@ -655,35 +653,10 @@ body.html-aiinterview-vendor-job-creation-page {
     color: var(--jb-ink, #2c2c2c);
 }
 
-.sfi-skills-container {
-    display: grid;
-    gap: 2px;
+.jb-skills-filter .jb-skills-scroll-container {
     max-height: 220px;
-    padding: 6px;
     overflow-y: auto;
-    border: 1px solid var(--jb-border, #dedede);
-    border-radius: 6px;
-    background: #ffffff;
-}
-
-.sfi-skill-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 36px;
-    padding: 6px 8px;
-    border-radius: 4px;
-    color: var(--jb-ink, #2c2c2c);
-    cursor: pointer;
-}
-
-.sfi-skill-option:hover,
-.sfi-skill-option:focus-within {
-    background: var(--jb-action-secondary-hover-background, #eefaf7);
-}
-
-.sfi-skill-option[hidden] {
-    display: none;
+    overscroll-behavior: contain;
 }
 
 .vendor-job-form-field > label {
@@ -2252,8 +2225,8 @@ body.aiinterview-report-drawer-open {
 
 .ai-job-card-meta {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 4px 12px !important;
     align-items: center;
     width: 100%;
 }
@@ -9124,10 +9097,6 @@ body.ai-job-preview-open .item-box {
         padding: 14px;
     }
 
-    .my-activity-saved-jobs-list .ai-job-card-meta {
-        grid-template-columns: 1fr;
-    }
-
     .my-activity-pager {
         align-items: stretch;
     }
@@ -11171,44 +11140,45 @@ a.ai-home-performer-name:focus-visible {
 }
 
 @media (max-width: 1000px) {
-    html.html-account-page .account-page .page-title,
-    html.html-vendor-portal-page .account-page .page-title {
-        margin-top: 5px !important;
+    .html-account-page .account-page .page-title {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
         text-align: left !important;
     }
 
-    html.html-account-page .account-page .page-title h1,
-    html.html-account-page .account-page .page-title h2,
-    html.html-vendor-portal-page .account-page .page-title h1,
-    html.html-vendor-portal-page .account-page .page-title h2,
-    html.html-account-page .ai-job-card-title-link,
-    html.html-vendor-portal-page .ai-job-card-title-link,
-    html.html-account-page .job-card-title,
-    html.html-vendor-portal-page .job-card-title,
-    html.html-account-page .job-title h1,
-    html.html-vendor-portal-page .job-title h1,
-    html.html-account-page .job-section-title,
-    html.html-vendor-portal-page .job-section-title {
+    .html-category-page .page-title,
+    .html-category-page .page-title h1,
+    .html-search-page .page-title,
+    .html-search-page .page-title h1,
+    .html-account-page .account-page .page-title h1,
+    .html-account-page .account-page .page-title h2,
+    .html-account-page .ai-job-card-title-link,
+    .html-account-page .job-card-title,
+    .html-account-page .job-title h1,
+    .html-account-page .job-summary,
+    .html-account-page .full-description,
+    .html-account-page .job-section-title,
+    .html-job-details-page .page-title,
+    .html-job-details-page .page-title h1,
+    .html-job-details-page .job-title h1,
+    .html-job-details-page .job-summary,
+    .html-job-details-page .full-description {
         text-align: left !important;
     }
 
-    html.html-account-page .master-wrapper-content,
-    html.html-account-page .center-2,
-    html.html-account-page .account-page .page-body,
-    html.html-vendor-portal-page .center-2,
-    html.html-vendor-portal-page .account-page .page-body {
+    .html-category-page .master-wrapper-content,
+    .html-search-page .master-wrapper-content,
+    .html-account-page .master-wrapper-content,
+    .html-job-details-page .master-wrapper-content {
+        padding-top: 65px !important;
+    }
+
+    .html-account-page .master-wrapper-content,
+    .html-account-page .center-2,
+    .html-account-page .account-page .page-body,
+    .ai-job-preview-drawer .ai-job-preview-drawer-panel,
+    .ai-job-preview-drawer .ai-job-preview-drawer-body {
         padding-left: 5px !important;
         padding-right: 5px !important;
-    }
-}
-
-@media (max-width: 600px) {
-    .sfi-filter-actions:has(.sfi-skills-filter) {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .sfi-filter-actions:has(.sfi-skills-filter) .sfi-view-more-wrap {
-        align-self: flex-start;
     }
 }

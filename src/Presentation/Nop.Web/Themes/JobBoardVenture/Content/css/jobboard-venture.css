@@ -37,6 +37,19 @@
     background: var(--jb-action-secondary-background);
 }
 
+.sfi-inline-filter .sfi-category-tab {
+    position: relative;
+    border-color: transparent;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    background: transparent;
+}
+
+.sfi-inline-filter .sfi-category-tab.is-selected,
+.sfi-inline-filter .sfi-category-tab[aria-pressed="true"] {
+    border-bottom-color: var(--jb-accent);
+}
+
 body {
     background-color: var(--jb-bg);
     color: var(--jb-ink);
@@ -14779,7 +14792,7 @@ html.html-vendor-portal-page .customer-info-page form { padding-top: 0; }
         height: 48px;
     }
 
-    html.html-vendor-portal-page .header-logo {
+    html.html-vendor-portal-page .header-lower .header-logo {
         grid-column: 2;
         grid-row: 1;
         justify-self: start !important;
@@ -14789,7 +14802,7 @@ html.html-vendor-portal-page .customer-info-page form { padding-top: 0; }
         position: static;
         left: auto;
         transform: none;
-        flex: none;
+        flex: none !important;
         margin-left: 4px !important;
     }
 
@@ -15312,20 +15325,87 @@ textarea,
 }
 
 /* Final category header alignment. */
-.html-category-page .page-title h1 {
-    padding-bottom: 6px;
-    border-bottom: 2px solid var(--jb-border);
+.html-category-page .page-title h1,
+.html-search-page .page-title h1 {
+    display: inline-block;
+    padding-bottom: 2px !important;
+    border-bottom: 2px solid var(--jb-accent) !important;
 }
 
 .html-category-page .product-selectors,
-.html-category-page .product-selectors .product-sorting {
-    display: inline-flex;
+.html-search-page .product-selectors,
+.html-category-page .product-selectors .product-sorting,
+.html-search-page .product-selectors .product-sorting,
+.html-category-page .filter-trigger,
+.html-search-page .filter-trigger,
+.html-category-page .jb-filter-panel-toggle,
+.html-search-page .jb-filter-panel-toggle {
+    display: inline-flex !important;
     align-items: center;
     vertical-align: middle;
 }
 
-@media (max-width: 767px) {
-    .html-category-page .product-selectors {
-        width: 100%;
+.html-category-page .product-selectors,
+.html-search-page .product-selectors {
+    flex-flow: row wrap;
+    width: auto !important;
+}
+
+.html-category-page .product-selectors .product-sorting,
+.html-search-page .product-selectors .product-sorting {
+    flex-flow: row nowrap !important;
+    width: auto !important;
+}
+
+.html-category-page .filter-trigger,
+.html-search-page .filter-trigger,
+.html-category-page .jb-filter-panel-toggle,
+.html-search-page .jb-filter-panel-toggle {
+    width: auto !important;
+}
+
+@media (max-width: 1000px) {
+    .html-category-page .master-wrapper-content,
+    .html-search-page .master-wrapper-content,
+    .html-category-page .master-column-wrapper,
+    .html-search-page .master-column-wrapper,
+    .html-category-page .center-2,
+    .html-search-page .center-2,
+    .html-category-page .page-body,
+    .html-search-page .page-body {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        padding-right: 5px !important;
+        padding-left: 5px !important;
+        background: #ffffff !important;
+    }
+
+    .html-category-page .master-wrapper-content,
+    .html-search-page .master-wrapper-content,
+    .html-account-page .master-wrapper-content,
+    .html-job-details-page .master-wrapper-content {
+        padding-top: 65px !important;
+    }
+
+    .html-account-page .account-page .page-title {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    .html-category-page .page-title,
+    .html-category-page .page-title h1,
+    .html-search-page .page-title,
+    .html-search-page .page-title h1,
+    .html-account-page .page-title,
+    .html-account-page .page-title h1,
+    .html-job-details-page .page-title,
+    .html-job-details-page .page-title h1,
+    .html-job-details-page .job-title h1,
+    .html-job-details-page .job-summary,
+    .html-job-details-page .full-description,
+    .html-account-page .job-title h1,
+    .html-account-page .job-summary,
+    .html-account-page .full-description {
+        text-align: left !important;
     }
 }

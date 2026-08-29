@@ -5,7 +5,6 @@
     var loadingId = "skillfinder-inline-loading";
 
     NopHtml.AppendCssFileParts("~/Plugins/Misc.Skillfinder.InlineFilter/Content/css/inline-filter.css");
-    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
 }
 
 <script src="~/lib_npm/htmx.org/dist/htmx.min.js"
@@ -13,7 +12,7 @@
         onerror="this.onerror=null;this.src='@Url.Content("~/Plugins/Misc.Skillfinder.InlineFilter/Content/js/htmx.min.js")';"></script>
 <script src="~/Plugins/Misc.Skillfinder.InlineFilter/Content/js/inline-filter.js" asp-location="Footer"></script>
 
-<section class="sfi-inline-filter" aria-labelledby="skillfinder-inline-filter-title" data-sfi-inline-filter data-sfi-skills-view>
+<section class="sfi-inline-filter" aria-labelledby="skillfinder-inline-filter-title" data-sfi-inline-filter>
     <header class="sfi-heading">
         <span class="sfi-eyebrow">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Eyebrow")</span>
         <h5 id="skillfinder-inline-filter-title">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Title")</h5>
@@ -22,55 +21,25 @@
     @if (Model.Categories.Any())
     {
         <div class="sfi-filter-actions">
-            <div class="sfi-skills-filter" data-sfi-skills-filter>
-                <div class="sfi-selected-skills" data-sfi-selected-skills aria-live="polite">
-                    @foreach (var category in Model.Categories.Where(category => category.IsSelected))
-                    {
-                        <span class="sfi-skill-badge" data-sfi-skill-badge="@category.SeName">
-                            <span>@category.Name</span>
-                            <button type="button"
-                                    class="sfi-skill-badge-remove"
-                                    data-sfi-remove-skill="@category.SeName"
-                                    aria-label="Remove @category.Name">&times;</button>
-                        </span>
-                    }
-                </div>
-
-                <label class="sr-only" for="skillfinder-skill-search">Search skills</label>
-                <input id="skillfinder-skill-search"
-                       class="sfi-skill-search"
-                       type="search"
-                       placeholder="Search skills"
-                       autocomplete="off"
-                       data-sfi-skill-search />
-
-                <div class="sfi-skills-container"
+            <div class="sfi-category-tabs-wrap">
+                <div class="sfi-category-tabs"
                      role="group"
                      aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.CategoriesLabel")">
-                    @for (var index = 0; index < Model.Categories.Count; index++)
+                    @foreach (var category in Model.Categories)
                     {
-                        var category = Model.Categories[index];
-                        var checkboxId = $"skillfinder-skill-{index}";
                         var categoryViewMoreUrl = Url.RouteUrl("Category", new { SeName = category.SeName });
-
-                        <label class="sfi-skill-option"
-                               for="@checkboxId"
-                               data-sfi-skill-item
-                               data-sfi-skill-name="@category.Name">
-                            <input id="@checkboxId"
-                                   type="checkbox"
-                                   name="categorySeName"
-                                   value="@category.SeName"
-                                   data-sfi-skill-checkbox
-                                   data-sfi-view-more-url="@categoryViewMoreUrl"
-                                   hx-get="@Url.RouteUrl(SkillfinderInlineFilterDefaults.RouteName, new { categorySeName = category.SeName })"
-                                   hx-trigger="change"
-                                   hx-target="#@resultsId"
-                                   hx-swap="innerHTML"
-                                   hx-indicator="#@loadingId"
-                                   @(category.IsSelected ? "checked" : null) />
-                            <span data-sfi-skill-label>@category.Name</span>
-                        </label>
+                        <button type="button"
+                                class="sfi-category-tab @(category.IsSelected ? "is-selected" : null)"
+                                aria-pressed="@category.IsSelected.ToString().ToLowerInvariant()"
+                                aria-controls="@resultsId"
+                                data-sfi-category-tab
+                                data-sfi-view-more-url="@categoryViewMoreUrl"
+                                hx-get="@Url.RouteUrl(SkillfinderInlineFilterDefaults.RouteName, new { categorySeName = category.SeName })"
+                                hx-target="#@resultsId"
+                                hx-swap="innerHTML"
+                                hx-indicator="#@loadingId">
+                            @category.Name
+                        </button>
                     }
                 </div>
             </div>
@@ -99,83 +68,3 @@
         </div>
     </div>
 </section>
-
-<script asp-location="Footer">
-    (() => {
-        const createBadge = (checkbox) => {
-            const option = checkbox.closest('[data-sfi-skill-item]');
-            const label = option?.querySelector('[data-sfi-skill-label]')?.textContent?.trim() || checkbox.value;
-            const badge = document.createElement('span');
-            const badgeLabel = document.createElement('span');
-            const removeButton = document.createElement('button');
-
-            badge.className = 'sfi-skill-badge';
-            badge.dataset.sfiSkillBadge = checkbox.value;
-            badgeLabel.textContent = label;
-            removeButton.type = 'button';
-            removeButton.className = 'sfi-skill-badge-remove';
-            removeButton.dataset.sfiRemoveSkill = checkbox.value;
-            removeButton.setAttribute('aria-label', `Remove ${label}`);
-            removeButton.innerHTML = '&times;';
-
-            badge.append(badgeLabel, removeButton);
-            return badge;
-        };
-
-        const initializeSkillsFilter = (root) => {
-            if (root.dataset.sfiSkillsBound === 'true')
-                return;
-
-            root.dataset.sfiSkillsBound = 'true';
-            const search = root.querySelector('[data-sfi-skill-search]');
-            const selectedSkills = root.querySelector('[data-sfi-selected-skills]');
-            const checkboxes = Array.from(root.querySelectorAll('[data-sfi-skill-checkbox]'));
-
-            const renderSelectedSkills = () => {
-                selectedSkills.replaceChildren(...checkboxes.filter(checkbox => checkbox.checked).map(createBadge));
-            };
-
-            search?.addEventListener('input', () => {
-                const query = search.value.trim().toLocaleLowerCase();
-                root.querySelectorAll('[data-sfi-skill-item]').forEach(item => {
-                    const name = item.dataset.sfiSkillName?.toLocaleLowerCase() || '';
-                    item.hidden = query.length > 0 && !name.includes(query);
-                });
-            });
-
-            root.addEventListener('change', event => {
-                const checkbox = event.target.closest?.('[data-sfi-skill-checkbox]');
-                if (!checkbox)
-                    return;
-
-                renderSelectedSkills();
-                const viewMore = root.querySelector('[data-sfi-view-more]');
-                const viewMoreUrl = checkbox.dataset.sfiViewMoreUrl;
-                if (checkbox.checked && viewMore && viewMoreUrl)
-                    viewMore.href = viewMoreUrl;
-            });
-
-            root.addEventListener('click', event => {
-                const removeButton = event.target.closest?.('[data-sfi-remove-skill]');
-                if (!removeButton)
-                    return;
-
-                const checkbox = checkboxes.find(item => item.value === removeButton.dataset.sfiRemoveSkill);
-                if (!checkbox)
-                    return;
-
-                checkbox.checked = false;
-                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-            });
-
-            renderSelectedSkills();
-        };
-
-        const initialize = () => document.querySelectorAll('[data-sfi-skills-view]').forEach(initializeSkillsFilter);
-
-        if (document.readyState === 'loading')
-            document.addEventListener('DOMContentLoaded', initialize, { once: true });
-        else
-            initialize();
-    })();
-</script>

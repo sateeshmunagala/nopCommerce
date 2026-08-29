@@ -50,13 +50,16 @@
     {
         var nameAscendingValue = ((int)ProductSortingEnum.NameAsc).ToString(CultureInfo.InvariantCulture);
         var nameDescendingValue = ((int)ProductSortingEnum.NameDesc).ToString(CultureInfo.InvariantCulture);
-        var availableSortOptions = Model.AvailableSortOptions
-            .Where(option => option.Value != nameAscendingValue && option.Value != nameDescendingValue)
-            .ToList();
+        for (var index = Model.AvailableSortOptions.Count - 1; index >= 0; index--)
+        {
+            var optionValue = Model.AvailableSortOptions[index].Value;
+            if (optionValue == nameAscendingValue || optionValue == nameDescendingValue)
+                Model.AvailableSortOptions.RemoveAt(index);
+        }
 
         <div class="product-sorting">
             <span>@T("Catalog.OrderBy")</span>
-            @Html.DropDownList("products-orderby", availableSortOptions, new { aria_label = T("Catalog.OrderBy.Label") })
+            @Html.DropDownList("products-orderby", Model.AvailableSortOptions, new { aria_label = T("Catalog.OrderBy.Label") })
         </div>
         <script asp-location="Footer">
             $(function() {
