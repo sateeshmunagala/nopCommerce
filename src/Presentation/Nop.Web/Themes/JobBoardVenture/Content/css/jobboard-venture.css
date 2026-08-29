@@ -23,6 +23,20 @@
     --jb-action-focus-offset: 3px;
 }
 
+/* Notifications */
+.bar-notification-container {
+    z-index: 100000 !important;
+}
+
+/* Base role controls remain styled while plugin bundles are loading. */
+.sfi-inline-filter button,
+.job-ai-action {
+    padding: 8px 14px;
+    border: 1px solid var(--jb-action-secondary-border);
+    border-radius: 6px;
+    background: var(--jb-action-secondary-background);
+}
+
 body {
     background-color: var(--jb-bg);
     color: var(--jb-ink);
@@ -7530,11 +7544,22 @@ body.jb-filter-panel-open .product-filters {
 }
 
 /* Catalog finishing fixes shared by desktop and mobile. */
+.html-category-page .page-title {
+    margin-top: 5px !important;
+}
+
 .html-category-page .page-title h1,
 .html-search-page .page-title h1 {
     margin-bottom: 0;
-    border-bottom: 0;
-    padding-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--jb-border);
+}
+
+.html-category-page .product-selectors,
+.html-category-page .product-selectors .product-sorting {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
 }
 
 .html-category-page .block-recently-viewed-products .list li,
@@ -12391,6 +12416,32 @@ body.jb-filter-panel-mobile-mode.jb-filter-panel-open .product-item {
     }
 }
 
+@media (max-width: 1000px) {
+    html.html-account-page .account-page .page-title,
+    html.html-vendor-portal-page .account-page .page-title {
+        margin-top: 5px !important;
+        text-align: left !important;
+    }
+
+    html.html-account-page .account-page .page-title h1,
+    html.html-account-page .account-page .page-title h2,
+    html.html-vendor-portal-page .account-page .page-title h1,
+    html.html-vendor-portal-page .account-page .page-title h2,
+    html.html-account-page .ai-job-card-title-link,
+    html.html-vendor-portal-page .ai-job-card-title-link,
+    html.html-account-page .job-card-title,
+    html.html-vendor-portal-page .job-card-title {
+        text-align: left !important;
+    }
+
+    html.html-account-page .master-wrapper-content,
+    html.html-account-page .center-2,
+    html.html-vendor-portal-page .center-2 {
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+    }
+}
+
 /* Register page label fix. */
 .html-registration-page .registration-page .fieldset,
 .html-registration-page .registration-page .form-fields,
@@ -14731,6 +14782,7 @@ html.html-vendor-portal-page .customer-info-page form { padding-top: 0; }
     html.html-vendor-portal-page .header-logo {
         grid-column: 2;
         grid-row: 1;
+        justify-self: start !important;
         padding: 0 8px;
         height: 48px;
         overflow: hidden;
@@ -14738,6 +14790,7 @@ html.html-vendor-portal-page .customer-info-page form { padding-top: 0; }
         left: auto;
         transform: none;
         flex: none;
+        margin-left: 4px !important;
     }
 
     /* The LogoViewComponent renders its own <a>; hide the empty jb-brand wrapper */
@@ -15255,5 +15308,24 @@ textarea,
     .html-home-page .home-page .product-item.ai-job-product-card:hover,
     .html-home-page .home-page .product-item.ai-job-product-card:focus-within {
         transform: none;
+    }
+}
+
+/* Final category header alignment. */
+.html-category-page .page-title h1 {
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--jb-border);
+}
+
+.html-category-page .product-selectors,
+.html-category-page .product-selectors .product-sorting {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+
+@media (max-width: 767px) {
+    .html-category-page .product-selectors {
+        width: 100%;
     }
 }

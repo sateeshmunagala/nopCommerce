@@ -603,6 +603,89 @@ body.html-aiinterview-vendor-job-creation-page {
     border-color: var(--jb-accent) !important;
 }
 
+.sfi-skills-filter {
+    display: grid;
+    flex: 1 1 auto;
+    gap: 8px;
+    min-width: 0;
+    padding-bottom: 12px;
+}
+
+.sfi-selected-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.sfi-selected-skills:empty {
+    display: none;
+}
+
+.sfi-skill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px 4px 10px;
+    border: 1px solid var(--jb-accent, #35d6b4);
+    border-radius: 999px;
+    background: #e6f9f5;
+    color: var(--jb-ink, #2c2c2c);
+    font-size: 0.82rem;
+}
+
+.sfi-skill-badge-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    min-height: 24px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.sfi-skill-search {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--jb-ink, #2c2c2c);
+}
+
+.sfi-skills-container {
+    display: grid;
+    gap: 2px;
+    max-height: 220px;
+    padding: 6px;
+    overflow-y: auto;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 6px;
+    background: #ffffff;
+}
+
+.sfi-skill-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    color: var(--jb-ink, #2c2c2c);
+    cursor: pointer;
+}
+
+.sfi-skill-option:hover,
+.sfi-skill-option:focus-within {
+    background: var(--jb-action-secondary-hover-background, #eefaf7);
+}
+
+.sfi-skill-option[hidden] {
+    display: none;
+}
+
 .vendor-job-form-field > label {
     color: #30363c;
     font-family: "Fjalla One", Arial, sans-serif;
@@ -2095,12 +2178,10 @@ body.aiinterview-report-drawer-open {
     margin-top: 2px;
 }
 
-.ai-job-card-posted-badge-aging {
-    color: #b45309;
-}
-
+.ai-job-card-posted-badge-aging,
 .ai-job-card-posted-badge-stale {
-    color: #b91c1c;
+    color: var(--jb-muted) !important;
+    font-weight: 500 !important;
 }
 
 .ai-job-card-body {
@@ -5463,16 +5544,16 @@ body.ai-job-preview-open .item-box {
 
 .ai-job-preview-drawer .job-company-logo {
     display: block;
-    flex: 0 0 48px;
-    width: 36px;
-    min-width: 36px;
-    height: 36px;
-    min-height: 36px;
-    padding: 4px;
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 2px;
     border: 1px solid var(--job-border);
     border-radius: 8px;
-    background: var(--job-card);
-    object-fit: contain;
+    background: #ffffff !important;
+    object-fit: contain !important;
 }
 
 .ai-job-preview-drawer .job-company-copy {
@@ -5729,11 +5810,11 @@ body.ai-job-preview-open .item-box {
     }
 
     .ai-job-preview-drawer .job-company-logo {
-        flex-basis: 40px;
-        width: 40px;
-        min-width: 40px;
-        height: 40px;
-        min-height: 40px;
+        flex-basis: 44px;
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
     }
 
     .ai-job-preview-drawer .job-grid {
@@ -6196,10 +6277,11 @@ body.ai-job-preview-open .item-box {
 .job-company-logo {
     width: 44px;
     height: 44px;
+    padding: 2px;
     border-radius: 8px;
-    object-fit: cover;
+    object-fit: contain !important;
     border: 1px solid var(--job-border);
-    background: var(--job-card);
+    background: #ffffff !important;
 }
 
 .job-company-label {
@@ -11085,5 +11167,48 @@ a.ai-home-performer-name:focus-visible {
     .ai-job-product-card:hover,
     .ai-job-product-card:focus-within {
         transform: none;
+    }
+}
+
+@media (max-width: 1000px) {
+    html.html-account-page .account-page .page-title,
+    html.html-vendor-portal-page .account-page .page-title {
+        margin-top: 5px !important;
+        text-align: left !important;
+    }
+
+    html.html-account-page .account-page .page-title h1,
+    html.html-account-page .account-page .page-title h2,
+    html.html-vendor-portal-page .account-page .page-title h1,
+    html.html-vendor-portal-page .account-page .page-title h2,
+    html.html-account-page .ai-job-card-title-link,
+    html.html-vendor-portal-page .ai-job-card-title-link,
+    html.html-account-page .job-card-title,
+    html.html-vendor-portal-page .job-card-title,
+    html.html-account-page .job-title h1,
+    html.html-vendor-portal-page .job-title h1,
+    html.html-account-page .job-section-title,
+    html.html-vendor-portal-page .job-section-title {
+        text-align: left !important;
+    }
+
+    html.html-account-page .master-wrapper-content,
+    html.html-account-page .center-2,
+    html.html-account-page .account-page .page-body,
+    html.html-vendor-portal-page .center-2,
+    html.html-vendor-portal-page .account-page .page-body {
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+    }
+}
+
+@media (max-width: 600px) {
+    .sfi-filter-actions:has(.sfi-skills-filter) {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .sfi-filter-actions:has(.sfi-skills-filter) .sfi-view-more-wrap {
+        align-self: flex-start;
     }
 }

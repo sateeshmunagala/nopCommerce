@@ -92,26 +92,23 @@
                         }
                         <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
                     }
-                    @if (!isLaunchOnly && isAuthenticated)
+                    @if (interviewRecordRequired)
                     {
-                        @if (interviewRecordRequired)
-                        {
-                            <p class="job-ai-note job-ai-note-required">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.None")</p>
-                        }
-                        else if (availableInterviewSessions.Any())
-                        {
-                            <label for="@interviewSessionSelectId">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord")</label>
-                            <select id="@interviewSessionSelectId" name="SelectedInterviewSessionId" required>
-                                <option value="0">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.Placeholder")</option>
-                                @foreach (var option in availableInterviewSessions)
-                                {
-                                    <option value="@option.Value">@option.Text</option>
-                                }
-                            </select>
-                            <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.Help")</p>
-                        }
+                        <p class="job-ai-note job-ai-note-required">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.None")</p>
                     }
-                    else
+                    else if (!isLaunchOnly && availableInterviewSessions.Any())
+                    {
+                        <label for="@interviewSessionSelectId">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord")</label>
+                        <select id="@interviewSessionSelectId" name="SelectedInterviewSessionId" required>
+                            <option value="0">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.Placeholder")</option>
+                            @foreach (var option in availableInterviewSessions)
+                            {
+                                <option value="@option.Value">@option.Text</option>
+                            }
+                        </select>
+                        <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.Help")</p>
+                    }
+                    else if (isLaunchOnly)
                     {
                         <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Interview.LaunchReady")</p>
                     }
@@ -121,13 +118,14 @@
                     <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
                 }
                 <div class="job-ai-actions">
-                    @if (!isLaunchOnly)
+                    @if (!isLaunchOnly || interviewRecordRequired)
                     {
                         <button type="button"
                                 class="job-ai-action job-ai-action-primary apply-btn"
                                 id="@applyButtonId"
                                 data-job-ai-action="apply"
                                 title="@T("Plugins.Misc.AIInterview.Index.ApplyNow")"
+                                aria-label="@T("Plugins.Misc.AIInterview.Index.ApplyNow")"
                                 @(alreadyApplied || interviewRecordRequired ? "disabled" : null)><i class="fa-regular fa-file-lines" aria-hidden="true"></i>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
                     }
                     <button type="button"
