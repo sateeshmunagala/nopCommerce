@@ -9,9 +9,6 @@
         ?? new[] { "Skills", "Skill Set", "Key Skills", "Required Skills" };
 }
 
-<link rel="stylesheet" href="~/lib_npm/admin-lte/plugins/select2/css/select2.min.css" />
-<script asp-location="Footer" src="~/lib_npm/admin-lte/plugins/select2/js/select2.full.min.js"></script>
-
 <div class="product-filter product-spec-filter product-spec-filter-groups">
     @foreach (var attr in Model.Attributes)
     {
@@ -21,80 +18,114 @@
             <summary class="name jb-spec-filter-summary">
                 <span class="jb-spec-filter-summary-text">@attr.Name</span>
             </summary>
-            <ul class="jb-spec-filter-values">
-                @foreach (var value in attr.Values)
-                {
-                    <li class="item @(!string.IsNullOrEmpty(value.ColorSquaresRgb) ? "color-item" : null)">
-                        <input id="attribute-option-@value.Id" type="checkbox" data-option-id="@value.Id" checked="@value.Selected" />
-                        @if (string.IsNullOrEmpty(value.ColorSquaresRgb))
-                        {
-                            <label for="attribute-option-@value.Id">
-                                @value.Name
-                            </label>
-                        }
-                        else
-                        {
-                            <label for="attribute-option-@value.Id" class="attribute-squares color-squares">
-                                <span class="attribute-square" style="background-color: @(value.ColorSquaresRgb);"></span>
-                                @value.Name
-                            </label>
-                        }
-                    </li>
-                }
-            </ul>
+
+            @if (isSkillsAttribute)
+            {
+                <div class="jb-selected-skills" data-jb-selected-skills aria-live="polite">
+                    @foreach (var selectedValue in attr.Values.Where(value => value.Selected))
+                    {
+                        <span class="jb-selected-skill" data-jb-selected-skill="@selectedValue.Id">
+                            <span>@selectedValue.Name</span>
+                            <button type="button"
+                                    class="jb-selected-skill-remove"
+                                    data-jb-remove-skill="@selectedValue.Id"
+                                    aria-label="Remove @selectedValue.Name">&times;</button>
+                        </span>
+                    }
+                </div>
+                <input class="jb-skills-search"
+                       type="search"
+                       placeholder="Search skills"
+                       aria-label="Search @attr.Name"
+                       autocomplete="off" />
+            }
+
+            <div class="@(isSkillsAttribute ? "jb-skills-scroll-container" : null)">
+                <ul class="jb-spec-filter-values">
+                    @foreach (var value in attr.Values)
+                    {
+                        <li class="item @(!string.IsNullOrEmpty(value.ColorSquaresRgb) ? "color-item" : null)" data-jb-skill-item="@(isSkillsAttribute ? "true" : null)">
+                            <input id="attribute-option-@value.Id" type="checkbox" data-option-id="@value.Id" checked="@value.Selected" />
+                            @if (string.IsNullOrEmpty(value.ColorSquaresRgb))
+                            {
+                                <label for="attribute-option-@value.Id">
+                                    @value.Name
+                                </label>
+                            }
+                            else
+                            {
+                                <label for="attribute-option-@value.Id" class="attribute-squares color-squares">
+                                    <span class="attribute-square" style="background-color: @(value.ColorSquaresRgb);"></span>
+                                    @value.Name
+                                </label>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
         </details>
     }
-    <script asp-location="Footer">
-        $(function () {
-            if (typeof jQuery === 'undefined' || !jQuery.fn.select2)
-                return;
-
-            $('.jb-skills-filter').each(function () {
-                var $filter = $(this);
-                var $checkboxes = $filter.find('input[type="checkbox"][data-option-id]');
-                var $select = $('<select multiple class="jb-skills-filter-select"></select>');
-
-                $checkboxes.each(function () {
-                    var $checkbox = $(this);
-                    var optionId = $checkbox.data('option-id').toString();
-                    var optionText = $filter.find('label[for="' + $checkbox.attr('id') + '"]').text().trim();
-                    $select.append(new Option(optionText, optionId, $checkbox.is(':checked'), $checkbox.is(':checked')));
-                });
-
-                $filter.find('.jb-spec-filter-values').addClass('jb-selectors-hidden');
-                $filter.append($select);
-                $select.on('change', function () {
-                    var selectedValues = new Set($select.val() || []);
-                    $checkboxes.each(function () {
-                        var checked = selectedValues.has($(this).data('option-id').toString());
-                        if (this.checked === checked)
-                            return;
-
-                        this.checked = checked;
-                        this.dispatchEvent(new Event('change', { bubbles: true }));
-                    });
-                });
-                $select.select2({
-                    width: '100%',
-                    containerCssClass: 'ai-skills-select2',
-                    dropdownCssClass: 'ai-skills-select2-dropdown',
-                    minimumResultsForSearch: 0
-                });
-            });
-        });
-    </script>
 </div>
+
 <script asp-location="Footer">
     $(function() {
         var $optionEls = $('[data-option-id]');
-        $optionEls.on('change', function () {
+
+        $('.jb-skills-filter').each(function() {
+            var $filter = $(this);
+            var $search = $filter.find('.jb-skills-search');
+            var $items = $filter.find('[data-jb-skill-item="true"]');
+            var $checkboxes = $items.find('input[type="checkbox"][data-option-id]');
+            var $selectedSkills = $filter.find('[data-jb-selected-skills]');
+
+            function renderSelectedSkills() {
+                $selectedSkills.empty();
+                $checkboxes.filter(':checked').each(function() {
+                    var $checkbox = $(this);
+                    var optionId = $checkbox.data('option-id').toString();
+                    var optionText = $filter.find('label[for="' + $checkbox.attr('id') + '"]').text().trim();
+                    var $badge = $('<span class="jb-selected-skill"></span>').attr('data-jb-selected-skill', optionId);
+                    var $remove = $('<button type="button" class="jb-selected-skill-remove">&times;</button>')
+                        .attr('data-jb-remove-skill', optionId)
+                        .attr('aria-label', 'Remove ' + optionText);
+
+                    $badge.append($('<span></span>').text(optionText), $remove);
+                    $selectedSkills.append($badge);
+                });
+            }
+
+            $search.on('input', function() {
+                var query = $(this).val().trim().toLocaleLowerCase();
+                $items.each(function() {
+                    var $item = $(this);
+                    var optionText = $item.find('label').text().trim().toLocaleLowerCase();
+                    $item.toggle(!query || optionText.includes(query));
+                });
+            });
+
+            $checkboxes.on('change', renderSelectedSkills);
+            $filter.on('click', '[data-jb-remove-skill]', function() {
+                var optionId = $(this).attr('data-jb-remove-skill');
+                var $checkbox = $checkboxes.filter(function() {
+                    return $(this).data('option-id').toString() === optionId;
+                });
+
+                $checkbox.prop('checked', false).trigger('change');
+            });
+
+            renderSelectedSkills();
+        });
+
+        $optionEls.on('change', function() {
             CatalogProducts.getProducts();
         });
 
-        $(CatalogProducts).on('before', function (e) {
-            var selectedOptions = $.map($optionEls, function (el) {
+        $(CatalogProducts).on('before', function(e) {
+            var selectedOptions = $.map($optionEls, function(el) {
                 var $optionEl = $(el);
-                if ($optionEl.is(':checked')) return $optionEl.data('option-id');
+                if ($optionEl.is(':checked'))
+                    return $optionEl.data('option-id');
+
                 return null;
             });
 

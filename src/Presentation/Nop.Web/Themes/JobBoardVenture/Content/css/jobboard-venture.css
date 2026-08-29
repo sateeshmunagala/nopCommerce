@@ -15325,6 +15325,13 @@ textarea,
 }
 
 /* Final category header alignment. */
+.html-category-page .page-title,
+.html-search-page .page-title {
+    margin-top: 5px !important;
+    margin-bottom: 8px !important;
+    text-align: left !important;
+}
+
 .html-category-page .page-title h1,
 .html-search-page .page-title h1 {
     display: inline-block;
@@ -15349,6 +15356,7 @@ textarea,
 .html-search-page .product-selectors {
     flex-flow: row wrap;
     width: auto !important;
+    margin-left: 0;
 }
 
 .html-category-page .product-selectors .product-sorting,
@@ -15383,7 +15391,8 @@ textarea,
     .html-category-page .master-wrapper-content,
     .html-search-page .master-wrapper-content,
     .html-account-page .master-wrapper-content,
-    .html-job-details-page .master-wrapper-content {
+    .html-job-details-page .master-wrapper-content,
+    html.html-vendor-portal-page .master-wrapper-content {
         padding-top: 65px !important;
     }
 
