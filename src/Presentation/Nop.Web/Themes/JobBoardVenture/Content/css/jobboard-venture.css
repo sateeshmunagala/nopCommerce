@@ -29,25 +29,12 @@
 }
 
 /* Base role controls remain styled while plugin bundles are loading. */
-.sfi-inline-filter button,
+.sfi-inline-filter button:not(.sfi-category-tab),
 .job-ai-action {
     padding: 8px 14px;
     border: 1px solid var(--jb-action-secondary-border);
     border-radius: 6px;
     background: var(--jb-action-secondary-background);
-}
-
-.sfi-inline-filter .sfi-category-tab {
-    position: relative;
-    border-color: transparent;
-    border-bottom: 3px solid transparent;
-    border-radius: 0;
-    background: transparent;
-}
-
-.sfi-inline-filter .sfi-category-tab.is-selected,
-.sfi-inline-filter .sfi-category-tab[aria-pressed="true"] {
-    border-bottom-color: var(--jb-accent);
 }
 
 body {
@@ -3209,14 +3196,14 @@ body.jb-search-open .jb-drawer-overlay {
 
     .header-logo {
         order: 2;
-        flex: 1 1 auto;
+        flex: 0 0 auto;
         min-width: 0;
-        text-align: center;
+        text-align: left;
     }
 
     .jb-brand {
         gap: 10px;
-        justify-content: center;
+        justify-content: flex-start;
         max-width: 100%;
     }
 
@@ -3841,7 +3828,7 @@ body.jb-search-open .jb-drawer-overlay {
         max-width: none !important;
         min-width: 0;
         margin: 0 !important;
-        padding: 0 4px 0 34px !important;
+        padding: 0 4px !important;
         text-align: left !important;
         overflow: hidden;
     }
@@ -15342,11 +15329,7 @@ textarea,
 .html-category-page .product-selectors,
 .html-search-page .product-selectors,
 .html-category-page .product-selectors .product-sorting,
-.html-search-page .product-selectors .product-sorting,
-.html-category-page .filter-trigger,
-.html-search-page .filter-trigger,
-.html-category-page .jb-filter-panel-toggle,
-.html-search-page .jb-filter-panel-toggle {
+.html-search-page .product-selectors .product-sorting {
     display: inline-flex !important;
     align-items: center;
     vertical-align: middle;
@@ -15365,14 +15348,87 @@ textarea,
     width: auto !important;
 }
 
-.html-category-page .filter-trigger,
-.html-search-page .filter-trigger,
-.html-category-page .jb-filter-panel-toggle,
-.html-search-page .jb-filter-panel-toggle {
-    width: auto !important;
+@media (min-width: 1001px) {
+    .html-category-page .filter-trigger,
+    .html-search-page .filter-trigger,
+    .html-category-page .jb-filter-panel-toggle,
+    .html-search-page .jb-filter-panel-toggle {
+        display: none !important;
+    }
 }
 
 @media (max-width: 1000px) {
+    .html-category-page .page-title,
+    .html-search-page .page-title {
+        display: block !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+
+    .html-category-page .page-body,
+    .html-search-page .page-body {
+        display: grid !important;
+        grid-template-columns: max-content max-content minmax(0, 1fr);
+        align-items: center;
+        justify-content: start;
+        column-gap: 8px;
+    }
+
+    .html-category-page .page-body > :not(.filter-trigger):not(.jb-filter-panel-toggle):not(.product-selectors),
+    .html-search-page .page-body > :not(.filter-trigger):not(.jb-filter-panel-toggle):not(.product-selectors) {
+        grid-column: 1 / -1;
+        min-width: 0;
+    }
+
+    .html-category-page .page-body > .filter-trigger,
+    .html-search-page .page-body > .filter-trigger,
+    .html-category-page .page-body > .jb-filter-panel-toggle,
+    .html-search-page .page-body > .jb-filter-panel-toggle {
+        grid-column: 1;
+        grid-row: 1;
+        justify-self: start;
+    }
+
+    .html-category-page .page-body > .product-selectors,
+    .html-search-page .page-body > .product-selectors {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: start;
+    }
+
+    .html-category-page .filter-trigger,
+    .html-search-page .filter-trigger,
+    .html-category-page .jb-filter-panel-toggle,
+    .html-search-page .jb-filter-panel-toggle,
+    .html-category-page .product-selectors,
+    .html-search-page .product-selectors,
+    .html-category-page .product-selectors .product-sorting,
+    .html-search-page .product-selectors .product-sorting {
+        display: inline-flex !important;
+        align-items: center;
+        width: auto !important;
+        vertical-align: top;
+    }
+
+    .html-category-page .filter-trigger,
+    .html-search-page .filter-trigger,
+    .html-category-page .jb-filter-panel-toggle,
+    .html-search-page .jb-filter-panel-toggle {
+        margin: 0 8px 8px 0 !important;
+    }
+
+    .html-category-page .product-selectors,
+    .html-search-page .product-selectors {
+        flex-flow: row nowrap;
+        gap: 8px;
+        margin: 0 0 8px !important;
+    }
+
+    .html-category-page .product-selectors > div,
+    .html-search-page .product-selectors > div {
+        width: auto !important;
+    }
+
     .html-category-page .master-wrapper-content,
     .html-search-page .master-wrapper-content,
     .html-category-page .master-column-wrapper,
@@ -15397,6 +15453,25 @@ textarea,
     }
 
     .html-account-page .account-page .page-title {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    .html-account-page .master-column-wrapper,
+    html.html-account-page .master-column-wrapper {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    .html-account-page .account-page,
+    html.html-account-page .account-page,
+    .html-account-page .account-page .page-title,
+    html.html-account-page .account-page .page-title,
+    .html-account-page .account-page .page-body,
+    html.html-account-page .account-page .page-body,
+    .html-account-page .jb-account-content,
+    .html-account-page .jb-account-panel,
+    .html-account-page .jb-auth-panel {
         margin-top: 0 !important;
         padding-top: 0 !important;
     }
