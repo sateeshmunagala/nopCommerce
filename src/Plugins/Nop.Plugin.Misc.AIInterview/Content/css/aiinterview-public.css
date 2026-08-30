@@ -5662,6 +5662,21 @@ body.ai-job-preview-open .item-box {
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+
+    .runtime-feedback-helpful,
+    .runtime-feedback-toggle-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .runtime-feedback-helpful-buttons {
+        justify-content: flex-start;
+    }
+
+    .runtime-feedback-upload {
+        width: 100%;
+        box-sizing: border-box;
+    }
 }
 
 @media (max-width: 520px) {
@@ -9378,39 +9393,6 @@ body.ai-job-preview-open .item-box {
 
     .html-aiinterview-employer-dashboard-page .invite-form-row {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 640px) {
-    .runtime-feedback-trigger {
-        flex: 1 1 100%;
-        justify-content: center;
-        white-space: normal;
-    }
-
-    .runtime-feedback-modal {
-        padding: 12px;
-    }
-
-    .runtime-feedback-card {
-        max-height: calc(100vh - 24px);
-        padding: 18px;
-    }
-
-    .runtime-feedback-helpful,
-    .runtime-feedback-toggle-row,
-    .runtime-feedback-actions {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .runtime-feedback-helpful-buttons {
-        justify-content: flex-start;
-    }
-
-    .runtime-feedback-actions .button-1,
-    .runtime-feedback-actions .button-2 {
-        width: 100%;
     }
 }
 
