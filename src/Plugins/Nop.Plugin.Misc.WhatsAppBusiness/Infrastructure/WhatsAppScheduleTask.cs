@@ -50,7 +50,7 @@ public class WhatsAppScheduleTask : IScheduleTask
 
 	public async Task ExecuteAsync()
 	{
-		if (!_settings.IsEnabled || string.IsNullOrWhiteSpace(_settings.ApiKey) || string.IsNullOrWhiteSpace(_settings.PhoneNumberId))
+		if (!_settings.IsConfiguredForSending())
 		{
 			return;
 		}

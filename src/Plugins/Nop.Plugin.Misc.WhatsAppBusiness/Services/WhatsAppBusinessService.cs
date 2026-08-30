@@ -159,7 +159,7 @@ public class WhatsAppBusinessService : IWhatsAppBusinessService
 
 	private async Task<bool> SendPayloadAsync(int orderId, int customerId, string phoneNumber, string messageType, object payload, string? trackingNumber, string? templateUsed)
 	{
-		if (!_settings.IsEnabled)
+		if (!_settings.IsConfiguredForSending())
 			return false;
 
 		string correlationId = ((orderId > 0) ? orderId.ToString() : Guid.NewGuid().ToString("N").Substring(0, 8));
@@ -168,12 +168,6 @@ public class WhatsAppBusinessService : IWhatsAppBusinessService
 		{
 			await LogWarningAsync($"[{correlationId}] WhatsApp {messageType} send skipped: recipient phone number is missing.");
 			await WriteLogAsync(orderId, customerId, phoneNumber, messageType, "Failed", "Recipient phone number is missing.", trackingNumber, null, templateUsed);
-			return false;
-		}
-		if (string.IsNullOrWhiteSpace(_settings.ApiKey) || string.IsNullOrWhiteSpace(_settings.PhoneNumberId))
-		{
-			await LogWarningAsync($"[{correlationId}] WhatsApp {messageType} send skipped for {maskedTo}: Meta Cloud API " + "credentials not configured (access token / phone-number-id missing).");
-			await WriteLogAsync(orderId, customerId, phoneNumber, messageType, "Failed", "Meta Cloud API credentials not configured.", trackingNumber, null, templateUsed);
 			return false;
 		}
 		string arg = (string.IsNullOrWhiteSpace(_settings.ApiVersion) ? "v23.0" : _settings.ApiVersion);

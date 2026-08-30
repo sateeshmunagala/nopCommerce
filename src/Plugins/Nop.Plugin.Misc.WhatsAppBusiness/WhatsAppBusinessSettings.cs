@@ -71,4 +71,11 @@ public class WhatsAppBusinessSettings : ISettings
 	public bool RequireCustomerAccount { get; set; }
 
 	public long LastProcessedUtcTicks { get; set; }
+
+	public bool IsConfiguredForSending()
+	{
+		return IsEnabled &&
+			!string.IsNullOrWhiteSpace(ApiKey) &&
+			!string.IsNullOrWhiteSpace(PhoneNumberId);
+	}
 }

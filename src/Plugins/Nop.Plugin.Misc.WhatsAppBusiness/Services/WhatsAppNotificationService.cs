@@ -21,11 +21,14 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
         _logger = logger;
     }
 
-    public bool IsEnabled => _settings.IsEnabled;
+    public bool IsEnabled => _settings.IsConfiguredForSending();
 
     public async Task<bool> SendNotificationAsync(WhatsAppNotificationRequest request)
     {
-        if (!_settings.IsEnabled || request == null || string.IsNullOrWhiteSpace(request.PhoneNumber))
+        if (!_settings.IsConfiguredForSending())
+            return false;
+
+        if (request == null || string.IsNullOrWhiteSpace(request.PhoneNumber))
             return false;
 
         try

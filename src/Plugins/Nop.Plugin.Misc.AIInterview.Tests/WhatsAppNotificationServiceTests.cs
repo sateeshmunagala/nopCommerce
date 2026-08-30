@@ -12,6 +12,30 @@ public class WhatsAppNotificationServiceTests
     private const string PhoneNumber = "+15550000005";
 
     [Test]
+    public async Task SendNotificationAsync_ReturnsFalseWithoutProviderOrWarning_WhenCredentialsAreMissing()
+    {
+        var provider = new Mock<IWhatsAppBusinessService>();
+        var logger = new Mock<ILogger>();
+        var service = new WhatsAppNotificationService(
+            provider.Object,
+            new WhatsAppBusinessSettings
+            {
+                IsEnabled = true,
+                ApiKey = string.Empty,
+                PhoneNumberId = string.Empty,
+                UseTemplateMessages = false
+            },
+            logger.Object);
+
+        var result = await service.SendNotificationAsync(CreateRequest());
+
+        Assert.That(result, Is.False);
+        Assert.That(service.IsEnabled, Is.False);
+        provider.VerifyNoOtherCalls();
+        logger.Verify(x => x.WarningAsync(It.IsAny<string>(), null, null), Times.Never);
+    }
+
+    [Test]
     public async Task SendNotificationAsync_ReturnsFalseAndLogsRedactedWarning_WhenProviderReturnsFalse()
     {
         var provider = new Mock<IWhatsAppBusinessService>();
@@ -71,6 +95,8 @@ public class WhatsAppNotificationServiceTests
             new WhatsAppBusinessSettings
             {
                 IsEnabled = true,
+                ApiKey = "test-api-key",
+                PhoneNumberId = "test-phone-number-id",
                 UseTemplateMessages = false
             },
             logger.Object);
