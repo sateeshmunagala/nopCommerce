@@ -3989,6 +3989,18 @@ body.ai-job-preview-open .item-box {
     outline: none;
 }
 
+.runtime-shell button:focus-visible,
+.runtime-shell a:focus-visible,
+.runtime-shell select:focus-visible,
+.runtime-shell textarea:focus-visible,
+.runtime-modal button:focus-visible,
+.runtime-modal select:focus-visible,
+.runtime-modal textarea:focus-visible,
+.runtime-modal input:focus-visible {
+    outline: 3px solid rgba(36, 185, 154, 0.38);
+    outline-offset: 2px;
+}
+
 .runtime-shell .button-1:disabled,
 .runtime-shell .button-2:disabled,
 .runtime-modal .button-1:disabled,
@@ -4989,6 +5001,7 @@ body.ai-job-preview-open .item-box {
 @media (max-width: 1024px) {
     .runtime-layout {
         grid-template-columns: 1fr;
+        gap: 10px;
         height: auto;
         padding-top: 4px;
         overflow: visible;
@@ -4997,6 +5010,9 @@ body.ai-job-preview-open .item-box {
     .runtime-stage,
     .runtime-sidebar {
         height: auto;
+        padding: 8px;
+        border-color: #e3e8ee;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
     }
 
     .runtime-video {
@@ -5023,132 +5039,256 @@ body.ai-job-preview-open .item-box {
     }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
+    .html-aiinterview-runtime-page body {
+        background: #eef2f5;
+    }
+
     .runtime-shell {
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: 6px;
+        background: linear-gradient(180deg, #f5f7f9 0%, #e8edf1 100%);
+    }
+
+    .runtime-page {
+        width: 100%;
+        min-height: 100vh;
+        min-height: 100dvh;
         padding: 8px;
-    }
-
-    .runtime-report-ready-row {
-        gap: 2px;
-        padding: 3px 6px;
-    }
-
-    .runtime-shell .runtime-report-ready-action .runtime-report-link {
-        flex: 0 0 auto;
-        width: auto;
-        min-height: 28px;
-        min-width: 92px;
-        padding: 5px 7px;
-    }
-
-    .runtime-status-region {
-        gap: 2px;
-    }
-
-    .runtime-status-region > .runtime-status,
-    .runtime-screen-share-interruption-warning,
-    .runtime-screen-share-status,
-    .runtime-mock-warning {
-        min-height: 36px;
-        padding: 8px 10px;
-        font-size: 12px;
-    }
-
-    .runtime-page,
-    .runtime-stage,
-    .runtime-sidebar {
-        padding: 12px;
+        border: 0;
+        border-radius: 8px;
+        overflow: visible;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
     }
 
     .runtime-topbar {
-        align-items: flex-start;
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        grid-template-rows: 44px 44px;
+        align-items: center;
+        gap: 6px 8px;
+        padding: 0 0 8px;
     }
 
     .runtime-topbar-main,
-    .runtime-meta,
-    .runtime-controls,
-    .runtime-title-meta {
-        width: 100%;
+    .runtime-meta {
+        display: contents;
+    }
+
+    .runtime-back-button {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .runtime-title-block {
+        grid-column: 2;
+        grid-row: 1;
+        overflow: hidden;
+    }
+
+    .runtime-title-line {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: nowrap;
     }
 
     .runtime-topbar h3 {
-        font-size: 18px;
+        min-width: 0;
+        overflow: hidden;
+        font-size: 1rem;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .runtime-question-counter {
-        font-size: 13px;
+        min-height: 28px;
+        max-width: 72px;
+        padding: 0 7px;
+        overflow: hidden;
+        font-size: 0.72rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
-    .runtime-video {
-        --runtime-caption-bottom: 24px;
-        min-height: 260px;
-        height: auto;
+    .runtime-candidate-chip {
+        display: none;
     }
 
-    .runtime-avatar {
-        top: 14px;
-        right: 14px;
-        width: 136px;
-        min-height: 112px;
-        padding: 12px;
+    .runtime-timer-chip {
+        grid-column: 3;
+        grid-row: 1;
+        min-height: 40px;
+        padding: 0 10px;
+        gap: 6px;
+        font-size: 0.8rem;
+        white-space: nowrap;
     }
 
-    .runtime-controls {
-        grid-template-columns: 1fr;
+    #runtime-timer-label {
+        display: none;
     }
 
-    .runtime-control-group,
-    .runtime-control-group-left,
-    .runtime-control-group-center,
-    .runtime-control-group-right {
-        justify-content: flex-start;
-        flex-wrap: wrap;
+    .runtime-feedback-trigger,
+    #btn-runtime-tour,
+    .runtime-stop-button {
+        align-self: center;
+        justify-self: center;
+        width: 44px !important;
+        min-width: 44px !important;
+        height: 44px;
+        min-height: 44px !important;
+        margin: 0;
+        padding: 0 !important;
+        overflow: hidden;
     }
 
-    .runtime-shell .button-1,
-    .runtime-shell .button-2 {
-        flex: 1 1 auto;
+    .runtime-feedback-trigger {
+        grid-column: 1;
+        grid-row: 2;
     }
 
-    .runtime-icon-button {
-        flex: 0 0 42px;
+    .runtime-feedback-trigger span {
+        display: none;
     }
 
-    .runtime-audio-device-panel {
-        left: 0;
-        right: auto;
-        width: min(320px, calc(100vw - 32px));
-        transform: none;
+    #btn-runtime-tour {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .runtime-stop-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        grid-column: 3;
+        grid-row: 2;
+        border-color: #f0c4c4 !important;
+        background: #fff7f7 !important;
+        color: #b42318 !important;
+        font-size: 0;
+    }
+
+    .runtime-stop-button::before {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        background: currentColor;
+        content: "";
+    }
+
+    .runtime-status-region,
+    .runtime-layout,
+    .runtime-stage,
+    .runtime-sidebar {
+        min-width: 0;
+    }
+
+    .runtime-status-region {
+        gap: 4px;
+    }
+
+    .runtime-layout {
+        gap: 8px;
+        padding-top: 8px;
+    }
+
+    .runtime-stage,
+    .runtime-sidebar {
+        gap: 8px;
+        padding: 8px;
+    }
+
+    .runtime-stage {
+        order: 1;
     }
 
     .runtime-sidebar {
-        min-height: 58vh;
+        order: 2;
+        min-height: 0;
+        overflow: visible;
     }
 
-    .runtime-conversation {
-        height: 320px;
-        min-height: 320px;
+    .runtime-video {
+        --runtime-caption-bottom: 8px;
+        width: 100%;
+        height: clamp(260px, 38vh, 360px);
+        height: clamp(260px, 38dvh, 360px);
+        min-height: 260px;
+        max-height: 360px;
+        aspect-ratio: 16 / 9;
+        box-sizing: border-box;
     }
 
-    .runtime-answer {
-        margin-top: 0;
-        margin-bottom: 6px;
+    .runtime-avatar {
+        top: 8px;
+        right: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: auto;
+        max-width: calc(100% - 16px);
+        min-height: 40px;
+        padding: 5px 8px;
+        border-color: rgba(223, 232, 238, 0.88);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+        backdrop-filter: blur(8px);
     }
 
-    #runtime-panel-conversation {
-        padding-bottom: 6px;
+    .runtime-avatar-status {
+        justify-self: auto;
+        gap: 6px;
+        padding: 0;
+        background: transparent;
+        font-size: 0.62rem;
+        white-space: nowrap;
+    }
+
+    .runtime-avatar-status-dot {
+        width: 7px;
+        height: 7px;
+        box-shadow: 0 0 0 4px rgba(53, 214, 180, 0.14);
+    }
+
+    .runtime-avatar-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        font-size: 0.72rem;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .runtime-avatar-label i {
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        border-radius: 50%;
+        font-size: 13px;
+    }
+
+    .runtime-avatar-label small {
+        display: none;
     }
 
     .runtime-video-caption {
         --runtime-caption-copy-gap: 36px;
         --runtime-caption-copy-half-gap: 18px;
-        right: 6px;
+        right: 8px;
         bottom: var(--runtime-caption-bottom);
-        left: 6px;
+        left: 8px;
         width: auto;
         max-width: none;
-        height: 32px;
-        padding: 0 8px;
+        height: 34px;
+        padding: 0 9px;
+        border-radius: 7px;
+        background: rgba(15, 23, 42, 0.76);
         transform: none;
     }
 
@@ -5162,27 +5302,265 @@ body.ai-job-preview-open .item-box {
         font-size: 0.78rem;
     }
 
+    .runtime-controls {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto auto;
+        gap: 8px;
+        width: 100%;
+        padding: 8px;
+        border-top-width: 2px;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    }
+
+    .runtime-control-group {
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+
+    .runtime-control-group-center {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        grid-template-columns: 44px 44px minmax(0, 1fr) 44px;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .runtime-control-group-left {
+        grid-column: 1;
+        grid-row: 2;
+        justify-content: flex-start;
+    }
+
+    .runtime-control-group-right {
+        grid-column: 2;
+        grid-row: 2;
+        justify-content: flex-end;
+    }
+
+    .runtime-control-icons {
+        flex-wrap: nowrap;
+    }
+
+    .runtime-controls #start-or-next {
+        width: 100%;
+        min-width: 0;
+        min-height: 44px;
+        padding: 8px 10px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .runtime-icon-button,
+    .runtime-icon-button.button-2 {
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
+        flex: 0 0 44px;
+    }
+
+    .runtime-audio-device-control {
+        position: static;
+        width: 44px;
+    }
+
+    .runtime-audio-device-panel {
+        position: fixed;
+        right: 6px;
+        bottom: max(6px, env(safe-area-inset-bottom));
+        left: 6px;
+        z-index: 10020;
+        width: auto;
+        max-width: none;
+        max-height: min(54vh, 420px);
+        max-height: min(54dvh, 420px);
+        padding: 16px;
+        overflow-y: auto;
+        border-radius: 14px 14px 6px 6px;
+        box-sizing: border-box;
+        transform: none;
+    }
+
+    .runtime-sidebar-head {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        padding-bottom: 8px;
+        background: rgba(255, 255, 255, 0.96);
+    }
+
+    .runtime-sidebar-tabs {
+        gap: 6px;
+    }
+
+    .runtime-tab {
+        min-width: 0;
+        min-height: 44px;
+        padding: 8px 10px;
+        overflow: hidden;
+        font-size: 0.78rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .runtime-sidebar-panels {
+        height: auto;
+        overflow: visible;
+    }
+
+    .runtime-sidebar-panel {
+        height: auto;
+        max-height: min(72vh, 680px);
+        max-height: min(72dvh, 680px);
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scroll-padding-bottom: 132px;
+    }
+
+    #runtime-panel-conversation {
+        grid-template-rows: auto auto minmax(220px, 1fr) auto;
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+
+    .runtime-question,
+    .runtime-message {
+        padding: 9px 10px;
+    }
+
+    .runtime-conversation {
+        height: clamp(220px, 36vh, 360px);
+        height: clamp(220px, 36dvh, 360px);
+        min-height: 220px;
+        max-height: 360px;
+        gap: 8px;
+        padding: 6px;
+    }
+
+    .runtime-chat-placeholder {
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 9px;
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .runtime-chat-placeholder-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+    }
+
+    .runtime-chat-message {
+        grid-template-columns: 32px minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    .runtime-chat-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+    }
+
+    .runtime-chat-bubble {
+        width: fit-content;
+        max-width: 88%;
+        padding: 10px 11px;
+        border-radius: 12px;
+        line-height: 1.5;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+    }
+
+    .runtime-chat-message.is-user .runtime-chat-bubble {
+        justify-self: end;
+    }
+
+    .runtime-chat-label {
+        margin-bottom: 4px;
+    }
+
+    .runtime-chat-text {
+        line-height: 1.5;
+    }
+
+    .runtime-answer {
+        position: sticky;
+        bottom: 0;
+        z-index: 4;
+        margin: 0;
+        padding-top: 6px;
+        padding-bottom: max(2px, env(safe-area-inset-bottom));
+        background: rgba(255, 255, 255, 0.97);
+    }
+
+    .runtime-answer textarea {
+        min-height: 88px;
+        max-height: min(168px, 28vh);
+        max-height: min(168px, 28dvh);
+        padding: 12px 56px 12px 12px;
+        border-radius: 10px;
+    }
+
+    .runtime-composer-send {
+        right: 8px;
+        bottom: 8px;
+        border-radius: 8px !important;
+    }
+
     .runtime-modal {
-        padding: 10px;
+        padding: 8px;
+    }
+
+    .runtime-modal.is-open {
+        align-items: end;
+        justify-items: center;
     }
 
     .runtime-permissions-card {
-        max-height: 92vh;
-        padding: 16px;
-    }
-
-    .runtime-permissions-head {
-        align-items: flex-start;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        width: 100%;
+        height: min(94vh, 760px);
+        height: min(94dvh, 760px);
+        max-height: calc(100vh - 8px);
+        max-height: calc(100dvh - 8px);
+        padding: 14px;
+        overflow: hidden;
+        border-radius: 16px 16px 4px 4px;
     }
 
     .runtime-permissions-stepper {
-        grid-template-columns: repeat(7, 106px);
-        margin: 0 -2px;
-        padding-bottom: 2px;
+        grid-template-columns: repeat(7, 44px);
+        gap: 6px;
+        margin: 0;
+        padding: 1px 0 5px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+    }
+
+    .runtime-permissions-stepper button {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        min-height: 44px;
+        padding: 0;
+        border-radius: 999px;
+    }
+
+    .runtime-permissions-stepper button span {
+        width: 28px;
+        height: 28px;
+    }
+
+    .runtime-permissions-stepper button strong {
+        display: none;
     }
 
     .runtime-permissions-body {
         min-height: 0;
+        padding: 12px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
     }
 
     .runtime-permissions-step[data-permission-step="1"] {
@@ -5209,26 +5587,246 @@ body.ai-job-preview-open .item-box {
         max-width: 100%;
     }
 
-    .runtime-permissions-choice-row,
-    .runtime-permissions-actions,
-    .runtime-permissions-summary-list div {
+    .runtime-permissions-choice-row {
+        display: grid;
+        grid-template-columns: 1fr;
         align-items: stretch;
-        flex-direction: column;
+        width: 100%;
     }
 
     .runtime-permissions-choice-row .button-2,
     .runtime-permissions-actions .button-1,
     .runtime-permissions-actions .button-2 {
         width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .runtime-permissions-summary-list div {
         display: grid;
         gap: 4px;
+        align-items: stretch;
+    }
+
+    .runtime-permissions-actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 3;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin: 0 -14px -14px;
+        padding: 10px 14px max(10px, env(safe-area-inset-bottom));
+        border-top: 1px solid var(--jb-border, #dedede);
+        background: rgba(255, 255, 255, 0.98);
+    }
+
+    .runtime-feedback-card {
+        width: 100%;
+        max-height: calc(100vh - 8px);
+        max-height: calc(100dvh - 8px);
+        gap: 12px;
+        padding: 16px;
+        overflow-y: auto;
+        border-radius: 16px 16px 4px 4px;
+        overscroll-behavior: contain;
+    }
+
+    .runtime-feedback-actions {
+        position: sticky;
+        bottom: -16px;
+        z-index: 3;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin: 0 -16px -16px;
+        padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+        border-top: 1px solid var(--jb-border, #dedede);
+        background: rgba(255, 255, 255, 0.98);
+    }
+
+    .runtime-feedback-actions .button-1,
+    .runtime-feedback-actions .button-2 {
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .runtime-feedback-issue-current span,
+    .runtime-feedback-issue-option span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 520px) {
+    .runtime-shell {
+        padding: 4px;
+    }
+
+    .runtime-page {
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: 6px;
+        border-radius: 4px;
+        box-shadow: 0 3px 12px rgba(15, 23, 42, 0.05);
+    }
+
+    .runtime-credit-warning,
+    .runtime-report-ready-row {
+        width: 100%;
+        gap: 2px;
+        padding: 6px 8px;
+        box-sizing: border-box;
+    }
+
+    .runtime-report-ready-row {
+        flex-wrap: wrap;
+    }
+
+    .runtime-progress {
+        width: 100%;
+    }
+
+    .runtime-shell .runtime-report-ready-action .runtime-report-link {
+        flex: 0 0 auto;
+        width: auto;
+        min-height: 28px;
+        min-width: 92px;
+        padding: 5px 7px;
+    }
+
+    .runtime-status-region {
+        gap: 2px;
+    }
+
+    .runtime-status-region > .runtime-status,
+    .runtime-screen-share-interruption-warning,
+    .runtime-screen-share-status,
+    .runtime-mock-warning {
+        width: 100%;
+        min-height: 36px;
+        padding: 7px 8px;
+        box-sizing: border-box;
+        font-size: 12px;
+    }
+
+    .runtime-stage,
+    .runtime-sidebar {
+        padding: 6px;
+        border-color: transparent;
+        box-shadow: none;
+    }
+
+    .runtime-video {
+        --runtime-caption-bottom: 6px;
+        height: clamp(260px, 38vh, 340px);
+        height: clamp(260px, 38dvh, 340px);
+        min-height: 260px;
+        max-height: 340px;
+    }
+
+    .runtime-controls,
+    .runtime-control-group,
+    .runtime-control-group-center {
+        gap: 6px;
+    }
+
+    .runtime-conversation {
+        height: clamp(220px, 34vh, 320px);
+        height: clamp(220px, 34dvh, 320px);
+        min-height: 220px;
+        max-height: 320px;
+    }
+
+    .runtime-video-caption {
+        right: 6px;
+        left: 6px;
+        height: 32px;
+        padding: 0 8px;
+    }
+
+    .runtime-modal {
+        padding: 4px;
+    }
+
+    .runtime-permissions-card {
+        height: calc(100vh - 4px);
+        height: calc(100dvh - 4px);
+        max-height: calc(100vh - 4px);
+        max-height: calc(100dvh - 4px);
+        padding: 12px;
+    }
+
+    .runtime-permissions-actions {
+        margin: 0 -12px -12px;
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .runtime-feedback-card {
+        max-height: calc(100vh - 4px);
+        max-height: calc(100dvh - 4px);
+        padding: 14px;
+    }
+
+    .runtime-feedback-actions {
+        bottom: -14px;
+        margin: 0 -14px -14px;
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+}
+
+@media (max-width: 390px) {
+    .runtime-topbar {
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        column-gap: 6px;
+    }
+
+    .runtime-timer-chip {
+        gap: 5px;
+        padding: 0 8px;
+    }
+
+    .runtime-avatar-status > span:last-child,
+    .runtime-avatar-label > span {
+        display: block;
+        max-width: 72px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .runtime-tab,
+    .runtime-detail-label,
+    .runtime-detail-value {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .runtime-feedback-actions,
+    .runtime-permissions-actions {
+        grid-template-columns: 1fr;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .runtime-shell *,
+    .runtime-modal * {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
     .runtime-video-caption.is-scrolling .runtime-video-caption-track {
         width: 100%;
         min-width: 0;
