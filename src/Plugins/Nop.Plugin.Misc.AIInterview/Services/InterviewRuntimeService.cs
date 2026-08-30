@@ -1509,6 +1509,11 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     private const int CompletionEstimatedWaitSeconds = 120;
     private const string CompletionPendingMessage = "Your answer was submitted. Generating your report.";
     private const string CompletionFailedMessage = "Report generation failed. Please contact support if the report is not available from your interview history.";
+    private const string EmptyRecordingReasonCode = "empty-recording";
+    private const string RecordingTooLargeReasonCode = "recording-too-large";
+    private const string StorageNotConfiguredReasonCode = "storage-not-configured";
+    private const string AzurePutFailedReasonCode = "azure-put-failed";
+    private const string UploadExceptionReasonCode = "upload-exception";
     private static readonly ConcurrentDictionary<int, SessionMutationLock> SessionMutationLocks = new();
     private static readonly ConcurrentDictionary<int, Lazy<Task<PrepareInterviewResponseModel>>> PreparationTasks = new();
 
@@ -3714,28 +3719,29 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 "Invalid or expired session token.",
                 validation.LogMessage,
                 normalizedContentType: normalizedContentType,
-                reasonCode: validation.ReasonCode);
+                reasonCode: validation.ReasonCode,
+                token: token);
             return RecordingFailure("Invalid or expired session token.", validation.ReasonCode);
         }
 
         if (recording == null || recording.Length <= 0)
         {
-            await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is empty.", "empty recording", normalizedContentType: normalizedContentType);
-            return RecordingFailure("Recording file is empty.");
+            await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is empty.", "empty recording", normalizedContentType: normalizedContentType, reasonCode: EmptyRecordingReasonCode, token: token);
+            return RecordingFailure("Recording file is empty.", EmptyRecordingReasonCode);
         }
 
         var maxRecordingBytes = (long)NormalizeRecordingUploadMaxMb(_settings?.RecordingUploadMaxMb ?? 0) * 1024L * 1024L;
         if (recording.Length > maxRecordingBytes)
         {
-            await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is too large.", "recording too large", normalizedContentType: normalizedContentType);
-            return RecordingFailure("Recording file is too large.");
+            await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is too large.", "recording too large", normalizedContentType: normalizedContentType, reasonCode: RecordingTooLargeReasonCode, token: token);
+            return RecordingFailure("Recording file is too large.", RecordingTooLargeReasonCode);
         }
 
         if (string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageContainerUrl) ||
             string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageSasToken))
         {
-            await LogRecordingUploadFailureAsync(session, recording, null, "Recording storage is not configured.", "missing Azure Blob configuration", normalizedContentType: normalizedContentType);
-            return RecordingFailure("Recording storage is not configured.");
+            await LogRecordingUploadFailureAsync(session, recording, null, "Recording storage is not configured.", "missing Azure Blob configuration", normalizedContentType: normalizedContentType, reasonCode: StorageNotConfiguredReasonCode, token: token);
+            return RecordingFailure("Recording storage is not configured.", StorageNotConfiguredReasonCode);
         }
 
         var containerUrl = _settings.AzureBlobStorageContainerUrl.Trim().TrimEnd('/');
@@ -3766,8 +3772,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync();
-                await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", $"Azure Blob PUT returned {(int)response.StatusCode}.", (int)response.StatusCode, errorBody, normalizedContentType);
-                return RecordingFailure("Recording upload failed.");
+                await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", $"Azure Blob PUT returned {(int)response.StatusCode}.", (int)response.StatusCode, errorBody, normalizedContentType, AzurePutFailedReasonCode, token);
+                return RecordingFailure("Recording upload failed.", AzurePutFailedReasonCode);
             }
 
             var recordingUrlStored = false;
@@ -3822,10 +3828,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Recording upload failed for session {SessionId}, customer {CustomerId}, product {ProductId}.",
-                session?.Id ?? 0, session?.CustomerId ?? 0, session?.ProductId ?? 0);
-            await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", ex.ToString(), normalizedContentType: normalizedContentType);
-            return RecordingFailure("Recording upload failed.");
+            await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", ex.ToString(), normalizedContentType: normalizedContentType, reasonCode: UploadExceptionReasonCode, token: token);
+            return RecordingFailure("Recording upload failed.", UploadExceptionReasonCode);
         }
     }
 
@@ -5194,9 +5198,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             BuildRuntimeActivityComment(session, message: $"Recording uploaded. Bytes={recording?.Length ?? 0}.", statusCode: azureStatus));
     }
 
-    protected virtual async Task LogRecordingUploadFailureAsync(InterviewSession session, IFormFile recording, string blobName, string message, string reason, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null, string reasonCode = null)
+    protected virtual async Task LogRecordingUploadFailureAsync(InterviewSession session, IFormFile recording, string blobName, string message, string reason, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null, string reasonCode = null, string token = null)
     {
-        var detail = BuildRecordingUploadLog(session, recording, blobName, "Failure", message, reason, azureStatus, azureErrorBody, normalizedContentType, reasonCode);
+        var detail = BuildRecordingUploadLog(session, recording, blobName, "Failure", message, reason, azureStatus, azureErrorBody, normalizedContentType, reasonCode, token);
         _logger?.LogError("AI Interview recording upload failure. {Detail}", detail);
         if (_nopLogger != null)
             await _nopLogger.InsertLogAsync(NopLogLevel.Error, "AI Interview recording upload failure", detail, await ResolveLogCustomerAsync(session));
@@ -5206,11 +5210,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             BuildRuntimeActivityComment(session, message: message ?? reason ?? "Recording upload failed.", statusCode: azureStatus, failureKind: reasonCode ?? reason));
     }
 
-    protected virtual string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null, string reasonCode = null)
+    protected virtual string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null, string reasonCode = null, string token = null)
     {
+        var safeToken = token ?? session?.Token;
         var details = new List<string>
         {
             $"Stage={stage}",
+            $"ServerUtc={DateTime.UtcNow:O}",
             $"SessionId={session?.Id ?? 0}",
             $"CustomerId={session?.CustomerId ?? 0}",
             $"ProductId={session?.ProductId ?? 0}",
@@ -5218,6 +5224,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             $"StartedOnUtc={FormatRecordingLogUtc(session?.StartedOnUtc)}",
             $"CompletedOnUtc={FormatRecordingLogUtc(session?.CompletedOnUtc)}",
             $"TokenExpiryUtc={FormatRecordingLogUtc(session?.TokenExpiryUtc)}",
+            $"TokenPresent={!string.IsNullOrWhiteSpace(safeToken)}",
+            $"TokenLength={safeToken?.Length ?? 0}",
+            $"MaskedToken={BuildMaskedTokenPrefix(safeToken)}",
             $"IsActive={session?.IsActive ?? false}",
             $"RecordingUrlConfigured={!string.IsNullOrWhiteSpace(session?.RecordingUrl)}",
             $"StoredRecordingUrl={BuildSafeRecordingUrlLogValue(session?.RecordingUrl)}",
