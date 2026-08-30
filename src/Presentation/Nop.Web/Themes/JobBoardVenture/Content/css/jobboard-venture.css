@@ -10472,9 +10472,9 @@ body.jb-filter-panel-open .product-filters {
     .html-category-page .master-column-wrapper > .side-2,
     .html-search-page .master-column-wrapper > .side-2 {
         display: block;
-        flex: 0 0 290px;
-        width: 290px;
-        max-width: 290px;
+        flex: 0 0 292px;
+        width: 292px;
+        max-width: 292px;
     }
 
     .html-category-page .jb-job-listing-sidebar,
@@ -10931,7 +10931,7 @@ body.jb-filter-panel-open .product-filters {
     align-items: center;
     flex-wrap: wrap;
     gap: 2px;
-    margin: 6px 0 4px;
+    margin: 4px 0 2px;
     line-height: 1;
 }
 
@@ -10995,10 +10995,10 @@ body.jb-filter-panel-open .product-filters {
 .html-category-page .product-spec-filter.product-spec-filter-groups .jb-skills-filter .jb-spec-filter-values .item,
 .html-search-page .product-spec-filter.product-spec-filter-groups .jb-skills-filter .jb-spec-filter-values .item {
     align-items: center;
-    gap: 6px;
-    min-height: 22px;
-    margin: 0 0 1px;
-    padding: 1px 0;
+    gap: 4px;
+    min-height: 20px;
+    margin: 0;
+    padding: 0;
 }
 
 .html-category-page .product-spec-filter.product-spec-filter-groups .jb-skills-filter .jb-spec-filter-values input[type="checkbox"],
@@ -11013,6 +11013,14 @@ body.jb-filter-panel-open .product-filters {
 .html-search-page .product-spec-filter.product-spec-filter-groups .jb-skills-filter .jb-spec-filter-values label {
     min-width: 0;
     line-height: 1.1;
+}
+
+@media (max-width: 1079px) {
+    .html-category-page .product-spec-filter.product-spec-filter-groups .jb-skills-filter .jb-spec-filter-values .item,
+    .html-search-page .product-spec-filter.product-spec-filter-groups .jb-skills-filter .jb-spec-filter-values .item {
+        min-height: 24px;
+        padding: 1px 0;
+    }
 }
 
 @media (max-width: 767px) {
@@ -11045,12 +11053,6 @@ body.jb-filter-panel-open .product-filters {
     .html-category-page .jb-skills-filter .select2-container,
     .html-search-page .jb-skills-filter .select2-container {
         margin-top: 4px;
-    }
-
-    .html-category-page .product-spec-filter.product-spec-filter-groups .jb-skills-filter .jb-spec-filter-values .item,
-    .html-search-page .product-spec-filter.product-spec-filter-groups .jb-skills-filter .jb-spec-filter-values .item {
-        min-height: 28px;
-        padding: 2px 0;
     }
 }
 
