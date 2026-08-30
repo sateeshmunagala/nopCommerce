@@ -5192,13 +5192,13 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-layout {
-        gap: 8px;
-        padding-top: 8px;
+        gap: 6px;
+        padding-top: 6px;
     }
 
     .runtime-stage,
     .runtime-sidebar {
-        gap: 8px;
+        gap: 6px;
         padding: 8px;
     }
 
@@ -5303,12 +5303,14 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-controls {
-        grid-template-columns: minmax(0, 1fr) auto;
-        grid-template-rows: auto auto;
-        gap: 8px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: 44px 44px;
+        gap: 6px 8px;
         width: 100%;
         padding: 8px;
         border-top-width: 2px;
+        isolation: auto;
+        z-index: auto;
         box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
     }
 
@@ -5323,31 +5325,43 @@ body.ai-job-preview-open .item-box {
         grid-row: 1;
         grid-template-columns: 44px 44px minmax(0, 1fr) 44px;
         gap: 8px;
+        align-items: center;
         width: 100%;
     }
 
     .runtime-control-group-left {
         grid-column: 1;
         grid-row: 2;
-        justify-content: flex-start;
+        justify-self: end;
+        justify-content: flex-end;
     }
 
     .runtime-control-group-right {
         grid-column: 2;
         grid-row: 2;
-        justify-content: flex-end;
+        justify-self: start;
+        justify-content: flex-start;
     }
 
     .runtime-control-icons {
-        flex-wrap: nowrap;
+        display: grid;
+        grid-template-columns: repeat(2, 44px);
+        gap: 8px;
+    }
+
+    .runtime-meter {
+        display: none;
     }
 
     .runtime-controls #start-or-next {
         width: 100%;
         min-width: 0;
+        height: 44px;
         min-height: 44px;
+        max-height: 44px;
         padding: 8px 10px;
         overflow: hidden;
+        box-sizing: border-box;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -5358,40 +5372,69 @@ body.ai-job-preview-open .item-box {
         min-width: 44px;
         height: 44px;
         min-height: 44px;
+        max-width: 44px;
         flex: 0 0 44px;
+        box-sizing: border-box;
     }
 
     .runtime-audio-device-control {
         position: static;
         width: 44px;
+        height: 44px;
+        justify-self: center;
     }
 
     .runtime-audio-device-panel {
         position: fixed;
-        right: 6px;
-        bottom: max(6px, env(safe-area-inset-bottom));
-        left: 6px;
+        right: 8px;
+        bottom: max(8px, env(safe-area-inset-bottom));
+        left: 8px;
         z-index: 10020;
         width: auto;
         max-width: none;
-        max-height: min(54vh, 420px);
-        max-height: min(54dvh, 420px);
+        max-height: min(45vh, 380px);
+        max-height: min(45dvh, 380px);
         padding: 16px;
+        overflow-x: hidden;
         overflow-y: auto;
-        border-radius: 14px 14px 6px 6px;
+        border-radius: 16px 16px 8px 8px;
         box-sizing: border-box;
+        overscroll-behavior: contain;
+        box-shadow: 0 -14px 36px rgba(15, 23, 42, 0.24);
         transform: none;
+    }
+
+    .runtime-audio-device-field,
+    .runtime-audio-device-field label,
+    .runtime-audio-device-field select {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .runtime-audio-device-field label {
+        font-size: 13px;
+        line-height: 1.35;
+    }
+
+    .runtime-audio-device-field select {
+        display: block;
+        min-height: 44px;
+        font-size: 16px;
     }
 
     .runtime-sidebar-head {
         position: sticky;
         top: 0;
-        z-index: 5;
+        z-index: 4;
         padding-bottom: 8px;
         background: rgba(255, 255, 255, 0.96);
     }
 
     .runtime-sidebar-tabs {
+        position: relative;
+        z-index: 3;
         gap: 6px;
     }
 
@@ -5530,26 +5573,55 @@ body.ai-job-preview-open .item-box {
     }
 
     .runtime-permissions-stepper {
-        grid-template-columns: repeat(7, 44px);
-        gap: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
         margin: 0;
         padding: 1px 0 5px;
         overflow-x: auto;
         overscroll-behavior-x: contain;
     }
 
-    .runtime-permissions-stepper button {
+    .runtime-permissions-stepper li {
+        display: grid;
+        place-items: center;
+        flex: 0 0 44px;
+        width: 44px;
+        min-width: 44px;
+    }
+
+    .runtime-permissions-stepper button,
+    .runtime-permissions-stepper button.is-active,
+    .runtime-permissions-stepper button.is-completed {
         display: grid;
         place-items: center;
         width: 44px;
+        height: 44px;
         min-height: 44px;
         padding: 0;
-        border-radius: 999px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
     }
 
     .runtime-permissions-stepper button span {
         width: 28px;
         height: 28px;
+        border-color: #d7dde3;
+        background: #edf0f3;
+        color: #5a6472;
+        box-sizing: border-box;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .runtime-permissions-stepper button.is-active span,
+    .runtime-permissions-stepper button.is-completed span {
+        border-color: var(--jb-accent, #35d6b4);
+        background: var(--jb-accent, #35d6b4);
+        color: var(--jb-white, #ffffff);
     }
 
     .runtime-permissions-stepper button strong {
