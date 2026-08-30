@@ -796,6 +796,14 @@ public class InterviewSessionService : IInterviewSessionService
         return (await _sessionRepository.GetAllAsync(query => query.Where(s => !s.Deleted && s.Token == token))).FirstOrDefault();
     }
 
+    public async Task<InterviewSession> GetSessionByTokenIncludingDeletedAsync(string token)
+    {
+        if (string.IsNullOrEmpty(token))
+            return null;
+
+        return (await _sessionRepository.GetAllAsync(query => query.Where(s => s.Token == token))).FirstOrDefault();
+    }
+
     public async Task<InterviewSession> GetSessionByRecordingShareTokenAsync(string token)
     {
         if (string.IsNullOrWhiteSpace(token))

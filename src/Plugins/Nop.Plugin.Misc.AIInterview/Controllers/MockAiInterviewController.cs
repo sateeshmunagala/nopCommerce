@@ -2046,8 +2046,13 @@ public class MockAiInterviewController : BasePluginController
         var result = await _interviewRuntimeService.UploadRecordingAsync(token, recording);
         if (result == null || !result.Success)
         {
-            await LogRuntimeIssueAsync("AI Interview recording upload failure", $"Recording upload failed for token {MaskToken(token)}.", await ResolveLogCustomerAsync(session));
-            return Json(new { success = false, message = result?.Message ?? "Recording upload failed." });
+            var reasonCode = result?.ReasonCode ?? string.Empty;
+            var detail = $"Recording upload failed for token {MaskToken(token)}; ReasonCode={reasonCode}.";
+            _logger?.LogError("AI Interview recording upload failure. {Detail}", detail);
+            if (_nopLogger != null)
+                await _nopLogger.InsertLogAsync(NopLogLevel.Error, "AI Interview recording upload failure", detail, await ResolveLogCustomerAsync(session));
+
+            return Json(new { success = false, message = result?.Message ?? "Recording upload failed.", reasonCode = result?.ReasonCode });
         }
 
         return Json(new { success = true, message = result.Message, recordingUrl = result.RecordingUrl });

@@ -59,6 +59,7 @@ public interface IInterviewSessionService
     Task<int> GetSponsorInviteAttemptCountAsync(int inviteId);
     Task<InterviewSession> GetSessionBySessionKeyAsync(string sessionKey);
     Task<InterviewSession> GetSessionByTokenAsync(string token);
+    Task<InterviewSession> GetSessionByTokenIncludingDeletedAsync(string token);
     Task<InterviewSession> GetSessionByRecordingShareTokenAsync(string token);
     Task<IList<InterviewSession>> GetSessionsByCustomerIdAsync(int customerId);
     Task<IList<InterviewSession>> GetReusableCompletedSessionsAsync(int customerId, int windowDays = AIInterviewDefaults.InterviewReuseWindowDays);

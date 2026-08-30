@@ -180,6 +180,7 @@ public record RecordingUploadResponseModel
     public bool Success { get; init; }
     public string Message { get; init; }
     public string RecordingUrl { get; init; }
+    public string ReasonCode { get; init; }
 }
 
 public record SpeechTokenResponseModel

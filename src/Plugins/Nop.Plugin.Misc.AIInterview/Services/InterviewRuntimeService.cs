@@ -1576,6 +1576,8 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     private sealed record SelectedProductAttributeValueSnapshot(string AttributeName, string TextPrompt, string Value);
 
+    private sealed record RecordingUploadValidationResult(bool Allowed, string ReasonCode, string LogMessage, InterviewSession Session);
+
     private static readonly JsonSerializerOptions StorageSerializerOptions = new(JsonSerializerDefaults.Web)
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
@@ -1592,6 +1594,12 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         "(\\b(?<name>key|token|secret|signature|password|authorization)\\b\\s*[=:]\\s*)(?<quote>[\"']?)(?<value>[^\"'\\s;,&]+)(?<quote2>[\"']?)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex WhitespaceCollapseRegex = new(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex RecordingDiagnosticUrlRegex = new(
+        "https?://[^\\s\"'<>]+",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex RecordingSasValueRegex = new(
+        @"(?<prefix>(?:^|[?&;\s])(?:sig|sv|se|sp|sr|st|skoid|sktid|skt|ske|sks|skv)=)[^&;\s]+",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static async Task<IDisposable> AcquireSessionMutationLockAsync(int sessionId)
     {
@@ -3693,13 +3701,21 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
     public async Task<RecordingUploadResponseModel> UploadRecordingAsync(string token, IFormFile recording)
     {
-        var session = await _sessionService.GetSessionByTokenAsync(token);
         var now = DateTime.UtcNow;
         var normalizedContentType = NormalizeRecordingContentType(recording?.ContentType);
-        if (!CanUploadRecording(session, token, now))
+        var validation = await ValidateRecordingUploadAsync(token, now);
+        var session = validation.Session;
+        if (!validation.Allowed)
         {
-            await LogRecordingUploadFailureAsync(session, recording, null, "Invalid or expired session token.", "validation failed", normalizedContentType: normalizedContentType);
-            return RecordingFailure("Invalid or expired session token.");
+            await LogRecordingUploadFailureAsync(
+                session,
+                recording,
+                null,
+                "Invalid or expired session token.",
+                validation.LogMessage,
+                normalizedContentType: normalizedContentType,
+                reasonCode: validation.ReasonCode);
+            return RecordingFailure("Invalid or expired session token.", validation.ReasonCode);
         }
 
         if (recording == null || recording.Length <= 0)
@@ -3772,14 +3788,28 @@ public class InterviewRuntimeService : IInterviewRuntimeService
                 }
             }
 
-            _logger?.LogInformation("AI Interview recording upload persistence completed. SessionId={SessionId}; CustomerId={CustomerId}; ProductId={ProductId}; BlobName={BlobName}; RecordingUrlStored={RecordingUrlStored}; ExistingRecordingUrlRetained={ExistingRecordingUrlRetained}; FinalRecordingUrl={FinalRecordingUrl}.",
-                session?.Id ?? 0,
-                session?.CustomerId ?? 0,
-                session?.ProductId ?? 0,
-                blobName,
-                recordingUrlStored,
-                existingRecordingUrlRetained,
-                BuildSafeRecordingUrlLogValue(session?.RecordingUrl));
+            if (existingRecordingUrlRetained)
+            {
+                _logger?.LogWarning("AI Interview duplicate recording upload completed while retaining the existing recording. SessionId={SessionId}; CustomerId={CustomerId}; ProductId={ProductId}; BlobNamePresent={BlobNamePresent}; RecordingUrlStored={RecordingUrlStored}; ExistingRecordingUrlRetained={ExistingRecordingUrlRetained}; FinalRecordingUrl={FinalRecordingUrl}.",
+                    session?.Id ?? 0,
+                    session?.CustomerId ?? 0,
+                    session?.ProductId ?? 0,
+                    !string.IsNullOrWhiteSpace(blobName),
+                    recordingUrlStored,
+                    existingRecordingUrlRetained,
+                    BuildSafeRecordingUrlLogValue(session?.RecordingUrl));
+            }
+            else
+            {
+                _logger?.LogInformation("AI Interview recording upload persistence completed. SessionId={SessionId}; CustomerId={CustomerId}; ProductId={ProductId}; BlobNamePresent={BlobNamePresent}; RecordingUrlStored={RecordingUrlStored}; ExistingRecordingUrlRetained={ExistingRecordingUrlRetained}; FinalRecordingUrl={FinalRecordingUrl}.",
+                    session?.Id ?? 0,
+                    session?.CustomerId ?? 0,
+                    session?.ProductId ?? 0,
+                    !string.IsNullOrWhiteSpace(blobName),
+                    recordingUrlStored,
+                    existingRecordingUrlRetained,
+                    BuildSafeRecordingUrlLogValue(session?.RecordingUrl));
+            }
 
             await LogRecordingUploadSuccessAsync(session, recording, blobName, (int)response.StatusCode, normalizedContentType);
 
@@ -3792,7 +3822,7 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Recording upload failed for session {SessionId}, customer {CustomerId}, product {ProductId}.",
+            _logger?.LogError(ex, "Recording upload failed for session {SessionId}, customer {CustomerId}, product {ProductId}.",
                 session?.Id ?? 0, session?.CustomerId ?? 0, session?.ProductId ?? 0);
             await LogRecordingUploadFailureAsync(session, recording, blobName, "Recording upload failed.", ex.ToString(), normalizedContentType: normalizedContentType);
             return RecordingFailure("Recording upload failed.");
@@ -3808,27 +3838,63 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             session.TokenExpiryUtc > utcNow;
     }
 
-    protected virtual bool CanUploadRecording(InterviewSession session, string token, DateTime utcNow)
+    private async Task<RecordingUploadValidationResult> ValidateRecordingUploadAsync(string token, DateTime utcNow)
     {
-        if (session == null || string.IsNullOrWhiteSpace(token) || !string.Equals(session.Token, token, StringComparison.Ordinal))
-            return false;
+        if (string.IsNullOrWhiteSpace(token))
+            return RecordingUploadRejected("token-missing", "The recording upload token is missing or blank.");
+
+        var session = await _sessionService.GetSessionByTokenAsync(token);
+        if (session == null)
+        {
+            session = await _sessionService.GetSessionByTokenIncludingDeletedAsync(token);
+            if (session == null)
+            {
+                var logMessage = $"No interview session matched the recording upload token. TokenPresent=true; TokenLength={token.Length}; MaskedToken={BuildMaskedTokenPrefix(token)}; ServerUtc={utcNow:O}; LookupResult=not-found-including-deleted.";
+                return RecordingUploadRejected("session-not-found", logMessage);
+            }
+        }
+
+        if (session.Deleted)
+            return RecordingUploadRejected("session-deleted", "The interview session matched the token but is soft-deleted.", session);
+
+        if (!string.Equals(session.Token, token, StringComparison.Ordinal))
+            return RecordingUploadRejected("token-mismatch", "The supplied recording upload token does not match the resolved interview session token.", session);
 
         if (!string.IsNullOrWhiteSpace(session.RecordingUrl))
-            return false;
+            return RecordingUploadRejected("recording-already-exists", "The interview session already has a stored recording URL.", session);
 
-        if (session.IsActive && !session.CompletedOnUtc.HasValue && session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc > utcNow)
-            return true;
+        if (!session.TokenExpiryUtc.HasValue)
+            return RecordingUploadRejected("token-expiry-missing", "The interview session token expiry timestamp is missing.", session);
 
-        if (IsCompletionPending(session) && session.TokenExpiryUtc.HasValue && session.TokenExpiryUtc > utcNow)
-            return true;
+        if (session.TokenExpiryUtc.Value <= utcNow)
+            return RecordingUploadRejected("token-expired", "The interview session token expired before the recording upload request.", session);
+
+        if (session.IsActive && !session.CompletedOnUtc.HasValue)
+            return RecordingUploadAllowed(session);
+
+        if (IsCompletionPending(session))
+            return RecordingUploadAllowed(session);
 
         if (session.CompletedOnUtc.HasValue &&
-            session.CompletedOnUtc.Value >= utcNow.AddMinutes(-10) &&
-            session.TokenExpiryUtc.HasValue &&
-            session.TokenExpiryUtc > utcNow)
-            return true;
+            session.CompletedOnUtc.Value >= utcNow.AddMinutes(-10))
+        {
+            return RecordingUploadAllowed(session);
+        }
 
-        return false;
+        if (session.CompletedOnUtc.HasValue)
+            return RecordingUploadRejected("session-completed-outside-grace", "The interview session was completed outside the recording upload grace period.", session);
+
+        return RecordingUploadRejected("session-inactive", "The interview session is inactive and is not pending completion.", session);
+    }
+
+    private static RecordingUploadValidationResult RecordingUploadAllowed(InterviewSession session)
+    {
+        return new RecordingUploadValidationResult(true, null, "Recording upload validation succeeded.", session);
+    }
+
+    private static RecordingUploadValidationResult RecordingUploadRejected(string reasonCode, string logMessage, InterviewSession session = null)
+    {
+        return new RecordingUploadValidationResult(false, reasonCode, logMessage, session);
     }
 
     protected static int NormalizeRecordingUploadMaxMb(int maxMb)
@@ -5128,18 +5194,19 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             BuildRuntimeActivityComment(session, message: $"Recording uploaded. Bytes={recording?.Length ?? 0}.", statusCode: azureStatus));
     }
 
-    protected virtual async Task LogRecordingUploadFailureAsync(InterviewSession session, IFormFile recording, string blobName, string message, string reason, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null)
+    protected virtual async Task LogRecordingUploadFailureAsync(InterviewSession session, IFormFile recording, string blobName, string message, string reason, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null, string reasonCode = null)
     {
-        var detail = BuildRecordingUploadLog(session, recording, blobName, "Failure", message, reason, azureStatus, azureErrorBody, normalizedContentType);
-        _logger?.LogWarning("AI Interview recording upload failure. {Detail}", detail);
-        await LogRuntimeIssueAsync(NopLogLevel.Warning, "AI Interview recording upload failure", detail, await ResolveLogCustomerAsync(session));
+        var detail = BuildRecordingUploadLog(session, recording, blobName, "Failure", message, reason, azureStatus, azureErrorBody, normalizedContentType, reasonCode);
+        _logger?.LogError("AI Interview recording upload failure. {Detail}", detail);
+        if (_nopLogger != null)
+            await _nopLogger.InsertLogAsync(NopLogLevel.Error, "AI Interview recording upload failure", detail, await ResolveLogCustomerAsync(session));
         await LogRuntimeActivityAsync(
             session,
             "AIInterview.Runtime.RecordingUploadFailed",
-            BuildRuntimeActivityComment(session, message: message ?? reason ?? "Recording upload failed.", statusCode: azureStatus, failureKind: reason));
+            BuildRuntimeActivityComment(session, message: message ?? reason ?? "Recording upload failed.", statusCode: azureStatus, failureKind: reasonCode ?? reason));
     }
 
-    protected virtual string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null)
+    protected virtual string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null, string reasonCode = null)
     {
         var details = new List<string>
         {
@@ -5147,27 +5214,50 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             $"SessionId={session?.Id ?? 0}",
             $"CustomerId={session?.CustomerId ?? 0}",
             $"ProductId={session?.ProductId ?? 0}",
+            $"CreatedOnUtc={FormatRecordingLogUtc(session?.CreatedOnUtc)}",
+            $"StartedOnUtc={FormatRecordingLogUtc(session?.StartedOnUtc)}",
+            $"CompletedOnUtc={FormatRecordingLogUtc(session?.CompletedOnUtc)}",
+            $"TokenExpiryUtc={FormatRecordingLogUtc(session?.TokenExpiryUtc)}",
+            $"IsActive={session?.IsActive ?? false}",
             $"RecordingUrlConfigured={!string.IsNullOrWhiteSpace(session?.RecordingUrl)}",
             $"StoredRecordingUrl={BuildSafeRecordingUrlLogValue(session?.RecordingUrl)}",
             $"RecordingLength={recording?.Length ?? 0}",
             $"ContentType={recording?.ContentType ?? string.Empty}",
             $"NormalizedAzureContentType={normalizedContentType ?? NormalizeRecordingContentType(recording?.ContentType)}",
-            $"BlobName={blobName ?? string.Empty}",
+            $"BlobNamePresent={!string.IsNullOrWhiteSpace(blobName)}",
             $"AzureContainerUrlConfigured={!string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageContainerUrl)}",
             $"AzureContainerUrl={BuildSafeRecordingUrlLogValue(_settings?.AzureBlobStorageContainerUrl)}",
             $"AzureSasTokenConfigured={!string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageSasToken)}"
         };
 
         if (!string.IsNullOrWhiteSpace(message))
-            details.Add($"Message={message}");
+            details.Add($"Message={SanitizeRecordingDiagnosticText(message, 1000)}");
+        if (!string.IsNullOrWhiteSpace(reasonCode))
+            details.Add($"ReasonCode={reasonCode}");
         if (!string.IsNullOrWhiteSpace(reason))
-            details.Add($"Reason={reason}");
+            details.Add($"Reason={SanitizeRecordingDiagnosticText(reason, 4000)}");
         if (azureStatus.HasValue)
             details.Add($"AzureHttpStatus={azureStatus.Value}");
         if (!string.IsNullOrWhiteSpace(azureErrorBody))
-            details.Add($"AzureErrorBody={TruncateSafe(azureErrorBody, 4000)}");
+            details.Add($"AzureErrorBody={SanitizeRecordingDiagnosticText(azureErrorBody, 4000)}");
 
         return string.Join("; ", details);
+    }
+
+    private static string FormatRecordingLogUtc(DateTime? value)
+    {
+        return value?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture) ?? string.Empty;
+    }
+
+    private static string SanitizeRecordingDiagnosticText(string value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var sanitized = SanitizeSensitiveSpeechValue(value);
+        sanitized = RecordingDiagnosticUrlRegex.Replace(sanitized, "<redacted-url>");
+        sanitized = RecordingSasValueRegex.Replace(sanitized, match => $"{match.Groups["prefix"].Value}***");
+        return TruncateSafe(sanitized, maxLength);
     }
 
     protected static string BuildSafeRecordingUrlLogValue(string url)
@@ -5177,9 +5267,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
 
         var trimmed = url.Trim();
         if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
-            return uri.GetLeftPart(UriPartial.Path);
+            return uri.GetLeftPart(UriPartial.Authority);
 
-        return TruncateSafe(trimmed, 300);
+        return "<configured-non-absolute-url>";
     }
 
     protected static string NormalizeRecordingContentType(string contentType)
@@ -5203,12 +5293,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             : fallbackContentType;
     }
 
-    protected virtual RecordingUploadResponseModel RecordingFailure(string message)
+    protected virtual RecordingUploadResponseModel RecordingFailure(string message, string reasonCode = null)
     {
         return new RecordingUploadResponseModel
         {
             Success = false,
-            Message = message
+            Message = message,
+            ReasonCode = reasonCode
         };
     }
 
