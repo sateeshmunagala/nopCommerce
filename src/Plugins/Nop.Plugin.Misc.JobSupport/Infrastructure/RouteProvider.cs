@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Nop.Web.Framework.Mvc.Routing;
 
@@ -10,8 +9,6 @@ public class RouteProvider : IRouteProvider
 
     public void RegisterRoutes(IEndpointRouteBuilder endpointRouteBuilder)
     {
-        endpointRouteBuilder.MapControllerRoute(name: JobSupportDefaults.ConfigurationRouteName,
-            pattern: "Admin/JobSupport/Configure",
-            defaults: new { controller = "JobSupportAdmin", action = "Configure", area = "Admin" });
+        // Configuration route is registered in phase 2 together with JobSupportAdminController.
     }
 }

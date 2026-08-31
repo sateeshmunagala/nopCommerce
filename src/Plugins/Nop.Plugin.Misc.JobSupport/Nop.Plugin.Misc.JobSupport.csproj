@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <OutputPath>$(SolutionDir)\Presentation\Nop.Web\Plugins\Misc.JobSupport</OutputPath>
     <OutDir>$(OutputPath)</OutDir>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
@@ -8,6 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="plugin.json" />
+    <None Remove="logo.png" />
     <None Remove="Content\css\job-support.css" />
     <None Remove="Content\js\job-support.js" />
     <None Remove="Views\_ViewImports.cshtml" />

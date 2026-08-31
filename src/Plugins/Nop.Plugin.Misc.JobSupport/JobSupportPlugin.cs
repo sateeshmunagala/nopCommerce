@@ -1,4 +1,3 @@
-using Nop.Core;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
@@ -10,18 +9,13 @@ public class JobSupportPlugin : BasePlugin, IMiscPlugin
 {
     private readonly ILocalizationService _localizationService;
     private readonly ISettingService _settingService;
-    private readonly IWebHelper _webHelper;
 
     public JobSupportPlugin(ILocalizationService localizationService,
-        ISettingService settingService,
-        IWebHelper webHelper)
+        ISettingService settingService)
     {
         _localizationService = localizationService;
         _settingService = settingService;
-        _webHelper = webHelper;
     }
-
-    public override string GetConfigurationPageUrl() => $"{_webHelper.GetStoreLocation()}Admin/JobSupport/Configure";
 
     public override async Task InstallAsync()
     {
