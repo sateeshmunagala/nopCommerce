@@ -1,0 +1,47 @@
+@model RelationshipListModel
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts(T("Plugins.Misc.JobSupport.Account.Relationships.Title").Text);
+}
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = 503 })
+}
+<link rel="stylesheet" href="~/Plugins/Misc.JobSupport/Content/css/job-support.css" />
+<script src="~/Plugins/Misc.JobSupport/Content/js/job-support.js" asp-location="Footer"></script>
+<div class="job-support page account-page">
+    @Html.AntiForgeryToken()
+    <div class="page-title"><h1>@T("Plugins.Misc.JobSupport.Account.Relationships.Title")</h1></div>
+    <nav class="js-tabs">
+        @foreach (var type in Enum.GetValues<RelationshipType>())
+        {
+            <a href="@Url.RouteUrl("Plugin.Misc.JobSupport.AccountRelationships", new { relationshipType = type })" aria-current="@(Model.RelationshipType == type ? "page" : null)">@T($"Plugins.Misc.JobSupport.Relationship.Types.{type}")</a>
+        }
+    </nav>
+    @if (!Model.QuerySucceeded)
+    {
+        <div class="js-state js-state--error">@T("Plugins.Misc.JobSupport.Profile.Error")</div>
+    }
+    else if (!Model.Profiles.Any())
+    {
+        <div class="js-state js-state--empty">@T("Plugins.Misc.JobSupport.Account.Relationships.Empty")</div>
+    }
+    else
+    {
+        <div class="js-grid">
+            @foreach (var profile in Model.Profiles)
+            {
+                <div>
+                    @await Component.InvokeAsync(typeof(Nop.Plugin.Misc.JobSupport.Components.JobSupportProfileCardViewComponent), new { model = profile })
+                    @if (Model.RelationshipType == RelationshipType.InterestReceived)
+                    {
+                        <div class="js-actions">
+                            <button type="button" class="js-btn" data-js-action data-js-url="@profile.AcceptUrl" data-js-error="@T("Plugins.Misc.JobSupport.Errors.Request")">@T("Plugins.Misc.JobSupport.Relationship.Accept")</button>
+                            <button type="button" class="js-btn" data-js-action data-js-url="@profile.DeclineUrl" data-js-error="@T("Plugins.Misc.JobSupport.Errors.Request")">@T("Plugins.Misc.JobSupport.Relationship.Decline")</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>

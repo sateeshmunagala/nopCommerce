@@ -1,0 +1,34 @@
+@model ProfileEditModel
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts(T("Plugins.Misc.JobSupport.Account.Profile.Title").Text);
+}
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = 501 })
+}
+<link rel="stylesheet" href="~/Plugins/Misc.JobSupport/Content/css/job-support.css" />
+<div class="job-support page account-page">
+    <div class="page-title"><h1>@T("Plugins.Misc.JobSupport.Account.Profile.Title")</h1></div>
+    <div class="page-body">
+        <form asp-route="Plugin.Misc.JobSupport.AccountProfile" method="post">
+            <div asp-validation-summary="ModelOnly" class="message-error"></div>
+            <div class="js-form-grid">
+                <fieldset><legend>@T("Plugins.Misc.JobSupport.Account.Profile.Fields.ProfileType")</legend>
+                    @foreach (var option in Model.ProfileTypes)
+                    {
+                        <label class="js-checkbox"><input type="radio" asp-for="ProfileTypeId" value="@option.Id" checked="@option.Selected" /><span>@option.Name</span></label>
+                    }
+                </fieldset>
+                <fieldset><legend>@T("Plugins.Misc.JobSupport.Account.Profile.Fields.PrimaryTechnology")</legend>@await Html.PartialAsync("~/Plugins/Misc.JobSupport/Views/Shared/_ProfileOptionCheckboxes.cshtml", new ProfileOptionGroupModel { Name = nameof(Model.PrimaryTechnologyIds), Options = Model.PrimaryTechnologies })</fieldset>
+                <fieldset><legend>@T("Plugins.Misc.JobSupport.Account.Profile.Fields.SecondaryTechnology")</legend>@await Html.PartialAsync("~/Plugins/Misc.JobSupport/Views/Shared/_ProfileOptionCheckboxes.cshtml", new ProfileOptionGroupModel { Name = nameof(Model.SecondaryTechnologyIds), Options = Model.SecondaryTechnologies })</fieldset>
+                <label>@T("Plugins.Misc.JobSupport.Account.Profile.Fields.Availability")<select asp-for="AvailabilityId" asp-items="@(Model.Availabilities.Select(option => new SelectListItem(option.Name, option.Id.ToString(), option.Selected)))"></select></label>
+                <label>@T("Plugins.Misc.JobSupport.Account.Profile.Fields.Experience")<select asp-for="RelevantExperienceId" asp-items="@(Model.RelevantExperiences.Select(option => new SelectListItem(option.Name, option.Id.ToString(), option.Selected)))"></select></label>
+                <label>@T("Plugins.Misc.JobSupport.Account.Profile.Fields.Language")<select asp-for="MotherTongueId" asp-items="@(Model.MotherTongues.Select(option => new SelectListItem(option.Name, option.Id.ToString(), option.Selected)))"></select></label>
+                <label class="js-form-grid__wide">@T("Plugins.Misc.JobSupport.Account.Profile.Fields.ShortDescription")<textarea asp-for="ShortDescription" rows="3"></textarea></label>
+                <label class="js-form-grid__wide">@T("Plugins.Misc.JobSupport.Account.Profile.Fields.Description")<textarea asp-for="Description" rows="8"></textarea></label>
+            </div>
+            <div class="js-actions"><button type="submit" class="js-btn">@T("Common.Save")</button></div>
+        </form>
+    </div>
+</div>

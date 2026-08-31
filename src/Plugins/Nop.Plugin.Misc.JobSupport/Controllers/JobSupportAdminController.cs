@@ -7,9 +7,12 @@ using Nop.Services.Localization;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Logging;
-using Nop.Services.Messages;
 using Nop.Services.ScheduleTasks;
 using Nop.Services.Security;
+using Nop.Services.Configuration;
+using Nop.Plugin.Misc.JobSupport.Factories;
+using Nop.Plugin.Misc.JobSupport.Infrastructure;
+using Nop.Services.Messages;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Mvc.Filters;
@@ -23,6 +26,10 @@ public class JobSupportAdminController : BasePluginController
 {
     private const string LEGACY_PARITY_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/LegacyParity.cshtml";
     private const string WORKFLOW_DIAGNOSTICS_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/WorkflowDiagnostics.cshtml";
+    private const string CONFIGURE_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Configure.cshtml";
+    private const string PROFILES_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Profiles.cshtml";
+    private const string RELATIONSHIPS_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Relationships.cshtml";
+    private const string SUBSCRIPTIONS_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Subscriptions.cshtml";
 
     private readonly ICustomerActivityService _customerActivityService;
     private readonly ICustomerService _customerService;
@@ -33,6 +40,9 @@ public class JobSupportAdminController : BasePluginController
     private readonly IProductService _productService;
     private readonly IScheduleTaskService _scheduleTaskService;
     private readonly JobSupportSettings _settings;
+    private readonly IJobSupportAdminModelFactory _adminModelFactory;
+    private readonly INotificationService _notificationService;
+    private readonly ISettingService _settingService;
 
     public JobSupportAdminController(ICustomerActivityService customerActivityService,
         ICustomerService customerService,
@@ -42,6 +52,9 @@ public class JobSupportAdminController : BasePluginController
         IPermissionService permissionService,
         IProductService productService,
         IScheduleTaskService scheduleTaskService,
+        IJobSupportAdminModelFactory adminModelFactory,
+        INotificationService notificationService,
+        ISettingService settingService,
         JobSupportSettings settings)
     {
         _customerActivityService = customerActivityService;
@@ -52,9 +65,56 @@ public class JobSupportAdminController : BasePluginController
         _permissionService = permissionService;
         _productService = productService;
         _scheduleTaskService = scheduleTaskService;
+        _adminModelFactory = adminModelFactory;
+        _notificationService = notificationService;
+        _settingService = settingService;
         _settings = settings;
     }
 
+    [CheckPermission(JobSupportPermissionConfigManager.MANAGE_PROFILES)]
+    public IActionResult Configure()
+    {
+        return View(CONFIGURE_VIEW_PATH, _adminModelFactory.PrepareConfigurationModel());
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    [CheckPermission(JobSupportPermissionConfigManager.MANAGE_PROFILES)]
+    public async Task<IActionResult> Configure(ConfigurationModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(CONFIGURE_VIEW_PATH, model);
+        _adminModelFactory.ApplyConfigurationModel(model);
+        await _settingService.SaveSettingAsync(_settings);
+        _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Misc.JobSupport.Admin.Configuration.Saved"));
+        return RedirectToRoute(JobSupportDefaults.ConfigurationRouteName);
+    }
+
+    [CheckPermission(JobSupportPermissionConfigManager.MANAGE_PROFILES)]
+    public IActionResult Profiles()
+    {
+        return View(PROFILES_VIEW_PATH, _adminModelFactory.PrepareProfileSearchModel());
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    [CheckPermission(JobSupportPermissionConfigManager.MANAGE_PROFILES)]
+    public async Task<IActionResult> ProfileList(ProfileSearchModel searchModel)
+    {
+        return Json(await _adminModelFactory.PrepareProfileListModelAsync(searchModel));
+    }
+
+    [CheckPermission(JobSupportPermissionConfigManager.MANAGE_RELATIONSHIPS)]
+    public IActionResult Relationships()
+    {
+        return View(RELATIONSHIPS_VIEW_PATH);
+    }
+
+    [CheckPermission(JobSupportPermissionConfigManager.MANAGE_SUBSCRIPTIONS)]
+    public IActionResult Subscriptions()
+    {
+        return View(SUBSCRIPTIONS_VIEW_PATH);
+    }
+
+    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
     public async Task<IActionResult> LegacyParity()
     {
         if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManagePlugins))
@@ -67,6 +127,8 @@ public class JobSupportAdminController : BasePluginController
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
+    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
     public async Task<IActionResult> LegacyParity(LegacyParityRequestModel model)
     {
         if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManagePlugins))
@@ -127,6 +189,7 @@ public class JobSupportAdminController : BasePluginController
         return View(LEGACY_PARITY_VIEW_PATH, model);
     }
 
+    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
     public async Task<IActionResult> WorkflowDiagnostics()
     {
         if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManagePlugins))

@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nop.Core.Infrastructure;
 using Nop.Plugin.Misc.JobSupport.Services;
+using Nop.Plugin.Misc.JobSupport.Factories;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Nop.Plugin.Misc.JobSupport.Infrastructure;
 
@@ -17,6 +19,11 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<IJobSupportSubscriptionService, JobSupportSubscriptionService>();
         services.AddScoped<IJobSupportAffiliateService, JobSupportAffiliateService>();
         services.AddScoped<IJobSupportNotificationService, JobSupportNotificationService>();
+        services.AddScoped<IJobSupportProfileModelFactory, JobSupportProfileModelFactory>();
+        services.AddScoped<IJobSupportAccountModelFactory, JobSupportAccountModelFactory>();
+        services.AddScoped<IJobSupportAdminModelFactory, JobSupportAdminModelFactory>();
+        services.AddScoped<JobSupportRegistrationResultFilter>();
+        services.Configure<MvcOptions>(options => options.Filters.AddService<JobSupportRegistrationResultFilter>());
         services.AddScoped<JobSupportSynchronizationTask>();
     }
 

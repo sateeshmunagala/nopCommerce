@@ -5,6 +5,7 @@ using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Logging;
 using Nop.Services.Orders;
+using Nop.Services.Catalog;
 
 namespace Nop.Plugin.Misc.JobSupport.Services;
 
@@ -15,6 +16,7 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
     private readonly IGenericAttributeService _genericAttributeService;
     private readonly ILogger _logger;
     private readonly IOrderService _orderService;
+    private readonly IProductService _productService;
     private readonly IRewardPointService _rewardPointService;
     private readonly ShoppingCartSettings _shoppingCartSettings;
 
@@ -23,6 +25,7 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
         IGenericAttributeService genericAttributeService,
         ILogger logger,
         IOrderService orderService,
+        IProductService productService,
         IRewardPointService rewardPointService,
         ShoppingCartSettings shoppingCartSettings)
     {
@@ -31,6 +34,7 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
         _genericAttributeService = genericAttributeService;
         _logger = logger;
         _orderService = orderService;
+        _productService = productService;
         _rewardPointService = rewardPointService;
         _shoppingCartSettings = shoppingCartSettings;
     }
@@ -141,6 +145,101 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
             $"JobSupport subscription workflow applied for order {order.Id}.",
             order);
     }
+
+    public async Task<SubscriptionSummary> GetSubscriptionAsync(int customerId, int storeId)
+    {
+        var customer = await _customerService.GetCustomerByIdAsync(customerId);
+        if (customer == null || customer.Deleted)
+            return new SubscriptionSummary { Status = SubscriptionStatus.Inactive };
+
+        var startDate = await _genericAttributeService.GetAttributeAsync<DateTime?>(customer,
+            JobSupportDefaults.SubscriptionDateAttribute,
+            storeId);
+        var expiryDate = await _genericAttributeService.GetAttributeAsync<DateTime?>(customer,
+            JobSupportDefaults.SubscriptionExpiryDateAttribute,
+            storeId);
+        var allotted = await _genericAttributeService.GetAttributeAsync<int>(customer,
+            JobSupportDefaults.SubscriptionAllottedCountAttribute,
+            storeId);
+        var used = await _genericAttributeService.GetAttributeAsync<int>(customer,
+            JobSupportDefaults.SubscriptionUsedCreditCountAttribute,
+            storeId);
+
+        var status = !startDate.HasValue
+            ? SubscriptionStatus.Inactive
+            : expiryDate.HasValue && expiryDate.Value <= DateTime.UtcNow
+                ? SubscriptionStatus.Expired
+                : allotted - used > 0 ? SubscriptionStatus.Active : SubscriptionStatus.Exhausted;
+
+        return new SubscriptionSummary
+        {
+            Status = status,
+            StartDate = startDate,
+            ExpiryDate = expiryDate,
+            AllottedCredits = Math.Max(0, allotted),
+            UsedCredits = Math.Max(0, used)
+        };
+    }
+
+    public async Task<ContactRevealDecision> RevealContactAsync(int customerId, int targetProfileId, int storeId)
+    {
+        var customer = await _customerService.GetCustomerByIdAsync(customerId);
+        var profile = await _productService.GetProductByIdAsync(targetProfileId);
+        if (customer == null || customer.Deleted || profile == null || profile.Deleted || profile.VendorId <= 0)
+            return Failed("Plugins.Misc.JobSupport.Contact.Errors.NotFound");
+        if (profile.VendorId == customer.Id)
+            return Failed("Plugins.Misc.JobSupport.Contact.Errors.SelfReveal");
+
+        var targetCustomer = await _customerService.GetCustomerByIdAsync(profile.VendorId);
+        if (targetCustomer == null || targetCustomer.Deleted)
+            return Failed("Plugins.Misc.JobSupport.Contact.Errors.NotFound");
+
+        var revealedIds = ParseIdentifiers(await _genericAttributeService.GetAttributeAsync<string>(customer,
+            JobSupportDefaults.RevealedProfileIdsAttribute,
+            storeId));
+        var subscription = await GetSubscriptionAsync(customerId, storeId);
+        var alreadyRevealed = revealedIds.Contains(targetProfileId);
+        if (!alreadyRevealed && subscription.Status != SubscriptionStatus.Active)
+            return Failed("Plugins.Misc.JobSupport.Contact.Errors.SubscriptionRequired", subscription.RemainingCredits);
+
+        if (!alreadyRevealed)
+        {
+            revealedIds.Add(targetProfileId);
+            await _genericAttributeService.SaveAttributeAsync(customer,
+                JobSupportDefaults.RevealedProfileIdsAttribute,
+                string.Join(',', revealedIds.OrderBy(id => id)),
+                storeId);
+            await _genericAttributeService.SaveAttributeAsync(customer,
+                JobSupportDefaults.SubscriptionUsedCreditCountAttribute,
+                subscription.UsedCredits + 1,
+                storeId);
+            subscription = subscription with { UsedCredits = subscription.UsedCredits + 1 };
+        }
+
+        await _customerActivityService.InsertActivityAsync(customer,
+            JobSupportDefaults.ActivityTypeSystemName,
+            $"JobSupport contact entitlement used for profile {targetProfileId}.",
+            profile);
+
+        return new ContactRevealDecision
+        {
+            Succeeded = true,
+            AlreadyRevealed = alreadyRevealed,
+            Email = targetCustomer.Email,
+            Phone = targetCustomer.Phone,
+            RemainingCredits = subscription.RemainingCredits,
+            MessageKey = "Plugins.Misc.JobSupport.Contact.Revealed"
+        };
+    }
+
+    private static HashSet<int> ParseIdentifiers(string value) =>
+        (value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(item => int.TryParse(item, out var id) ? id : 0)
+        .Where(id => id > 0)
+        .ToHashSet();
+
+    private static ContactRevealDecision Failed(string messageKey, int remainingCredits = 0) =>
+        new() { MessageKey = messageKey, RemainingCredits = remainingCredits };
 
     private Dictionary<int, SubscriptionPlan> GetPlans(JobSupportSettings settings)
     {

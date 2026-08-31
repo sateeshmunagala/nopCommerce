@@ -1,0 +1,38 @@
+@model ProfileCardModel
+<article class="js-card">
+    <img class="js-card__avatar" src="@Model.AvatarUrl" width="72" height="72" alt="@Model.FirstName" loading="lazy" />
+    <div class="js-card__heading">
+        <h3 class="js-card__title"><a href="@Model.DetailUrl">@Model.FirstName</a></h3>
+        @if (Model.IsPremium)
+        {
+            <span class="js-badge">@T("Plugins.Misc.JobSupport.Profile.Premium")</span>
+        }
+    </div>
+    <div class="js-card__meta">
+        <span>@Model.City</span><span>@Model.Country</span><span>@Model.ProfileType</span>
+    </div>
+    <dl class="js-facts">
+        <div><dt>@T("Plugins.Misc.JobSupport.Profile.PrimaryTechnology")</dt><dd>@Model.PrimaryTechnology</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Profile.SecondaryTechnology")</dt><dd>@Model.SecondaryTechnology</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Profile.Availability")</dt><dd>@Model.Availability</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Profile.Experience")</dt><dd>@Model.RelevantExperience</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Profile.Language")</dt><dd>@Model.MotherTongue</dd></div>
+        @if (Model.ShowGender)
+        {
+            <div><dt>@T("Plugins.Misc.JobSupport.Profile.Gender")</dt><dd>@Model.Gender</dd></div>
+        }
+    </dl>
+    <div class="js-actions">
+        <a class="js-btn" href="@Model.DetailUrl">@T("Plugins.Misc.JobSupport.Profile.View")</a>
+        @if (Model.CanAct)
+        {
+            <button type="button" class="js-btn" data-js-action data-js-url="@(Model.IsShortlisted ? Model.RemoveShortlistUrl : Model.ShortlistUrl)" data-js-error="@T("Plugins.Misc.JobSupport.Errors.Request")">
+                @T(Model.IsShortlisted ? "Plugins.Misc.JobSupport.Profile.RemoveShortlist" : "Plugins.Misc.JobSupport.Profile.Shortlist")
+            </button>
+            <button type="button" class="js-btn" data-js-action data-js-url="@Model.InterestUrl" data-js-error="@T("Plugins.Misc.JobSupport.Errors.Request")" disabled="@Model.InterestSent">
+                @T(Model.InterestSent ? "Plugins.Misc.JobSupport.Profile.InterestSent" : "Plugins.Misc.JobSupport.Profile.SendInterest")
+            </button>
+        }
+    </div>
+    <div class="js-status" role="status" aria-live="polite"></div>
+</article>

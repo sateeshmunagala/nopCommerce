@@ -27,6 +27,7 @@ public static partial class JobSupportDefaults
     public static string RegistrationCompletedAttribute => "JobSupport.RegistrationCompleted";
     public static string RelationshipTypeAttribute => "JobSupport.RelationshipType";
     public static string RelationshipProfileIdAttribute => "JobSupport.ProfileProductId";
+    public static string RevealedProfileIdsAttribute => "JobSupport.RevealedProfileIds";
     public static string ActivityTypeSystemName => "JobSupport.Workflow";
     public static string ActivityTypeName => "Job Support workflow";
     public static string LocaleResourcePrefix => "Plugins.Misc.JobSupport";
