@@ -1,10 +1,14 @@
 using Nop.Core;
+using LinqToDB;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Forums;
 using Nop.Core.Domain.Orders;
 using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Data;
+using Nop.Data;
+using Nop.Plugin.Misc.JobSupport.Domain;
+using Nop.Plugin.Misc.JobSupport.Domain.Enums;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Customers;
@@ -24,6 +28,9 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
     private readonly IShoppingCartService _shoppingCartService;
     private readonly IStoreContext _storeContext;
     private readonly JobSupportSettings _settings;
+    private readonly IRepository<JobSupportProfile> _profileRepository;
+    private readonly IRepository<JobSupportProfileView> _profileViewRepository;
+    private readonly IRepository<JobSupportRelationship> _relationshipRepository;
 
     public JobSupportRelationshipService(ICustomerService customerService,
         IForumService forumService,
@@ -32,7 +39,10 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
         IProductService productService,
         IShoppingCartService shoppingCartService,
         IStoreContext storeContext,
-        JobSupportSettings settings)
+        JobSupportSettings settings,
+        IRepository<JobSupportProfile> profileRepository,
+        IRepository<JobSupportProfileView> profileViewRepository,
+        IRepository<JobSupportRelationship> relationshipRepository)
     {
         _customerService = customerService;
         _forumService = forumService;
@@ -42,6 +52,9 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
         _shoppingCartService = shoppingCartService;
         _storeContext = storeContext;
         _settings = settings;
+        _profileRepository = profileRepository;
+        _profileViewRepository = profileViewRepository;
+        _relationshipRepository = relationshipRepository;
     }
 
     public Task<RelationshipActionResult> ShortlistProfileAsync(int sourceCustomerId, int targetProfileId)
@@ -89,6 +102,9 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
             foreach (var row in mirrorRows)
                 await _shoppingCartService.DeleteShoppingCartItemAsync(row);
         }
+
+        if (_settings.DataWriteMode == DataAccessMode.Dual)
+            await ExecutePluginWriteAsync(() => MarkPluginRelationshipRemovedAsync(context), sourceCustomerId, "relationship-remove");
 
         return Success(context, RelationshipType.ShortlistedByMe, alreadyApplied: false, "Removed");
     }
@@ -168,7 +184,11 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
 
         var store = await _storeContext.GetCurrentStoreAsync();
         if ((await GetRowsAsync(context.SourceCustomer, context.TargetProfile, sourceType, store.Id)).Any())
+        {
+            if (_settings.DataWriteMode == DataAccessMode.Dual)
+                await ExecutePluginWriteAsync(() => UpsertPluginRelationshipAsync(context, sourceType, DateTime.UtcNow), sourceCustomerId, "relationship-replay");
             return Success(context, sourceType, alreadyApplied: true, "AlreadyApplied");
+        }
 
         var sourceProfile = await GetProfileByCustomerAsync(context.SourceCustomer.Id);
         if (sourceProfile == null)
@@ -197,7 +217,117 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
         if (createMessage && _settings.EnableRelationshipNotifications)
             await CreatePrivateMessageAsync(context, sourceType, store.Id);
 
+        if (_settings.DataWriteMode == DataAccessMode.Dual)
+            await ExecutePluginWriteAsync(() => UpsertPluginRelationshipAsync(context, sourceType, DateTime.UtcNow), sourceCustomerId, "relationship");
+
         return Success(context, sourceType, alreadyApplied: false, "Applied");
+    }
+
+    private async Task UpsertPluginRelationshipAsync(RelationshipContext context, RelationshipType relationshipType, DateTime occurredOnUtc)
+    {
+        var sourceProfile = await _profileRepository.Table.FirstOrDefaultAsync(profile => profile.CustomerId == context.SourceCustomer.Id);
+        var targetProfile = await _profileRepository.Table.FirstOrDefaultAsync(profile => profile.CustomerId == context.TargetCustomer.Id);
+        if (sourceProfile == null || targetProfile == null)
+            throw new InvalidOperationException("Plugin profile dependency is missing.");
+
+        if (relationshipType is RelationshipType.ViewedByMe or RelationshipType.ViewedMe)
+        {
+            var view = await _profileViewRepository.Table.FirstOrDefaultAsync(item =>
+                item.ViewerCustomerId == context.SourceCustomer.Id && item.ViewedProfileId == targetProfile.Id);
+            if (view == null)
+            {
+                await _profileViewRepository.InsertAsync(new JobSupportProfileView
+                {
+                    ViewerCustomerId = context.SourceCustomer.Id,
+                    ViewedCustomerId = context.TargetCustomer.Id,
+                    ViewerProfileId = sourceProfile.Id,
+                    ViewedProfileId = targetProfile.Id,
+                    FirstViewedOnUtc = occurredOnUtc,
+                    LastViewedOnUtc = occurredOnUtc,
+                    ViewCount = 1
+                }, false);
+            }
+            else
+            {
+                return;
+            }
+            return;
+        }
+
+        var reverse = relationshipType is RelationshipType.AcceptedByMe or RelationshipType.AcceptedMe or
+            RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe;
+        var sourceCustomerId = reverse ? context.TargetCustomer.Id : context.SourceCustomer.Id;
+        var targetCustomerId = reverse ? context.SourceCustomer.Id : context.TargetCustomer.Id;
+        var pluginSourceProfile = reverse ? targetProfile : sourceProfile;
+        var pluginTargetProfile = reverse ? sourceProfile : targetProfile;
+        var typeId = relationshipType switch
+        {
+            RelationshipType.ShortlistedByMe or RelationshipType.ShortlistedMe => 1,
+            RelationshipType.InterestSent or RelationshipType.InterestReceived or
+                RelationshipType.AcceptedByMe or RelationshipType.AcceptedMe or
+                RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe => 2,
+            RelationshipType.BlockedByMe or RelationshipType.BlockedMe => 3,
+            _ => throw new ArgumentOutOfRangeException(nameof(relationshipType))
+        };
+        var status = relationshipType switch
+        {
+            RelationshipType.InterestSent or RelationshipType.InterestReceived => RelationshipStatus.Pending,
+            RelationshipType.AcceptedByMe or RelationshipType.AcceptedMe => RelationshipStatus.Accepted,
+            RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe => RelationshipStatus.Declined,
+            RelationshipType.BlockedByMe or RelationshipType.BlockedMe => RelationshipStatus.Blocked,
+            _ => RelationshipStatus.Active
+        };
+        var entity = await _relationshipRepository.Table.FirstOrDefaultAsync(item => item.SourceCustomerId == sourceCustomerId &&
+            item.TargetCustomerId == targetCustomerId && item.RelationshipTypeId == typeId);
+        if (entity == null)
+        {
+            entity = new JobSupportRelationship
+            {
+                SourceCustomerId = sourceCustomerId,
+                TargetCustomerId = targetCustomerId,
+                SourceProfileId = pluginSourceProfile.Id,
+                TargetProfileId = pluginTargetProfile.Id,
+                RelationshipTypeId = typeId,
+                StatusId = (int)status,
+                CreatedOnUtc = occurredOnUtc,
+                UpdatedOnUtc = occurredOnUtc,
+                RespondedOnUtc = status is RelationshipStatus.Accepted or RelationshipStatus.Declined ? occurredOnUtc : null
+            };
+            await _relationshipRepository.InsertAsync(entity, false);
+        }
+        else
+        {
+            entity.StatusId = (int)status;
+            entity.UpdatedOnUtc = occurredOnUtc;
+            if (status is RelationshipStatus.Accepted or RelationshipStatus.Declined)
+                entity.RespondedOnUtc = occurredOnUtc;
+            await _relationshipRepository.UpdateAsync(entity, false);
+        }
+    }
+
+    private async Task MarkPluginRelationshipRemovedAsync(RelationshipContext context)
+    {
+        var relationship = await _relationshipRepository.Table.FirstOrDefaultAsync(item =>
+            item.SourceCustomerId == context.SourceCustomer.Id && item.TargetCustomerId == context.TargetCustomer.Id &&
+            item.RelationshipTypeId == 1);
+        if (relationship == null)
+            return;
+        relationship.StatusId = (int)RelationshipStatus.Removed;
+        relationship.UpdatedOnUtc = DateTime.UtcNow;
+        await _relationshipRepository.UpdateAsync(relationship, false);
+    }
+
+    private async Task ExecutePluginWriteAsync(Func<Task> operation, int sourceId, string operationName)
+    {
+        try
+        {
+            await operation();
+        }
+        catch (Exception exception)
+        {
+            await _logger.ErrorAsync($"JobSupport dual write failed for {operationName} source {sourceId}.", exception);
+            throw;
+        }
     }
 
     private async Task<RelationshipContext> ValidateAsync(int sourceCustomerId,

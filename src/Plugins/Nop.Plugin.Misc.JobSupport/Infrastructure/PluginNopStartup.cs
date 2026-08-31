@@ -5,6 +5,7 @@ using Nop.Core.Infrastructure;
 using Nop.Plugin.Misc.JobSupport.Services;
 using Nop.Plugin.Misc.JobSupport.Factories;
 using Microsoft.AspNetCore.Mvc;
+using Nop.Plugin.Misc.JobSupport.Services.Migration;
 
 namespace Nop.Plugin.Misc.JobSupport.Infrastructure;
 
@@ -17,6 +18,8 @@ public class PluginNopStartup : INopStartup
         services.AddScoped<IJobSupportProfileService, JobSupportProfileService>();
         services.AddScoped<IJobSupportRelationshipService, JobSupportRelationshipService>();
         services.AddScoped<IJobSupportSubscriptionService, JobSupportSubscriptionService>();
+        services.AddScoped<IJobSupportBackfillService, JobSupportBackfillService>();
+        services.AddScoped<IJobSupportReconciliationService, JobSupportReconciliationService>();
         services.AddScoped<IJobSupportAffiliateService, JobSupportAffiliateService>();
         services.AddScoped<IJobSupportNotificationService, JobSupportNotificationService>();
         services.AddScoped<IJobSupportProfileModelFactory, JobSupportProfileModelFactory>();

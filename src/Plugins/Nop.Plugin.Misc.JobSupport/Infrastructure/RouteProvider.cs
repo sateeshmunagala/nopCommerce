@@ -44,6 +44,11 @@ public class RouteProvider : IRouteProvider
             defaults: new { controller = "JobSupportAdmin", action = "WorkflowDiagnostics", area = AreaNames.ADMIN });
 
         endpointRouteBuilder.MapControllerRoute(
+            name: "Plugin.Misc.JobSupport.Migration",
+            pattern: $"{JobSupportDefaults.AdminRoutePrefix}/Migration",
+            defaults: new { controller = "JobSupportAdmin", action = "Migration", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(
             name: "Plugin.Misc.JobSupport.Admin",
             pattern: $"{JobSupportDefaults.AdminRoutePrefix}/{{action}}",
             defaults: new { controller = "JobSupportAdmin", action = "Configure", area = AreaNames.ADMIN });

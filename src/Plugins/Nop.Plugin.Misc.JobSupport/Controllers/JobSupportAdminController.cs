@@ -2,7 +2,9 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Models.Admin;
+using Nop.Plugin.Misc.JobSupport.Models.Admin.Migration;
 using Nop.Plugin.Misc.JobSupport.Services;
+using Nop.Plugin.Misc.JobSupport.Services.Migration;
 using Nop.Services.Localization;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
@@ -30,10 +32,13 @@ public class JobSupportAdminController : BasePluginController
     private const string PROFILES_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Profiles.cshtml";
     private const string RELATIONSHIPS_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Relationships.cshtml";
     private const string SUBSCRIPTIONS_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Subscriptions.cshtml";
+    private const string MIGRATION_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/MigrationStatus.cshtml";
 
     private readonly ICustomerActivityService _customerActivityService;
     private readonly ICustomerService _customerService;
     private readonly IJobSupportProfileQueryService _profileQueryService;
+    private readonly IJobSupportBackfillService _backfillService;
+    private readonly IJobSupportReconciliationService _reconciliationService;
     private readonly ILocalizationService _localizationService;
     private readonly IMessageTemplateService _messageTemplateService;
     private readonly IPermissionService _permissionService;
@@ -47,6 +52,8 @@ public class JobSupportAdminController : BasePluginController
     public JobSupportAdminController(ICustomerActivityService customerActivityService,
         ICustomerService customerService,
         IJobSupportProfileQueryService profileQueryService,
+        IJobSupportBackfillService backfillService,
+        IJobSupportReconciliationService reconciliationService,
         ILocalizationService localizationService,
         IMessageTemplateService messageTemplateService,
         IPermissionService permissionService,
@@ -60,6 +67,8 @@ public class JobSupportAdminController : BasePluginController
         _customerActivityService = customerActivityService;
         _customerService = customerService;
         _profileQueryService = profileQueryService;
+        _backfillService = backfillService;
+        _reconciliationService = reconciliationService;
         _localizationService = localizationService;
         _messageTemplateService = messageTemplateService;
         _permissionService = permissionService;
@@ -112,6 +121,73 @@ public class JobSupportAdminController : BasePluginController
     public IActionResult Subscriptions()
     {
         return View(SUBSCRIPTIONS_VIEW_PATH);
+    }
+
+    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
+    public async Task<IActionResult> Migration(CancellationToken cancellationToken)
+    {
+        var checkpoints = await _reconciliationService.GetCheckpointsAsync(cancellationToken);
+        var stepNames = new[] { "Profiles", "SkillsAndAttributes", "Relationships", "ViewsAndReveals", "Subscriptions" };
+        var model = new MigrationStatusModel
+        {
+            SchemaVersion = "1.00.002",
+            ReadMode = _settings.DataReadMode,
+            WriteMode = _settings.DataWriteMode,
+            LastExecutionOnUtc = checkpoints.Max(checkpoint => checkpoint.LastExecutedOnUtc),
+            MismatchCount = checkpoints.Sum(checkpoint => checkpoint.MismatchCount),
+            Steps = stepNames.Select(name =>
+            {
+                var checkpoint = checkpoints.FirstOrDefault(item => item.MigrationName == name);
+                return new MigrationStepStatusModel
+                {
+                    Name = name,
+                    Status = checkpoint?.Status ?? "NotStarted",
+                    LastProcessedId = checkpoint?.LastProcessedId ?? 0,
+                    ProcessedCount = checkpoint?.ProcessedCount ?? 0,
+                    SkippedCount = checkpoint?.SkippedCount ?? 0,
+                    FailedCount = checkpoint?.FailedCount ?? 0,
+                    MismatchCount = checkpoint?.MismatchCount ?? 0,
+                    LastExecutionOnUtc = checkpoint?.LastExecutedOnUtc
+                };
+            }).ToList()
+        };
+        return View(MIGRATION_VIEW_PATH, model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
+    public async Task<IActionResult> ResumeMigration(string step, CancellationToken cancellationToken)
+    {
+        var batchSize = Math.Max(1, _settings.MigrationBatchSize);
+        _ = step switch
+        {
+            "Profiles" => await _backfillService.BackfillProfilesAsync(batchSize, cancellationToken),
+            "SkillsAndAttributes" => await _backfillService.BackfillSkillsAsync(batchSize, cancellationToken),
+            "Relationships" => await _backfillService.BackfillRelationshipsAsync(batchSize, cancellationToken),
+            "ViewsAndReveals" => await _backfillService.BackfillViewsAndRevealsAsync(batchSize, cancellationToken),
+            "Subscriptions" => await _backfillService.BackfillSubscriptionsAsync(batchSize, cancellationToken),
+            _ => throw new ArgumentOutOfRangeException(nameof(step))
+        };
+        return RedirectToRoute("Plugin.Misc.JobSupport.Migration");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
+    public async Task<IActionResult> CompareMigration(CancellationToken cancellationToken)
+    {
+        await _reconciliationService.ReconcileAsync(cancellationToken);
+        return RedirectToRoute("Plugin.Misc.JobSupport.Migration");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
+    public async Task<IActionResult> ExportMigrationMismatches(CancellationToken cancellationToken)
+    {
+        var csv = await _reconciliationService.ExportSanitizedMismatchesAsync(cancellationToken);
+        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "job-support-mismatches.csv");
     }
 
     [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]

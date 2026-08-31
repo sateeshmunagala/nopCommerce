@@ -1,5 +1,6 @@
 using Nop.Core.Configuration;
 using Nop.Plugin.Misc.JobSupport.Contracts;
+using Nop.Plugin.Misc.JobSupport.Domain.Enums;
 
 namespace Nop.Plugin.Misc.JobSupport;
 
@@ -40,4 +41,7 @@ public class JobSupportSettings : ISettings
     public WorkflowExecutionMode ExecutionMode { get; set; } = WorkflowExecutionMode.Shadow;
     public int SynchronizationBatchSize { get; set; } = 200;
     public bool WriteLegacyRewardPointsHistory { get; set; }
+    public DataAccessMode DataReadMode { get; set; } = DataAccessMode.Legacy;
+    public DataAccessMode DataWriteMode { get; set; } = DataAccessMode.Legacy;
+    public int MigrationBatchSize { get; set; } = 500;
 }

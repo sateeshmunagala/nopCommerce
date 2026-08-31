@@ -1,6 +1,10 @@
 using Nop.Core.Domain.Customers;
+using LinqToDB;
 using Nop.Core.Domain.Orders;
+using Nop.Data;
 using Nop.Plugin.Misc.JobSupport.Contracts;
+using Nop.Plugin.Misc.JobSupport.Domain;
+using Nop.Plugin.Misc.JobSupport.Domain.Enums;
 using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Logging;
@@ -19,6 +23,10 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
     private readonly IProductService _productService;
     private readonly IRewardPointService _rewardPointService;
     private readonly ShoppingCartSettings _shoppingCartSettings;
+    private readonly IRepository<JobSupportContactReveal> _contactRevealRepository;
+    private readonly IRepository<JobSupportProfile> _profileRepository;
+    private readonly IRepository<JobSupportSubscription> _subscriptionRepository;
+    private readonly JobSupportSettings _settings;
 
     public JobSupportSubscriptionService(ICustomerActivityService customerActivityService,
         ICustomerService customerService,
@@ -27,7 +35,11 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
         IOrderService orderService,
         IProductService productService,
         IRewardPointService rewardPointService,
-        ShoppingCartSettings shoppingCartSettings)
+        ShoppingCartSettings shoppingCartSettings,
+        IRepository<JobSupportContactReveal> contactRevealRepository,
+        IRepository<JobSupportProfile> profileRepository,
+        IRepository<JobSupportSubscription> subscriptionRepository,
+        JobSupportSettings settings)
     {
         _customerActivityService = customerActivityService;
         _customerService = customerService;
@@ -37,6 +49,10 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
         _productService = productService;
         _rewardPointService = rewardPointService;
         _shoppingCartSettings = shoppingCartSettings;
+        _contactRevealRepository = contactRevealRepository;
+        _profileRepository = profileRepository;
+        _subscriptionRepository = subscriptionRepository;
+        _settings = settings;
     }
 
     public async Task ApplyPaidOrderAsync(Order order, JobSupportSettings settings)
@@ -144,6 +160,9 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
             JobSupportDefaults.ActivityTypeSystemName,
             $"JobSupport subscription workflow applied for order {order.Id}.",
             order);
+
+        if (settings.DataWriteMode == DataAccessMode.Dual)
+            await ExecutePluginWriteAsync(() => UpsertPluginSubscriptionsAsync(order, orderItems, planByProductId, carriedCredits), order.Id, "subscription");
     }
 
     public async Task<SubscriptionSummary> GetSubscriptionAsync(int customerId, int storeId)
@@ -171,7 +190,7 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
                 ? SubscriptionStatus.Expired
                 : allotted - used > 0 ? SubscriptionStatus.Active : SubscriptionStatus.Exhausted;
 
-        return new SubscriptionSummary
+        var summary = new SubscriptionSummary
         {
             Status = status,
             StartDate = startDate,
@@ -179,6 +198,9 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
             AllottedCredits = Math.Max(0, allotted),
             UsedCredits = Math.Max(0, used)
         };
+        if (_settings.DataReadMode == DataAccessMode.Compare)
+            await ComparePluginSubscriptionAsync(customerId, summary);
+        return summary;
     }
 
     public async Task<ContactRevealDecision> RevealContactAsync(int customerId, int targetProfileId, int storeId)
@@ -221,6 +243,9 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
             $"JobSupport contact entitlement used for profile {targetProfileId}.",
             profile);
 
+        if (_settings.DataWriteMode == DataAccessMode.Dual)
+            await ExecutePluginWriteAsync(() => UpsertPluginRevealAsync(customerId, targetProfileId), customerId, "contact-reveal");
+
         return new ContactRevealDecision
         {
             Succeeded = true,
@@ -262,4 +287,81 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
     }
 
     private sealed record SubscriptionPlan(int ProductId, int DurationMonths, int AllottedCredits);
+
+    private async Task UpsertPluginSubscriptionsAsync(Order order, IList<OrderItem> orderItems,
+        IReadOnlyDictionary<int, SubscriptionPlan> plans, int carriedCredits)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var item in orderItems.Where(item => plans.ContainsKey(item.ProductId)))
+        {
+            var plan = plans[item.ProductId];
+            var entity = await _subscriptionRepository.Table.FirstOrDefaultAsync(subscription =>
+                subscription.OrderId == order.Id && subscription.OrderItemId == item.Id);
+            if (entity != null)
+                continue;
+            await _subscriptionRepository.InsertAsync(new JobSupportSubscription
+            {
+                CustomerId = order.CustomerId,
+                OrderId = order.Id,
+                OrderItemId = item.Id,
+                ProductId = item.ProductId,
+                Status = (int)SubscriptionStatus.Active,
+                StartOnUtc = order.CreatedOnUtc,
+                EndOnUtc = order.CreatedOnUtc.AddMonths(plan.DurationMonths),
+                AllottedCredits = plan.AllottedCredits,
+                CarriedCredits = carriedCredits,
+                UsedCredits = 0,
+                CreatedOnUtc = order.CreatedOnUtc,
+                UpdatedOnUtc = now
+            }, false);
+        }
+    }
+
+    private async Task UpsertPluginRevealAsync(int viewerCustomerId, int legacyProductId)
+    {
+        var profile = await _profileRepository.Table.FirstOrDefaultAsync(item => item.LegacyProductId == legacyProductId);
+        if (profile == null)
+            throw new InvalidOperationException("Plugin profile dependency is missing.");
+        if (await _contactRevealRepository.Table.AnyAsync(reveal =>
+                reveal.ViewerCustomerId == viewerCustomerId && reveal.TargetProfileId == profile.Id))
+            return;
+        var subscription = await _subscriptionRepository.Table
+            .Where(item => item.CustomerId == viewerCustomerId)
+            .OrderByDescending(item => item.StartOnUtc)
+            .FirstOrDefaultAsync();
+        await _contactRevealRepository.InsertAsync(new JobSupportContactReveal
+        {
+            SubscriptionId = subscription?.Id,
+            ViewerCustomerId = viewerCustomerId,
+            TargetCustomerId = profile.CustomerId,
+            TargetProfileId = profile.Id,
+            CreditCost = 1,
+            RevealedOnUtc = DateTime.UtcNow
+        }, false);
+    }
+
+    private async Task ComparePluginSubscriptionAsync(int customerId, SubscriptionSummary legacy)
+    {
+        var plugin = await _subscriptionRepository.Table.Where(subscription => subscription.CustomerId == customerId)
+            .OrderByDescending(subscription => subscription.StartOnUtc).FirstOrDefaultAsync();
+        var mismatch = plugin == null
+            ? legacy.Status != SubscriptionStatus.Inactive
+            : plugin.AllottedCredits + plugin.CarriedCredits != legacy.AllottedCredits || plugin.UsedCredits != legacy.UsedCredits ||
+              plugin.StartOnUtc != legacy.StartDate || plugin.EndOnUtc != legacy.ExpiryDate;
+        if (mismatch)
+            await _logger.WarningAsync($"JobSupport subscription comparison mismatch for source {customerId}.");
+    }
+
+    private async Task ExecutePluginWriteAsync(Func<Task> operation, int sourceId, string operationName)
+    {
+        try
+        {
+            await operation();
+        }
+        catch (Exception exception)
+        {
+            await _logger.ErrorAsync($"JobSupport dual write failed for {operationName} source {sourceId}.", exception);
+            throw;
+        }
+    }
 }

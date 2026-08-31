@@ -1,8 +1,12 @@
 using System.Text;
+using LinqToDB;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Plugin.Misc.JobSupport.Contracts;
+using Nop.Data;
+using Nop.Plugin.Misc.JobSupport.Domain;
+using Nop.Plugin.Misc.JobSupport.Domain.Enums;
 using Nop.Services.Attributes;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
@@ -27,6 +31,8 @@ public partial class JobSupportProfileService : IJobSupportProfileService
     private readonly IProductService _productService;
     private readonly ISpecificationAttributeService _specificationAttributeService;
     private readonly IUrlRecordService _urlRecordService;
+    private readonly IRepository<JobSupportProfile> _profileRepository;
+    private readonly JobSupportSettings _settings;
 
     public JobSupportProfileService(IJobSupportAffiliateService affiliateService,
         IAttributeParser<CustomerAttribute, CustomerAttributeValue> attributeParser,
@@ -39,7 +45,9 @@ public partial class JobSupportProfileService : IJobSupportProfileService
         IPictureService pictureService,
         IProductService productService,
         ISpecificationAttributeService specificationAttributeService,
-        IUrlRecordService urlRecordService)
+        IUrlRecordService urlRecordService,
+        IRepository<JobSupportProfile> profileRepository,
+        JobSupportSettings settings)
     {
         _affiliateService = affiliateService;
         _attributeParser = attributeParser;
@@ -53,6 +61,8 @@ public partial class JobSupportProfileService : IJobSupportProfileService
         _productService = productService;
         _specificationAttributeService = specificationAttributeService;
         _urlRecordService = urlRecordService;
+        _profileRepository = profileRepository;
+        _settings = settings;
     }
 
     public async Task EnsureProfileForCustomerAsync(Customer customer, JobSupportSettings settings)
@@ -179,6 +189,9 @@ public partial class JobSupportProfileService : IJobSupportProfileService
         {
             await _logger.InformationAsync($"JobSupport registration replay updated profile {profile.Id} for customer {customer.Id}.");
         }
+
+        if (settings.DataWriteMode == DataAccessMode.Dual)
+            await ExecutePluginWriteAsync(() => UpsertPluginProfileAsync(customer, profile), customer.Id, "profile");
     }
 
     public async Task ActivateProfileAsync(Customer customer, JobSupportSettings settings)
@@ -236,6 +249,9 @@ public partial class JobSupportProfileService : IJobSupportProfileService
                     string.Join(',', notifiedIds.OrderBy(id => id)));
             }
         }
+
+        if (settings.DataWriteMode == DataAccessMode.Dual)
+            await ExecutePluginWriteAsync(() => UpsertPluginProfileAsync(customer, profile), customer.Id, "activation");
     }
 
     public async Task<RelationshipActionResult> UpdateAvailabilityAsync(int customerId,
@@ -293,6 +309,13 @@ public partial class JobSupportProfileService : IJobSupportProfileService
                 customer);
         }
 
+        if (_settings.DataWriteMode == DataAccessMode.Dual)
+        {
+            var profile = await GetLinkedProfileAsync(customer);
+            if (profile != null)
+                await ExecutePluginWriteAsync(() => UpsertPluginProfileAsync(customer, profile), customer.Id, "availability");
+        }
+
         result.Succeeded = true;
         return result;
     }
@@ -344,7 +367,52 @@ public partial class JobSupportProfileService : IJobSupportProfileService
                 DisplayOrder = 0
             });
         }
+
+
+        if (_settings.DataWriteMode == DataAccessMode.Dual)
+            await ExecutePluginWriteAsync(() => UpsertPluginProfileAsync(customer, profile), customer.Id, "avatar");
     }
+
+    private async Task UpsertPluginProfileAsync(Customer customer, Product legacyProfile)
+    {
+        var entity = await _profileRepository.Table.FirstOrDefaultAsync(profile => profile.CustomerId == customer.Id)
+                     ?? new JobSupportProfile { CustomerId = customer.Id, CreatedOnUtc = legacyProfile.CreatedOnUtc };
+        entity.LegacyProductId = legacyProfile.Id;
+        entity.ProfileType = customer.CustomerProfileTypeId;
+        entity.DisplayName = legacyProfile.Name;
+        entity.ShortDescription = legacyProfile.ShortDescription;
+        entity.FullDescription = legacyProfile.FullDescription;
+        entity.CurrentAvailability = await _genericAttributeService.GetAttributeAsync<string>(customer,
+            JobSupportDefaults.CurrentAvailabilityAttribute);
+        entity.AvatarPictureId = PositiveOrNull(await _genericAttributeService.GetAttributeAsync<int>(customer,
+            NopCustomerDefaults.AvatarPictureIdAttribute));
+        entity.CountryId = PositiveOrNull(customer.CountryId);
+        entity.StateProvinceId = PositiveOrNull(customer.StateProvinceId);
+        entity.City = customer.City;
+        entity.IsPublished = legacyProfile.Published;
+        entity.UpdatedOnUtc = DateTime.UtcNow;
+        entity.MigrationSource ??= "DualWrite";
+        entity.LegacySourceId = legacyProfile.Id;
+        if (entity.Id == 0)
+            await _profileRepository.InsertAsync(entity, false);
+        else
+            await _profileRepository.UpdateAsync(entity, false);
+    }
+
+    private async Task ExecutePluginWriteAsync(Func<Task> operation, int sourceId, string operationName)
+    {
+        try
+        {
+            await operation();
+        }
+        catch (Exception exception)
+        {
+            await _logger.ErrorAsync($"JobSupport dual write failed for {operationName} source {sourceId}.", exception);
+            throw;
+        }
+    }
+
+    private static int? PositiveOrNull(int value) => value > 0 ? value : null;
 
     private async Task<Product> GetLinkedProfileAsync(Customer customer)
     {

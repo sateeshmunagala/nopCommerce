@@ -20,7 +20,8 @@
     <Content Include="logo.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="Content\css\job-support.css"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="Content\js\job-support.js"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
-    <Content Include="Views\**\*.cshtml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Views\**\*.cshtml" Exclude="Views\JobSupportAdmin\MigrationStatus.cshtml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Views\JobSupportAdmin\MigrationStatus.cshtml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
   </ItemGroup>
 
   <ItemGroup>
