@@ -12,6 +12,12 @@ public class PluginNopStartup : INopStartup
     {
         services.AddScoped<IJobSupportProfileQueryService, JobSupportProfileQueryService>();
         services.AddScoped<IJobSupportLegacyParityService, JobSupportLegacyParityService>();
+        services.AddScoped<IJobSupportProfileService, JobSupportProfileService>();
+        services.AddScoped<IJobSupportRelationshipService, JobSupportRelationshipService>();
+        services.AddScoped<IJobSupportSubscriptionService, JobSupportSubscriptionService>();
+        services.AddScoped<IJobSupportAffiliateService, JobSupportAffiliateService>();
+        services.AddScoped<IJobSupportNotificationService, JobSupportNotificationService>();
+        services.AddScoped<JobSupportSynchronizationTask>();
     }
 
     public void Configure(IApplicationBuilder application)

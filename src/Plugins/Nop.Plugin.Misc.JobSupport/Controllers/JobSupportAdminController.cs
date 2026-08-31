@@ -4,6 +4,11 @@ using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Models.Admin;
 using Nop.Plugin.Misc.JobSupport.Services;
 using Nop.Services.Localization;
+using Nop.Services.Catalog;
+using Nop.Services.Customers;
+using Nop.Services.Logging;
+using Nop.Services.Messages;
+using Nop.Services.ScheduleTasks;
 using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
@@ -16,21 +21,37 @@ namespace Nop.Plugin.Misc.JobSupport.Controllers;
 [AutoValidateAntiforgeryToken]
 public class JobSupportAdminController : BasePluginController
 {
-    private const string VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/LegacyParity.cshtml";
+    private const string LEGACY_PARITY_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/LegacyParity.cshtml";
+    private const string WORKFLOW_DIAGNOSTICS_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/WorkflowDiagnostics.cshtml";
 
+    private readonly ICustomerActivityService _customerActivityService;
+    private readonly ICustomerService _customerService;
     private readonly IJobSupportProfileQueryService _profileQueryService;
     private readonly ILocalizationService _localizationService;
+    private readonly IMessageTemplateService _messageTemplateService;
     private readonly IPermissionService _permissionService;
+    private readonly IProductService _productService;
+    private readonly IScheduleTaskService _scheduleTaskService;
     private readonly JobSupportSettings _settings;
 
-    public JobSupportAdminController(IJobSupportProfileQueryService profileQueryService,
+    public JobSupportAdminController(ICustomerActivityService customerActivityService,
+        ICustomerService customerService,
+        IJobSupportProfileQueryService profileQueryService,
         ILocalizationService localizationService,
+        IMessageTemplateService messageTemplateService,
         IPermissionService permissionService,
+        IProductService productService,
+        IScheduleTaskService scheduleTaskService,
         JobSupportSettings settings)
     {
+        _customerActivityService = customerActivityService;
+        _customerService = customerService;
         _profileQueryService = profileQueryService;
         _localizationService = localizationService;
+        _messageTemplateService = messageTemplateService;
         _permissionService = permissionService;
+        _productService = productService;
+        _scheduleTaskService = scheduleTaskService;
         _settings = settings;
     }
 
@@ -39,7 +60,7 @@ public class JobSupportAdminController : BasePluginController
         if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManagePlugins))
             return AccessDeniedView();
 
-        return View(VIEW_PATH, new LegacyParityRequestModel
+        return View(LEGACY_PARITY_VIEW_PATH, new LegacyParityRequestModel
         {
             PageSize = _settings.DefaultPageSize > 0 ? _settings.DefaultPageSize : 12
         });
@@ -59,7 +80,7 @@ public class JobSupportAdminController : BasePluginController
         }
 
         if (!ModelState.IsValid)
-            return View(VIEW_PATH, model);
+            return View(LEGACY_PARITY_VIEW_PATH, model);
 
         var request = new ProfileSearchRequest
         {
@@ -103,7 +124,93 @@ public class JobSupportAdminController : BasePluginController
             }).ToList()
         };
 
-        return View(VIEW_PATH, model);
+        return View(LEGACY_PARITY_VIEW_PATH, model);
+    }
+
+    public async Task<IActionResult> WorkflowDiagnostics()
+    {
+        if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManagePlugins))
+            return AccessDeniedView();
+
+        var effectiveBase = _settings.Enabled && _settings.EnablePluginEventConsumers &&
+                            _settings.ExecutionMode != WorkflowExecutionMode.Disabled;
+        var task = await _scheduleTaskService.GetTaskByTypeAsync(JobSupportDefaults.SynchronizationTaskType);
+        var templatePresent = (await _messageTemplateService.GetMessageTemplatesByNameAsync(
+            JobSupportDefaults.CustomerAvailableMessageTemplateSystemName)).Any();
+        var giveRole = await ResolveRoleNameAsync(_settings.GiveSupportRoleSystemName);
+        var takeRole = await ResolveRoleNameAsync(_settings.TakeSupportRoleSystemName);
+        var paidRole = await ResolveRoleNameAsync(_settings.PaidCustomerRoleSystemName);
+
+        var model = new WorkflowDiagnosticsModel();
+        AddDiagnostic(model, "Plugin enabled", _settings.Enabled);
+        AddDiagnostic(model, "Event consumers enabled", _settings.EnablePluginEventConsumers);
+        AddDiagnostic(model, "Execution mode", _settings.ExecutionMode.ToString());
+        AddDiagnostic(model, "Registration workflow effective", effectiveBase && _settings.EnableRegistrationWorkflow);
+        AddDiagnostic(model, "Activation workflow effective", effectiveBase && _settings.EnableActivationWorkflow);
+        AddDiagnostic(model, "Paid order workflow effective", effectiveBase && _settings.EnableOrderPaidWorkflow);
+        AddDiagnostic(model, "Availability workflow effective", effectiveBase && _settings.EnableAvailabilityWorkflow);
+        AddDiagnostic(model, "Avatar synchronization effective", effectiveBase && _settings.EnableAvatarSyncWorkflow);
+        AddDiagnostic(model, "Relationship notifications effective",
+            _settings.Enabled && _settings.EnableRelationshipNotifications &&
+            _settings.ExecutionMode != WorkflowExecutionMode.Disabled);
+        AddDiagnostic(model, "Synchronization workflow effective",
+            _settings.Enabled && _settings.EnableSynchronizationTask &&
+            _settings.ExecutionMode != WorkflowExecutionMode.Disabled);
+        AddDiagnostic(model, "Schedule task registered", task != null);
+        AddDiagnostic(model, "Schedule task enabled", task?.Enabled ?? false);
+        AddDiagnostic(model, "Message template present", templatePresent);
+        AddDiagnostic(model, "Give support role", giveRole);
+        AddDiagnostic(model, "Take support role", takeRole);
+        AddDiagnostic(model, "Paid customer role", paidRole);
+        AddDiagnostic(model, "Three month subscription product",
+            await ResolveProductNameAsync(_settings.ThreeMonthSubscriptionProductId));
+        AddDiagnostic(model, "Six month subscription product",
+            await ResolveProductNameAsync(_settings.SixMonthSubscriptionProductId));
+        AddDiagnostic(model, "One year subscription product",
+            await ResolveProductNameAsync(_settings.OneYearSubscriptionProductId));
+
+        var activityType = (await _customerActivityService.GetAllActivityTypesAsync())
+            .FirstOrDefault(type => type.SystemKeyword == JobSupportDefaults.ActivityTypeSystemName);
+        if (activityType != null)
+        {
+            var activities = await _customerActivityService.GetAllActivitiesAsync(
+                activityLogTypeId: activityType.Id,
+                pageIndex: 0,
+                pageSize: 20);
+            model.Activities = activities.Select(activity => new WorkflowActivityModel
+            {
+                CreatedOnUtc = activity.CreatedOnUtc,
+                ActivityType = activityType.Name,
+                EntityName = activity.EntityName,
+                EntityId = activity.EntityId
+            }).ToList();
+        }
+
+        return View(WORKFLOW_DIAGNOSTICS_VIEW_PATH, model);
+    }
+
+    private async Task<string> ResolveRoleNameAsync(string systemName)
+    {
+        if (string.IsNullOrWhiteSpace(systemName))
+            return "Not configured";
+        return (await _customerService.GetCustomerRoleBySystemNameAsync(systemName))?.Name ?? "Not resolved";
+    }
+
+    private async Task<string> ResolveProductNameAsync(int productId)
+    {
+        if (productId <= 0)
+            return "Not configured";
+        return (await _productService.GetProductByIdAsync(productId))?.Name ?? "Not resolved";
+    }
+
+    private static void AddDiagnostic(WorkflowDiagnosticsModel model, string name, bool value)
+    {
+        AddDiagnostic(model, name, value ? "Enabled" : "Disabled");
+    }
+
+    private static void AddDiagnostic(WorkflowDiagnosticsModel model, string name, string value)
+    {
+        model.Configuration.Add(new WorkflowDiagnosticItemModel { Name = name, Value = value });
     }
 
     private static bool TryParseProductIds(string value, out IList<int> productIds)

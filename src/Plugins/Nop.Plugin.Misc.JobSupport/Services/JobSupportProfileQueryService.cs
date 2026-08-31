@@ -101,6 +101,15 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
         int? outputTotalRecords,
         ProfileQuerySource source)
     {
+        var warnings = rows
+            .Where(row => row.Id <= 0)
+            .Select((_, index) => $"Returned profile row {index + 1} does not contain a profile identifier.")
+            .ToList();
+        if (!outputTotalRecords.HasValue)
+            warnings.Add("The output total record count was not returned.");
+        else if (outputTotalRecords.Value < rows.Count)
+            warnings.Add("The output total record count is lower than the returned row count.");
+
         return new PagedProfileSearchResult
         {
             Items = rows,
@@ -111,7 +120,8 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
             ReturnedRowCount = rows.Count,
             Succeeded = true,
             ErrorCode = ProfileQueryErrorCode.None,
-            Source = source
+            Source = source,
+            MappingWarnings = warnings
         };
     }
 

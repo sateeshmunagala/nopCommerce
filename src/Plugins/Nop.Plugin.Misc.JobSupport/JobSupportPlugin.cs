@@ -1,19 +1,37 @@
+using Nop.Core.Domain.Logging;
+using Nop.Core.Domain.Messages;
+using Nop.Core.Domain.ScheduleTasks;
+using Nop.Data;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
+using Nop.Services.Messages;
 using Nop.Services.Plugins;
+using Nop.Services.ScheduleTasks;
 
 namespace Nop.Plugin.Misc.JobSupport;
 
 public class JobSupportPlugin : BasePlugin, IMiscPlugin
 {
     private readonly ILocalizationService _localizationService;
+    private readonly IMessageTemplateService _messageTemplateService;
+    private readonly IEmailAccountService _emailAccountService;
+    private readonly IRepository<ActivityLogType> _activityLogTypeRepository;
+    private readonly IScheduleTaskService _scheduleTaskService;
     private readonly ISettingService _settingService;
 
     public JobSupportPlugin(ILocalizationService localizationService,
+        IMessageTemplateService messageTemplateService,
+        IEmailAccountService emailAccountService,
+        IRepository<ActivityLogType> activityLogTypeRepository,
+        IScheduleTaskService scheduleTaskService,
         ISettingService settingService)
     {
         _localizationService = localizationService;
+        _messageTemplateService = messageTemplateService;
+        _emailAccountService = emailAccountService;
+        _activityLogTypeRepository = activityLogTypeRepository;
+        _scheduleTaskService = scheduleTaskService;
         _settingService = settingService;
     }
 
@@ -25,14 +43,83 @@ public class JobSupportPlugin : BasePlugin, IMiscPlugin
             UseLegacyStoredProcedures = false,
             LegacyProfileSearchProcedureName = "ProductLoadAllPaged_V6",
             LegacyShortlistProcedureName = "ProductShortList",
+            GiveSupportRoleSystemName = JobSupportDefaults.GiveSupportRoleSystemName,
+            TakeSupportRoleSystemName = JobSupportDefaults.TakeSupportRoleSystemName,
+            PaidCustomerRoleSystemName = JobSupportDefaults.PaidCustomerRoleSystemName,
             DefaultPageSize = 12
         });
+
+        if (!_activityLogTypeRepository.Table.Any(type =>
+                type.SystemKeyword == JobSupportDefaults.ActivityTypeSystemName))
+        {
+            await _activityLogTypeRepository.InsertAsync(new ActivityLogType
+            {
+                SystemKeyword = JobSupportDefaults.ActivityTypeSystemName,
+                Name = JobSupportDefaults.ActivityTypeName,
+                Enabled = true
+            });
+        }
+
+        if (!(await _messageTemplateService.GetMessageTemplatesByNameAsync(
+                JobSupportDefaults.CustomerAvailableMessageTemplateSystemName)).Any())
+        {
+            var emailAccount = (await _emailAccountService.GetAllEmailAccountsAsync()).FirstOrDefault();
+            if (emailAccount != null)
+            {
+                await _messageTemplateService.InsertMessageTemplateAsync(new MessageTemplate
+                {
+                    Name = JobSupportDefaults.CustomerAvailableMessageTemplateSystemName,
+                    Subject = "%Store.Name%. A matching Job Support profile is available",
+                    Body = "Hello %JobSupport.CustomerFullName%,<br /><br />" +
+                           "<a href=\"%JobSupport.ProfileUrl%\">%JobSupport.ProfileName%</a> is available.<br />" +
+                           "%JobSupport.ProfileShortDescription%<br />Skills: %JobSupport.ProfileSkills%<br />" +
+                           "Availability: %JobSupport.Availability%",
+                    IsActive = true,
+                    EmailAccountId = emailAccount.Id
+                });
+            }
+        }
+
+        if (await _scheduleTaskService.GetTaskByTypeAsync(JobSupportDefaults.SynchronizationTaskType) == null)
+        {
+            await _scheduleTaskService.InsertTaskAsync(new ScheduleTask
+            {
+                Name = JobSupportDefaults.SynchronizationTaskName,
+                Seconds = 3600,
+                Type = JobSupportDefaults.SynchronizationTaskType,
+                Enabled = false,
+                StopOnError = false
+            });
+        }
+
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
         {
             ["Plugins.Misc.JobSupport.FriendlyName"] = "Job Support",
             ["Plugins.Misc.JobSupport.Configuration"] = "Job Support configuration",
             ["Plugins.Misc.JobSupport.Fields.Enabled"] = "Enabled",
             ["Plugins.Misc.JobSupport.Disabled"] = "Job Support is currently disabled.",
+            ["Plugins.Misc.JobSupport.MessageTemplates.CustomerAvailable.Subject"] = "%Store.Name%. A matching Job Support profile is available",
+            ["Plugins.Misc.JobSupport.MessageTemplates.CustomerAvailable.Body"] = "A matching Job Support profile is available.",
+            ["Plugins.Misc.JobSupport.Admin.WorkflowDiagnostics.Title"] = "Job Support workflow diagnostics",
+            ["Plugins.Misc.JobSupport.Admin.WorkflowDiagnostics.Configuration"] = "Effective configuration",
+            ["Plugins.Misc.JobSupport.Admin.WorkflowDiagnostics.Activity"] = "Recent workflow activity",
+            ["Plugins.Misc.JobSupport.Admin.WorkflowDiagnostics.CreatedOn"] = "Created on (UTC)",
+            ["Plugins.Misc.JobSupport.Admin.WorkflowDiagnostics.ActivityType"] = "Activity type",
+            ["Plugins.Misc.JobSupport.Admin.WorkflowDiagnostics.Entity"] = "Entity",
+            ["Plugins.Misc.JobSupport.Admin.WorkflowDiagnostics.EntityId"] = "Entity identifier",
+            ["Plugins.Misc.JobSupport.Admin.WorkflowDiagnostics.None"] = "No workflow activity was found.",
+            ["Plugins.Misc.JobSupport.Relationship.Applied"] = "The relationship action was applied.",
+            ["Plugins.Misc.JobSupport.Relationship.Removed"] = "The relationship action was removed.",
+            ["Plugins.Misc.JobSupport.Relationship.AlreadyApplied"] = "The relationship action was already applied.",
+            ["Plugins.Misc.JobSupport.Relationship.Errors.WorkflowDisabled"] = "The relationship workflow is disabled.",
+            ["Plugins.Misc.JobSupport.Relationship.Errors.SourceCustomerNotFound"] = "The source customer was not found.",
+            ["Plugins.Misc.JobSupport.Relationship.Errors.ProfileNotFound"] = "The profile was not found.",
+            ["Plugins.Misc.JobSupport.Relationship.Errors.ProfileCustomerNotFound"] = "The profile customer was not found.",
+            ["Plugins.Misc.JobSupport.Relationship.Errors.SourceProfileNotFound"] = "The source profile was not found.",
+            ["Plugins.Misc.JobSupport.Relationship.Errors.SelfRelationship"] = "A profile cannot be related to itself.",
+            ["Plugins.Misc.JobSupport.Relationship.Errors.RelationshipBlocked"] = "The relationship action is blocked.",
+            ["Plugins.Misc.JobSupport.Relationship.Errors.CompatibilityWriteRejected"] = "The relationship could not be stored.",
+            ["Plugins.Misc.JobSupport.Relationship.Errors.CompatibilityMirrorWriteRejected"] = "The mirrored relationship could not be stored.",
             ["Plugins.Misc.JobSupport.Admin.LegacyParity.Title"] = "Legacy profile query diagnostic",
             ["Plugins.Misc.JobSupport.Admin.LegacyParity.Description"] = "Run a plugin-owned read against a configured legacy profile procedure.",
             ["Plugins.Misc.JobSupport.Admin.LegacyParity.Fields.QueryType"] = "Query type",
@@ -94,8 +181,18 @@ public class JobSupportPlugin : BasePlugin, IMiscPlugin
 
     public override async Task UninstallAsync()
     {
+        var task = await _scheduleTaskService.GetTaskByTypeAsync(JobSupportDefaults.SynchronizationTaskType);
+        if (task != null)
+            await _scheduleTaskService.DeleteTaskAsync(task);
+
+        foreach (var template in await _messageTemplateService.GetMessageTemplatesByNameAsync(
+                     JobSupportDefaults.CustomerAvailableMessageTemplateSystemName))
+        {
+            await _messageTemplateService.DeleteMessageTemplateAsync(template);
+        }
+
         await _settingService.DeleteSettingAsync<JobSupportSettings>();
-        await _localizationService.DeleteLocaleResourcesAsync("Plugins.Misc.JobSupport");
+        await _localizationService.DeleteLocaleResourcesAsync(JobSupportDefaults.LocaleResourcePrefix);
         await base.UninstallAsync();
     }
 }

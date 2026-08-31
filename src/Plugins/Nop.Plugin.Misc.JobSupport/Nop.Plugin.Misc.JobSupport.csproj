@@ -15,6 +15,7 @@
     <None Remove="Views\_ViewImports.cshtml" />
     <None Remove="Views\JobSupportAdmin\_ViewImports.cshtml" />
     <None Remove="Views\JobSupportAdmin\LegacyParity.cshtml" />
+    <None Remove="Views\JobSupportAdmin\WorkflowDiagnostics.cshtml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -25,6 +26,7 @@
     <Content Include="Views\_ViewImports.cshtml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="Views\JobSupportAdmin\_ViewImports.cshtml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="Views\JobSupportAdmin\LegacyParity.cshtml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Views\JobSupportAdmin\WorkflowDiagnostics.cshtml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
   </ItemGroup>
 
   <ItemGroup>
