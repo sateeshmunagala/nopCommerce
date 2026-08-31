@@ -1,3 +1,5 @@
+using LinqToDB.Mapping;
+
 namespace Nop.Plugin.Misc.JobSupport.Contracts;
 
 public partial class ProfileSearchResult
@@ -6,6 +8,7 @@ public partial class ProfileSearchResult
     public int VendorId { get; set; }
     public string FirstName { get; set; }
     public string LastName { get; set; }
+    public string Email { get; set; }
     public string Phone { get; set; }
     public string Gender { get; set; }
     public string Company { get; set; }
@@ -18,6 +21,7 @@ public partial class ProfileSearchResult
     public int? CustomerProfileTypeId { get; set; }
     public string PrimaryTechnology { get; set; }
     public string SecondaryTechnology { get; set; }
+    [Column("CurrentAvalibility")]
     public string CurrentAvailability { get; set; }
     public string ProfileType { get; set; }
     public string MotherTongue { get; set; }

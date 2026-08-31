@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <OutputPath>$(SolutionDir)\Presentation\Nop.Web\Plugins\Misc.JobSupport</OutputPath>
+    <OutputPath>..\..\Presentation\Nop.Web\Plugins\Misc.JobSupport</OutputPath>
     <OutDir>$(OutputPath)</OutDir>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -13,6 +13,8 @@
     <None Remove="Content\css\job-support.css" />
     <None Remove="Content\js\job-support.js" />
     <None Remove="Views\_ViewImports.cshtml" />
+    <None Remove="Views\JobSupportAdmin\_ViewImports.cshtml" />
+    <None Remove="Views\JobSupportAdmin\LegacyParity.cshtml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,14 +23,16 @@
     <Content Include="Content\css\job-support.css"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="Content\js\job-support.js"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="Views\_ViewImports.cshtml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Views\JobSupportAdmin\_ViewImports.cshtml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Views\JobSupportAdmin\LegacyParity.cshtml"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="$(SolutionDir)\Presentation\Nop.Web\Nop.Web.csproj"/>
-    <ClearPluginAssemblies Include="$(SolutionDir)\Build\ClearPluginAssemblies.proj"/>
+    <ProjectReference Include="..\..\Presentation\Nop.Web\Nop.Web.csproj" />
+    <ClearPluginAssemblies Include="$(MSBuildProjectDirectory)\..\..\Build\ClearPluginAssemblies.proj" />
   </ItemGroup>
 
   <Target AfterTargets="Build" Name="NopTarget">
-    <MSBuild Projects="@(ClearPluginAssemblies)" Properties="PluginPath=$(OutDir)" Targets="NopClear"/>
+    <MSBuild Projects="@(ClearPluginAssemblies)" Properties="PluginPath=$(MSBuildProjectDirectory)\$(OutDir)" Targets="NopClear" />
   </Target>
 </Project>
