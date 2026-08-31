@@ -1,4 +1,5 @@
 using Nop.Core.Configuration;
+using Nop.Plugin.Misc.JobSupport.Contracts;
 
 namespace Nop.Plugin.Misc.JobSupport;
 
@@ -21,4 +22,15 @@ public class JobSupportSettings : ISettings
     public int SixMonthSubscriptionProductId { get; set; }
     public int OneYearSubscriptionProductId { get; set; }
     public int DefaultPageSize { get; set; } = 12;
+    public bool EnablePluginEventConsumers { get; set; }
+    public bool EnableRegistrationWorkflow { get; set; }
+    public bool EnableActivationWorkflow { get; set; }
+    public bool EnableOrderPaidWorkflow { get; set; }
+    public bool EnableAvailabilityWorkflow { get; set; }
+    public bool EnableAvatarSyncWorkflow { get; set; }
+    public bool EnableRelationshipNotifications { get; set; }
+    public bool EnableSynchronizationTask { get; set; }
+    public WorkflowExecutionMode ExecutionMode { get; set; } = WorkflowExecutionMode.Shadow;
+    public int SynchronizationBatchSize { get; set; } = 200;
+    public bool WriteLegacyRewardPointsHistory { get; set; }
 }
