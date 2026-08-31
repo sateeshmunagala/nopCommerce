@@ -1,0 +1,5 @@
+.job-support { --js-gap: 16px; --js-radius: 8px; }
+.job-support .js-grid { display: grid; grid-template-columns: 1fr; gap: var(--js-gap); }
+@media (min-width: 576px) { .job-support .js-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .job-support .js-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1400px) { .job-support .js-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

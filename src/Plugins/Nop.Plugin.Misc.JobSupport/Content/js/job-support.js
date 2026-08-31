@@ -1,0 +1,1 @@
+window.jobSupport = window.jobSupport || {};

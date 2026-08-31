@@ -1,0 +1,11 @@
+{
+  "Group": "Misc",
+  "FriendlyName": "Job Support",
+  "SystemName": "Misc.JobSupport",
+  "Version": "1.00",
+  "SupportedVersions": [ "5.00" ],
+  "Author": "Job Support Team",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.Misc.JobSupport.dll",
+  "Description": "Customer profile matching, relationships, subscriptions and JobSupport workflow."
+}
