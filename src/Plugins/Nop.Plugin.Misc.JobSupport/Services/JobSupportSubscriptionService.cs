@@ -1,5 +1,4 @@
 using Nop.Core.Domain.Customers;
-using LinqToDB;
 using Nop.Core.Domain.Orders;
 using Nop.Data;
 using Nop.Plugin.Misc.JobSupport.Contracts;
@@ -295,8 +294,9 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
         foreach (var item in orderItems.Where(item => plans.ContainsKey(item.ProductId)))
         {
             var plan = plans[item.ProductId];
-            var entity = await _subscriptionRepository.Table.FirstOrDefaultAsync(subscription =>
-                subscription.OrderId == order.Id && subscription.OrderItemId == item.Id);
+            var entity = await _subscriptionRepository.Table
+                .Where(subscription => subscription.OrderId == order.Id && subscription.OrderItemId == item.Id)
+                .FirstOrDefaultAsync();
             if (entity != null)
                 continue;
             await _subscriptionRepository.InsertAsync(new JobSupportSubscription
@@ -319,7 +319,9 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
 
     private async Task UpsertPluginRevealAsync(int viewerCustomerId, int legacyProductId)
     {
-        var profile = await _profileRepository.Table.FirstOrDefaultAsync(item => item.LegacyProductId == legacyProductId);
+        var profile = await _profileRepository.Table
+            .Where(item => item.LegacyProductId == legacyProductId)
+            .FirstOrDefaultAsync();
         if (profile == null)
             throw new InvalidOperationException("Plugin profile dependency is missing.");
         if (await _contactRevealRepository.Table.AnyAsync(reveal =>
@@ -331,7 +333,7 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
             .FirstOrDefaultAsync();
         await _contactRevealRepository.InsertAsync(new JobSupportContactReveal
         {
-            SubscriptionId = subscription?.Id,
+            SubscriptionId = subscription?.Id ?? 0,
             ViewerCustomerId = viewerCustomerId,
             TargetCustomerId = profile.CustomerId,
             TargetProfileId = profile.Id,

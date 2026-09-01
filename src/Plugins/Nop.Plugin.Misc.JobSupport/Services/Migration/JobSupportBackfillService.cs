@@ -239,7 +239,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
             ? new List<CustomerAttribute>()
             : await _customerAttributeRepository.Table.Where(attribute => attributeIds.Contains(attribute.Id)).ToListAsync(cancellationToken);
         legacyDefinitions = legacyDefinitions.Where(attribute => !IsContactField(attribute.Name)).ToList();
-        var safeAttributeIds = legacyDefinitions.Select(attribute => attribute.Id).ToArray();
+        var safeAttributeIds = legacyDefinitions.Select(attribute => (int?)attribute.Id).ToList();
         parsedValues = parsedValues.Where(value => safeAttributeIds.Contains(value.AttributeId) && !LooksLikeContactValue(value.Value)).ToList();
 
         var definitions = await _attributeDefinitionRepository.Table
@@ -580,7 +580,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
                 .OrderByDescending(candidate => candidate.StartOnUtc).FirstOrDefault();
             inserts.Add(new JobSupportContactReveal
             {
-                SubscriptionId = subscription?.Id,
+                SubscriptionId = subscription?.Id ?? 0,
                 ViewerCustomerId = item.ViewerCustomerId,
                 TargetCustomerId = profile.CustomerId,
                 TargetProfileId = profile.Id,
