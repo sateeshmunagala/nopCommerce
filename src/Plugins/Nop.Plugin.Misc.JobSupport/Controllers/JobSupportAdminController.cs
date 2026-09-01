@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Models.Admin;
 using Nop.Plugin.Misc.JobSupport.Models.Admin.Migration;
 using Nop.Plugin.Misc.JobSupport.Services;
@@ -221,7 +222,7 @@ public class JobSupportAdminController : BasePluginController
     [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
     public async Task<IActionResult> WorkflowDiagnostics()
     {
-        if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManagePlugins))
+        if (!await _permissionService.AuthorizeAsync(StandardPermission.Configuration.MANAGE_PLUGINS))
             return AccessDeniedView();
 
         var effectiveBase = _settings.Enabled && _settings.EnablePluginEventConsumers &&

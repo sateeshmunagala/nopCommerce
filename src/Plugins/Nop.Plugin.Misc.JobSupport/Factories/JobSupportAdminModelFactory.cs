@@ -1,7 +1,7 @@
-using Nop.Core;
 using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Models.Admin;
 using Nop.Services.Catalog;
+using Nop.Services.Helpers;
 using Nop.Plugin.Misc.JobSupport.Services;
 
 namespace Nop.Plugin.Misc.JobSupport.Factories;

@@ -109,7 +109,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
             ? new List<Customer>()
             : await _customerRepository.Table.Where(customer => sourceIds.Contains(customer.Id))
                 .OrderBy(customer => customer.Id)
-                .ToListAsync(cancellationToken);
+                .ToListAsync();
         if (customers.Count == 0)
             return await CompleteAsync(checkpoint);
 
@@ -117,16 +117,16 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
         var products = await _productRepository.Table
             .Where(product => customerIds.Contains(product.VendorId) && !product.Deleted)
             .OrderBy(product => product.Id)
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         var existingProfiles = await _profileRepository.Table
             .Where(profile => customerIds.Contains(profile.CustomerId))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         var attributes = await _genericAttributeRepository.Table
             .Where(attribute => customerIds.Contains(attribute.EntityId) && attribute.KeyGroup == nameof(Customer) &&
                 (attribute.Key == Nop.Core.Domain.Customers.NopCustomerDefaults.AvatarPictureIdAttribute ||
                  attribute.Key == JobSupportDefaults.CurrentAvailabilityAttribute))
             .OrderBy(attribute => attribute.Id)
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
 
         var productIds = products.Select(product => product.Id).ToArray();
         var descriptiveOptions = productIds.Length == 0
@@ -137,7 +137,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
                       (option.SpecificationAttributeId == _settings.MotherTongueSpecificationAttributeId ||
                        option.SpecificationAttributeId == _settings.RelevantExperienceSpecificationAttributeId)
                 select new SpecificationProjection(mapping.ProductId, option.SpecificationAttributeId, option.Name, mapping.DisplayOrder))
-                .ToListAsync(cancellationToken);
+                .ToListAsync();
 
         var inserts = new List<JobSupportProfile>();
         var updates = new List<JobSupportProfile>();
@@ -195,7 +195,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
             .Where(profile => profile.Id > checkpoint.LastProcessedId)
             .OrderBy(profile => profile.Id)
             .Take(NormalizeBatchSize(batchSize))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         if (profiles.Count == 0)
             return await CompleteAsync(checkpoint);
 
@@ -203,7 +203,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
         var legacyProductIds = profiles.Where(profile => profile.LegacyProductId.HasValue)
             .Select(profile => profile.LegacyProductId.Value).ToArray();
         var customerIds = profiles.Select(profile => profile.CustomerId).ToArray();
-        var customers = await _customerRepository.Table.Where(customer => customerIds.Contains(customer.Id)).ToListAsync(cancellationToken);
+        var customers = await _customerRepository.Table.Where(customer => customerIds.Contains(customer.Id)).ToListAsync();
         var mappings = legacyProductIds.Length == 0
             ? new List<SkillProjection>()
             : await (from mapping in _productSpecificationRepository.Table
@@ -212,8 +212,8 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
                       (option.SpecificationAttributeId == _settings.PrimaryTechnologySpecificationAttributeId ||
                        option.SpecificationAttributeId == _settings.SecondaryTechnologySpecificationAttributeId)
                 select new SkillProjection(mapping.ProductId, option.SpecificationAttributeId, option.Id, option.Name, mapping.DisplayOrder))
-                .ToListAsync(cancellationToken);
-        var existingSkills = await _skillRepository.Table.Where(skill => profileIds.Contains(skill.ProfileId)).ToListAsync(cancellationToken);
+                .ToListAsync();
+        var existingSkills = await _skillRepository.Table.Where(skill => profileIds.Contains(skill.ProfileId)).ToListAsync();
 
         var skillInserts = new List<JobSupportProfileSkill>();
         var now = DateTime.UtcNow;
@@ -245,14 +245,14 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
         var attributeIds = parsedValues.Select(value => value.AttributeId).Distinct().ToArray();
         var legacyDefinitions = attributeIds.Length == 0
             ? new List<CustomerAttribute>()
-            : await _customerAttributeRepository.Table.Where(attribute => attributeIds.Contains(attribute.Id)).ToListAsync(cancellationToken);
+            : await _customerAttributeRepository.Table.Where(attribute => attributeIds.Contains(attribute.Id)).ToListAsync();
         legacyDefinitions = legacyDefinitions.Where(attribute => !IsContactField(attribute.Name)).ToList();
         var safeAttributeIds = legacyDefinitions.Select(attribute => (int?)attribute.Id).ToList();
         parsedValues = parsedValues.Where(value => safeAttributeIds.Contains(value.AttributeId) && !LooksLikeContactValue(value.Value)).ToList();
 
         var definitions = await _attributeDefinitionRepository.Table
             .Where(definition => safeAttributeIds.Contains(definition.LegacyCustomerAttributeId))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         var newDefinitions = legacyDefinitions.Where(attribute => definitions.All(definition => definition.LegacyCustomerAttributeId != attribute.Id))
             .Select(attribute => new JobSupportProfileAttributeDefinition
             {
@@ -272,11 +272,11 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
         var numericValueIds = parsedValues.Select(value => ParseInt(value.Value)).Where(id => id > 0).Distinct().ToArray();
         var legacyOptions = numericValueIds.Length == 0
             ? new List<CustomerAttributeValue>()
-            : await _customerAttributeValueRepository.Table.Where(option => numericValueIds.Contains(option.Id)).ToListAsync(cancellationToken);
+            : await _customerAttributeValueRepository.Table.Where(option => numericValueIds.Contains(option.Id)).ToListAsync();
         var definitionIds = definitions.Select(definition => definition.Id).ToArray();
         var options = await _attributeOptionRepository.Table
             .Where(option => definitionIds.Contains(option.AttributeDefinitionId))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         var newOptions = (from legacyOption in legacyOptions
             join definition in definitions on legacyOption.AttributeId equals definition.LegacyCustomerAttributeId
             where options.All(option => option.LegacyCustomerAttributeValueId != legacyOption.Id)
@@ -295,7 +295,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
 
         var existingValues = await _attributeValueRepository.Table
             .Where(value => profileIds.Contains(value.ProfileId))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         var valueInserts = new List<JobSupportProfileAttributeValue>();
         foreach (var parsed in parsedValues)
         {
@@ -346,34 +346,34 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
             .Where(item => item.Id > checkpoint.LastProcessedId && item.ShoppingCartTypeId >= 2 && item.ShoppingCartTypeId <= 13)
             .OrderBy(item => item.Id)
             .Take(NormalizeBatchSize(batchSize))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         if (batch.Count == 0)
             return await CompleteAsync(checkpoint);
 
         var relationshipBatch = batch.Where(item => item.ShoppingCartTypeId <= 11).ToList();
         var productIds = relationshipBatch.Select(item => item.ProductId).Distinct().ToArray();
         var customerIds = relationshipBatch.Select(item => item.CustomerId).Distinct().ToArray();
-        var products = await _productRepository.Table.Where(product => productIds.Contains(product.Id)).ToListAsync(cancellationToken);
+        var products = await _productRepository.Table.Where(product => productIds.Contains(product.Id)).ToListAsync();
         var counterpartProductIds = await _productRepository.Table
             .Where(product => customerIds.Contains(product.VendorId) && !product.Deleted)
             .Select(product => product.Id)
-            .ToArrayAsync(cancellationToken);
+            .ToArrayAsync();
         var relatedRows = await _shoppingCartItemRepository.Table
             .Where(item => item.ShoppingCartTypeId >= 2 && item.ShoppingCartTypeId <= 11 &&
                 (customerIds.Contains(item.CustomerId) || productIds.Contains(item.ProductId) || counterpartProductIds.Contains(item.ProductId)))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         var relatedProductIds = relatedRows.Select(item => item.ProductId).Distinct().ToArray();
-        products = await _productRepository.Table.Where(product => relatedProductIds.Contains(product.Id)).ToListAsync(cancellationToken);
+        products = await _productRepository.Table.Where(product => relatedProductIds.Contains(product.Id)).ToListAsync();
 
         var normalized = relatedRows.Select(row => NormalizeRelationship(row, products)).Where(item => item != null).ToList();
         var batchIds = relationshipBatch.Select(item => item.Id).ToHashSet();
         var groups = normalized.GroupBy(item => new { item.SourceCustomerId, item.TargetCustomerId, item.RelationshipTypeId })
             .Where(group => group.Any(item => batchIds.Contains(item.LegacyId))).ToList();
         var involvedCustomerIds = groups.SelectMany(group => new[] { group.Key.SourceCustomerId, group.Key.TargetCustomerId }).Distinct().ToArray();
-        var profiles = await _profileRepository.Table.Where(profile => involvedCustomerIds.Contains(profile.CustomerId)).ToListAsync(cancellationToken);
+        var profiles = await _profileRepository.Table.Where(profile => involvedCustomerIds.Contains(profile.CustomerId)).ToListAsync();
         var existing = await _relationshipRepository.Table
             .Where(relationship => involvedCustomerIds.Contains(relationship.SourceCustomerId) || involvedCustomerIds.Contains(relationship.TargetCustomerId))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         var inserts = new List<JobSupportRelationship>();
         var updates = new List<JobSupportRelationship>();
         var skipped = batch.Count - relationshipBatch.Count;
@@ -438,12 +438,12 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
             .Where(item => item.Id > checkpoint.LastProcessedId && productIds.Contains(item.ProductId))
             .OrderBy(item => item.Id)
             .Take(NormalizeBatchSize(batchSize))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         if (items.Count == 0)
             return await CompleteAsync(checkpoint);
 
         var orderIds = items.Select(item => item.OrderId).Distinct().ToArray();
-        var orders = await _orderRepository.Table.Where(order => orderIds.Contains(order.Id)).ToListAsync(cancellationToken);
+        var orders = await _orderRepository.Table.Where(order => orderIds.Contains(order.Id)).ToListAsync();
         var customerIds = orders.Select(order => order.CustomerId).Distinct().ToArray();
         var attributes = await _genericAttributeRepository.Table
             .Where(attribute => customerIds.Contains(attribute.EntityId) && attribute.KeyGroup == nameof(Customer) &&
@@ -452,8 +452,8 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
                  attribute.Key == JobSupportDefaults.SubscriptionUsedCreditCountAttribute ||
                  attribute.Key == JobSupportDefaults.SubscriptionExpiryDateAttribute))
             .OrderBy(attribute => attribute.Id)
-            .ToListAsync(cancellationToken);
-        var existing = await _subscriptionRepository.Table.Where(subscription => orderIds.Contains(subscription.OrderId)).ToListAsync(cancellationToken);
+            .ToListAsync();
+        var existing = await _subscriptionRepository.Table.Where(subscription => orderIds.Contains(subscription.OrderId)).ToListAsync();
         var inserts = new List<JobSupportSubscription>();
         var updates = new List<JobSupportSubscription>();
         var skipped = 0L;
@@ -505,7 +505,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
             .Where(item => item.Id > checkpoint.LastProcessedId && item.ShoppingCartTypeId >= 12 && item.ShoppingCartTypeId <= 13)
             .OrderBy(item => item.Id)
             .Take(NormalizeBatchSize(batchSize))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         if (batch.Count == 0)
         {
             checkpoint.LastProcessedId = -1;
@@ -515,11 +515,11 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
             return Result(checkpoint, Array.Empty<string>());
         }
         var productIds = batch.Select(item => item.ProductId).Distinct().ToArray();
-        var products = await _productRepository.Table.Where(product => productIds.Contains(product.Id)).ToListAsync(cancellationToken);
+        var products = await _productRepository.Table.Where(product => productIds.Contains(product.Id)).ToListAsync();
         var normalized = batch.Select(row => NormalizeView(row, products)).Where(item => item != null).ToList();
         var customerIds = normalized.SelectMany(item => new[] { item.ViewerCustomerId, item.ViewedCustomerId }).Distinct().ToArray();
-        var profiles = await _profileRepository.Table.Where(profile => customerIds.Contains(profile.CustomerId)).ToListAsync(cancellationToken);
-        var existing = await _profileViewRepository.Table.Where(view => customerIds.Contains(view.ViewerCustomerId)).ToListAsync(cancellationToken);
+        var profiles = await _profileRepository.Table.Where(profile => customerIds.Contains(profile.CustomerId)).ToListAsync();
+        var existing = await _profileViewRepository.Table.Where(view => customerIds.Contains(view.ViewerCustomerId)).ToListAsync();
         var inserts = new List<JobSupportProfileView>();
         var updates = new List<JobSupportProfileView>();
         var skipped = 0L;
@@ -558,7 +558,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
                 attribute.Key == JobSupportDefaults.RevealedProfileIdsAttribute)
             .OrderBy(attribute => attribute.Id)
             .Take(NormalizeBatchSize(batchSize))
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
         if (batch.Count == 0)
             return await CompleteAsync(checkpoint);
 
@@ -566,12 +566,12 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
             .Select(productId => new RevealProjection(attribute.Id, attribute.EntityId, productId,
                 attribute.CreatedOrUpdatedDateUTC ?? DateTime.UtcNow))).ToList();
         var productIds = parsed.Select(item => item.LegacyProductId).Distinct().ToArray();
-        var products = await _productRepository.Table.Where(product => productIds.Contains(product.Id)).ToListAsync(cancellationToken);
+        var products = await _productRepository.Table.Where(product => productIds.Contains(product.Id)).ToListAsync();
         var targetCustomerIds = products.Select(product => product.VendorId).Distinct().ToArray();
-        var profiles = await _profileRepository.Table.Where(profile => targetCustomerIds.Contains(profile.CustomerId)).ToListAsync(cancellationToken);
+        var profiles = await _profileRepository.Table.Where(profile => targetCustomerIds.Contains(profile.CustomerId)).ToListAsync();
         var viewerIds = batch.Select(attribute => attribute.EntityId).Distinct().ToArray();
-        var subscriptions = await _subscriptionRepository.Table.Where(subscription => viewerIds.Contains(subscription.CustomerId)).ToListAsync(cancellationToken);
-        var existing = await _contactRevealRepository.Table.Where(reveal => viewerIds.Contains(reveal.ViewerCustomerId)).ToListAsync(cancellationToken);
+        var subscriptions = await _subscriptionRepository.Table.Where(subscription => viewerIds.Contains(subscription.CustomerId)).ToListAsync();
+        var existing = await _contactRevealRepository.Table.Where(reveal => viewerIds.Contains(reveal.ViewerCustomerId)).ToListAsync();
         var inserts = new List<JobSupportContactReveal>();
         var skipped = 0L;
         var errors = new List<string>();
@@ -615,7 +615,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
 
     private async Task<JobSupportMigrationCheckpoint> GetCheckpointAsync(string name, CancellationToken cancellationToken)
     {
-        var checkpoint = await _checkpointRepository.Table.FirstOrDefaultAsync(item => item.MigrationName == name, cancellationToken);
+        var checkpoint = await _checkpointRepository.Table.FirstOrDefaultAsync(item => item.MigrationName == name);
         if (checkpoint != null)
             return checkpoint;
         checkpoint = new JobSupportMigrationCheckpoint

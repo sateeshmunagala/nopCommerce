@@ -101,17 +101,17 @@ public partial class JobSupportNotificationService : IJobSupportNotificationServ
             new("JobSupport.CustomerFullName", recipientName),
             new("JobSupport.Availability", availability)
         };
-        await _messageTokenProvider.AddStoreTokensAsync(tokens, store, emailAccount);
-        await _eventPublisher.PublishAsync(new MessageTokensAddedEvent<Token>(template, tokens));
+        var languageId = recipient.LanguageId.GetValueOrDefault() > 0
+            ? recipient.LanguageId.Value
+            : store.DefaultLanguageId;
+        await _messageTokenProvider.AddStoreTokensAsync(tokens, store, emailAccount, languageId);
+        await _eventPublisher.MessageTokensAddedAsync(template, tokens);
 
         var isPremium = !string.IsNullOrWhiteSpace(_settings.PaidCustomerRoleSystemName) &&
                         await _customerService.IsInCustomerRoleAsync(recipient,
                             _settings.PaidCustomerRoleSystemName,
                             false);
         var queuedTemplate = CopyForRecipient(template, isPremium ? null : 1);
-        var languageId = recipient.LanguageId.GetValueOrDefault() > 0
-            ? recipient.LanguageId.Value
-            : store.DefaultLanguageId;
         var queuedEmailId = await _workflowMessageService.SendNotificationAsync(queuedTemplate,
             emailAccount,
             languageId,

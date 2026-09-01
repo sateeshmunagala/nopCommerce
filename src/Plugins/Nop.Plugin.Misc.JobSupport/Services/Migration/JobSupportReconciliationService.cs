@@ -56,7 +56,8 @@ public partial class JobSupportReconciliationService : IJobSupportReconciliation
 
     public async Task<IReadOnlyList<JobSupportMigrationCheckpoint>> GetCheckpointsAsync(CancellationToken cancellationToken)
     {
-        return await _checkpointRepository.Table.OrderBy(checkpoint => checkpoint.Id).Take(100).ToListAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return await _checkpointRepository.Table.OrderBy(checkpoint => checkpoint.Id).Take(100).ToListAsync();
     }
 
     public async Task<ReconciliationResult> ReconcileAsync(CancellationToken cancellationToken)
@@ -68,19 +69,19 @@ public partial class JobSupportReconciliationService : IJobSupportReconciliation
         var countRows = await _dataProvider.QueryAsync<LegacyCountSource>(
             $"SELECT COUNT_BIG(*) AS [Count] FROM [{customerTable}] WHERE [Deleted] = 0 AND [CustomerProfileTypeId] > 0");
         var legacyProfileCount = countRows.FirstOrDefault()?.Count ?? 0;
-        var pluginProfileCount = await _profileRepository.Table.CountAsync(cancellationToken);
+        var pluginProfileCount = await _profileRepository.Table.CountAsync();
         var missingProfileIds = await _dataProvider.QueryAsync<LegacyIdentifierSource>(
             $"SELECT TOP (@Limit) customer.[Id] FROM [{customerTable}] customer LEFT JOIN [{profileTable}] profile ON profile.[CustomerId] = customer.[Id] WHERE customer.[Deleted] = 0 AND customer.[CustomerProfileTypeId] > 0 AND profile.[Id] IS NULL ORDER BY customer.[Id]",
             new DataParameter("Limit", MAX_EXPORTED_IDENTIFIERS, LinqToDB.DataType.Int32));
         identifiers.AddRange(missingProfileIds.Select(row => $"Profiles:{row.Id}"));
         AddCountMismatch(identifiers, "Profiles", legacyProfileCount, pluginProfileCount);
 
-        var legacyRelationshipCount = await _shoppingCartItemRepository.Table.CountAsync(item => item.ShoppingCartTypeId >= 2 && item.ShoppingCartTypeId <= 11, cancellationToken);
-        var pluginRelationshipCount = await _relationshipRepository.Table.CountAsync(cancellationToken);
+        var legacyRelationshipCount = await _shoppingCartItemRepository.Table.CountAsync(item => item.ShoppingCartTypeId >= 2 && item.ShoppingCartTypeId <= 11);
+        var pluginRelationshipCount = await _relationshipRepository.Table.CountAsync();
         AddCountMismatch(identifiers, "Relationships", legacyRelationshipCount, pluginRelationshipCount);
 
-        var legacyViewCount = await _shoppingCartItemRepository.Table.CountAsync(item => item.ShoppingCartTypeId >= 12 && item.ShoppingCartTypeId <= 13, cancellationToken);
-        var pluginViewCount = await _profileViewRepository.Table.CountAsync(cancellationToken);
+        var legacyViewCount = await _shoppingCartItemRepository.Table.CountAsync(item => item.ShoppingCartTypeId >= 12 && item.ShoppingCartTypeId <= 13);
+        var pluginViewCount = await _profileViewRepository.Table.CountAsync();
         AddCountMismatch(identifiers, "Views", legacyViewCount, pluginViewCount);
 
         var planProductIds = new[]
@@ -93,8 +94,8 @@ public partial class JobSupportReconciliationService : IJobSupportReconciliation
         {
             var paidOrderIds = _orderRepository.Table.Where(order => !order.Deleted && order.PaidDateUtc != null).Select(order => order.Id);
             var legacySubscriptionCount = await _orderItemRepository.Table.CountAsync(item =>
-                planProductIds.Contains(item.ProductId) && paidOrderIds.Contains(item.OrderId), cancellationToken);
-            var pluginSubscriptionCount = await _subscriptionRepository.Table.CountAsync(cancellationToken);
+                planProductIds.Contains(item.ProductId) && paidOrderIds.Contains(item.OrderId));
+            var pluginSubscriptionCount = await _subscriptionRepository.Table.CountAsync();
             AddCountMismatch(identifiers, "Subscriptions", legacySubscriptionCount, pluginSubscriptionCount);
             var missingOrderItemIds = await _orderItemRepository.Table
                 .Where(item => planProductIds.Contains(item.ProductId) && paidOrderIds.Contains(item.OrderId) &&
@@ -102,14 +103,14 @@ public partial class JobSupportReconciliationService : IJobSupportReconciliation
                 .OrderBy(item => item.Id)
                 .Select(item => item.Id)
                 .Take(Math.Max(0, MAX_EXPORTED_IDENTIFIERS - identifiers.Count))
-                .ToListAsync(cancellationToken);
+                .ToListAsync();
             identifiers.AddRange(missingOrderItemIds.Select(id => $"Subscriptions:{id}"));
         }
 
         var duplicateRevealCount = await _contactRevealRepository.Table
             .GroupBy(reveal => new { reveal.ViewerCustomerId, reveal.TargetProfileId })
             .Where(group => group.Count() > 1)
-            .CountAsync(cancellationToken);
+            .CountAsync();
         if (duplicateRevealCount > 0)
             identifiers.Add($"Reveals:duplicates:{duplicateRevealCount}");
 

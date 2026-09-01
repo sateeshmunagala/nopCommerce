@@ -1,5 +1,4 @@
 using LinqToDB;
-using Nop.Core;
 using Nop.Core.Domain.Customers;
 using Nop.Data;
 using Nop.Plugin.Misc.JobSupport.Contracts;

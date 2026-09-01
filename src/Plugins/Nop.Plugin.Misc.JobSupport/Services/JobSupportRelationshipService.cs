@@ -1,14 +1,12 @@
 using LinqToDB;
 using Nop.Core;
 using Nop.Core.Domain.Customers;
-using Nop.Core.Domain.Forums;
 using Nop.Data;
 using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Domain;
 using Nop.Plugin.Misc.JobSupport.Domain.Enums;
 using Nop.Services.Common;
 using Nop.Services.Customers;
-using Nop.Services.Forums;
 using Nop.Services.Logging;
 
 namespace Nop.Plugin.Misc.JobSupport.Services;
@@ -16,7 +14,6 @@ namespace Nop.Plugin.Misc.JobSupport.Services;
 public partial class JobSupportRelationshipService : IJobSupportRelationshipService
 {
     private readonly ICustomerService _customerService;
-    private readonly IForumService _forumService;
     private readonly IGenericAttributeService _genericAttributeService;
     private readonly ILogger _logger;
     private readonly IStoreContext _storeContext;
@@ -26,7 +23,6 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
     private readonly IRepository<JobSupportRelationship> _relationshipRepository;
 
     public JobSupportRelationshipService(ICustomerService customerService,
-        IForumService forumService,
         IGenericAttributeService genericAttributeService,
         ILogger logger,
         IStoreContext storeContext,
@@ -36,7 +32,6 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
         IRepository<JobSupportRelationship> relationshipRepository)
     {
         _customerService = customerService;
-        _forumService = forumService;
         _genericAttributeService = genericAttributeService;
         _logger = logger;
         _storeContext = storeContext;
@@ -286,7 +281,7 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
             IsDeletedByRecipient = false,
             CreatedOnUtc = DateTime.UtcNow
         };
-        await _forumService.InsertPrivateMessageAsync(privateMessage);
+        await _customerService.InsertPrivateMessageAsync(privateMessage);
         await _genericAttributeService.SaveAttributeAsync(privateMessage,
             JobSupportDefaults.RelationshipTypeAttribute,
             relationshipType.ToString());

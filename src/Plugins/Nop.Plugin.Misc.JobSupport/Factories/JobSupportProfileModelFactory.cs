@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.WebUtilities;
 using LinqToDB;
-using Nop.Core;
 using Nop.Core.Domain.Customers;
 using Nop.Data;
 using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Domain;
 using Nop.Plugin.Misc.JobSupport.Domain.Enums;
 using Nop.Plugin.Misc.JobSupport.Models.Public;
+using Nop.Services.Helpers;
 using Nop.Services.Media;
 
 namespace Nop.Plugin.Misc.JobSupport.Factories;

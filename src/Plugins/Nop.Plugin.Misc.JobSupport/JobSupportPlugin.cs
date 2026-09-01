@@ -4,16 +4,15 @@ using Nop.Core.Domain.ScheduleTasks;
 using Nop.Data;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
+using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Plugins;
 using Nop.Services.ScheduleTasks;
 using Nop.Services.Cms;
-using Nop.Services.Security;
 using Nop.Plugin.Misc.JobSupport.Components;
 using Nop.Plugin.Misc.JobSupport.Infrastructure;
 using Nop.Plugin.Misc.JobSupport.Domain.Enums;
-using Nop.Core;
 
 namespace Nop.Plugin.Misc.JobSupport;
 
@@ -25,7 +24,6 @@ public class JobSupportPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     private readonly IRepository<ActivityLogType> _activityLogTypeRepository;
     private readonly IScheduleTaskService _scheduleTaskService;
     private readonly ISettingService _settingService;
-    private readonly IPermissionService _permissionService;
     private readonly IWebHelper _webHelper;
 
     public JobSupportPlugin(ILocalizationService localizationService,
@@ -34,7 +32,6 @@ public class JobSupportPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         IRepository<ActivityLogType> activityLogTypeRepository,
         IScheduleTaskService scheduleTaskService,
         ISettingService settingService,
-        IPermissionService permissionService,
         IWebHelper webHelper)
     {
         _localizationService = localizationService;
@@ -43,7 +40,6 @@ public class JobSupportPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         _activityLogTypeRepository = activityLogTypeRepository;
         _scheduleTaskService = scheduleTaskService;
         _settingService = settingService;
-        _permissionService = permissionService;
         _webHelper = webHelper;
     }
 
@@ -87,8 +83,6 @@ public class JobSupportPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             SidebarWidgetZone = "left_side_column_after",
             HomepageProfileCount = 4
         });
-
-        await _permissionService.InstallPermissionsAsync(new JobSupportPermissionConfigManager());
 
         if (!_activityLogTypeRepository.Table.Any(type =>
                 type.SystemKeyword == JobSupportDefaults.ActivityTypeSystemName))
@@ -324,7 +318,6 @@ public class JobSupportPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         }
 
         await _settingService.DeleteSettingAsync<JobSupportSettings>();
-        await _permissionService.UninstallPermissionsAsync(new JobSupportPermissionConfigManager());
         await _localizationService.DeleteLocaleResourcesAsync(JobSupportDefaults.LocaleResourcePrefix);
         await base.UninstallAsync();
     }

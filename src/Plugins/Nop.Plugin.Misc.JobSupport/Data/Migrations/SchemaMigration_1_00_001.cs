@@ -10,15 +10,15 @@ public class SchemaMigration_1_00_001 : ForwardOnlyMigration
 {
     public override void Up()
     {
-        Create.TableFor<JobSupportProfile>();
-        Create.TableFor<JobSupportProfileSkill>();
-        Create.TableFor<JobSupportProfileAttributeDefinition>();
-        Create.TableFor<JobSupportProfileAttributeOption>();
-        Create.TableFor<JobSupportProfileAttributeValue>();
-        Create.TableFor<JobSupportRelationship>();
-        Create.TableFor<JobSupportProfileView>();
-        Create.TableFor<JobSupportSubscription>();
-        Create.TableFor<JobSupportContactReveal>();
-        Create.TableFor<JobSupportMigrationCheckpoint>();
+        this.CreateTableIfNotExists<JobSupportProfile>();
+        this.CreateTableIfNotExists<JobSupportProfileSkill>();
+        this.CreateTableIfNotExists<JobSupportProfileAttributeDefinition>();
+        this.CreateTableIfNotExists<JobSupportProfileAttributeOption>();
+        this.CreateTableIfNotExists<JobSupportProfileAttributeValue>();
+        this.CreateTableIfNotExists<JobSupportRelationship>();
+        this.CreateTableIfNotExists<JobSupportProfileView>();
+        this.CreateTableIfNotExists<JobSupportSubscription>();
+        this.CreateTableIfNotExists<JobSupportContactReveal>();
+        this.CreateTableIfNotExists<JobSupportMigrationCheckpoint>();
     }
 }
