@@ -1,0 +1,10 @@
+@model SubscriptionModel
+<section class="job-support js-subscription-summary">
+    <h2>@T("Plugins.Misc.JobSupport.Subscription.Title")</h2>
+    <dl class="js-subscription">
+        <div><dt>@T("Plugins.Misc.JobSupport.Subscription.Status")</dt><dd>@Model.Status</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Subscription.ExpiryDate")</dt><dd>@Model.ExpiryDate?.ToString("d")</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Subscription.RemainingCredits")</dt><dd>@Model.RemainingCredits</dd></div>
+    </dl>
+    <div class="js-actions"><a class="js-btn" asp-route="Plugin.Misc.JobSupport.AccountSubscription">@T("Plugins.Misc.JobSupport.Navigation.Subscription")</a></div>
+</section>

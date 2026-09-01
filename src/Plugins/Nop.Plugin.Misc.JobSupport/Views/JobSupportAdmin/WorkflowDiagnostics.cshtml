@@ -1,0 +1,71 @@
+@model WorkflowDiagnosticsModel
+@{
+    Layout = "_ConfigurePlugin";
+    ViewBag.PageTitle = T("Plugins.Misc.JobSupport.Admin.WorkflowDiagnostics.Title").Text;
+    const string prefix = "Plugins.Misc.JobSupport.Admin.WorkflowDiagnostics";
+}
+
+<style>
+    .job-support-admin .js-flag-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    .job-support-admin .js-flag-item { border: 1px solid #ddd; border-radius: 4px; padding: 10px; word-break: break-word; }
+    .job-support-admin .js-flag-name { display: block; font-weight: 600; }
+    .job-support-admin .js-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .job-support-admin .js-result-table { width: 100%; table-layout: fixed; word-break: break-word; }
+    @@media (min-width: 768px) { .job-support-admin .js-flag-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @@media (min-width: 1200px) { .job-support-admin .js-flag-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+</style>
+
+<div class="job-support job-support-admin">
+    <div class="cards-group">
+        <div class="card card-default">
+            <div class="card-header">@T($"{prefix}.Configuration")</div>
+            <div class="card-body">
+                <div class="js-flag-grid">
+                    @foreach (var item in Model.Configuration)
+                    {
+                        <div class="js-flag-item">
+                            <span class="js-flag-name">@item.Name</span>
+                            <span>@item.Value</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-default">
+            <div class="card-header">@T($"{prefix}.Activity")</div>
+            <div class="card-body">
+                <div class="js-scroll">
+                    <table class="table table-bordered table-striped js-result-table">
+                        <thead>
+                            <tr>
+                                <th>@T($"{prefix}.CreatedOn")</th>
+                                <th>@T($"{prefix}.ActivityType")</th>
+                                <th>@T($"{prefix}.Entity")</th>
+                                <th>@T($"{prefix}.EntityId")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Activities.Any())
+                            {
+                                foreach (var activity in Model.Activities)
+                                {
+                                    <tr>
+                                        <td>@activity.CreatedOnUtc.ToString("u")</td>
+                                        <td>@activity.ActivityType</td>
+                                        <td>@activity.EntityName</td>
+                                        <td>@activity.EntityId</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr><td colspan="4">@T($"{prefix}.None")</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

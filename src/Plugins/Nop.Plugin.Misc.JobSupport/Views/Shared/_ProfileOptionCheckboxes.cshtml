@@ -1,0 +1,10 @@
+@model ProfileOptionGroupModel
+<div class="js-checkboxes">
+    @foreach (var option in Model.Options)
+    {
+        <label class="js-checkbox">
+            <input type="checkbox" name="@Model.Name" value="@option.Id" checked="@option.Selected" />
+            <span>@option.Name</span>
+        </label>
+    }
+</div>

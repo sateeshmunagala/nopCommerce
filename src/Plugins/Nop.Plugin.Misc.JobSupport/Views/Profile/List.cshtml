@@ -1,0 +1,52 @@
+@model ProfileListModel
+@{
+    Layout = "_ColumnsOne";
+    NopHtml.AddTitleParts(T("Plugins.Misc.JobSupport.Profile.List.Title").Text);
+}
+<link rel="stylesheet" href="~/Plugins/Misc.JobSupport/Content/css/job-support.css" />
+<script src="~/Plugins/Misc.JobSupport/Content/js/job-support.js" asp-location="Footer"></script>
+<div class="job-support">
+    <div class="page-title"><h1>@T("Plugins.Misc.JobSupport.Profile.List.Title")</h1></div>
+    <form method="get" asp-route="Plugin.Misc.JobSupport.ProfileList" class="js-filter-form">
+        <details class="js-filter-details">
+            <summary>@T("Plugins.Misc.JobSupport.Profile.Filters")</summary>
+            <div class="js-filters">
+                <label>@T("Plugins.Misc.JobSupport.Profile.ProfileType")<select name="ProfileTypeId" asp-items="Model.Filter.ProfileTypes"><option value="">@T("Plugins.Misc.JobSupport.Profile.Filter.All")</option></select></label>
+                <label>@T("Plugins.Misc.JobSupport.Profile.PrimaryTechnology")<select name="PrimaryTechnologyId" asp-items="Model.Filter.PrimaryTechnologies"><option value="">@T("Plugins.Misc.JobSupport.Profile.Filter.All")</option></select></label>
+                <label>@T("Plugins.Misc.JobSupport.Profile.SecondaryTechnology")<select name="SecondaryTechnologyId" asp-items="Model.Filter.SecondaryTechnologies"><option value="">@T("Plugins.Misc.JobSupport.Profile.Filter.All")</option></select></label>
+                <label>@T("Plugins.Misc.JobSupport.Profile.Availability")<select name="AvailabilityId" asp-items="Model.Filter.Availabilities"><option value="">@T("Plugins.Misc.JobSupport.Profile.Filter.All")</option></select></label>
+                <label>@T("Plugins.Misc.JobSupport.Profile.Experience")<select name="RelevantExperienceId" asp-items="Model.Filter.RelevantExperiences"><option value="">@T("Plugins.Misc.JobSupport.Profile.Filter.All")</option></select></label>
+                <label>@T("Plugins.Misc.JobSupport.Profile.Language")<select name="MotherTongueId" asp-items="Model.Filter.MotherTongues"><option value="">@T("Plugins.Misc.JobSupport.Profile.Filter.All")</option></select></label>
+                <label>@T("Plugins.Misc.JobSupport.Profile.Sort")<select name="SortOrder"><option value="0">@T("Plugins.Misc.JobSupport.Profile.Sort.Default")</option><option value="1">@T("Plugins.Misc.JobSupport.Profile.Sort.Recent")</option></select></label>
+            </div>
+            <button class="js-btn" type="submit">@T("Plugins.Misc.JobSupport.Profile.ApplyFilters")</button>
+        </details>
+    </form>
+    @Html.AntiForgeryToken()
+    @if (!Model.QuerySucceeded)
+    {
+        <div class="js-state js-state--error">@T("Plugins.Misc.JobSupport.Profile.Error")</div>
+    }
+    else if (!Model.Profiles.Any())
+    {
+        <div class="js-state js-state--empty">@T("Plugins.Misc.JobSupport.Profile.Empty")</div>
+    }
+    else
+    {
+        <div class="js-grid">
+            @foreach (var profile in Model.Profiles)
+            {
+                @await Component.InvokeAsync(typeof(Nop.Plugin.Misc.JobSupport.Components.JobSupportProfileCardViewComponent), new { model = profile })
+            }
+        </div>
+        @if (Model.TotalPages > 1)
+        {
+            <nav class="js-pager" aria-label="@T("Plugins.Misc.JobSupport.Profile.Paging")">
+                @for (var page = 1; page <= Model.TotalPages; page++)
+                {
+                    <a href="@Url.RouteUrl("Plugin.Misc.JobSupport.ProfileList", new { pageNumber = page })" aria-current="@(page == Model.Filter.PageNumber ? "page" : null)">@page</a>
+                }
+            </nav>
+        }
+    }
+</div>

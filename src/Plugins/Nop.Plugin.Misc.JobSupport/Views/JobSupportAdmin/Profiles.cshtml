@@ -1,0 +1,35 @@
+@model ProfileSearchModel
+@{
+    Layout = "_ConfigurePlugin";
+}
+<div class="content-header clearfix"><h1 class="float-left">@T("Plugins.Misc.JobSupport.Admin.Profiles.Title")</h1></div>
+<section class="content"><div class="container-fluid">
+    <div class="card card-default card-search"><div class="card-body"><div class="row"><div class="col-md-5">
+        <div class="form-group row"><div class="col-md-4"><nop-label asp-for="CustomerName" /></div><div class="col-md-8"><nop-editor asp-for="CustomerName" /></div></div>
+        <div class="form-group row"><div class="col-md-4"><nop-label asp-for="ProfileTypeId" /></div><div class="col-md-8"><nop-editor asp-for="ProfileTypeId" /></div></div>
+    </div></div><div class="row"><div class="col-12 text-center"><button type="button" id="search-profiles" class="btn btn-primary">@T("Admin.Common.Search")</button></div></div></div></div>
+    <div class="card card-default"><div class="card-body">
+        @await Html.PartialAsync("Table", new DataTablesModel
+        {
+            Name = "jobsupport-profiles-grid",
+            SearchButtonId = "search-profiles",
+            UrlRead = new DataUrl("ProfileList", "JobSupportAdmin", null),
+            Length = Model.PageSize,
+            LengthMenu = Model.AvailablePageSizes,
+            Filters = new List<FilterParameter> { new(nameof(Model.CustomerName)), new(nameof(Model.ProfileTypeId)) },
+            ColumnCollection = new List<ColumnProperty>
+            {
+                new(nameof(ProfileAdminModel.CustomerName)) { Title = T("Plugins.Misc.JobSupport.Admin.Profiles.Customer").Text },
+                new(nameof(ProfileAdminModel.ProductName)) { Title = T("Plugins.Misc.JobSupport.Admin.Profiles.Product").Text },
+                new(nameof(ProfileAdminModel.ProfileType)) { Title = T("Plugins.Misc.JobSupport.Admin.Profiles.ProfileType").Text },
+                new(nameof(ProfileAdminModel.PrimaryTechnology)) { Title = T("Plugins.Misc.JobSupport.Admin.Profiles.PrimaryTechnology").Text },
+                new(nameof(ProfileAdminModel.Availability)) { Title = T("Plugins.Misc.JobSupport.Admin.Profiles.Availability").Text },
+                new(nameof(ProfileAdminModel.Premium)) { Title = T("Plugins.Misc.JobSupport.Admin.Profiles.Premium").Text, Render = new RenderBoolean() },
+                new(nameof(ProfileAdminModel.CreatedOn)) { Title = T("Plugins.Misc.JobSupport.Admin.Profiles.CreatedOn").Text, Render = new RenderDate() },
+                new(nameof(ProfileAdminModel.Published)) { Title = T("Plugins.Misc.JobSupport.Admin.Profiles.Published").Text, Render = new RenderBoolean() },
+                new(nameof(ProfileAdminModel.CustomerEditUrl)) { Title = T("Plugins.Misc.JobSupport.Admin.Profiles.CustomerEdit").Text, Render = new RenderLink(new DataUrl(string.Empty, nameof(ProfileAdminModel.CustomerEditUrl))) { Title = T("Admin.Common.Edit").Text } },
+                new(nameof(ProfileAdminModel.ProductEditUrl)) { Title = T("Plugins.Misc.JobSupport.Admin.Profiles.ProductEdit").Text, Render = new RenderLink(new DataUrl(string.Empty, nameof(ProfileAdminModel.ProductEditUrl))) { Title = T("Admin.Common.Edit").Text } }
+            }
+        })
+    </div></div>
+</div></section>

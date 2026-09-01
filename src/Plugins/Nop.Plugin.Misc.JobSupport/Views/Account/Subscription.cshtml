@@ -1,0 +1,34 @@
+@model SubscriptionModel
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts(T("Plugins.Misc.JobSupport.Subscription.Title").Text);
+}
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = 504 })
+}
+<link rel="stylesheet" href="~/Plugins/Misc.JobSupport/Content/css/job-support.css" />
+<div class="job-support page account-page">
+    <div class="page-title"><h1>@T("Plugins.Misc.JobSupport.Subscription.Title")</h1></div>
+    <dl class="js-subscription">
+        <div><dt>@T("Plugins.Misc.JobSupport.Subscription.Status")</dt><dd>@Model.Status</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Subscription.StartDate")</dt><dd>@Model.StartDate?.ToString("d")</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Subscription.ExpiryDate")</dt><dd>@Model.ExpiryDate?.ToString("d")</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Subscription.AllottedCredits")</dt><dd>@Model.AllottedCredits</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Subscription.UsedCredits")</dt><dd>@Model.UsedCredits</dd></div>
+        <div><dt>@T("Plugins.Misc.JobSupport.Subscription.RemainingCredits")</dt><dd>@Model.RemainingCredits</dd></div>
+    </dl>
+    @if (Model.Plans.Any())
+    {
+        <section><h2>@T("Plugins.Misc.JobSupport.Subscription.Plans")</h2><div class="js-actions">
+            @foreach (var plan in Model.Plans)
+            {
+                <a class="js-btn" href="@plan.Url">@plan.Name</a>
+            }
+        </div></section>
+    }
+    else
+    {
+        <div class="js-state js-state--empty">@T("Plugins.Misc.JobSupport.Subscription.NoPlans")</div>
+    }
+</div>

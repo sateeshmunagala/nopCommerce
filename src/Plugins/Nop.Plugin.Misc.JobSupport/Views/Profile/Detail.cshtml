@@ -1,0 +1,59 @@
+@model ProfileDetailModel
+@{
+    Layout = "_ColumnsOne";
+    NopHtml.AddTitleParts(Model.FirstName);
+}
+<link rel="stylesheet" href="~/Plugins/Misc.JobSupport/Content/css/job-support.css" />
+<script src="~/Plugins/Misc.JobSupport/Content/js/job-support.js" asp-location="Footer"></script>
+<div class="job-support">
+    @Html.AntiForgeryToken()
+    <div class="js-detail">
+        <aside class="js-detail__aside">
+            <img class="js-detail__avatar" src="@Model.AvatarUrl" width="240" height="240" alt="@Model.FirstName" />
+            <h1>@Model.FirstName</h1>
+            @if (Model.IsPremium)
+            {
+                <span class="js-badge">@T("Plugins.Misc.JobSupport.Profile.Premium")</span>
+            }
+            <p>@Model.City, @Model.Country</p>
+        </aside>
+        <main class="js-detail__body">
+            <dl class="js-facts">
+                <div><dt>@T("Plugins.Misc.JobSupport.Profile.ProfileType")</dt><dd>@Model.ProfileType</dd></div>
+                <div><dt>@T("Plugins.Misc.JobSupport.Profile.PrimaryTechnology")</dt><dd>@Model.PrimaryTechnology</dd></div>
+                <div><dt>@T("Plugins.Misc.JobSupport.Profile.SecondaryTechnology")</dt><dd>@Model.SecondaryTechnology</dd></div>
+                <div><dt>@T("Plugins.Misc.JobSupport.Profile.Availability")</dt><dd>@Model.Availability</dd></div>
+                <div><dt>@T("Plugins.Misc.JobSupport.Profile.Experience")</dt><dd>@Model.RelevantExperience</dd></div>
+                <div><dt>@T("Plugins.Misc.JobSupport.Profile.Language")</dt><dd>@Model.MotherTongue</dd></div>
+                @if (Model.ShowGender)
+                {
+                    <div><dt>@T("Plugins.Misc.JobSupport.Profile.Gender")</dt><dd>@Model.Gender</dd></div>
+                }
+            </dl>
+            <section class="js-description"><h2>@T("Plugins.Misc.JobSupport.Profile.Description")</h2><p>@Model.Description</p></section>
+            @if (!string.IsNullOrWhiteSpace(Model.ReviewSummary))
+            {
+                <section><h2>@T("Plugins.Misc.JobSupport.Profile.Reviews")</h2><p>@Model.ReviewSummary</p></section>
+            }
+            <div class="js-actions">
+                @if (Model.IsGuest)
+                {
+                    <a class="js-btn" href="@Model.LoginUrl">@T("Plugins.Misc.JobSupport.Profile.LoginToAct")</a>
+                }
+                else if (Model.IsOwnProfile)
+                {
+                    <span class="js-state">@T("Plugins.Misc.JobSupport.Profile.OwnProfile")</span>
+                }
+                else if (Model.CanAct)
+                {
+                    <button type="button" class="js-btn" data-js-action data-js-url="@(Model.IsShortlisted ? Model.RemoveShortlistUrl : Model.ShortlistUrl)" data-js-error="@T("Plugins.Misc.JobSupport.Errors.Request")">@T(Model.IsShortlisted ? "Plugins.Misc.JobSupport.Profile.RemoveShortlist" : "Plugins.Misc.JobSupport.Profile.Shortlist")</button>
+                    <button type="button" class="js-btn" data-js-action data-js-url="@Model.InterestUrl" data-js-error="@T("Plugins.Misc.JobSupport.Errors.Request")" disabled="@Model.InterestSent">@T(Model.InterestSent ? "Plugins.Misc.JobSupport.Profile.InterestSent" : "Plugins.Misc.JobSupport.Profile.SendInterest")</button>
+                    <button type="button" class="js-btn" data-js-action data-js-url="@Model.BlockUrl" data-js-error="@T("Plugins.Misc.JobSupport.Errors.Request")">@T("Plugins.Misc.JobSupport.Profile.Block")</button>
+                    <button type="button" class="js-btn" data-js-action data-js-contact data-js-url="@Model.RevealContactUrl" data-js-error="@T("Plugins.Misc.JobSupport.Errors.Request")" data-js-email="@T("Plugins.Misc.JobSupport.Contact.Email")" data-js-phone="@T("Plugins.Misc.JobSupport.Contact.Phone")">@T("Plugins.Misc.JobSupport.Profile.RevealContact")</button>
+                }
+            </div>
+            <div class="js-contact" hidden></div>
+            <div class="js-status" role="status" aria-live="polite"></div>
+        </main>
+    </div>
+</div>

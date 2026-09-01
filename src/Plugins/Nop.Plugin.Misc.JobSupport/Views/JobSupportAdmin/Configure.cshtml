@@ -1,0 +1,49 @@
+@model ConfigurationModel
+@{
+    Layout = "_ConfigurePlugin";
+    const string prefix = "Plugins.Misc.JobSupport.Admin.Configuration.Fields";
+}
+<form asp-controller="JobSupportAdmin" asp-action="Configure" method="post">
+    <section class="content"><div class="container-fluid"><div class="card card-default"><div class="card-header">@T("Plugins.Misc.JobSupport.Admin.Configuration.Title")</div><div class="card-body">
+        <div asp-validation-summary="ModelOnly"></div>
+        <div class="job-support-admin-grid">
+            <div><label asp-for="Enabled">@T($"{prefix}.Enabled")</label><nop-editor asp-for="Enabled" /></div>
+            <div><label asp-for="UseLegacyStoredProcedures">@T($"{prefix}.UseLegacyStoredProcedures")</label><nop-editor asp-for="UseLegacyStoredProcedures" /></div>
+            <div><label asp-for="LegacyProfileSearchProcedureName">@T($"{prefix}.LegacyProfileSearchProcedureName")</label><nop-editor asp-for="LegacyProfileSearchProcedureName" /></div>
+            <div><label asp-for="LegacyShortlistProcedureName">@T($"{prefix}.LegacyShortlistProcedureName")</label><nop-editor asp-for="LegacyShortlistProcedureName" /></div>
+            <div><label asp-for="GiveSupportRoleSystemName">@T($"{prefix}.GiveSupportRoleSystemName")</label><nop-editor asp-for="GiveSupportRoleSystemName" /></div>
+            <div><label asp-for="TakeSupportRoleSystemName">@T($"{prefix}.TakeSupportRoleSystemName")</label><nop-editor asp-for="TakeSupportRoleSystemName" /></div>
+            <div><label asp-for="PaidCustomerRoleSystemName">@T($"{prefix}.PaidCustomerRoleSystemName")</label><nop-editor asp-for="PaidCustomerRoleSystemName" /></div>
+            <div><label asp-for="ProfileTypeSpecificationAttributeId">@T($"{prefix}.ProfileTypeSpecificationAttributeId")</label><nop-editor asp-for="ProfileTypeSpecificationAttributeId" /></div>
+            <div><label asp-for="CurrentAvailabilitySpecificationAttributeId">@T($"{prefix}.CurrentAvailabilitySpecificationAttributeId")</label><nop-editor asp-for="CurrentAvailabilitySpecificationAttributeId" /></div>
+            <div><label asp-for="RelevantExperienceSpecificationAttributeId">@T($"{prefix}.RelevantExperienceSpecificationAttributeId")</label><nop-editor asp-for="RelevantExperienceSpecificationAttributeId" /></div>
+            <div><label asp-for="MotherTongueSpecificationAttributeId">@T($"{prefix}.MotherTongueSpecificationAttributeId")</label><nop-editor asp-for="MotherTongueSpecificationAttributeId" /></div>
+            <div><label asp-for="PrimaryTechnologySpecificationAttributeId">@T($"{prefix}.PrimaryTechnologySpecificationAttributeId")</label><nop-editor asp-for="PrimaryTechnologySpecificationAttributeId" /></div>
+            <div><label asp-for="SecondaryTechnologySpecificationAttributeId">@T($"{prefix}.SecondaryTechnologySpecificationAttributeId")</label><nop-editor asp-for="SecondaryTechnologySpecificationAttributeId" /></div>
+            <div><label asp-for="ShortDescriptionCustomerAttributeId">@T($"{prefix}.ShortDescriptionCustomerAttributeId")</label><nop-editor asp-for="ShortDescriptionCustomerAttributeId" /></div>
+            <div><label asp-for="FullDescriptionCustomerAttributeId">@T($"{prefix}.FullDescriptionCustomerAttributeId")</label><nop-editor asp-for="FullDescriptionCustomerAttributeId" /></div>
+            <div><label asp-for="ThreeMonthSubscriptionProductId">@T($"{prefix}.ThreeMonthSubscriptionProductId")</label><nop-editor asp-for="ThreeMonthSubscriptionProductId" /></div>
+            <div><label asp-for="SixMonthSubscriptionProductId">@T($"{prefix}.SixMonthSubscriptionProductId")</label><nop-editor asp-for="SixMonthSubscriptionProductId" /></div>
+            <div><label asp-for="OneYearSubscriptionProductId">@T($"{prefix}.OneYearSubscriptionProductId")</label><nop-editor asp-for="OneYearSubscriptionProductId" /></div>
+            <div><label asp-for="ThreeMonthSubscriptionAllottedCount">@T($"{prefix}.ThreeMonthSubscriptionAllottedCount")</label><nop-editor asp-for="ThreeMonthSubscriptionAllottedCount" /></div>
+            <div><label asp-for="SixMonthSubscriptionAllottedCount">@T($"{prefix}.SixMonthSubscriptionAllottedCount")</label><nop-editor asp-for="SixMonthSubscriptionAllottedCount" /></div>
+            <div><label asp-for="OneYearSubscriptionAllottedCount">@T($"{prefix}.OneYearSubscriptionAllottedCount")</label><nop-editor asp-for="OneYearSubscriptionAllottedCount" /></div>
+            <div><label asp-for="DefaultPageSize">@T($"{prefix}.DefaultPageSize")</label><nop-editor asp-for="DefaultPageSize" /></div>
+            <div><label asp-for="AllowGuestProfileBrowsing">@T($"{prefix}.AllowGuestProfileBrowsing")</label><nop-editor asp-for="AllowGuestProfileBrowsing" /></div>
+            <div><label asp-for="ShowGender">@T($"{prefix}.ShowGender")</label><nop-editor asp-for="ShowGender" /></div>
+            <div><label asp-for="HomepageWidgetZone">@T($"{prefix}.HomepageWidgetZone")</label><nop-editor asp-for="HomepageWidgetZone" /></div>
+            <div><label asp-for="SidebarWidgetZone">@T($"{prefix}.SidebarWidgetZone")</label><nop-editor asp-for="SidebarWidgetZone" /></div>
+            <div><label asp-for="HomepageProfileCount">@T($"{prefix}.HomepageProfileCount")</label><nop-editor asp-for="HomepageProfileCount" /></div>
+            <div><label asp-for="EnablePluginEventConsumers">@T($"{prefix}.EnablePluginEventConsumers")</label><nop-editor asp-for="EnablePluginEventConsumers" /></div>
+            <div><label asp-for="EnableRegistrationWorkflow">@T($"{prefix}.EnableRegistrationWorkflow")</label><nop-editor asp-for="EnableRegistrationWorkflow" /></div>
+            <div><label asp-for="EnableActivationWorkflow">@T($"{prefix}.EnableActivationWorkflow")</label><nop-editor asp-for="EnableActivationWorkflow" /></div>
+            <div><label asp-for="EnableOrderPaidWorkflow">@T($"{prefix}.EnableOrderPaidWorkflow")</label><nop-editor asp-for="EnableOrderPaidWorkflow" /></div>
+            <div><label asp-for="EnableAvailabilityWorkflow">@T($"{prefix}.EnableAvailabilityWorkflow")</label><nop-editor asp-for="EnableAvailabilityWorkflow" /></div>
+            <div><label asp-for="EnableAvatarSyncWorkflow">@T($"{prefix}.EnableAvatarSyncWorkflow")</label><nop-editor asp-for="EnableAvatarSyncWorkflow" /></div>
+            <div><label asp-for="EnableRelationshipNotifications">@T($"{prefix}.EnableRelationshipNotifications")</label><nop-editor asp-for="EnableRelationshipNotifications" /></div>
+            <div><label asp-for="EnableSynchronizationTask">@T($"{prefix}.EnableSynchronizationTask")</label><nop-editor asp-for="EnableSynchronizationTask" /></div>
+            <div><label asp-for="ExecutionMode">@T($"{prefix}.ExecutionMode")</label><nop-editor asp-for="ExecutionMode" /></div>
+            <div><label asp-for="SynchronizationBatchSize">@T($"{prefix}.SynchronizationBatchSize")</label><nop-editor asp-for="SynchronizationBatchSize" /></div>
+        </div>
+    </div><div class="card-footer"><button type="submit" class="btn btn-primary">@T("Admin.Common.Save")</button></div></div></div></section>
+</form>

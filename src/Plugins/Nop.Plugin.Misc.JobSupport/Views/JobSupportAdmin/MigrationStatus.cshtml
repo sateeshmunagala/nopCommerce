@@ -1,0 +1,71 @@
+@model Nop.Plugin.Misc.JobSupport.Models.Admin.Migration.MigrationStatusModel
+@{
+    Layout = "_ConfigurePlugin";
+    ViewBag.PageTitle = "JobSupport migration";
+}
+
+<style>
+    .job-support-admin .js-step-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @@media (min-width: 768px) { .job-support-admin .js-step-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @@media (min-width: 1200px) { .job-support-admin .js-step-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .job-support-admin .js-count { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .job-support-admin .js-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+</style>
+
+<div class="job-support job-support-admin">
+    <div class="card card-default">
+        <div class="card-header">Migration controls</div>
+        <div class="card-body">
+            <div class="js-scroll">
+                <table class="table table-bordered table-striped">
+                    <tbody>
+                        <tr><th>Schema version</th><td>@Model.SchemaVersion</td></tr>
+                        <tr><th>Read mode</th><td>@Model.ReadMode</td></tr>
+                        <tr><th>Write mode</th><td>@Model.WriteMode</td></tr>
+                        <tr><th>Last execution (UTC)</th><td>@(Model.LastExecutionOnUtc?.ToString("u") ?? "Never")</td></tr>
+                        <tr><th>Mismatch count</th><td class="js-count">@Model.MismatchCount</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <form asp-action="CompareMigration" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-primary">Run comparison only</button>
+                </form>
+                <form asp-action="ExportMigrationMismatches" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-default">Export sanitized mismatches</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="js-step-grid mt-3">
+        @foreach (var step in Model.Steps)
+        {
+            <div class="card card-default">
+                <div class="card-header">@step.Name</div>
+                <div class="card-body">
+                    <div class="js-scroll">
+                        <table class="table table-bordered table-striped">
+                            <tbody>
+                                <tr><th>Status</th><td>@step.Status</td></tr>
+                                <tr><th>Checkpoint</th><td class="js-count">@step.LastProcessedId</td></tr>
+                                <tr><th>Processed</th><td class="js-count">@step.ProcessedCount</td></tr>
+                                <tr><th>Skipped</th><td class="js-count">@step.SkippedCount</td></tr>
+                                <tr><th>Failed</th><td class="js-count">@step.FailedCount</td></tr>
+                                <tr><th>Mismatches</th><td class="js-count">@step.MismatchCount</td></tr>
+                                <tr><th>Last execution (UTC)</th><td>@(step.LastExecutionOnUtc?.ToString("u") ?? "Never")</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <form asp-action="ResumeMigration" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="step" value="@step.Name" />
+                        <button type="submit" class="btn btn-primary">Start or resume</button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+</div>

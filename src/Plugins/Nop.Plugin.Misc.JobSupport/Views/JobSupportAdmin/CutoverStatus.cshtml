@@ -1,0 +1,70 @@
+@model Nop.Plugin.Misc.JobSupport.Models.Admin.CutoverStatusModel
+@{
+    Layout = "_ConfigurePlugin";
+    ViewBag.PageTitle = "JobSupport cutover";
+}
+
+<style>
+    .job-support-admin .js-mode-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @@media (min-width: 768px) { .job-support-admin .js-mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @@media (min-width: 1200px) { .job-support-admin .js-mode-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .job-support-admin .js-mode-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; white-space: nowrap; background: #e9ecef; }
+    .job-support-admin .js-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+</style>
+
+<div class="job-support job-support-admin">
+    <div class="js-mode-grid">
+        <div class="card card-default">
+            <div class="card-header">Read mode</div>
+            <div class="card-body"><span class="js-mode-badge">@Model.ReadMode</span></div>
+        </div>
+        <div class="card card-default">
+            <div class="card-header">Write mode</div>
+            <div class="card-body"><span class="js-mode-badge">@Model.WriteMode</span></div>
+        </div>
+        <div class="card card-default">
+            <div class="card-header">Procedure version</div>
+            <div class="card-body"><span class="js-mode-badge">@(Model.PluginProcedureVersion ?? Model.ProviderStatus)</span></div>
+        </div>
+        <div class="card card-default">
+            <div class="card-header">Rollback</div>
+            <div class="card-body"><span class="js-mode-badge">@(Model.RollbackReady ? "Ready" : "Legacy procedures missing")</span></div>
+        </div>
+    </div>
+
+    <div class="card card-default mt-3">
+        <div class="card-header">Mode controls</div>
+        <div class="card-body">
+            <form asp-action="Cutover" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="All" class="text-danger"></div>
+                <div class="form-group row">
+                    <div class="col-md-3"><label asp-for="ReadMode">Read mode</label></div>
+                    <div class="col-md-9"><select asp-for="ReadMode" asp-items="Model.ReadModes" class="form-control"></select></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Save modes</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card card-default mt-3">
+        <div class="card-header">Procedure and comparison status</div>
+        <div class="card-body">
+            <div class="js-scroll">
+                <table class="table table-bordered table-striped">
+                    <tbody>
+                        <tr><th>Provider</th><td>@Model.ProviderStatus</td></tr>
+                        <tr><th>Legacy profile search</th><td>@(Model.LegacyProfileSearchPresent ? "Present" : "Missing")</td></tr>
+                        <tr><th>Legacy relationship procedure</th><td>@(Model.LegacyRelationshipProcedurePresent ? "Present" : "Missing")</td></tr>
+                        <tr><th>Plugin profile search</th><td>@(Model.PluginProfileSearchPresent ? "Present" : "Missing")</td></tr>
+                        <tr><th>Plugin relationship procedure</th><td>@(Model.PluginRelationshipProcedurePresent ? "Present" : "Missing")</td></tr>
+                        <tr><th>Mismatch count</th><td>@Model.MismatchCount</td></tr>
+                        <tr><th>Last comparison (UTC)</th><td>@(Model.LastComparisonOnUtc?.ToString("u") ?? "Never")</td></tr>
+                        <tr><th>Legacy duration</th><td>@(Model.LegacyDurationMilliseconds?.ToString() ?? "-") ms</td></tr>
+                        <tr><th>Plugin duration</th><td>@(Model.PluginDurationMilliseconds?.ToString() ?? "-") ms</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

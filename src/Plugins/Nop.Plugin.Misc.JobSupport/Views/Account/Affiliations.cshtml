@@ -1,0 +1,30 @@
+@model AffiliationModel
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts(T("Plugins.Misc.JobSupport.Account.Affiliations.Title").Text);
+}
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = 505 })
+}
+<link rel="stylesheet" href="~/Plugins/Misc.JobSupport/Content/css/job-support.css" />
+<div class="job-support page account-page">
+    <div class="page-title"><h1>@T("Plugins.Misc.JobSupport.Account.Affiliations.Title")</h1></div>
+    @if (!string.IsNullOrWhiteSpace(Model.AffiliateUrl))
+    {
+        <div class="js-affiliate-url"><label>@T("Plugins.Misc.JobSupport.Account.Affiliations.Link")<input type="text" readonly value="@Model.AffiliateUrl" /></label></div>
+    }
+    @if (!Model.Customers.Any())
+    {
+        <div class="js-state js-state--empty">@T("Plugins.Misc.JobSupport.Account.Affiliations.Empty")</div>
+    }
+    else
+    {
+        <div class="js-table-wrap"><table class="data-table"><thead><tr><th>@T("Plugins.Misc.JobSupport.Account.Affiliations.Customer")</th><th>@T("Plugins.Misc.JobSupport.Account.Affiliations.CreatedOn")</th></tr></thead><tbody>
+            @foreach (var customer in Model.Customers)
+            {
+                <tr><td>@customer.Name</td><td>@customer.CreatedOn</td></tr>
+            }
+        </tbody></table></div>
+    }
+</div>

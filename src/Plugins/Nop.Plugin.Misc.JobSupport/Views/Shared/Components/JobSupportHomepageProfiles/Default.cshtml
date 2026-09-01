@@ -1,0 +1,11 @@
+@model ProfileListModel
+<section class="job-support js-home-profiles">
+    <h2>@T("Plugins.Misc.JobSupport.Homepage.Title")</h2>
+    <div class="js-grid">
+        @foreach (var profile in Model.Profiles)
+        {
+            @await Component.InvokeAsync(typeof(Nop.Plugin.Misc.JobSupport.Components.JobSupportProfileCardViewComponent), new { model = profile })
+        }
+    </div>
+    <div class="js-actions"><a class="js-btn" asp-route="Plugin.Misc.JobSupport.ProfileList">@T("Plugins.Misc.JobSupport.Homepage.ViewAll")</a></div>
+</section>
