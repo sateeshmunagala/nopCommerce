@@ -14,6 +14,8 @@ public class PluginNopStartup : INopStartup
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IJobSupportProfileQueryService, JobSupportProfileQueryService>();
+        services.AddScoped<JobSupportPluginQueryService>();
+        services.AddScoped<IJobSupportCutoverService, JobSupportCutoverService>();
         services.AddScoped<IJobSupportLegacyParityService, JobSupportLegacyParityService>();
         services.AddScoped<IJobSupportProfileService, JobSupportProfileService>();
         services.AddScoped<IJobSupportRelationshipService, JobSupportRelationshipService>();

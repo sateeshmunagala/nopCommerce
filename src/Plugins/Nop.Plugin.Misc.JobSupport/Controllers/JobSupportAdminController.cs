@@ -14,6 +14,7 @@ using Nop.Services.Security;
 using Nop.Services.Configuration;
 using Nop.Plugin.Misc.JobSupport.Factories;
 using Nop.Plugin.Misc.JobSupport.Infrastructure;
+using Nop.Plugin.Misc.JobSupport.Domain.Enums;
 using Nop.Services.Messages;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
@@ -33,12 +34,14 @@ public class JobSupportAdminController : BasePluginController
     private const string RELATIONSHIPS_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Relationships.cshtml";
     private const string SUBSCRIPTIONS_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Subscriptions.cshtml";
     private const string MIGRATION_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/MigrationStatus.cshtml";
+    private const string CUTOVER_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/CutoverStatus.cshtml";
 
     private readonly ICustomerActivityService _customerActivityService;
     private readonly ICustomerService _customerService;
     private readonly IJobSupportProfileQueryService _profileQueryService;
     private readonly IJobSupportBackfillService _backfillService;
     private readonly IJobSupportReconciliationService _reconciliationService;
+    private readonly IJobSupportCutoverService _cutoverService;
     private readonly ILocalizationService _localizationService;
     private readonly IMessageTemplateService _messageTemplateService;
     private readonly IPermissionService _permissionService;
@@ -54,6 +57,7 @@ public class JobSupportAdminController : BasePluginController
         IJobSupportProfileQueryService profileQueryService,
         IJobSupportBackfillService backfillService,
         IJobSupportReconciliationService reconciliationService,
+        IJobSupportCutoverService cutoverService,
         ILocalizationService localizationService,
         IMessageTemplateService messageTemplateService,
         IPermissionService permissionService,
@@ -69,6 +73,7 @@ public class JobSupportAdminController : BasePluginController
         _profileQueryService = profileQueryService;
         _backfillService = backfillService;
         _reconciliationService = reconciliationService;
+        _cutoverService = cutoverService;
         _localizationService = localizationService;
         _messageTemplateService = messageTemplateService;
         _permissionService = permissionService;
@@ -121,6 +126,40 @@ public class JobSupportAdminController : BasePluginController
     public IActionResult Subscriptions()
     {
         return View(SUBSCRIPTIONS_VIEW_PATH);
+    }
+
+    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
+    public async Task<IActionResult> Cutover()
+    {
+        return View(CUTOVER_VIEW_PATH, await _cutoverService.GetStatusAsync());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
+    public async Task<IActionResult> Cutover(CutoverStatusModel model)
+    {
+        if (model.ReadMode is not (DataAccessMode.Legacy or DataAccessMode.Compare or DataAccessMode.Plugin))
+            ModelState.AddModelError(nameof(model.ReadMode), "Select a supported read mode.");
+        if (model.WriteMode is not (DataAccessMode.Legacy or DataAccessMode.Dual or DataAccessMode.Plugin))
+            ModelState.AddModelError(nameof(model.WriteMode), "Select a supported write mode.");
+        if (model.CompareReturnMode is not (DataAccessMode.Legacy or DataAccessMode.Plugin))
+            ModelState.AddModelError(nameof(model.CompareReturnMode), "Select the path returned during comparison.");
+
+        if (!ModelState.IsValid)
+        {
+            var status = await _cutoverService.GetStatusAsync();
+            status.ReadMode = model.ReadMode;
+            status.WriteMode = model.WriteMode;
+            status.CompareReturnMode = model.CompareReturnMode;
+            return View(CUTOVER_VIEW_PATH, status);
+        }
+
+        _settings.DataReadMode = model.ReadMode;
+        _settings.DataWriteMode = model.WriteMode;
+        _settings.CompareReturnMode = model.CompareReturnMode;
+        await _settingService.SaveSettingAsync(_settings);
+        return RedirectToRoute("Plugin.Misc.JobSupport.Cutover");
     }
 
     [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]

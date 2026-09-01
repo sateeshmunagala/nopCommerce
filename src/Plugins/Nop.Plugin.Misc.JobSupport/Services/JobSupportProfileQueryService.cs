@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using LinqToDB.Data;
 using Nop.Data;
 using Nop.Data.DataProviders;
 using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Data;
+using Nop.Plugin.Misc.JobSupport.Domain.Enums;
 using Nop.Services.Logging;
 
 namespace Nop.Plugin.Misc.JobSupport.Services;
@@ -10,19 +12,73 @@ namespace Nop.Plugin.Misc.JobSupport.Services;
 public partial class JobSupportProfileQueryService : IJobSupportProfileQueryService
 {
     private readonly INopDataProvider _dataProvider;
+    private readonly IJobSupportCutoverService _cutoverService;
     private readonly ILogger _logger;
+    private readonly JobSupportPluginQueryService _pluginQueryService;
     private readonly JobSupportSettings _settings;
 
     public JobSupportProfileQueryService(INopDataProvider dataProvider,
+        IJobSupportCutoverService cutoverService,
+        JobSupportPluginQueryService pluginQueryService,
         JobSupportSettings settings,
         ILogger logger)
     {
         _dataProvider = dataProvider;
+        _cutoverService = cutoverService;
+        _pluginQueryService = pluginQueryService;
         _settings = settings;
         _logger = logger;
     }
 
     public async Task<PagedProfileSearchResult> SearchProfilesAsync(ProfileSearchRequest request)
+    {
+        if (!_settings.Enabled)
+            return Failed(request, ProfileQueryErrorCode.Disabled);
+
+        return _settings.DataReadMode switch
+        {
+            DataAccessMode.Legacy => await SearchLegacyProfilesAsync(request),
+            DataAccessMode.Compare => await CompareAsync(request, relationships: false),
+            DataAccessMode.Plugin => await _pluginQueryService.SearchProfilesAsync(request),
+            _ => Failed(request, ProfileQueryErrorCode.Disabled)
+        };
+    }
+
+    public async Task<PagedProfileSearchResult> GetProfilesByRelationshipAsync(ProfileSearchRequest request)
+    {
+        if (!_settings.Enabled)
+            return Failed(request, ProfileQueryErrorCode.Disabled);
+
+        return _settings.DataReadMode switch
+        {
+            DataAccessMode.Legacy => await SearchLegacyRelationshipsAsync(request),
+            DataAccessMode.Compare => await CompareAsync(request, relationships: true),
+            DataAccessMode.Plugin => await _pluginQueryService.GetProfilesByRelationshipAsync(request),
+            _ => Failed(request, ProfileQueryErrorCode.Disabled)
+        };
+    }
+
+    private async Task<PagedProfileSearchResult> CompareAsync(ProfileSearchRequest request, bool relationships)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var legacy = relationships
+            ? await SearchLegacyRelationshipsAsync(request)
+            : await SearchLegacyProfilesAsync(request);
+        stopwatch.Stop();
+        var legacyDuration = stopwatch.ElapsedMilliseconds;
+
+        stopwatch.Restart();
+        var plugin = relationships
+            ? await _pluginQueryService.GetProfilesByRelationshipAsync(request)
+            : await _pluginQueryService.SearchProfilesAsync(request);
+        stopwatch.Stop();
+        await _cutoverService.RecordComparisonAsync(relationships ? "Relationships" : "ProfileSearch",
+            legacy, plugin, legacyDuration, stopwatch.ElapsedMilliseconds);
+
+        return _settings.CompareReturnMode == DataAccessMode.Plugin ? plugin : legacy;
+    }
+
+    private async Task<PagedProfileSearchResult> SearchLegacyProfilesAsync(ProfileSearchRequest request)
     {
         var procedureName = _settings.LegacyProfileSearchProcedureName;
         var guard = Validate(request, procedureName);
@@ -45,7 +101,7 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
         }
     }
 
-    public async Task<PagedProfileSearchResult> GetProfilesByRelationshipAsync(ProfileSearchRequest request)
+    private async Task<PagedProfileSearchResult> SearchLegacyRelationshipsAsync(ProfileSearchRequest request)
     {
         var procedureName = _settings.LegacyShortlistProcedureName;
         var guard = Validate(request, procedureName);

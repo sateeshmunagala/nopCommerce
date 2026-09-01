@@ -49,6 +49,11 @@ public class RouteProvider : IRouteProvider
             defaults: new { controller = "JobSupportAdmin", action = "Migration", area = AreaNames.ADMIN });
 
         endpointRouteBuilder.MapControllerRoute(
+            name: "Plugin.Misc.JobSupport.Cutover",
+            pattern: $"{JobSupportDefaults.AdminRoutePrefix}/Cutover",
+            defaults: new { controller = "JobSupportAdmin", action = "Cutover", area = AreaNames.ADMIN });
+
+        endpointRouteBuilder.MapControllerRoute(
             name: "Plugin.Misc.JobSupport.Admin",
             pattern: $"{JobSupportDefaults.AdminRoutePrefix}/{{action}}",
             defaults: new { controller = "JobSupportAdmin", action = "Configure", area = AreaNames.ADMIN });

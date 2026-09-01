@@ -32,6 +32,10 @@ public partial class JobSupportProfileService : IJobSupportProfileService
     private readonly ISpecificationAttributeService _specificationAttributeService;
     private readonly IUrlRecordService _urlRecordService;
     private readonly IRepository<JobSupportProfile> _profileRepository;
+    private readonly IRepository<JobSupportProfileSkill> _skillRepository;
+    private readonly IRepository<JobSupportProfileAttributeDefinition> _attributeDefinitionRepository;
+    private readonly IRepository<JobSupportProfileAttributeOption> _attributeOptionRepository;
+    private readonly IRepository<JobSupportProfileAttributeValue> _attributeValueRepository;
     private readonly JobSupportSettings _settings;
 
     public JobSupportProfileService(IJobSupportAffiliateService affiliateService,
@@ -47,6 +51,10 @@ public partial class JobSupportProfileService : IJobSupportProfileService
         ISpecificationAttributeService specificationAttributeService,
         IUrlRecordService urlRecordService,
         IRepository<JobSupportProfile> profileRepository,
+        IRepository<JobSupportProfileSkill> skillRepository,
+        IRepository<JobSupportProfileAttributeDefinition> attributeDefinitionRepository,
+        IRepository<JobSupportProfileAttributeOption> attributeOptionRepository,
+        IRepository<JobSupportProfileAttributeValue> attributeValueRepository,
         JobSupportSettings settings)
     {
         _affiliateService = affiliateService;
@@ -62,6 +70,10 @@ public partial class JobSupportProfileService : IJobSupportProfileService
         _specificationAttributeService = specificationAttributeService;
         _urlRecordService = urlRecordService;
         _profileRepository = profileRepository;
+        _skillRepository = skillRepository;
+        _attributeDefinitionRepository = attributeDefinitionRepository;
+        _attributeOptionRepository = attributeOptionRepository;
+        _attributeValueRepository = attributeValueRepository;
         _settings = settings;
     }
 
@@ -74,6 +86,19 @@ public partial class JobSupportProfileService : IJobSupportProfileService
         var selectedOptions = selectedOptionIds.Count == 0
             ? new List<SpecificationAttributeOption>()
             : (await _specificationAttributeService.GetSpecificationAttributeOptionsByIdsAsync(selectedOptionIds.ToArray())).ToList();
+        if (settings.DataWriteMode == DataAccessMode.Plugin)
+        {
+            if (settings.ExecutionMode == WorkflowExecutionMode.Shadow)
+            {
+                await _logger.InformationAsync($"JobSupport shadow plugin profile outcome: customer {customer.Id}, selected values {selectedOptions.Count}.");
+                return;
+            }
+            if (settings.ExecutionMode != WorkflowExecutionMode.Live)
+                return;
+            await UpsertPluginProfileAsync(customer, null, selectedOptions);
+            return;
+        }
+
         var profileTypeOption = GetProfileTypeOption(customer, settings, selectedOptions);
         var role = await ResolveProfileRoleAsync(profileTypeOption, settings);
         var profile = await GetLinkedProfileAsync(customer);
@@ -199,6 +224,24 @@ public partial class JobSupportProfileService : IJobSupportProfileService
         ArgumentNullException.ThrowIfNull(customer);
         ArgumentNullException.ThrowIfNull(settings);
 
+        if (settings.DataWriteMode == DataAccessMode.Plugin)
+        {
+            var pluginProfile = await _profileRepository.Table.FirstOrDefaultAsync(item => item.CustomerId == customer.Id);
+            if (pluginProfile == null || !customer.Active || customer.Deleted)
+                return;
+            if (settings.ExecutionMode == WorkflowExecutionMode.Shadow)
+            {
+                await _logger.InformationAsync($"JobSupport shadow activation outcome: publish plugin profile {pluginProfile.Id}.");
+                return;
+            }
+            if (settings.ExecutionMode != WorkflowExecutionMode.Live || pluginProfile.IsPublished)
+                return;
+            pluginProfile.IsPublished = true;
+            pluginProfile.UpdatedOnUtc = DateTime.UtcNow;
+            await _profileRepository.UpdateAsync(pluginProfile, false);
+            return;
+        }
+
         var profile = await GetLinkedProfileAsync(customer);
         if (profile == null || profile.Deleted || !customer.Active || customer.Deleted)
             return;
@@ -271,6 +314,37 @@ public partial class JobSupportProfileService : IJobSupportProfileService
         }
 
         var normalizedAvailability = availability?.Trim() ?? string.Empty;
+        if (_settings.DataWriteMode == DataAccessMode.Plugin)
+        {
+            var pluginProfile = await _profileRepository.Table.FirstOrDefaultAsync(profile => profile.CustomerId == customerId);
+            if (pluginProfile == null)
+            {
+                result.ErrorCode = "ProfileNotFound";
+                return result;
+            }
+            if (string.Equals(pluginProfile.CurrentAvailability, normalizedAvailability, StringComparison.OrdinalIgnoreCase))
+            {
+                result.Succeeded = true;
+                result.AlreadyApplied = true;
+                return result;
+            }
+            if (mode == WorkflowExecutionMode.Shadow)
+            {
+                result.Succeeded = true;
+                return result;
+            }
+            if (mode != WorkflowExecutionMode.Live)
+            {
+                result.ErrorCode = "WorkflowDisabled";
+                return result;
+            }
+            pluginProfile.CurrentAvailability = normalizedAvailability;
+            pluginProfile.UpdatedOnUtc = DateTime.UtcNow;
+            await _profileRepository.UpdateAsync(pluginProfile, false);
+            result.Succeeded = true;
+            return result;
+        }
+
         var previousAvailability = await _genericAttributeService.GetAttributeAsync<string>(customer,
             JobSupportDefaults.CurrentAvailabilityAttribute);
         if (string.Equals(previousAvailability, normalizedAvailability, StringComparison.OrdinalIgnoreCase))
@@ -336,6 +410,21 @@ public partial class JobSupportProfileService : IJobSupportProfileService
         var customer = await _customerService.GetCustomerByIdAsync(attribute.EntityId);
         if (customer == null || customer.Deleted)
             return;
+        if (_settings.DataWriteMode == DataAccessMode.Plugin)
+        {
+            var pluginProfile = await _profileRepository.Table.FirstOrDefaultAsync(profile => profile.CustomerId == customer.Id);
+            if (pluginProfile == null || pluginProfile.AvatarPictureId == pictureId)
+                return;
+            if (mode == WorkflowExecutionMode.Shadow)
+                return;
+            if (mode != WorkflowExecutionMode.Live)
+                return;
+            pluginProfile.AvatarPictureId = pictureId;
+            pluginProfile.UpdatedOnUtc = DateTime.UtcNow;
+            await _profileRepository.UpdateAsync(pluginProfile, false);
+            return;
+        }
+
         var profile = await GetLinkedProfileAsync(customer);
         if (profile == null || profile.Deleted)
             return;
@@ -373,31 +462,168 @@ public partial class JobSupportProfileService : IJobSupportProfileService
             await ExecutePluginWriteAsync(() => UpsertPluginProfileAsync(customer, profile), customer.Id, "avatar");
     }
 
-    private async Task UpsertPluginProfileAsync(Customer customer, Product legacyProfile)
+    public async Task UpdatePluginProfileContentAsync(int customerId, string shortDescription, string fullDescription)
     {
+        if (_settings.DataWriteMode != DataAccessMode.Plugin)
+            return;
+        var profile = await _profileRepository.Table.FirstOrDefaultAsync(item => item.CustomerId == customerId);
+        if (profile == null)
+            return;
+        var normalizedShort = shortDescription ?? string.Empty;
+        var normalizedFull = fullDescription ?? string.Empty;
+        if (profile.ShortDescription == normalizedShort && profile.FullDescription == normalizedFull)
+            return;
+        profile.ShortDescription = normalizedShort;
+        profile.FullDescription = normalizedFull;
+        profile.UpdatedOnUtc = DateTime.UtcNow;
+        await _profileRepository.UpdateAsync(profile, false);
+    }
+
+    private async Task UpsertPluginProfileAsync(Customer customer, Product legacyProfile,
+        IList<SpecificationAttributeOption> selectedOptions = null)
+    {
+        selectedOptions ??= await GetSelectedOptionsAsync(customer, _settings);
+        var now = DateTime.UtcNow;
         var entity = await _profileRepository.Table.FirstOrDefaultAsync(profile => profile.CustomerId == customer.Id)
-                     ?? new JobSupportProfile { CustomerId = customer.Id, CreatedOnUtc = legacyProfile.CreatedOnUtc };
-        entity.LegacyProductId = legacyProfile.Id;
-        entity.ProfileType = customer.CustomerProfileTypeId;
-        entity.DisplayName = legacyProfile.Name;
-        entity.ShortDescription = legacyProfile.ShortDescription;
-        entity.FullDescription = legacyProfile.FullDescription;
-        entity.CurrentAvailability = await _genericAttributeService.GetAttributeAsync<string>(customer,
-            JobSupportDefaults.CurrentAvailabilityAttribute);
+                     ?? new JobSupportProfile { CustomerId = customer.Id, CreatedOnUtc = legacyProfile?.CreatedOnUtc ?? customer.CreatedOnUtc };
+        if (legacyProfile != null)
+        {
+            entity.LegacyProductId = legacyProfile.Id;
+            entity.DisplayName = legacyProfile.Name;
+            entity.ShortDescription = legacyProfile.ShortDescription;
+            entity.FullDescription = legacyProfile.FullDescription;
+            entity.IsPublished = legacyProfile.Published;
+            entity.LegacySourceId = legacyProfile.Id;
+        }
+        else
+        {
+            entity.DisplayName = GetDisplayName(customer);
+            entity.MigrationSource ??= "PluginWrite";
+        }
+        entity.ProfileType = GetSelectedOptionId(selectedOptions, _settings.ProfileTypeSpecificationAttributeId)
+            ?? customer.CustomerProfileTypeId;
+        entity.CurrentAvailability = GetSelectedOptionName(selectedOptions, _settings.CurrentAvailabilitySpecificationAttributeId)
+            ?? entity.CurrentAvailability;
+        entity.MotherTongue = GetSelectedOptionName(selectedOptions, _settings.MotherTongueSpecificationAttributeId);
+        entity.RelevantExperience = GetSelectedOptionName(selectedOptions, _settings.RelevantExperienceSpecificationAttributeId);
         entity.AvatarPictureId = PositiveOrNull(await _genericAttributeService.GetAttributeAsync<int>(customer,
             NopCustomerDefaults.AvatarPictureIdAttribute));
         entity.CountryId = PositiveOrNull(customer.CountryId);
         entity.StateProvinceId = PositiveOrNull(customer.StateProvinceId);
         entity.City = customer.City;
-        entity.IsPublished = legacyProfile.Published;
-        entity.UpdatedOnUtc = DateTime.UtcNow;
-        entity.MigrationSource ??= "DualWrite";
-        entity.LegacySourceId = legacyProfile.Id;
+        entity.UpdatedOnUtc = now;
+        entity.MigrationSource ??= legacyProfile == null ? "PluginWrite" : "DualWrite";
         if (entity.Id == 0)
             await _profileRepository.InsertAsync(entity, false);
         else
             await _profileRepository.UpdateAsync(entity, false);
+
+        await SynchronizePluginSkillsAsync(entity, selectedOptions, now);
+        await SynchronizePluginAttributeValuesAsync(entity, selectedOptions, now);
     }
+
+    private async Task SynchronizePluginSkillsAsync(JobSupportProfile profile,
+        IEnumerable<SpecificationAttributeOption> selectedOptions,
+        DateTime now)
+    {
+        var desired = selectedOptions
+            .Where(option => option.SpecificationAttributeId == _settings.PrimaryTechnologySpecificationAttributeId ||
+                             option.SpecificationAttributeId == _settings.SecondaryTechnologySpecificationAttributeId)
+            .Select(option => new
+            {
+                Option = option,
+                SkillType = option.SpecificationAttributeId == _settings.PrimaryTechnologySpecificationAttributeId
+                    ? (int)SkillType.PrimaryTechnology
+                    : (int)SkillType.SecondaryTechnology
+            }).ToList();
+        var existing = await _skillRepository.Table.Where(skill => skill.ProfileId == profile.Id).ToListAsync();
+        var stale = existing.Where(skill => desired.All(item =>
+            item.SkillType != skill.SkillType || item.Option.Id != skill.LegacySpecificationAttributeOptionId)).ToList();
+        if (stale.Count > 0)
+            await _skillRepository.DeleteAsync(stale, false);
+        foreach (var item in desired.Where(item => existing.All(skill =>
+                     skill.SkillType != item.SkillType || skill.LegacySpecificationAttributeOptionId != item.Option.Id)))
+        {
+            await _skillRepository.InsertAsync(new JobSupportProfileSkill
+            {
+                ProfileId = profile.Id,
+                SkillType = item.SkillType,
+                Name = item.Option.Name,
+                LegacySpecificationAttributeId = item.Option.SpecificationAttributeId,
+                LegacySpecificationAttributeOptionId = item.Option.Id,
+                DisplayOrder = item.Option.DisplayOrder,
+                CreatedOnUtc = now,
+                UpdatedOnUtc = now
+            }, false);
+        }
+    }
+
+    private async Task SynchronizePluginAttributeValuesAsync(JobSupportProfile profile,
+        IEnumerable<SpecificationAttributeOption> selectedOptions,
+        DateTime now)
+    {
+        foreach (var group in selectedOptions.GroupBy(option => option.SpecificationAttributeId))
+        {
+            var definition = await _attributeDefinitionRepository.Table.FirstOrDefaultAsync(item =>
+                item.LegacyCustomerAttributeId == group.Key);
+            if (definition == null)
+            {
+                definition = new JobSupportProfileAttributeDefinition
+                {
+                    LegacyCustomerAttributeId = group.Key,
+                    Name = $"Attribute {group.Key}",
+                    IsRequired = false,
+                    DisplayOrder = 0,
+                    CreatedOnUtc = now,
+                    UpdatedOnUtc = now
+                };
+                await _attributeDefinitionRepository.InsertAsync(definition, false);
+            }
+
+            var desiredOptionIds = group.Select(option => option.Id).ToHashSet();
+            var existingValues = await _attributeValueRepository.Table.Where(value =>
+                value.ProfileId == profile.Id && value.AttributeDefinitionId == definition.Id).ToListAsync();
+            var stale = existingValues.Where(value => !value.LegacyCustomerAttributeValueId.HasValue ||
+                !desiredOptionIds.Contains(value.LegacyCustomerAttributeValueId.Value)).ToList();
+            if (stale.Count > 0)
+                await _attributeValueRepository.DeleteAsync(stale, false);
+
+            foreach (var selected in group)
+            {
+                if (existingValues.Any(value => value.LegacyCustomerAttributeValueId == selected.Id))
+                    continue;
+                var option = await _attributeOptionRepository.Table.FirstOrDefaultAsync(item =>
+                    item.AttributeDefinitionId == definition.Id && item.LegacyCustomerAttributeValueId == selected.Id);
+                if (option == null)
+                {
+                    option = new JobSupportProfileAttributeOption
+                    {
+                        AttributeDefinitionId = definition.Id,
+                        LegacyCustomerAttributeValueId = selected.Id,
+                        Name = selected.Name,
+                        DisplayOrder = selected.DisplayOrder
+                    };
+                    await _attributeOptionRepository.InsertAsync(option, false);
+                }
+                await _attributeValueRepository.InsertAsync(new JobSupportProfileAttributeValue
+                {
+                    ProfileId = profile.Id,
+                    AttributeDefinitionId = definition.Id,
+                    AttributeOptionId = option.Id,
+                    LegacyCustomerAttributeId = group.Key,
+                    LegacyCustomerAttributeValueId = selected.Id,
+                    CreatedOnUtc = now,
+                    UpdatedOnUtc = now
+                }, false);
+            }
+        }
+    }
+
+    private static int? GetSelectedOptionId(IEnumerable<SpecificationAttributeOption> options, int attributeId) =>
+        options.FirstOrDefault(option => option.SpecificationAttributeId == attributeId)?.Id;
+
+    private static string GetSelectedOptionName(IEnumerable<SpecificationAttributeOption> options, int attributeId) =>
+        options.FirstOrDefault(option => option.SpecificationAttributeId == attributeId)?.Name;
 
     private async Task ExecutePluginWriteAsync(Func<Task> operation, int sourceId, string operationName)
     {

@@ -43,5 +43,6 @@ public class JobSupportSettings : ISettings
     public bool WriteLegacyRewardPointsHistory { get; set; }
     public DataAccessMode DataReadMode { get; set; } = DataAccessMode.Legacy;
     public DataAccessMode DataWriteMode { get; set; } = DataAccessMode.Legacy;
+    public DataAccessMode CompareReturnMode { get; set; } = DataAccessMode.Legacy;
     public int MigrationBatchSize { get; set; } = 500;
 }

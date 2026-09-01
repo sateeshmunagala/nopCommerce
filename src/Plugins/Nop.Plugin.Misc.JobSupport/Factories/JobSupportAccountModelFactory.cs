@@ -96,6 +96,14 @@ public class JobSupportAccountModelFactory : IJobSupportAccountModelFactory
         xml = await ReplaceAsync(xml, _settings.CurrentAvailabilitySpecificationAttributeId, new[] { model.AvailabilityId });
         xml = await ReplaceAsync(xml, _settings.RelevantExperienceSpecificationAttributeId, new[] { model.RelevantExperienceId });
         xml = await ReplaceAsync(xml, _settings.MotherTongueSpecificationAttributeId, new[] { model.MotherTongueId });
+        if (_settings.DataWriteMode == Nop.Plugin.Misc.JobSupport.Domain.Enums.DataAccessMode.Plugin)
+        {
+            customer.CustomCustomerAttributesXML = xml;
+            await _profileService.EnsureProfileForCustomerAsync(customer, _settings);
+            await _profileService.UpdatePluginProfileContentAsync(customer.Id, model.ShortDescription, model.Description);
+            return;
+        }
+
         customer.CustomCustomerAttributesXML = xml;
         await _customerService.UpdateCustomerAsync(customer);
         await _profileService.EnsureProfileForCustomerAsync(customer, _settings);

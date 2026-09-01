@@ -5,6 +5,11 @@ public partial class ProfileSearchRequest
     public IList<int> ProductIds { get; set; } = new List<int>();
     public int CustomerId { get; set; }
     public int? ProfileTypeId { get; set; }
+    public IList<int> PrimarySkillIds { get; set; } = new List<int>();
+    public IList<int> SecondarySkillIds { get; set; } = new List<int>();
+    public string Availability { get; set; }
+    public string Keywords { get; set; }
+    public bool ExcludeOwnProfile { get; set; } = true;
     public int StoreId { get; set; }
     public RelationshipType? RelationshipType { get; set; }
     public int PageIndex { get; set; }

@@ -79,6 +79,27 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
         if (customer == null || customer.Deleted)
             return;
 
+        if (settings.DataWriteMode == DataAccessMode.Plugin)
+        {
+            var previous = await _subscriptionRepository.Table
+                .Where(subscription => subscription.CustomerId == customer.Id)
+                .OrderByDescending(subscription => subscription.StartOnUtc)
+                .FirstOrDefaultAsync();
+            var carriedPluginCredits = previous != null && previous.EndOnUtc > order.CreatedOnUtc
+                ? Math.Max(0, previous.AllottedCredits + previous.CarriedCredits - previous.UsedCredits)
+                : 0;
+            if (settings.ExecutionMode == WorkflowExecutionMode.Shadow)
+            {
+                await _logger.InformationAsync(
+                    $"JobSupport shadow paid-order outcome: order {order.Id}, customer {customer.Id}, duration {plan.DurationMonths}, credits {plan.AllottedCredits + carriedPluginCredits}.");
+                return;
+            }
+            if (settings.ExecutionMode != WorkflowExecutionMode.Live)
+                return;
+            await UpsertPluginSubscriptionsAsync(order, orderItems, planByProductId, carriedPluginCredits);
+            return;
+        }
+
         var originatingOrderId = await _genericAttributeService.GetAttributeAsync<int>(customer,
             JobSupportDefaults.SubscriptionOrderIdAttribute,
             order.StoreId);
@@ -166,6 +187,9 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
 
     public async Task<SubscriptionSummary> GetSubscriptionAsync(int customerId, int storeId)
     {
+        if (_settings.DataReadMode == DataAccessMode.Plugin)
+            return await GetPluginSubscriptionAsync(customerId, updateExpiry: _settings.DataWriteMode == DataAccessMode.Plugin);
+
         var customer = await _customerService.GetCustomerByIdAsync(customerId);
         if (customer == null || customer.Deleted)
             return new SubscriptionSummary { Status = SubscriptionStatus.Inactive };
@@ -197,13 +221,19 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
             AllottedCredits = Math.Max(0, allotted),
             UsedCredits = Math.Max(0, used)
         };
-        if (_settings.DataReadMode == DataAccessMode.Compare)
-            await ComparePluginSubscriptionAsync(customerId, summary);
-        return summary;
+        if (_settings.DataReadMode != DataAccessMode.Compare)
+            return summary;
+
+        var plugin = await GetPluginSubscriptionAsync(customerId, updateExpiry: false);
+        await ComparePluginSubscriptionAsync(customerId, summary, plugin);
+        return _settings.CompareReturnMode == DataAccessMode.Plugin ? plugin : summary;
     }
 
     public async Task<ContactRevealDecision> RevealContactAsync(int customerId, int targetProfileId, int storeId)
     {
+        if (_settings.DataWriteMode == DataAccessMode.Plugin)
+            return await RevealPluginContactAsync(customerId, targetProfileId);
+
         var customer = await _customerService.GetCustomerByIdAsync(customerId);
         var profile = await _productService.GetProductByIdAsync(targetProfileId);
         if (customer == null || customer.Deleted || profile == null || profile.Deleted || profile.VendorId <= 0)
@@ -340,18 +370,104 @@ public partial class JobSupportSubscriptionService : IJobSupportSubscriptionServ
             CreditCost = 1,
             RevealedOnUtc = DateTime.UtcNow
         }, false);
+        if (subscription != null)
+        {
+            subscription.UsedCredits++;
+            subscription.UpdatedOnUtc = DateTime.UtcNow;
+            await _subscriptionRepository.UpdateAsync(subscription, false);
+        }
     }
 
-    private async Task ComparePluginSubscriptionAsync(int customerId, SubscriptionSummary legacy)
+    private async Task ComparePluginSubscriptionAsync(int customerId,
+        SubscriptionSummary legacy,
+        SubscriptionSummary plugin)
     {
-        var plugin = await _subscriptionRepository.Table.Where(subscription => subscription.CustomerId == customerId)
-            .OrderByDescending(subscription => subscription.StartOnUtc).FirstOrDefaultAsync();
-        var mismatch = plugin == null
-            ? legacy.Status != SubscriptionStatus.Inactive
-            : plugin.AllottedCredits + plugin.CarriedCredits != legacy.AllottedCredits || plugin.UsedCredits != legacy.UsedCredits ||
-              plugin.StartOnUtc != legacy.StartDate || plugin.EndOnUtc != legacy.ExpiryDate;
+        var mismatch = plugin.Status != legacy.Status || plugin.AllottedCredits != legacy.AllottedCredits ||
+            plugin.UsedCredits != legacy.UsedCredits || plugin.StartDate != legacy.StartDate || plugin.ExpiryDate != legacy.ExpiryDate;
         if (mismatch)
             await _logger.WarningAsync($"JobSupport subscription comparison mismatch for source {customerId}.");
+    }
+
+    private async Task<SubscriptionSummary> GetPluginSubscriptionAsync(int customerId, bool updateExpiry)
+    {
+        var subscription = await _subscriptionRepository.Table
+            .Where(item => item.CustomerId == customerId)
+            .OrderByDescending(item => item.StartOnUtc)
+            .FirstOrDefaultAsync();
+        if (subscription == null)
+            return new SubscriptionSummary { Status = SubscriptionStatus.Inactive };
+
+        var remaining = subscription.AllottedCredits + subscription.CarriedCredits - subscription.UsedCredits;
+        var status = subscription.EndOnUtc <= DateTime.UtcNow
+            ? SubscriptionStatus.Expired
+            : remaining > 0 ? SubscriptionStatus.Active : SubscriptionStatus.Exhausted;
+        if (updateExpiry && subscription.Status != (int)status)
+        {
+            subscription.Status = (int)status;
+            subscription.UpdatedOnUtc = DateTime.UtcNow;
+            await _subscriptionRepository.UpdateAsync(subscription, false);
+        }
+        return new SubscriptionSummary
+        {
+            Status = status,
+            StartDate = subscription.StartOnUtc,
+            ExpiryDate = subscription.EndOnUtc,
+            AllottedCredits = Math.Max(0, subscription.AllottedCredits + subscription.CarriedCredits),
+            UsedCredits = Math.Max(0, subscription.UsedCredits)
+        };
+    }
+
+    private async Task<ContactRevealDecision> RevealPluginContactAsync(int customerId, int targetProfileId)
+    {
+        var customer = await _customerService.GetCustomerByIdAsync(customerId);
+        var profile = await _profileRepository.Table.FirstOrDefaultAsync(item =>
+            item.LegacyProductId == targetProfileId || item.Id == targetProfileId);
+        if (customer == null || customer.Deleted || profile == null || !profile.IsPublished)
+            return Failed("Plugins.Misc.JobSupport.Contact.Errors.NotFound");
+        if (profile.CustomerId == customerId)
+            return Failed("Plugins.Misc.JobSupport.Contact.Errors.SelfReveal");
+        var targetCustomer = await _customerService.GetCustomerByIdAsync(profile.CustomerId);
+        if (targetCustomer == null || targetCustomer.Deleted)
+            return Failed("Plugins.Misc.JobSupport.Contact.Errors.NotFound");
+
+        var existing = await _contactRevealRepository.Table.FirstOrDefaultAsync(reveal =>
+            reveal.ViewerCustomerId == customerId && reveal.TargetProfileId == profile.Id);
+        var summary = await GetPluginSubscriptionAsync(customerId, updateExpiry: true);
+        if (existing == null && summary.Status != SubscriptionStatus.Active)
+            return Failed("Plugins.Misc.JobSupport.Contact.Errors.SubscriptionRequired", summary.RemainingCredits);
+
+        if (existing == null)
+        {
+            var subscription = await _subscriptionRepository.Table
+                .Where(item => item.CustomerId == customerId && item.Status == (int)SubscriptionStatus.Active)
+                .OrderByDescending(item => item.StartOnUtc)
+                .FirstOrDefaultAsync();
+            if (subscription == null)
+                return Failed("Plugins.Misc.JobSupport.Contact.Errors.SubscriptionRequired", summary.RemainingCredits);
+            await _contactRevealRepository.InsertAsync(new JobSupportContactReveal
+            {
+                SubscriptionId = subscription.Id,
+                ViewerCustomerId = customerId,
+                TargetCustomerId = profile.CustomerId,
+                TargetProfileId = profile.Id,
+                CreditCost = 1,
+                RevealedOnUtc = DateTime.UtcNow
+            }, false);
+            subscription.UsedCredits++;
+            subscription.UpdatedOnUtc = DateTime.UtcNow;
+            await _subscriptionRepository.UpdateAsync(subscription, false);
+            summary = summary with { UsedCredits = summary.UsedCredits + 1 };
+        }
+
+        return new ContactRevealDecision
+        {
+            Succeeded = true,
+            AlreadyRevealed = existing != null,
+            Email = targetCustomer.Email,
+            Phone = targetCustomer.Phone,
+            RemainingCredits = summary.RemainingCredits,
+            MessageKey = "Plugins.Misc.JobSupport.Contact.Revealed"
+        };
     }
 
     private async Task ExecutePluginWriteAsync(Func<Task> operation, int sourceId, string operationName)

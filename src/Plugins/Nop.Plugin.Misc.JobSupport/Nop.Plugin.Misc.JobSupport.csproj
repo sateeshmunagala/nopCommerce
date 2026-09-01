@@ -13,6 +13,11 @@
     <None Remove="Content\css\job-support.css" />
     <None Remove="Content\js\job-support.js" />
     <None Remove="Views\**\*.cshtml" />
+    <None Remove="Data\Sql\*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Sql\*.sql" />
   </ItemGroup>
 
   <ItemGroup>

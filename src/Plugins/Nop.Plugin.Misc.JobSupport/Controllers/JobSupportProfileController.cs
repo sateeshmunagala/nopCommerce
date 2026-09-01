@@ -59,6 +59,11 @@ public class JobSupportProfileController : BasePluginController
             CustomerId = customer.Id,
             StoreId = (await _storeContext.GetCurrentStoreAsync()).Id,
             ProfileTypeId = filter.ProfileTypeId ?? await GetOppositeProfileTypeIdAsync(customer),
+            PrimarySkillIds = filter.PrimaryTechnologyId.HasValue ? new[] { filter.PrimaryTechnologyId.Value } : Array.Empty<int>(),
+            SecondarySkillIds = filter.SecondaryTechnologyId.HasValue ? new[] { filter.SecondaryTechnologyId.Value } : Array.Empty<int>(),
+            Availability = filter.AvailabilityId.HasValue
+                ? (await _specificationAttributeService.GetSpecificationAttributeOptionByIdAsync(filter.AvailabilityId.Value))?.Name
+                : null,
             PageIndex = filter.PageNumber - 1,
             PageSize = Math.Max(1, _settings.DefaultPageSize),
             SortOrder = filter.SortOrder
@@ -85,6 +90,7 @@ public class JobSupportProfileController : BasePluginController
             ProductIds = new[] { profile.Id },
             CustomerId = customer.Id,
             StoreId = (await _storeContext.GetCurrentStoreAsync()).Id,
+            ExcludeOwnProfile = false,
             PageIndex = 0,
             PageSize = 1
         });

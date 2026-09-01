@@ -7,6 +7,7 @@ namespace Nop.Plugin.Misc.JobSupport.Services;
 public partial interface IJobSupportProfileService
 {
     Task EnsureProfileForCustomerAsync(Customer customer, JobSupportSettings settings);
+    Task UpdatePluginProfileContentAsync(int customerId, string shortDescription, string fullDescription);
     Task ActivateProfileAsync(Customer customer, JobSupportSettings settings);
     Task<RelationshipActionResult> UpdateAvailabilityAsync(int customerId, string availability, WorkflowExecutionMode mode);
     Task SynchronizeAvatarAsync(GenericAttribute attribute, WorkflowExecutionMode mode);
