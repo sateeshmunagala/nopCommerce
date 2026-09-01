@@ -2,6 +2,7 @@ using LinqToDB;
 using Nop.Core.Domain.Customers;
 using Nop.Data;
 using Nop.Plugin.Misc.JobSupport.Contracts;
+using Nop.Plugin.Misc.JobSupport.Domain;
 using Nop.Services.Common;
 using Nop.Services.Logging;
 using Nop.Services.ScheduleTasks;
@@ -16,6 +17,7 @@ public partial class JobSupportSynchronizationTask : IScheduleTask
     private readonly ILogger _logger;
     private readonly IJobSupportProfileService _profileService;
     private readonly IRepository<Customer> _customerRepository;
+    private readonly IRepository<JobSupportProfile> _profileRepository;
     private readonly IScheduleTaskService _scheduleTaskService;
     private readonly JobSupportSettings _settings;
 
@@ -23,6 +25,7 @@ public partial class JobSupportSynchronizationTask : IScheduleTask
         ILogger logger,
         IJobSupportProfileService profileService,
         IRepository<Customer> customerRepository,
+        IRepository<JobSupportProfile> profileRepository,
         IScheduleTaskService scheduleTaskService,
         JobSupportSettings settings)
     {
@@ -30,6 +33,7 @@ public partial class JobSupportSynchronizationTask : IScheduleTask
         _logger = logger;
         _profileService = profileService;
         _customerRepository = customerRepository;
+        _profileRepository = profileRepository;
         _scheduleTaskService = scheduleTaskService;
         _settings = settings;
     }
@@ -57,11 +61,16 @@ public partial class JobSupportSynchronizationTask : IScheduleTask
 
             while (true)
             {
-                var customers = await _customerRepository.Table
-                    .Where(customer => !customer.Deleted && customer.CustomerProfileTypeId > 0 &&
-                                       customer.Id > lastCustomerId)
-                    .OrderBy(customer => customer.Id)
+                var customerIds = await _profileRepository.Table
+                    .Where(profile => profile.ProfileType > 0 && profile.CustomerId > lastCustomerId)
+                    .OrderBy(profile => profile.CustomerId)
+                    .Select(profile => profile.CustomerId)
+                    .Distinct()
                     .Take(batchSize)
+                    .ToListAsync();
+                var customers = await _customerRepository.Table
+                    .Where(customer => customerIds.Contains(customer.Id) && !customer.Deleted)
+                    .OrderBy(customer => customer.Id)
                     .ToListAsync();
                 if (customers.Count == 0)
                     break;

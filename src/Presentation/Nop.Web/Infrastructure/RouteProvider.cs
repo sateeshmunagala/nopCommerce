@@ -65,10 +65,10 @@ public partial class RouteProvider : BaseRouteProvider, IRouteProvider
             pattern: $"cart/selectshippingoption",
             defaults: new { controller = "ShoppingCart", action = "SelectShippingOption" });
 
-        //wishlist //customization
+        //wishlist
         endpointRouteBuilder.MapControllerRoute(name: "Wishlist",
             pattern: $"{lang}/wishlist/{{customerGuid?}}",
-            defaults: new { controller = "ShoppingCart", action = "ShortListed" });
+            defaults: new { controller = "ShoppingCart", action = "Wishlist" });
 
         //checkout attribute change (AJAX)
         endpointRouteBuilder.MapControllerRoute(name: "CheckoutAttributeChange",
@@ -742,25 +742,6 @@ public partial class RouteProvider : BaseRouteProvider, IRouteProvider
         //fallback is intended to handle cases when no other endpoint has matched
         //we use it to invoke [CheckLanguageSeoCode] and give a chance to find a localized route
         endpointRouteBuilder.MapFallbackToController("FallbackRedirect", "Common");
-
-        //customization
-        //shortListed
-        endpointRouteBuilder.MapControllerRoute(name: "ShortListed",
-            pattern: $"{lang}/ShortListed/{{customerGuid?}}",
-            defaults: new { controller = "ShoppingCart", action = "ShortListed" });
-
-        //customization
-        //View Customer(Product) Mobile Number/EmailId
-        endpointRouteBuilder.MapControllerRoute(name: "ViewCustomerMobileNumber",
-            pattern: $"{lang}/ViewCustomerMobileNumber/{{productId?}}",
-            defaults: new { controller = "Product", action = "ViewCustomerMobileNumber" });
-
-        //customization
-        //route for my account -> affiliations naviagation menu
-        endpointRouteBuilder.MapControllerRoute(name: "CustomerAffiliations",
-            pattern: $"{lang}/customer/Affiliations",
-            defaults: new { controller = "Customer", action = "Affiliations" });
-
     }
 
     #endregion

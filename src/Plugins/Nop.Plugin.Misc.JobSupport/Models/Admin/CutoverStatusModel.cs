@@ -8,7 +8,6 @@ public partial record CutoverStatusModel : BaseNopModel
 {
     public DataAccessMode ReadMode { get; set; }
     public DataAccessMode WriteMode { get; set; }
-    public DataAccessMode CompareReturnMode { get; set; }
     public string ProviderStatus { get; set; }
     public bool LegacyProfileSearchPresent { get; set; }
     public bool LegacyRelationshipProcedurePresent { get; set; }
@@ -22,5 +21,4 @@ public partial record CutoverStatusModel : BaseNopModel
     public bool RollbackReady { get; set; }
     public IList<SelectListItem> ReadModes { get; set; } = new List<SelectListItem>();
     public IList<SelectListItem> WriteModes { get; set; } = new List<SelectListItem>();
-    public IList<SelectListItem> CompareReturnModes { get; set; } = new List<SelectListItem>();
 }

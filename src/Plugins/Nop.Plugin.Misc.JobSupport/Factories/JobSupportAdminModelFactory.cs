@@ -91,6 +91,9 @@ public class JobSupportAdminModelFactory : IJobSupportAdminModelFactory
         ThreeMonthSubscriptionProductId = _settings.ThreeMonthSubscriptionProductId,
         SixMonthSubscriptionProductId = _settings.SixMonthSubscriptionProductId,
         OneYearSubscriptionProductId = _settings.OneYearSubscriptionProductId,
+        ThreeMonthSubscriptionAllottedCount = _settings.ThreeMonthSubscriptionAllottedCount,
+        SixMonthSubscriptionAllottedCount = _settings.SixMonthSubscriptionAllottedCount,
+        OneYearSubscriptionAllottedCount = _settings.OneYearSubscriptionAllottedCount,
         DefaultPageSize = _settings.DefaultPageSize,
         AllowGuestProfileBrowsing = _settings.AllowGuestProfileBrowsing,
         ShowGender = _settings.ShowGender,
@@ -106,8 +109,7 @@ public class JobSupportAdminModelFactory : IJobSupportAdminModelFactory
         EnableRelationshipNotifications = _settings.EnableRelationshipNotifications,
         EnableSynchronizationTask = _settings.EnableSynchronizationTask,
         ExecutionMode = _settings.ExecutionMode,
-        SynchronizationBatchSize = _settings.SynchronizationBatchSize,
-        WriteLegacyRewardPointsHistory = _settings.WriteLegacyRewardPointsHistory
+        SynchronizationBatchSize = _settings.SynchronizationBatchSize
     };
 
     public void ApplyConfigurationModel(ConfigurationModel model)
@@ -130,6 +132,9 @@ public class JobSupportAdminModelFactory : IJobSupportAdminModelFactory
         _settings.ThreeMonthSubscriptionProductId = model.ThreeMonthSubscriptionProductId;
         _settings.SixMonthSubscriptionProductId = model.SixMonthSubscriptionProductId;
         _settings.OneYearSubscriptionProductId = model.OneYearSubscriptionProductId;
+        _settings.ThreeMonthSubscriptionAllottedCount = model.ThreeMonthSubscriptionAllottedCount;
+        _settings.SixMonthSubscriptionAllottedCount = model.SixMonthSubscriptionAllottedCount;
+        _settings.OneYearSubscriptionAllottedCount = model.OneYearSubscriptionAllottedCount;
         _settings.DefaultPageSize = model.DefaultPageSize;
         _settings.AllowGuestProfileBrowsing = model.AllowGuestProfileBrowsing;
         _settings.ShowGender = model.ShowGender;
@@ -146,6 +151,5 @@ public class JobSupportAdminModelFactory : IJobSupportAdminModelFactory
         _settings.EnableSynchronizationTask = model.EnableSynchronizationTask;
         _settings.ExecutionMode = model.ExecutionMode;
         _settings.SynchronizationBatchSize = model.SynchronizationBatchSize;
-        _settings.WriteLegacyRewardPointsHistory = model.WriteLegacyRewardPointsHistory;
     }
 }

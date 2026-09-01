@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
+using LinqToDB;
 using Nop.Core;
+using Nop.Data;
 using Nop.Plugin.Misc.JobSupport.Contracts;
+using Nop.Plugin.Misc.JobSupport.Domain;
 using Nop.Plugin.Misc.JobSupport.Factories;
 using Nop.Plugin.Misc.JobSupport.Models.Public;
 using Nop.Plugin.Misc.JobSupport.Services;
-using Nop.Services.Catalog;
 using Nop.Services.Customers;
-using Nop.Services.Seo;
 using Nop.Web.Framework.Controllers;
 
 namespace Nop.Plugin.Misc.JobSupport.Controllers;
@@ -16,32 +17,29 @@ public class JobSupportProfileController : BasePluginController
     private const string LIST_VIEW = "~/Plugins/Misc.JobSupport/Views/Profile/List.cshtml";
     private const string DETAIL_VIEW = "~/Plugins/Misc.JobSupport/Views/Profile/Detail.cshtml";
     private readonly ICustomerService _customerService;
+    private readonly IRepository<JobSupportProfile> _profileRepository;
+    private readonly IRepository<JobSupportProfileAttributeOption> _attributeOptionRepository;
     private readonly IJobSupportProfileModelFactory _modelFactory;
     private readonly IJobSupportProfileQueryService _queryService;
-    private readonly IProductService _productService;
     private readonly IStoreContext _storeContext;
-    private readonly ISpecificationAttributeService _specificationAttributeService;
-    private readonly IUrlRecordService _urlRecordService;
     private readonly IWorkContext _workContext;
     private readonly JobSupportSettings _settings;
 
     public JobSupportProfileController(ICustomerService customerService,
+        IRepository<JobSupportProfile> profileRepository,
+        IRepository<JobSupportProfileAttributeOption> attributeOptionRepository,
         IJobSupportProfileModelFactory modelFactory,
         IJobSupportProfileQueryService queryService,
-        IProductService productService,
-        ISpecificationAttributeService specificationAttributeService,
         IStoreContext storeContext,
-        IUrlRecordService urlRecordService,
         IWorkContext workContext,
         JobSupportSettings settings)
     {
         _customerService = customerService;
+        _profileRepository = profileRepository;
+        _attributeOptionRepository = attributeOptionRepository;
         _modelFactory = modelFactory;
         _queryService = queryService;
-        _productService = productService;
-        _specificationAttributeService = specificationAttributeService;
         _storeContext = storeContext;
-        _urlRecordService = urlRecordService;
         _workContext = workContext;
         _settings = settings;
     }
@@ -58,11 +56,14 @@ public class JobSupportProfileController : BasePluginController
         {
             CustomerId = customer.Id,
             StoreId = (await _storeContext.GetCurrentStoreAsync()).Id,
-            ProfileTypeId = filter.ProfileTypeId ?? await GetOppositeProfileTypeIdAsync(customer),
+            ProfileTypeId = filter.ProfileTypeId ?? await GetOppositeProfileTypeIdAsync(customer.Id),
             PrimarySkillIds = filter.PrimaryTechnologyId.HasValue ? new[] { filter.PrimaryTechnologyId.Value } : Array.Empty<int>(),
             SecondarySkillIds = filter.SecondaryTechnologyId.HasValue ? new[] { filter.SecondaryTechnologyId.Value } : Array.Empty<int>(),
             Availability = filter.AvailabilityId.HasValue
-                ? (await _specificationAttributeService.GetSpecificationAttributeOptionByIdAsync(filter.AvailabilityId.Value))?.Name
+                ? (await _attributeOptionRepository.Table.FirstOrDefaultAsync(option =>
+                    option.Id == filter.AvailabilityId.Value ||
+                    option.LegacyCustomerAttributeValueId == filter.AvailabilityId.Value ||
+                    option.LegacyOptionId == filter.AvailabilityId.Value))?.Name
                 : null,
             PageIndex = filter.PageNumber - 1,
             PageSize = Math.Max(1, _settings.DefaultPageSize),
@@ -74,11 +75,8 @@ public class JobSupportProfileController : BasePluginController
 
     public async Task<IActionResult> Detail(string slug)
     {
-        var urlRecord = await _urlRecordService.GetBySlugAsync(slug);
-        if (urlRecord == null || !urlRecord.IsActive || !urlRecord.EntityName.Equals(nameof(Nop.Core.Domain.Catalog.Product), StringComparison.OrdinalIgnoreCase))
-            return NotFound();
-        var profile = await _productService.GetProductByIdAsync(urlRecord.EntityId);
-        if (profile == null || profile.Deleted || !profile.Published)
+        var profile = await _profileRepository.Table.FirstOrDefaultAsync(item => item.Slug == slug && item.IsPublished);
+        if (profile == null)
             return NotFound();
         var customer = await _workContext.GetCurrentCustomerAsync();
         var isGuest = await _customerService.IsGuestAsync(customer);
@@ -87,7 +85,7 @@ public class JobSupportProfileController : BasePluginController
 
         var result = await _queryService.SearchProfilesAsync(new ProfileSearchRequest
         {
-            ProductIds = new[] { profile.Id },
+            ProfileIds = new[] { profile.Id },
             CustomerId = customer.Id,
             StoreId = (await _storeContext.GetCurrentStoreAsync()).Id,
             ExcludeOwnProfile = false,
@@ -101,12 +99,20 @@ public class JobSupportProfileController : BasePluginController
             $"{Request.PathBase}{Request.Path}{Request.QueryString}"));
     }
 
-    private async Task<int?> GetOppositeProfileTypeIdAsync(Nop.Core.Domain.Customers.Customer customer)
+    private async Task<int?> GetOppositeProfileTypeIdAsync(int customerId)
     {
-        if (customer.CustomerProfileTypeId <= 0 || _settings.ProfileTypeSpecificationAttributeId <= 0)
+        var currentProfileType = await _profileRepository.Table
+            .Where(profile => profile.CustomerId == customerId && profile.IsPublished)
+            .Select(profile => profile.ProfileType)
+            .FirstOrDefaultAsync();
+        if (currentProfileType <= 0)
             return null;
-        var options = await _specificationAttributeService
-            .GetSpecificationAttributeOptionsBySpecificationAttributeAsync(_settings.ProfileTypeSpecificationAttributeId);
-        return options.FirstOrDefault(option => option.Id != customer.CustomerProfileTypeId)?.Id;
+        var oppositeProfileType = await _profileRepository.Table
+            .Where(profile => profile.IsPublished && profile.ProfileType > 0 && profile.ProfileType != currentProfileType)
+            .Select(profile => profile.ProfileType)
+            .Distinct()
+            .OrderBy(profileType => profileType)
+            .FirstOrDefaultAsync();
+        return oppositeProfileType > 0 ? oppositeProfileType : null;
     }
 }

@@ -22,10 +22,6 @@ using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Mvc.Filters;
 using Nop.Web.Framework.Mvc.Routing;
 using Nop.Web.Models.Catalog;
-//customization
-using Nop.Core.Domain.Payments;
-using Nop.Services.Common;
-using Nop.Core.Domain.Customers;
 
 namespace Nop.Web.Controllers;
 
@@ -63,11 +59,6 @@ public partial class ProductController : BasePublicController
     protected readonly ShoppingCartSettings _shoppingCartSettings;
     protected readonly ShippingSettings _shippingSettings;
 
-    //customization
-    private readonly IGenericAttributeService _genericAttributeService;
-    private readonly IPrivateMessagesModelFactory _privateMessagesModelFactory;
-    private readonly IRewardPointService _rewardPointService;
-
     #endregion
 
     #region Ctor
@@ -99,11 +90,7 @@ public partial class ProductController : BasePublicController
         IWorkflowMessageService workflowMessageService,
         LocalizationSettings localizationSettings,
         ShoppingCartSettings shoppingCartSettings,
-        ShippingSettings shippingSettings,
-        //customization
-        IGenericAttributeService genericAttributeService,
-        IPrivateMessagesModelFactory privateMessagesModelFactory,
-        IRewardPointService rewardPointService)
+        ShippingSettings shippingSettings)
     {
         _captchaSettings = captchaSettings;
         _catalogSettings = catalogSettings;
@@ -133,11 +120,6 @@ public partial class ProductController : BasePublicController
         _localizationSettings = localizationSettings;
         _shoppingCartSettings = shoppingCartSettings;
         _shippingSettings = shippingSettings;
-
-        //customization
-        _genericAttributeService = genericAttributeService;
-        _privateMessagesModelFactory = privateMessagesModelFactory;
-        _rewardPointService = rewardPointService;
     }
 
     #endregion
@@ -179,17 +161,6 @@ public partial class ProductController : BasePublicController
         var product = await _productService.GetProductByIdAsync(productId);
         if (product == null || product.Deleted)
             return InvokeHttp404();
-
-        ////customization
-        ////do not show product detail page to not logged in users
-        //var customer = await _workContext.GetCurrentCustomerAsync();
-        //if (await _customerService.IsGuestAsync(customer))
-        //    return RedirectToRoute("Homepage");
-
-        ////customization
-        ////prevent 'give support' profiles viewing 'give support' profiles and vice versa
-        //if (!await _productModelFactory.CanCurrentCustomerViewTargetProfileAsync(product))
-        //    return RedirectToRoute("Homepage");
 
         var notAvailable =
             //published?
@@ -553,24 +524,6 @@ public partial class ProductController : BasePublicController
 
         var model = new ProductEmailAFriendModel();
         model = await _productModelFactory.PrepareProductEmailAFriendModelAsync(model, product, false);
-
-        //customization start
-        //to do : move this logic to custom extension folder
-        //Check whether Customer has any active paid subscription other wise display upgrade view
-        var orders = await _orderService.SearchOrdersAsync(customerId: (await _workContext.GetCurrentCustomerAsync()).Id);
-
-        //check order status code
-        var isValid = orders.Where(a => a.OrderStatus == OrderStatus.OrderActive).SingleOrDefault();
-
-        if (isValid == null)
-        {
-            //Dispaly Upgrade View
-            model.Result = await _localizationService.GetResourceAsync("Orders.UpgradeSubscription.Message");
-            ModelState.AddModelError("", await _localizationService.GetResourceAsync("Orders.UpgradeSubscription.Message"));
-            //return View("_UpgradeSubscription.cshtml", model);
-        }
-        //customization end
-
         return View(model);
     }
 
@@ -588,10 +541,6 @@ public partial class ProductController : BasePublicController
         {
             ModelState.AddModelError("", await _localizationService.GetResourceAsync("Common.WrongCaptchaMessage"));
         }
-
-        //customization Get Customer Email by Customer Id (Vendor Id)
-        var customerTo = await _customerService.GetCustomerByIdAsync(product.VendorId);
-        model.FriendEmail = customerTo.Email;
 
         //check whether the current customer is guest and ia allowed to email a friend
         var customer = await _workContext.GetCurrentCustomerAsync();

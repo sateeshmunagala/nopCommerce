@@ -28,7 +28,4 @@ public partial record ProductEmailAFriendModel : BaseNopModel
 
     public bool DisplayCaptcha { get; set; }
 
-    //customization
-    public string TargetCustomerEmailId { get; set; }
-    public string TargetCustomerMobileNumber { get; set; }
 }

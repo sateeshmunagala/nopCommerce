@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Models.Admin;
 using Nop.Plugin.Misc.JobSupport.Models.Admin.Migration;
 using Nop.Plugin.Misc.JobSupport.Services;
@@ -27,7 +25,6 @@ namespace Nop.Plugin.Misc.JobSupport.Controllers;
 [AutoValidateAntiforgeryToken]
 public class JobSupportAdminController : BasePluginController
 {
-    private const string LEGACY_PARITY_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/LegacyParity.cshtml";
     private const string WORKFLOW_DIAGNOSTICS_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/WorkflowDiagnostics.cshtml";
     private const string CONFIGURE_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Configure.cshtml";
     private const string PROFILES_VIEW_PATH = "~/Plugins/Misc.JobSupport/Views/JobSupportAdmin/Profiles.cshtml";
@@ -38,7 +35,6 @@ public class JobSupportAdminController : BasePluginController
 
     private readonly ICustomerActivityService _customerActivityService;
     private readonly ICustomerService _customerService;
-    private readonly IJobSupportProfileQueryService _profileQueryService;
     private readonly IJobSupportBackfillService _backfillService;
     private readonly IJobSupportReconciliationService _reconciliationService;
     private readonly IJobSupportCutoverService _cutoverService;
@@ -54,7 +50,6 @@ public class JobSupportAdminController : BasePluginController
 
     public JobSupportAdminController(ICustomerActivityService customerActivityService,
         ICustomerService customerService,
-        IJobSupportProfileQueryService profileQueryService,
         IJobSupportBackfillService backfillService,
         IJobSupportReconciliationService reconciliationService,
         IJobSupportCutoverService cutoverService,
@@ -70,7 +65,6 @@ public class JobSupportAdminController : BasePluginController
     {
         _customerActivityService = customerActivityService;
         _customerService = customerService;
-        _profileQueryService = profileQueryService;
         _backfillService = backfillService;
         _reconciliationService = reconciliationService;
         _cutoverService = cutoverService;
@@ -139,25 +133,20 @@ public class JobSupportAdminController : BasePluginController
     [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
     public async Task<IActionResult> Cutover(CutoverStatusModel model)
     {
-        if (model.ReadMode is not (DataAccessMode.Legacy or DataAccessMode.Compare or DataAccessMode.Plugin))
+        if (model.ReadMode is not (DataAccessMode.Legacy or DataAccessMode.Plugin))
             ModelState.AddModelError(nameof(model.ReadMode), "Select a supported read mode.");
-        if (model.WriteMode is not (DataAccessMode.Legacy or DataAccessMode.Dual or DataAccessMode.Plugin))
-            ModelState.AddModelError(nameof(model.WriteMode), "Select a supported write mode.");
-        if (model.CompareReturnMode is not (DataAccessMode.Legacy or DataAccessMode.Plugin))
-            ModelState.AddModelError(nameof(model.CompareReturnMode), "Select the path returned during comparison.");
+        if (model.ReadMode == DataAccessMode.Legacy && !_settings.AllowLegacyReadRollback)
+            ModelState.AddModelError(nameof(model.ReadMode), "Legacy read rollback is disabled.");
 
         if (!ModelState.IsValid)
         {
             var status = await _cutoverService.GetStatusAsync();
             status.ReadMode = model.ReadMode;
-            status.WriteMode = model.WriteMode;
-            status.CompareReturnMode = model.CompareReturnMode;
             return View(CUTOVER_VIEW_PATH, status);
         }
 
         _settings.DataReadMode = model.ReadMode;
-        _settings.DataWriteMode = model.WriteMode;
-        _settings.CompareReturnMode = model.CompareReturnMode;
+        _settings.DataWriteMode = DataAccessMode.Plugin;
         await _settingService.SaveSettingAsync(_settings);
         return RedirectToRoute("Plugin.Misc.JobSupport.Cutover");
     }
@@ -227,81 +216,6 @@ public class JobSupportAdminController : BasePluginController
     {
         var csv = await _reconciliationService.ExportSanitizedMismatchesAsync(cancellationToken);
         return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "job-support-mismatches.csv");
-    }
-
-    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
-    public async Task<IActionResult> LegacyParity()
-    {
-        if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManagePlugins))
-            return AccessDeniedView();
-
-        return View(LEGACY_PARITY_VIEW_PATH, new LegacyParityRequestModel
-        {
-            PageSize = _settings.DefaultPageSize > 0 ? _settings.DefaultPageSize : 12
-        });
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
-    public async Task<IActionResult> LegacyParity(LegacyParityRequestModel model)
-    {
-        if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManagePlugins))
-            return AccessDeniedView();
-
-        if (!TryParseProductIds(model.ProductIdentifiers, out var productIds))
-        {
-            ModelState.AddModelError(nameof(model.ProductIdentifiers),
-                await _localizationService.GetResourceAsync(
-                    "Plugins.Misc.JobSupport.Admin.LegacyParity.Validation.ProductIds"));
-        }
-
-        if (!ModelState.IsValid)
-            return View(LEGACY_PARITY_VIEW_PATH, model);
-
-        var request = new ProfileSearchRequest
-        {
-            ProductIds = productIds,
-            CustomerId = model.CustomerId,
-            ProfileTypeId = model.ProfileTypeId,
-            RelationshipType = model.RelationshipType,
-            PageIndex = model.PageIndex,
-            PageSize = model.PageSize,
-            SortOrder = model.SortOrder
-        };
-
-        var procedureName = model.QueryType == LegacyParityQueryType.Relationship
-            ? _settings.LegacyShortlistProcedureName
-            : _settings.LegacyProfileSearchProcedureName;
-
-        var stopwatch = Stopwatch.StartNew();
-        var result = model.QueryType == LegacyParityQueryType.Relationship
-            ? await _profileQueryService.GetProfilesByRelationshipAsync(request)
-            : await _profileQueryService.SearchProfilesAsync(request);
-        stopwatch.Stop();
-
-        model.Result = new LegacyParityResultModel
-        {
-            Diagnostic = new ProfileQueryDiagnosticResult
-            {
-                ProcedureName = procedureName,
-                Succeeded = result.Succeeded,
-                ReturnedRowCount = result.ReturnedRowCount,
-                OutputTotalRecords = result.OutputTotalRecords,
-                DurationMilliseconds = stopwatch.ElapsedMilliseconds,
-                ProfileIds = result.Items.Select(item => item.Id).ToList(),
-                MappingWarnings = result.MappingWarnings.ToList(),
-                ErrorCode = result.ErrorCode
-            },
-            Profiles = result.Items.Select(item => new LegacyParityProfilePresenceModel
-            {
-                ProfileId = item.Id,
-                HasPhone = !string.IsNullOrWhiteSpace(item.Phone),
-                HasEmail = !string.IsNullOrWhiteSpace(item.Email)
-            }).ToList()
-        };
-
-        return View(LEGACY_PARITY_VIEW_PATH, model);
     }
 
     [CheckPermission(JobSupportPermissionConfigManager.VIEW_DIAGNOSTICS)]
@@ -391,20 +305,4 @@ public class JobSupportAdminController : BasePluginController
         model.Configuration.Add(new WorkflowDiagnosticItemModel { Name = name, Value = value });
     }
 
-    private static bool TryParseProductIds(string value, out IList<int> productIds)
-    {
-        productIds = new List<int>();
-        if (string.IsNullOrWhiteSpace(value))
-            return true;
-
-        foreach (var token in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            if (!int.TryParse(token, out var productId) || productId <= 0)
-                return false;
-
-            productIds.Add(productId);
-        }
-
-        return true;
-    }
 }

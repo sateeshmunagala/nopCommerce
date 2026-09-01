@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.WebUtilities;
+using LinqToDB;
 using Nop.Core;
-using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
+using Nop.Data;
 using Nop.Plugin.Misc.JobSupport.Contracts;
+using Nop.Plugin.Misc.JobSupport.Domain;
+using Nop.Plugin.Misc.JobSupport.Domain.Enums;
 using Nop.Plugin.Misc.JobSupport.Models.Public;
-using Nop.Services.Catalog;
 using Nop.Services.Media;
 
 namespace Nop.Plugin.Misc.JobSupport.Factories;
@@ -12,29 +14,35 @@ namespace Nop.Plugin.Misc.JobSupport.Factories;
 public class JobSupportProfileModelFactory : IJobSupportProfileModelFactory
 {
     private readonly IPictureService _pictureService;
-    private readonly ISpecificationAttributeService _specificationAttributeService;
+    private readonly IRepository<JobSupportProfileAttributeDefinition> _attributeDefinitionRepository;
+    private readonly IRepository<JobSupportProfileAttributeOption> _attributeOptionRepository;
+    private readonly IRepository<JobSupportProfileSkill> _skillRepository;
     private readonly IWebHelper _webHelper;
     private readonly JobSupportSettings _settings;
 
     public JobSupportProfileModelFactory(IPictureService pictureService,
-        ISpecificationAttributeService specificationAttributeService,
+        IRepository<JobSupportProfileAttributeDefinition> attributeDefinitionRepository,
+        IRepository<JobSupportProfileAttributeOption> attributeOptionRepository,
+        IRepository<JobSupportProfileSkill> skillRepository,
         IWebHelper webHelper,
         JobSupportSettings settings)
     {
         _pictureService = pictureService;
-        _specificationAttributeService = specificationAttributeService;
+        _attributeDefinitionRepository = attributeDefinitionRepository;
+        _attributeOptionRepository = attributeOptionRepository;
+        _skillRepository = skillRepository;
         _webHelper = webHelper;
         _settings = settings;
     }
 
     public async Task PrepareFilterAsync(ProfileFilterModel filter)
     {
-        await AddOptionsAsync(filter.ProfileTypes, _settings.ProfileTypeSpecificationAttributeId, filter.ProfileTypeId);
-        await AddOptionsAsync(filter.PrimaryTechnologies, _settings.PrimaryTechnologySpecificationAttributeId, filter.PrimaryTechnologyId);
-        await AddOptionsAsync(filter.SecondaryTechnologies, _settings.SecondaryTechnologySpecificationAttributeId, filter.SecondaryTechnologyId);
-        await AddOptionsAsync(filter.Availabilities, _settings.CurrentAvailabilitySpecificationAttributeId, filter.AvailabilityId);
-        await AddOptionsAsync(filter.RelevantExperiences, _settings.RelevantExperienceSpecificationAttributeId, filter.RelevantExperienceId);
-        await AddOptionsAsync(filter.MotherTongues, _settings.MotherTongueSpecificationAttributeId, filter.MotherTongueId);
+        await AddAttributeOptionsAsync(filter.ProfileTypes, _settings.ProfileTypeSpecificationAttributeId, filter.ProfileTypeId);
+        await AddSkillOptionsAsync(filter.PrimaryTechnologies, SkillType.PrimaryTechnology, filter.PrimaryTechnologyId);
+        await AddSkillOptionsAsync(filter.SecondaryTechnologies, SkillType.SecondaryTechnology, filter.SecondaryTechnologyId);
+        await AddAttributeOptionsAsync(filter.Availabilities, _settings.CurrentAvailabilitySpecificationAttributeId, filter.AvailabilityId);
+        await AddAttributeOptionsAsync(filter.RelevantExperiences, _settings.RelevantExperienceSpecificationAttributeId, filter.RelevantExperienceId);
+        await AddAttributeOptionsAsync(filter.MotherTongues, _settings.MotherTongueSpecificationAttributeId, filter.MotherTongueId);
     }
 
     public async Task<ProfileListModel> PrepareProfileListAsync(ProfileFilterModel filter,
@@ -51,19 +59,19 @@ public class JobSupportProfileModelFactory : IJobSupportProfileModelFactory
             TotalRecords = result.TotalRecords,
             TotalPages = result.PageSize <= 0 ? 0 : (int)Math.Ceiling(result.TotalRecords / (double)result.PageSize)
         };
-        foreach (var item in filtered.Where(item => item.Id > 0 && item.Id != currentCustomer?.VendorId))
+        foreach (var item in filtered.Where(item => item.Id > 0 && item.VendorId != currentCustomer?.Id))
             model.Profiles.Add(await PrepareProfileCardAsync(item, currentCustomer, isGuest));
         return model;
     }
 
-    public async Task<ProfileDetailModel> PrepareProfileDetailAsync(Product profile,
+    public async Task<ProfileDetailModel> PrepareProfileDetailAsync(JobSupportProfile profile,
         ProfileSearchResult result,
         Customer currentCustomer,
         bool isGuest,
         string returnUrl)
     {
         var card = await PrepareProfileCardAsync(result, currentCustomer, isGuest);
-        var ownProfile = currentCustomer != null && profile.VendorId == currentCustomer.Id;
+        var ownProfile = currentCustomer != null && profile.CustomerId == currentCustomer.Id;
         return new ProfileDetailModel
         {
             Id = card.Id,
@@ -106,7 +114,7 @@ public class JobSupportProfileModelFactory : IJobSupportProfileModelFactory
     {
         var pictureId = int.TryParse(result.AvatarPictureId, out var id) ? id : 0;
         var slug = Uri.EscapeDataString(result.Slug ?? string.Empty);
-        var ownProfile = currentCustomer != null && result.Id == currentCustomer.VendorId;
+        var ownProfile = currentCustomer != null && result.VendorId == currentCustomer.Id;
         return new ProfileCardModel
         {
             Id = result.Id,
@@ -138,19 +146,38 @@ public class JobSupportProfileModelFactory : IJobSupportProfileModelFactory
     private string ActionUrl(string slug, string action) =>
         $"{_webHelper.GetStoreLocation()}job-support/profile/{Uri.EscapeDataString(slug ?? string.Empty)}/{action}";
 
-    private async Task AddOptionsAsync(IList<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> target,
+    private async Task AddAttributeOptionsAsync(IList<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> target,
         int attributeId,
         int? selectedId)
     {
-        if (attributeId <= 0)
+        var definition = await _attributeDefinitionRepository.Table.FirstOrDefaultAsync(item =>
+            item.LegacyCustomerAttributeId == attributeId && item.IsActive);
+        if (definition == null)
             return;
-        foreach (var option in await _specificationAttributeService
-                     .GetSpecificationAttributeOptionsBySpecificationAttributeAsync(attributeId))
+        foreach (var option in await _attributeOptionRepository.Table
+                     .Where(item => item.AttributeDefinitionId == definition.Id && item.IsActive)
+                     .OrderBy(item => item.DisplayOrder)
+                     .ThenBy(item => item.Name)
+                     .ToListAsync())
         {
             target.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(option.Name,
-                option.Id.ToString(),
-                option.Id == selectedId));
+                ExternalOptionId(option).ToString(),
+                ExternalOptionId(option) == selectedId));
         }
+    }
+
+    private async Task AddSkillOptionsAsync(IList<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> target,
+        SkillType skillType,
+        int? selectedId)
+    {
+        var skills = await _skillRepository.Table
+            .Where(item => item.SkillType == (int)skillType && item.LegacySpecificationAttributeOptionId.HasValue)
+            .Select(item => new { Id = item.LegacySpecificationAttributeOptionId.Value, item.Name })
+            .Distinct()
+            .OrderBy(item => item.Name)
+            .ToListAsync();
+        foreach (var skill in skills)
+            target.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(skill.Name, skill.Id.ToString(), skill.Id == selectedId));
     }
 
     private async Task<IList<ProfileSearchResult>> ApplyConfiguredFiltersAsync(IList<ProfileSearchResult> source,
@@ -170,7 +197,13 @@ public class JobSupportProfileModelFactory : IJobSupportProfileModelFactory
 
     private async Task<string> GetOptionNameAsync(int? optionId) => optionId.GetValueOrDefault() <= 0
         ? null
-        : (await _specificationAttributeService.GetSpecificationAttributeOptionByIdAsync(optionId.Value))?.Name;
+        : (await _attributeOptionRepository.Table.FirstOrDefaultAsync(item =>
+            item.Id == optionId.Value ||
+            item.LegacyCustomerAttributeValueId == optionId.Value ||
+            item.LegacyOptionId == optionId.Value))?.Name;
+
+    private static int ExternalOptionId(JobSupportProfileAttributeOption option) =>
+        option.LegacyCustomerAttributeValueId ?? option.LegacyOptionId ?? option.Id;
 
     private static bool Contains(string value, string expected) => string.IsNullOrWhiteSpace(expected) ||
         (value?.Contains(expected, StringComparison.OrdinalIgnoreCase) ?? false);

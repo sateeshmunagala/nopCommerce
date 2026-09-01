@@ -25,6 +25,9 @@
             <div><label asp-for="ThreeMonthSubscriptionProductId">@T($"{prefix}.ThreeMonthSubscriptionProductId")</label><nop-editor asp-for="ThreeMonthSubscriptionProductId" /></div>
             <div><label asp-for="SixMonthSubscriptionProductId">@T($"{prefix}.SixMonthSubscriptionProductId")</label><nop-editor asp-for="SixMonthSubscriptionProductId" /></div>
             <div><label asp-for="OneYearSubscriptionProductId">@T($"{prefix}.OneYearSubscriptionProductId")</label><nop-editor asp-for="OneYearSubscriptionProductId" /></div>
+            <div><label asp-for="ThreeMonthSubscriptionAllottedCount">@T($"{prefix}.ThreeMonthSubscriptionAllottedCount")</label><nop-editor asp-for="ThreeMonthSubscriptionAllottedCount" /></div>
+            <div><label asp-for="SixMonthSubscriptionAllottedCount">@T($"{prefix}.SixMonthSubscriptionAllottedCount")</label><nop-editor asp-for="SixMonthSubscriptionAllottedCount" /></div>
+            <div><label asp-for="OneYearSubscriptionAllottedCount">@T($"{prefix}.OneYearSubscriptionAllottedCount")</label><nop-editor asp-for="OneYearSubscriptionAllottedCount" /></div>
             <div><label asp-for="DefaultPageSize">@T($"{prefix}.DefaultPageSize")</label><nop-editor asp-for="DefaultPageSize" /></div>
             <div><label asp-for="AllowGuestProfileBrowsing">@T($"{prefix}.AllowGuestProfileBrowsing")</label><nop-editor asp-for="AllowGuestProfileBrowsing" /></div>
             <div><label asp-for="ShowGender">@T($"{prefix}.ShowGender")</label><nop-editor asp-for="ShowGender" /></div>
@@ -41,7 +44,6 @@
             <div><label asp-for="EnableSynchronizationTask">@T($"{prefix}.EnableSynchronizationTask")</label><nop-editor asp-for="EnableSynchronizationTask" /></div>
             <div><label asp-for="ExecutionMode">@T($"{prefix}.ExecutionMode")</label><nop-editor asp-for="ExecutionMode" /></div>
             <div><label asp-for="SynchronizationBatchSize">@T($"{prefix}.SynchronizationBatchSize")</label><nop-editor asp-for="SynchronizationBatchSize" /></div>
-            <div><label asp-for="WriteLegacyRewardPointsHistory">@T($"{prefix}.WriteLegacyRewardPointsHistory")</label><nop-editor asp-for="WriteLegacyRewardPointsHistory" /></div>
         </div>
     </div><div class="card-footer"><button type="submit" class="btn btn-primary">@T("Admin.Common.Save")</button></div></div></div></section>
 </form>

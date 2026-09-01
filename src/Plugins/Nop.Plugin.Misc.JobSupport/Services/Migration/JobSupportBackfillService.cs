@@ -2,11 +2,13 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using LinqToDB;
+using LinqToDB.Data;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
 using Nop.Data;
+using Nop.Data.Mapping;
 using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Domain;
 using Nop.Plugin.Misc.JobSupport.Domain.Enums;
@@ -25,6 +27,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
     private static readonly Regex PhonePattern = new(@"^\+?[\d\s().-]{7,}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private readonly IRepository<Customer> _customerRepository;
+    private readonly INopDataProvider _dataProvider;
     private readonly IRepository<CustomerAttribute> _customerAttributeRepository;
     private readonly IRepository<CustomerAttributeValue> _customerAttributeValueRepository;
     private readonly IRepository<GenericAttribute> _genericAttributeRepository;
@@ -45,9 +48,9 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
     private readonly IRepository<JobSupportRelationship> _relationshipRepository;
     private readonly IRepository<JobSupportSubscription> _subscriptionRepository;
     private readonly JobSupportSettings _settings;
-    private readonly ShoppingCartSettings _shoppingCartSettings;
 
     public JobSupportBackfillService(IRepository<Customer> customerRepository,
+        INopDataProvider dataProvider,
         IRepository<CustomerAttribute> customerAttributeRepository,
         IRepository<CustomerAttributeValue> customerAttributeValueRepository,
         IRepository<GenericAttribute> genericAttributeRepository,
@@ -67,10 +70,10 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
         IRepository<JobSupportProfileView> profileViewRepository,
         IRepository<JobSupportRelationship> relationshipRepository,
         IRepository<JobSupportSubscription> subscriptionRepository,
-        JobSupportSettings settings,
-        ShoppingCartSettings shoppingCartSettings)
+        JobSupportSettings settings)
     {
         _customerRepository = customerRepository;
+        _dataProvider = dataProvider;
         _customerAttributeRepository = customerAttributeRepository;
         _customerAttributeValueRepository = customerAttributeValueRepository;
         _genericAttributeRepository = genericAttributeRepository;
@@ -91,17 +94,22 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
         _relationshipRepository = relationshipRepository;
         _subscriptionRepository = subscriptionRepository;
         _settings = settings;
-        _shoppingCartSettings = shoppingCartSettings;
     }
 
     public async Task<BackfillStepResult> BackfillProfilesAsync(int batchSize, CancellationToken cancellationToken)
     {
         var checkpoint = await GetCheckpointAsync(PROFILES, cancellationToken);
-        var customers = await _customerRepository.Table
-            .Where(customer => customer.Id > checkpoint.LastProcessedId && !customer.Deleted && customer.CustomerProfileTypeId > 0)
-            .OrderBy(customer => customer.Id)
-            .Take(NormalizeBatchSize(batchSize))
-            .ToListAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var sourceRows = await _dataProvider.QueryAsync<LegacyCustomerProfileSource>(
+            $"SELECT TOP (@BatchSize) [Id], [CustomerProfileTypeId] FROM [{NameCompatibilityManager.GetTableName(typeof(Customer))}] WHERE [Id] > @LastProcessedId AND [Deleted] = 0 AND [CustomerProfileTypeId] > 0 ORDER BY [Id]",
+            new DataParameter("BatchSize", NormalizeBatchSize(batchSize), LinqToDB.DataType.Int32),
+            new DataParameter("LastProcessedId", checkpoint.LastProcessedId, LinqToDB.DataType.Int32));
+        var sourceIds = sourceRows.Select(row => row.Id).ToArray();
+        var customers = sourceIds.Length == 0
+            ? new List<Customer>()
+            : await _customerRepository.Table.Where(customer => sourceIds.Contains(customer.Id))
+                .OrderBy(customer => customer.Id)
+                .ToListAsync(cancellationToken);
         if (customers.Count == 0)
             return await CompleteAsync(checkpoint);
 
@@ -153,7 +161,7 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
             var entity = existingProfiles.FirstOrDefault(profile => profile.CustomerId == customer.Id) ?? new JobSupportProfile();
             entity.CustomerId = customer.Id;
             entity.LegacyProductId = product.Id;
-            entity.ProfileType = customer.CustomerProfileTypeId;
+            entity.ProfileType = sourceRows.First(row => row.Id == customer.Id).CustomerProfileTypeId;
             entity.DisplayName = product.Name;
             entity.ShortDescription = product.ShortDescription;
             entity.FullDescription = product.FullDescription;
@@ -760,9 +768,9 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
 
     private Dictionary<int, SubscriptionPlan> GetSubscriptionPlans() => new[]
         {
-            new SubscriptionPlan(_settings.ThreeMonthSubscriptionProductId, 3, _shoppingCartSettings.ThreeMonthSubscriptionAllottedCount),
-            new SubscriptionPlan(_settings.SixMonthSubscriptionProductId, 6, _shoppingCartSettings.SixMonthSubscriptionAllottedCount),
-            new SubscriptionPlan(_settings.OneYearSubscriptionProductId, 12, _shoppingCartSettings.OneYearSubscriptionAllottedCount)
+            new SubscriptionPlan(_settings.ThreeMonthSubscriptionProductId, 3, _settings.ThreeMonthSubscriptionAllottedCount),
+            new SubscriptionPlan(_settings.SixMonthSubscriptionProductId, 6, _settings.SixMonthSubscriptionAllottedCount),
+            new SubscriptionPlan(_settings.OneYearSubscriptionProductId, 12, _settings.OneYearSubscriptionAllottedCount)
         }.Where(plan => plan.ProductId > 0).GroupBy(plan => plan.ProductId).ToDictionary(group => group.Key, group => group.First());
 
     private sealed record SpecificationProjection(int ProductId, int AttributeId, string Name, int DisplayOrder);
@@ -773,4 +781,11 @@ public partial class JobSupportBackfillService : IJobSupportBackfillService
     private sealed record NormalizedView(int ViewerCustomerId, int ViewedCustomerId, int LegacyId, DateTime CreatedOnUtc, DateTime UpdatedOnUtc);
     private sealed record RevealProjection(int LegacyGenericAttributeId, int ViewerCustomerId, int LegacyProductId, DateTime RevealedOnUtc);
     private sealed record SubscriptionPlan(int ProductId, int Months, int Credits);
+
+    // Compatibility source projection retained for rollback migration; remove in JobSupport 2.0.0.
+    private sealed class LegacyCustomerProfileSource
+    {
+        public int Id { get; set; }
+        public int CustomerProfileTypeId { get; set; }
+    }
 }

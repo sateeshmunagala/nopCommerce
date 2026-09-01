@@ -38,11 +38,5 @@ public enum CustomerNavigationEnum
     VendorInfo = 110,
     GdprTools = 120,
     CheckGiftCardBalance = 130,
-    MultiFactorAuthentication = 140,
-
-    //customization
-    WishList = 200,
-    PrivateMessages = 210,
-    ShortListed = 220,
-    Affiliations = 230
+    MultiFactorAuthentication = 140
 }

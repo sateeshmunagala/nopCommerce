@@ -1,20 +1,15 @@
-using Nop.Core;
 using LinqToDB;
-using Nop.Core.Domain.Catalog;
+using Nop.Core;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Forums;
-using Nop.Core.Domain.Orders;
-using Nop.Plugin.Misc.JobSupport.Contracts;
-using Nop.Plugin.Misc.JobSupport.Data;
 using Nop.Data;
+using Nop.Plugin.Misc.JobSupport.Contracts;
 using Nop.Plugin.Misc.JobSupport.Domain;
 using Nop.Plugin.Misc.JobSupport.Domain.Enums;
-using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Forums;
 using Nop.Services.Logging;
-using Nop.Services.Orders;
 
 namespace Nop.Plugin.Misc.JobSupport.Services;
 
@@ -24,8 +19,6 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
     private readonly IForumService _forumService;
     private readonly IGenericAttributeService _genericAttributeService;
     private readonly ILogger _logger;
-    private readonly IProductService _productService;
-    private readonly IShoppingCartService _shoppingCartService;
     private readonly IStoreContext _storeContext;
     private readonly JobSupportSettings _settings;
     private readonly IRepository<JobSupportProfile> _profileRepository;
@@ -36,8 +29,6 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
         IForumService forumService,
         IGenericAttributeService genericAttributeService,
         ILogger logger,
-        IProductService productService,
-        IShoppingCartService shoppingCartService,
         IStoreContext storeContext,
         JobSupportSettings settings,
         IRepository<JobSupportProfile> profileRepository,
@@ -48,8 +39,6 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
         _forumService = forumService;
         _genericAttributeService = genericAttributeService;
         _logger = logger;
-        _productService = productService;
-        _shoppingCartService = shoppingCartService;
         _storeContext = storeContext;
         _settings = settings;
         _profileRepository = profileRepository;
@@ -57,14 +46,8 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
         _relationshipRepository = relationshipRepository;
     }
 
-    public Task<RelationshipActionResult> ShortlistProfileAsync(int sourceCustomerId, int targetProfileId)
-    {
-        return ApplyRelationshipAsync(sourceCustomerId,
-            targetProfileId,
-            RelationshipType.ShortlistedByMe,
-            RelationshipType.ShortlistedMe,
-            createMessage: false);
-    }
+    public Task<RelationshipActionResult> ShortlistProfileAsync(int sourceCustomerId, int targetProfileId) =>
+        ApplyRelationshipAsync(sourceCustomerId, targetProfileId, RelationshipType.ShortlistedByMe, false);
 
     public async Task<RelationshipActionResult> RemoveShortlistAsync(int sourceCustomerId, int targetProfileId)
     {
@@ -75,207 +58,102 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
         if (_settings.ExecutionMode == WorkflowExecutionMode.Shadow)
         {
             await LogShadowAsync(RelationshipType.ShortlistedByMe, context, "remove");
-            return Success(context, RelationshipType.ShortlistedByMe, alreadyApplied: false, "Removed");
+            return Success(context, RelationshipType.ShortlistedByMe, false, "Removed");
         }
 
         if (_settings.ExecutionMode != WorkflowExecutionMode.Live)
             return Failure(sourceCustomerId, targetProfileId, RelationshipType.ShortlistedByMe, "WorkflowDisabled");
 
-        if (_settings.DataWriteMode == DataAccessMode.Plugin)
-        {
-            var relationship = await _relationshipRepository.Table.FirstOrDefaultAsync(item =>
-                item.SourceCustomerId == context.SourceCustomer.Id && item.TargetCustomerId == context.TargetCustomer.Id &&
-                item.RelationshipTypeId == 1);
-            if (relationship == null || relationship.StatusId == (int)RelationshipStatus.Removed)
-                return Success(context, RelationshipType.ShortlistedByMe, alreadyApplied: true, "Removed");
-            await MarkPluginRelationshipRemovedAsync(context);
-            return Success(context, RelationshipType.ShortlistedByMe, alreadyApplied: false, "Removed");
-        }
+        var relationship = await _relationshipRepository.Table.FirstOrDefaultAsync(item =>
+            item.SourceCustomerId == context.SourceCustomer.Id &&
+            item.TargetCustomerId == context.TargetCustomer.Id &&
+            item.RelationshipTypeId == 1);
+        if (relationship == null || relationship.StatusId == (int)RelationshipStatus.Removed)
+            return Success(context, RelationshipType.ShortlistedByMe, true, "Removed");
 
-        var store = await _storeContext.GetCurrentStoreAsync();
-        var sourceRows = await GetRowsAsync(context.SourceCustomer,
-            context.TargetProfile,
-            RelationshipType.ShortlistedByMe,
-            store.Id);
-        if (!sourceRows.Any())
-            return Success(context, RelationshipType.ShortlistedByMe, alreadyApplied: true, "Removed");
-
-        foreach (var row in sourceRows)
-            await _shoppingCartService.DeleteShoppingCartItemAsync(row);
-
-        var sourceProfile = await GetProfileByCustomerAsync(context.SourceCustomer.Id);
-        if (sourceProfile != null)
-        {
-            var mirrorRows = await GetRowsAsync(context.TargetCustomer,
-                sourceProfile,
-                RelationshipType.ShortlistedMe,
-                store.Id);
-            foreach (var row in mirrorRows)
-                await _shoppingCartService.DeleteShoppingCartItemAsync(row);
-        }
-
-        if (_settings.DataWriteMode == DataAccessMode.Dual)
-            await ExecutePluginWriteAsync(() => MarkPluginRelationshipRemovedAsync(context), sourceCustomerId, "relationship-remove");
-
-        return Success(context, RelationshipType.ShortlistedByMe, alreadyApplied: false, "Removed");
+        relationship.StatusId = (int)RelationshipStatus.Removed;
+        relationship.UpdatedOnUtc = DateTime.UtcNow;
+        await _relationshipRepository.UpdateAsync(relationship, false);
+        return Success(context, RelationshipType.ShortlistedByMe, false, "Removed");
     }
 
-    public Task<RelationshipActionResult> SendInterestAsync(int sourceCustomerId, int targetProfileId)
-    {
-        return ApplyRelationshipAsync(sourceCustomerId,
-            targetProfileId,
-            RelationshipType.InterestSent,
-            RelationshipType.InterestReceived,
-            createMessage: true);
-    }
+    public Task<RelationshipActionResult> SendInterestAsync(int sourceCustomerId, int targetProfileId) =>
+        ApplyRelationshipAsync(sourceCustomerId, targetProfileId, RelationshipType.InterestSent, true);
 
-    public async Task<RelationshipActionResult> AcceptInterestAsync(int sourceCustomerId,
-        int relationshipSourceCustomerId)
-    {
-        return await ApplyCustomerRelationshipAsync(sourceCustomerId,
-            relationshipSourceCustomerId,
-            RelationshipType.AcceptedByMe,
-            RelationshipType.AcceptedMe);
-    }
+    public Task<RelationshipActionResult> AcceptInterestAsync(int sourceCustomerId, int relationshipSourceCustomerId) =>
+        ApplyCustomerRelationshipAsync(sourceCustomerId, relationshipSourceCustomerId, RelationshipType.AcceptedByMe);
 
-    public async Task<RelationshipActionResult> DeclineInterestAsync(int sourceCustomerId,
-        int relationshipSourceCustomerId)
-    {
-        return await ApplyCustomerRelationshipAsync(sourceCustomerId,
-            relationshipSourceCustomerId,
-            RelationshipType.DeclinedByMe,
-            RelationshipType.DeclinedMe);
-    }
+    public Task<RelationshipActionResult> DeclineInterestAsync(int sourceCustomerId, int relationshipSourceCustomerId) =>
+        ApplyCustomerRelationshipAsync(sourceCustomerId, relationshipSourceCustomerId, RelationshipType.DeclinedByMe);
 
-    public Task<RelationshipActionResult> BlockProfileAsync(int sourceCustomerId, int targetProfileId)
-    {
-        return ApplyRelationshipAsync(sourceCustomerId,
-            targetProfileId,
-            RelationshipType.BlockedByMe,
-            RelationshipType.BlockedMe,
-            createMessage: true,
-            skipBlockedGuard: true);
-    }
+    public Task<RelationshipActionResult> BlockProfileAsync(int sourceCustomerId, int targetProfileId) =>
+        ApplyRelationshipAsync(sourceCustomerId, targetProfileId, RelationshipType.BlockedByMe, true, true);
 
-    public Task<RelationshipActionResult> RecordProfileViewAsync(int sourceCustomerId, int targetProfileId)
-    {
-        return ApplyRelationshipAsync(sourceCustomerId,
-            targetProfileId,
-            RelationshipType.ViewedByMe,
-            RelationshipType.ViewedMe,
-            createMessage: false);
-    }
+    public Task<RelationshipActionResult> RecordProfileViewAsync(int sourceCustomerId, int targetProfileId) =>
+        ApplyRelationshipAsync(sourceCustomerId, targetProfileId, RelationshipType.ViewedByMe, false);
 
     private async Task<RelationshipActionResult> ApplyCustomerRelationshipAsync(int sourceCustomerId,
         int relationshipSourceCustomerId,
-        RelationshipType sourceType,
-        RelationshipType mirrorType)
+        RelationshipType relationshipType)
     {
-        if (_settings.DataWriteMode == DataAccessMode.Plugin)
-        {
-            var pluginProfile = await _profileRepository.Table.FirstOrDefaultAsync(profile =>
-                profile.CustomerId == relationshipSourceCustomerId);
-            if (pluginProfile == null)
-                return Failure(sourceCustomerId, 0, sourceType, "ProfileNotFound");
-            return await ApplyRelationshipAsync(sourceCustomerId,
-                pluginProfile.LegacyProductId ?? pluginProfile.Id,
-                sourceType,
-                mirrorType,
-                createMessage: true);
-        }
+        var profile = await _profileRepository.Table.FirstOrDefaultAsync(item =>
+            item.CustomerId == relationshipSourceCustomerId);
+        if (profile == null)
+            return Failure(sourceCustomerId, 0, relationshipType, "ProfileNotFound");
 
-        var targetProfile = await GetProfileByCustomerAsync(relationshipSourceCustomerId);
-        if (targetProfile == null)
-            return Failure(sourceCustomerId, 0, sourceType, "ProfileNotFound");
-
-        return await ApplyRelationshipAsync(sourceCustomerId,
-            targetProfile.Id,
-            sourceType,
-            mirrorType,
-            createMessage: true);
+        return await ApplyRelationshipAsync(sourceCustomerId, profile.Id, relationshipType, true);
     }
 
     private async Task<RelationshipActionResult> ApplyRelationshipAsync(int sourceCustomerId,
         int targetProfileId,
-        RelationshipType sourceType,
-        RelationshipType mirrorType,
+        RelationshipType relationshipType,
         bool createMessage,
         bool skipBlockedGuard = false)
     {
-        var context = await ValidateAsync(sourceCustomerId, targetProfileId, sourceType, skipBlockedGuard);
+        var context = await ValidateAsync(sourceCustomerId, targetProfileId, relationshipType, skipBlockedGuard);
         if (context.Result != null)
             return context.Result;
 
         if (_settings.ExecutionMode == WorkflowExecutionMode.Shadow)
         {
-            await LogShadowAsync(sourceType, context, "create");
-            return Success(context, sourceType, alreadyApplied: false, "Applied");
+            await LogShadowAsync(relationshipType, context, "create");
+            return Success(context, relationshipType, false, "Applied");
         }
 
         if (_settings.ExecutionMode != WorkflowExecutionMode.Live)
-            return Failure(sourceCustomerId, targetProfileId, sourceType, "WorkflowDisabled");
+            return Failure(sourceCustomerId, targetProfileId, relationshipType, "WorkflowDisabled");
 
-        if (_settings.DataWriteMode == DataAccessMode.Plugin)
+        var alreadyApplied = await IsAlreadyAppliedAsync(context, relationshipType);
+        if (!alreadyApplied)
         {
-            var alreadyApplied = await IsPluginWriteAlreadyAppliedAsync(context, sourceType);
-            if (!alreadyApplied)
-                await UpsertPluginRelationshipAsync(context, sourceType, DateTime.UtcNow);
-            return Success(context, sourceType, alreadyApplied, alreadyApplied ? "AlreadyApplied" : "Applied");
+            await UpsertRelationshipAsync(context, relationshipType, DateTime.UtcNow);
+            if (createMessage && _settings.EnableRelationshipNotifications)
+                await CreatePrivateMessageAsync(context, relationshipType);
         }
 
-        var store = await _storeContext.GetCurrentStoreAsync();
-        if ((await GetRowsAsync(context.SourceCustomer, context.TargetProfile, sourceType, store.Id)).Any())
-        {
-            if (_settings.DataWriteMode == DataAccessMode.Dual)
-                await ExecutePluginWriteAsync(() => UpsertPluginRelationshipAsync(context, sourceType, DateTime.UtcNow), sourceCustomerId, "relationship-replay");
-            return Success(context, sourceType, alreadyApplied: true, "AlreadyApplied");
-        }
-
-        var sourceProfile = await GetProfileByCustomerAsync(context.SourceCustomer.Id);
-        if (sourceProfile == null)
-            return Failure(sourceCustomerId, targetProfileId, sourceType, "SourceProfileNotFound");
-
-        var warnings = await AddCompatibilityRowAsync(context.SourceCustomer, context.TargetProfile, sourceType, store.Id);
-        if (warnings.Any())
-            return Failure(sourceCustomerId, targetProfileId, sourceType, "CompatibilityWriteRejected");
-
-        if (!(await GetRowsAsync(context.TargetCustomer, sourceProfile, mirrorType, store.Id)).Any())
-        {
-            warnings = await AddCompatibilityRowAsync(context.TargetCustomer, sourceProfile, mirrorType, store.Id);
-            if (warnings.Any())
-                return Failure(sourceCustomerId, targetProfileId, sourceType, "CompatibilityMirrorWriteRejected");
-        }
-
-        if (createMessage && _settings.EnableRelationshipNotifications)
-            await CreatePrivateMessageAsync(context, sourceType, store.Id);
-
-        if (_settings.DataWriteMode == DataAccessMode.Dual)
-            await ExecutePluginWriteAsync(() => UpsertPluginRelationshipAsync(context, sourceType, DateTime.UtcNow), sourceCustomerId, "relationship");
-
-        return Success(context, sourceType, alreadyApplied: false, "Applied");
+        return Success(context,
+            relationshipType,
+            alreadyApplied,
+            alreadyApplied ? "AlreadyApplied" : "Applied");
     }
 
-    private async Task UpsertPluginRelationshipAsync(RelationshipContext context, RelationshipType relationshipType, DateTime occurredOnUtc)
+    private async Task UpsertRelationshipAsync(RelationshipContext context,
+        RelationshipType relationshipType,
+        DateTime occurredOnUtc)
     {
-        var sourceProfile = context.SourcePluginProfile ??
-            await _profileRepository.Table.FirstOrDefaultAsync(profile => profile.CustomerId == context.SourceCustomer.Id);
-        var targetProfile = context.TargetPluginProfile ??
-            await _profileRepository.Table.FirstOrDefaultAsync(profile => profile.CustomerId == context.TargetCustomer.Id);
-        if (sourceProfile == null || targetProfile == null)
-            throw new InvalidOperationException("Plugin profile dependency is missing.");
-
         if (relationshipType is RelationshipType.ViewedByMe or RelationshipType.ViewedMe)
         {
             var view = await _profileViewRepository.Table.FirstOrDefaultAsync(item =>
-                item.ViewerCustomerId == context.SourceCustomer.Id && item.ViewedProfileId == targetProfile.Id);
+                item.ViewerCustomerId == context.SourceCustomer.Id &&
+                item.ViewedProfileId == context.TargetProfile.Id);
             if (view == null)
             {
                 await _profileViewRepository.InsertAsync(new JobSupportProfileView
                 {
                     ViewerCustomerId = context.SourceCustomer.Id,
                     ViewedCustomerId = context.TargetCustomer.Id,
-                    ViewerProfileId = sourceProfile.Id,
-                    ViewedProfileId = targetProfile.Id,
+                    ViewerProfileId = context.SourceProfile.Id,
+                    ViewedProfileId = context.TargetProfile.Id,
                     FirstViewedOnUtc = occurredOnUtc,
                     LastViewedOnUtc = occurredOnUtc,
                     ViewCount = 1
@@ -283,8 +161,11 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
             }
             else
             {
-                return;
+                view.LastViewedOnUtc = occurredOnUtc;
+                view.ViewCount++;
+                await _profileViewRepository.UpdateAsync(view, false);
             }
+
             return;
         }
 
@@ -292,109 +173,55 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
             RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe;
         var sourceCustomerId = reverse ? context.TargetCustomer.Id : context.SourceCustomer.Id;
         var targetCustomerId = reverse ? context.SourceCustomer.Id : context.TargetCustomer.Id;
-        var pluginSourceProfile = reverse ? targetProfile : sourceProfile;
-        var pluginTargetProfile = reverse ? sourceProfile : targetProfile;
-        var typeId = relationshipType switch
-        {
-            RelationshipType.ShortlistedByMe or RelationshipType.ShortlistedMe => 1,
-            RelationshipType.InterestSent or RelationshipType.InterestReceived or
-                RelationshipType.AcceptedByMe or RelationshipType.AcceptedMe or
-                RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe => 2,
-            RelationshipType.BlockedByMe or RelationshipType.BlockedMe => 3,
-            _ => throw new ArgumentOutOfRangeException(nameof(relationshipType))
-        };
-        var status = relationshipType switch
-        {
-            RelationshipType.InterestSent or RelationshipType.InterestReceived => RelationshipStatus.Pending,
-            RelationshipType.AcceptedByMe or RelationshipType.AcceptedMe => RelationshipStatus.Accepted,
-            RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe => RelationshipStatus.Declined,
-            RelationshipType.BlockedByMe or RelationshipType.BlockedMe => RelationshipStatus.Blocked,
-            _ => RelationshipStatus.Active
-        };
-        var entity = await _relationshipRepository.Table.FirstOrDefaultAsync(item => item.SourceCustomerId == sourceCustomerId &&
-            item.TargetCustomerId == targetCustomerId && item.RelationshipTypeId == typeId);
+        var sourceProfile = reverse ? context.TargetProfile : context.SourceProfile;
+        var targetProfile = reverse ? context.SourceProfile : context.TargetProfile;
+        var typeId = GetRelationshipTypeId(relationshipType);
+        var status = GetRelationshipStatus(relationshipType);
+
+        var entity = await _relationshipRepository.Table.FirstOrDefaultAsync(item =>
+            item.SourceCustomerId == sourceCustomerId &&
+            item.TargetCustomerId == targetCustomerId &&
+            item.RelationshipTypeId == typeId);
         if (entity == null)
         {
-            entity = new JobSupportRelationship
+            await _relationshipRepository.InsertAsync(new JobSupportRelationship
             {
                 SourceCustomerId = sourceCustomerId,
                 TargetCustomerId = targetCustomerId,
-                SourceProfileId = pluginSourceProfile.Id,
-                TargetProfileId = pluginTargetProfile.Id,
+                SourceProfileId = sourceProfile.Id,
+                TargetProfileId = targetProfile.Id,
                 RelationshipTypeId = typeId,
                 StatusId = (int)status,
                 CreatedOnUtc = occurredOnUtc,
                 UpdatedOnUtc = occurredOnUtc,
-                RespondedOnUtc = status is RelationshipStatus.Accepted or RelationshipStatus.Declined ? occurredOnUtc : null
-            };
-            await _relationshipRepository.InsertAsync(entity, false);
-        }
-        else
-        {
-            entity.StatusId = (int)status;
-            entity.UpdatedOnUtc = occurredOnUtc;
-            if (status is RelationshipStatus.Accepted or RelationshipStatus.Declined)
-                entity.RespondedOnUtc = occurredOnUtc;
-            await _relationshipRepository.UpdateAsync(entity, false);
-        }
-    }
-
-    private async Task MarkPluginRelationshipRemovedAsync(RelationshipContext context)
-    {
-        var relationship = await _relationshipRepository.Table.FirstOrDefaultAsync(item =>
-            item.SourceCustomerId == context.SourceCustomer.Id && item.TargetCustomerId == context.TargetCustomer.Id &&
-            item.RelationshipTypeId == 1);
-        if (relationship == null)
+                RespondedOnUtc = status is RelationshipStatus.Accepted or RelationshipStatus.Declined
+                    ? occurredOnUtc
+                    : null
+            }, false);
             return;
-        relationship.StatusId = (int)RelationshipStatus.Removed;
-        relationship.UpdatedOnUtc = DateTime.UtcNow;
-        await _relationshipRepository.UpdateAsync(relationship, false);
+        }
+
+        entity.StatusId = (int)status;
+        entity.UpdatedOnUtc = occurredOnUtc;
+        if (status is RelationshipStatus.Accepted or RelationshipStatus.Declined)
+            entity.RespondedOnUtc = occurredOnUtc;
+        await _relationshipRepository.UpdateAsync(entity, false);
     }
 
-    private async Task<bool> IsPluginWriteAlreadyAppliedAsync(RelationshipContext context, RelationshipType relationshipType)
+    private async Task<bool> IsAlreadyAppliedAsync(RelationshipContext context, RelationshipType relationshipType)
     {
         if (relationshipType is RelationshipType.ViewedByMe or RelationshipType.ViewedMe)
-        {
-            return await _profileViewRepository.Table.AnyAsync(item =>
-                item.ViewerCustomerId == context.SourceCustomer.Id && item.ViewedProfileId == context.TargetPluginProfile.Id);
-        }
+            return false;
 
         var reverse = relationshipType is RelationshipType.AcceptedByMe or RelationshipType.AcceptedMe or
             RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe;
         var sourceCustomerId = reverse ? context.TargetCustomer.Id : context.SourceCustomer.Id;
         var targetCustomerId = reverse ? context.SourceCustomer.Id : context.TargetCustomer.Id;
-        var typeId = relationshipType switch
-        {
-            RelationshipType.ShortlistedByMe or RelationshipType.ShortlistedMe => 1,
-            RelationshipType.InterestSent or RelationshipType.InterestReceived or
-                RelationshipType.AcceptedByMe or RelationshipType.AcceptedMe or
-                RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe => 2,
-            RelationshipType.BlockedByMe or RelationshipType.BlockedMe => 3,
-            _ => 0
-        };
-        var status = relationshipType switch
-        {
-            RelationshipType.InterestSent or RelationshipType.InterestReceived => RelationshipStatus.Pending,
-            RelationshipType.AcceptedByMe or RelationshipType.AcceptedMe => RelationshipStatus.Accepted,
-            RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe => RelationshipStatus.Declined,
-            RelationshipType.BlockedByMe or RelationshipType.BlockedMe => RelationshipStatus.Blocked,
-            _ => RelationshipStatus.Active
-        };
-        return await _relationshipRepository.Table.AnyAsync(item => item.SourceCustomerId == sourceCustomerId &&
-            item.TargetCustomerId == targetCustomerId && item.RelationshipTypeId == typeId && item.StatusId == (int)status);
-    }
-
-    private async Task ExecutePluginWriteAsync(Func<Task> operation, int sourceId, string operationName)
-    {
-        try
-        {
-            await operation();
-        }
-        catch (Exception exception)
-        {
-            await _logger.ErrorAsync($"JobSupport dual write failed for {operationName} source {sourceId}.", exception);
-            throw;
-        }
+        return await _relationshipRepository.Table.AnyAsync(item =>
+            item.SourceCustomerId == sourceCustomerId &&
+            item.TargetCustomerId == targetCustomerId &&
+            item.RelationshipTypeId == GetRelationshipTypeId(relationshipType) &&
+            item.StatusId == (int)GetRelationshipStatus(relationshipType));
     }
 
     private async Task<RelationshipContext> ValidateAsync(int sourceCustomerId,
@@ -403,76 +230,30 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
         bool skipBlockedGuard = false)
     {
         if (!_settings.Enabled || _settings.ExecutionMode == WorkflowExecutionMode.Disabled)
-            return new RelationshipContext
-            {
-                Result = Failure(sourceCustomerId, targetProfileId, relationshipType, "WorkflowDisabled")
-            };
+            return Invalid(sourceCustomerId, targetProfileId, relationshipType, "WorkflowDisabled");
 
         var sourceCustomer = await _customerService.GetCustomerByIdAsync(sourceCustomerId);
         if (sourceCustomer == null || sourceCustomer.Deleted)
-        {
-            return new RelationshipContext
-            {
-                Result = Failure(sourceCustomerId, targetProfileId, relationshipType, "SourceCustomerNotFound")
-            };
-        }
+            return Invalid(sourceCustomerId, targetProfileId, relationshipType, "SourceCustomerNotFound");
 
-        if (_settings.DataWriteMode == DataAccessMode.Plugin)
-        {
-            var sourcePluginProfile = await _profileRepository.Table.FirstOrDefaultAsync(profile =>
-                profile.CustomerId == sourceCustomerId);
-            var targetPluginProfile = await _profileRepository.Table.FirstOrDefaultAsync(profile =>
-                profile.LegacyProductId == targetProfileId || profile.Id == targetProfileId);
-            if (sourcePluginProfile == null || targetPluginProfile == null || !targetPluginProfile.IsPublished)
-                return new RelationshipContext { Result = Failure(sourceCustomerId, targetProfileId, relationshipType, "ProfileNotFound") };
-            var targetPluginCustomer = await _customerService.GetCustomerByIdAsync(targetPluginProfile.CustomerId);
-            if (targetPluginCustomer == null || targetPluginCustomer.Deleted)
-                return new RelationshipContext { Result = Failure(sourceCustomerId, targetProfileId, relationshipType, "ProfileCustomerNotFound") };
-            if (sourceCustomer.Id == targetPluginCustomer.Id)
-                return new RelationshipContext { Result = Failure(sourceCustomerId, targetProfileId, relationshipType, "SelfRelationship") };
-            var pluginContext = new RelationshipContext
-            {
-                SourceCustomer = sourceCustomer,
-                TargetCustomer = targetPluginCustomer,
-                SourcePluginProfile = sourcePluginProfile,
-                TargetPluginProfile = targetPluginProfile,
-                TargetIdentifier = targetProfileId
-            };
-            if (!skipBlockedGuard && await IsBlockedAsync(pluginContext))
-                pluginContext.Result = Failure(sourceCustomerId, targetProfileId, relationshipType, "RelationshipBlocked");
-            return pluginContext;
-        }
+        var sourceProfile = await _profileRepository.Table.FirstOrDefaultAsync(profile =>
+            profile.CustomerId == sourceCustomerId);
+        var targetProfile = await _profileRepository.Table.FirstOrDefaultAsync(profile =>
+            profile.Id == targetProfileId || profile.LegacyProductId == targetProfileId);
+        if (sourceProfile == null || targetProfile == null || !targetProfile.IsPublished)
+            return Invalid(sourceCustomerId, targetProfileId, relationshipType, "ProfileNotFound");
 
-        var targetProfile = await _productService.GetProductByIdAsync(targetProfileId);
-        if (targetProfile == null || targetProfile.Deleted || targetProfile.VendorId <= 0)
-        {
-            return new RelationshipContext
-            {
-                Result = Failure(sourceCustomerId, targetProfileId, relationshipType, "ProfileNotFound")
-            };
-        }
-
-        var targetCustomer = await _customerService.GetCustomerByIdAsync(targetProfile.VendorId);
+        var targetCustomer = await _customerService.GetCustomerByIdAsync(targetProfile.CustomerId);
         if (targetCustomer == null || targetCustomer.Deleted)
-        {
-            return new RelationshipContext
-            {
-                Result = Failure(sourceCustomerId, targetProfileId, relationshipType, "ProfileCustomerNotFound")
-            };
-        }
-
+            return Invalid(sourceCustomerId, targetProfileId, relationshipType, "ProfileCustomerNotFound");
         if (sourceCustomer.Id == targetCustomer.Id)
-        {
-            return new RelationshipContext
-            {
-                Result = Failure(sourceCustomerId, targetProfileId, relationshipType, "SelfRelationship")
-            };
-        }
+            return Invalid(sourceCustomerId, targetProfileId, relationshipType, "SelfRelationship");
 
         var context = new RelationshipContext
         {
             SourceCustomer = sourceCustomer,
             TargetCustomer = targetCustomer,
+            SourceProfile = sourceProfile,
             TargetProfile = targetProfile,
             TargetIdentifier = targetProfileId
         };
@@ -482,83 +263,20 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
         return context;
     }
 
-    private async Task<bool> IsBlockedAsync(RelationshipContext context)
-    {
-        if (_settings.DataWriteMode == DataAccessMode.Plugin)
-        {
-            return await _relationshipRepository.Table.AnyAsync(item => item.RelationshipTypeId == 3 &&
-                item.StatusId == (int)RelationshipStatus.Blocked &&
-                ((item.SourceCustomerId == context.SourceCustomer.Id && item.TargetCustomerId == context.TargetCustomer.Id) ||
-                 (item.SourceCustomerId == context.TargetCustomer.Id && item.TargetCustomerId == context.SourceCustomer.Id)));
-        }
+    private Task<bool> IsBlockedAsync(RelationshipContext context) =>
+        _relationshipRepository.Table.AnyAsync(item =>
+            item.RelationshipTypeId == 3 &&
+            item.StatusId == (int)RelationshipStatus.Blocked &&
+            ((item.SourceCustomerId == context.SourceCustomer.Id &&
+              item.TargetCustomerId == context.TargetCustomer.Id) ||
+             (item.SourceCustomerId == context.TargetCustomer.Id &&
+              item.TargetCustomerId == context.SourceCustomer.Id)));
 
-        var store = await _storeContext.GetCurrentStoreAsync();
-        if ((await GetRowsAsync(context.SourceCustomer,
-                context.TargetProfile,
-                RelationshipType.BlockedByMe,
-                store.Id)).Any())
-            return true;
-
-        var sourceProfile = await GetProfileByCustomerAsync(context.SourceCustomer.Id);
-        return sourceProfile != null &&
-               (await GetRowsAsync(context.TargetCustomer,
-                   sourceProfile,
-                   RelationshipType.BlockedByMe,
-                   store.Id)).Any();
-    }
-
-    private async Task<Product> GetProfileByCustomerAsync(int customerId)
-    {
-        var customer = await _customerService.GetCustomerByIdAsync(customerId);
-        if (customer?.VendorId > 0)
-        {
-            var linked = await _productService.GetProductByIdAsync(customer.VendorId);
-            if (linked != null && !linked.Deleted && linked.VendorId == customerId)
-                return linked;
-        }
-
-        return (await _productService.SearchProductsAsync(vendorId: customerId,
-            showHidden: true,
-            overridePublished: null)).FirstOrDefault();
-    }
-
-    private async Task<IList<ShoppingCartItem>> GetRowsAsync(Customer customer,
-        Product profile,
-        RelationshipType relationshipType,
-        int storeId)
-    {
-        return await _shoppingCartService.GetShoppingCartAsync(customer,
-            GetCompatibilityCartType(relationshipType),
-            storeId,
-            profile.Id);
-    }
-
-    private Task<IList<string>> AddCompatibilityRowAsync(Customer customer,
-        Product profile,
-        RelationshipType relationshipType,
-        int storeId)
-    {
-        return _shoppingCartService.AddToCartAsync(customer,
-            profile,
-            GetCompatibilityCartType(relationshipType),
-            storeId);
-    }
-
-    private static ShoppingCartType GetCompatibilityCartType(RelationshipType relationshipType)
-    {
-        if (!LegacyRelationshipMapper.TryMapToLegacyCartType(relationshipType, out var cartTypeId))
-            throw new InvalidOperationException($"No compatibility mapping exists for {relationshipType}.");
-
-        return (ShoppingCartType)cartTypeId;
-    }
-
-    private async Task CreatePrivateMessageAsync(RelationshipContext context,
-        RelationshipType relationshipType,
-        int storeId)
+    private async Task CreatePrivateMessageAsync(RelationshipContext context, RelationshipType relationshipType)
     {
         var privateMessage = new PrivateMessage
         {
-            StoreId = storeId,
+            StoreId = (await _storeContext.GetCurrentStoreAsync()).Id,
             FromCustomerId = context.SourceCustomer.Id,
             ToCustomerId = context.TargetCustomer.Id,
             Subject = "Job Support relationship update",
@@ -579,51 +297,69 @@ public partial class JobSupportRelationshipService : IJobSupportRelationshipServ
 
     private Task LogShadowAsync(RelationshipType relationshipType,
         RelationshipContext context,
-        string operation)
-    {
-        return _logger.InformationAsync(
+        string operation) =>
+        _logger.InformationAsync(
             $"JobSupport shadow relationship outcome: {operation} {relationshipType}, source {context.SourceCustomer.Id}, profile {context.TargetIdentifier}.");
-    }
+
+    private static int GetRelationshipTypeId(RelationshipType relationshipType) => relationshipType switch
+    {
+        RelationshipType.ShortlistedByMe or RelationshipType.ShortlistedMe => 1,
+        RelationshipType.InterestSent or RelationshipType.InterestReceived or
+            RelationshipType.AcceptedByMe or RelationshipType.AcceptedMe or
+            RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe => 2,
+        RelationshipType.BlockedByMe or RelationshipType.BlockedMe => 3,
+        _ => throw new ArgumentOutOfRangeException(nameof(relationshipType))
+    };
+
+    private static RelationshipStatus GetRelationshipStatus(RelationshipType relationshipType) => relationshipType switch
+    {
+        RelationshipType.InterestSent or RelationshipType.InterestReceived => RelationshipStatus.Pending,
+        RelationshipType.AcceptedByMe or RelationshipType.AcceptedMe => RelationshipStatus.Accepted,
+        RelationshipType.DeclinedByMe or RelationshipType.DeclinedMe => RelationshipStatus.Declined,
+        RelationshipType.BlockedByMe or RelationshipType.BlockedMe => RelationshipStatus.Blocked,
+        _ => RelationshipStatus.Active
+    };
+
+    private static RelationshipContext Invalid(int sourceCustomerId,
+        int targetProfileId,
+        RelationshipType relationshipType,
+        string errorCode) => new()
+    {
+        Result = Failure(sourceCustomerId, targetProfileId, relationshipType, errorCode)
+    };
 
     private static RelationshipActionResult Success(RelationshipContext context,
         RelationshipType relationshipType,
         bool alreadyApplied,
-        string messageSuffix)
+        string messageSuffix) => new()
     {
-        return new RelationshipActionResult
-        {
-            Succeeded = true,
-            AlreadyApplied = alreadyApplied,
-            RelationshipType = relationshipType,
-            SourceCustomerId = context.SourceCustomer.Id,
-            TargetCustomerId = context.TargetCustomer.Id,
-            ProfileProductId = context.TargetIdentifier,
-            UserMessageKey = $"Plugins.Misc.JobSupport.Relationship.{messageSuffix}"
-        };
-    }
+        Succeeded = true,
+        AlreadyApplied = alreadyApplied,
+        RelationshipType = relationshipType,
+        SourceCustomerId = context.SourceCustomer.Id,
+        TargetCustomerId = context.TargetCustomer.Id,
+        ProfileProductId = context.TargetIdentifier,
+        UserMessageKey = $"Plugins.Misc.JobSupport.Relationship.{messageSuffix}"
+    };
 
     private static RelationshipActionResult Failure(int sourceCustomerId,
         int profileProductId,
         RelationshipType relationshipType,
-        string errorCode)
+        string errorCode) => new()
     {
-        return new RelationshipActionResult
-        {
-            RelationshipType = relationshipType,
-            SourceCustomerId = sourceCustomerId,
-            ProfileProductId = profileProductId,
-            ErrorCode = errorCode,
-            UserMessageKey = $"Plugins.Misc.JobSupport.Relationship.Errors.{errorCode}"
-        };
-    }
+        RelationshipType = relationshipType,
+        SourceCustomerId = sourceCustomerId,
+        ProfileProductId = profileProductId,
+        ErrorCode = errorCode,
+        UserMessageKey = $"Plugins.Misc.JobSupport.Relationship.Errors.{errorCode}"
+    };
 
     private sealed class RelationshipContext
     {
         public Customer SourceCustomer { get; init; }
         public Customer TargetCustomer { get; init; }
-        public Product TargetProfile { get; init; }
-        public JobSupportProfile SourcePluginProfile { get; init; }
-        public JobSupportProfile TargetPluginProfile { get; init; }
+        public JobSupportProfile SourceProfile { get; init; }
+        public JobSupportProfile TargetProfile { get; init; }
         public int TargetIdentifier { get; init; }
         public RelationshipActionResult Result { get; set; }
     }

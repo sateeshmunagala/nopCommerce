@@ -110,7 +110,7 @@ public class JobSupportRelationshipController : BasePluginController
         var customer = await _workContext.GetCurrentCustomerAsync();
         var incoming = await _queryService.GetProfilesByRelationshipAsync(new ProfileSearchRequest
         {
-            ProductIds = new[] { profile.Id },
+            ProfileIds = new[] { profile.Id },
             CustomerId = customer.Id,
             StoreId = (await _storeContext.GetCurrentStoreAsync()).Id,
             RelationshipType = RelationshipType.InterestReceived,

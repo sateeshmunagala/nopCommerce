@@ -2,6 +2,7 @@ using Nop.Plugin.Misc.JobSupport.Contracts;
 
 namespace Nop.Plugin.Misc.JobSupport.Data;
 
+// Compatibility retained for read rollback; remove in JobSupport 2.0.0.
 public static class LegacyRelationshipMapper
 {
     public static bool TryMapToLegacyCartType(RelationshipType relationshipType, out int cartTypeId)

@@ -26,6 +26,9 @@ public record ConfigurationModel : BaseNopModel
     public int ThreeMonthSubscriptionProductId { get; set; }
     public int SixMonthSubscriptionProductId { get; set; }
     public int OneYearSubscriptionProductId { get; set; }
+    public int ThreeMonthSubscriptionAllottedCount { get; set; }
+    public int SixMonthSubscriptionAllottedCount { get; set; }
+    public int OneYearSubscriptionAllottedCount { get; set; }
     public int DefaultPageSize { get; set; }
     public bool AllowGuestProfileBrowsing { get; set; }
     public bool ShowGender { get; set; }
@@ -42,5 +45,4 @@ public record ConfigurationModel : BaseNopModel
     public bool EnableSynchronizationTask { get; set; }
     public WorkflowExecutionMode ExecutionMode { get; set; }
     public int SynchronizationBatchSize { get; set; }
-    public bool WriteLegacyRewardPointsHistory { get; set; }
 }

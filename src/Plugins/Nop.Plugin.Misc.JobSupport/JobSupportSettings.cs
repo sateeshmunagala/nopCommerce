@@ -7,8 +7,11 @@ namespace Nop.Plugin.Misc.JobSupport;
 public class JobSupportSettings : ISettings
 {
     public bool Enabled { get; set; }
+    // Compatibility retained for read rollback; remove in JobSupport 2.0.0.
     public bool UseLegacyStoredProcedures { get; set; }
+    // Compatibility retained for read rollback; remove in JobSupport 2.0.0.
     public string LegacyProfileSearchProcedureName { get; set; } = string.Empty;
+    // Compatibility retained for read rollback; remove in JobSupport 2.0.0.
     public string LegacyShortlistProcedureName { get; set; } = string.Empty;
     public string GiveSupportRoleSystemName { get; set; } = string.Empty;
     public string TakeSupportRoleSystemName { get; set; } = string.Empty;
@@ -24,6 +27,9 @@ public class JobSupportSettings : ISettings
     public int ThreeMonthSubscriptionProductId { get; set; }
     public int SixMonthSubscriptionProductId { get; set; }
     public int OneYearSubscriptionProductId { get; set; }
+    public int ThreeMonthSubscriptionAllottedCount { get; set; }
+    public int SixMonthSubscriptionAllottedCount { get; set; }
+    public int OneYearSubscriptionAllottedCount { get; set; }
     public int DefaultPageSize { get; set; } = 12;
     public bool AllowGuestProfileBrowsing { get; set; } = true;
     public bool ShowGender { get; set; }
@@ -40,9 +46,10 @@ public class JobSupportSettings : ISettings
     public bool EnableSynchronizationTask { get; set; }
     public WorkflowExecutionMode ExecutionMode { get; set; } = WorkflowExecutionMode.Shadow;
     public int SynchronizationBatchSize { get; set; } = 200;
-    public bool WriteLegacyRewardPointsHistory { get; set; }
-    public DataAccessMode DataReadMode { get; set; } = DataAccessMode.Legacy;
-    public DataAccessMode DataWriteMode { get; set; } = DataAccessMode.Legacy;
-    public DataAccessMode CompareReturnMode { get; set; } = DataAccessMode.Legacy;
+    // Compatibility retained for read rollback; remove in JobSupport 2.0.0.
+    public DataAccessMode DataReadMode { get; set; } = DataAccessMode.Plugin;
+    public DataAccessMode DataWriteMode { get; set; } = DataAccessMode.Plugin;
+    // Compatibility retained for read rollback; remove in JobSupport 2.0.0.
+    public bool AllowLegacyReadRollback { get; set; } = true;
     public int MigrationBatchSize { get; set; } = 500;
 }

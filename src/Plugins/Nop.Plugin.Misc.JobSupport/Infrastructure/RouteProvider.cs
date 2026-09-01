@@ -34,11 +34,6 @@ public class RouteProvider : IRouteProvider
             defaults: new { controller = "JobSupportAdmin", action = "Configure", area = AreaNames.ADMIN });
 
         endpointRouteBuilder.MapControllerRoute(
-            name: "Plugin.Misc.JobSupport.LegacyParity",
-            pattern: $"{JobSupportDefaults.AdminRoutePrefix}/LegacyParity",
-            defaults: new { controller = "JobSupportAdmin", action = "LegacyParity", area = AreaNames.ADMIN });
-
-        endpointRouteBuilder.MapControllerRoute(
             name: "Plugin.Misc.JobSupport.WorkflowDiagnostics",
             pattern: $"{JobSupportDefaults.AdminRoutePrefix}/WorkflowDiagnostics",
             defaults: new { controller = "JobSupportAdmin", action = "WorkflowDiagnostics", area = AreaNames.ADMIN });

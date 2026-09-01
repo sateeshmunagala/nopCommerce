@@ -42,14 +42,6 @@
                     <div class="col-md-3"><label asp-for="ReadMode">Read mode</label></div>
                     <div class="col-md-9"><select asp-for="ReadMode" asp-items="Model.ReadModes" class="form-control"></select></div>
                 </div>
-                <div class="form-group row">
-                    <div class="col-md-3"><label asp-for="WriteMode">Write mode</label></div>
-                    <div class="col-md-9"><select asp-for="WriteMode" asp-items="Model.WriteModes" class="form-control"></select></div>
-                </div>
-                <div class="form-group row">
-                    <div class="col-md-3"><label asp-for="CompareReturnMode">Compare returns</label></div>
-                    <div class="col-md-9"><select asp-for="CompareReturnMode" asp-items="Model.CompareReturnModes" class="form-control"></select></div>
-                </div>
                 <button type="submit" class="btn btn-primary">Save modes</button>
             </form>
         </div>

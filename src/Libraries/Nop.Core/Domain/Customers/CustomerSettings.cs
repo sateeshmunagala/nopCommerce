@@ -7,7 +7,6 @@ namespace Nop.Core.Domain.Customers;
 /// </summary>
 public partial class CustomerSettings : ISettings
 {
-
     /// <summary>
     /// Gets or sets a value indicating whether usernames are used instead of emails
     /// </summary>
@@ -406,10 +405,4 @@ public partial class CustomerSettings : ISettings
     public bool AcceptPrivacyPolicyEnabled { get; set; }
 
     #endregion
-
-    //customization
-    public int GenderSpecificationAttributeId { get; set; }
-    public int GenderMaleSpecificationAttributeOptionId { get; set; }
-    public int GenderFeMaleSpecificationAttributeOptionId { get; set; }
-    public bool ShowSecondaryTechnologySpecificationAttribute { get; set; }
 }

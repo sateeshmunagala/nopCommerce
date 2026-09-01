@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Web.Framework.Models;
 using Nop.Web.Models.Media;
-//customization
-using Nop.Web.Models.Catalog;
 
 namespace Nop.Web.Models.ShoppingCart;
 
@@ -42,8 +40,6 @@ public partial record WishlistModel : BaseNopModel
             Picture = new PictureModel();
             AllowedQuantities = new List<SelectListItem>();
             Warnings = new List<string>();
-            //customization
-            //Products = new List<ProductOverviewModel>();
         }
 
         public string Sku { get; set; }

@@ -5,13 +5,14 @@ using Nop.Plugin.Misc.JobSupport.Contracts;
 
 namespace Nop.Plugin.Misc.JobSupport.Data;
 
+// Compatibility retained for read rollback; remove in JobSupport 2.0.0.
 public static class LegacyProcedureParameterFactory
 {
     public static DataParameter[] CreateProfileSearchParameters(ProfileSearchRequest request)
     {
         return new[]
         {
-            new DataParameter("ProductIds", JoinIds(request.ProductIds), DataType.NVarChar),
+            new DataParameter("ProductIds", JoinIds(request.ProfileIds), DataType.NVarChar),
             new DataParameter("CustomerId", request.CustomerId, DataType.Int32),
             new DataParameter("ProfileTypeId", request.ProfileTypeId, DataType.Int32)
         };
@@ -28,7 +29,7 @@ public static class LegacyProcedureParameterFactory
 
         return new[]
         {
-            new DataParameter("ProductIds", JoinIds(request.ProductIds), DataType.NVarChar),
+            new DataParameter("ProductIds", JoinIds(request.ProfileIds), DataType.NVarChar),
             new DataParameter("ShoppingCartTypeId", shoppingCartTypeId, DataType.Int32),
             new DataParameter("CustomerId", request.CustomerId, DataType.Int32),
             new DataParameter("OrderBy", request.SortOrder, DataType.Int32),

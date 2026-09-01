@@ -1,6 +1,6 @@
-using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Plugin.Misc.JobSupport.Contracts;
+using Nop.Plugin.Misc.JobSupport.Domain;
 using Nop.Plugin.Misc.JobSupport.Models.Public;
 
 namespace Nop.Plugin.Misc.JobSupport.Factories;
@@ -12,7 +12,7 @@ public interface IJobSupportProfileModelFactory
         PagedProfileSearchResult result,
         Customer currentCustomer,
         bool isGuest);
-    Task<ProfileDetailModel> PrepareProfileDetailAsync(Product profile,
+    Task<ProfileDetailModel> PrepareProfileDetailAsync(JobSupportProfile profile,
         ProfileSearchResult result,
         Customer currentCustomer,
         bool isGuest,

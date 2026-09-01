@@ -18,7 +18,6 @@ public partial class ProfileSearchResult
     public int? LanguageId { get; set; }
     public string TimeZoneId { get; set; }
     public string AvatarPictureId { get; set; }
-    public int? CustomerProfileTypeId { get; set; }
     public string PrimaryTechnology { get; set; }
     public string SecondaryTechnology { get; set; }
     [Column("CurrentAvalibility")]

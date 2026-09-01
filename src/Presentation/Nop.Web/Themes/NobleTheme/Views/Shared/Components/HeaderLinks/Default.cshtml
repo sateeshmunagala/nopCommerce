@@ -23,7 +23,7 @@
         @if (Model.WishlistEnabled)
         {
             <li class="my-wishlist">
-                <a href="@Url.RouteUrl("Shortlisted")" class="ico-wishlist">
+                <a href="@Url.RouteUrl("Wishlist")" class="ico-wishlist">
                     <i class="fa fa-heart"></i>
                     <span class="wishlist-label">@T("Wishlist")</span>
                     <span class="wishlist-qty">@T("Wishlist.HeaderQuantity", Model.WishlistItems)</span>

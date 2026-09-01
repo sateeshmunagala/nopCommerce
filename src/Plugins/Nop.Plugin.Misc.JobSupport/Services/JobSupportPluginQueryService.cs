@@ -31,7 +31,7 @@ public partial class JobSupportPluginQueryService
             return Failed(request, guard);
 
         var procedureRequest = request;
-        if (request.ProductIds?.Count > 0)
+        if (request.ProfileIds?.Count > 0)
         {
             procedureRequest = CopyForIdentifierLookup(request);
         }
@@ -42,10 +42,12 @@ public partial class JobSupportPluginQueryService
         {
             var cards = await _dataProvider.QueryProcAsync<ProfileCardResult>(PROFILE_SEARCH_PROCEDURE, parameters);
             int? identifierTotal = null;
-            if (request.ProductIds?.Count > 0)
+            if (request.ProfileIds?.Count > 0)
             {
-                var identifiers = request.ProductIds.ToHashSet();
-                var matchingCards = cards.Where(card => card.LegacyProductId.HasValue && identifiers.Contains(card.LegacyProductId.Value))
+                var identifiers = request.ProfileIds.ToHashSet();
+                var matchingCards = cards.Where(card =>
+                        identifiers.Contains(card.ProfileId) ||
+                        card.LegacyProductId.HasValue && identifiers.Contains(card.LegacyProductId.Value))
                     .ToList();
                 identifierTotal = matchingCards.Count;
                 cards = matchingCards.Skip(request.PageIndex * request.PageSize).Take(request.PageSize).ToList();
@@ -129,14 +131,13 @@ public partial class JobSupportPluginQueryService
 
     private static ProfileSearchResult Map(ProfileCardResult card) => new()
     {
-        Id = card.LegacyProductId ?? card.ProfileId,
+        Id = card.ProfileId,
         VendorId = card.CustomerId,
         FirstName = card.DisplayName,
         CountryId = card.CountryId,
         StateProvinceId = card.StateProvinceId,
         City = card.City,
         AvatarPictureId = card.AvatarPictureId?.ToString(),
-        CustomerProfileTypeId = card.ProfileType,
         PrimaryTechnology = card.PrimaryTechnology,
         SecondaryTechnology = card.SecondaryTechnology,
         CurrentAvailability = card.CurrentAvailability,

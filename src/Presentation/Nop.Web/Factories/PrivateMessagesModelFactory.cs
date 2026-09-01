@@ -225,9 +225,6 @@ public partial class PrivateMessagesModelFactory : IPrivateMessagesModelFactory
             model.Subject = $"Re: {replyToPM.Subject}";
         }
 
-        //customization
-        await BuildCustomSendPrivateMessageModel(model, customerTo);
-
         return model;
     }
 
@@ -261,9 +258,6 @@ public partial class PrivateMessagesModelFactory : IPrivateMessagesModelFactory
             IsRead = pm.IsRead,
         };
 
-        //customization
-        await BuildCustomPrivateMessageModel(model, pm);
-        
         return model;
     }
 

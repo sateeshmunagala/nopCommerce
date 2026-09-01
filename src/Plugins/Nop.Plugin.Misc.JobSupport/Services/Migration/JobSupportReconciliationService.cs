@@ -1,8 +1,10 @@
 using System.Text;
 using LinqToDB;
+using LinqToDB.Data;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
 using Nop.Data;
+using Nop.Data.Mapping;
 using Nop.Plugin.Misc.JobSupport.Domain;
 using Nop.Services.Logging;
 
@@ -12,7 +14,7 @@ public partial class JobSupportReconciliationService : IJobSupportReconciliation
 {
     private const int MAX_EXPORTED_IDENTIFIERS = 1000;
 
-    private readonly IRepository<Customer> _customerRepository;
+    private readonly INopDataProvider _dataProvider;
     private readonly IRepository<Order> _orderRepository;
     private readonly IRepository<OrderItem> _orderItemRepository;
     private readonly IRepository<ShoppingCartItem> _shoppingCartItemRepository;
@@ -25,7 +27,7 @@ public partial class JobSupportReconciliationService : IJobSupportReconciliation
     private readonly ILogger _logger;
     private readonly JobSupportSettings _settings;
 
-    public JobSupportReconciliationService(IRepository<Customer> customerRepository,
+    public JobSupportReconciliationService(INopDataProvider dataProvider,
         IRepository<Order> orderRepository,
         IRepository<OrderItem> orderItemRepository,
         IRepository<ShoppingCartItem> shoppingCartItemRepository,
@@ -38,7 +40,7 @@ public partial class JobSupportReconciliationService : IJobSupportReconciliation
         ILogger logger,
         JobSupportSettings settings)
     {
-        _customerRepository = customerRepository;
+        _dataProvider = dataProvider;
         _orderRepository = orderRepository;
         _orderItemRepository = orderItemRepository;
         _shoppingCartItemRepository = shoppingCartItemRepository;
@@ -60,16 +62,17 @@ public partial class JobSupportReconciliationService : IJobSupportReconciliation
     public async Task<ReconciliationResult> ReconcileAsync(CancellationToken cancellationToken)
     {
         var identifiers = new List<string>();
-        var legacyProfileCount = await _customerRepository.Table.CountAsync(customer => !customer.Deleted && customer.CustomerProfileTypeId > 0, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var customerTable = NameCompatibilityManager.GetTableName(typeof(Customer));
+        var profileTable = NameCompatibilityManager.GetTableName(typeof(JobSupportProfile));
+        var countRows = await _dataProvider.QueryAsync<LegacyCountSource>(
+            $"SELECT COUNT_BIG(*) AS [Count] FROM [{customerTable}] WHERE [Deleted] = 0 AND [CustomerProfileTypeId] > 0");
+        var legacyProfileCount = countRows.FirstOrDefault()?.Count ?? 0;
         var pluginProfileCount = await _profileRepository.Table.CountAsync(cancellationToken);
-        var missingProfileIds = await _customerRepository.Table
-            .Where(customer => !customer.Deleted && customer.CustomerProfileTypeId > 0 &&
-                !_profileRepository.Table.Any(profile => profile.CustomerId == customer.Id))
-            .OrderBy(customer => customer.Id)
-            .Select(customer => customer.Id)
-            .Take(MAX_EXPORTED_IDENTIFIERS)
-            .ToListAsync(cancellationToken);
-        identifiers.AddRange(missingProfileIds.Select(id => $"Profiles:{id}"));
+        var missingProfileIds = await _dataProvider.QueryAsync<LegacyIdentifierSource>(
+            $"SELECT TOP (@Limit) customer.[Id] FROM [{customerTable}] customer LEFT JOIN [{profileTable}] profile ON profile.[CustomerId] = customer.[Id] WHERE customer.[Deleted] = 0 AND customer.[CustomerProfileTypeId] > 0 AND profile.[Id] IS NULL ORDER BY customer.[Id]",
+            new DataParameter("Limit", MAX_EXPORTED_IDENTIFIERS, LinqToDB.DataType.Int32));
+        identifiers.AddRange(missingProfileIds.Select(row => $"Profiles:{row.Id}"));
         AddCountMismatch(identifiers, "Profiles", legacyProfileCount, pluginProfileCount);
 
         var legacyRelationshipCount = await _shoppingCartItemRepository.Table.CountAsync(item => item.ShoppingCartTypeId >= 2 && item.ShoppingCartTypeId <= 11, cancellationToken);
@@ -176,4 +179,15 @@ public partial class JobSupportReconciliationService : IJobSupportReconciliation
     };
 
     private static string Escape(string value) => $"\"{(value ?? string.Empty).Replace("\"", "\"\"")}\"";
+
+    // Compatibility source projections retained for rollback migration; remove in JobSupport 2.0.0.
+    private sealed class LegacyCountSource
+    {
+        public long Count { get; set; }
+    }
+
+    private sealed class LegacyIdentifierSource
+    {
+        public int Id { get; set; }
+    }
 }

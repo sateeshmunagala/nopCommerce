@@ -23,10 +23,5 @@ public enum OrderStatus
     /// <summary>
     /// Cancelled
     /// </summary>
-    Cancelled = 40,
-
-    //customization
-    OrderExpired = 50,
-
-    OrderActive = 60
+    Cancelled = 40
 }

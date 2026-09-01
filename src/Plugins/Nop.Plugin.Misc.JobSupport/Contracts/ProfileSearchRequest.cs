@@ -2,7 +2,7 @@ namespace Nop.Plugin.Misc.JobSupport.Contracts;
 
 public partial class ProfileSearchRequest
 {
-    public IList<int> ProductIds { get; set; } = new List<int>();
+    public IList<int> ProfileIds { get; set; } = new List<int>();
     public int CustomerId { get; set; }
     public int? ProfileTypeId { get; set; }
     public IList<int> PrimarySkillIds { get; set; } = new List<int>();

@@ -609,10 +609,6 @@ public partial class CustomerModelFactory : ICustomerModelFactory
             ItemClass = "customer-orders"
         });
 
-        //customization : My Account page. Add custom naviagation items
-        //this code moved to modelprepared events
-        //CustomizeCustomerNavigationItemsAsync(model);
-
         var store = await _storeContext.GetCurrentStoreAsync();
         var customer = await _workContext.GetCurrentCustomerAsync();
 
@@ -989,24 +985,19 @@ public partial class CustomerModelFactory : ICustomerModelFactory
                 Name = await _localizationService.GetLocalizedAsync(attribute, x => x.Name),
                 IsRequired = attribute.IsRequired,
                 AttributeControlType = attribute.AttributeControlType,
-                //customization
-                HelpText = attribute.HelpText,
-                ShowOnRegisterPage= attribute.ShowOnRegisterPage
             };
 
             if (attribute.ShouldHaveValues)
             {
                 //values
-                //customization
-                //var attributeValues = await _customerAttributeService.GetAttributeValuesAsync(attribute.Id);
-                var attributeValues = await GetCustomCustomerAttributeValuesAsync(attribute.Id);
+                var attributeValues = await _customerAttributeService.GetAttributeValuesAsync(attribute.Id);
                 foreach (var attributeValue in attributeValues)
                 {
                     var valueModel = new CustomerAttributeValueModel
                     {
                         Id = attributeValue.Id,
                         Name = await _localizationService.GetLocalizedAsync(attributeValue, x => x.Name),
-                        IsPreSelected = false
+                        IsPreSelected = attributeValue.IsPreSelected
                     };
                     attributeModel.Values.Add(valueModel);
                 }
@@ -1032,8 +1023,7 @@ public partial class CustomerModelFactory : ICustomerModelFactory
                             item.IsPreSelected = false;
 
                         //select new values
-                        //customization
-                        var selectedValues = await _customerAttributeParser.ParseCustomerAttributeValuesCustomAsync(selectedAttributesXml);
+                        var selectedValues = await _customerAttributeParser.ParseAttributeValuesAsync(selectedAttributesXml);
                         foreach (var attributeValue in selectedValues)
                         foreach (var item in attributeModel.Values)
                             if (attributeValue.Id == item.Id)
@@ -1057,28 +1047,6 @@ public partial class CustomerModelFactory : ICustomerModelFactory
                             attributeModel.DefaultValue = enteredText[0];
                     }
                 }
-                    break;
-                //customization
-                case AttributeControlType.KendoMultiSelect:
-                    {
-                        if (!string.IsNullOrEmpty(selectedAttributesXml))
-                        {
-                            //clear default selection
-                            foreach (var item in attributeModel.Values)
-                                item.IsPreSelected = false;
-
-                            //select new values
-                            var selectedValues = await _customerAttributeParser.ParseCustomerAttributeValuesCustomAsync(selectedAttributesXml);
-                            foreach (var attributeValue in selectedValues)
-                            {
-                                foreach (var item in attributeModel.Values)
-                                {
-                                    if (attributeValue.Id == item.Id)
-                                        item.IsPreSelected = true;
-                                }
-                            }
-                        }
-                    }
                     break;
                 case AttributeControlType.ColorSquares:
                 case AttributeControlType.ImageSquares:

@@ -41,12 +41,6 @@ using Nop.Web.Framework.Mvc.Filters;
 using Nop.Web.Framework.Validators;
 using Nop.Web.Models.Customer;
 using ILogger = Nop.Services.Logging.ILogger;
-//customization
-using Nop.Services.Seo;
-using Nop.Web.Areas.Admin.Models.Catalog;
-using Nop.Web.Areas.Admin.Infrastructure.Mapper.Extensions;
-using Nop.Core.Infrastructure;
-using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Nop.Web.Controllers;
 
@@ -103,19 +97,6 @@ public partial class CustomerController : BasePublicController
     protected readonly TaxSettings _taxSettings;
     private static readonly char[] _separator = [','];
 
-    //customization
-    private readonly IShoppingCartService _shoppingCartService;
-    private readonly IWebHelper _webHelper;
-
-    private readonly ISpecificationAttributeService _specificationAttributeService;
-    private readonly IProductModelFactory _productModelFactory;
-    private readonly IProductTagService _productTagService;
-    private readonly ICategoryService _categoryService;
-    private readonly IUrlRecordService _urlRecordService;
-
-    private readonly INopFileProvider _fileProvider;
-    private const string FLAGS_PATH = @"images\flags";
-
     #endregion
 
     #region Ctor
@@ -165,17 +146,7 @@ public partial class CustomerController : BasePublicController
         MediaSettings mediaSettings,
         MultiFactorAuthenticationSettings multiFactorAuthenticationSettings,
         StoreInformationSettings storeInformationSettings,
-        TaxSettings taxSettings,
-        //customization
-        IShoppingCartService shoppingCartService,
-        IWebHelper webHelper,
-        ISpecificationAttributeService specificationAttributeService,
-        IProductModelFactory productModelFactory,
-        ICategoryService categoryService,
-        IUrlRecordService urlRecordService,
-        IProductTagService productTagService,
-        INopFileProvider fileProvider
-        )
+        TaxSettings taxSettings)
     {
         _addressSettings = addressSettings;
         _captchaSettings = captchaSettings;
@@ -223,16 +194,6 @@ public partial class CustomerController : BasePublicController
         _multiFactorAuthenticationSettings = multiFactorAuthenticationSettings;
         _storeInformationSettings = storeInformationSettings;
         _taxSettings = taxSettings;
-
-        //customization
-        _shoppingCartService = shoppingCartService;
-        _webHelper = webHelper;
-        _specificationAttributeService = specificationAttributeService;
-        _productModelFactory = productModelFactory;
-        _categoryService = categoryService;
-        _urlRecordService = urlRecordService;
-        _productTagService = productTagService;
-        _fileProvider = fileProvider;
     }
 
     #endregion
@@ -338,20 +299,6 @@ public partial class CustomerController : BasePublicController
                         var enteredText = ctrlAttributes.ToString().Trim();
                         attributesXml = _customerAttributeParser.AddAttribute(attributesXml,
                             attribute, enteredText);
-                    }
-                }
-                    break;
-                //customization
-                case AttributeControlType.KendoMultiSelect:
-                {
-                    var ctrlAttributes = form[controlId];
-                    if (!StringValues.IsNullOrEmpty(ctrlAttributes))
-                    {
-                        var enteredText = ctrlAttributes.ToString().Trim().Split(",");
-                        foreach (var item in enteredText)
-                        {
-                            attributesXml = _customerAttributeParser.AddAttribute(attributesXml,attribute, item.ToString());
-                        }
                     }
                 }
                     break;
@@ -877,9 +824,6 @@ public partial class CustomerController : BasePublicController
             var customerEmail = model.Email;
             var customerPhone = model.Phone;
 
-            //customization
-            //customer.CustomerProfileTypeId = GetCustomerProfileTypeId(customerAttributesXml);
-
             var isApproved = _customerSettings.UserRegistrationType == UserRegistrationType.Standard;
             var registrationRequest = new CustomerRegistrationRequest(customer,
                 customerEmail,
@@ -892,9 +836,6 @@ public partial class CustomerController : BasePublicController
             var registrationResult = await _customerRegistrationService.RegisterCustomerAsync(registrationRequest);
             if (registrationResult.Success)
             {
-                //customization
-                //await CreateProductAsync(customer, customerAttributesXml, model.FirstName, model.LastName, model.Gender);
-
                 //properties
                 if (_dateTimeSettings.AllowCustomersToSetTimeZone)
                     customer.TimeZoneId = model.TimeZoneId;
@@ -1383,17 +1324,6 @@ public partial class CustomerController : BasePublicController
 
                 if (_forumSettings.ForumsEnabled && _forumSettings.SignaturesEnabled)
                     await _genericAttributeService.SaveAttributeAsync(customer, NopCustomerDefaults.SignatureAttribute, model.Signature);
-                
-                //customization
-                await CreateOrUpdateCustomerCurrentAvailabilityAsync(customer, customerAttributesXml);
-
-                //save customer attributes
-                //to do : revisit this logic again
-                //await _genericAttributeService.SaveAttributeAsync(await _workContext.GetCurrentCustomerAsync(),
-                    //  NopCustomerDefaults.CustomCustomerAttributes, customerAttributesXml);
-
-                //customization
-                await UpdateProductAsync(customer, customerAttributesXml, model.FirstName, model.LastName);
 
                 //GDPR
                 if (_gdprSettings.GdprEnabled)

@@ -30,10 +30,6 @@ using Nop.Web.Infrastructure.Cache;
 using Nop.Web.Models.Catalog;
 using Nop.Web.Models.Common;
 using Nop.Web.Models.Media;
-//customization
-using Nop.Services.Forums;
-using Nop.Web.Models.PrivateMessages;
-using Nop.Services.Attributes;
 
 namespace Nop.Web.Factories;
 
@@ -86,14 +82,6 @@ public partial class ProductModelFactory : IProductModelFactory
     protected readonly VendorSettings _vendorSettings;
     private static readonly char[] _separator = [','];
 
-    //customization
-    private readonly IForumModelFactory _forumModelFactory;
-    private readonly IForumService _forumService;
-    private readonly IPrivateMessagesModelFactory _privateMessagesModelFactory;
-    protected readonly IAttributeParser<CustomerAttribute, CustomerAttributeValue> _customerAttributeParser;
-    protected readonly IAttributeService<CustomerAttribute, CustomerAttributeValue> _customerAttributeService;
-    private readonly ICountryService _countryService;
-
     #endregion
 
     #region Ctor
@@ -137,14 +125,7 @@ public partial class ProductModelFactory : IProductModelFactory
         OrderSettings orderSettings,
         SeoSettings seoSettings,
         ShippingSettings shippingSettings,
-        VendorSettings vendorSettings,
-        //customization
-        IForumModelFactory forumModelFactory,
-        IForumService forumService,
-        IPrivateMessagesModelFactory privateMessagesModelFactory,
-        IAttributeParser<CustomerAttribute, CustomerAttributeValue> customerAttributeParser,
-        IAttributeService<CustomerAttribute, CustomerAttributeValue> customerAttributeService,
-        ICountryService countryService)
+        VendorSettings vendorSettings)
     {
         _captchaSettings = captchaSettings;
         _catalogSettings = catalogSettings;
@@ -186,13 +167,6 @@ public partial class ProductModelFactory : IProductModelFactory
         _shippingSettings = shippingSettings;
         _vendorSettings = vendorSettings;
         _videoService = videoService;
-        //customization
-        _forumModelFactory = forumModelFactory;
-        _forumService = forumService;
-        _privateMessagesModelFactory = privateMessagesModelFactory;
-        _customerAttributeParser = customerAttributeParser;
-        _customerAttributeService = customerAttributeService;
-        _countryService = countryService;
     }
 
     #endregion
@@ -674,9 +648,6 @@ public partial class ProductModelFactory : IProductModelFactory
                 (var fullSizeImageUrl, picture) = await _pictureService.GetPictureUrlAsync(picture);
                 (var imageUrl, picture) = await _pictureService.GetPictureUrlAsync(picture, pictureSize);
 
-                //customization
-                //(fullSizeImageUrl, imageUrl) = await CustomizeProductPictureAsync(product);
-
                 return new PictureModel
                 {
                     ImageUrl = imageUrl,
@@ -1097,12 +1068,12 @@ public partial class ProductModelFactory : IProductModelFactory
                     case AttributeControlType.Checkboxes:
                     case AttributeControlType.ColorSquares:
                     case AttributeControlType.ImageSquares:
+                    {
+                        if (!string.IsNullOrEmpty(updatecartitem.AttributesXml))
                         {
-                            if (!string.IsNullOrEmpty(updatecartitem.AttributesXml))
-                            {
-                                //clear default selection
-                                foreach (var item in attributeModel.Values)
-                                    item.IsPreSelected = false;
+                            //clear default selection
+                            foreach (var item in attributeModel.Values)
+                                item.IsPreSelected = false;
 
                             //select new values
                             var selectedValues = await _productAttributeParser.ParseProductAttributeValuesAsync(updatecartitem.AttributesXml);
@@ -1121,63 +1092,63 @@ public partial class ProductModelFactory : IProductModelFactory
 
                         break;
                     case AttributeControlType.ReadonlyCheckboxes:
-                        {
-                            //values are already pre-set
+                    {
+                        //values are already pre-set
 
-                            //set customer entered quantity
-                            if (!string.IsNullOrEmpty(updatecartitem.AttributesXml))
+                        //set customer entered quantity
+                        if (!string.IsNullOrEmpty(updatecartitem.AttributesXml))
+                        {
+                            foreach (var attributeValue in (await _productAttributeParser.ParseProductAttributeValuesAsync(updatecartitem.AttributesXml))
+                                     .Where(value => value.CustomerEntersQty))
                             {
-                                foreach (var attributeValue in (await _productAttributeParser.ParseProductAttributeValuesAsync(updatecartitem.AttributesXml))
-                                         .Where(value => value.CustomerEntersQty))
-                                {
-                                    var item = attributeModel.Values.FirstOrDefault(value => value.Id == attributeValue.Id);
-                                    if (item != null)
-                                        item.Quantity = attributeValue.Quantity;
-                                }
+                                var item = attributeModel.Values.FirstOrDefault(value => value.Id == attributeValue.Id);
+                                if (item != null)
+                                    item.Quantity = attributeValue.Quantity;
                             }
                         }
+                    }
 
                         break;
                     case AttributeControlType.TextBox:
                     case AttributeControlType.MultilineTextbox:
+                    {
+                        if (!string.IsNullOrEmpty(updatecartitem.AttributesXml))
                         {
-                            if (!string.IsNullOrEmpty(updatecartitem.AttributesXml))
-                            {
-                                var enteredText = _productAttributeParser.ParseValues(updatecartitem.AttributesXml, attribute.Id);
-                                if (enteredText.Any())
-                                    attributeModel.DefaultValue = enteredText[0];
-                            }
+                            var enteredText = _productAttributeParser.ParseValues(updatecartitem.AttributesXml, attribute.Id);
+                            if (enteredText.Any())
+                                attributeModel.DefaultValue = enteredText[0];
                         }
+                    }
 
                         break;
                     case AttributeControlType.Datepicker:
+                    {
+                        //keep in mind my that the code below works only in the current culture
+                        var selectedDateStr = _productAttributeParser.ParseValues(updatecartitem.AttributesXml, attribute.Id);
+                        if (selectedDateStr.Any())
                         {
-                            //keep in mind my that the code below works only in the current culture
-                            var selectedDateStr = _productAttributeParser.ParseValues(updatecartitem.AttributesXml, attribute.Id);
-                            if (selectedDateStr.Any())
+                            if (DateTime.TryParseExact(selectedDateStr[0], "D", CultureInfo.CurrentCulture, DateTimeStyles.None, out var selectedDate))
                             {
-                                if (DateTime.TryParseExact(selectedDateStr[0], "D", CultureInfo.CurrentCulture, DateTimeStyles.None, out var selectedDate))
-                                {
-                                    //successfully parsed
-                                    attributeModel.SelectedDay = selectedDate.Day;
-                                    attributeModel.SelectedMonth = selectedDate.Month;
-                                    attributeModel.SelectedYear = selectedDate.Year;
-                                }
+                                //successfully parsed
+                                attributeModel.SelectedDay = selectedDate.Day;
+                                attributeModel.SelectedMonth = selectedDate.Month;
+                                attributeModel.SelectedYear = selectedDate.Year;
                             }
                         }
+                    }
 
                         break;
                     case AttributeControlType.FileUpload:
+                    {
+                        if (!string.IsNullOrEmpty(updatecartitem.AttributesXml))
                         {
-                            if (!string.IsNullOrEmpty(updatecartitem.AttributesXml))
-                            {
-                                var downloadGuidStr = _productAttributeParser.ParseValues(updatecartitem.AttributesXml, attribute.Id).FirstOrDefault();
-                                _ = Guid.TryParse(downloadGuidStr, out var downloadGuid);
-                                var download = await _downloadService.GetDownloadByGuidAsync(downloadGuid);
-                                if (download != null)
-                                    attributeModel.DefaultValue = download.DownloadGuid.ToString();
-                            }
+                            var downloadGuidStr = _productAttributeParser.ParseValues(updatecartitem.AttributesXml, attribute.Id).FirstOrDefault();
+                            _ = Guid.TryParse(downloadGuidStr, out var downloadGuid);
+                            var download = await _downloadService.GetDownloadByGuidAsync(downloadGuid);
+                            if (download != null)
+                                attributeModel.DefaultValue = download.DownloadGuid.ToString();
                         }
+                    }
 
                         break;
                     default:
@@ -1285,9 +1256,6 @@ public partial class ProductModelFactory : IProductModelFactory
 
             (var fullSizeImageUrl, defaultPicture) = await _pictureService.GetPictureUrlAsync(defaultPicture, 0, !isAssociatedProduct);
             (var imageUrl, defaultPicture) = await _pictureService.GetPictureUrlAsync(defaultPicture, defaultPictureSize, !isAssociatedProduct);
-
-            //customization
-            //defaultPicture = await CustomizeProductPictureAsync(product);
 
             var defaultPictureModel = new PictureModel
             {
@@ -1436,9 +1404,6 @@ public partial class ProductModelFactory : IProductModelFactory
 
             //reviews
             model.ReviewOverviewModel = await PrepareProductReviewOverviewModelAsync(product);
-
-            //customization
-            await CustomizeProductModel(model, product);
 
             models.Add(model);
         }
@@ -1686,10 +1651,6 @@ public partial class ProductModelFactory : IProductModelFactory
             model.ProductSpecificationModel = await PrepareProductSpecificationModelAsync(product);
         }
 
-
-        //customization
-        await CustomizeProductDetailModel(model, product);
-
         //product review overview
         model.ProductReviewOverview = await PrepareProductReviewOverviewModelAsync(product);
 
@@ -1779,9 +1740,6 @@ public partial class ProductModelFactory : IProductModelFactory
         {
             ProductId = product.Id
         };
-
-        //customization
-        await CustomizeProductReviewModel(model, product);
 
         var currentStore = await _storeContext.GetCurrentStoreAsync();
 

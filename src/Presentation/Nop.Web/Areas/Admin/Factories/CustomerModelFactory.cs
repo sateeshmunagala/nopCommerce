@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.Extensions.Primitives;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
@@ -10,7 +9,6 @@ using Nop.Core.Domain.Gdpr;
 using Nop.Core.Domain.Media;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Tax;
-using Nop.Core.Infrastructure;
 using Nop.Services.Affiliates;
 using Nop.Services.Attributes;
 using Nop.Services.Authentication.External;
@@ -248,7 +246,7 @@ public partial class CustomerModelFactory : ICustomerModelFactory
             if (attribute.ShouldHaveValues)
             {
                 //values
-                var attributeValues = await _customerAttributeService.GetCustomCustomerAttributeValuesAsync(attribute.Id);
+                var attributeValues = await _customerAttributeService.GetAttributeValuesAsync(attribute.Id);
                 foreach (var attributeValue in attributeValues)
                 {
                     var attributeValueModel = new CustomerModel.CustomerAttributeValueModel
@@ -307,28 +305,6 @@ public partial class CustomerModelFactory : ICustomerModelFactory
                     case AttributeControlType.ColorSquares:
                     case AttributeControlType.ImageSquares:
                     case AttributeControlType.FileUpload:
-                    //customization
-                    case AttributeControlType.KendoMultiSelect:
-                        {
-                            if (!string.IsNullOrEmpty(selectedCustomerAttributes))
-                            {
-                                //clear default selection
-                                foreach (var item in attributeModel.Values)
-                                    item.IsPreSelected = false;
-
-                                //select new values
-                                var selectedValues = await _customerAttributeParser.ParseCustomerAttributeValuesCustomAsync(selectedCustomerAttributes);
-                                foreach (var attributeValue in selectedValues)
-                                {
-                                    foreach (var item in attributeModel.Values)
-                                    {
-                                        if (attributeValue.Id == item.Id)
-                                            item.IsPreSelected = true;
-                                    }
-                                }
-                            }
-                        }
-                        break;
                     default:
                         //not supported attribute control types
                         break;
@@ -639,9 +615,6 @@ public partial class CustomerModelFactory : ICustomerModelFactory
 
                 customerModel.CreatedOn = await _dateTimeHelper.ConvertToUserTimeAsync(customer.CreatedOnUtc, DateTimeKind.Utc);
                 customerModel.LastActivityDate = await _dateTimeHelper.ConvertToUserTimeAsync(customer.LastActivityDateUtc, DateTimeKind.Utc);
-
-                // admin customization
-                customerModel.VendorId= customer.VendorId;
 
                 //fill in additional values (not existing in the entity)
                 customerModel.CustomerRoleNames = string.Join(", ",

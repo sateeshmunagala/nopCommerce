@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using LinqToDB.Data;
 using Nop.Data;
 using Nop.Data.DataProviders;
@@ -12,19 +11,16 @@ namespace Nop.Plugin.Misc.JobSupport.Services;
 public partial class JobSupportProfileQueryService : IJobSupportProfileQueryService
 {
     private readonly INopDataProvider _dataProvider;
-    private readonly IJobSupportCutoverService _cutoverService;
     private readonly ILogger _logger;
     private readonly JobSupportPluginQueryService _pluginQueryService;
     private readonly JobSupportSettings _settings;
 
     public JobSupportProfileQueryService(INopDataProvider dataProvider,
-        IJobSupportCutoverService cutoverService,
         JobSupportPluginQueryService pluginQueryService,
         JobSupportSettings settings,
         ILogger logger)
     {
         _dataProvider = dataProvider;
-        _cutoverService = cutoverService;
         _pluginQueryService = pluginQueryService;
         _settings = settings;
         _logger = logger;
@@ -35,13 +31,10 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
         if (!_settings.Enabled)
             return Failed(request, ProfileQueryErrorCode.Disabled);
 
-        return _settings.DataReadMode switch
-        {
-            DataAccessMode.Legacy => await SearchLegacyProfilesAsync(request),
-            DataAccessMode.Compare => await CompareAsync(request, relationships: false),
-            DataAccessMode.Plugin => await _pluginQueryService.SearchProfilesAsync(request),
-            _ => Failed(request, ProfileQueryErrorCode.Disabled)
-        };
+        if (_settings.DataReadMode == DataAccessMode.Legacy && _settings.AllowLegacyReadRollback)
+            return await SearchLegacyProfilesAsync(request);
+
+        return await _pluginQueryService.SearchProfilesAsync(request);
     }
 
     public async Task<PagedProfileSearchResult> GetProfilesByRelationshipAsync(ProfileSearchRequest request)
@@ -49,39 +42,17 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
         if (!_settings.Enabled)
             return Failed(request, ProfileQueryErrorCode.Disabled);
 
-        return _settings.DataReadMode switch
-        {
-            DataAccessMode.Legacy => await SearchLegacyRelationshipsAsync(request),
-            DataAccessMode.Compare => await CompareAsync(request, relationships: true),
-            DataAccessMode.Plugin => await _pluginQueryService.GetProfilesByRelationshipAsync(request),
-            _ => Failed(request, ProfileQueryErrorCode.Disabled)
-        };
+        if (_settings.DataReadMode == DataAccessMode.Legacy && _settings.AllowLegacyReadRollback)
+            return await SearchLegacyRelationshipsAsync(request);
+
+        return await _pluginQueryService.GetProfilesByRelationshipAsync(request);
     }
 
-    private async Task<PagedProfileSearchResult> CompareAsync(ProfileSearchRequest request, bool relationships)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        var legacy = relationships
-            ? await SearchLegacyRelationshipsAsync(request)
-            : await SearchLegacyProfilesAsync(request);
-        stopwatch.Stop();
-        var legacyDuration = stopwatch.ElapsedMilliseconds;
-
-        stopwatch.Restart();
-        var plugin = relationships
-            ? await _pluginQueryService.GetProfilesByRelationshipAsync(request)
-            : await _pluginQueryService.SearchProfilesAsync(request);
-        stopwatch.Stop();
-        await _cutoverService.RecordComparisonAsync(relationships ? "Relationships" : "ProfileSearch",
-            legacy, plugin, legacyDuration, stopwatch.ElapsedMilliseconds);
-
-        return _settings.CompareReturnMode == DataAccessMode.Plugin ? plugin : legacy;
-    }
-
+    // Compatibility retained for read rollback; remove in JobSupport 2.0.0.
     private async Task<PagedProfileSearchResult> SearchLegacyProfilesAsync(ProfileSearchRequest request)
     {
         var procedureName = _settings.LegacyProfileSearchProcedureName;
-        var guard = Validate(request, procedureName);
+        var guard = ValidateLegacyRead(request, procedureName);
         if (guard != ProfileQueryErrorCode.None)
             return Failed(request, guard);
 
@@ -91,7 +62,6 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
         {
             var rows = await _dataProvider.QueryProcAsync<ProfileSearchResult>(procedureName, parameters);
             NormalizeUtcDates(rows);
-
             return Success(request, rows, rows.Count, null, ProfileQuerySource.LegacyProcedure);
         }
         catch (Exception exception)
@@ -101,10 +71,11 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
         }
     }
 
+    // Compatibility retained for read rollback; remove in JobSupport 2.0.0.
     private async Task<PagedProfileSearchResult> SearchLegacyRelationshipsAsync(ProfileSearchRequest request)
     {
         var procedureName = _settings.LegacyShortlistProcedureName;
-        var guard = Validate(request, procedureName);
+        var guard = ValidateLegacyRead(request, procedureName);
         if (guard != ProfileQueryErrorCode.None)
             return Failed(request, guard);
 
@@ -122,7 +93,6 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
         {
             var rows = await _dataProvider.QueryProcAsync<ProfileSearchResult>(procedureName, parameters);
             NormalizeUtcDates(rows);
-
             var outputTotalRecords = ReadNullableInt32(totalRecordsParameter);
             return Success(request,
                 rows,
@@ -137,9 +107,10 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
         }
     }
 
-    private ProfileQueryErrorCode Validate(ProfileSearchRequest request, string procedureName)
+    // Compatibility retained for read rollback; remove in JobSupport 2.0.0.
+    private ProfileQueryErrorCode ValidateLegacyRead(ProfileSearchRequest request, string procedureName)
     {
-        if (!_settings.Enabled || !_settings.UseLegacyStoredProcedures)
+        if (!_settings.AllowLegacyReadRollback || !_settings.UseLegacyStoredProcedures)
             return ProfileQueryErrorCode.Disabled;
         if (_dataProvider is not MsSqlNopDataProvider)
             return ProfileQueryErrorCode.UnsupportedProvider;
@@ -161,9 +132,7 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
             .Where(row => row.Id <= 0)
             .Select((_, index) => $"Returned profile row {index + 1} does not contain a profile identifier.")
             .ToList();
-        if (!outputTotalRecords.HasValue)
-            warnings.Add("The output total record count was not returned.");
-        else if (outputTotalRecords.Value < rows.Count)
+        if (outputTotalRecords.HasValue && outputTotalRecords.Value < rows.Count)
             warnings.Add("The output total record count is lower than the returned row count.");
 
         return new PagedProfileSearchResult
@@ -181,17 +150,14 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
         };
     }
 
-    private static PagedProfileSearchResult Failed(ProfileSearchRequest request, ProfileQueryErrorCode errorCode)
+    private static PagedProfileSearchResult Failed(ProfileSearchRequest request, ProfileQueryErrorCode errorCode) => new()
     {
-        return new PagedProfileSearchResult
-        {
-            PageIndex = request?.PageIndex ?? 0,
-            PageSize = request?.PageSize ?? 0,
-            Succeeded = false,
-            ErrorCode = errorCode,
-            Source = ProfileQuerySource.None
-        };
-    }
+        PageIndex = request?.PageIndex ?? 0,
+        PageSize = request?.PageSize ?? 0,
+        Succeeded = false,
+        ErrorCode = errorCode,
+        Source = ProfileQuerySource.None
+    };
 
     private static int? ReadNullableInt32(DataParameter parameter)
     {
@@ -224,7 +190,7 @@ public partial class JobSupportProfileQueryService : IJobSupportProfileQueryServ
     {
         var parameterNames = string.Join(", ", parameters.Select(parameter => parameter.Name));
         return _logger.ErrorAsync(
-            $"JobSupport legacy query failed for procedure {procedureName}; parameters: {parameterNames}",
+            $"JobSupport legacy rollback query failed for procedure {procedureName}; parameters: {parameterNames}",
             exception);
     }
 }
