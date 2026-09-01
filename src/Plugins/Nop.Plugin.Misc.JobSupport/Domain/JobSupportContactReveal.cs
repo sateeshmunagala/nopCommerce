@@ -10,5 +10,6 @@ public partial class JobSupportContactReveal : BaseEntity
     public int TargetProfileId { get; set; }
     public int CreditCost { get; set; }
     public DateTime RevealedOnUtc { get; set; }
+    public int? LegacyGenericAttributeId { get; set; }
     public DateTime CreatedOnUtc { get; set; }
 }

@@ -13,6 +13,7 @@ public partial class JobSupportProfileView : BaseEntity
     public int ViewCount { get; set; }
     public bool ContactRevealed { get; set; }
     public DateTime? ContactRevealedOnUtc { get; set; }
+    public int? LegacyShoppingCartItemId { get; set; }
     public DateTime CreatedOnUtc { get; set; }
     public DateTime UpdatedOnUtc { get; set; }
 }

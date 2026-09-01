@@ -5,6 +5,7 @@ namespace Nop.Plugin.Misc.JobSupport.Domain;
 public partial class JobSupportProfileAttributeOption : BaseEntity
 {
     public int AttributeDefinitionId { get; set; }
+    public int? LegacyCustomerAttributeValueId { get; set; }
     public string Name { get; set; }
     public int DisplayOrder { get; set; }
     public bool IsActive { get; set; }

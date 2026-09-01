@@ -3,6 +3,7 @@ using FluentMigrator.Builders.Create.Table;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Directory;
+using Nop.Core.Domain.Media;
 using Nop.Data.Extensions;
 using Nop.Data.Mapping.Builders;
 using Nop.Plugin.Misc.JobSupport.Domain;
