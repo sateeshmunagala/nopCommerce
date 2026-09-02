@@ -18,6 +18,7 @@ public class JobSupportContactRevealBuilder : NopEntityBuilder<JobSupportContact
             .WithColumn(nameof(JobSupportContactReveal.TargetProfileId)).AsInt32().NotNullable().ForeignKey<JobSupportProfile>(onDelete: Rule.None)
             .WithColumn(nameof(JobSupportContactReveal.CreditCost)).AsInt32().NotNullable()
             .WithColumn(nameof(JobSupportContactReveal.RevealedOnUtc)).AsDateTime2().NotNullable()
-            .WithColumn(nameof(JobSupportContactReveal.LegacyGenericAttributeId)).AsInt32().Nullable();
+            .WithColumn(nameof(JobSupportContactReveal.LegacyGenericAttributeId)).AsInt32().Nullable()
+            .WithColumn(nameof(JobSupportContactReveal.CreatedOnUtc)).AsDateTime2().NotNullable();
     }
 }

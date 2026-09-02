@@ -25,6 +25,8 @@ public class JobSupportSubscriptionBuilder : NopEntityBuilder<JobSupportSubscrip
             .WithColumn(nameof(JobSupportSubscription.CarriedCredits)).AsInt32().NotNullable()
             .WithColumn(nameof(JobSupportSubscription.UsedCredits)).AsInt32().NotNullable()
             .WithColumn(nameof(JobSupportSubscription.CreatedOnUtc)).AsDateTime2().NotNullable()
-            .WithColumn(nameof(JobSupportSubscription.UpdatedOnUtc)).AsDateTime2().NotNullable();
+            .WithColumn(nameof(JobSupportSubscription.UpdatedOnUtc)).AsDateTime2().NotNullable()
+            .WithColumn(nameof(JobSupportSubscription.LegacyRewardPointsHistoryId)).AsInt32().Nullable()
+            .WithColumn(nameof(JobSupportSubscription.MigrationSource)).AsString(int.MaxValue).Nullable();
     }
 }

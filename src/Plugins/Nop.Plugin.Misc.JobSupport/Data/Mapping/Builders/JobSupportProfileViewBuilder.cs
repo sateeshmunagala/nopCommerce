@@ -19,6 +19,10 @@ public class JobSupportProfileViewBuilder : NopEntityBuilder<JobSupportProfileVi
             .WithColumn(nameof(JobSupportProfileView.FirstViewedOnUtc)).AsDateTime2().NotNullable()
             .WithColumn(nameof(JobSupportProfileView.LastViewedOnUtc)).AsDateTime2().NotNullable()
             .WithColumn(nameof(JobSupportProfileView.ViewCount)).AsInt32().NotNullable()
-            .WithColumn(nameof(JobSupportProfileView.LegacyShoppingCartItemId)).AsInt32().Nullable();
+            .WithColumn(nameof(JobSupportProfileView.ContactRevealed)).AsBoolean().NotNullable()
+            .WithColumn(nameof(JobSupportProfileView.ContactRevealedOnUtc)).AsDateTime2().Nullable()
+            .WithColumn(nameof(JobSupportProfileView.LegacyShoppingCartItemId)).AsInt32().Nullable()
+            .WithColumn(nameof(JobSupportProfileView.CreatedOnUtc)).AsDateTime2().NotNullable()
+            .WithColumn(nameof(JobSupportProfileView.UpdatedOnUtc)).AsDateTime2().NotNullable();
     }
 }
