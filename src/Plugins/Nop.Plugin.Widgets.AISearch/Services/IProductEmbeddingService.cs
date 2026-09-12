@@ -4,6 +4,6 @@ namespace Nop.Plugin.Widgets.AISearch.Services;
 
 public interface IProductEmbeddingService
 {
-    Task UpsertProductEmbeddingAsync(Product product);
+    Task UpsertProductEmbeddingAsync(Product product, int storeId);
     Task<IList<int>> SearchAsync(string queryText, int storeId, int topK);
 }

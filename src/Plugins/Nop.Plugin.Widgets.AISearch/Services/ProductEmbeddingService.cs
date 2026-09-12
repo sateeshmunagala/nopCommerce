@@ -14,29 +14,24 @@ public class ProductEmbeddingService : IProductEmbeddingService
     private readonly IProductContentBuilder _productContentBuilder;
     private readonly IRepository<AISearchProductEmbedding> _repository;
     private readonly AISearchSettings _settings;
-    private readonly IStoreContext _storeContext;
 
     public ProductEmbeddingService(IAzureOpenAiEmbeddingClient embeddingClient,
         INopDataProvider dataProvider,
         IProductContentBuilder productContentBuilder,
         IRepository<AISearchProductEmbedding> repository,
-        AISearchSettings settings,
-        IStoreContext storeContext)
+        AISearchSettings settings)
     {
         _embeddingClient = embeddingClient;
         _dataProvider = dataProvider;
         _productContentBuilder = productContentBuilder;
         _repository = repository;
         _settings = settings;
-        _storeContext = storeContext;
     }
 
-    public async Task UpsertProductEmbeddingAsync(Product product)
+    public async Task UpsertProductEmbeddingAsync(Product product, int storeId)
     {
         ArgumentNullException.ThrowIfNull(product);
 
-        var store = await _storeContext.GetCurrentStoreAsync();
-        var storeId = store?.Id ?? 0;
         var content = await _productContentBuilder.BuildContentAsync(product);
         var rows = await _repository.GetAllAsync(query => query.Where(row =>
             row.ProductId == product.Id && row.StoreId == storeId));
