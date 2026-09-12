@@ -4,6 +4,7 @@ using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Data;
 using Nop.Plugin.Widgets.AISearch.Domain;
+using Nop.Services.Logging;
 
 namespace Nop.Plugin.Widgets.AISearch.Services;
 
@@ -13,18 +14,21 @@ public class ProductEmbeddingService : IProductEmbeddingService
     private readonly INopDataProvider _dataProvider;
     private readonly IProductContentBuilder _productContentBuilder;
     private readonly IRepository<AISearchProductEmbedding> _repository;
+    private readonly ILogger _logger;
     private readonly AISearchSettings _settings;
 
     public ProductEmbeddingService(IAzureOpenAiEmbeddingClient embeddingClient,
         INopDataProvider dataProvider,
         IProductContentBuilder productContentBuilder,
         IRepository<AISearchProductEmbedding> repository,
+        ILogger logger,
         AISearchSettings settings)
     {
         _embeddingClient = embeddingClient;
         _dataProvider = dataProvider;
         _productContentBuilder = productContentBuilder;
         _repository = repository;
+        _logger = logger;
         _settings = settings;
     }
 
@@ -75,6 +79,38 @@ WHERE [Id] = @id;",
             new DataParameter("id", row.Id));
     }
 
+    public async Task EnsureVectorIndexAsync()
+    {
+        var indexStatus = await _dataProvider.QueryAsync<ScalarCountRow>(@"
+SELECT COUNT(*) AS [Count]
+FROM sys.indexes
+WHERE object_id = OBJECT_ID(N'[dbo].[AISearchProductEmbedding]')
+  AND name = N'IX_AISearchProductEmbedding_Embedding';");
+
+        if (indexStatus.FirstOrDefault()?.Count > 0)
+            return;
+
+        var vectorRowCount = await _dataProvider.QueryAsync<ScalarCountRow>(@"
+SELECT COUNT(*) AS [Count]
+FROM [dbo].[AISearchProductEmbedding]
+WHERE [Embedding] IS NOT NULL;");
+
+        if ((vectorRowCount.FirstOrDefault()?.Count ?? 0) < 100)
+            return;
+
+        try
+        {
+            await _dataProvider.ExecuteNonQueryAsync(@"
+CREATE VECTOR INDEX [IX_AISearchProductEmbedding_Embedding]
+ON [dbo].[AISearchProductEmbedding] ([Embedding])
+WITH (METRIC = 'COSINE', TYPE = 'DISKANN');");
+        }
+        catch (Exception exception)
+        {
+            await _logger.ErrorAsync("Failed to create the AI Search product embedding vector index.", exception);
+        }
+    }
+
     public async Task<IList<int>> SearchAsync(string queryText, int storeId, int topK)
     {
         if (string.IsNullOrWhiteSpace(queryText))
@@ -106,5 +142,10 @@ ORDER BY VECTOR_DISTANCE('cosine', [Embedding], CAST(@queryVector AS VECTOR(1536
     {
         public int ProductId { get; set; }
         public double Distance { get; set; }
+    }
+
+    private sealed class ScalarCountRow
+    {
+        public int Count { get; set; }
     }
 }

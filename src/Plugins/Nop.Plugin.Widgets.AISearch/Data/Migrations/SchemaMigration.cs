@@ -32,17 +32,6 @@ END").GetAwaiter().GetResult();
 IF NOT EXISTS (
     SELECT 1 FROM sys.indexes
     WHERE object_id = OBJECT_ID(N'[dbo].[AISearchProductEmbedding]')
-      AND name = N'IX_AISearchProductEmbedding_Embedding')
-BEGIN
-    CREATE VECTOR INDEX [IX_AISearchProductEmbedding_Embedding]
-    ON [dbo].[AISearchProductEmbedding] ([Embedding])
-    WITH (METRIC = 'COSINE', TYPE = 'DISKANN');
-END").GetAwaiter().GetResult();
-
-        _dataProvider.ExecuteNonQueryAsync(@"
-IF NOT EXISTS (
-    SELECT 1 FROM sys.indexes
-    WHERE object_id = OBJECT_ID(N'[dbo].[AISearchProductEmbedding]')
       AND name = N'IX_AISearchProductEmbedding_ProductId_StoreId')
 BEGIN
     CREATE NONCLUSTERED INDEX [IX_AISearchProductEmbedding_ProductId_StoreId]

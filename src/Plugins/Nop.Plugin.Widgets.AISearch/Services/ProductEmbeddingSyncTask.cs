@@ -49,5 +49,7 @@ public class ProductEmbeddingSyncTask : IScheduleTask
             if (products.Count < BatchSize)
                 break;
         }
+
+        await _productEmbeddingService.EnsureVectorIndexAsync();
     }
 }

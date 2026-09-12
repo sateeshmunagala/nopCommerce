@@ -18,18 +18,21 @@ public class AISearchAdminController : BasePluginController
 {
     private readonly ILocalizationService _localizationService;
     private readonly INotificationService _notificationService;
+    private readonly IProductEmbeddingService _productEmbeddingService;
     private readonly ProductEmbeddingSyncTask _syncTask;
     private readonly ISettingService _settingService;
     private readonly IStoreContext _storeContext;
 
     public AISearchAdminController(ILocalizationService localizationService,
         INotificationService notificationService,
+        IProductEmbeddingService productEmbeddingService,
         ProductEmbeddingSyncTask syncTask,
         ISettingService settingService,
         IStoreContext storeContext)
     {
         _localizationService = localizationService;
         _notificationService = notificationService;
+        _productEmbeddingService = productEmbeddingService;
         _syncTask = syncTask;
         _settingService = settingService;
         _storeContext = storeContext;
@@ -109,6 +112,7 @@ public class AISearchAdminController : BasePluginController
     public async Task<IActionResult> ReindexNow()
     {
         await _syncTask.ExecuteAsync();
+        await _productEmbeddingService.EnsureVectorIndexAsync();
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Widgets.AISearch.Admin.ReindexStarted"));
         return RedirectToRoute(AISearchDefaults.ConfigurationRouteName);
     }
