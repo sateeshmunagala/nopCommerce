@@ -9413,6 +9413,13 @@ body.ai-job-preview-open .item-box {
     min-height: 40px;
 }
 
+.html-aiinterview-employer-dashboard-page .employer-credit-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
 .html-aiinterview-employer-dashboard-page .employer-credit-chip {
     display: inline-flex;
     align-items: center;

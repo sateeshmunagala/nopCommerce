@@ -819,6 +819,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.Yes"] = "Yes",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.FeedbackReports.No"] = "No",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.EmailInvalid"] = "Enter a valid email address.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Admin.Invite.InsufficientCredits"] = "Insufficient credit balance to create this invite. Please top up credits.",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Status"] = "Status",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.StatusComment"] = "Status comment",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Applications.Update"] = "Update",
@@ -1845,6 +1846,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Title"] = "Employer Interview Invites",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Credits.Balance"] = "Credit Balance",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Credits.Reserved"] = "Reserved Credits",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.CreateNew"] = "Create New Invite",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.CreateTitle"] = "Create Employer Invite",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Email"] = "Email",

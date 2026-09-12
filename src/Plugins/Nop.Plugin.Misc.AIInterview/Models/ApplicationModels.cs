@@ -356,6 +356,8 @@ public record EmployerDashboardInvitesTabModel : BaseNopModel
     public DateTime? ExpiryDateUtc { get; set; }
     public decimal CreditBalance { get; set; }
     public string CreditBalanceDisplay { get; set; }
+    public decimal ReservedCredits { get; set; }
+    public string ReservedCreditsDisplay { get; set; }
 }
 
 public record EmployerDashboardPageModel : BaseNopModel

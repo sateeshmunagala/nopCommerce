@@ -2415,6 +2415,7 @@ public class SponsorInviteService : ISponsorInviteService
     private readonly IJobProductAccessService _jobProductAccessService;
     private readonly Nop.Services.Messages.IQueuedEmailService _queuedEmailService;
     private readonly Nop.Services.Messages.ITokenizer _tokenizer;
+    private readonly ICreditService _creditService;
 
     public SponsorInviteService(IRepository<SponsorInvite> inviteRepository,
         Nop.Services.Catalog.IProductService productService,
@@ -2428,7 +2429,8 @@ public class SponsorInviteService : ISponsorInviteService
         IWebHelper webHelper = null,
         IJobProductAccessService jobProductAccessService = null,
         Nop.Services.Messages.IQueuedEmailService queuedEmailService = null,
-        Nop.Services.Messages.ITokenizer tokenizer = null)
+        Nop.Services.Messages.ITokenizer tokenizer = null,
+        ICreditService creditService = null)
     {
         _inviteRepository = inviteRepository;
         _productService = productService;
@@ -2443,6 +2445,7 @@ public class SponsorInviteService : ISponsorInviteService
         _jobProductAccessService = jobProductAccessService;
         _queuedEmailService = queuedEmailService;
         _tokenizer = tokenizer;
+        _creditService = creditService;
     }
 
     public async Task InsertSponsorInviteAsync(SponsorInvite invite)
@@ -2493,6 +2496,16 @@ public class SponsorInviteService : ISponsorInviteService
 
         if (expiryDateUtc.HasValue && expiryDateUtc.Value > DateTime.UtcNow.AddDays(60))
             throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.ExpiryTooFar"));
+
+        if (_creditService != null)
+        {
+            var wallet = await _creditService.GetOrCreateWalletAsync(sponsorId);
+            var reservedCredits = (await _inviteRepository.GetAllAsync(query => query
+                .Where(i => i.SponsorId == sponsorId && i.IsActive &&
+                    (!i.ExpiryDateUtc.HasValue || i.ExpiryDateUtc.Value > DateTime.UtcNow)))).Count;
+            if (wallet.Balance - reservedCredits < 1)
+                throw new NopException(await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Admin.Invite.InsufficientCredits"));
+        }
 
         var invite = new SponsorInvite
         {

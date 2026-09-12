@@ -2892,6 +2892,10 @@ public class AIInterviewController : BasePluginController
 
         model.CreditBalance = wallet.Balance;
         model.CreditBalanceDisplay = decimal.Truncate(wallet.Balance).ToString("0", CultureInfo.InvariantCulture);
+        var reservedCredits = invites.Count(invite => invite.IsActive &&
+            (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc.Value > DateTime.UtcNow));
+        model.ReservedCredits = reservedCredits;
+        model.ReservedCreditsDisplay = reservedCredits.ToString(CultureInfo.InvariantCulture);
         model.AvailableProducts = await BuildEmployerInviteProductSelectListAsync(customer);
         model.Invites = ApplyInMemoryPaging(
             invites,

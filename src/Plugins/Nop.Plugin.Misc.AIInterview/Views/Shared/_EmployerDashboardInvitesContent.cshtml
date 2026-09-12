@@ -24,8 +24,13 @@
             <strong class="scoreboard-deck-eyebrow">@T("Plugins.Misc.AIInterview.Employer.Dashboard.Tab.Invites")</strong>
             @* <p class="scoreboard-deck-title">@T("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle")</p> *@
         </div>
-        <div class="credit-balance employer-credit-chip">
-            <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Balance"):</strong> @Model.CreditBalanceDisplay
+        <div class="employer-credit-chip-group">
+            <div class="credit-balance employer-credit-chip">
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Balance"):</strong> @Model.CreditBalanceDisplay
+            </div>
+            <div class="credit-balance employer-credit-chip">
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Reserved"):</strong> @Model.ReservedCreditsDisplay
+            </div>
         </div>
     </div>
     <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post" class="invite-create-form">
