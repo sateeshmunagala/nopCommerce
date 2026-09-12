@@ -22,11 +22,29 @@ public class AzureOpenAiEmbeddingClient : IAzureOpenAiEmbeddingClient
 
     public async Task<float[]> GetEmbeddingAsync(string text)
     {
-        if (string.IsNullOrWhiteSpace(text) ||
-            string.IsNullOrWhiteSpace(_settings.AzureOpenAiEndpointUrl) ||
-            string.IsNullOrWhiteSpace(_settings.AzureOpenAiApiKey) ||
-            string.IsNullOrWhiteSpace(_settings.AzureOpenAiEmbeddingDeploymentName))
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            await _logger.WarningAsync("AI Search embedding request skipped because input text is empty.");
             return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(_settings.AzureOpenAiEndpointUrl))
+        {
+            await _logger.WarningAsync("AI Search embedding request skipped because AzureOpenAiEndpointUrl is empty.");
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(_settings.AzureOpenAiApiKey))
+        {
+            await _logger.WarningAsync("AI Search embedding request skipped because AzureOpenAiApiKey is empty.");
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(_settings.AzureOpenAiEmbeddingDeploymentName))
+        {
+            await _logger.WarningAsync("AI Search embedding request skipped because AzureOpenAiEmbeddingDeploymentName is empty.");
+            return null;
+        }
 
         try
         {
@@ -40,6 +58,8 @@ public class AzureOpenAiEmbeddingClient : IAzureOpenAiEmbeddingClient
             request.Headers.Add("api-key", _settings.AzureOpenAiApiKey.Trim());
             request.Content = new StringContent(JsonSerializer.Serialize(new { input = text }), Encoding.UTF8, "application/json");
 
+            await _logger.InformationAsync(
+                $"Sending AI Search embedding request to deployment '{_settings.AzureOpenAiEmbeddingDeploymentName.Trim()}' with {text.Length} input characters.");
             using var response = await _httpClient.SendAsync(request);
             var responseBody = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)

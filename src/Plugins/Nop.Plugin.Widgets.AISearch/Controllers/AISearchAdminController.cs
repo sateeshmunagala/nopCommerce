@@ -4,6 +4,7 @@ using Nop.Plugin.Widgets.AISearch.Models;
 using Nop.Plugin.Widgets.AISearch.Services;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
+using Nop.Services.Logging;
 using Nop.Services.Messages;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
@@ -17,6 +18,7 @@ namespace Nop.Plugin.Widgets.AISearch.Controllers;
 public class AISearchAdminController : BasePluginController
 {
     private readonly ILocalizationService _localizationService;
+    private readonly ILogger _logger;
     private readonly INotificationService _notificationService;
     private readonly IProductEmbeddingService _productEmbeddingService;
     private readonly ProductEmbeddingSyncTask _syncTask;
@@ -24,6 +26,7 @@ public class AISearchAdminController : BasePluginController
     private readonly IStoreContext _storeContext;
 
     public AISearchAdminController(ILocalizationService localizationService,
+        ILogger logger,
         INotificationService notificationService,
         IProductEmbeddingService productEmbeddingService,
         ProductEmbeddingSyncTask syncTask,
@@ -31,6 +34,7 @@ public class AISearchAdminController : BasePluginController
         IStoreContext storeContext)
     {
         _localizationService = localizationService;
+        _logger = logger;
         _notificationService = notificationService;
         _productEmbeddingService = productEmbeddingService;
         _syncTask = syncTask;
@@ -112,6 +116,7 @@ public class AISearchAdminController : BasePluginController
     public async Task<IActionResult> ReindexNow()
     {
         await _syncTask.ExecuteAsync();
+        await _logger.InformationAsync("AI Search manual product embedding reindex finished.");
         await _productEmbeddingService.EnsureVectorIndexAsync();
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Widgets.AISearch.Admin.ReindexStarted"));
         return RedirectToRoute(AISearchDefaults.ConfigurationRouteName);

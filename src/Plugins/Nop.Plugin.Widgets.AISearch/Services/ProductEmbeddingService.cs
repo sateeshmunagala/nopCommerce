@@ -17,6 +17,8 @@ public class ProductEmbeddingService : IProductEmbeddingService
     private readonly ILogger _logger;
     private readonly AISearchSettings _settings;
 
+    public bool LastUpsertWasSkipped { get; private set; }
+
     public ProductEmbeddingService(IAzureOpenAiEmbeddingClient embeddingClient,
         INopDataProvider dataProvider,
         IProductContentBuilder productContentBuilder,
@@ -32,9 +34,10 @@ public class ProductEmbeddingService : IProductEmbeddingService
         _settings = settings;
     }
 
-    public async Task UpsertProductEmbeddingAsync(Product product, int storeId)
+    public async Task<bool> UpsertProductEmbeddingAsync(Product product, int storeId)
     {
         ArgumentNullException.ThrowIfNull(product);
+        LastUpsertWasSkipped = false;
 
         var content = await _productContentBuilder.BuildContentAsync(product);
         var rows = await _repository.GetAllAsync(query => query.Where(row =>
@@ -43,11 +46,17 @@ public class ProductEmbeddingService : IProductEmbeddingService
 
         if (row != null && string.Equals(row.ContentHash, content.ContentHash, StringComparison.Ordinal) &&
             row.Published == product.Published)
-            return;
+        {
+            LastUpsertWasSkipped = true;
+            return false;
+        }
 
         var embedding = await _embeddingClient.GetEmbeddingAsync(content.SourceText);
         if (embedding == null)
-            return;
+        {
+            await _logger.WarningAsync($"AI Search embedding generation returned null for ProductId {product.Id}, StoreId {storeId}.");
+            return false;
+        }
 
         if (row == null)
         {
@@ -77,6 +86,8 @@ SET [Embedding] = CAST(@vector AS VECTOR(1536))
 WHERE [Id] = @id;",
             new DataParameter("vector", JsonSerializer.Serialize(embedding)),
             new DataParameter("id", row.Id));
+
+        return true;
     }
 
     public async Task EnsureVectorIndexAsync()
@@ -114,11 +125,17 @@ WITH (METRIC = 'COSINE', TYPE = 'DISKANN');");
     public async Task<IList<int>> SearchAsync(string queryText, int storeId, int topK)
     {
         if (string.IsNullOrWhiteSpace(queryText))
+        {
+            await _logger.InformationAsync($"AI Search query '{queryText}' for StoreId {storeId} found 0 matching product ids.");
             return new List<int>();
+        }
 
         var queryEmbedding = await _embeddingClient.GetEmbeddingAsync(queryText.Trim());
         if (queryEmbedding == null)
+        {
+            await _logger.InformationAsync($"AI Search query '{queryText}' for StoreId {storeId} found 0 matching product ids.");
             return new List<int>();
+        }
 
         var take = Math.Clamp(topK > 0 ? topK : _settings.TopK, 1, 50);
         var matches = await _dataProvider.QueryAsync<VectorSearchRow>(@"
@@ -132,10 +149,13 @@ ORDER BY VECTOR_DISTANCE('cosine', [Embedding], CAST(@queryVector AS VECTOR(1536
             new DataParameter("queryVector", JsonSerializer.Serialize(queryEmbedding)),
             new DataParameter("storeId", storeId));
 
-        return matches
+        var productIds = matches
             .Where(match => 1d - match.Distance >= _settings.SimilarityThreshold)
             .Select(match => match.ProductId)
             .ToList();
+
+        await _logger.InformationAsync($"AI Search query '{queryText}' for StoreId {storeId} found {productIds.Count} matching product ids.");
+        return productIds;
     }
 
     private sealed class VectorSearchRow

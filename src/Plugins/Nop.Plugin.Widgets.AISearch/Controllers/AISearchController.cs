@@ -4,6 +4,7 @@ using Nop.Core.Domain.Catalog;
 using Nop.Plugin.Widgets.AISearch.Models;
 using Nop.Plugin.Widgets.AISearch.Services;
 using Nop.Services.Catalog;
+using Nop.Services.Logging;
 using Nop.Services.Media;
 using Nop.Services.Seo;
 using Nop.Web.Framework.Controllers;
@@ -15,6 +16,7 @@ namespace Nop.Plugin.Widgets.AISearch.Controllers;
 public class AISearchController : BasePluginController
 {
     private readonly IPriceCalculationService _priceCalculationService;
+    private readonly ILogger _logger;
     private readonly INopUrlHelper _nopUrlHelper;
     private readonly IPriceFormatter _priceFormatter;
     private readonly IPictureService _pictureService;
@@ -26,6 +28,7 @@ public class AISearchController : BasePluginController
     private readonly AISearchSettings _settings;
 
     public AISearchController(IPriceCalculationService priceCalculationService,
+        ILogger logger,
         INopUrlHelper nopUrlHelper,
         IPriceFormatter priceFormatter,
         IPictureService pictureService,
@@ -37,6 +40,7 @@ public class AISearchController : BasePluginController
         AISearchSettings settings)
     {
         _priceCalculationService = priceCalculationService;
+        _logger = logger;
         _nopUrlHelper = nopUrlHelper;
         _priceFormatter = priceFormatter;
         _pictureService = pictureService;
@@ -52,8 +56,12 @@ public class AISearchController : BasePluginController
     public async Task<IActionResult> Search([FromBody] SearchRequestModel request)
     {
         var result = new SearchResultModel();
+        var queryText = request?.Query ?? string.Empty;
         if (!_settings.Enabled || string.IsNullOrWhiteSpace(request?.Query))
+        {
+            await _logger.InformationAsync($"AI Search widget query '{queryText}' returned 0 products.");
             return Json(NoResults(result));
+        }
 
         var store = await _storeContext.GetCurrentStoreAsync();
         var productIds = await _productEmbeddingService.SearchAsync(request.Query, store.Id, _settings.TopK);
@@ -84,10 +92,14 @@ public class AISearchController : BasePluginController
         }
 
         if (!result.Products.Any())
+        {
+            await _logger.InformationAsync($"AI Search widget query '{queryText}' returned 0 products.");
             return Json(NoResults(result));
+        }
 
         result.HasResults = true;
         result.Message = $"Found {result.Products.Count} matching results";
+        await _logger.InformationAsync($"AI Search widget query '{queryText}' returned {result.Products.Count} products.");
         return Json(result);
     }
 
