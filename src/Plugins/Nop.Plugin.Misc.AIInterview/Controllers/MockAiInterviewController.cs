@@ -2344,9 +2344,22 @@ public class MockAiInterviewController : BasePluginController
         if (!await IsAuthorizedAsync())
             return Challenge();
 
-        var customer = await _workContext.GetCurrentCustomerAsync();
-        await _inviteService.DeactivateInviteAsync(id, customer.Id);
-        return Json(new { success = true, message = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Deactivated") });
+        try
+        {
+            var customer = await _workContext.GetCurrentCustomerAsync();
+            await _inviteService.DeactivateInviteAsync(id, customer.Id);
+            var successMessage = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Deactivated");
+            return InviteMutationResult(true, successMessage);
+        }
+        catch (NopException ex)
+        {
+            return InviteMutationResult(false, ex.Message);
+        }
+        catch (Exception)
+        {
+            var errorMessage = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Error");
+            return InviteMutationResult(false, errorMessage);
+        }
     }
 
     protected virtual DateTime? NormalizeInviteExpiryDateUtc(DateTime? expiryDateUtc)

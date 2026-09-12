@@ -11868,35 +11868,75 @@ a.ai-home-performer-name:focus-visible {
 }
 
 .html-aiinterview-employer-dashboard-page .employer-invite-panel {
-    margin-top: 8px;
+    margin-top: 6px;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-summary {
-    padding: 10px 14px;
+    padding: 8px 12px;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-body {
-    padding: 12px 14px 14px;
+    padding: 10px 12px 12px;
 }
 
 .html-aiinterview-employer-dashboard-page .invite-form-layout {
     display: grid;
-    gap: 12px;
+    gap: 10px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+    align-items: start;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    margin: 0;
+    gap: 4px;
+    min-width: 0;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field label {
+    display: block;
+    width: auto;
+    margin: 0;
+    text-align: left;
+    color: #30363c;
+    font-family: "Fjalla One", Arial, sans-serif;
+    font-size: 0.88rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
 }
 
 .html-aiinterview-employer-dashboard-page .invite-field-wide {
     grid-column: 1 / -1;
 }
 
-.html-aiinterview-employer-dashboard-page .invite-field-email textarea {
+.html-aiinterview-employer-dashboard-page .invite-field input,
+.html-aiinterview-employer-dashboard-page .invite-field select,
+.html-aiinterview-employer-dashboard-page .invite-field textarea {
+    box-sizing: border-box;
     width: 100%;
-    min-height: 72px;
+    max-width: 100%;
+    margin: 0;
+    text-align: left;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-email textarea {
+    min-height: 68px;
     resize: vertical;
 }
 
 .html-aiinterview-employer-dashboard-page .field-help-text {
     display: block;
-    font-size: 0.8rem;
+    width: 100%;
+    text-align: left;
+    font-size: 0.78rem;
     color: #6c7a89;
     margin-top: 2px;
 }
@@ -11904,17 +11944,19 @@ a.ai-home-performer-name:focus-visible {
 .html-aiinterview-employer-dashboard-page .invite-form-actions-row {
     display: flex;
     justify-content: flex-end;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 .html-aiinterview-employer-dashboard-page .invite-form-actions-row .button-1 {
-    min-width: 180px;
-    min-height: 40px;
+    min-width: 160px;
+    min-height: 38px;
+    padding: 8px 18px;
 }
 
 @media (max-width: 768px) {
     .html-aiinterview-employer-dashboard-page .invite-form-row {
         grid-template-columns: 1fr;
+        gap: 10px;
     }
 
     .html-aiinterview-employer-dashboard-page .invite-form-actions-row .button-1 {

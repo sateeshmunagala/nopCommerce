@@ -49,13 +49,13 @@
                 <div class="dashboard-collapsible-body">
                     <div class="invite-fieldset">
                         <div class="form-fields invite-form-layout">
-                            <div class="inputs invite-field invite-field-wide invite-field-email">
+                            <div class="invite-field invite-field-wide invite-field-email">
                                 <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
                                 <textarea id="invite-email" name="email" rows="3" required class="form-control" placeholder="@T("Plugins.Misc.AIInterview.Employer.Invite.EmailPlaceholder")"></textarea>
                                 <span class="field-help-text">@T("Plugins.Misc.AIInterview.Employer.Invite.EmailHelpText")</span>
                             </div>
                             <div class="invite-form-row">
-                                <div class="inputs invite-field invite-field-product">
+                                <div class="invite-field invite-field-product">
                                     <label for="productId">@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
                                     <select id="productId" name="productId" required class="form-control">
                                         @foreach (var option in Model.AvailableProducts)
@@ -64,7 +64,7 @@
                                         }
                                     </select>
                                 </div>
-                                <div class="inputs invite-field invite-field-expiry">
+                                <div class="invite-field invite-field-expiry">
                                     <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
                                     <input id="expiryDateUtc" type="date" name="expiryDateUtc" value="@(Model.ExpiryDateUtc?.ToString("yyyy-MM-dd"))" class="form-control" min="@inviteExpiryMin" max="@inviteExpiryMax" />
                                 </div>

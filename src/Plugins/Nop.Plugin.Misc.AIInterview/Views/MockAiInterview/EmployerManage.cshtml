@@ -36,12 +36,12 @@
                 <div class="fieldset">
                     <div class="invite-fieldset">
                     <div class="form-fields invite-form-grid">
-                        <div class="inputs invite-field invite-field-wide">
+                        <div class="invite-field invite-field-wide">
                             <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
                             <textarea id="invite-email" name="email" rows="3" required class="form-control" placeholder="@T("Plugins.Misc.AIInterview.Employer.Invite.EmailPlaceholder")"></textarea>
                             <span class="field-help-text">@T("Plugins.Misc.AIInterview.Employer.Invite.EmailHelpText")</span>
                         </div>
-                        <div class="inputs invite-field">
+                        <div class="invite-field">
                             <label for="productId">@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
                             <select id="productId" name="productId" required class="form-control">
                                 @foreach (var option in availableProducts)
@@ -50,11 +50,11 @@
                                 }
                             </select>
                         </div>
-                        <div class="inputs invite-field">
+                        <div class="invite-field">
                             <label for="maxAttempts">@T("Plugins.Misc.AIInterview.Employer.Invite.MaxAttempts"):</label>
                             <input id="maxAttempts" type="number" name="maxAttempts" value="1" required class="form-control" />
                         </div>
-                        <div class="inputs invite-field">
+                        <div class="invite-field">
                             <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
                             <input id="expiryDateUtc" type="datetime-local" name="expiryDateUtc" class="form-control" min="@inviteExpiryMin" max="@inviteExpiryMax" />
                         </div>
