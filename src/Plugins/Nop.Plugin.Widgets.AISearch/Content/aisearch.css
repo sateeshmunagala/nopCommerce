@@ -94,11 +94,6 @@ body.aisearch-overlay-open .aisearch-widget-root .aisearch-panel {
     min-width: 0;
 }
 
-.aisearch-widget-root #aisearch-assistview .e-view-content,
-.aisearch-widget-root #aisearch-assistview .e-toolbar {
-    display: none;
-}
-
 .aisearch-widget-root .aisearch-search-button {
     background: #2563eb;
     border: 0;

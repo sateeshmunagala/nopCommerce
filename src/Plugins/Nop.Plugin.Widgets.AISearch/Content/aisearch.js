@@ -48,49 +48,35 @@
             results.appendChild(message);
         }
 
+        function escapeHtml(value) {
+            var element = document.createElement('div');
+            element.textContent = value == null ? '' : String(value);
+            return element.innerHTML;
+        }
+
         function render(payload) {
-            results.replaceChildren();
-            var message = document.createElement('p');
-            message.className = 'aisearch-message';
-            message.textContent = payload.message || payload.Message || '';
-            results.appendChild(message);
+            var html = '<p class="aisearch-message">' +
+                escapeHtml(payload.message || payload.Message || '') + '</p>';
 
             var products = payload.products || payload.Products || [];
             if (!products.length)
-                return;
+                return html;
 
-            var grid = document.createElement('div');
-            grid.className = 'aisearch-product-grid';
+            html += '<div class="aisearch-product-grid">';
             products.forEach(function (product) {
                 var id = product.id || product.Id;
                 var name = product.name || product.Name || '';
                 var pictureUrl = product.pictureUrl || product.PictureUrl || '';
                 var formattedPrice = product.formattedPrice || product.FormattedPrice || '';
                 var url = product.url || product.Url || '#';
-                var card = document.createElement('article');
-                card.className = 'aisearch-product-card';
-
-                var image = document.createElement('img');
-                image.src = pictureUrl;
-                image.alt = name;
-                image.loading = 'lazy';
-
-                var title = document.createElement('h3');
-                title.textContent = name;
-
-                var price = document.createElement('p');
-                price.className = 'aisearch-product-price';
-                price.textContent = formattedPrice;
-
-                var link = document.createElement('a');
-                link.href = url;
-                link.textContent = 'View';
-                link.setAttribute('data-product-id', id);
-
-                card.append(image, title, price, link);
-                grid.appendChild(card);
+                html += '<article class="aisearch-product-card">' +
+                    '<img src="' + escapeHtml(pictureUrl) + '" alt="' + escapeHtml(name) + '" loading="lazy">' +
+                    '<h3>' + escapeHtml(name) + '</h3>' +
+                    '<p class="aisearch-product-price">' + escapeHtml(formattedPrice) + '</p>' +
+                    '<a href="' + escapeHtml(url) + '" data-product-id="' + escapeHtml(id) + '">View</a>' +
+                    '</article>';
             });
-            results.appendChild(grid);
+            return html + '</div>';
         }
 
         async function search(query) {
@@ -98,7 +84,8 @@
             if (!query)
                 return;
 
-            showLoading();
+            if (!assistView)
+                showLoading();
             try {
                 var token = root.querySelector('input[name="__RequestVerificationToken"]');
                 var response = await fetch(root.dataset.searchUrl, {
@@ -112,9 +99,16 @@
                 });
                 if (!response.ok)
                     throw new Error('Search request failed');
-                render(await response.json());
+                var responseHtml = render(await response.json());
+                if (assistView)
+                    assistView.addPromptResponse(responseHtml);
+                else
+                    results.innerHTML = responseHtml;
             } catch (error) {
-                showError();
+                if (assistView)
+                    assistView.addPromptResponse('<p class="aisearch-message">Something went wrong, please try again</p>');
+                else
+                    showError();
             }
         }
 
