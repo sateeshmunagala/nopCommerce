@@ -2413,6 +2413,8 @@ public class SponsorInviteService : ISponsorInviteService
     private readonly Nop.Core.IStoreContext _storeContext;
     private readonly IWebHelper _webHelper;
     private readonly IJobProductAccessService _jobProductAccessService;
+    private readonly Nop.Services.Messages.IQueuedEmailService _queuedEmailService;
+    private readonly Nop.Services.Messages.ITokenizer _tokenizer;
 
     public SponsorInviteService(IRepository<SponsorInvite> inviteRepository,
         Nop.Services.Catalog.IProductService productService,
@@ -2424,7 +2426,9 @@ public class SponsorInviteService : ISponsorInviteService
         Nop.Core.Domain.Messages.EmailAccountSettings emailAccountSettings = null,
         Nop.Core.IStoreContext storeContext = null,
         IWebHelper webHelper = null,
-        IJobProductAccessService jobProductAccessService = null)
+        IJobProductAccessService jobProductAccessService = null,
+        Nop.Services.Messages.IQueuedEmailService queuedEmailService = null,
+        Nop.Services.Messages.ITokenizer tokenizer = null)
     {
         _inviteRepository = inviteRepository;
         _productService = productService;
@@ -2437,6 +2441,8 @@ public class SponsorInviteService : ISponsorInviteService
         _storeContext = storeContext;
         _webHelper = webHelper;
         _jobProductAccessService = jobProductAccessService;
+        _queuedEmailService = queuedEmailService;
+        _tokenizer = tokenizer;
     }
 
     public async Task InsertSponsorInviteAsync(SponsorInvite invite)
@@ -2545,14 +2551,44 @@ public class SponsorInviteService : ISponsorInviteService
                 new("AIInterview.ExpiryDate", invite.ExpiryDateUtc?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? string.Empty)
             };
 
-            await _workflowMessageService.SendNotificationAsync(
-                template,
-                emailAccount,
-                languageId,
-                tokens,
-                invite.Email,
-                invite.Email,
-                ignoreDelayBeforeSend: true);
+            var sponsor = invite.SponsorId > 0 ? await _customerService.GetCustomerByIdAsync(invite.SponsorId) : null;
+            var sponsorEmail = sponsor?.Email;
+            var ccSponsor = !string.IsNullOrWhiteSpace(sponsorEmail) && !string.Equals(sponsorEmail, invite.Email, StringComparison.OrdinalIgnoreCase) && _queuedEmailService != null && _tokenizer != null;
+            if (!ccSponsor)
+            {
+                await _workflowMessageService.SendNotificationAsync(
+                    template,
+                    emailAccount,
+                    languageId,
+                    tokens,
+                    invite.Email,
+                    invite.Email,
+                    ignoreDelayBeforeSend: true);
+                return;
+            }
+
+            var bcc = await _localizationService.GetLocalizedAsync(template, mt => mt.BccEmailAddresses, languageId);
+            var subject = await _localizationService.GetLocalizedAsync(template, mt => mt.Subject, languageId);
+            var body = await _localizationService.GetLocalizedAsync(template, mt => mt.Body, languageId);
+            var subjectReplaced = _tokenizer.Replace(subject, tokens, false);
+            var bodyReplaced = _tokenizer.Replace(body, tokens, true);
+
+            var queuedEmail = new Nop.Core.Domain.Messages.QueuedEmail
+            {
+                Priority = Nop.Core.Domain.Messages.QueuedEmailPriority.High,
+                From = emailAccount.Email,
+                FromName = emailAccount.DisplayName,
+                To = invite.Email,
+                ToName = invite.Email,
+                CC = sponsorEmail,
+                Bcc = bcc,
+                Subject = subjectReplaced,
+                Body = bodyReplaced,
+                AttachedDownloadId = template.AttachedDownloadId,
+                CreatedOnUtc = DateTime.UtcNow,
+                EmailAccountId = emailAccount.Id
+            };
+            await _queuedEmailService.InsertQueuedEmailAsync(queuedEmail);
         }
         catch
         {
