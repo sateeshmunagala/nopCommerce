@@ -5,7 +5,6 @@
         var overlay = root.querySelector('.aisearch-overlay');
         var openButton = root.querySelector('.aisearch-floating-button');
         var closeButton = root.querySelector('.aisearch-close-button');
-        var searchButton = root.querySelector('.aisearch-search-button');
         var results = root.querySelector('#aisearch-results');
         var licenseKey = root.dataset.licenseKey;
         var assistView;
@@ -73,7 +72,7 @@
                     '<img src="' + escapeHtml(pictureUrl) + '" alt="' + escapeHtml(name) + '" loading="lazy">' +
                     '<h3>' + escapeHtml(name) + '</h3>' +
                     '<p class="aisearch-product-price">' + escapeHtml(formattedPrice) + '</p>' +
-                    '<a href="' + escapeHtml(url) + '" data-product-id="' + escapeHtml(id) + '">View</a>' +
+                    '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" data-product-id="' + escapeHtml(id) + '">View</a>' +
                     '</article>';
             });
             return html + '</div>';
@@ -88,7 +87,7 @@
                 showLoading();
             try {
                 var token = root.querySelector('input[name="__RequestVerificationToken"]');
-                var response = await fetch(root.dataset.searchUrl, {
+                var responsePromise = fetch(root.dataset.searchUrl, {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
@@ -97,16 +96,19 @@
                     },
                     body: JSON.stringify({ query: query, storeId: Number(root.dataset.storeId) })
                 });
+                if (assistView)
+                    assistView.addPromptResponse('<p class="aisearch-message">Thinking...</p>', false);
+                var response = await responsePromise;
                 if (!response.ok)
                     throw new Error('Search request failed');
                 var responseHtml = render(await response.json());
                 if (assistView)
-                    assistView.addPromptResponse(responseHtml);
+                    assistView.addPromptResponse(responseHtml, true);
                 else
                     results.innerHTML = responseHtml;
             } catch (error) {
                 if (assistView)
-                    assistView.addPromptResponse('<p class="aisearch-message">Something went wrong, please try again</p>');
+                    assistView.addPromptResponse('<p class="aisearch-message">Something went wrong, please try again</p>', true);
                 else
                     showError();
             }
@@ -118,10 +120,10 @@
             if (event.target === overlay)
                 setOpen(false);
         });
-        searchButton.addEventListener('click', function () { search(); });
 
         if (window.ej && ej.interactivechat) {
             assistView = new ej.interactivechat.AIAssistView({
+                height: 'auto',
                 promptPlaceholder: 'Describe what you are looking for',
                 promptRequest: function (args) { search(args.prompt); }
             });

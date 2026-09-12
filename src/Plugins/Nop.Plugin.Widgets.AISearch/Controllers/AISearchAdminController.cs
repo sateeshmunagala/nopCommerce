@@ -88,7 +88,7 @@ public class AISearchAdminController : BasePluginController
         var settings = await _settingService.LoadSettingAsync<AISearchSettings>(storeScope);
         settings.Enabled = model.Enabled;
         settings.AzureOpenAiEndpointUrl = model.AzureOpenAiEndpointUrl;
-        settings.AzureOpenAiApiKey = model.AzureOpenAiApiKey;
+        settings.AzureOpenAiApiKey = PreserveSecretIfBlank(model.AzureOpenAiApiKey, settings.AzureOpenAiApiKey);
         settings.AzureOpenAiEmbeddingDeploymentName = model.AzureOpenAiEmbeddingDeploymentName;
         settings.AzureOpenAiApiVersion = model.AzureOpenAiApiVersion;
         settings.TopK = Math.Clamp(model.TopK, 1, 50);
@@ -120,5 +120,10 @@ public class AISearchAdminController : BasePluginController
         await _productEmbeddingService.EnsureVectorIndexAsync();
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Widgets.AISearch.Admin.ReindexStarted"));
         return RedirectToRoute(AISearchDefaults.ConfigurationRouteName);
+    }
+
+    private static string PreserveSecretIfBlank(string submittedValue, string currentValue)
+    {
+        return string.IsNullOrWhiteSpace(submittedValue) ? currentValue : submittedValue;
     }
 }

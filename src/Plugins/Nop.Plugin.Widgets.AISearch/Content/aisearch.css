@@ -70,12 +70,20 @@ body.aisearch-overlay-open .aisearch-widget-root .aisearch-panel {
 }
 
 .aisearch-widget-root .aisearch-close-button {
+    align-items: center;
     background: transparent;
     border: 0;
+    color: #111827;
     cursor: pointer;
+    display: flex;
     font-size: 20px;
     height: 40px;
+    justify-content: center;
+    min-height: 40px;
+    min-width: 40px;
+    position: relative;
     width: 40px;
+    z-index: 10;
 }
 
 .aisearch-widget-root .aisearch-body {
@@ -83,25 +91,8 @@ body.aisearch-overlay-open .aisearch-widget-root .aisearch-panel {
     padding: 18px;
 }
 
-.aisearch-widget-root .aisearch-input-row {
-    align-items: flex-end;
-    display: grid;
-    gap: 12px;
-    grid-template-columns: minmax(0, 1fr) auto;
-}
-
 .aisearch-widget-root #aisearch-assistview {
     min-width: 0;
-}
-
-.aisearch-widget-root .aisearch-search-button {
-    background: #2563eb;
-    border: 0;
-    border-radius: 6px;
-    color: #fff;
-    cursor: pointer;
-    min-height: 42px;
-    padding: 0 20px;
 }
 
 .aisearch-widget-root .aisearch-results {
@@ -115,17 +106,20 @@ body.aisearch-overlay-open .aisearch-widget-root .aisearch-panel {
 }
 
 .aisearch-widget-root .aisearch-product-grid {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 16px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .aisearch-widget-root .aisearch-product-card {
+    align-items: start;
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
-    display: flex;
-    flex-direction: column;
+    column-gap: 12px;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
     min-width: 0;
     padding: 12px;
     width: 100%;
@@ -133,24 +127,29 @@ body.aisearch-overlay-open .aisearch-widget-root .aisearch-panel {
 
 .aisearch-widget-root .aisearch-product-card img {
     aspect-ratio: 1;
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    height: 64px;
     object-fit: cover;
-    width: 100%;
+    width: 64px;
 }
 
 .aisearch-widget-root .aisearch-product-card h3 {
     font-size: 15px;
-    margin: 10px 0 6px;
+    grid-column: 2;
+    margin: 0 0 4px;
 }
 
 .aisearch-widget-root .aisearch-product-price {
     color: #111827;
     font-weight: 600;
-    margin: 0 0 10px;
+    grid-column: 2;
+    margin: 0 0 4px;
 }
 
 .aisearch-widget-root .aisearch-product-card a {
     color: #2563eb;
-    margin-top: auto;
+    grid-column: 2;
 }
 
 .aisearch-widget-root .aisearch-loading-spinner {
@@ -167,18 +166,13 @@ body.aisearch-overlay-open .aisearch-widget-root .aisearch-panel {
     to { transform: rotate(360deg); }
 }
 
-@media (max-width: 1024px) {
-    .aisearch-widget-root .aisearch-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
 @media (max-width: 767px) {
     .aisearch-widget-root .aisearch-overlay { padding: 0; }
     .aisearch-widget-root .aisearch-panel { border-radius: 0; height: 100%; max-height: 100%; max-width: none; }
     .aisearch-widget-root .aisearch-header { background: #fff; position: sticky; top: 0; z-index: 1; }
-    .aisearch-widget-root .aisearch-body { flex: 1; overflow: auto; }
+    .aisearch-widget-root .aisearch-body { overflow: auto; }
 }
 
 @media (max-width: 639px) {
-    .aisearch-widget-root .aisearch-input-row { grid-template-columns: 1fr; }
-    .aisearch-widget-root .aisearch-product-grid { gap: 12px; grid-template-columns: 1fr; }
+    .aisearch-widget-root .aisearch-product-grid { gap: 12px; }
 }
