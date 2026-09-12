@@ -1,0 +1,116 @@
+@model Nop.Plugin.Widgets.AISearch.Models.ConfigurationModel
+@using Nop.Web.Areas.Admin.Components
+
+@{
+    Layout = "_ConfigurePlugin";
+}
+
+<form asp-route="@AISearchDefaults.ConfigurationRouteName" method="post">
+    <section class="content">
+        <div class="container-fluid">
+            @await Component.InvokeAsync(typeof(StoreScopeConfigurationViewComponent))
+            <div class="card card-default">
+                <div class="card-body">
+                    <div class="form-group row">
+                        <div class="col-md-3">
+                            @if (Model.ActiveStoreScopeConfiguration > 0)
+                            {
+                                <nop-override-store-checkbox asp-for="Enabled_OverrideForStore" asp-input="Enabled" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            }
+                            <nop-label asp-for="Enabled" />
+                        </div>
+                        <div class="col-md-9"><nop-editor asp-for="Enabled" /><span asp-validation-for="Enabled"></span></div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3">
+                            @if (Model.ActiveStoreScopeConfiguration > 0)
+                            {
+                                <nop-override-store-checkbox asp-for="AzureOpenAiEndpointUrl_OverrideForStore" asp-input="AzureOpenAiEndpointUrl" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            }
+                            <nop-label asp-for="AzureOpenAiEndpointUrl" />
+                        </div>
+                        <div class="col-md-9"><nop-editor asp-for="AzureOpenAiEndpointUrl" /><span asp-validation-for="AzureOpenAiEndpointUrl"></span></div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3">
+                            @if (Model.ActiveStoreScopeConfiguration > 0)
+                            {
+                                <nop-override-store-checkbox asp-for="AzureOpenAiApiKey_OverrideForStore" asp-input="AzureOpenAiApiKey" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            }
+                            <nop-label asp-for="AzureOpenAiApiKey" />
+                        </div>
+                        <div class="col-md-9"><input asp-for="AzureOpenAiApiKey" type="password" autocomplete="new-password" class="form-control" /><span asp-validation-for="AzureOpenAiApiKey"></span></div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3">
+                            @if (Model.ActiveStoreScopeConfiguration > 0)
+                            {
+                                <nop-override-store-checkbox asp-for="AzureOpenAiEmbeddingDeploymentName_OverrideForStore" asp-input="AzureOpenAiEmbeddingDeploymentName" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            }
+                            <nop-label asp-for="AzureOpenAiEmbeddingDeploymentName" />
+                        </div>
+                        <div class="col-md-9"><nop-editor asp-for="AzureOpenAiEmbeddingDeploymentName" /><span asp-validation-for="AzureOpenAiEmbeddingDeploymentName"></span></div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3">
+                            @if (Model.ActiveStoreScopeConfiguration > 0)
+                            {
+                                <nop-override-store-checkbox asp-for="AzureOpenAiApiVersion_OverrideForStore" asp-input="AzureOpenAiApiVersion" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            }
+                            <nop-label asp-for="AzureOpenAiApiVersion" />
+                        </div>
+                        <div class="col-md-9"><nop-editor asp-for="AzureOpenAiApiVersion" /><span asp-validation-for="AzureOpenAiApiVersion"></span></div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3">
+                            @if (Model.ActiveStoreScopeConfiguration > 0)
+                            {
+                                <nop-override-store-checkbox asp-for="TopK_OverrideForStore" asp-input="TopK" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            }
+                            <nop-label asp-for="TopK" />
+                        </div>
+                        <div class="col-md-9"><nop-editor asp-for="TopK" /><span asp-validation-for="TopK"></span></div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3">
+                            @if (Model.ActiveStoreScopeConfiguration > 0)
+                            {
+                                <nop-override-store-checkbox asp-for="SimilarityThreshold_OverrideForStore" asp-input="SimilarityThreshold" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            }
+                            <nop-label asp-for="SimilarityThreshold" />
+                        </div>
+                        <div class="col-md-9"><nop-editor asp-for="SimilarityThreshold" /><span asp-validation-for="SimilarityThreshold"></span></div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3">
+                            @if (Model.ActiveStoreScopeConfiguration > 0)
+                            {
+                                <nop-override-store-checkbox asp-for="SyncFusionLicenseKey_OverrideForStore" asp-input="SyncFusionLicenseKey" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            }
+                            <nop-label asp-for="SyncFusionLicenseKey" />
+                        </div>
+                        <div class="col-md-9"><nop-editor asp-for="SyncFusionLicenseKey" /><span asp-validation-for="SyncFusionLicenseKey"></span></div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-3">
+                            @if (Model.ActiveStoreScopeConfiguration > 0)
+                            {
+                                <nop-override-store-checkbox asp-for="ReindexIntervalMinutes_OverrideForStore" asp-input="ReindexIntervalMinutes" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                            }
+                            <nop-label asp-for="ReindexIntervalMinutes" />
+                        </div>
+                        <div class="col-md-9"><nop-editor asp-for="ReindexIntervalMinutes" /><span asp-validation-for="ReindexIntervalMinutes"></span></div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-9 offset-md-3">
+                            <button type="submit" class="btn btn-primary"><i class="far fa-save"></i> @T("Admin.Common.Save")</button>
+                            <button type="submit" class="btn btn-secondary" formaction="@Url.RouteUrl(AISearchDefaults.ReindexRouteName)">
+                                <i class="fas fa-sync"></i> @T("Plugins.Widgets.AISearch.Admin.ReindexNow")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</form>

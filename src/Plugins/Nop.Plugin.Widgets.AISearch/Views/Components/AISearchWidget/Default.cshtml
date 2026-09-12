@@ -1,0 +1,41 @@
+@inject AISearchSettings AISearchSettings
+@inject IStoreContext StoreContext
+
+@{
+    var store = await StoreContext.GetCurrentStoreAsync();
+    var searchUrl = Url.RouteUrl(AISearchDefaults.PublicSearchRouteName);
+}
+
+<link rel="stylesheet" href="https://cdn.syncfusion.com/ej2/34.2.2/material.css" />
+<link rel="stylesheet" href="~/Plugins/Widgets.AISearch/Content/aisearch.css" />
+
+<div class="aisearch-widget-root"
+     data-search-url="@searchUrl"
+     data-store-id="@store.Id"
+     data-license-key="@AISearchSettings.SyncFusionLicenseKey">
+    @Html.AntiForgeryToken()
+    <button type="button" class="aisearch-floating-button" aria-label="Open AI Search" aria-controls="aisearch-overlay">
+        <i class="fa-solid fa-comment-dots" aria-hidden="true"></i>
+    </button>
+
+    <div id="aisearch-overlay" class="aisearch-overlay" aria-hidden="true">
+        <section class="aisearch-panel" role="dialog" aria-modal="true" aria-labelledby="aisearch-title">
+            <header class="aisearch-header">
+                <h2 id="aisearch-title">AI Search</h2>
+                <button type="button" class="aisearch-close-button" aria-label="Close AI Search">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </header>
+            <div class="aisearch-body">
+                <div class="aisearch-input-row">
+                    <div id="aisearch-assistview"></div>
+                    <button type="button" class="aisearch-search-button">Search</button>
+                </div>
+                <div id="aisearch-results" class="aisearch-results" aria-live="polite"></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="https://cdn.syncfusion.com/ej2/34.2.2/dist/ej2.min.js"></script>
+<script src="~/Plugins/Widgets.AISearch/Content/aisearch.js"></script>

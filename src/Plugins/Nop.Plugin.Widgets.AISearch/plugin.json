@@ -1,0 +1,11 @@
+{
+  "Group": "Widgets",
+  "FriendlyName": "AI Product Search (Azure OpenAI)",
+  "SystemName": "Widgets.AISearch",
+  "Version": "1.00",
+  "SupportedVersions": ["5.00"],
+  "Author": "JobBoardVenture",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.Widgets.AISearch.dll",
+  "Description": ""
+}
