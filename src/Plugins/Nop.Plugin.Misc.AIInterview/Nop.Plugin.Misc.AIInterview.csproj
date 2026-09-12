@@ -29,6 +29,7 @@
     <None Remove="Content\js\aiinterview-job-card.js" />
     <None Remove="logo.png" />
     <None Remove="plugin.json" />
+    <None Remove="Views\Admin\MockPracticeSessions.cshtml" />
     <None Remove="Views\InstituteCandidates.cshtml" />
     <None Remove="Views\InstituteCredits.cshtml" />
     <None Remove="Views\InstituteDashboard.cshtml" />
@@ -114,6 +115,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="plugin.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\MockPracticeSessions.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Apply.cshtml">
@@ -314,9 +318,6 @@
 
   <ItemGroup>
     <None Update="Content\css\aiinterview-admin.css">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Views\Admin\MockPracticeSessions.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

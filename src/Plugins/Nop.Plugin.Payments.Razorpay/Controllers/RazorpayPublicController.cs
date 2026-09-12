@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Plugin.Payments.Razorpay.Services;
 using Nop.Services.Common;
+using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Orders;
@@ -26,6 +27,7 @@ public class RazorpayPublicController : BasePublicController
     private readonly IGenericAttributeService _genericAttributeService;
     private readonly ILocalizationService _localizationService;
     private readonly ILogger _logger;
+    private readonly ICurrencyService _currencyService;
 
     public RazorpayPublicController(
         RazorpayHttpClient razorpayHttpClient,
@@ -36,7 +38,8 @@ public class RazorpayPublicController : BasePublicController
         IStoreContext storeContext,
         IGenericAttributeService genericAttributeService,
         ILocalizationService localizationService,
-        ILogger logger)
+        ILogger logger,
+        ICurrencyService currencyService)
     {
         _razorpayHttpClient = razorpayHttpClient;
         _razorpayPaymentSettings = razorpayPaymentSettings;
@@ -47,6 +50,7 @@ public class RazorpayPublicController : BasePublicController
         _genericAttributeService = genericAttributeService;
         _localizationService = localizationService;
         _logger = logger;
+        _currencyService = currencyService;
     }
 
     [HttpPost]
@@ -68,22 +72,32 @@ public class RazorpayPublicController : BasePublicController
             var (shoppingCartTotal, _, _, _, _, _) = await _orderTotalCalculationService.GetShoppingCartTotalAsync(cart);
             if (!shoppingCartTotal.HasValue || shoppingCartTotal.Value <= 0)
             {
-                await _logger.WarningAsync($"Razorpay CreateOrder: Empty cart for CustomerId: {customer.Id}, StoreId: {store.Id}");
+                await _logger.ErrorAsync($"Razorpay CreateOrder: Empty cart for CustomerId: {customer.Id}, StoreId: {store.Id}");
                 return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.EmptyCart") });
             }
 
             var currency = await _workContext.GetWorkingCurrencyAsync();
             var currencyCode = currency.CurrencyCode;
-            
-            if (!currencyCode.Equals("INR", StringComparison.OrdinalIgnoreCase))
+
+            // 1. ALLOW BOTH INR AND USD
+            var allowedCurrencies = new[] { "INR", "USD" };
+            if (!allowedCurrencies.Contains(currencyCode, StringComparer.OrdinalIgnoreCase))
             {
-                await _logger.WarningAsync($"Razorpay CreateOrder: Unsupported currency '{currencyCode}' for CustomerId: {customer.Id}, StoreId: {store.Id}");
+                await _logger.ErrorAsync($"Razorpay CreateOrder: Unsupported currency '{currencyCode}' for CustomerId: {customer.Id}, StoreId: {store.Id}");
                 return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.UnsupportedCurrency") });
             }
 
-            // Razorpay uses subunit (e.g. paisa for INR). Multiplier is 100 for most currencies.
-            var amountInSubunits = shoppingCartTotal.Value * 100;
-            
+            var workingCurrency = await _workContext.GetWorkingCurrencyAsync();
+
+            // Convert the cart total from primary currency (INR) to user's working currency (USD or INR)
+            decimal amountInWorkingCurrency = await _currencyService.ConvertFromPrimaryStoreCurrencyAsync(
+                shoppingCartTotal.Value,
+                workingCurrency
+            );
+
+            // Convert to whole-number subunits for Razorpay (cents for USD, paise for INR)
+            var amountInSubunits = (long)Math.Round(amountInWorkingCurrency * 100, 0);
+
             var receiptId = Guid.NewGuid().ToString("N");
 
             var razorpayOrderId = await _razorpayHttpClient.CreateOrderAsync(
@@ -102,7 +116,7 @@ public class RazorpayPublicController : BasePublicController
             { 
                 keyId = _razorpayPaymentSettings.KeyId,
                 orderId = razorpayOrderId,
-                amount = Math.Round(amountInSubunits, 0),
+                amount = amountInSubunits,
                 currency = currencyCode,
                 name = store.Name,
                 description = "Order Payment",

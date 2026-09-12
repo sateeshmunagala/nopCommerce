@@ -388,8 +388,10 @@ public class MockAiInterviewController : BasePluginController
 
     protected virtual string MaskToken(string token)
     {
-        if (string.IsNullOrWhiteSpace(token)) return string.Empty;
-        if (token.Length <= 6) return "*****";
+        if (string.IsNullOrWhiteSpace(token))
+            return string.Empty;
+        if (token.Length <= 6)
+            return "*****";
         return token.Substring(0, 6) + "...";
     }
 
@@ -1532,14 +1534,14 @@ public class MockAiInterviewController : BasePluginController
         var restartUrl = Url?.RouteUrl("Homepage") ?? "/";
         if (session?.ProductId > 0 && _urlRecordService != null)
         {
-                var product = await _productService.GetProductByIdAsync(session.ProductId);
-                if (product != null)
-                {
-                    var seName = await _urlRecordService.GetSeNameAsync(product);
-                    if (!string.IsNullOrWhiteSpace(seName))
-                        restartUrl = $"/{seName}?interviewError=expired";
-                }
+            var product = await _productService.GetProductByIdAsync(session.ProductId);
+            if (product != null)
+            {
+                var seName = await _urlRecordService.GetSeNameAsync(product);
+                if (!string.IsNullOrWhiteSpace(seName))
+                    restartUrl = $"/{seName}?interviewError=expired";
             }
+        }
 
         return restartUrl;
     }
@@ -2040,6 +2042,12 @@ public class MockAiInterviewController : BasePluginController
     {
         if (_interviewRuntimeService == null)
             return Json(new { success = false, message = "Recording upload is unavailable." });
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            _logger.LogError("AI Interview recording upload failure: Token is missing or blank.");
+            return Json(new { success = false, message = "The recording upload token is missing or blank." });
+        }
 
         var result = await _interviewRuntimeService.UploadRecordingAsync(token, recording);
         if (result == null || !result.Success)

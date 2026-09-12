@@ -78,6 +78,9 @@
     <Content Update="Themes\JobBoardVenture\Views\Catalog\CategoryTemplate.Pricing.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Update="Themes\JobBoardVenture\Views\Product\ProductTemplate.JobDetails.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- This target execute after "Build" target.

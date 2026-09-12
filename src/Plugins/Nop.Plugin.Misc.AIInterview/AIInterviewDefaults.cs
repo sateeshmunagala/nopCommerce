@@ -1,4 +1,4 @@
-namespace Nop.Plugin.Misc.AIInterview;
+﻿namespace Nop.Plugin.Misc.AIInterview;
 
 /// <summary>
 /// Represents plugin constants
@@ -207,7 +207,7 @@ public static class AIInterviewDefaults
     public const string DefaultRecordingSourceMode = "ScreenPreferred";
     public const int DefaultRecordingUploadTimeoutMs = 15000;
     public const int MinRecordingUploadTimeoutMs = 5000;
-    public const int MaxRecordingUploadTimeoutMs = 60000;
+    public const int MaxRecordingUploadTimeoutMs = 120000;
     public const int DefaultFinalizationWaitTimeoutMs = 10000;
     public const int MinFinalizationWaitTimeoutMs = 5000;
     public const int MaxFinalizationWaitTimeoutMs = 45000;

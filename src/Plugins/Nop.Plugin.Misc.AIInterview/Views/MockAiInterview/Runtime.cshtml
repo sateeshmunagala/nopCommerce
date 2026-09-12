@@ -516,7 +516,7 @@
         const recordingUploadMaxBytes = clampNumber(config.recordingUploadMaxMb, 100, 80, 250) * 1024 * 1024;
         const recordingVideoBitsPerSecond = clampNumber(config.recordingVideoBitsPerSecond, 650000, 350000, 1200000);
         const recordingAudioBitsPerSecond = clampNumber(config.recordingAudioBitsPerSecond, 64000, 32000, 128000);
-        const recordingUploadTimeoutMs = clampNumber(config.recordingUploadTimeoutMs, 15000, 5000, 60000);
+        const recordingUploadTimeoutMs = clampNumber(config.recordingUploadTimeoutMs, 15000, 5000, 120000);
         const minimumFinalizationWaitMs = recordingUploadTimeoutMs + 5000;
         const finalizationUpperBoundMs = Math.max(45000, minimumFinalizationWaitMs);
         const receivedFinalizationWaitTimeoutMs = clampNumber(config.finalizationWaitTimeoutMs, 10000, 5000, finalizationUpperBoundMs);
