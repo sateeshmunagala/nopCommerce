@@ -2890,12 +2890,17 @@ public class AIInterviewController : BasePluginController
             .ToList();
         var wallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
 
+        var invitesSent = invites.Count(i => i.IsActive && (!i.ExpiryDateUtc.HasValue || i.ExpiryDateUtc.Value > DateTime.UtcNow));
+        var availableCredits = Math.Max(0, wallet.Balance - invitesSent);
+        var usedCredits = invites.Count(i => i.IsAccepted || (!i.IsActive && i.CreatedOnUtc <= DateTime.UtcNow));
+        model.AvailableCredits = availableCredits;
+        model.AvailableCreditsDisplay = decimal.Truncate(availableCredits).ToString("0", CultureInfo.InvariantCulture);
+        model.InvitesSentCount = invitesSent;
+        model.InvitesSentDisplay = invitesSent.ToString(CultureInfo.InvariantCulture);
+        model.UsedCreditsCount = usedCredits;
+        model.UsedCreditsDisplay = usedCredits.ToString(CultureInfo.InvariantCulture);
         model.CreditBalance = wallet.Balance;
         model.CreditBalanceDisplay = decimal.Truncate(wallet.Balance).ToString("0", CultureInfo.InvariantCulture);
-        var reservedCredits = invites.Count(invite => invite.IsActive &&
-            (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc.Value > DateTime.UtcNow));
-        model.ReservedCredits = reservedCredits;
-        model.ReservedCreditsDisplay = reservedCredits.ToString(CultureInfo.InvariantCulture);
         model.AvailableProducts = await BuildEmployerInviteProductSelectListAsync(customer);
         model.Invites = ApplyInMemoryPaging(
             invites,

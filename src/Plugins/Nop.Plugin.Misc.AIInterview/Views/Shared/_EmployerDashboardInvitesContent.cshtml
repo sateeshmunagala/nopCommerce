@@ -25,11 +25,14 @@
             @* <p class="scoreboard-deck-title">@T("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle")</p> *@
         </div>
         <div class="employer-credit-chip-group">
-            <div class="credit-balance employer-credit-chip">
-                <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Balance"):</strong> @Model.CreditBalanceDisplay
+            <div class="credit-balance employer-credit-chip employer-chip-available">
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Available"):</strong> @Model.AvailableCreditsDisplay
             </div>
-            <div class="credit-balance employer-credit-chip">
-                <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Reserved"):</strong> @Model.ReservedCreditsDisplay
+            <div class="credit-balance employer-credit-chip employer-chip-sent">
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.InvitesSent"):</strong> @Model.InvitesSentDisplay
+            </div>
+            <div class="credit-balance employer-credit-chip employer-chip-used">
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Used"):</strong> @Model.UsedCreditsDisplay
             </div>
         </div>
     </div>
@@ -46,11 +49,12 @@
                 <div class="dashboard-collapsible-body">
                     <div class="invite-fieldset">
                         <div class="form-fields invite-form-layout">
+                            <div class="inputs invite-field invite-field-wide invite-field-email">
+                                <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
+                                <textarea id="invite-email" name="email" rows="3" required class="form-control" placeholder="@T("Plugins.Misc.AIInterview.Employer.Invite.EmailPlaceholder")"></textarea>
+                                <span class="field-help-text">@T("Plugins.Misc.AIInterview.Employer.Invite.EmailHelpText")</span>
+                            </div>
                             <div class="invite-form-row">
-                                <div class="inputs invite-field invite-field-email">
-                                    <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
-                                    <input id="invite-email" type="email" name="email" required class="form-control" />
-                                </div>
                                 <div class="inputs invite-field invite-field-product">
                                     <label for="productId">@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
                                     <select id="productId" name="productId" required class="form-control">
@@ -60,15 +64,13 @@
                                         }
                                     </select>
                                 </div>
-                            </div>
-                            <div class="invite-form-row">
                                 <div class="inputs invite-field invite-field-expiry">
                                     <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
                                     <input id="expiryDateUtc" type="date" name="expiryDateUtc" value="@(Model.ExpiryDateUtc?.ToString("yyyy-MM-dd"))" class="form-control" min="@inviteExpiryMin" max="@inviteExpiryMax" />
                                 </div>
-                                <div class="inputs invite-field invite-field-action">
-                                    <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
-                                </div>
+                            </div>
+                            <div class="invite-form-actions-row">
+                                <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
                             </div>
                         </div>
                     </div>

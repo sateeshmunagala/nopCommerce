@@ -11841,3 +11841,83 @@ a.ai-home-performer-name:focus-visible {
         padding-right: 5px !important;
     }
 }
+
+.html-aiinterview-employer-dashboard-page .employer-credit-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-chip-available {
+    background: #eefaf6;
+    border-color: #bfe5da;
+    color: #12634d;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-chip-sent {
+    background: #f0f4f8;
+    border-color: #d2dee9;
+    color: #274765;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-chip-used {
+    background: #f7f8f9;
+    border-color: #e2e5e8;
+    color: #556270;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-invite-panel {
+    margin-top: 8px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-summary {
+    padding: 10px 14px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-body {
+    padding: 12px 14px 14px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-layout {
+    display: grid;
+    gap: 12px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-wide {
+    grid-column: 1 / -1;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-field-email textarea {
+    width: 100%;
+    min-height: 72px;
+    resize: vertical;
+}
+
+.html-aiinterview-employer-dashboard-page .field-help-text {
+    display: block;
+    font-size: 0.8rem;
+    color: #6c7a89;
+    margin-top: 2px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.html-aiinterview-employer-dashboard-page .invite-form-actions-row .button-1 {
+    min-width: 180px;
+    min-height: 40px;
+}
+
+@media (max-width: 768px) {
+    .html-aiinterview-employer-dashboard-page .invite-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .html-aiinterview-employer-dashboard-page .invite-form-actions-row .button-1 {
+        width: 100%;
+    }
+}
