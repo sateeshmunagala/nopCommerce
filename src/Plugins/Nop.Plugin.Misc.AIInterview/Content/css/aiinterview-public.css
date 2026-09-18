@@ -10665,11 +10665,11 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-dashboard-page .invite-table th {
-    padding: 8px 10px;
+    padding: 7px 9px;
 }
 
 .html-aiinterview-employer-dashboard-page .invite-table td {
-    padding: 6px 10px;
+    padding: 7px 9px;
     line-height: 1.25;
 }
 
@@ -10704,24 +10704,26 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-dashboard-page .employer-invite-row-actions {
+    align-items: center;
     flex-wrap: nowrap;
-    gap: 5px;
+    gap: 4px;
+    margin: 0;
 }
 
 .html-aiinterview-employer-dashboard-page .invite-table .employer-dashboard-action-icon,
 .html-aiinterview-employer-dashboard-page .invite-table .invite-deactivate-button {
-    width: 32px !important;
-    min-width: 32px !important;
-    max-width: 32px !important;
-    height: 32px !important;
-    min-height: 32px !important;
-    max-height: 32px !important;
-    border-radius: 7px !important;
+    width: 24px !important;
+    min-width: 24px !important;
+    max-width: 24px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    max-height: 24px !important;
+    border-radius: 6px !important;
 }
 
 .html-aiinterview-employer-dashboard-page .invite-table .employer-dashboard-action-icon i,
 .html-aiinterview-employer-dashboard-page .invite-table .invite-deactivate-button i {
-    font-size: 0.82rem !important;
+    font-size: 0.72rem !important;
 }
 
 .html-aiinterview-employer-dashboard-page .status-form {
@@ -11561,8 +11563,8 @@ a.ai-home-performer-name:focus-visible {
         align-items: center;
         flex-direction: row;
         justify-content: flex-start;
-        gap: 7px;
-        padding-top: 8px;
+        gap: 6px;
+        padding-top: 6px;
     }
 
     .html-aiinterview-employer-dashboard-page .responsive-data-card-actions.employer-dashboard-mobile-actions .button-2,
@@ -11577,23 +11579,28 @@ a.ai-home-performer-name:focus-visible {
     }
 
     .html-aiinterview-employer-dashboard-page .employer-invite-mobile-card {
-        gap: 10px;
-        padding: 12px;
+        gap: 8px;
+        padding: 10px;
     }
 
     .html-aiinterview-employer-dashboard-page .employer-invite-mobile-card .responsive-data-card-item {
-        padding: 8px 10px;
+        padding: 6px 9px;
     }
 
     .html-aiinterview-employer-dashboard-page .employer-invite-mobile-card .employer-dashboard-action-icon,
     .html-aiinterview-employer-dashboard-page .employer-invite-mobile-card .invite-deactivate-button {
-        width: 36px !important;
-        min-width: 36px !important;
-        max-width: 36px !important;
-        height: 36px !important;
-        min-height: 36px !important;
-        max-height: 36px !important;
-        border-radius: 8px !important;
+        width: 32px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        border-radius: 7px !important;
+    }
+
+    .html-aiinterview-employer-dashboard-page .employer-invite-mobile-card .employer-dashboard-action-icon i,
+    .html-aiinterview-employer-dashboard-page .employer-invite-mobile-card .invite-deactivate-button i {
+        font-size: 0.78rem !important;
     }
 
     .html-aiinterview-employer-dashboard-page .employer-invite-panel .dashboard-collapsible-summary,

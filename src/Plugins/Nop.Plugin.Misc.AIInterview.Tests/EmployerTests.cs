@@ -1073,6 +1073,43 @@ public class EmployerTests
         var localeMethod = typeof(AIInterviewPlugin).GetMethod("GetEmployerApplicationsLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
         var localeResources = (Dictionary<string, string>)localeMethod.Invoke(null, null);
 
+        static string GetLastCssRule(string css, string selector)
+        {
+            var selectorIndex = css.LastIndexOf(selector, StringComparison.Ordinal);
+            Assert.That(selectorIndex, Is.GreaterThanOrEqualTo(0), $"Missing CSS selector: {selector}");
+
+            var declarationStart = css.IndexOf('{', selectorIndex);
+            var declarationEnd = css.IndexOf('}', declarationStart);
+            Assert.That(declarationStart, Is.GreaterThan(selectorIndex));
+            Assert.That(declarationEnd, Is.GreaterThan(declarationStart));
+
+            return css[(declarationStart + 1)..declarationEnd];
+        }
+
+        static (int Vertical, int Horizontal) GetPadding(string rule)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(rule, @"padding:\s*(\d+)px\s+(\d+)px;");
+            Assert.That(match.Success, Is.True, "Expected two-value pixel padding declaration.");
+            return (int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value));
+        }
+
+        static int GetDimension(string rule, string property)
+        {
+            var pattern = $@"\b{System.Text.RegularExpressions.Regex.Escape(property)}:\s*(\d+)px\s*!important;";
+            var match = System.Text.RegularExpressions.Regex.Match(rule, pattern);
+            Assert.That(match.Success, Is.True, $"Expected pixel {property} declaration.");
+            return int.Parse(match.Groups[1].Value);
+        }
+
+        var inviteHeaderPadding = GetPadding(GetLastCssRule(cssText, ".html-aiinterview-employer-dashboard-page .invite-table th"));
+        var inviteCellPadding = GetPadding(GetLastCssRule(cssText, ".html-aiinterview-employer-dashboard-page .invite-table td"));
+        var desktopActionRule = GetLastCssRule(cssText, ".html-aiinterview-employer-dashboard-page .invite-table .employer-dashboard-action-icon,");
+        var mobileActionRule = GetLastCssRule(cssText, ".html-aiinterview-employer-dashboard-page .employer-invite-mobile-card .employer-dashboard-action-icon,");
+        var desktopActionWidth = GetDimension(desktopActionRule, "width");
+        var desktopActionHeight = GetDimension(desktopActionRule, "height");
+        var mobileActionWidth = GetDimension(mobileActionRule, "width");
+        var mobileActionHeight = GetDimension(mobileActionRule, "height");
+
         Assert.That(overviewPartial, Does.Not.Contain("ReviewApplicationsAction"));
         Assert.That(overviewPartial, Does.Not.Contain("ManageInvitesAction"));
         Assert.That(overviewPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Dashboard.Action.ReviewQueue"));
@@ -1109,11 +1146,22 @@ public class EmployerTests
         Assert.That(invitesPartial, Does.Not.Contain("employer-dashboard-code"));
         Assert.That(invitesPartial, Does.Not.Contain(">@invite.InviteCode<"));
         Assert.That(cssText, Does.Contain(".invite-table .col-invite-job"));
-        Assert.That(cssText, Does.Contain("padding: 6px 10px;"));
         Assert.That(cssText, Does.Contain(".invite-table .employer-dashboard-action-icon"));
-        Assert.That(cssText, Does.Contain("width: 32px !important;"));
         Assert.That(cssText, Does.Contain(".employer-invite-mobile-card .employer-dashboard-action-icon"));
-        Assert.That(cssText, Does.Contain("width: 36px !important;"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(inviteHeaderPadding.Vertical, Is.InRange(1, 7));
+            Assert.That(inviteCellPadding.Vertical, Is.EqualTo(inviteHeaderPadding.Vertical));
+            Assert.That(inviteHeaderPadding.Horizontal, Is.InRange(8, 12));
+            Assert.That(inviteCellPadding.Horizontal, Is.InRange(8, 12));
+            Assert.That(desktopActionWidth, Is.InRange(20, 26));
+            Assert.That(desktopActionHeight, Is.EqualTo(desktopActionWidth));
+            Assert.That(mobileActionWidth, Is.InRange(24, 32));
+            Assert.That(mobileActionHeight, Is.EqualTo(mobileActionWidth));
+        });
+        Assert.That(cssText, Does.Contain(".employer-invite-row-actions"));
+        Assert.That(invitesPartial, Does.Contain("aria-label=\"@T(\"Plugins.Misc.AIInterview.Employer.Invite.CopyLink\")\""));
+        Assert.That(invitesPartial, Does.Contain("aria-label=\"@deactivateInviteText\""));
         Assert.That(cssText, Does.Contain(".employer-invites-table-shell"));
         Assert.That(cssText, Does.Contain(".employer-invites-mobile-list"));
         Assert.That(localeResources["Plugins.Misc.AIInterview.Employer.Invite.Job"], Is.EqualTo("Job"));
