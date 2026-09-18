@@ -1508,6 +1508,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Action.ReviewQueue"] = "Review queue",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Dashboard.Action.ViewAnalysis"] = "View analysis",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Job"] = "Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Email"] = "Email",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.JobUnavailable"] = "Job unavailable",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Created"] = "Created",
             [$"{AIInterviewDefaults.LocalizationPrefix}.Employer.Invite.Invited"] = "Invited",

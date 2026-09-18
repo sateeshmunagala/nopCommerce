@@ -4,13 +4,13 @@
 @inject IDateTimeHelper dateTimeHelper
 
 @{
-    async Task<string> FormatInviteDateTimeAsync(DateTime? valueUtc)
+    async Task<string> FormatInviteDateTimeAsync(DateTime? valueUtc, bool includeSeconds = false)
     {
         if (!valueUtc.HasValue || valueUtc.Value == default)
             return T("Plugins.Misc.AIInterview.Common.None").Text;
 
         var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(valueUtc.Value, DateTimeKind.Utc);
-        return userDateTime.ToString("g");
+        return userDateTime.ToString(includeSeconds ? "G" : "g");
     }
 
     var deactivateInviteText = T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate.Tooltip").Text;
@@ -103,6 +103,7 @@
                     <thead>
                         <tr>
                             <th class="col-invite-job">@T("Plugins.Misc.AIInterview.Employer.Invite.Job")</th>
+                            <th class="col-invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email")</th>
                             <th class="col-invite-created">@T("Plugins.Misc.AIInterview.Employer.Invite.Created")</th>
                             <th class="col-invite-expiry">@T("Plugins.Misc.AIInterview.Employer.Invite.Expiry")</th>
                             <th class="col-invite-status">@T("Plugins.Misc.AIInterview.Employer.Invite.Status")</th>
@@ -121,12 +122,12 @@
                             var activeStatus = T("Plugins.Misc.AIInterview.Employer.Invite.Active").Text;
                             var isActiveInvite = string.Equals(statusKey, activeStatus, StringComparison.OrdinalIgnoreCase);
                             var createdOn = await FormatInviteDateTimeAsync(invite.CreatedOnUtc);
-                            var expiresOn = await FormatInviteDateTimeAsync(invite.ExpiryDateUtc);
+                            var expiresOn = await FormatInviteDateTimeAsync(invite.ExpiryDateUtc, includeSeconds: true);
                             <tr>
                                 <td class="col-invite-job">
                                     <strong class="employer-invite-job">@jobName</strong>
-                                    <span class="employer-invite-email">@invite.Email</span>
                                 </td>
+                                <td class="col-invite-email"><span class="employer-invite-email">@invite.Email</span></td>
                                 <td class="col-invite-created"><time datetime="@invite.CreatedOnUtc.ToString("O")">@createdOn</time></td>
                                 <td class="col-invite-expiry">
                                     @if (invite.ExpiryDateUtc.HasValue)
@@ -183,19 +184,22 @@
                 var activeStatus = T("Plugins.Misc.AIInterview.Employer.Invite.Active").Text;
                 var isActiveInvite = string.Equals(statusKey, activeStatus, StringComparison.OrdinalIgnoreCase);
                 var createdOn = await FormatInviteDateTimeAsync(invite.CreatedOnUtc);
-                var expiresOn = await FormatInviteDateTimeAsync(invite.ExpiryDateUtc);
+                var expiresOn = await FormatInviteDateTimeAsync(invite.ExpiryDateUtc, includeSeconds: true);
                 <article class="responsive-data-card responsive-data-card-spacious employer-dashboard-mobile-card employer-invite-mobile-card">
                     <div class="responsive-data-card-head">
                         <div class="responsive-data-card-head-copy">
                             <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Invite.Job")</span>
                             <strong class="responsive-data-card-title">@jobName</strong>
-                            <div class="responsive-data-card-subtitle">@invite.Email</div>
                         </div>
                         <div class="responsive-data-card-chip-group">
                             <span class="status-pill">@(string.IsNullOrWhiteSpace(statusKey) ? T("Plugins.Misc.AIInterview.Employer.Invite.Active") : statusKey)</span>
                         </div>
                     </div>
                     <div class="responsive-data-card-grid">
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Invite.Email")</span>
+                            <span class="responsive-data-card-value employer-invite-email">@invite.Email</span>
+                        </div>
                         <div class="responsive-data-card-item">
                             <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Invite.Created")</span>
                             <span class="responsive-data-card-value">@createdOn</span>
