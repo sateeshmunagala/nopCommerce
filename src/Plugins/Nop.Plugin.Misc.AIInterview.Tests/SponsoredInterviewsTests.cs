@@ -358,17 +358,31 @@ public class SponsoredInterviewsTests
             "js",
             "jobboard-venture.js"));
         var scriptText = File.ReadAllText(themeScriptPath);
+        var normalizationStart = scriptText.IndexOf("function normalizeMyActivityTab", StringComparison.Ordinal);
+        var normalizationEnd = scriptText.IndexOf("function getMyActivityShell", normalizationStart, StringComparison.Ordinal);
+        var normalizationBlock = scriptText[normalizationStart..normalizationEnd];
+        var normalizationFallback = normalizationBlock[normalizationBlock.IndexOf("default:", StringComparison.Ordinal)..];
+        var urlNormalizationStart = scriptText.IndexOf("function getMyActivityTabFromUrl", StringComparison.Ordinal);
+        var urlNormalizationEnd = scriptText.IndexOf("function buildComparableMyActivityUrl", urlNormalizationStart, StringComparison.Ordinal);
+        var urlNormalizationBlock = scriptText[urlNormalizationStart..urlNormalizationEnd];
+        var urlParsingFallback = urlNormalizationBlock[urlNormalizationBlock.IndexOf("catch (error)", StringComparison.Ordinal)..];
 
         Assert.Multiple(() =>
         {
             Assert.That(CountOccurrences(scriptText, "case 'sponsored-interviews':"), Is.EqualTo(1));
-            Assert.That(scriptText, Does.Contain("return 'sponsored-interviews';"));
-            Assert.That(scriptText, Does.Contain("case 'applied-jobs':"));
-            Assert.That(scriptText, Does.Contain("return 'applied-jobs';"));
+            Assert.That(CountOccurrences(scriptText, "case 'applied-jobs':"), Is.EqualTo(1));
+            Assert.That(CountOccurrences(scriptText, "case 'saved-jobs':"), Is.EqualTo(1));
+            Assert.That(CountOccurrences(scriptText, "case 'mock-interviews':"), Is.EqualTo(1));
+            Assert.That(CountOccurrences(scriptText, "case 'credits':"), Is.EqualTo(1));
+            Assert.That(normalizationFallback, Does.Contain("return 'sponsored-interviews';"));
+            Assert.That(normalizationFallback, Does.Not.Contain("return 'applied-jobs';"));
+            Assert.That(urlNormalizationBlock, Does.Contain("return normalizeMyActivityTab(parsedUrl.searchParams.get('tab'));"));
+            Assert.That(urlParsingFallback, Does.Contain("return 'sponsored-interviews';"));
+            Assert.That(urlParsingFallback, Does.Not.Contain("return 'applied-jobs';"));
             Assert.That(scriptText, Does.Contain("normalizeMyActivityTab(tabLink.getAttribute('data-my-activity-tab')) === normalizedTab"));
-            Assert.That(scriptText, Does.Contain("tabLink.classList.toggle('is-active', isActive)"));
-            Assert.That(scriptText, Does.Contain("tabLink.setAttribute('aria-current', 'page')"));
-            Assert.That(scriptText, Does.Contain("tabLink.removeAttribute('aria-current')"));
+            Assert.That(CountOccurrences(scriptText, "tabLink.classList.toggle('is-active', isActive)"), Is.EqualTo(1));
+            Assert.That(CountOccurrences(scriptText, "tabLink.setAttribute('aria-current', 'page')"), Is.EqualTo(1));
+            Assert.That(CountOccurrences(scriptText, "tabLink.removeAttribute('aria-current')"), Is.EqualTo(1));
         });
     }
 

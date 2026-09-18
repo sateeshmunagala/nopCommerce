@@ -14,7 +14,7 @@
             case 'sponsored-interviews':
                 return 'sponsored-interviews';
             default:
-                return 'applied-jobs';
+                return 'sponsored-interviews';
         }
     }
 
@@ -40,7 +40,7 @@
             var parsedUrl = new URL(url || window.location.href, window.location.origin);
             return normalizeMyActivityTab(parsedUrl.searchParams.get('tab'));
         } catch (error) {
-            return 'applied-jobs';
+            return 'sponsored-interviews';
         }
     }
 
