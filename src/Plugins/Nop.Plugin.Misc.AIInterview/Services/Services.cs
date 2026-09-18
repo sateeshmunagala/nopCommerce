@@ -2621,18 +2621,19 @@ public class SponsorInviteService : ISponsorInviteService
 
     public async Task<IList<SponsorInvite>> GetActiveEligibleInvitesByCandidateEmailAsync(string candidateEmail)
     {
-        var normalizedCandidateEmail = candidateEmail?.Trim();
-        if (string.IsNullOrWhiteSpace(normalizedCandidateEmail) || _interviewSessionService == null)
+        var normalizedCandidateEmail = NormalizeCandidateEmail(candidateEmail);
+        if (string.IsNullOrWhiteSpace(normalizedCandidateEmail))
             return new List<SponsorInvite>();
 
         var utcNow = DateTime.UtcNow;
         var candidates = await _inviteRepository.GetAllAsync(query => query
-            .Where(invite => invite.Email == normalizedCandidateEmail &&
+            .Where(invite => invite.Email != null &&
+                invite.Email.Trim().ToLower() == normalizedCandidateEmail &&
                 invite.IsActive &&
                 !invite.IsAccepted &&
                 invite.MaxAttempts > 0 &&
                 invite.InviteCode != null &&
-                invite.InviteCode != string.Empty &&
+                invite.InviteCode.Trim() != string.Empty &&
                 (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc.Value > utcNow))
             .OrderBy(invite => invite.ExpiryDateUtc.HasValue ? 0 : 1)
             .ThenBy(invite => invite.ExpiryDateUtc)
@@ -2643,7 +2644,7 @@ public class SponsorInviteService : ISponsorInviteService
         var seenInvitations = new HashSet<(int SponsorId, int ProductId, string InviteCode)>();
         foreach (var invite in candidates)
         {
-            if (!string.Equals(invite.Email, normalizedCandidateEmail, StringComparison.Ordinal) ||
+            if (!CandidateEmailsMatch(invite.Email, normalizedCandidateEmail) ||
                 !seenInvitations.Add((invite.SponsorId, invite.ProductId, invite.InviteCode)))
             {
                 continue;
@@ -2680,7 +2681,7 @@ public class SponsorInviteService : ISponsorInviteService
     public async Task<bool> ValidateInviteAsync(string code, string email)
     {
         var invite = await GetSponsorInviteByCodeAsync(code);
-        return await IsInviteEligibleAsync(invite, email?.Trim(), DateTime.UtcNow);
+        return await IsInviteEligibleAsync(invite, email, DateTime.UtcNow);
     }
 
     protected virtual async Task<bool> IsInviteEligibleAsync(SponsorInvite invite, string candidateEmail, DateTime utcNow)
@@ -2689,11 +2690,21 @@ public class SponsorInviteService : ISponsorInviteService
         if (!invite.IsActive || invite.IsAccepted || invite.MaxAttempts <= 0) return false;
         if (string.IsNullOrWhiteSpace(invite.InviteCode)) return false;
         if (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= utcNow) return false;
-        if (!string.Equals(invite.Email, candidateEmail, StringComparison.Ordinal)) return false;
+        if (!CandidateEmailsMatch(invite.Email, candidateEmail)) return false;
         if (_interviewSessionService == null) return true;
 
         var attempts = await _interviewSessionService.GetSponsorInviteAttemptCountAsync(invite.Id);
         return attempts < invite.MaxAttempts;
+    }
+
+    protected static string NormalizeCandidateEmail(string email)
+    {
+        return string.IsNullOrWhiteSpace(email) ? string.Empty : email.Trim().ToLowerInvariant();
+    }
+
+    protected static bool CandidateEmailsMatch(string inviteEmail, string candidateEmail)
+    {
+        return string.Equals(inviteEmail?.Trim(), candidateEmail?.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 }
 

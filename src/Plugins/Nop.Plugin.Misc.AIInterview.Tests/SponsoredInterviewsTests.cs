@@ -90,7 +90,7 @@ public class SponsoredInterviewsTests
             new() { Id = 4, SponsorId = 10, ProductId = 20, Email = "candidate@example.com", InviteCode = "distinct-code", MaxAttempts = 1, IsActive = true, ExpiryDateUtc = now.AddDays(3), CreatedOnUtc = now },
             new() { Id = 5, SponsorId = 10, ProductId = 20, Email = "candidate@example.com", InviteCode = "earlier", MaxAttempts = 2, IsActive = true, ExpiryDateUtc = now.AddDays(1), CreatedOnUtc = now.AddDays(-2) },
             new() { Id = 6, SponsorId = 10, ProductId = 20, Email = "candidate@example.com", InviteCode = "exhausted", MaxAttempts = 1, IsActive = true, ExpiryDateUtc = now.AddDays(4), CreatedOnUtc = now },
-            new() { Id = 7, SponsorId = 10, ProductId = 20, Email = "Candidate@example.com", InviteCode = "wrong-case", MaxAttempts = 1, IsActive = true, ExpiryDateUtc = now.AddDays(1), CreatedOnUtc = now },
+            new() { Id = 7, SponsorId = 10, ProductId = 20, Email = "other@example.com", InviteCode = "wrong-candidate", MaxAttempts = 1, IsActive = true, ExpiryDateUtc = now.AddDays(1), CreatedOnUtc = now },
             new() { Id = 8, SponsorId = 10, ProductId = 20, Email = "candidate@example.com", InviteCode = "expired", MaxAttempts = 1, IsActive = true, ExpiryDateUtc = now.AddSeconds(-1), CreatedOnUtc = now },
             new() { Id = 9, SponsorId = 10, ProductId = 20, Email = "candidate@example.com", InviteCode = "inactive", MaxAttempts = 1, IsActive = false, ExpiryDateUtc = now.AddDays(1), CreatedOnUtc = now },
             new() { Id = 10, SponsorId = 10, ProductId = 20, Email = "candidate@example.com", InviteCode = "accepted", MaxAttempts = 1, IsActive = true, IsAccepted = true, ExpiryDateUtc = now.AddDays(1), CreatedOnUtc = now }
@@ -112,6 +112,67 @@ public class SponsoredInterviewsTests
         Assert.That(result.Select(invite => invite.Id), Is.EqualTo(new[] { 2, 1, 4, 3 }));
         Assert.That(result.Count(invite => invite.SponsorId == 10 && invite.ProductId == 20), Is.EqualTo(4));
         Assert.That(result.Select(invite => invite.InviteCode), Does.Contain("later").And.Contain("distinct-code"));
+    }
+
+    [Test]
+    public async Task Candidate_Query_Matches_Mixed_Case_And_Whitespace_Normalized_Email()
+    {
+        var invite = new SponsorInvite
+        {
+            Id = 11,
+            SponsorId = 10,
+            ProductId = 20,
+            Email = "  Candidate@Example.COM  ",
+            InviteCode = "mixed-case",
+            MaxAttempts = 2,
+            IsActive = true,
+            ExpiryDateUtc = DateTime.UtcNow.AddDays(1),
+            CreatedOnUtc = DateTime.UtcNow
+        };
+        var inviteRepository = new Mock<IRepository<SponsorInvite>>();
+        SetupRepositoryQuery(inviteRepository, new List<SponsorInvite> { invite });
+        var sessionService = new Mock<IInterviewSessionService>();
+        sessionService.Setup(service => service.GetSponsorInviteAttemptCountAsync(invite.Id)).ReturnsAsync(0);
+        var service = new SponsorInviteService(
+            inviteRepository.Object,
+            new Mock<IProductService>().Object,
+            new Mock<ICustomerService>().Object,
+            new Mock<ILocalizationService>().Object,
+            interviewSessionService: sessionService.Object);
+
+        var result = await service.GetActiveEligibleInvitesByCandidateEmailAsync(" candidate@example.com ");
+        var isValid = await service.ValidateInviteAsync(invite.InviteCode, "CANDIDATE@example.com");
+
+        Assert.That(result.Select(item => item.Id), Is.EqualTo(new[] { invite.Id }));
+        Assert.That(isValid, Is.True);
+    }
+
+    [Test]
+    public async Task Candidate_Query_Returns_Eligible_Invites_When_Optional_Session_Service_Is_Absent()
+    {
+        var invite = new SponsorInvite
+        {
+            Id = 12,
+            SponsorId = 10,
+            ProductId = 20,
+            Email = "candidate@example.com",
+            InviteCode = "optional-session-service",
+            MaxAttempts = 1,
+            IsActive = true,
+            ExpiryDateUtc = DateTime.UtcNow.AddDays(1),
+            CreatedOnUtc = DateTime.UtcNow
+        };
+        var inviteRepository = new Mock<IRepository<SponsorInvite>>();
+        SetupRepositoryQuery(inviteRepository, new List<SponsorInvite> { invite });
+        var service = new SponsorInviteService(
+            inviteRepository.Object,
+            new Mock<IProductService>().Object,
+            new Mock<ICustomerService>().Object,
+            new Mock<ILocalizationService>().Object);
+
+        var result = await service.GetActiveEligibleInvitesByCandidateEmailAsync("candidate@example.com");
+
+        Assert.That(result.Select(item => item.Id), Is.EqualTo(new[] { invite.Id }));
     }
 
     [Test]
