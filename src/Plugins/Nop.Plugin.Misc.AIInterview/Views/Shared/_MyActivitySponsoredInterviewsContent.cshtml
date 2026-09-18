@@ -3,6 +3,15 @@
 @inject IDateTimeHelper dateTimeHelper
 
 @{
+    async Task<string> FormatCreatedAsync(DateTime? createdOnUtc)
+    {
+        if (!createdOnUtc.HasValue || createdOnUtc.Value == default)
+            return T("Plugins.Misc.AIInterview.Common.None").Text;
+
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(createdOnUtc.Value, DateTimeKind.Utc);
+        return userDateTime.ToString("g");
+    }
+
     async Task<string> FormatExpiryAsync(DateTime? expiryDateUtc)
     {
         if (!expiryDateUtc.HasValue)
@@ -29,6 +38,7 @@
                     <tr>
                         <th scope="col" class="col-company">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Company")</th>
                         <th scope="col" class="col-job">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Job")</th>
+                        <th scope="col" class="col-created">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Created")</th>
                         <th scope="col" class="col-expires">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Expires")</th>
                         <th scope="col" class="col-status">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Status")</th>
                         <th scope="col" class="col-action">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Action")</th>
@@ -41,6 +51,7 @@
                         <tr>
                             <td class="col-company"><strong>@invitation.CompanyName</strong></td>
                             <td class="col-job">@invitation.JobTitle</td>
+                            <td class="col-created">@(await FormatCreatedAsync(invitation.CreatedOnUtc))</td>
                             <td class="col-expires">@(await FormatExpiryAsync(invitation.ExpiryDateUtc))</td>
                             <td class="col-status"><span class="status-pill">@invitation.Status</span></td>
                             <td class="col-action">
@@ -71,6 +82,10 @@
                         <div class="responsive-data-card-item">
                             <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Company")</span>
                             <span class="responsive-data-card-value">@invitation.CompanyName</span>
+                        </div>
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Created")</span>
+                            <span class="responsive-data-card-value">@(await FormatCreatedAsync(invitation.CreatedOnUtc))</span>
                         </div>
                         <div class="responsive-data-card-item">
                             <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Expires")</span>

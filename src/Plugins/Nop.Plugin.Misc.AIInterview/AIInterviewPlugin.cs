@@ -1122,6 +1122,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.SponsoredInterviews"] = "Sponsored Interviews",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Company"] = "Company",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Job"] = "Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Created"] = "Invited",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Expires"] = "Expires",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Status"] = "Status",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Action"] = "Action",

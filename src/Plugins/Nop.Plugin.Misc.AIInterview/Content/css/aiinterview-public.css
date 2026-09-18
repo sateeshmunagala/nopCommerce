@@ -8880,6 +8880,7 @@ body.ai-job-preview-open .item-box {
     min-width: 160px;
 }
 
+.sponsored-interviews-table .col-created,
 .sponsored-interviews-table .col-expires,
 .sponsored-interviews-table .col-status,
 .sponsored-interviews-table .col-action {
@@ -8897,6 +8898,10 @@ body.ai-job-preview-open .item-box {
 
 .sponsored-interview-card .responsive-data-card-title {
     margin: 0;
+}
+
+.html-aiinterview-my-activity-page .sponsored-interviews-mobile-list {
+    display: none;
 }
 
 .my-activity-credit-summary {
@@ -9637,7 +9642,8 @@ body.ai-job-preview-open .item-box {
 }
 
 @media (max-width: 640px) {
-    .html-aiinterview-my-activity-page .applications-table-wrap {
+    .html-aiinterview-my-activity-page .applications-table-wrap,
+    .html-aiinterview-my-activity-page .sponsored-interviews-table-wrap {
         display: none;
     }
 

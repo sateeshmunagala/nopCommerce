@@ -160,6 +160,7 @@ public record SponsoredInterviewInvitationModel : BaseNopEntityModel
 {
     public string CompanyName { get; set; }
     public string JobTitle { get; set; }
+    public DateTime? CreatedOnUtc { get; set; }
     public DateTime? ExpiryDateUtc { get; set; }
     public string Status { get; set; }
     public string InterviewUrl { get; set; }

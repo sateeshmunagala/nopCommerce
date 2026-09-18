@@ -1079,6 +1079,7 @@ public class AIInterviewController : BasePluginController
                 Id = invite.Id,
                 CompanyName = companyName,
                 JobTitle = await _localizationService.GetLocalizedAsync(product, entity => entity.Name) ?? product.Name,
+                CreatedOnUtc = invite.CreatedOnUtc == default ? null : invite.CreatedOnUtc,
                 ExpiryDateUtc = invite.ExpiryDateUtc,
                 Status = pendingStatus,
                 InterviewUrl = interviewUrl

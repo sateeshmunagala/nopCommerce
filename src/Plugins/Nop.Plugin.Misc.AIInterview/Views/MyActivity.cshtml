@@ -95,3 +95,75 @@
         </div>
     </div>
 </div>
+
+<script asp-location="Footer">
+    (function () {
+        var defaultTab = '@AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey';
+        var validTabs = [
+            '@AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey',
+            '@AIInterviewDefaults.MyActivityAppliedJobsTabKey',
+            '@AIInterviewDefaults.MyActivitySavedJobsTabKey',
+            '@AIInterviewDefaults.MyActivityMockInterviewsTabKey',
+            '@AIInterviewDefaults.MyActivityCreditsTabKey'
+        ];
+
+        function normalizeTab(tab) {
+            return validTabs.indexOf(tab) >= 0 ? tab : defaultTab;
+        }
+
+        function syncActiveTab(activeTab) {
+            var tabs = document.querySelectorAll('.js-my-activity-tabs [data-my-activity-tab]');
+            var requestedTab = normalizeTab(activeTab);
+
+            tabs.forEach(function (tab) {
+                tab.classList.remove('is-active');
+                tab.removeAttribute('aria-current');
+            });
+
+            tabs.forEach(function (tab) {
+                if (tab.getAttribute('data-my-activity-tab') === requestedTab) {
+                    tab.classList.add('is-active');
+                    tab.setAttribute('aria-current', 'page');
+                }
+            });
+        }
+
+        function syncFromRenderedPanel() {
+            var panel = document.querySelector('#my-activity-content [data-my-activity-tab-panel="true"]');
+            syncActiveTab(panel ? panel.getAttribute('data-active-tab') : defaultTab);
+        }
+
+        function syncFromCurrentUrl() {
+            var activeTab = new URL(window.location.href).searchParams.get('tab');
+            syncActiveTab(activeTab || defaultTab);
+        }
+
+        syncFromRenderedPanel();
+
+        if (window.__aiMyActivityTabsBound) {
+            return;
+        }
+
+        window.__aiMyActivityTabsBound = true;
+        document.body.addEventListener('htmx:beforeRequest', function (event) {
+            var requestedTab = event.detail && event.detail.elt
+                ? event.detail.elt.closest('[data-my-activity-tab]')
+                : null;
+            if (requestedTab) {
+                syncActiveTab(requestedTab.getAttribute('data-my-activity-tab'));
+            }
+        });
+        document.body.addEventListener('htmx:afterSwap', function (event) {
+            if (event.detail && event.detail.target && event.detail.target.id === 'my-activity-content') {
+                syncFromRenderedPanel();
+            }
+        });
+        document.body.addEventListener('htmx:responseError', syncFromRenderedPanel);
+        document.body.addEventListener('htmx:historyRestore', function () {
+            window.setTimeout(syncFromRenderedPanel, 0);
+        });
+        window.addEventListener('popstate', function () {
+            window.setTimeout(syncFromCurrentUrl, 0);
+        });
+    })();
+</script>

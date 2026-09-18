@@ -24,6 +24,19 @@ namespace Nop.Plugin.Misc.AIInterview.Tests;
 [TestFixture]
 public class SponsoredInterviewsTests
 {
+    private static int CountOccurrences(string value, string fragment)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = value.IndexOf(fragment, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += fragment.Length;
+        }
+
+        return count;
+    }
+
     private sealed class TestAIInterviewController : AIInterviewController
     {
         public TestAIInterviewController(
@@ -178,6 +191,7 @@ public class SponsoredInterviewsTests
     [Test]
     public async Task Default_Tab_Maps_Eligible_Invitation_And_Encodes_Sponsor_Token_In_Product_Link()
     {
+        var createdOnUtc = DateTime.UtcNow.AddHours(-2);
         var customer = new Customer { Id = 7, Email = "candidate@example.com" };
         var product = new Product { Id = 20, VendorId = 30, Name = "Platform Engineer" };
         var vendor = new Vendor { Id = 30, Name = "Acme Labs" };
@@ -190,6 +204,7 @@ public class SponsoredInterviewsTests
             InviteCode = "invite+&token",
             MaxAttempts = 2,
             IsActive = true,
+            CreatedOnUtc = createdOnUtc,
             ExpiryDateUtc = DateTime.UtcNow.AddDays(1)
         };
         var applicationService = new Mock<IApplicationService>();
@@ -251,6 +266,7 @@ public class SponsoredInterviewsTests
         {
             Assert.That(model.SponsoredInterviews[0].CompanyName, Is.EqualTo("Acme Labs"));
             Assert.That(model.SponsoredInterviews[0].JobTitle, Is.EqualTo("Platform Engineer"));
+            Assert.That(model.SponsoredInterviews[0].CreatedOnUtc, Is.EqualTo(createdOnUtc));
             Assert.That(model.SponsoredInterviews[0].InterviewUrl, Is.EqualTo("/jobs/platform-engineer?sponsorToken=invite%2B%26token"));
         });
     }
@@ -285,14 +301,62 @@ public class SponsoredInterviewsTests
     }
 
     [Test]
-    public void Candidate_View_Uses_Timezone_Helper_And_Does_Not_Reference_InviteCode()
+    public void Candidate_View_Renders_Created_Date_In_Both_Layouts_Without_Exposing_InviteCode()
     {
         var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MyActivitySponsoredInterviewsContent.cshtml"));
 
         Assert.That(viewText, Does.Contain("ConvertToUserTimeAsync"));
+        Assert.That(CountOccurrences(viewText, "FormatCreatedAsync(invitation.CreatedOnUtc)"), Is.EqualTo(2));
+        Assert.That(viewText, Does.Contain("MyActivity.SponsoredInterviews.Created"));
+        Assert.That(viewText, Does.Contain("createdOnUtc.Value == default"));
+        Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.Common.None"));
         Assert.That(viewText, Does.Contain("sponsored-interviews-table"));
         Assert.That(viewText, Does.Contain("sponsored-interviews-mobile-list"));
         Assert.That(viewText, Does.Contain("aria-label"));
         Assert.That(viewText, Does.Not.Contain("InviteCode"));
+    }
+
+    [Test]
+    public void My_Activity_View_Uses_Model_ActiveTab_And_Clears_Stale_Htmx_State()
+    {
+        var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyActivity.cshtml"));
+        var panelText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MyActivityTabContent.cshtml"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(CountOccurrences(viewText, "class=\"my-activity-tab @(Model.ActiveTab =="), Is.EqualTo(5));
+            Assert.That(CountOccurrences(viewText, "aria-current=\"@(Model.ActiveTab =="), Is.EqualTo(5));
+            Assert.That(viewText, Does.Contain("tab.classList.remove('is-active')"));
+            Assert.That(viewText, Does.Contain("tab.removeAttribute('aria-current')"));
+            Assert.That(viewText, Does.Contain("tab.classList.add('is-active')"));
+            Assert.That(viewText, Does.Contain("tab.setAttribute('aria-current', 'page')"));
+            Assert.That(viewText, Does.Contain("htmx:beforeRequest"));
+            Assert.That(viewText, Does.Contain("htmx:afterSwap"));
+            Assert.That(viewText, Does.Contain("htmx:responseError"));
+            Assert.That(viewText, Does.Contain("htmx:historyRestore"));
+            Assert.That(viewText, Does.Contain("popstate"));
+            Assert.That(viewText, Does.Contain("searchParams.get('tab')"));
+            Assert.That(panelText, Does.Contain("data-active-tab=\"@Model.ActiveTab\""));
+        });
+    }
+
+    [Test]
+    public void Sponsored_Layouts_Use_Mutually_Exclusive_Desktop_And_Mobile_Rules()
+    {
+        var cssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
+        var mobileBreakpointIndex = cssText.IndexOf("@media (max-width: 640px)", StringComparison.Ordinal);
+        var nextBreakpointIndex = cssText.IndexOf("@media (max-width: 480px)", mobileBreakpointIndex, StringComparison.Ordinal);
+        var desktopCss = cssText[..mobileBreakpointIndex];
+        var mobileCss = cssText[mobileBreakpointIndex..nextBreakpointIndex];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(desktopCss, Does.Contain(".html-aiinterview-my-activity-page .sponsored-interviews-mobile-list"));
+            Assert.That(desktopCss, Does.Contain("display: none;"));
+            Assert.That(mobileCss, Does.Contain(".html-aiinterview-my-activity-page .sponsored-interviews-table-wrap"));
+            Assert.That(mobileCss, Does.Contain(".html-aiinterview-my-activity-page .sponsored-interviews-mobile-list"));
+            Assert.That(mobileCss, Does.Contain("display: none;"));
+            Assert.That(mobileCss, Does.Contain("display: grid;"));
+        });
     }
 }
