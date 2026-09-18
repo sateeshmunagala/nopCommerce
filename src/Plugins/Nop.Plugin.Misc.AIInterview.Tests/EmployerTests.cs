@@ -1110,6 +1110,9 @@ public class EmployerTests
         var mobileActionWidth = GetDimension(mobileActionRule, "width");
         var mobileActionHeight = GetDimension(mobileActionRule, "height");
         var squareTableRule = GetLastCssRule(cssText, ".html-aiinterview-employer-dashboard-page .employer-dashboard-table-wrapper,");
+        var jobActionColumnRule = GetLastCssRule(cssText, ".html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions {");
+        var jobActionLayoutRule = GetLastCssRule(cssText, ".html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions .employer-job-row-actions {");
+        var jobActionMinWidthMatch = System.Text.RegularExpressions.Regex.Match(jobActionColumnRule, @"min-width:\s*(\d+)px;");
 
         Assert.That(overviewPartial, Does.Not.Contain("ReviewApplicationsAction"));
         Assert.That(overviewPartial, Does.Not.Contain("ManageInvitesAction"));
@@ -1121,6 +1124,17 @@ public class EmployerTests
 
         Assert.That(jobsPartial, Does.Contain("fa-solid fa-pen-to-square"));
         Assert.That(jobsPartial, Does.Contain("fa-eye-slash"));
+        Assert.That(jobsPartial, Does.Contain("<td class=\"col-job-actions\">"));
+        Assert.That(jobsPartial, Does.Contain("scoreboard-deck-row-actions employer-job-row-actions"));
+        Assert.That(jobsPartial.Split("employer-job-row-actions").Length - 1, Is.EqualTo(1));
+        Assert.That(jobsPartial, Does.Contain("AIInterviewDefaults.VendorJobEditRouteName"));
+        Assert.That(jobsPartial, Does.Contain("AIInterviewDefaults.VendorJobPublishToggleRouteName"));
+        Assert.That(jobsPartial, Does.Contain("responsive-data-card-actions employer-dashboard-mobile-actions"));
+        Assert.That(jobActionMinWidthMatch.Success, Is.True);
+        Assert.That(int.Parse(jobActionMinWidthMatch.Groups[1].Value), Is.GreaterThanOrEqualTo(124));
+        Assert.That(jobActionLayoutRule, Does.Contain("display: inline-flex;"));
+        Assert.That(jobActionLayoutRule, Does.Contain("align-items: center;"));
+        Assert.That(jobActionLayoutRule, Does.Contain("flex-wrap: nowrap;"));
         Assert.That(jobsPartial, Does.Contain("employer-dashboard-table-wrapper"));
         Assert.That(jobsPartial, Does.Contain("_MyActivityPager.cshtml"));
 

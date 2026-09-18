@@ -10576,7 +10576,22 @@ body.ai-job-preview-open .item-box {
 
 .html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions {
     width: 10%;
-    min-width: 108px;
+    min-width: 124px;
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions .employer-job-row-actions {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions .employer-job-row-actions form {
+    display: inline-flex;
+    margin: 0;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-table .col-candidate {
