@@ -365,6 +365,7 @@ public record EmployerDashboardInvitesTabModel : BaseNopModel
     public int TotalPages { get; set; }
     public IList<SponsorInvite> Invites { get; set; } = new List<SponsorInvite>();
     public IDictionary<int, string> InviteStatuses { get; set; } = new Dictionary<int, string>();
+    public IDictionary<int, string> InviteJobNames { get; set; } = new Dictionary<int, string>();
     public IList<SelectListItem> AvailableProducts { get; set; } = new List<SelectListItem>();
     public DateTime? ExpiryDateUtc { get; set; }
     public decimal CreditBalance { get; set; }

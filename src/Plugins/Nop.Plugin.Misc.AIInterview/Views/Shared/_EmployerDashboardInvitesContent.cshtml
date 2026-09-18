@@ -1,7 +1,18 @@
 @using System.Collections.Generic
+@using Nop.Services.Helpers
 @model EmployerDashboardInvitesTabModel
+@inject IDateTimeHelper dateTimeHelper
 
 @{
+    async Task<string> FormatInviteDateTimeAsync(DateTime? valueUtc)
+    {
+        if (!valueUtc.HasValue || valueUtc.Value == default)
+            return T("Plugins.Misc.AIInterview.Common.None").Text;
+
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(valueUtc.Value, DateTimeKind.Utc);
+        return userDateTime.ToString("g");
+    }
+
     var deactivateInviteText = T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate.Tooltip").Text;
     var inviteExpiryMin = DateTime.UtcNow.ToString("yyyy-MM-dd");
     var inviteExpiryMax = DateTime.UtcNow.AddDays(60).ToString("yyyy-MM-dd");
@@ -91,11 +102,11 @@
                 <table class="data-table invite-table">
                     <thead>
                         <tr>
-                            <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Email")</th>
-                            <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Code")</th>
-                            <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Link")</th>
-                            <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Status")</th>
-                            <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Actions")</th>
+                            <th class="col-invite-job">@T("Plugins.Misc.AIInterview.Employer.Invite.Job")</th>
+                            <th class="col-invite-created">@T("Plugins.Misc.AIInterview.Employer.Invite.Created")</th>
+                            <th class="col-invite-expiry">@T("Plugins.Misc.AIInterview.Employer.Invite.Expiry")</th>
+                            <th class="col-invite-status">@T("Plugins.Misc.AIInterview.Employer.Invite.Status")</th>
+                            <th class="col-invite-actions">@T("Plugins.Misc.AIInterview.Employer.Invite.Actions")</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -104,37 +115,55 @@
                             var inviteUrl = Url.RouteUrl(AIInterviewDefaults.MockStartRouteName,
                                 new { productId = invite.ProductId, sponsorToken = invite.InviteCode });
                             var statusKey = Model.InviteStatuses.TryGetValue(invite.Id, out var inviteStatus) ? inviteStatus : string.Empty;
+                            var jobName = Model.InviteJobNames.TryGetValue(invite.Id, out var inviteJobName)
+                                ? inviteJobName
+                                : T("Plugins.Misc.AIInterview.Employer.Invite.JobUnavailable").Text;
                             var activeStatus = T("Plugins.Misc.AIInterview.Employer.Invite.Active").Text;
                             var isActiveInvite = string.Equals(statusKey, activeStatus, StringComparison.OrdinalIgnoreCase);
+                            var createdOn = await FormatInviteDateTimeAsync(invite.CreatedOnUtc);
+                            var expiresOn = await FormatInviteDateTimeAsync(invite.ExpiryDateUtc);
                             <tr>
-                                <td><span class="employer-table-text employer-table-text-break">@invite.Email</span></td>
-                                <td><span class="employer-dashboard-code">@invite.InviteCode</span></td>
-                                <td>
-                                    <button type="button"
-                                            class="button-2 ai-copy-share-link ai-icon-action employer-dashboard-action-icon"
-                                            data-share-url="@inviteUrl"
-                                            aria-label="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")"
-                                            title="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")">
-                                        <i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i>
-                                        <i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i>
-                                        <i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i>
-                                        <span class="sr-only">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</span>
-                                    </button>
+                                <td class="col-invite-job">
+                                    <strong class="employer-invite-job">@jobName</strong>
+                                    <span class="employer-invite-email">@invite.Email</span>
                                 </td>
-                                <td>@(string.IsNullOrWhiteSpace(statusKey) ? T("Plugins.Misc.AIInterview.Employer.Invite.Active") : statusKey)</td>
-                                <td>
-                                    @if (isActiveInvite)
+                                <td class="col-invite-created"><time datetime="@invite.CreatedOnUtc.ToString("O")">@createdOn</time></td>
+                                <td class="col-invite-expiry">
+                                    @if (invite.ExpiryDateUtc.HasValue)
                                     {
-                                        <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post" class="invite-deactivate-form">
-                                            <button type="submit"
-                                                    class="button-2 ai-icon-action invite-deactivate-button employer-dashboard-action-icon"
-                                                    title="@deactivateInviteText"
-                                                    aria-label="@deactivateInviteText">
-                                                <i class="fa-solid fa-ban" aria-hidden="true"></i>
-                                                <span class="sr-only">@deactivateInviteText</span>
-                                            </button>
-                                        </form>
+                                        <time datetime="@invite.ExpiryDateUtc.Value.ToString("O")">@expiresOn</time>
                                     }
+                                    else
+                                    {
+                                        @expiresOn
+                                    }
+                                </td>
+                                <td class="col-invite-status"><span class="status-pill">@(string.IsNullOrWhiteSpace(statusKey) ? T("Plugins.Misc.AIInterview.Employer.Invite.Active") : statusKey)</span></td>
+                                <td class="col-invite-actions">
+                                    <div class="scoreboard-deck-row-actions employer-invite-row-actions">
+                                        <button type="button"
+                                                class="button-2 ai-copy-share-link ai-icon-action employer-dashboard-action-icon"
+                                                data-share-url="@inviteUrl"
+                                                aria-label="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")"
+                                                title="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")">
+                                            <i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i>
+                                            <i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i>
+                                            <i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i>
+                                            <span class="sr-only">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</span>
+                                        </button>
+                                        @if (isActiveInvite)
+                                        {
+                                            <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post" class="invite-deactivate-form">
+                                                <button type="submit"
+                                                        class="button-2 ai-icon-action invite-deactivate-button employer-dashboard-action-icon"
+                                                        title="@deactivateInviteText"
+                                                        aria-label="@deactivateInviteText">
+                                                    <i class="fa-solid fa-ban" aria-hidden="true"></i>
+                                                    <span class="sr-only">@deactivateInviteText</span>
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -148,34 +177,45 @@
                 var inviteUrl = Url.RouteUrl(AIInterviewDefaults.MockStartRouteName,
                     new { productId = invite.ProductId, sponsorToken = invite.InviteCode });
                 var statusKey = Model.InviteStatuses.TryGetValue(invite.Id, out var inviteStatus) ? inviteStatus : string.Empty;
+                var jobName = Model.InviteJobNames.TryGetValue(invite.Id, out var inviteJobName)
+                    ? inviteJobName
+                    : T("Plugins.Misc.AIInterview.Employer.Invite.JobUnavailable").Text;
                 var activeStatus = T("Plugins.Misc.AIInterview.Employer.Invite.Active").Text;
                 var isActiveInvite = string.Equals(statusKey, activeStatus, StringComparison.OrdinalIgnoreCase);
+                var createdOn = await FormatInviteDateTimeAsync(invite.CreatedOnUtc);
+                var expiresOn = await FormatInviteDateTimeAsync(invite.ExpiryDateUtc);
                 <article class="responsive-data-card responsive-data-card-spacious employer-dashboard-mobile-card employer-invite-mobile-card">
                     <div class="responsive-data-card-head">
                         <div class="responsive-data-card-head-copy">
-                            <strong class="responsive-data-card-title">@invite.Email</strong>
-                            <div class="responsive-data-card-subtitle">@T("Plugins.Misc.AIInterview.Employer.Invite.Code"): @invite.InviteCode</div>
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Invite.Job")</span>
+                            <strong class="responsive-data-card-title">@jobName</strong>
+                            <div class="responsive-data-card-subtitle">@invite.Email</div>
                         </div>
                         <div class="responsive-data-card-chip-group">
                             <span class="status-pill">@(string.IsNullOrWhiteSpace(statusKey) ? T("Plugins.Misc.AIInterview.Employer.Invite.Active") : statusKey)</span>
                         </div>
                     </div>
                     <div class="responsive-data-card-grid">
-                        <div class="responsive-data-card-item responsive-data-card-item-wide">
-                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Invite.Link")</span>
-                            <button type="button"
-                                    class="button-2 ai-copy-share-link ai-icon-action responsive-data-card-value"
-                                    data-share-url="@inviteUrl"
-                                    aria-label="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")"
-                                    title="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")">
-                                <i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i>
-                                <i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i>
-                                <i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i>
-                                <span class="sr-only">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</span>
-                            </button>
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Invite.Created")</span>
+                            <span class="responsive-data-card-value">@createdOn</span>
+                        </div>
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Invite.Expiry")</span>
+                            <span class="responsive-data-card-value">@expiresOn</span>
                         </div>
                     </div>
-                    <div class="responsive-data-card-actions employer-dashboard-mobile-actions">
+                    <div class="responsive-data-card-actions employer-dashboard-mobile-actions" aria-label="@T("Plugins.Misc.AIInterview.Employer.Invite.Actions")">
+                        <button type="button"
+                                class="button-2 ai-copy-share-link ai-icon-action employer-dashboard-action-icon"
+                                data-share-url="@inviteUrl"
+                                aria-label="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")"
+                                title="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")">
+                            <i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i>
+                            <i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i>
+                            <i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i>
+                            <span class="sr-only">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</span>
+                        </button>
                         @if (isActiveInvite)
                         {
                             <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post" class="invite-deactivate-form">

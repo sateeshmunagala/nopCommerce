@@ -18,7 +18,7 @@
             return T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.NoExpiry").Text;
 
         var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(expiryDateUtc.Value, DateTimeKind.Utc);
-        return userDateTime.ToString("G");
+        return userDateTime.ToString("d");
     }
 
     var heading = T("Plugins.Misc.AIInterview.MyActivity.Tab.SponsoredInterviews").Text;

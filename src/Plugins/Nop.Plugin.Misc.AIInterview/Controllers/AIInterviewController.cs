@@ -3015,8 +3015,33 @@ public class AIInterviewController : BasePluginController
         model.TotalCount = totalCount;
         model.TotalPages = totalPages;
 
+        var productIds = model.Invites
+            .Select(invite => invite.ProductId)
+            .Where(productId => productId > 0)
+            .Distinct()
+            .ToArray();
+        var products = productIds.Length > 0
+            ? await _productService.GetProductsByIdsAsync(productIds) ?? new List<Product>()
+            : new List<Product>();
+        var localizedProductNames = new Dictionary<int, string>();
+        foreach (var product in products)
+        {
+            var localizedName = await _localizationService.GetLocalizedAsync(product, entity => entity.Name) ?? product.Name;
+            if (!string.IsNullOrWhiteSpace(localizedName))
+                localizedProductNames[product.Id] = localizedName;
+        }
+
+        var unavailableJobName = await _localizationService.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.JobUnavailable");
+        if (string.IsNullOrWhiteSpace(unavailableJobName))
+            unavailableJobName = "Job unavailable";
+
         foreach (var invite in model.Invites)
+        {
             model.InviteStatuses[invite.Id] = await GetInviteStatusTextAsync(invite);
+            model.InviteJobNames[invite.Id] = localizedProductNames.TryGetValue(invite.ProductId, out var jobName)
+                ? jobName
+                : unavailableJobName;
+        }
 
         return model;
     }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Moq;
@@ -120,7 +121,10 @@ public class EmployerTests
             null,
             _shoppingCartService.Object,
             _storeContext.Object,
-            genericAttributeService: _genericAttributeService.Object);
+            genericAttributeService: _genericAttributeService.Object,
+            inviteService: _inviteService.Object,
+            creditService: _creditService.Object);
+        _controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
 
         _mockAiController = new MockAiInterviewController(
             _interviewSessionService.Object,
@@ -1065,6 +1069,9 @@ public class EmployerTests
         var jobsPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardJobsContent.cshtml"));
         var applicationsPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardApplicationsContent.cshtml"));
         var invitesPartial = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_EmployerDashboardInvitesContent.cshtml"));
+        var cssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
+        var localeMethod = typeof(AIInterviewPlugin).GetMethod("GetEmployerApplicationsLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var localeResources = (Dictionary<string, string>)localeMethod.Invoke(null, null);
 
         Assert.That(overviewPartial, Does.Not.Contain("ReviewApplicationsAction"));
         Assert.That(overviewPartial, Does.Not.Contain("ManageInvitesAction"));
@@ -1087,8 +1094,79 @@ public class EmployerTests
         Assert.That(invitesPartial, Does.Contain("type=\"date\" name=\"expiryDateUtc\""));
         Assert.That(invitesPartial, Does.Not.Contain("id=\"maxAttempts\" type=\"number\""));
         Assert.That(invitesPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Deactivate.Tooltip"));
-        Assert.That(invitesPartial, Does.Contain("employer-dashboard-long-link"));
+        Assert.That(invitesPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Job"));
+        Assert.That(invitesPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Created"));
+        Assert.That(invitesPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Expiry"));
+        Assert.That(invitesPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Status"));
+        Assert.That(invitesPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Invite.Actions"));
+        Assert.That(invitesPartial.Split("<th class=\"col-invite-").Length - 1, Is.EqualTo(5));
+        Assert.That(invitesPartial, Does.Contain("ConvertToUserTimeAsync(valueUtc.Value, DateTimeKind.Utc)"));
+        Assert.That(invitesPartial, Does.Contain("FormatInviteDateTimeAsync(invite.CreatedOnUtc)"));
+        Assert.That(invitesPartial, Does.Contain("FormatInviteDateTimeAsync(invite.ExpiryDateUtc)"));
+        Assert.That(invitesPartial, Does.Contain("sponsorToken = invite.InviteCode"));
+        Assert.That(invitesPartial, Does.Not.Contain("Plugins.Misc.AIInterview.Employer.Invite.Code"));
+        Assert.That(invitesPartial, Does.Not.Contain("Plugins.Misc.AIInterview.Employer.Invite.Link"));
+        Assert.That(invitesPartial, Does.Not.Contain("employer-dashboard-code"));
+        Assert.That(invitesPartial, Does.Not.Contain(">@invite.InviteCode<"));
+        Assert.That(cssText, Does.Contain(".invite-table .col-invite-job"));
+        Assert.That(cssText, Does.Contain("padding: 6px 10px;"));
+        Assert.That(cssText, Does.Contain(".invite-table .employer-dashboard-action-icon"));
+        Assert.That(cssText, Does.Contain("width: 32px !important;"));
+        Assert.That(cssText, Does.Contain(".employer-invite-mobile-card .employer-dashboard-action-icon"));
+        Assert.That(cssText, Does.Contain("width: 36px !important;"));
+        Assert.That(cssText, Does.Contain(".employer-invites-table-shell"));
+        Assert.That(cssText, Does.Contain(".employer-invites-mobile-list"));
+        Assert.That(localeResources["Plugins.Misc.AIInterview.Employer.Invite.Job"], Is.EqualTo("Job"));
+        Assert.That(localeResources["Plugins.Misc.AIInterview.Employer.Invite.Created"], Is.EqualTo("Created"));
+        Assert.That(localeResources["Plugins.Misc.AIInterview.Employer.Invite.Invited"], Is.EqualTo("Invited"));
+        Assert.That(localeResources["Plugins.Misc.AIInterview.Employer.Invite.Expiry"], Is.EqualTo("Expires"));
+        Assert.That(localeResources["Plugins.Misc.AIInterview.Employer.Invite.Status"], Is.EqualTo("Status"));
+        Assert.That(localeResources["Plugins.Misc.AIInterview.Employer.Invite.Actions"], Is.EqualTo("Actions"));
         Assert.That(invitesPartial, Does.Contain("_MyActivityPager.cshtml"));
+    }
+
+    [Test]
+    public async Task EmployerDashboard_Invites_Map_Job_Names_And_Preserve_CreatedOnUtc()
+    {
+        var createdOnUtc = new DateTime(2026, 9, 18, 8, 30, 0, DateTimeKind.Utc);
+        var existingProductInvite = new SponsorInvite
+        {
+            Id = 31,
+            SponsorId = _employer.Id,
+            ProductId = 44,
+            Email = "candidate@example.com",
+            InviteCode = "invite-31",
+            MaxAttempts = 1,
+            IsActive = true,
+            CreatedOnUtc = createdOnUtc,
+            ExpiryDateUtc = createdOnUtc.AddDays(7)
+        };
+        var missingProductInvite = new SponsorInvite
+        {
+            Id = 32,
+            SponsorId = _employer.Id,
+            ProductId = 404,
+            Email = "missing@example.com",
+            InviteCode = "invite-32",
+            MaxAttempts = 1,
+            IsActive = true,
+            CreatedOnUtc = createdOnUtc.AddMinutes(-1),
+            ExpiryDateUtc = createdOnUtc.AddDays(7)
+        };
+        _customerService.Setup(x => x.IsAdminAsync(_employer)).ReturnsAsync(true);
+        _inviteService.Setup(x => x.GetSponsorInvitesAsync(_employer.Id))
+            .ReturnsAsync(new List<SponsorInvite> { existingProductInvite, missingProductInvite });
+        _productService.Setup(x => x.GetProductsByIdsAsync(It.Is<int[]>(ids => ids.Contains(44) && ids.Contains(404))))
+            .ReturnsAsync(new List<Product> { new() { Id = 44, Name = "Platform Engineer", VendorId = _employer.VendorId } });
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.JobUnavailable"))
+            .ReturnsAsync("Job unavailable");
+
+        var result = await _controller.EmployerDashboard(tab: AIInterviewDefaults.EmployerDashboardInvitesTabKey);
+        var pageModel = (EmployerDashboardPageModel)((ViewResult)result).Model;
+
+        Assert.That(pageModel.Invites.Invites.Single(invite => invite.Id == 31).CreatedOnUtc, Is.EqualTo(createdOnUtc));
+        Assert.That(pageModel.Invites.InviteJobNames[31], Is.EqualTo("Platform Engineer"));
+        Assert.That(pageModel.Invites.InviteJobNames[32], Is.EqualTo("Job unavailable"));
     }
 
     [Test]

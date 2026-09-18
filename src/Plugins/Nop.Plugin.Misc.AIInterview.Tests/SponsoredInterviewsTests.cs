@@ -309,7 +309,8 @@ public class SponsoredInterviewsTests
         Assert.That(CountOccurrences(viewText, "FormatCreatedAsync(invitation.CreatedOnUtc)"), Is.EqualTo(2));
         Assert.That(CountOccurrences(viewText, "FormatExpiryAsync(invitation.ExpiryDateUtc)"), Is.EqualTo(2));
         Assert.That(viewText, Does.Contain("ConvertToUserTimeAsync(expiryDateUtc.Value, DateTimeKind.Utc)"));
-        Assert.That(viewText, Does.Contain("userDateTime.ToString(\"G\")"));
+        Assert.That(viewText, Does.Contain("userDateTime.ToString(\"d\")"));
+        Assert.That(viewText, Does.Not.Contain("userDateTime.ToString(\"G\")"));
         Assert.That(viewText, Does.Contain("MyActivity.SponsoredInterviews.Created"));
         Assert.That(viewText, Does.Contain("createdOnUtc.Value == default"));
         Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.Common.None"));
@@ -427,10 +428,11 @@ public class SponsoredInterviewsTests
             Assert.That(desktopActionRuleIndex, Is.GreaterThanOrEqualTo(0));
             Assert.That(desktopActionRule, Does.Not.Contain("min-width: 140px;"));
             Assert.That(desktopActionRule, Does.Contain("min-width: 0;"));
-            Assert.That(desktopActionRule, Does.Contain("min-height: 40px;"));
-            Assert.That(desktopActionRule, Does.Contain("padding: 8px 12px;"));
+            Assert.That(desktopActionRule, Does.Contain("min-height: 32px;"));
+            Assert.That(desktopActionRule, Does.Contain("padding: 4px 8px;"));
             Assert.That(mobileActionRuleIndex, Is.GreaterThanOrEqualTo(0));
             Assert.That(mobileActionRule, Does.Contain("width: auto;"));
+            Assert.That(mobileActionRule, Does.Contain("min-height: 36px;"));
             Assert.That(mobileActionRule, Does.Not.Contain("width: 100%;"));
         });
     }
