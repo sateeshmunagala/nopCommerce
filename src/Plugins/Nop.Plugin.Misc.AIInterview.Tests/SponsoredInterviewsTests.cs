@@ -301,12 +301,15 @@ public class SponsoredInterviewsTests
     }
 
     [Test]
-    public void Candidate_View_Renders_Created_Date_In_Both_Layouts_Without_Exposing_InviteCode()
+    public void Candidate_View_Renders_Created_And_Expiry_Dates_In_Both_Layouts_Without_Exposing_InviteCode()
     {
         var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MyActivitySponsoredInterviewsContent.cshtml"));
 
         Assert.That(viewText, Does.Contain("ConvertToUserTimeAsync"));
         Assert.That(CountOccurrences(viewText, "FormatCreatedAsync(invitation.CreatedOnUtc)"), Is.EqualTo(2));
+        Assert.That(CountOccurrences(viewText, "FormatExpiryAsync(invitation.ExpiryDateUtc)"), Is.EqualTo(2));
+        Assert.That(viewText, Does.Contain("ConvertToUserTimeAsync(expiryDateUtc.Value, DateTimeKind.Utc)"));
+        Assert.That(viewText, Does.Contain("userDateTime.ToString(\"G\")"));
         Assert.That(viewText, Does.Contain("MyActivity.SponsoredInterviews.Created"));
         Assert.That(viewText, Does.Contain("createdOnUtc.Value == default"));
         Assert.That(viewText, Does.Contain("Plugins.Misc.AIInterview.Common.None"));
@@ -341,10 +344,40 @@ public class SponsoredInterviewsTests
     }
 
     [Test]
+    public void JobBoardVenture_Tab_Sync_Keeps_Sponsored_And_Applied_Selections_Distinct()
+    {
+        var themeScriptPath = Path.GetFullPath(Path.Combine(
+            TestFilePathHelper.GetPluginRootPath(),
+            "..",
+            "..",
+            "Presentation",
+            "Nop.Web",
+            "Themes",
+            "JobBoardVenture",
+            "Content",
+            "js",
+            "jobboard-venture.js"));
+        var scriptText = File.ReadAllText(themeScriptPath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(CountOccurrences(scriptText, "case 'sponsored-interviews':"), Is.EqualTo(1));
+            Assert.That(scriptText, Does.Contain("return 'sponsored-interviews';"));
+            Assert.That(scriptText, Does.Contain("case 'applied-jobs':"));
+            Assert.That(scriptText, Does.Contain("return 'applied-jobs';"));
+            Assert.That(scriptText, Does.Contain("normalizeMyActivityTab(tabLink.getAttribute('data-my-activity-tab')) === normalizedTab"));
+            Assert.That(scriptText, Does.Contain("tabLink.classList.toggle('is-active', isActive)"));
+            Assert.That(scriptText, Does.Contain("tabLink.setAttribute('aria-current', 'page')"));
+            Assert.That(scriptText, Does.Contain("tabLink.removeAttribute('aria-current')"));
+        });
+    }
+
+    [Test]
     public void Sponsored_Layouts_Use_Mutually_Exclusive_Desktop_And_Mobile_Rules()
     {
         var cssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
-        var mobileBreakpointIndex = cssText.IndexOf("@media (max-width: 640px)", StringComparison.Ordinal);
+        var sponsoredDesktopRuleIndex = cssText.IndexOf(".html-aiinterview-my-activity-page .sponsored-interviews-mobile-list", StringComparison.Ordinal);
+        var mobileBreakpointIndex = cssText.IndexOf("@media (max-width: 640px)", sponsoredDesktopRuleIndex, StringComparison.Ordinal);
         var nextBreakpointIndex = cssText.IndexOf("@media (max-width: 480px)", mobileBreakpointIndex, StringComparison.Ordinal);
         var desktopCss = cssText[..mobileBreakpointIndex];
         var mobileCss = cssText[mobileBreakpointIndex..nextBreakpointIndex];
@@ -357,6 +390,34 @@ public class SponsoredInterviewsTests
             Assert.That(mobileCss, Does.Contain(".html-aiinterview-my-activity-page .sponsored-interviews-mobile-list"));
             Assert.That(mobileCss, Does.Contain("display: none;"));
             Assert.That(mobileCss, Does.Contain("display: grid;"));
+        });
+    }
+
+    [Test]
+    public void Sponsored_Interview_Actions_Use_Compact_Content_Width_Sizing()
+    {
+        var cssText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Content", "css", "aiinterview-public.css"));
+        var desktopActionRuleIndex = cssText.IndexOf(".sponsored-interview-action {", StringComparison.Ordinal);
+        var mobileBreakpointIndex = cssText.IndexOf("@media (max-width: 640px)", desktopActionRuleIndex, StringComparison.Ordinal);
+        var nextBreakpointIndex = cssText.IndexOf("@media (max-width: 480px)", mobileBreakpointIndex, StringComparison.Ordinal);
+        var desktopCss = cssText[..mobileBreakpointIndex];
+        var mobileCss = cssText[mobileBreakpointIndex..nextBreakpointIndex];
+        var desktopActionRuleEnd = desktopCss.IndexOf('}', desktopActionRuleIndex);
+        var desktopActionRule = desktopCss[desktopActionRuleIndex..desktopActionRuleEnd];
+        var mobileActionRuleIndex = mobileCss.IndexOf(".sponsored-interview-card .sponsored-interview-action {", StringComparison.Ordinal);
+        var mobileActionRuleEnd = mobileCss.IndexOf('}', mobileActionRuleIndex);
+        var mobileActionRule = mobileCss[mobileActionRuleIndex..mobileActionRuleEnd];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(desktopActionRuleIndex, Is.GreaterThanOrEqualTo(0));
+            Assert.That(desktopActionRule, Does.Not.Contain("min-width: 140px;"));
+            Assert.That(desktopActionRule, Does.Contain("min-width: 0;"));
+            Assert.That(desktopActionRule, Does.Contain("min-height: 40px;"));
+            Assert.That(desktopActionRule, Does.Contain("padding: 8px 12px;"));
+            Assert.That(mobileActionRuleIndex, Is.GreaterThanOrEqualTo(0));
+            Assert.That(mobileActionRule, Does.Contain("width: auto;"));
+            Assert.That(mobileActionRule, Does.Not.Contain("width: 100%;"));
         });
     }
 }

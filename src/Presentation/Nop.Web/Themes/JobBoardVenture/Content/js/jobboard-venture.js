@@ -3,12 +3,16 @@
 
     function normalizeMyActivityTab(tab) {
         switch ((tab || '').toLowerCase()) {
+            case 'applied-jobs':
+                return 'applied-jobs';
             case 'saved-jobs':
                 return 'saved-jobs';
             case 'mock-interviews':
                 return 'mock-interviews';
             case 'credits':
                 return 'credits';
+            case 'sponsored-interviews':
+                return 'sponsored-interviews';
             default:
                 return 'applied-jobs';
         }

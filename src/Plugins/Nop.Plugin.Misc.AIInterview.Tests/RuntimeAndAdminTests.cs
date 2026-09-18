@@ -1412,10 +1412,12 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
-    public async Task EmployerManage_Uses_Exhausted_Status_For_Fully_Used_Invite()
+    public async Task EmployerManage_Uses_Used_Status_For_Fully_Used_Invite()
     {
         var customer = new Customer { Id = 1, VendorId = 2, Email = "vendor@example.com" };
         _workContext.Setup(x => x.GetCurrentCustomerAsync()).ReturnsAsync(customer);
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Exhausted"))
+            .ReturnsAsync("Used");
         _inviteService.Setup(x => x.GetSponsorInvitesAsync(1)).ReturnsAsync(new List<SponsorInvite>
         {
             new SponsorInvite
@@ -1439,7 +1441,10 @@ public class RuntimeAndAdminTests
         Assert.That(result, Is.TypeOf<ViewResult>());
         var statuses = _runtimeController.ViewBag.SponsorInviteStatuses as IDictionary<int, string>;
         Assert.That(statuses, Is.Not.Null);
-        Assert.That(statuses[22], Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Exhausted"));
+        Assert.That(statuses[22], Is.EqualTo("Used"));
+        var resourcesMethod = typeof(AIInterviewPlugin).GetMethod("GetUpgradeLocaleResources", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var resources = (Dictionary<string, string>)resourcesMethod.Invoke(null, null);
+        Assert.That(resources["Plugins.Misc.AIInterview.Employer.Invite.Exhausted"], Is.EqualTo("Used"));
     }
 
     [Test]

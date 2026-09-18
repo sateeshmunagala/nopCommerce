@@ -2367,7 +2367,11 @@ public class MockAiInterviewController : BasePluginController
         if (!expiryDateUtc.HasValue)
             return null;
 
-        return DateTime.SpecifyKind(expiryDateUtc.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+        var expiry = expiryDateUtc.Value;
+        if (expiry.TimeOfDay == TimeSpan.Zero)
+            return new DateTime(expiry.Year, expiry.Month, expiry.Day, 23, 59, 59, DateTimeKind.Utc);
+
+        return DateTime.SpecifyKind(expiry, DateTimeKind.Utc);
     }
 
     protected virtual async Task<string> GetInviteStatusTextAsync(SponsorInvite invite)

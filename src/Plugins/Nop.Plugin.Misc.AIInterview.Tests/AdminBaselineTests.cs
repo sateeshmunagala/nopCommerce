@@ -982,6 +982,8 @@ public class AdminBaselineTests
         _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(3)).ReturnsAsync(0);
         _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(4)).ReturnsAsync(1);
         _sessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(5)).ReturnsAsync(1);
+        _localizationService.Setup(x => x.GetResourceAsync("Plugins.Misc.AIInterview.Employer.Invite.Exhausted"))
+            .ReturnsAsync("Used");
 
         var result = await _controller.SponsorInvites();
 
@@ -989,7 +991,7 @@ public class AdminBaselineTests
         Assert.That(model.Invites.Single(x => x.Id == 1).StatusText, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Active"));
         Assert.That(model.Invites.Single(x => x.Id == 2).StatusText, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Expired"));
         Assert.That(model.Invites.Single(x => x.Id == 3).StatusText, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Inactive"));
-        Assert.That(model.Invites.Single(x => x.Id == 4).StatusText, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Exhausted"));
+        Assert.That(model.Invites.Single(x => x.Id == 4).StatusText, Is.EqualTo("Used"));
         Assert.That(model.Invites.Single(x => x.Id == 5).StatusText, Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Accepted"));
     }
 

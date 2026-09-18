@@ -4,6 +4,7 @@ using Moq;
 using Nop.Core;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
+using Nop.Data;
 using Nop.Plugin.Misc.AIInterview.Controllers;
 using Nop.Plugin.Misc.AIInterview.Domain;
 using Nop.Plugin.Misc.AIInterview.Models;
@@ -393,8 +394,60 @@ public class EmployerTests
             "invited@test.com",
             10,
             1,
-            It.Is<DateTime?>(value => value == selectedDate.Date.AddDays(1).AddTicks(-1))),
+            It.Is<DateTime?>(value =>
+                value.HasValue &&
+                value.Value.Date == selectedDate.Date &&
+                value.Value.TimeOfDay == new TimeSpan(23, 59, 59) &&
+                value.Value.Kind == DateTimeKind.Utc)),
             Times.Once);
+    }
+
+    [Test]
+    public async Task CreateInvite_ExplicitTime_Preserves_Administrator_Time_InUtc()
+    {
+        _productService.Setup(x => x.GetProductByIdAsync(10))
+            .ReturnsAsync(new Product { Id = 10, VendorId = _employer.VendorId, Name = "AI Developer" });
+        var selectedDateTime = DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(3).AddHours(14).AddMinutes(30).AddSeconds(45), DateTimeKind.Unspecified);
+
+        await _mockAiController.CreateInvite("invited@test.com", 10, 1, selectedDateTime);
+
+        _inviteService.Verify(x => x.CreateInviteAsync(
+            123,
+            "invited@test.com",
+            10,
+            1,
+            It.Is<DateTime?>(value =>
+                value.HasValue &&
+                value.Value == DateTime.SpecifyKind(selectedDateTime, DateTimeKind.Utc) &&
+                value.Value.Kind == DateTimeKind.Utc)),
+            Times.Once);
+    }
+
+    [Test]
+    public async Task CreateInvite_DefaultExpiry_Ends_On_Seventh_Calendar_Date()
+    {
+        var inviteRepository = new Mock<IRepository<SponsorInvite>>();
+        SponsorInvite createdInvite = null;
+        inviteRepository.Setup(x => x.InsertAsync(It.IsAny<SponsorInvite>(), true))
+            .Callback<SponsorInvite, bool>((invite, _) => createdInvite = invite)
+            .Returns(Task.CompletedTask);
+        _productService.Setup(x => x.GetProductByIdAsync(10))
+            .ReturnsAsync(new Product { Id = 10, VendorId = _employer.VendorId, Name = "AI Developer" });
+        _customerService.Setup(x => x.GetCustomerByIdAsync(_employer.Id)).ReturnsAsync(_employer);
+        var service = new SponsorInviteService(
+            inviteRepository.Object,
+            _productService.Object,
+            _customerService.Object,
+            _localizationService.Object);
+        var earliestExpiryDate = DateTime.UtcNow.Date.AddDays(7);
+
+        await service.CreateInviteAsync(_employer.Id, "invited@test.com", 10, 1, null);
+
+        var latestExpiryDate = DateTime.UtcNow.Date.AddDays(7);
+        Assert.That(createdInvite, Is.Not.Null);
+        Assert.That(createdInvite.ExpiryDateUtc.Value.Date, Is.InRange(earliestExpiryDate, latestExpiryDate));
+        Assert.That(createdInvite.ExpiryDateUtc.Value.TimeOfDay, Is.EqualTo(new TimeSpan(23, 59, 59)));
+        Assert.That(createdInvite.ExpiryDateUtc.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
     }
 
     [Test]

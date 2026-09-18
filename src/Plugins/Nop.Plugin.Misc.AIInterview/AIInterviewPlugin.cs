@@ -1330,7 +1330,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             ["Plugins.Misc.AIInterview.Admin.SponsorInvites.CreatedOn"] = "Created On",
             ["Plugins.Misc.AIInterview.Admin.SponsorInvites.SponsorId"] = "Sponsor ID",
             ["Plugins.Misc.AIInterview.Admin.SponsorInvites.Deactivate"] = "Deactivate",
-            ["Plugins.Misc.AIInterview.Employer.Invite.Exhausted"] = "Exhausted",
+            ["Plugins.Misc.AIInterview.Employer.Invite.Exhausted"] = "Used",
             ["Plugins.Misc.AIInterview.Admin.Credits.VendorTitle"] = "Vendor Credits",
             ["Plugins.Misc.AIInterview.Admin.Credits.ApplicantTitle"] = "Applicant Credits",
             ["Plugins.Misc.AIInterview.Admin.Credits.TopUp"] = "Top Up",
