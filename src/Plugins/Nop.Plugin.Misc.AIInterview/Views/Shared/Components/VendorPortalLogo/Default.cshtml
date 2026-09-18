@@ -1,7 +1,7 @@
 @model string
 @if (!string.IsNullOrEmpty(Model))
 {
-    <img class="vp-vendor-logo" src="@Model" alt="Organisation logo" />
+    <img class="vp-vendor-logo" src="@Model" alt="@T("Plugins.Misc.AIInterview.VendorPortal.LogoAlt")" />
 }
 else
 {

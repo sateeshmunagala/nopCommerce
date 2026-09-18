@@ -94,6 +94,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
             "productdetails_before_collateral",
             AdminWidgetZones.ProductDetailsBlock,
             "body_start_html_tag_after",
+            AIInterviewDefaults.VendorPortalLogoWidgetZone,
             "header_links_after"
         });
     }
@@ -117,6 +118,9 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
 
         if (string.Equals(widgetZone, "header_links_after", StringComparison.OrdinalIgnoreCase))
             return typeof(Components.VendorPortalHeaderLinksViewComponent);
+
+        if (string.Equals(widgetZone, AIInterviewDefaults.VendorPortalLogoWidgetZone, StringComparison.OrdinalIgnoreCase))
+            return typeof(Components.VendorPortalLogoViewComponent);
 
         return typeof(Components.AIInterviewProductDetailsViewComponent);
     }
@@ -361,6 +365,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetVendorPortalLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetRuntimeTourLocaleResources());
         await EnsureRuntimeActivityLogTypesAsync();
         await EnsureEmployerRoleAsync();
@@ -1142,6 +1147,14 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         };
     }
 
+    protected static Dictionary<string, string> GetVendorPortalLocaleResources()
+    {
+        return new Dictionary<string, string>
+        {
+            [$"{AIInterviewDefaults.LocalizationPrefix}.VendorPortal.LogoAlt"] = "Organisation logo"
+        };
+    }
+
     protected static Dictionary<string, string> GetRuntimeTourLocaleResources()
     {
         return new Dictionary<string, string>
@@ -1626,6 +1639,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetEmployerApplicationsLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetVendorPortalLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetRuntimeTourLocaleResources());
 
         //locales
@@ -2058,6 +2072,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetUpgradeLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetAdminLocaleResources());
         await _localizationService.AddOrUpdateLocaleResourceAsync(GetMyActivityCreditLocaleResources());
+        await _localizationService.AddOrUpdateLocaleResourceAsync(GetVendorPortalLocaleResources());
         await EnsureRuntimeActivityLogTypesAsync();
 
         await EnsureCompletionRecoveryTaskAsync();

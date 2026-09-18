@@ -24,18 +24,20 @@ public class VendorPortalHeaderLinksViewComponent : NopViewComponent
 
     public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData)
     {
+        if (!HttpContext.Items.ContainsKey(AIInterviewDefaults.IsVendorPortalPageKey))
+            return Content(string.Empty);
+
         var customer = await _workContext.GetCurrentCustomerAsync();
         if (customer == null || await _customerService.IsGuestAsync(customer))
             return Content(string.Empty);
 
         var wallet = await _creditService.GetOrCreateWalletAsync(customer.Id);
-        var showName = HttpContext.Items.ContainsKey(AIInterviewDefaults.IsVendorPortalPageKey);
         var model = new VendorPortalHeaderLinksModel
         {
             FirstName = customer.FirstName ?? string.Empty,
             LastName = customer.LastName ?? string.Empty,
             Balance = wallet.Balance,
-            ShowName = showName
+            ShowName = true
         };
 
         return View(

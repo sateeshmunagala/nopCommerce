@@ -22,9 +22,8 @@
         HasVisibleContent(currencySelector) ||
         HasVisibleContent(languageSelector) ||
         HasVisibleContent(selectorWidgets);
-    var isMyAccountPage = NopHtml.GeneratePageCssClasses()
-        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-        .Contains("html-account-page", StringComparer.OrdinalIgnoreCase);
+    var vendorPortalLogo = await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = "aiinterview_vendor_portal_logo" });
+    var hasVendorPortalLogo = HasVisibleContent(vendorPortalLogo);
 }
 
 <header class="header">
@@ -50,12 +49,12 @@
         </div>
 
         <div class="header-logo">
-            @if (isMyAccountPage)
+            @if (hasVendorPortalLogo)
             {
                 <a class="jb-account-home-link" href="@Url.RouteUrl(NopRouteNames.General.HOMEPAGE)" aria-label="Home" title="Home">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
                 </a>
-                @await Component.InvokeAsync("VendorPortalLogo")
+                @vendorPortalLogo
             }
             else
             {

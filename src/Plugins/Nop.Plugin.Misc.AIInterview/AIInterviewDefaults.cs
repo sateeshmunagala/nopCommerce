@@ -73,6 +73,8 @@ public static class AIInterviewDefaults
 
     public const string IsVendorPortalPageKey = "IsVendorPortalPage";
 
+    public const string VendorPortalLogoWidgetZone = "aiinterview_vendor_portal_logo";
+
     public static string HomepageTopPerformersWidgetZone => Nop.Web.Framework.Infrastructure.PublicWidgetZones.HomepageBeforeBestSellers;
 
     public const int HomepageTopPerformersMaxCount = 10;
