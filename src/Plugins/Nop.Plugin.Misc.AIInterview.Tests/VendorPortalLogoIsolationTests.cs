@@ -54,21 +54,27 @@ public class VendorPortalLogoIsolationTests
     }
 
     [Test]
-    public async Task Vendor_Logo_Returns_No_Content_On_Ordinary_Page_Without_Resolving_Customer()
+    public async Task Vendor_Logo_Returns_No_Content_On_Ordinary_Page_Without_Resolving_Services()
     {
         var workContext = new Mock<IWorkContext>();
+        var customerService = new Mock<ICustomerService>();
+        var pictureService = new Mock<IPictureService>();
+        var vendorService = new Mock<IVendorService>();
         var component = new VendorPortalLogoViewComponent(
-            new Mock<IPictureService>().Object,
-            new Mock<IVendorService>().Object,
+            pictureService.Object,
+            vendorService.Object,
             workContext.Object,
-            new Mock<ICustomerService>().Object);
+            customerService.Object);
         SetHttpContext(component, new DefaultHttpContext());
 
         var result = await component.InvokeAsync();
 
         Assert.That(result, Is.TypeOf<ContentViewComponentResult>());
         Assert.That(((ContentViewComponentResult)result).Content, Is.Empty);
-        workContext.Verify(context => context.GetCurrentCustomerAsync(), Times.Never);
+        workContext.VerifyNoOtherCalls();
+        customerService.VerifyNoOtherCalls();
+        pictureService.VerifyNoOtherCalls();
+        vendorService.VerifyNoOtherCalls();
     }
 
     [Test]
@@ -201,6 +207,8 @@ public class VendorPortalLogoIsolationTests
         var headerText = File.ReadAllText(themeHeaderPath);
 
         Assert.That(headerText, Does.Contain("widgetZone = \"aiinterview_vendor_portal_logo\""));
+        Assert.That(headerText, Does.Contain("@if (hasVendorPortalLogo)"));
+        Assert.That(headerText, Does.Contain("@vendorPortalLogo"));
         Assert.That(headerText, Does.Contain("Component.InvokeAsync(typeof(LogoViewComponent))"));
         Assert.That(headerText, Does.Not.Contain("Component.InvokeAsync(\"VendorPortalLogo\")"));
         Assert.That(headerText, Does.Contain("non-overridden themes still require a separate restoration of"));
