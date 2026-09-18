@@ -19,7 +19,7 @@
         <div class="container-fluid">
             <div class="card card-default">
                 <div class="card-body">
-                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="CustomerId" /></div><div class="col-md-9"><nop-select asp-for="CustomerId" asp-items="Model.AvailableCustomers" /></div></div>
+                    <div class="form-group row"><div class="col-md-3"><nop-label asp-for="CustomerId" /></div><div class="col-md-9"><nop-select asp-for="CustomerId" asp-items="Model.AvailableCustomers" id="vendor-credit-customer" data-vendor-credits-url="@Url.RouteUrl(AIInterviewDefaults.AdminVendorCreditsRouteName)" /></div></div>
                     <div class="form-group row"><div class="col-md-3"><nop-label asp-for="Amount" /></div><div class="col-md-9"><nop-editor asp-for="Amount" /></div></div>
                     <div class="form-group row">
                         <div class="col-md-3">Selected Vendor</div>
@@ -77,3 +77,22 @@
         </div>
     </section>
 </form>
+
+<script asp-location="Footer">
+    (() => {
+        const selector = document.getElementById('vendor-credit-customer');
+        if (!selector)
+            return;
+
+        selector.addEventListener('change', () => {
+            const destination = new URL(selector.dataset.vendorCreditsUrl, window.location.href);
+            const customerId = Number.parseInt(selector.value, 10);
+
+            destination.search = '';
+            if (customerId > 0)
+                destination.searchParams.set('customerId', customerId.toString());
+
+            window.location.assign(destination.toString());
+        });
+    })();
+</script>

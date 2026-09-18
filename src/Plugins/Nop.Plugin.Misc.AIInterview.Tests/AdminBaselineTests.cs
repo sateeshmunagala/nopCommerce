@@ -1033,6 +1033,70 @@ public class AdminBaselineTests
     }
 
     [Test]
+    public void VendorCredits_View_Uses_Named_Get_Route_For_Selection_Changes()
+    {
+        var text = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Admin", "VendorCredits.cshtml"));
+
+        Assert.That(text, Does.Contain("id=\"vendor-credit-customer\""));
+        Assert.That(text, Does.Contain("Url.RouteUrl(AIInterviewDefaults.AdminVendorCreditsRouteName)"));
+        Assert.That(text, Does.Contain("selector.addEventListener('change'"));
+        Assert.That(text, Does.Contain("destination.searchParams.set('customerId'"));
+        Assert.That(text, Does.Contain("window.location.assign(destination.toString())"));
+        Assert.That(text, Does.Not.Contain("requestSubmit("));
+        Assert.That(text, Does.Not.Contain(".submit()"));
+    }
+
+    [Test]
+    public async Task VendorCredits_Get_WithCustomerId_Loads_Selected_Wallet_And_Ledger_Without_Mutation()
+    {
+        _vendorService.Setup(x => x.GetAllVendorsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>()))
+            .ReturnsAsync(new Nop.Core.PagedList<Vendor>(new List<Vendor>
+            {
+                new() { Id = 11, Name = "Vendor One", Email = "vendor1@example.com", PmCustomerId = 101 }
+            }, 0, 1, 1));
+        _customerService.Setup(x => x.GetCustomerByIdAsync(101))
+            .ReturnsAsync(new Customer
+            {
+                Id = 101,
+                FirstName = "Vendor",
+                LastName = "Owner",
+                Email = "owner@example.com",
+                VendorId = 11
+            });
+        _wallets.Add(new CreditWallet { Id = 7, CustomerId = 101, Balance = 37 });
+        _ledgerEntries.Add(new CreditLedgerEntry
+        {
+            Id = 8,
+            CreditWalletId = 7,
+            Amount = 12,
+            TransactionType = "Deposit",
+            Remarks = "Admin top-up",
+            CreatedOnUtc = new DateTime(2026, 9, 18, 8, 0, 0, DateTimeKind.Utc)
+        });
+
+        var result = await _controller.VendorCredits(101);
+        var model = (CreditManagementModel)((ViewResult)result).Model;
+
+        Assert.That(model.CustomerId, Is.EqualTo(101));
+        Assert.That(model.CustomerName, Is.EqualTo("Vendor Owner"));
+        Assert.That(model.CustomerEmail, Is.EqualTo("owner@example.com"));
+        Assert.That(model.AvailableCustomers.Single(item => item.Value == "101").Selected, Is.True);
+        Assert.That(model.WalletBalance, Is.EqualTo(37));
+        Assert.That(model.LedgerEntries, Has.Count.EqualTo(1));
+        Assert.That(model.LedgerEntries.Single().Amount, Is.EqualTo(12));
+        Assert.That(model.LedgerEntries.Single().Remarks, Is.EqualTo("Admin top-up"));
+        _creditService.Verify(x => x.GetOrCreateWalletAsync(It.IsAny<int>()), Times.Never);
+        _creditService.Verify(x => x.AddCreditAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        _creditService.Verify(x => x.AuthorizeAndChargeAsync(
+            It.IsAny<int>(),
+            It.IsAny<decimal>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<int>(),
+            It.IsAny<int>()), Times.Never);
+    }
+
+    [Test]
     public async Task VendorCredits_Rejects_ApplicantCustomer()
     {
         _customerService.Setup(x => x.GetCustomerByIdAsync(201))
