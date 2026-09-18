@@ -37,6 +37,7 @@
     <None Remove="Views\MockAiInterview\_Runtime.Tour.cshtml" />
     <None Remove="Views\ReportShare.cshtml" />
     <None Remove="Views\Shared\Components\AIInterviewInstituteRedirect\Default.cshtml" />
+    <None Remove="Views\Shared\_MyActivitySponsoredInterviewsContent.cshtml" />
     <None Remove="Views\Shared\_ReportShareContent.cshtml" />
     <None Remove="Views\_ViewImports.cshtml" />
     <None Remove="Views\Apply.cshtml" />
@@ -172,6 +173,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\Components\AIInterviewInstituteRedirect\Default.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivitySponsoredInterviewsContent.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\Shared\_ReportShareContent.cshtml">

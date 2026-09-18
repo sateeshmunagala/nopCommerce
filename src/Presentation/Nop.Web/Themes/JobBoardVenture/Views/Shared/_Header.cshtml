@@ -22,6 +22,9 @@
         HasVisibleContent(currencySelector) ||
         HasVisibleContent(languageSelector) ||
         HasVisibleContent(selectorWidgets);
+    // Core-owner maintenance note: non-overridden themes still require a separate restoration of
+    // LogoViewComponent in the shared Nop.Web header. This active-theme fallback intentionally
+    // remains theme-owned so AIInterview never introduces a core-to-plugin dependency.
     var vendorPortalLogo = await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = "aiinterview_vendor_portal_logo" });
     var hasVendorPortalLogo = HasVisibleContent(vendorPortalLogo);
 }

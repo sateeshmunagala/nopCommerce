@@ -96,6 +96,44 @@ public class VendorPortalLogoIsolationTests
     }
 
     [Test]
+    public async Task Portal_Marker_Does_Not_Trigger_Branding_Or_Credit_Services_For_Guest()
+    {
+        var guest = new Customer { Id = 6, VendorId = 12 };
+        var workContext = new Mock<IWorkContext>();
+        var customerService = new Mock<ICustomerService>();
+        var pictureService = new Mock<IPictureService>();
+        var vendorService = new Mock<IVendorService>();
+        var creditService = new Mock<ICreditService>();
+        workContext.Setup(context => context.GetCurrentCustomerAsync()).ReturnsAsync(guest);
+        customerService.Setup(service => service.IsGuestAsync(guest, true)).ReturnsAsync(true);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Items[AIInterviewDefaults.IsVendorPortalPageKey] = true;
+        httpContext.Items[AIInterviewDefaults.VendorPortalLogoUrlKey] = "/images/guest-logo.png";
+        var logoComponent = new VendorPortalLogoViewComponent(
+            pictureService.Object,
+            vendorService.Object,
+            workContext.Object,
+            customerService.Object);
+        var headerLinksComponent = new VendorPortalHeaderLinksViewComponent(
+            workContext.Object,
+            creditService.Object,
+            customerService.Object);
+        SetHttpContext(logoComponent, httpContext);
+        SetHttpContext(headerLinksComponent, httpContext);
+
+        var logoResult = await logoComponent.InvokeAsync();
+        var headerLinksResult = await headerLinksComponent.InvokeAsync("header_links_after", null);
+
+        Assert.That(logoResult, Is.TypeOf<ContentViewComponentResult>());
+        Assert.That(((ContentViewComponentResult)logoResult).Content, Is.Empty);
+        Assert.That(headerLinksResult, Is.TypeOf<ContentViewComponentResult>());
+        Assert.That(((ContentViewComponentResult)headerLinksResult).Content, Is.Empty);
+        pictureService.VerifyNoOtherCalls();
+        vendorService.VerifyNoOtherCalls();
+        creditService.VerifyNoOtherCalls();
+    }
+
+    [Test]
     public async Task Missing_Vendor_Logo_Uses_Plugin_View_Standard_Logo_Fallback()
     {
         var customer = new Customer { Id = 8, VendorId = 12, Email = "vendor@example.com" };
@@ -165,5 +203,12 @@ public class VendorPortalLogoIsolationTests
         Assert.That(headerText, Does.Contain("widgetZone = \"aiinterview_vendor_portal_logo\""));
         Assert.That(headerText, Does.Contain("Component.InvokeAsync(typeof(LogoViewComponent))"));
         Assert.That(headerText, Does.Not.Contain("Component.InvokeAsync(\"VendorPortalLogo\")"));
+        Assert.That(headerText, Does.Contain("non-overridden themes still require a separate restoration of"));
+        Assert.That(headerText, Does.Contain("remains theme-owned so AIInterview never introduces a core-to-plugin dependency"));
+
+        var pluginLogoViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath(
+            "Views", "Shared", "Components", "VendorPortalLogo", "Default.cshtml"));
+        Assert.That(pluginLogoViewText, Does.Contain("Component.InvokeAsync(typeof(Nop.Web.Components.LogoViewComponent))"));
+        Assert.That(pluginLogoViewText, Does.Not.Contain("Component.InvokeAsync(\"VendorPortalLogo\")"));
     }
 }
