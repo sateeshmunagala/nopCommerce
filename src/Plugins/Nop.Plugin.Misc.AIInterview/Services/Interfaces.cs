@@ -505,6 +505,7 @@ public interface ISponsorInviteService
     Task<SponsorInvite> GetSponsorInviteByCodeAsync(string code);
     Task CreateInviteAsync(int sponsorId, string email, int productId, int maxAttempts, DateTime? expiryDateUtc);
     Task<IList<SponsorInvite>> GetSponsorInvitesAsync(int sponsorId);
+    Task<IList<SponsorInvite>> GetActiveEligibleInvitesByCandidateEmailAsync(string candidateEmail);
     Task<SponsorInvite> GetAcceptedInviteByEmailAsync(string email);
     Task DeactivateInviteAsync(int inviteId, int sponsorId);
     Task<bool> ValidateInviteAsync(string code, string email);

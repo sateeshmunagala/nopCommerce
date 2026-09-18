@@ -156,17 +156,29 @@ public record MyActivityPagerModel : BaseNopModel
     public IDictionary<string, string> RouteValues { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 }
 
+public record SponsoredInterviewInvitationModel : BaseNopEntityModel
+{
+    public string CompanyName { get; set; }
+    public string JobTitle { get; set; }
+    public DateTime? ExpiryDateUtc { get; set; }
+    public string Status { get; set; }
+    public string InterviewUrl { get; set; }
+}
+
 public record MyActivityPageModel : BaseNopModel
 {
     public MyActivityPageModel()
     {
+        SponsoredInterviews = new List<SponsoredInterviewInvitationModel>();
         AppliedJobs = new ApplicationListModel();
         SavedJobs = new SavedJobsListModel();
         MockInterviews = new MockInterviewHistoryListModel();
         Credits = new CreditActivityModel();
     }
 
-    public string ActiveTab { get; set; } = AIInterviewDefaults.MyActivityAppliedJobsTabKey;
+    public string ActiveTab { get; set; } = AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey;
+    public IList<SponsoredInterviewInvitationModel> SponsoredInterviews { get; set; }
+    public bool HasUnavailableSponsoredInterviews { get; set; }
     public ApplicationListModel AppliedJobs { get; set; }
     public SavedJobsListModel SavedJobs { get; set; }
     public MockInterviewHistoryListModel MockInterviews { get; set; }

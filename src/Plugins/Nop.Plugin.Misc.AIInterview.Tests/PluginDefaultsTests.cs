@@ -86,15 +86,20 @@ public class PluginDefaultsTests
     }
 
     [Test]
-    public void MyActivity_Credits_Tab_Is_Wired_Without_Changing_Default_Tab()
+    public void MyActivity_Sponsored_Interviews_Is_First_Default_Tab_And_Credits_Remain_Wired()
     {
         var controllerText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Controllers", "AIInterviewController.cs"));
         var shellViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MyActivity.cshtml"));
         var tabPartialText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "Shared", "_MyActivityTabContent.cshtml"));
         var pluginText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("AIInterviewPlugin.cs"));
 
+        Assert.That(AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey, Is.EqualTo("sponsored-interviews"));
         Assert.That(AIInterviewDefaults.MyActivityCreditsTabKey, Is.EqualTo("credits"));
-        Assert.That(new MyActivityPageModel().ActiveTab, Is.EqualTo(AIInterviewDefaults.MyActivityAppliedJobsTabKey));
+        Assert.That(new MyActivityPageModel().ActiveTab, Is.EqualTo(AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey));
+        Assert.That(new MyActivityPageModel().SponsoredInterviews, Is.Empty);
+        Assert.That(shellViewText.IndexOf("MyActivity.Tab.SponsoredInterviews", StringComparison.Ordinal),
+            Is.LessThan(shellViewText.IndexOf("MyActivity.Tab.AppliedJobs", StringComparison.Ordinal)));
+        Assert.That(tabPartialText, Does.Contain("_MyActivitySponsoredInterviewsContent.cshtml"));
         Assert.That(controllerText, Does.Contain("AIInterviewDefaults.MyActivityCreditsTabKey"));
         Assert.That(controllerText, Does.Contain("BuildCreditActivityModelAsync(customer, page, pageSize)"));
         Assert.That(shellViewText, Does.Contain("Plugins.Misc.AIInterview.MyActivity.Tab.Credits"));
@@ -143,6 +148,9 @@ public class PluginDefaultsTests
         Assert.That(resources["Plugins.Misc.AIInterview.MyActivity.Tab.Credits"], Is.EqualTo("Credits"));
         Assert.That(resources["Plugins.Misc.AIInterview.MyActivity.Credits.JobProduct"], Is.EqualTo("Job/Product"));
         Assert.That(resources["Plugins.Misc.AIInterview.MyActivity.Credits.Empty"], Is.EqualTo("No credit activity yet"));
+        Assert.That(resources["Plugins.Misc.AIInterview.MyActivity.Tab.SponsoredInterviews"], Is.EqualTo("Sponsored Interviews"));
+        Assert.That(resources["Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.TakeInterview"], Is.EqualTo("Take Interview"));
+        Assert.That(resources["Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Empty"], Is.Not.Empty);
     }
 
     [Test]

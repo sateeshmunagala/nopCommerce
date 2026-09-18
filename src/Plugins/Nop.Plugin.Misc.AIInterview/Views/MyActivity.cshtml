@@ -8,6 +8,7 @@
     NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
     NopHtml.AppendPageCssClassParts("html-aiinterview-my-activity-page");
 
+    var sponsoredInterviewsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey });
     var appliedJobsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityAppliedJobsTabKey });
     var savedJobsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivitySavedJobsTabKey });
     var mockInterviewsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityMockInterviewsTabKey });
@@ -27,6 +28,17 @@
     <div class="page-body">
         <div class="my-activity-shell">
             <nav class="my-activity-tabs js-my-activity-tabs" aria-label="@T("Plugins.Misc.AIInterview.MyActivity.NavigationLabel")">
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey ? "is-active" : null)"
+                   href="@sponsoredInterviewsUrl"
+                   data-my-activity-tab="@AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey"
+                   hx-get="@sponsoredInterviewsUrl"
+                   hx-target="#my-activity-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   hx-indicator="#my-activity-loading"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.MyActivity.Tab.SponsoredInterviews")
+                </a>
                 <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivityAppliedJobsTabKey ? "is-active" : null)"
                    href="@appliedJobsUrl"
                    data-my-activity-tab="@AIInterviewDefaults.MyActivityAppliedJobsTabKey"

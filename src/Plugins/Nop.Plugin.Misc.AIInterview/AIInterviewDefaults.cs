@@ -285,6 +285,7 @@ Allowed categories: skill, project_scenario, job_fit, behavioral
     /// </summary>
     public static string LocalizationPrefix => "Plugins.Misc.AIInterview";
 
+    public static string MyActivitySponsoredInterviewsTabKey => "sponsored-interviews";
     public static string MyActivityAppliedJobsTabKey => "applied-jobs";
     public static string MyActivitySavedJobsTabKey => "saved-jobs";
     public static string MyActivityMockInterviewsTabKey => "mock-interviews";

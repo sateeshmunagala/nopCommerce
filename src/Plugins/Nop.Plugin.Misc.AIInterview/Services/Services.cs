@@ -2416,6 +2416,7 @@ public class SponsorInviteService : ISponsorInviteService
     private readonly Nop.Services.Messages.IQueuedEmailService _queuedEmailService;
     private readonly Nop.Services.Messages.ITokenizer _tokenizer;
     private readonly ICreditService _creditService;
+    private readonly IInterviewSessionService _interviewSessionService;
 
     public SponsorInviteService(IRepository<SponsorInvite> inviteRepository,
         Nop.Services.Catalog.IProductService productService,
@@ -2430,7 +2431,8 @@ public class SponsorInviteService : ISponsorInviteService
         IJobProductAccessService jobProductAccessService = null,
         Nop.Services.Messages.IQueuedEmailService queuedEmailService = null,
         Nop.Services.Messages.ITokenizer tokenizer = null,
-        ICreditService creditService = null)
+        ICreditService creditService = null,
+        IInterviewSessionService interviewSessionService = null)
     {
         _inviteRepository = inviteRepository;
         _productService = productService;
@@ -2446,6 +2448,7 @@ public class SponsorInviteService : ISponsorInviteService
         _queuedEmailService = queuedEmailService;
         _tokenizer = tokenizer;
         _creditService = creditService;
+        _interviewSessionService = interviewSessionService;
     }
 
     public async Task InsertSponsorInviteAsync(SponsorInvite invite)
@@ -2616,6 +2619,43 @@ public class SponsorInviteService : ISponsorInviteService
             .OrderByDescending(i => i.CreatedOnUtc));
     }
 
+    public async Task<IList<SponsorInvite>> GetActiveEligibleInvitesByCandidateEmailAsync(string candidateEmail)
+    {
+        var normalizedCandidateEmail = candidateEmail?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedCandidateEmail) || _interviewSessionService == null)
+            return new List<SponsorInvite>();
+
+        var utcNow = DateTime.UtcNow;
+        var candidates = await _inviteRepository.GetAllAsync(query => query
+            .Where(invite => invite.Email == normalizedCandidateEmail &&
+                invite.IsActive &&
+                !invite.IsAccepted &&
+                invite.MaxAttempts > 0 &&
+                invite.InviteCode != null &&
+                invite.InviteCode != string.Empty &&
+                (!invite.ExpiryDateUtc.HasValue || invite.ExpiryDateUtc.Value > utcNow))
+            .OrderBy(invite => invite.ExpiryDateUtc.HasValue ? 0 : 1)
+            .ThenBy(invite => invite.ExpiryDateUtc)
+            .ThenByDescending(invite => invite.CreatedOnUtc)
+            .ThenByDescending(invite => invite.Id));
+
+        var eligibleInvites = new List<SponsorInvite>();
+        var seenInvitations = new HashSet<(int SponsorId, int ProductId, string InviteCode)>();
+        foreach (var invite in candidates)
+        {
+            if (!string.Equals(invite.Email, normalizedCandidateEmail, StringComparison.Ordinal) ||
+                !seenInvitations.Add((invite.SponsorId, invite.ProductId, invite.InviteCode)))
+            {
+                continue;
+            }
+
+            if (await IsInviteEligibleAsync(invite, normalizedCandidateEmail, utcNow))
+                eligibleInvites.Add(invite);
+        }
+
+        return eligibleInvites;
+    }
+
     public async Task<SponsorInvite> GetAcceptedInviteByEmailAsync(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -2640,13 +2680,20 @@ public class SponsorInviteService : ISponsorInviteService
     public async Task<bool> ValidateInviteAsync(string code, string email)
     {
         var invite = await GetSponsorInviteByCodeAsync(code);
-        if (invite == null) return false;
-        if (!invite.IsActive) return false;
-        if (invite.IsAccepted) return false;
-        if (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= DateTime.UtcNow) return false;
-        if (!string.Equals(invite.Email, email, StringComparison.OrdinalIgnoreCase)) return false;
+        return await IsInviteEligibleAsync(invite, email?.Trim(), DateTime.UtcNow);
+    }
 
-        return true;
+    protected virtual async Task<bool> IsInviteEligibleAsync(SponsorInvite invite, string candidateEmail, DateTime utcNow)
+    {
+        if (invite == null || string.IsNullOrWhiteSpace(candidateEmail)) return false;
+        if (!invite.IsActive || invite.IsAccepted || invite.MaxAttempts <= 0) return false;
+        if (string.IsNullOrWhiteSpace(invite.InviteCode)) return false;
+        if (invite.ExpiryDateUtc.HasValue && invite.ExpiryDateUtc.Value <= utcNow) return false;
+        if (!string.Equals(invite.Email, candidateEmail, StringComparison.Ordinal)) return false;
+        if (_interviewSessionService == null) return true;
+
+        var attempts = await _interviewSessionService.GetSponsorInviteAttemptCountAsync(invite.Id);
+        return attempts < invite.MaxAttempts;
     }
 }
 

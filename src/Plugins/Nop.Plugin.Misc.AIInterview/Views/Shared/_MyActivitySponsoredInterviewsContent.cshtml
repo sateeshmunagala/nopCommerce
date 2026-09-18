@@ -1,0 +1,102 @@
+@model MyActivityPageModel
+@using Nop.Services.Helpers
+@inject IDateTimeHelper dateTimeHelper
+
+@{
+    async Task<string> FormatExpiryAsync(DateTime? expiryDateUtc)
+    {
+        if (!expiryDateUtc.HasValue)
+            return T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.NoExpiry").Text;
+
+        var userDateTime = await dateTimeHelper.ConvertToUserTimeAsync(expiryDateUtc.Value, DateTimeKind.Utc);
+        return userDateTime.ToString("g");
+    }
+
+    var heading = T("Plugins.Misc.AIInterview.MyActivity.Tab.SponsoredInterviews").Text;
+    var takeInterviewText = T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.TakeInterview").Text;
+    var actionLabelFormat = T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.TakeInterviewAriaLabel").Text;
+}
+
+<div class="applications-card sponsored-interviews-card">
+    <h2 class="sponsored-interviews-heading">@heading</h2>
+
+    @if (Model.SponsoredInterviews.Any())
+    {
+        <div class="applications-table-wrap sponsored-interviews-table-wrap">
+            <table class="applications-table sponsored-interviews-table">
+                <caption class="sr-only">@heading</caption>
+                <thead>
+                    <tr>
+                        <th scope="col" class="col-company">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Company")</th>
+                        <th scope="col" class="col-job">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Job")</th>
+                        <th scope="col" class="col-expires">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Expires")</th>
+                        <th scope="col" class="col-status">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Status")</th>
+                        <th scope="col" class="col-action">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Action")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var invitation in Model.SponsoredInterviews)
+                    {
+                        var actionLabel = string.Format(actionLabelFormat, invitation.JobTitle, invitation.CompanyName);
+                        <tr>
+                            <td class="col-company"><strong>@invitation.CompanyName</strong></td>
+                            <td class="col-job">@invitation.JobTitle</td>
+                            <td class="col-expires">@(await FormatExpiryAsync(invitation.ExpiryDateUtc))</td>
+                            <td class="col-status"><span class="status-pill">@invitation.Status</span></td>
+                            <td class="col-action">
+                                <a class="button-1 sponsored-interview-action"
+                                   href="@invitation.InterviewUrl"
+                                   aria-label="@actionLabel"
+                                   title="@actionLabel">@takeInterviewText</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="responsive-data-list sponsored-interviews-mobile-list" aria-label="@heading">
+            @foreach (var invitation in Model.SponsoredInterviews)
+            {
+                var actionLabel = string.Format(actionLabelFormat, invitation.JobTitle, invitation.CompanyName);
+                <article class="responsive-data-card sponsored-interview-card">
+                    <div class="responsive-data-card-head">
+                        <div class="responsive-data-card-head-copy">
+                            <h3 class="responsive-data-card-title">@invitation.JobTitle</h3>
+                            <div class="responsive-data-card-subtitle">@invitation.CompanyName</div>
+                        </div>
+                        <span class="status-pill">@invitation.Status</span>
+                    </div>
+                    <div class="responsive-data-card-grid">
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Company")</span>
+                            <span class="responsive-data-card-value">@invitation.CompanyName</span>
+                        </div>
+                        <div class="responsive-data-card-item">
+                            <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Expires")</span>
+                            <span class="responsive-data-card-value">@(await FormatExpiryAsync(invitation.ExpiryDateUtc))</span>
+                        </div>
+                    </div>
+                    <div class="responsive-data-card-actions">
+                        <a class="button-1 sponsored-interview-action"
+                           href="@invitation.InterviewUrl"
+                           aria-label="@actionLabel"
+                           title="@actionLabel">@takeInterviewText</a>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+    @if (Model.HasUnavailableSponsoredInterviews)
+    {
+        <div class="my-activity-unavailable-state" role="status">
+            <p>@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Unavailable")</p>
+        </div>
+    }
+    else if (!Model.SponsoredInterviews.Any())
+    {
+        <div class="my-activity-empty-state" role="status">
+            <p>@T("Plugins.Misc.AIInterview.MyActivity.SponsoredInterviews.Empty")</p>
+        </div>
+    }
+</div>

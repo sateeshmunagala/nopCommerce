@@ -1114,6 +1114,19 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     {
         return new Dictionary<string, string>
         {
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.SponsoredInterviews"] = "Sponsored Interviews",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Company"] = "Company",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Job"] = "Job",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Expires"] = "Expires",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Status"] = "Status",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Action"] = "Action",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.TakeInterview"] = "Take Interview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.TakeInterviewAriaLabel"] = "Take interview for {0} at {1}",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Status.Pending"] = "Ready to interview",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Empty"] = "No sponsored interviews currently await candidate action for this account.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Unavailable"] = "A sponsored interview invitation for this account is no longer available.",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.CompanyFallback"] = "Sponsoring company",
+            [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.NoExpiry"] = "No expiry",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Tab.Credits"] = "Credits",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.CurrentBalance"] = "Current balance",
             [$"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.Credits.TotalDeposited"] = "Total deposited",

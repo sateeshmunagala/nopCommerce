@@ -759,10 +759,12 @@ public class AIInterviewController : BasePluginController
     {
         return (tab ?? string.Empty).Trim().ToLowerInvariant() switch
         {
+            var value when string.Equals(value, AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey,
+            var value when string.Equals(value, AIInterviewDefaults.MyActivityAppliedJobsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.MyActivityAppliedJobsTabKey,
             var value when string.Equals(value, AIInterviewDefaults.MyActivitySavedJobsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.MyActivitySavedJobsTabKey,
             var value when string.Equals(value, AIInterviewDefaults.MyActivityMockInterviewsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.MyActivityMockInterviewsTabKey,
             var value when string.Equals(value, AIInterviewDefaults.MyActivityCreditsTabKey, StringComparison.Ordinal) => AIInterviewDefaults.MyActivityCreditsTabKey,
-            _ => AIInterviewDefaults.MyActivityAppliedJobsTabKey
+            _ => AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey
         };
     }
 
@@ -996,6 +998,96 @@ public class AIInterviewController : BasePluginController
         return model;
     }
 
+    protected virtual async Task<(IList<SponsoredInterviewInvitationModel> Invitations, bool HasUnavailable)> BuildSponsoredInterviewInvitationsAsync(Customer customer)
+    {
+        var candidateEmail = customer?.Email?.Trim();
+        if (_inviteService == null || _productService == null || string.IsNullOrWhiteSpace(candidateEmail))
+            return (new List<SponsoredInterviewInvitationModel>(), false);
+
+        var invites = await _inviteService.GetActiveEligibleInvitesByCandidateEmailAsync(candidateEmail)
+            ?? new List<SponsorInvite>();
+        if (!invites.Any())
+            return (new List<SponsoredInterviewInvitationModel>(), false);
+
+        var productIds = invites.Select(invite => invite.ProductId).Where(id => id > 0).Distinct().ToArray();
+        var products = productIds.Length == 0
+            ? new List<Product>()
+            : (await _productService.GetProductsByIdsAsync(productIds) ?? new List<Product>()).ToList();
+        var productsById = products.ToDictionary(product => product.Id);
+        var sponsorCustomers = new Dictionary<int, Customer>();
+        var companyNames = new Dictionary<int, string>();
+        var fallbackCompanyName = await _localizationService.GetResourceAsync(
+            $"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.CompanyFallback");
+        var pendingStatus = await _localizationService.GetResourceAsync(
+            $"{AIInterviewDefaults.LocalizationPrefix}.MyActivity.SponsoredInterviews.Status.Pending");
+        var models = new List<SponsoredInterviewInvitationModel>();
+        var hasUnavailable = false;
+
+        foreach (var invite in invites)
+        {
+            if (!productsById.TryGetValue(invite.ProductId, out var product))
+            {
+                hasUnavailable = true;
+                continue;
+            }
+
+            if (_jobProductAccessService != null && !await _jobProductAccessService.CanAcceptJobApplicationsAsync(product))
+            {
+                hasUnavailable = true;
+                continue;
+            }
+
+            var interviewUrl = await BuildProductRedirectUrlAsync(product, new Dictionary<string, string>
+            {
+                ["sponsorToken"] = invite.InviteCode
+            });
+            if (string.IsNullOrWhiteSpace(interviewUrl))
+            {
+                hasUnavailable = true;
+                continue;
+            }
+
+            var vendorId = product.VendorId;
+            if (vendorId <= 0 && invite.SponsorId > 0 && _customerService != null)
+            {
+                if (!sponsorCustomers.TryGetValue(invite.SponsorId, out var sponsorCustomer))
+                {
+                    sponsorCustomer = await _customerService.GetCustomerByIdAsync(invite.SponsorId);
+                    sponsorCustomers[invite.SponsorId] = sponsorCustomer;
+                }
+
+                vendorId = sponsorCustomer?.VendorId ?? 0;
+            }
+
+            var companyName = fallbackCompanyName;
+            if (vendorId > 0 && _vendorService != null)
+            {
+                if (!companyNames.TryGetValue(vendorId, out companyName))
+                {
+                    var vendor = await _vendorService.GetVendorByIdAsync(vendorId);
+                    companyName = vendor == null
+                        ? fallbackCompanyName
+                        : await _localizationService.GetLocalizedAsync(vendor, entity => entity.Name);
+                    if (string.IsNullOrWhiteSpace(companyName))
+                        companyName = fallbackCompanyName;
+                    companyNames[vendorId] = companyName;
+                }
+            }
+
+            models.Add(new SponsoredInterviewInvitationModel
+            {
+                Id = invite.Id,
+                CompanyName = companyName,
+                JobTitle = await _localizationService.GetLocalizedAsync(product, entity => entity.Name) ?? product.Name,
+                ExpiryDateUtc = invite.ExpiryDateUtc,
+                Status = pendingStatus,
+                InterviewUrl = interviewUrl
+            });
+        }
+
+        return (models, hasUnavailable);
+    }
+
     protected virtual async Task<MyActivityPageModel> BuildMyActivityPageModelAsync(Customer customer, string tab, string sortOrder, string status = null, decimal? minScore = null, decimal? maxScore = null, int page = 1, int pageSize = DefaultMyActivityPageSize)
     {
         var walletBalance = _creditService != null
@@ -1010,6 +1102,12 @@ public class AIInterviewController : BasePluginController
 
         switch (activeTab)
         {
+            case var value when string.Equals(value, AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey, StringComparison.Ordinal):
+                (model.SponsoredInterviews, model.HasUnavailableSponsoredInterviews) = await BuildSponsoredInterviewInvitationsAsync(customer);
+                break;
+            case var value when string.Equals(value, AIInterviewDefaults.MyActivityAppliedJobsTabKey, StringComparison.Ordinal):
+                model.AppliedJobs = await BuildMyApplicationsModelAsync(customer, sortOrder, status, minScore, maxScore, page, pageSize, true);
+                break;
             case var value when string.Equals(value, AIInterviewDefaults.MyActivitySavedJobsTabKey, StringComparison.Ordinal):
                 model.SavedJobs = await BuildSavedJobsModelAsync(customer, page, pageSize);
                 break;
@@ -1022,7 +1120,7 @@ public class AIInterviewController : BasePluginController
                     : await _creditActivityService.BuildCreditActivityModelAsync(customer, page, pageSize);
                 break;
             default:
-                model.AppliedJobs = await BuildMyApplicationsModelAsync(customer, sortOrder, status, minScore, maxScore, page, pageSize, true);
+                (model.SponsoredInterviews, model.HasUnavailableSponsoredInterviews) = await BuildSponsoredInterviewInvitationsAsync(customer);
                 break;
         }
 

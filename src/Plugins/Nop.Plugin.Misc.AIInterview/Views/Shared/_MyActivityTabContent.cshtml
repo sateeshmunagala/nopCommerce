@@ -6,6 +6,9 @@
      data-request-url="@(Context.Request.Path + Context.Request.QueryString)">
     @switch (Model.ActiveTab)
     {
+        case var value when string.Equals(value, AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey, StringComparison.Ordinal):
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivitySponsoredInterviewsContent.cshtml", Model)
+            break;
         case var value when string.Equals(value, AIInterviewDefaults.MyActivitySavedJobsTabKey, StringComparison.Ordinal):
             @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivitySavedJobsContent.cshtml", Model.SavedJobs)
             break;
@@ -25,8 +28,11 @@
         case var value when string.Equals(value, AIInterviewDefaults.MyActivityCreditsTabKey, StringComparison.Ordinal):
             @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityCreditsContent.cshtml", Model.Credits)
             break;
-        default:
+        case var value when string.Equals(value, AIInterviewDefaults.MyActivityAppliedJobsTabKey, StringComparison.Ordinal):
             @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyApplicationsContent.cshtml", Model.AppliedJobs)
+            break;
+        default:
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivitySponsoredInterviewsContent.cshtml", Model)
             break;
     }
 </div>
