@@ -1113,6 +1113,10 @@ public class EmployerTests
         var jobActionColumnRule = GetLastCssRule(cssText, ".html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions {");
         var jobActionLayoutRule = GetLastCssRule(cssText, ".html-aiinterview-employer-dashboard-page .employer-dashboard-jobs-table .col-job-actions .employer-job-row-actions {");
         var jobActionMinWidthMatch = System.Text.RegularExpressions.Regex.Match(jobActionColumnRule, @"min-width:\s*(\d+)px;");
+        var desktopToolbarRule = System.Text.RegularExpressions.Regex.Match(cssText,
+            @"@media \(min-width: 641px\) \{\s*\.html-aiinterview-employer-dashboard-page \.employer-filter-actions \.button-1,\s*\.html-aiinterview-employer-dashboard-page \.employer-filter-actions \.button-2 \{(?<declarations>[^}]*)\}");
+        var mobileToolbarRule = System.Text.RegularExpressions.Regex.Match(cssText,
+            @"@media \(max-width: 640px\) \{\s*\.html-aiinterview-employer-dashboard-page \.employer-filter-actions \.button-1,\s*\.html-aiinterview-employer-dashboard-page \.employer-filter-actions \.button-2 \{(?<declarations>[^}]*)\}");
 
         Assert.That(overviewPartial, Does.Not.Contain("ReviewApplicationsAction"));
         Assert.That(overviewPartial, Does.Not.Contain("ManageInvitesAction"));
@@ -1140,6 +1144,21 @@ public class EmployerTests
 
         Assert.That(applicationsPartial, Does.Contain("employer-dashboard-table-wrapper employer-table-wrapper"));
         Assert.That(applicationsPartial, Does.Contain("_MyActivityPager.cshtml"));
+        Assert.That(applicationsPartial, Does.Contain("<div class=\"employer-filter-actions\">"));
+        Assert.That(applicationsPartial, Does.Contain("<button type=\"submit\" class=\"button-1\" title=\"@T(\"Plugins.Misc.AIInterview.Employer.Applications.Filter\")\">"));
+        Assert.That(applicationsPartial, Does.Contain("href=\"@Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardApplicationsTabKey })\" title=\"@T(\"Plugins.Misc.AIInterview.Employer.Applications.Reset\")\""));
+        Assert.That(applicationsPartial, Does.Contain("href=\"@Url.RouteUrl(\"Plugin.Misc.AIInterview.ExportCsv\", new {"));
+        Assert.That(applicationsPartial, Does.Contain("Plugins.Misc.AIInterview.Employer.Applications.ExportCsv"));
+        Assert.That(desktopToolbarRule.Success, Is.True);
+        Assert.That(desktopToolbarRule.Groups["declarations"].Value, Does.Contain("min-height: 32px;"));
+        Assert.That(desktopToolbarRule.Groups["declarations"].Value, Does.Contain("padding: 6px 12px;"));
+        Assert.That(desktopToolbarRule.Groups["declarations"].Value, Does.Contain("font-size: 0.82rem;"));
+        Assert.That(GetLastCssRule(cssText, ".html-aiinterview-employer-dashboard-page .employer-filter-actions .button-2:last-child"), Does.Contain("margin-left: 0;"));
+        Assert.That(mobileToolbarRule.Success, Is.True);
+        Assert.That(mobileToolbarRule.Groups["declarations"].Value, Does.Contain("width: 100%;"));
+        Assert.That(mobileToolbarRule.Groups["declarations"].Value, Does.Contain("min-height: 44px;"));
+        Assert.That(mobileToolbarRule.Groups["declarations"].Value, Does.Contain("padding: 10px 18px;"));
+        Assert.That(System.Text.RegularExpressions.Regex.IsMatch(cssText, @"\.employer-filter-actions \{\s*align-items: stretch;\s*flex-direction: column;"), Is.True);
 
         Assert.That(invitesPartial, Does.Contain("name=\"maxAttempts\" value=\"1\""));
         Assert.That(invitesPartial, Does.Contain("id=\"expiryDateUtc\""));

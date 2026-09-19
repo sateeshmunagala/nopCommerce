@@ -10226,7 +10226,8 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-employer-dashboard-page .employer-filter-actions {
-    gap: 12px;
+    gap: 8px;
+    justify-content: flex-start;
 }
 
 .html-aiinterview-employer-dashboard-page .employer-filter-actions .button-2:last-child {
@@ -10801,13 +10802,24 @@ body.ai-job-preview-open .item-box {
     font-weight: 600;
 }
 
-.html-aiinterview-employer-dashboard-page .employer-filter-actions .button-1,
-.html-aiinterview-employer-dashboard-page .employer-filter-actions .button-2 {
-    min-height: 38px;
-    padding: 7px 14px;
-    font-size: 0.84rem;
-    letter-spacing: 0.02em;
-    box-shadow: none;
+@media (min-width: 641px) {
+    .html-aiinterview-employer-dashboard-page .employer-filter-actions .button-1,
+    .html-aiinterview-employer-dashboard-page .employer-filter-actions .button-2 {
+        min-height: 32px;
+        padding: 6px 12px;
+        font-size: 0.82rem;
+        letter-spacing: 0.02em;
+        box-shadow: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .html-aiinterview-employer-dashboard-page .employer-filter-actions .button-1,
+    .html-aiinterview-employer-dashboard-page .employer-filter-actions .button-2 {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 18px;
+    }
 }
 
 .html-aiinterview-employer-dashboard-page .invite-create-form .form-fields,
