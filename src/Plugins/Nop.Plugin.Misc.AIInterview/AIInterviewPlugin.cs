@@ -2168,8 +2168,8 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
     public override async Task UninstallAsync()
     {
         //settings
-        await _settingService.DeleteSettingAsync<AIInterviewSettings>();
-        await _settingService.DeleteSettingAsync<MockAIInterviewSettings>();
+        //await _settingService.DeleteSettingAsync<AIInterviewSettings>();
+        //await _settingService.DeleteSettingAsync<MockAIInterviewSettings>();
 
         if (_widgetSettings != null && _widgetSettings.ActiveWidgetSystemNames.RemoveAll(systemName =>
             string.Equals(systemName, AIInterviewDefaults.SystemName, StringComparison.OrdinalIgnoreCase)) > 0)
