@@ -179,7 +179,7 @@ public static class AIInterviewDefaults
     public static string DefaultCreditPurchasePageUrl => "/pricing";
     public static string DefaultAzureDocumentIntelligenceModelId => "prebuilt-read";
     public const int DefaultAzureDocumentIntelligenceTimeoutSeconds = 60;
-    public static string DefaultSupportPhoneNumber => "+91 72073 33883";
+    public static string DefaultSupportPhoneNumber => "+91 6281994649";
     public const int DefaultStrengthsSummaryMaxCompletionTokens = 1500;
     public const int DefaultQuestionPlanMaxCompletionTokens = 8000;
     public const int MinQuestionPlanMaxCompletionTokens = 2000;
