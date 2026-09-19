@@ -2991,7 +2991,15 @@ public class AIInterviewController : BasePluginController
 
         var invitesSent = invites.Count(i => i.IsActive && (!i.ExpiryDateUtc.HasValue || i.ExpiryDateUtc.Value > DateTime.UtcNow));
         var availableCredits = Math.Max(0, wallet.Balance - invitesSent);
-        var usedCredits = invites.Count(i => i.IsAccepted || (!i.IsActive && i.CreatedOnUtc <= DateTime.UtcNow));
+        var attemptCounts = new Dictionary<int, int>();
+        var usedCredits = 0;
+        foreach (var invite in invites)
+        {
+            var attemptCount = await _interviewSessionService.GetSponsorInviteAttemptCountAsync(invite.Id);
+            attemptCounts[invite.Id] = attemptCount;
+            if (attemptCount > 0 || invite.IsAccepted)
+                usedCredits++;
+        }
         model.AvailableCredits = availableCredits;
         model.AvailableCreditsDisplay = decimal.Truncate(availableCredits).ToString("0", CultureInfo.InvariantCulture);
         model.InvitesSentCount = invitesSent;
@@ -3037,7 +3045,7 @@ public class AIInterviewController : BasePluginController
 
         foreach (var invite in model.Invites)
         {
-            model.InviteStatuses[invite.Id] = await GetInviteStatusTextAsync(invite);
+            model.InviteStatuses[invite.Id] = await GetInviteStatusTextAsync(invite, attemptCounts[invite.Id]);
             model.InviteJobNames[invite.Id] = localizedProductNames.TryGetValue(invite.ProductId, out var jobName)
                 ? jobName
                 : unavailableJobName;
@@ -3102,14 +3110,14 @@ public class AIInterviewController : BasePluginController
         return items;
     }
 
-    protected virtual async Task<string> GetInviteStatusTextAsync(SponsorInvite invite)
+    protected virtual async Task<string> GetInviteStatusTextAsync(SponsorInvite invite, int? attemptCount = null)
     {
         if (invite == null)
             return string.Empty;
 
-        var attempts = _interviewSessionService == null
+        var attempts = attemptCount ?? (_interviewSessionService == null
             ? 0
-            : await _interviewSessionService.GetSponsorInviteAttemptCountAsync(invite.Id);
+            : await _interviewSessionService.GetSponsorInviteAttemptCountAsync(invite.Id));
 
         var statusKey = attempts >= invite.MaxAttempts && invite.MaxAttempts > 0
             ? "Plugins.Misc.AIInterview.Employer.Invite.Exhausted"

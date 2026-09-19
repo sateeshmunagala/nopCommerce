@@ -1247,6 +1247,66 @@ public class EmployerTests
     }
 
     [Test]
+    public async Task EmployerDashboard_Invites_Used_Counts_ActiveInvite_With_SponsorAttempt()
+    {
+        var invite = new SponsorInvite { Id = 41, IsActive = true, MaxAttempts = 2 };
+        _customerService.Setup(x => x.IsAdminAsync(_employer)).ReturnsAsync(true);
+        _inviteService.Setup(x => x.GetSponsorInvitesAsync(_employer.Id))
+            .ReturnsAsync(new List<SponsorInvite> { invite });
+        _interviewSessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(invite.Id)).ReturnsAsync(1);
+
+        var result = await _controller.EmployerDashboard(tab: AIInterviewDefaults.EmployerDashboardInvitesTabKey);
+        var invitesModel = ((EmployerDashboardPageModel)((ViewResult)result).Model).Invites;
+
+        Assert.That(invitesModel.UsedCreditsCount, Is.EqualTo(1));
+        Assert.That(invitesModel.UsedCreditsDisplay, Is.EqualTo("1"));
+        Assert.That(invitesModel.InviteStatuses[invite.Id], Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Accepted"));
+        Assert.That(invitesModel.InvitesSentCount, Is.EqualTo(1));
+        Assert.That(invitesModel.AvailableCredits, Is.EqualTo(499));
+        _interviewSessionService.Verify(x => x.GetSponsorInviteAttemptCountAsync(invite.Id), Times.Once);
+    }
+
+    [Test]
+    public async Task EmployerDashboard_Invites_Used_Excludes_InactiveInvite_Without_SponsorAttempt()
+    {
+        var invite = new SponsorInvite { Id = 42, IsActive = false, MaxAttempts = 2 };
+        _customerService.Setup(x => x.IsAdminAsync(_employer)).ReturnsAsync(true);
+        _inviteService.Setup(x => x.GetSponsorInvitesAsync(_employer.Id))
+            .ReturnsAsync(new List<SponsorInvite> { invite });
+        _interviewSessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(invite.Id)).ReturnsAsync(0);
+
+        var result = await _controller.EmployerDashboard(tab: AIInterviewDefaults.EmployerDashboardInvitesTabKey);
+        var invitesModel = ((EmployerDashboardPageModel)((ViewResult)result).Model).Invites;
+
+        Assert.That(invitesModel.UsedCreditsCount, Is.Zero);
+        Assert.That(invitesModel.UsedCreditsDisplay, Is.EqualTo("0"));
+        Assert.That(invitesModel.InviteStatuses[invite.Id], Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Inactive"));
+        Assert.That(invitesModel.InvitesSentCount, Is.Zero);
+        Assert.That(invitesModel.AvailableCredits, Is.EqualTo(500));
+        _interviewSessionService.Verify(x => x.GetSponsorInviteAttemptCountAsync(invite.Id), Times.Once);
+    }
+
+    [Test]
+    public async Task EmployerDashboard_Invites_Used_Counts_AcceptedInvite_Without_SponsorAttempt()
+    {
+        var invite = new SponsorInvite { Id = 43, IsActive = true, IsAccepted = true, MaxAttempts = 2 };
+        _customerService.Setup(x => x.IsAdminAsync(_employer)).ReturnsAsync(true);
+        _inviteService.Setup(x => x.GetSponsorInvitesAsync(_employer.Id))
+            .ReturnsAsync(new List<SponsorInvite> { invite });
+        _interviewSessionService.Setup(x => x.GetSponsorInviteAttemptCountAsync(invite.Id)).ReturnsAsync(0);
+
+        var result = await _controller.EmployerDashboard(tab: AIInterviewDefaults.EmployerDashboardInvitesTabKey);
+        var invitesModel = ((EmployerDashboardPageModel)((ViewResult)result).Model).Invites;
+
+        Assert.That(invitesModel.UsedCreditsCount, Is.EqualTo(1));
+        Assert.That(invitesModel.UsedCreditsDisplay, Is.EqualTo("1"));
+        Assert.That(invitesModel.InviteStatuses[invite.Id], Is.EqualTo("Plugins.Misc.AIInterview.Employer.Invite.Accepted"));
+        Assert.That(invitesModel.InvitesSentCount, Is.EqualTo(1));
+        Assert.That(invitesModel.AvailableCredits, Is.EqualTo(499));
+        _interviewSessionService.Verify(x => x.GetSponsorInviteAttemptCountAsync(invite.Id), Times.Once);
+    }
+
+    [Test]
     public void VendorJobCreation_And_Theme_Cta_Source_Guards_Remain_In_Place()
     {
         var vendorJobCreation = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "VendorJobCreation.cshtml"));
