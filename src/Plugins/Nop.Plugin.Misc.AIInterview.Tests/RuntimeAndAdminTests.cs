@@ -1386,7 +1386,7 @@ public class RuntimeAndAdminTests
             s.Provider == "keep" &&
             s.Model == "keep" &&
             s.Prompt == "keep" &&
-            s.ServiceSettings == "keep")), Times.Once);
+            s.ServiceSettings == "keep"), setting => setting.Enabled, 0, false), Times.Once);
     }
 
     [Test]
@@ -2413,6 +2413,7 @@ public class RuntimeAndAdminTests
         Assert.That(runtimeViewText, Does.Contain("failureKind: 'invalid-json'"));
         Assert.That(runtimeViewText, Does.Contain("failureKind: 'non-json-response'"));
         Assert.That(runtimeViewText, Does.Contain("failureKind: 'fetch-exception'"));
+        Assert.That(runtimeViewText, Does.Contain("failureKind: abortedByTimeout ? 'upload-timeout'"));
         Assert.That(runtimeViewText, Does.Contain("submitAnswer"));
         Assert.That(runtimeViewText, Does.Contain("stopInterview"));
         Assert.That(runtimeViewText, Does.Contain("runtime-question-count"));
@@ -3406,7 +3407,7 @@ public class RuntimeAndAdminTests
             It.IsAny<string>(),
             It.IsAny<BaseEntity>()), Times.Once);
         _nopLogger.Verify(x => x.InsertLogAsync(
-            LogLevel.Warning,
+            LogLevel.Error,
             "AI Interview runtime client request failure",
             It.Is<string>(message => message == activityComment),
             customer), Times.Once);
@@ -3465,10 +3466,10 @@ public class RuntimeAndAdminTests
         Assert.That(session.TokenExpiryUtc, Is.EqualTo(originalExpiry));
         _sessionService.Verify(x => x.UpdateInterviewSessionAsync(It.IsAny<InterviewSession>()), Times.Never);
         activityService.Verify(x => x.InsertActivityAsync(
-            It.IsAny<Customer>(),
+            customer,
+            "AIInterview.Runtime.NetworkRequestFailed",
             It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<BaseEntity>()), Times.Never);
+            session), Times.Once);
         _nopLogger.Verify(x => x.InsertLogAsync(
             LogLevel.Warning,
             "AI Interview runtime client request failure",
@@ -3595,6 +3596,96 @@ public class RuntimeAndAdminTests
         Assert.That(activityComment, Does.Contain("Request=upload-recording"));
         Assert.That(activityComment, Does.Contain("StatusCode=413"));
         Assert.That(activityComment, Does.Contain("Recording upload exceeded the configured request limit or an upstream host proxy size limit."));
+    }
+
+    [Test]
+    public async Task RuntimeClientEvent_UploadRecordingTransportFailure_LogsError()
+    {
+        var session = new InterviewSession
+        {
+            Id = 84,
+            CustomerId = 19,
+            ProductId = 41,
+            Token = "upload-timeout-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        var customer = new Customer { Id = session.CustomerId, Email = "candidate@example.com" };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(customer);
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            nopLogger: _nopLogger.Object);
+
+        await controller.RuntimeClientEvent(
+            session.Token,
+            "network-request-failed",
+            "upload-recording",
+            null,
+            null,
+            "upload-timeout",
+            60000);
+
+        _nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Error,
+            "AI Interview runtime client request failure",
+            It.Is<string>(message => message.Contains("FailureKind=upload-timeout")),
+            customer), Times.Once);
+    }
+
+    [Test]
+    public async Task RuntimeClientEvent_FeedbackFailure_StaysWarning()
+    {
+        var session = new InterviewSession
+        {
+            Id = 85,
+            CustomerId = 20,
+            ProductId = 42,
+            Token = "feedback-failure-token",
+            IsActive = true,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        var customer = new Customer { Id = session.CustomerId, Email = "candidate@example.com" };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(customer);
+
+        var controller = new MockAiInterviewController(
+            _sessionService.Object,
+            _localizationService.Object,
+            _workContext.Object,
+            _inviteService.Object,
+            _creditService.Object,
+            _customerService.Object,
+            _productService.Object,
+            new Mock<global::Nop.Services.Vendors.IVendorService>().Object,
+            new Mock<IApplicationService>().Object,
+            _eventPublisher.Object,
+            nopLogger: _nopLogger.Object);
+
+        await controller.RuntimeClientEvent(
+            session.Token,
+            "network-request-failed",
+            "feedback",
+            null,
+            null,
+            "fetch-exception",
+            250);
+
+        _nopLogger.Verify(x => x.InsertLogAsync(
+            LogLevel.Warning,
+            "AI Interview runtime client request failure",
+            It.Is<string>(message => message.Contains("FailureKind=fetch-exception")),
+            customer), Times.Once);
     }
 
     [Test]
@@ -3759,7 +3850,18 @@ public class RuntimeAndAdminTests
     [Test]
     public async Task RuntimeClientEvent_InvalidToken_IsHandledSafely()
     {
-        _sessionService.Setup(x => x.GetSessionByTokenAsync("raw-token-secret")).ReturnsAsync((InterviewSession)null);
+        var session = new InterviewSession
+        {
+            Id = 86,
+            CustomerId = 21,
+            ProductId = 43,
+            Token = "raw-token-secret",
+            IsActive = false,
+            TokenExpiryUtc = DateTime.UtcNow.AddMinutes(10)
+        };
+        var customer = new Customer { Id = session.CustomerId, Email = "candidate@example.com" };
+        _sessionService.Setup(x => x.GetSessionByTokenAsync(session.Token)).ReturnsAsync(session);
+        _customerService.Setup(x => x.GetCustomerByIdAsync(session.CustomerId)).ReturnsAsync(customer);
         var activityService = new Mock<ICustomerActivityService>();
 
         var controller = new MockAiInterviewController(
@@ -3779,7 +3881,7 @@ public class RuntimeAndAdminTests
         var result = await controller.RuntimeClientEvent(
             "raw-token-secret",
             "network-request-failed",
-            "submit-answer?token=raw-token-secret",
+            "upload-recording",
             0,
             "Candidate typed answer should not be logged",
             "fetch-exception",
@@ -3788,18 +3890,25 @@ public class RuntimeAndAdminTests
         Assert.That(result, Is.TypeOf<JsonResult>());
         var success = ((JsonResult)result).Value.GetType().GetProperty("success")?.GetValue(((JsonResult)result).Value, null);
         Assert.That(success, Is.EqualTo(false));
-        activityService.Verify(x => x.InsertActivityAsync(It.IsAny<Customer>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<BaseEntity>()), Times.Never);
+        activityService.Verify(x => x.InsertActivityAsync(
+            customer,
+            "AIInterview.Runtime.NetworkRequestFailed",
+            It.IsAny<string>(),
+            session), Times.Once);
         _nopLogger.Verify(x => x.InsertLogAsync(
-            LogLevel.Warning,
+            LogLevel.Error,
             "AI Interview runtime client request failure",
             It.Is<string>(message =>
                 message.Contains("Token=raw-to...") &&
-                message.Contains("Request=unknown") &&
+                message.Contains("SessionId=86") &&
+                message.Contains("CustomerId=21") &&
+                message.Contains("ProductId=43") &&
+                message.Contains("Request=upload-recording") &&
                 message.Contains("FailureKind=fetch-exception") &&
                 message.Contains("Unable to reach the interview service.") &&
                 !message.Contains("raw-token-secret") &&
                 !message.Contains("Candidate typed answer")),
-            It.IsAny<Customer>()), Times.Once);
+            customer), Times.Once);
     }
 
     [Test]
@@ -3991,6 +4100,87 @@ public class RuntimeAndAdminTests
         Assert.That(startupText, Does.Contain("options.MultipartBodyLengthLimit = Math.Max(options.MultipartBodyLengthLimit, MockAiInterviewController.MaxRecordingUploadBytes);"));
         Assert.That(runtimeViewText, Does.Contain("event.requestName === 'runtime-client-event'"));
         Assert.That(runtimeViewText, Does.Contain("failureKind: 'fetch-exception'"));
+        Assert.That(runtimeViewText, Does.Contain("failureKind: abortedByTimeout ? 'upload-timeout'"));
+    }
+
+    [Test]
+    public async Task AiService_PostWithMaximumNumericValues_PersistsEveryMaximum()
+    {
+        var settings = new AIInterviewSettings();
+        var controller = CreateAiInterviewAdminController(settings);
+        var model = new AiServiceSettingsModel
+        {
+            CreditProductSkuMappingsJson = "{}",
+            MockInterviewQuestionCount = 10,
+            StrengthsSummaryMaxCompletionTokens = 3000,
+            QuestionPlanMaxCompletionTokens = 32000,
+            QuestionPlanRetryMaxCompletionTokens = 64000,
+            AzureDocumentIntelligenceTimeoutSeconds = 300,
+            RecordingUploadMaxMb = 250,
+            RecordingVideoBitsPerSecond = 1200000,
+            RecordingAudioBitsPerSecond = 128000,
+            RecordingUploadTimeoutMs = 120000,
+            FinalizationWaitTimeoutMs = 125000
+        };
+
+        await controller.AiService(model);
+
+        Assert.That(settings.MockInterviewQuestionCount, Is.EqualTo(10));
+        Assert.That(settings.StrengthsSummaryMaxCompletionTokens, Is.EqualTo(3000));
+        Assert.That(settings.QuestionPlanMaxCompletionTokens, Is.EqualTo(32000));
+        Assert.That(settings.QuestionPlanRetryMaxCompletionTokens, Is.EqualTo(64000));
+        Assert.That(settings.AzureDocumentIntelligenceTimeoutSeconds, Is.EqualTo(300));
+        Assert.That(settings.RecordingUploadMaxMb, Is.EqualTo(250));
+        Assert.That(settings.RecordingVideoBitsPerSecond, Is.EqualTo(1200000));
+        Assert.That(settings.RecordingAudioBitsPerSecond, Is.EqualTo(128000));
+        Assert.That(settings.RecordingUploadTimeoutMs, Is.EqualTo(120000));
+        Assert.That(settings.FinalizationWaitTimeoutMs, Is.EqualTo(125000));
+    }
+
+    [Test]
+    public async Task AiService_PostWithZeroNumericValues_PreservesEveryStoredValue()
+    {
+        var settings = new AIInterviewSettings
+        {
+            MockInterviewQuestionCount = 10,
+            StrengthsSummaryMaxCompletionTokens = 3000,
+            QuestionPlanMaxCompletionTokens = 32000,
+            QuestionPlanRetryMaxCompletionTokens = 64000,
+            AzureDocumentIntelligenceTimeoutSeconds = 300,
+            RecordingUploadMaxMb = 250,
+            RecordingVideoBitsPerSecond = 1200000,
+            RecordingAudioBitsPerSecond = 128000,
+            RecordingUploadTimeoutMs = 120000,
+            FinalizationWaitTimeoutMs = 125000
+        };
+        var controller = CreateAiInterviewAdminController(settings);
+        var model = new AiServiceSettingsModel
+        {
+            CreditProductSkuMappingsJson = "{}",
+            MockInterviewQuestionCount = 0,
+            StrengthsSummaryMaxCompletionTokens = 0,
+            QuestionPlanMaxCompletionTokens = 0,
+            QuestionPlanRetryMaxCompletionTokens = 0,
+            AzureDocumentIntelligenceTimeoutSeconds = 0,
+            RecordingUploadMaxMb = 0,
+            RecordingVideoBitsPerSecond = 0,
+            RecordingAudioBitsPerSecond = 0,
+            RecordingUploadTimeoutMs = 0,
+            FinalizationWaitTimeoutMs = 0
+        };
+
+        await controller.AiService(model);
+
+        Assert.That(settings.MockInterviewQuestionCount, Is.EqualTo(10));
+        Assert.That(settings.StrengthsSummaryMaxCompletionTokens, Is.EqualTo(3000));
+        Assert.That(settings.QuestionPlanMaxCompletionTokens, Is.EqualTo(32000));
+        Assert.That(settings.QuestionPlanRetryMaxCompletionTokens, Is.EqualTo(64000));
+        Assert.That(settings.AzureDocumentIntelligenceTimeoutSeconds, Is.EqualTo(300));
+        Assert.That(settings.RecordingUploadMaxMb, Is.EqualTo(250));
+        Assert.That(settings.RecordingVideoBitsPerSecond, Is.EqualTo(1200000));
+        Assert.That(settings.RecordingAudioBitsPerSecond, Is.EqualTo(128000));
+        Assert.That(settings.RecordingUploadTimeoutMs, Is.EqualTo(120000));
+        Assert.That(settings.FinalizationWaitTimeoutMs, Is.EqualTo(125000));
     }
 
     [Test]

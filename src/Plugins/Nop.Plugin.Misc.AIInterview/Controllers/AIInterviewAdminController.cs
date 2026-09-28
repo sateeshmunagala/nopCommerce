@@ -223,6 +223,19 @@ public class AIInterviewAdminController : BasePluginController
             var currentAiInterviewSettings =
                 await _settingService.LoadSettingAsync<AIInterviewSettings>(storeScope)
                 ?? _aiInterviewSettings;
+            var storedSettings = new AIInterviewSettings
+            {
+                MockInterviewQuestionCount = currentAiInterviewSettings.MockInterviewQuestionCount,
+                StrengthsSummaryMaxCompletionTokens = currentAiInterviewSettings.StrengthsSummaryMaxCompletionTokens,
+                QuestionPlanMaxCompletionTokens = currentAiInterviewSettings.QuestionPlanMaxCompletionTokens,
+                QuestionPlanRetryMaxCompletionTokens = currentAiInterviewSettings.QuestionPlanRetryMaxCompletionTokens,
+                AzureDocumentIntelligenceTimeoutSeconds = currentAiInterviewSettings.AzureDocumentIntelligenceTimeoutSeconds,
+                RecordingUploadMaxMb = currentAiInterviewSettings.RecordingUploadMaxMb,
+                RecordingVideoBitsPerSecond = currentAiInterviewSettings.RecordingVideoBitsPerSecond,
+                RecordingAudioBitsPerSecond = currentAiInterviewSettings.RecordingAudioBitsPerSecond,
+                RecordingUploadTimeoutMs = currentAiInterviewSettings.RecordingUploadTimeoutMs,
+                FinalizationWaitTimeoutMs = currentAiInterviewSettings.FinalizationWaitTimeoutMs
+            };
             var currentMockSettings =
                 await _settingService.LoadSettingAsync<MockAIInterviewSettings>(storeScope)
                 ?? _mockAIInterviewSettings;
@@ -236,7 +249,8 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.ApiKey = PreserveSecretIfBlank(settingsModel.ApiKey, currentAiInterviewSettings.ApiKey);
             currentAiInterviewSettings.Model = settingsModel.Model;
             currentAiInterviewSettings.Prompt = settingsModel.Prompt;
-            currentAiInterviewSettings.MockInterviewQuestionCount = NormalizeMockInterviewQuestionCount(settingsModel.MockInterviewQuestionCount);
+            currentAiInterviewSettings.MockInterviewQuestionCount = NormalizeMockInterviewQuestionCount(
+                PreservePostedNumericSetting(settingsModel.MockInterviewQuestionCount, storedSettings.MockInterviewQuestionCount));
             currentAiInterviewSettings.ResumeProfileExtractionSystemPrompt = settingsModel.ResumeProfileExtractionSystemPrompt;
             currentAiInterviewSettings.QuestionPlanSystemPrompt = settingsModel.QuestionPlanSystemPrompt;
             currentAiInterviewSettings.QuestionPlanBuilderInstructionBlock = settingsModel.QuestionPlanBuilderInstructionBlock;
@@ -253,15 +267,19 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.AzureOpenAiEndpointUrl = settingsModel.AzureOpenAiEndpointUrl;
             currentAiInterviewSettings.AzureOpenAiApiKey = PreserveSecretIfBlank(settingsModel.AzureOpenAiApiKey, currentAiInterviewSettings.AzureOpenAiApiKey);
             currentAiInterviewSettings.AzureOpenAiDeploymentOrModel = settingsModel.AzureOpenAiDeploymentOrModel;
-            currentAiInterviewSettings.StrengthsSummaryMaxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(settingsModel.StrengthsSummaryMaxCompletionTokens);
-            currentAiInterviewSettings.QuestionPlanMaxCompletionTokens = NormalizeQuestionPlanMaxCompletionTokens(settingsModel.QuestionPlanMaxCompletionTokens);
-            currentAiInterviewSettings.QuestionPlanRetryMaxCompletionTokens = NormalizeQuestionPlanRetryMaxCompletionTokens(settingsModel.QuestionPlanRetryMaxCompletionTokens);
+            currentAiInterviewSettings.StrengthsSummaryMaxCompletionTokens = NormalizeStrengthsSummaryMaxCompletionTokens(
+                PreservePostedNumericSetting(settingsModel.StrengthsSummaryMaxCompletionTokens, storedSettings.StrengthsSummaryMaxCompletionTokens));
+            currentAiInterviewSettings.QuestionPlanMaxCompletionTokens = NormalizeQuestionPlanMaxCompletionTokens(
+                PreservePostedNumericSetting(settingsModel.QuestionPlanMaxCompletionTokens, storedSettings.QuestionPlanMaxCompletionTokens));
+            currentAiInterviewSettings.QuestionPlanRetryMaxCompletionTokens = NormalizeQuestionPlanRetryMaxCompletionTokens(
+                PreservePostedNumericSetting(settingsModel.QuestionPlanRetryMaxCompletionTokens, storedSettings.QuestionPlanRetryMaxCompletionTokens));
             currentAiInterviewSettings.AzureSpeechKey = PreserveSecretIfBlank(settingsModel.AzureSpeechKey, currentAiInterviewSettings.AzureSpeechKey);
             currentAiInterviewSettings.AzureSpeechRegion = settingsModel.AzureSpeechRegion;
             currentAiInterviewSettings.AzureDocumentIntelligenceEndpointUrl = settingsModel.AzureDocumentIntelligenceEndpointUrl;
             currentAiInterviewSettings.AzureDocumentIntelligenceApiKey = PreserveSecretIfBlank(settingsModel.AzureDocumentIntelligenceApiKey, currentAiInterviewSettings.AzureDocumentIntelligenceApiKey);
             currentAiInterviewSettings.AzureDocumentIntelligenceModelId = NormalizeAzureDocumentIntelligenceModelId(settingsModel.AzureDocumentIntelligenceModelId);
-            currentAiInterviewSettings.AzureDocumentIntelligenceTimeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(settingsModel.AzureDocumentIntelligenceTimeoutSeconds);
+            currentAiInterviewSettings.AzureDocumentIntelligenceTimeoutSeconds = NormalizeAzureDocumentIntelligenceTimeoutSeconds(
+                PreservePostedNumericSetting(settingsModel.AzureDocumentIntelligenceTimeoutSeconds, storedSettings.AzureDocumentIntelligenceTimeoutSeconds));
             currentAiInterviewSettings.TrackAzureOpenAiUsage = settingsModel.TrackAzureOpenAiUsage;
             currentAiInterviewSettings.TrackAzureSpeechUsage = settingsModel.TrackAzureSpeechUsage;
             currentAiInterviewSettings.CalculateAzureCostPerInterview = settingsModel.CalculateAzureCostPerInterview;
@@ -272,12 +290,18 @@ public class AIInterviewAdminController : BasePluginController
             currentAiInterviewSettings.AzureUsageCurrencyCode = settingsModel.AzureUsageCurrencyCode;
             currentAiInterviewSettings.AzureBlobStorageContainerUrl = settingsModel.AzureBlobStorageContainerUrl;
             currentAiInterviewSettings.AzureBlobStorageSasToken = PreserveSecretIfBlank(settingsModel.AzureBlobStorageSasToken, currentAiInterviewSettings.AzureBlobStorageSasToken);
-            currentAiInterviewSettings.RecordingUploadMaxMb = NormalizeRecordingUploadMaxMb(settingsModel.RecordingUploadMaxMb);
-            currentAiInterviewSettings.RecordingVideoBitsPerSecond = NormalizeRecordingVideoBitsPerSecond(settingsModel.RecordingVideoBitsPerSecond);
-            currentAiInterviewSettings.RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(settingsModel.RecordingAudioBitsPerSecond);
+            currentAiInterviewSettings.RecordingUploadMaxMb = NormalizeRecordingUploadMaxMb(
+                PreservePostedNumericSetting(settingsModel.RecordingUploadMaxMb, storedSettings.RecordingUploadMaxMb));
+            currentAiInterviewSettings.RecordingVideoBitsPerSecond = NormalizeRecordingVideoBitsPerSecond(
+                PreservePostedNumericSetting(settingsModel.RecordingVideoBitsPerSecond, storedSettings.RecordingVideoBitsPerSecond));
+            currentAiInterviewSettings.RecordingAudioBitsPerSecond = NormalizeRecordingAudioBitsPerSecond(
+                PreservePostedNumericSetting(settingsModel.RecordingAudioBitsPerSecond, storedSettings.RecordingAudioBitsPerSecond));
             currentAiInterviewSettings.RecordingSourceMode = NormalizeRecordingSourceMode(settingsModel.RecordingSourceMode);
-            currentAiInterviewSettings.RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(settingsModel.RecordingUploadTimeoutMs);
-            currentAiInterviewSettings.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(settingsModel.FinalizationWaitTimeoutMs, currentAiInterviewSettings.RecordingUploadTimeoutMs);
+            currentAiInterviewSettings.RecordingUploadTimeoutMs = NormalizeRecordingUploadTimeoutMs(
+                PreservePostedNumericSetting(settingsModel.RecordingUploadTimeoutMs, storedSettings.RecordingUploadTimeoutMs));
+            currentAiInterviewSettings.FinalizationWaitTimeoutMs = NormalizeFinalizationWaitTimeoutMs(
+                PreservePostedNumericSetting(settingsModel.FinalizationWaitTimeoutMs, storedSettings.FinalizationWaitTimeoutMs),
+                currentAiInterviewSettings.RecordingUploadTimeoutMs);
             await _settingService.SaveSettingAsync(
                 currentAiInterviewSettings, x => x.Provider, 0, false);
             await _settingService.SaveSettingOverridablePerStoreAsync(
@@ -416,6 +440,13 @@ public class AIInterviewAdminController : BasePluginController
                 currentAiInterviewSettings, x => x.FinalizationWaitTimeoutMs,
                 settingsModel.FinalizationWaitTimeoutMs_OverrideForStore, storeScope, false);
             await _settingService.ClearCacheAsync();
+            _logger.LogInformation(
+                "AI Interview service settings saved. StoreScope={StoreScope}; PostedUploadTimeoutMs={PostedUploadTimeoutMs}; SavedUploadTimeoutMs={SavedUploadTimeoutMs}; PostedFinalizationWaitMs={PostedFinalizationWaitMs}; SavedFinalizationWaitMs={SavedFinalizationWaitMs}.",
+                storeScope,
+                settingsModel.RecordingUploadTimeoutMs,
+                currentAiInterviewSettings.RecordingUploadTimeoutMs,
+                settingsModel.FinalizationWaitTimeoutMs,
+                currentAiInterviewSettings.FinalizationWaitTimeoutMs);
         }
         catch (Exception exception)
         {
@@ -1146,6 +1177,11 @@ public class AIInterviewAdminController : BasePluginController
             return existingValue;
 
         return candidateValue.Trim();
+    }
+
+    protected virtual int PreservePostedNumericSetting(int postedValue, int storedValue)
+    {
+        return postedValue > 0 ? postedValue : storedValue;
     }
 
     protected virtual string NormalizeAzureDocumentIntelligenceModelId(string modelId)

@@ -87,8 +87,10 @@ public class MockAiInterviewAdminController : BasePluginController
         if (!ModelState.IsValid)
             return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml", model);
 
-        _aiInterviewSettings.Enabled = model.Enabled;
-        await _settingService.SaveSettingAsync(_aiInterviewSettings);
+        var settings = await _settingService.LoadSettingAsync<AIInterviewSettings>() ?? _aiInterviewSettings;
+        settings.Enabled = model.Enabled;
+        await _settingService.SaveSettingAsync(settings, x => x.Enabled, 0, false);
+        await _settingService.ClearCacheAsync();
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
 
@@ -106,8 +108,10 @@ public class MockAiInterviewAdminController : BasePluginController
         if (!ModelState.IsValid)
             return View("~/Plugins/Misc.AIInterview/Views/MockAiInterviewAdmin/Configure.cshtml", model);
 
-        _aiInterviewSettings.Enabled = model.Enabled;
-        await _settingService.SaveSettingAsync(_aiInterviewSettings);
+        var settings = await _settingService.LoadSettingAsync<AIInterviewSettings>() ?? _aiInterviewSettings;
+        settings.Enabled = model.Enabled;
+        await _settingService.SaveSettingAsync(settings, x => x.Enabled, 0, false);
+        await _settingService.ClearCacheAsync();
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
 

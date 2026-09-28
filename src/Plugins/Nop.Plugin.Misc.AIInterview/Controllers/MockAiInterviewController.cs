@@ -195,12 +195,17 @@ public class MockAiInterviewController : BasePluginController
         return _workContext == null ? null : await _workContext.GetCurrentCustomerAsync();
     }
 
-    protected virtual async Task LogRuntimeIssueAsync(string shortMessage, string fullMessage = "", Customer customer = null)
+    protected virtual Task LogRuntimeIssueAsync(string shortMessage, string fullMessage = "", Customer customer = null)
+    {
+        return LogRuntimeIssueAsync(NopLogLevel.Warning, shortMessage, fullMessage, customer);
+    }
+
+    protected virtual async Task LogRuntimeIssueAsync(NopLogLevel level, string shortMessage, string fullMessage = "", Customer customer = null)
     {
         if (_nopLogger == null)
             return;
 
-        await _nopLogger.InsertLogAsync(NopLogLevel.Warning, shortMessage, fullMessage, customer ?? (_workContext == null ? null : await _workContext.GetCurrentCustomerAsync()));
+        await _nopLogger.InsertLogAsync(level, shortMessage, fullMessage, customer ?? (_workContext == null ? null : await _workContext.GetCurrentCustomerAsync()));
     }
 
     protected virtual async Task LogRuntimeActivityAsync(InterviewSession session, string systemKeyword, string comment, Customer customer = null)
@@ -296,6 +301,7 @@ public class MockAiInterviewController : BasePluginController
             "non-json-response" => "non-json-response",
             "fetch-exception" => "fetch-exception",
             "network-error" => "network-error",
+            "upload-timeout" => "upload-timeout",
             "completion-upload-timeout-mismatch" => "completion-upload-timeout-mismatch",
             _ => "unknown"
         };
@@ -329,6 +335,7 @@ public class MockAiInterviewController : BasePluginController
                 : "Runtime request returned a failed HTTP status.",
             "invalid-json" => "Runtime request returned invalid JSON.",
             "non-json-response" => "Runtime request returned a non-JSON response.",
+            "upload-timeout" => "Recording upload was cancelled by the client timeout before the server responded.",
             "fetch-exception" or "network-error" => "Unable to reach the interview service.",
             "completion-upload-timeout-mismatch" => "Completion finalization timeout is lower than recording upload timeout + 5000ms. Check RecordingUploadTimeoutMs and FinalizationWaitTimeoutMs settings.",
             _ => "Runtime request failed."
@@ -358,6 +365,19 @@ public class MockAiInterviewController : BasePluginController
             details.Add($"Message={safeMessage}");
 
         return string.Join("; ", details);
+    }
+
+    protected static NopLogLevel ResolveRuntimeClientFailureLogLevel(string requestName, string failureKind, int? statusCode)
+    {
+        var safeRequestName = NormalizeRuntimeClientRequestName(requestName);
+        var safeFailureKind = NormalizeRuntimeClientFailureKind(failureKind);
+        var losesCandidateData = safeRequestName is "upload-recording" or "submit-answer" or "stop";
+        if (!losesCandidateData)
+            return NopLogLevel.Warning;
+
+        var transportFailed = safeFailureKind is "fetch-exception" or "network-error" or "upload-timeout";
+        var serverFailed = statusCode is >= 500 or 413;
+        return transportFailed || serverFailed ? NopLogLevel.Error : NopLogLevel.Warning;
     }
 
     protected async Task<string> GetLocalizedTextAsync(string resourceKey, string defaultValue)
@@ -1599,6 +1619,7 @@ public class MockAiInterviewController : BasePluginController
         var safeEventType = (eventType ?? string.Empty).Trim().ToLowerInvariant();
         var safeFailureKind = NormalizeRuntimeClientFailureKind(failureKind);
         var safeMessage = BuildRuntimeClientFailureMessage(safeFailureKind, statusCode, safeRequestName);
+        var identity = $"SessionId={resolvedSession?.Id ?? 0}; CustomerId={resolvedSession?.CustomerId ?? 0}; ProductId={resolvedSession?.ProductId ?? 0}";
 
         if (string.Equals(safeRequestName, "runtime-client-event", StringComparison.OrdinalIgnoreCase))
             return Json(new { success = false, message = "Runtime client-event logging is not recursive." });
@@ -1621,9 +1642,18 @@ public class MockAiInterviewController : BasePluginController
             }
 
             await LogRuntimeIssueAsync(
+                ResolveRuntimeClientFailureLogLevel(safeRequestName, safeFailureKind, statusCode),
                 "AI Interview runtime client request failure",
-                $"Event=RuntimeClientRequestFailed; Token={MaskToken(token)}; ReasonCode={reasonCode}; Request={safeRequestName}; StatusCode={statusCode?.ToString(CultureInfo.InvariantCulture) ?? string.Empty}; FailureKind={safeFailureKind}; ElapsedMs={Math.Max(0, elapsedMilliseconds ?? 0)}; Message={safeMessage};",
-                await ResolveLogCustomerAsync());
+                $"Event=RuntimeClientRequestFailed; Token={MaskToken(token)}; ReasonCode={reasonCode}; {identity}; Request={safeRequestName}; StatusCode={statusCode?.ToString(CultureInfo.InvariantCulture) ?? string.Empty}; FailureKind={safeFailureKind}; ElapsedMs={Math.Max(0, elapsedMilliseconds ?? 0)}; Message={safeMessage};",
+                await ResolveLogCustomerAsync(resolvedSession));
+
+            if (resolvedSession != null)
+            {
+                await LogRuntimeActivityAsync(
+                    resolvedSession,
+                    "AIInterview.Runtime.NetworkRequestFailed",
+                    BuildRuntimeClientFailureActivityComment(resolvedSession, safeRequestName, statusCode, safeMessage, safeFailureKind, elapsedMilliseconds));
+            }
 
             return Json(new { success = false, message = "Runtime client event ignored for invalid session." });
         }
@@ -1641,7 +1671,11 @@ public class MockAiInterviewController : BasePluginController
 
         var comment = BuildRuntimeClientFailureActivityComment(session, safeRequestName, statusCode, safeMessage, safeFailureKind, elapsedMilliseconds);
         await LogRuntimeActivityAsync(session, "AIInterview.Runtime.NetworkRequestFailed", comment);
-        await LogRuntimeIssueAsync("AI Interview runtime client request failure", comment, await ResolveLogCustomerAsync(session));
+        await LogRuntimeIssueAsync(
+            ResolveRuntimeClientFailureLogLevel(safeRequestName, safeFailureKind, statusCode),
+            "AI Interview runtime client request failure",
+            comment,
+            await ResolveLogCustomerAsync(session));
 
         return Json(new { success = true });
     }

@@ -516,7 +516,7 @@
         const recordingUploadMaxBytes = clampNumber(config.recordingUploadMaxMb, 100, 80, 250) * 1024 * 1024;
         const recordingVideoBitsPerSecond = clampNumber(config.recordingVideoBitsPerSecond, 650000, 350000, 1200000);
         const recordingAudioBitsPerSecond = clampNumber(config.recordingAudioBitsPerSecond, 64000, 32000, 128000);
-        const recordingUploadTimeoutMs = clampNumber(config.recordingUploadTimeoutMs, 15000, 5000, 120000);
+        const recordingUploadTimeoutMs = clampNumber(config.recordingUploadTimeoutMs, 60000, 5000, 120000);
         const minimumFinalizationWaitMs = recordingUploadTimeoutMs + 5000;
         const finalizationUpperBoundMs = Math.max(45000, minimumFinalizationWaitMs);
         const receivedFinalizationWaitTimeoutMs = clampNumber(config.finalizationWaitTimeoutMs, 10000, 5000, finalizationUpperBoundMs);
@@ -3344,19 +3344,20 @@
                     return { success: false, message: 'Invalid response from server.' };
                 }
             } catch (e) {
-                const timedOut = e?.name === 'AbortError';
-                const message = timedOut ? 'Recording upload timed out.' : e?.message;
-                logActivity(`Multipart request error: ${message}`);
+                const abortedByTimeout = e?.name === 'AbortError';
+                logActivity(`Multipart request error: ${abortedByTimeout ? `aborted after ${timeoutMs}ms` : e.message}`);
                 reportRuntimeClientRequestFailure({
                     requestName,
-                    failureKind: 'fetch-exception',
-                    message: message || 'Network request failed.',
+                    failureKind: abortedByTimeout ? 'upload-timeout' : 'fetch-exception',
+                    message: abortedByTimeout
+                        ? `Upload cancelled by client timeout after ${timeoutMs}ms.`
+                        : (e?.message || 'Network request failed.'),
                     elapsedMilliseconds: performance.now() - requestStartedAt
                 });
                 if (shouldIgnoreCompletedAsyncFailure(requestName))
                     return { success: false, ignored: true, message: '' };
 
-                return { success: false, message: timedOut ? 'Recording upload timed out.' : 'Unable to reach the interview service. Please check your network and try again.' };
+                return { success: false, message: abortedByTimeout ? 'Recording upload timed out.' : 'Unable to reach the interview service. Please check your network and try again.' };
             } finally {
                 if (abortTimer)
                     clearTimeout(abortTimer);

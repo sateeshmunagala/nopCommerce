@@ -207,12 +207,12 @@ public static class AIInterviewDefaults
     public const int MinRecordingAudioBitsPerSecond = 32000;
     public const int MaxRecordingAudioBitsPerSecond = 128000;
     public const string DefaultRecordingSourceMode = "ScreenPreferred";
-    public const int DefaultRecordingUploadTimeoutMs = 15000;
+    public const int DefaultRecordingUploadTimeoutMs = 60000;
     public const int MinRecordingUploadTimeoutMs = 5000;
     public const int MaxRecordingUploadTimeoutMs = 120000;
     public const int DefaultFinalizationWaitTimeoutMs = 10000;
     public const int MinFinalizationWaitTimeoutMs = 5000;
-    public const int MaxFinalizationWaitTimeoutMs = 45000;
+    public const int MaxFinalizationWaitTimeoutMs = 125000;
     public static string DefaultResumeProfileExtractionSystemPrompt => "Return JSON only. Extract only facts supported by the resume text. Do not invent companies, projects, dates, skills, tools, metrics, or responsibilities. If project names are unclear, use a short descriptive label based on the resume text. If no projects are present, return an empty projects array. Keep each string concise.";
     public static string DefaultQuestionPlanSystemPrompt => "Return JSON only. Return exactly the requested number of questions. Ask one clear question per item. Do not include answers. Do not ask duplicate questions. Do not invent resume facts. Use resumeEvidence only for facts present in the resume profile. Project-scenario questions must be tied to a real project or responsibility from the resume profile when available. Skill questions must prioritize resume profile primary skills and job-required skills. Keep questions concise enough to read aloud in an interview runtime.";
     public static string DefaultQuestionPlanBuilderInstructionBlock => """
