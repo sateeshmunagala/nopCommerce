@@ -278,7 +278,8 @@
             <li><button type="button" data-permission-step-jump="3"><span>4</span><strong>Microphone</strong></button></li>
             <li><button type="button" data-permission-step-jump="4"><span>5</span><strong>Speaker</strong></button></li>
             <li><button type="button" data-permission-step-jump="5"><span>6</span><strong>Speech Recognition</strong></button></li>
-            <li><button type="button" data-permission-step-jump="6"><span>7</span><strong>Summary</strong></button></li>
+            <li><button type="button" data-permission-step-jump="6"><span>7</span><strong>Screen Share</strong></button></li>
+            <li><button type="button" data-permission-step-jump="7"><span>8</span><strong>Summary</strong></button></li>
         </ol>
 
         <div class="runtime-permissions-body">
@@ -352,7 +353,24 @@
                 </div>
             </section>
 
-            <section class="runtime-permissions-step" data-permission-step="6" hidden>
+            <section class="runtime-permissions-step runtime-permissions-screenshare" data-permission-step="6" hidden>
+                <h4>Screen sharing</h4>
+                <p class="runtime-permissions-status">When you press Start, your browser asks what you want to share.</p>
+                <figure class="runtime-permissions-screenshare-figure">
+                    <img src="@Url.Content("~/Plugins/Misc.AIInterview/Content/images/screen-share-entire-screen.png")"
+                         alt="Browser share dialog with the Entire Screen tab selected and system audio enabled"
+                         loading="lazy" decoding="async" />
+                    <figcaption>Choose Entire Screen, select the screen tile, keep Share with system audio on, then press Share.</figcaption>
+                </figure>
+                <ul class="runtime-guidelines">
+                    <li>Pick the Entire Screen tab, not Chrome Tab and not Window</li>
+                    <li>Keep the Share with system audio toggle switched on</li>
+                    <li>Do not stop sharing until the interview finishes completely</li>
+                </ul>
+                <p class="runtime-permissions-note">This dialog appears in Chrome and Edge, and looks slightly different elsewhere.</p>
+            </section>
+
+            <section class="runtime-permissions-step" data-permission-step="7" hidden>
                 <div class="runtime-permissions-summary-list">
                     <div><span>Camera</span><strong id="runtime-precheck-summary-camera">Not working</strong></div>
                     <div><span>Microphone</span><strong id="runtime-precheck-summary-microphone">Not working</strong></div>
@@ -690,6 +708,7 @@
             { key: 'microphone', label: 'Microphone' },
             { key: 'speaker', label: 'Speaker' },
             { key: 'speechRecognition', label: 'Speech Recognition' },
+            { key: 'screenShare', label: 'Screen Share' },
             { key: 'summary', label: 'Summary' }
         ];
         const permissionState = {
@@ -1458,6 +1477,8 @@
                 case 5:
                     return !!permissionState.speechRecognition;
                 case 6:
+                    return true;
+                case 7:
                     return permissionState.consent;
                 default:
                     return false;

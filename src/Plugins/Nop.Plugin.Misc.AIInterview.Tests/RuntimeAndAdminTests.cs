@@ -2383,6 +2383,16 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void RuntimeView_ContainsScreenShareGuidanceStep()
+    {
+        var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+
+        Assert.That(runtimeViewText, Does.Contain("data-permission-step=\"6\"").And.Contain("runtime-permissions-screenshare"));
+        Assert.That(runtimeViewText, Does.Contain("data-permission-step-jump=\"7\""));
+        Assert.That(runtimeViewText, Does.Contain("screen-share-entire-screen.png"));
+    }
+
+    [Test]
     public void RuntimeView_Contains_Recording_And_Upload_Hooks()
     {
         var runtimeViewText = System.IO.File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));

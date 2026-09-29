@@ -4195,6 +4195,30 @@ body.ai-job-preview-open .item-box {
     line-height: 1.22;
 }
 
+.runtime-permissions-screenshare-figure {
+    margin: 0;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+}
+
+.runtime-permissions-screenshare-figure img {
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    display: block;
+    border: 1px solid var(--jb-border, #dedede);
+    border-radius: 6px;
+    background: var(--jb-white, #ffffff);
+}
+
+.runtime-permissions-screenshare-figure figcaption {
+    color: var(--jb-muted, #6b6b6b);
+    font-size: 13px;
+    line-height: 1.35;
+    text-align: center;
+}
+
 .runtime-permissions-intro,
 .runtime-permissions-note,
 .runtime-permissions-status {
@@ -5749,6 +5773,15 @@ body.ai-job-preview-open .item-box {
     .runtime-feedback-upload {
         width: 100%;
         box-sizing: border-box;
+    }
+
+    .runtime-permissions-screenshare-figure img {
+        max-width: 100%;
+    }
+
+    .runtime-permissions-screenshare-figure figcaption {
+        font-size: 12px;
+        text-align: left;
     }
 }
 

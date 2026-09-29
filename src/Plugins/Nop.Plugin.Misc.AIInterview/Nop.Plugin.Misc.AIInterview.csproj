@@ -26,6 +26,7 @@
     <None Remove="Areas\Admin\Views\AIInterviewAdmin\CandidateDetails.cshtml" />
     <None Remove="Content\css\aiinterview-public.css" />
     <None Remove="Content\images\default-avatar.svg" />
+    <None Remove="Content\images\screen-share-entire-screen.png" />
     <None Remove="Content\js\aiinterview-job-card.js" />
     <None Remove="logo.png" />
     <None Remove="plugin.json" />
@@ -106,6 +107,10 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="Content\images\default-avatar.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Content\images\screen-share-entire-screen.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
