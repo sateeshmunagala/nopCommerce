@@ -3885,7 +3885,28 @@ body.ai-job-preview-open .item-box {
     width: 42px;
     height: 42px;
     padding: 0 !important;
+    border: 0 !important;
     border-radius: 1px !important;
+    background: var(--jb-accent, #35d6b4) !important;
+    color: #ffffff !important;
+}
+
+.runtime-composer-send:hover:not(:disabled),
+.runtime-composer-send:focus-visible:not(:disabled) {
+    background: var(--jb-accent-dark, #24b99a) !important;
+    color: #ffffff !important;
+}
+
+.runtime-composer-send:focus-visible {
+    outline: 2px solid var(--jb-accent-dark, #24b99a);
+    outline-offset: 2px;
+}
+
+.runtime-composer-send:disabled {
+    background: #c9d3dd !important;
+    color: #ffffff !important;
+    cursor: not-allowed;
+    opacity: 1;
 }
 
 .runtime-composer-send i {

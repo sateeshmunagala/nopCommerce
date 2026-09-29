@@ -731,6 +731,14 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void RuntimeView_ComposerSendButtonIsVisible()
+    {
+        var runtimeViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+
+        Assert.That(runtimeViewText, Does.Contain("id=\"submit-answer\" class=\"button-1 runtime-composer-send\""));
+    }
+
+    [Test]
     public void RuntimeView_CreditWarningUsesTopStatusUpgradeAndFiveSecondRedirectHooks()
     {
         var runtimeView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
